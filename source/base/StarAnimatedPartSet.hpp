@@ -118,6 +118,13 @@ public:
 
     ActivePartInformation activePart;
     bool activePartDirty;
+
+    // Memo of the matched (stateType,state,frame,nextFrame) for which the property merge ran.
+    String resolvedStateTypeName;
+    String resolvedStateName;
+    unsigned resolvedFrame = ~0u;
+    unsigned resolvedNextFrame = ~0u;
+    bool resolvedValid = false;
   };
 
   AnimatedPartSet();
