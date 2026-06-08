@@ -1,6 +1,7 @@
 #include "StarAnimatedPartSet.hpp"
 #include "StarJson.hpp"
 #include "StarMatrix3.hpp"
+#include "StarTelemetry.hpp"
 #include "gtest/gtest.h"
 
 using namespace Star;
@@ -196,4 +197,25 @@ TEST(AnimatedPartSet, AccumulatingTransformAdvancesOncePerUpdateNotPerAccess) {
   set.update(0.1f);
   Mat3F b = set.activePart("gear").animationAffineTransform();
   EXPECT_NE(b, aAgain);     // advances after a new update
+}
+
+// Telemetry binds to the memoization: a sub-frame update re-resolves with the key UNCHANGED
+// (skipped++), a frame-cross re-resolves (performed++). Pins both the metric and the optimization.
+TEST(AnimatedPartSet, TelemetryCountsStateMergePerformedVsSkipped) {
+  Telemetry::reset();
+  auto set = makeSet();
+  ASSERT_TRUE(set.setActiveState("movement", "walk"));
+  (void)set.activeState("movement");            // first resolve -> performed
+  uint64_t perf0 = Telemetry::counter("animator.state.merge.performed").value();
+  uint64_t skip0 = Telemetry::counter("animator.state.merge.skipped").value();
+  EXPECT_GE(perf0, 1u);
+
+  set.update(0.1f);                             // sub-frame: frame unchanged
+  (void)set.activeState("movement");
+  EXPECT_EQ(Telemetry::counter("animator.state.merge.performed").value(), perf0); // no new merge
+  EXPECT_GT(Telemetry::counter("animator.state.merge.skipped").value(), skip0);   // skipped++
+
+  set.update(0.5f);                             // crosses to frame 1
+  (void)set.activeState("movement");
+  EXPECT_GT(Telemetry::counter("animator.state.merge.performed").value(), perf0); // performed++
 }
