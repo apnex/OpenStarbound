@@ -2,6 +2,7 @@
 #include "StarMathCommon.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarInterpolation.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -280,6 +281,8 @@ AnimatedPartSet::AnimationMode AnimatedPartSet::stringToAnimationMode(String con
 }
 
 void AnimatedPartSet::freshenActiveState(StateType& stateType) {
+  static auto cPerformed = Telemetry::counter("animator.state.merge.performed");
+  static auto cSkipped = Telemetry::counter("animator.state.merge.skipped");
   auto const& state = *stateType.activeStatePointer;
   auto& activeState = stateType.activeState;
 
@@ -310,8 +313,10 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
       || stateType.resolvedFrame != newFrame
       || stateType.resolvedNextFrame != newNextFrame
       || stateType.resolvedReverse != activeState.reverse;
-  if (!keyChanged)
+  if (!keyChanged) {
+    cSkipped.inc();
     return;
+  }
 
   activeState.properties = stateType.stateTypeProperties;
   activeState.properties.merge(state.stateProperties, true);
@@ -331,9 +336,13 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
   stateType.resolvedValid = true;
   stateType.activeStateDirty = false;
   ++m_generation;
+  cPerformed.inc();
 }
 
 void AnimatedPartSet::freshenActivePart(Part& part) {
+  static auto cPerformed = Telemetry::counter("animator.part.merge.performed");
+  static auto cSkipped = Telemetry::counter("animator.part.merge.skipped");
+  static auto cTransform = Telemetry::counter("animator.part.transform.applied");
   auto& activePart = part.activePart;
 
   // (a) ALWAYS: find the highest-priority enabled state type with a matching partState.
@@ -391,6 +400,9 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
     part.resolvedNextFrame = matchNextFrame;
     part.resolvedValid = true;
     ++m_generation;
+    cPerformed.inc();
+  } else {
+    cSkipped.inc();
   }
 
   // ALWAYS refresh activeState (cheap copy) so frameProgress is LIVE for the continuous layer.
@@ -443,6 +455,7 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
       }
     }
   }
+    cTransform.inc();
     part.activePartDirty = false;
   }
 }
