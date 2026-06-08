@@ -50,6 +50,7 @@ SET (star_core_tests_SOURCES
       shell_parse.cpp
       string_test.cpp
       strong_typedef_test.cpp
+      telemetry_test.cpp
       thread_test.cpp
       worker_pool_test.cpp
       variant_test.cpp
