@@ -98,6 +98,13 @@ public:
     ActiveStateInformation activeState;
     State const* activeStatePointer;
     bool activeStateDirty;
+
+    // Memo of the last resolved key for which activeState.properties/nextProperties were merged.
+    String resolvedStateName;
+    unsigned resolvedFrame = ~0u;
+    unsigned resolvedNextFrame = ~0u;
+    bool resolvedReverse = false;
+    bool resolvedValid = false;
   };
 
   struct PartState {
@@ -171,6 +178,11 @@ public:
 
   uint8_t version() const;
 
+  // Monotonic stamp bumped only when the resolved static output (active state name,
+  // integer frame/nextFrame, reverse, or part property resolution) changes. Does NOT
+  // change for sub-frame frameProgress / continuous transforms. Per-instance; never serialized.
+  uint64_t generation() const;
+
   Json getStateFrameProperty(String const& stateType, String const& propertyName, String state, int frame) const;
   Json getPartStateFrameProperty(String const& partName, String const& propertyName, String const& stateType, String state, int frame) const;
 
@@ -184,6 +196,7 @@ private:
   StringMap<Part> m_parts;
 
   uint8_t m_animatorVersion;
+  uint64_t m_generation = 1;
 };
 
 }

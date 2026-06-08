@@ -122,3 +122,26 @@ TEST(AnimatedPartSet, InterpolatedTransformAdvancesWithinFrame) {
   EXPECT_EQ(set.activeState("spin").frame, 0u); // precondition: still within frame 0
   EXPECT_NE(m1, m2); // must advance purely from frameProgress interpolation
 }
+
+// generation() bumps only when the resolved (state/frame) actually changes — NOT on sub-frame motion.
+TEST(AnimatedPartSet, GenerationBumpsOnRealChangeOnly) {
+  auto set = makeSet();
+  ASSERT_TRUE(set.setActiveState("movement", "walk"));
+  (void)set.activeState("movement");            // force initial resolve
+  uint64_t g0 = set.generation();
+
+  set.update(0.1f);                             // sub-frame: still frame 0
+  (void)set.activeState("movement");
+  ASSERT_EQ(set.activeState("movement").frame, 0u);
+  EXPECT_EQ(set.generation(), g0);              // resolution unchanged -> NO bump
+
+  set.update(0.5f);                             // crosses to frame 1
+  (void)set.activeState("movement");
+  ASSERT_EQ(set.activeState("movement").frame, 1u);
+  EXPECT_GT(set.generation(), g0);              // resolved frame changed -> bump
+
+  uint64_t g1 = set.generation();
+  ASSERT_TRUE(set.setActiveState("movement", "idle"));
+  (void)set.activeState("movement");
+  EXPECT_GT(set.generation(), g1);              // state change -> bump
+}
