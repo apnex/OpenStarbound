@@ -26,12 +26,12 @@ struct MetricNode {
 };
 
 namespace {
-  // Registry storage: a node-based StableHashMap (std::unordered_map) — its nodes never
-  // move on rehash, and the heap-allocated MetricNode pointees the unique_ptrs own are
-  // address-stable regardless, so raw MetricNode* handles stay valid. (Star's flat HashMap
-  // cannot hold move-only unique_ptr values — its bucket vector reallocation falls back to
-  // the value copy ctor — so StableHashMap is the correct substrate here.) The mutex guards
-  // registration/snapshot/reset only.
+  // Registry storage: a node-based StableHashMap (std::unordered_map). Two independent
+  // guarantees keep raw MetricNode* handles valid for the life of the registry: the map's
+  // element nodes never move on rehash (node-based), and the heap-allocated MetricNode the
+  // unique_ptr owns is address-stable regardless of the map. Either alone suffices for
+  // Constraint 3; together they make handle stability unconditional. The mutex guards
+  // registration/snapshot/reset only — never the lock-free value-op path.
   struct Registry {
     Mutex mutex;
     StableHashMap<String, std::unique_ptr<MetricNode>> nodes;
