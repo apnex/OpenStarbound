@@ -24,6 +24,7 @@
 #include "StarWarpTargetEntity.hpp"
 #include "StarUniverseSettings.hpp"
 #include "StarUniverseServerLuaBindings.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -715,8 +716,13 @@ void WorldServer::update(float dt) {
       });
   }
 
-  for (EntityId entityId : toRemove)
-    removeEntity(entityId, true);
+  {
+    // Telemetry commit phase: master-entity destruction/removal for this tick.
+    static auto t = Telemetry::timer("tick.server.commit.us");
+    TelemetryScope s(t);
+    for (EntityId entityId : toRemove)
+      removeEntity(entityId, true);
+  }
 
   bool sendRemoteUpdates = m_entityUpdateTimer.wrapTick(dt);
   for (auto const& pair : m_clientInfo) {
