@@ -1,5 +1,6 @@
 #include "StarAnimatedPartSet.hpp"
 #include "StarJson.hpp"
+#include "StarMatrix3.hpp"
 #include "gtest/gtest.h"
 
 using namespace Star;
@@ -7,8 +8,11 @@ using namespace Star;
 namespace {
   // animatorVersion 1 so the affine-transform block (cpp:362-397) is active.
   // "movement": idle = 1-frame end; walk = 2-frame loop (each frame 0.5s at cycle 1.0).
-  // "spin": single 1-frame state carrying an interpolated rotate transform (sub-frame).
-  // part "body" listens to movement; part "arm" listens to spin (interpolated transform).
+  // "spin": 2-frame loop (frame stays 0 within a 0.5s sub-frame window at cycle 1.0).
+  // part "body" listens to movement; part "arm" listens to spin and carries per-frame
+  //   transforms that DIFFER between frame 0 and frame 1, each led by a "reset" op so the
+  //   affine recomputation starts from identity (neutralizing cross-tick accumulation).
+  //   This makes the interpolated rotate depend purely on frameProgress sub-frame.
   char const* kConfig = R"JSON(
   {
     "stateTypes" : {
@@ -39,10 +43,15 @@ namespace {
       "arm" : {
         "partStates" : {
           "spin" : {
-            "on" : { "properties" : {
-              "interpolated" : true,
-              "transforms" : [ [ "rotate", 1.0, [0.0, 0.0] ] ]
-            } }
+            "on" : {
+              "properties" : { "interpolated" : true },
+              "frameProperties" : {
+                "transforms" : [
+                  [ [ "reset" ], [ "rotate", 0.0, [0.0, 0.0] ] ],
+                  [ [ "reset" ], [ "rotate", 1.5, [0.0, 0.0] ] ]
+                ]
+              }
+            }
           }
         }
       }
@@ -57,7 +66,7 @@ namespace {
 TEST(AnimatedPartSet, DefaultStateResolves) {
   auto set = makeSet();
   auto const& st = set.activeState("movement");
-  EXPECT_EQ(st.stateName, String("idle"));
+  EXPECT_EQ(st.stateName, "idle");
   EXPECT_EQ(st.frame, 0u);
   EXPECT_EQ(Json(st.properties).getString("foo"), "idleVal");
 }
@@ -96,12 +105,20 @@ TEST(AnimatedPartSet, FrameProgressAdvancesWithinFrame) {
   EXPECT_GT(p2, p1); // must NOT freeze
 }
 
-// GUARD (anti-freeze, part transform): an interpolated transform part keeps moving sub-frame.
+// GUARD (anti-freeze, part transform): the arm's affine transform must change between two
+// sub-frame updates SOLELY because frameProgress advanced. The per-frame transforms each begin
+// with a "reset" op, so processTransforms starts from identity rather than the accumulated prior
+// affine -- frame 0 yields R(0.0) and frame 1 yields R(1.5) independent of history. With the
+// integer frame pinned to 0 (asserted below), the only thing feeding setAnimationAffineTransform's
+// lerp between mat and nextMat is frameProgress (0.2 -> 0.4). If a refactor froze/removed
+// frameProgress-driven interpolation, mat==result both ticks and this guard FAILS.
 TEST(AnimatedPartSet, InterpolatedTransformAdvancesWithinFrame) {
   auto set = makeSet();
   set.update(0.1f);
   Mat3F m1 = set.activePart("arm").animationAffineTransform();
+  EXPECT_EQ(set.activeState("spin").frame, 0u); // precondition: still within frame 0
   set.update(0.1f);
   Mat3F m2 = set.activePart("arm").animationAffineTransform();
-  EXPECT_NE(m1, m2); // rotate interpolates with frameProgress every tick
+  EXPECT_EQ(set.activeState("spin").frame, 0u); // precondition: still within frame 0
+  EXPECT_NE(m1, m2); // must advance purely from frameProgress interpolation
 }
