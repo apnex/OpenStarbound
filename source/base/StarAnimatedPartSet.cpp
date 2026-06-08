@@ -219,15 +219,19 @@ void AnimatedPartSet::update(float dt) {
       } else if (state.animationMode == Loop) {
         stateType.activeState.timer = std::fmod(stateType.activeState.timer, state.cycle);
       } else if (state.animationMode == Transition) {
+        // Transition auto-advance changes the resolved state -> force a re-merge.
         stateType.activeState.stateName = state.transitionState;
         stateType.activeState.timer = 0.0f;
         stateType.activeStatePointer = stateType.states.get(state.transitionState).get();
+        stateType.activeStateDirty = true;
       }
     }
-
-    stateType.activeStateDirty = true;
   }
-
+  // NOTE: no unconditional state dirtying. freshenActiveState recomputes the cheap timer-derived
+  // frame/frameProgress every call and re-merges properties only when the resolved key changes.
+  // The part layer is still resolved every tick here (Task 3 will harden freshenActivePart with
+  // its own keyed self-gating); for now parts must continue to re-resolve after each update so
+  // that frame-advanced part properties and frameProgress-driven interpolation stay correct.
   for (auto& pair : m_parts)
     pair.second.activePartDirty = true;
 }
@@ -270,43 +274,57 @@ AnimatedPartSet::AnimationMode AnimatedPartSet::stringToAnimationMode(String con
 }
 
 void AnimatedPartSet::freshenActiveState(StateType& stateType) {
-  if (stateType.activeStateDirty) {
-    auto const& state = *stateType.activeStatePointer;
-    auto& activeState = stateType.activeState;
+  auto const& state = *stateType.activeStatePointer;
+  auto& activeState = stateType.activeState;
 
-    double progress = (activeState.timer / state.cycle * state.frames);
-    activeState.frameProgress = std::fmod(progress, 1);
-    activeState.frame = clamp<int>(progress, 0, state.frames - 1);
-    if (activeState.reverse) {
-      activeState.frame = (state.frames - 1) - activeState.frame;
-      if ((state.animationMode == Loop) && (activeState.frame <= 0)) {
-        activeState.nextFrame = state.frames - 1;
-      } else {
-        activeState.nextFrame = clamp<int>(activeState.frame - 1, 0, state.frames - 1);
-      }
-    } else {
-      if ((state.animationMode == Loop) && (activeState.frame >= (state.frames - 1))) {
-        activeState.nextFrame = 0;
-      } else {
-        activeState.nextFrame = clamp<int>(activeState.frame + 1, 0, state.frames - 1);
-      }
-    }
-
-    activeState.properties = stateType.stateTypeProperties;
-    activeState.properties.merge(state.stateProperties, true);
-
-    activeState.nextProperties = stateType.stateTypeProperties;
-    activeState.nextProperties.merge(state.stateProperties, true);
-
-    for (auto const& pair : state.stateFrameProperties) {
-      if (activeState.frame < pair.second.size())
-        activeState.properties[pair.first] = pair.second.get(activeState.frame);
-      if (activeState.nextFrame < pair.second.size())
-        activeState.nextProperties[pair.first] = pair.second.get(activeState.nextFrame);
-    }
-
-    stateType.activeStateDirty = false;
+  // ---- CHEAP LAYER (always, every call): timer-derived frame/frameProgress/nextFrame ----
+  double progress = (activeState.timer / state.cycle * state.frames);
+  activeState.frameProgress = std::fmod(progress, 1);
+  unsigned newFrame = clamp<int>(progress, 0, state.frames - 1);
+  unsigned newNextFrame;
+  if (activeState.reverse) {
+    newFrame = (state.frames - 1) - newFrame;
+    if ((state.animationMode == Loop) && (newFrame <= 0))
+      newNextFrame = state.frames - 1;
+    else
+      newNextFrame = clamp<int>((int)newFrame - 1, 0, state.frames - 1);
+  } else {
+    if ((state.animationMode == Loop) && (newFrame >= (state.frames - 1)))
+      newNextFrame = 0;
+    else
+      newNextFrame = clamp<int>((int)newFrame + 1, 0, state.frames - 1);
   }
+  activeState.frame = newFrame;
+  activeState.nextFrame = newNextFrame;
+
+  // ---- MEMOIZED LAYER: re-merge properties only when the resolved key changes ----
+  bool keyChanged = !stateType.resolvedValid
+      || stateType.activeStateDirty
+      || stateType.resolvedStateName != activeState.stateName
+      || stateType.resolvedFrame != newFrame
+      || stateType.resolvedNextFrame != newNextFrame
+      || stateType.resolvedReverse != activeState.reverse;
+  if (!keyChanged)
+    return;
+
+  activeState.properties = stateType.stateTypeProperties;
+  activeState.properties.merge(state.stateProperties, true);
+  activeState.nextProperties = stateType.stateTypeProperties;
+  activeState.nextProperties.merge(state.stateProperties, true);
+  for (auto const& pair : state.stateFrameProperties) {
+    if (activeState.frame < pair.second.size())
+      activeState.properties[pair.first] = pair.second.get(activeState.frame);
+    if (activeState.nextFrame < pair.second.size())
+      activeState.nextProperties[pair.first] = pair.second.get(activeState.nextFrame);
+  }
+
+  stateType.resolvedStateName = activeState.stateName;
+  stateType.resolvedFrame = newFrame;
+  stateType.resolvedNextFrame = newNextFrame;
+  stateType.resolvedReverse = activeState.reverse;
+  stateType.resolvedValid = true;
+  stateType.activeStateDirty = false;
+  ++m_generation;
 }
 
 void AnimatedPartSet::freshenActivePart(Part& part) {
@@ -427,6 +445,10 @@ Mat3F AnimatedPartSet::ActivePartInformation::animationAffineTransform() const {
 
 uint8_t AnimatedPartSet::version() const {
   return m_animatorVersion;
+}
+
+uint64_t AnimatedPartSet::generation() const {
+  return m_generation;
 }
 
 Json AnimatedPartSet::getStateFrameProperty(String const & stateTypeName, String const & propertyName, String stateName, int frame) const {
