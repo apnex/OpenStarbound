@@ -227,13 +227,19 @@ void AnimatedPartSet::update(float dt) {
       }
     }
   }
-  // NOTE: no unconditional state OR part dirtying. freshenActiveState recomputes the cheap
-  // timer-derived frame/frameProgress every call and re-merges state properties only when the
-  // resolved key changes. The part layer now self-gates the same way in freshenActivePart: it
-  // always re-runs the cheap state match + continuous affine-transform layer (so frame-advanced
-  // part properties and frameProgress-driven interpolation stay correct), and re-merges the
-  // expensive part properties only when its matched (stateType,state,frame,nextFrame) key changes.
-  // Explicit mutators still set activePartDirty to force a correct re-resolve on real changes.
+  // NOTE: state properties self-gate. freshenActiveState recomputes the cheap timer-derived
+  // frame/frameProgress every call and re-merges state properties only when the resolved key
+  // changes. The expensive part property merge likewise re-runs only when its matched
+  // (stateType,state,frame,nextFrame) key changes in freshenActivePart. Explicit mutators set
+  // activePartDirty to force a correct re-resolve on real changes.
+
+  // Mark parts for a once-per-tick transform refresh. This is the CADENCE signal for the
+  // continuous affine-transform layer (accumulating, non-reset transforms must advance exactly
+  // once per update, as before) — it does NOT drive the expensive property merge, which is gated
+  // on the resolved key in freshenActivePart. Setting bools is cheap; the eliminated cost was the
+  // per-tick JSON property re-merge, which remains gated.
+  for (auto& pair : m_parts)
+    pair.second.activePartDirty = true;
 }
 
 void AnimatedPartSet::finishAnimations() {
@@ -356,9 +362,10 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
     break; // one match per part
   }
 
-  // (b) MEMOIZED: rebuild merged properties only when the matched key changed.
+  // (b) MEMOIZED: rebuild merged properties only when the matched key changed. The key fully
+  //     determines the merge output, and every explicit mutator that sets activePartDirty also
+  //     changes the key — so the merge gate is key-only (plus first-resolve), NOT activePartDirty.
   bool keyChanged = !part.resolvedValid
-      || part.activePartDirty
       || part.resolvedStateTypeName != matchStateTypeName
       || part.resolvedStateName != matchStateName
       || part.resolvedFrame != matchFrame
@@ -383,7 +390,6 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
     part.resolvedFrame = matchFrame;
     part.resolvedNextFrame = matchNextFrame;
     part.resolvedValid = true;
-    part.activePartDirty = false;
     ++m_generation;
   }
 
@@ -393,7 +399,14 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
   else
     activePart.activeState = {};
 
-  // (c) CONTINUOUS LAYER (always, when version>0): affine transforms from LIVE frameProgress.
+  // (c) CONTINUOUS LAYER (cadence-gated): affine transforms from LIVE frameProgress, recomputed
+  //     ONCE per tick. update() sets activePartDirty each tick, so the transform advances exactly
+  //     once per tick: the first activePart() access this tick clears the flag, later same-tick
+  //     accesses skip and return the cached affine. This preserves the original once-per-tick
+  //     accumulation for non-reset transforms while keeping frameProgress-driven interpolation
+  //     live (frameProgress is fresh each tick). keyChanged is OR'd in (belt-and-suspenders) so
+  //     the transform always refreshes whenever the property merge does.
+  if (part.activePartDirty || keyChanged) {
   if (version() > 0) {
     auto processTransforms = [](Mat3F mat, JsonArray transforms, JsonObject properties) -> Mat3F {
       for (auto const& v : transforms) {
@@ -429,6 +442,8 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
         activePart.setAnimationAffineTransform(mat);
       }
     }
+  }
+    part.activePartDirty = false;
   }
 }
 

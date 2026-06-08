@@ -60,6 +60,25 @@ namespace {
   )JSON";
 
   AnimatedPartSet makeSet() { return AnimatedPartSet(Json::parse(kConfig), 1); }
+
+  // A part with a NON-reset (accumulating) rotate on a static 1-frame state. Each update() should
+  // advance it once; multiple activePart() reads within one tick must be stable (cached), matching
+  // the original once-per-tick transform cadence.
+  char const* kAccumConfig = R"JSON(
+  {
+    "stateTypes" : {
+      "spin" : { "default" : "on", "states" : { "on" : { "frames" : 1, "cycle" : 1.0, "mode" : "end" } } }
+    },
+    "parts" : {
+      "gear" : {
+        "partStates" : {
+          "spin" : { "on" : { "properties" : { "transforms" : [ [ "rotate", 0.3, [0.0, 0.0] ] ] } } }
+        }
+      }
+    }
+  }
+  )JSON";
+  AnimatedPartSet makeAccumSet() { return AnimatedPartSet(Json::parse(kAccumConfig), 1); }
 }
 
 // Default state resolves to idle/frame0 with merged properties (also covers first-read-after-construction).
@@ -164,4 +183,17 @@ TEST(AnimatedPartSet, PartPropertiesMemoizedButTransformsLive) {
   set.update(0.1f);
   Mat3F a2 = set.activePart("arm").animationAffineTransform();
   EXPECT_NE(a1, a2);
+}
+
+// Cadence guard: a non-reset (accumulating) transform advances ONCE per update(), not once per
+// activePart() access — multiple reads within a single tick are stable (cached).
+TEST(AnimatedPartSet, AccumulatingTransformAdvancesOncePerUpdateNotPerAccess) {
+  auto set = makeAccumSet();
+  set.update(0.1f);
+  Mat3F a = set.activePart("gear").animationAffineTransform();
+  Mat3F aAgain = set.activePart("gear").animationAffineTransform(); // same tick, no update
+  EXPECT_EQ(a, aAgain);     // must NOT accumulate again within the same tick
+  set.update(0.1f);
+  Mat3F b = set.activePart("gear").animationAffineTransform();
+  EXPECT_NE(b, aAgain);     // advances after a new update
 }
