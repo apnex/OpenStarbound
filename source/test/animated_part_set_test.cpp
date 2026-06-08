@@ -145,3 +145,23 @@ TEST(AnimatedPartSet, GenerationBumpsOnRealChangeOnly) {
   (void)set.activeState("movement");
   EXPECT_GT(set.generation(), g1);              // state change -> bump
 }
+
+// Part property memoization: re-resolving body when nothing changed yields identical properties
+// and no generation bump for sub-frame motion; the transform part keeps interpolating (continuous layer).
+TEST(AnimatedPartSet, PartPropertiesMemoizedButTransformsLive) {
+  auto set = makeSet();
+  ASSERT_TRUE(set.setActiveState("movement", "walk"));
+  (void)set.activePart("body");
+  (void)set.activePart("arm");
+  uint64_t g0 = set.generation();
+
+  set.update(0.1f); // sub-frame, no frame cross
+  // transform-free "body": properties unchanged, no generation bump
+  EXPECT_EQ(Json(set.activePart("body").properties).getString("image"), "body_w0");
+  EXPECT_EQ(set.generation(), g0);
+  // transform "arm": affine keeps advancing (continuous layer ran with live frameProgress)
+  Mat3F a1 = set.activePart("arm").animationAffineTransform();
+  set.update(0.1f);
+  Mat3F a2 = set.activePart("arm").animationAffineTransform();
+  EXPECT_NE(a1, a2);
+}

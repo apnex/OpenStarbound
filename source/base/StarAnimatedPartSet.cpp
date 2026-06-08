@@ -227,13 +227,13 @@ void AnimatedPartSet::update(float dt) {
       }
     }
   }
-  // NOTE: no unconditional state dirtying. freshenActiveState recomputes the cheap timer-derived
-  // frame/frameProgress every call and re-merges properties only when the resolved key changes.
-  // The part layer is still resolved every tick here (Task 3 will harden freshenActivePart with
-  // its own keyed self-gating); for now parts must continue to re-resolve after each update so
-  // that frame-advanced part properties and frameProgress-driven interpolation stay correct.
-  for (auto& pair : m_parts)
-    pair.second.activePartDirty = true;
+  // NOTE: no unconditional state OR part dirtying. freshenActiveState recomputes the cheap
+  // timer-derived frame/frameProgress every call and re-merges state properties only when the
+  // resolved key changes. The part layer now self-gates the same way in freshenActivePart: it
+  // always re-runs the cheap state match + continuous affine-transform layer (so frame-advanced
+  // part properties and frameProgress-driven interpolation stay correct), and re-merges the
+  // expensive part properties only when its matched (stateType,state,frame,nextFrame) key changes.
+  // Explicit mutators still set activePartDirty to force a correct re-resolve on real changes.
 }
 
 void AnimatedPartSet::finishAnimations() {
@@ -328,93 +328,107 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
 }
 
 void AnimatedPartSet::freshenActivePart(Part& part) {
-  if (part.activePartDirty) {
-    // First reset all the active part information assuming that no state type
-    // x state match exists.
-    auto& activePart = part.activePart;
-    activePart.activeState = {};
+  auto& activePart = part.activePart;
+
+  // (a) ALWAYS: find the highest-priority enabled state type with a matching partState.
+  //     Calling freshenActiveState here runs the cheap layer (live frame/frameProgress).
+  StateType* matchStateType = nullptr;
+  String matchStateTypeName;
+  String matchStateName;
+  unsigned matchFrame = ~0u;
+  unsigned matchNextFrame = ~0u;
+  for (auto& stateTypePair : m_stateTypes) {
+    auto& stateType = stateTypePair.second;
+    if (!stateType.enabled)
+      continue;
+    auto partStateType = part.partStates.ptr(stateTypePair.first);
+    if (!partStateType)
+      continue;
+    auto const& stateName = stateType.activeState.stateName;
+    if (!partStateType->ptr(stateName))
+      continue;
+    freshenActiveState(stateType);
+    matchStateType = &stateType;
+    matchStateTypeName = stateTypePair.first;
+    matchStateName = stateName;
+    matchFrame = stateType.activeState.frame;
+    matchNextFrame = stateType.activeState.nextFrame;
+    break; // one match per part
+  }
+
+  // (b) MEMOIZED: rebuild merged properties only when the matched key changed.
+  bool keyChanged = !part.resolvedValid
+      || part.activePartDirty
+      || part.resolvedStateTypeName != matchStateTypeName
+      || part.resolvedStateName != matchStateName
+      || part.resolvedFrame != matchFrame
+      || part.resolvedNextFrame != matchNextFrame;
+  if (keyChanged) {
     activePart.properties = part.partProperties;
     activePart.nextProperties = part.partProperties;
-
-    // Then go through each of the state types and states and look for a part
-    // state match in order of priority.
-    for (auto& stateTypePair : m_stateTypes) {
-      auto const& stateTypeName = stateTypePair.first;
-      auto& stateType = stateTypePair.second;
-
-      // Skip disabled state types
-      if (!stateType.enabled)
-        continue;
-
-      auto partStateType = part.partStates.ptr(stateTypeName);
-      if (!partStateType)
-        continue;
-
-      auto const& stateName = stateType.activeState.stateName;
-      auto partState = partStateType->ptr(stateName);
-      if (!partState)
-        continue;
-
-      // If we have a partState match, then set the active state information.
-      freshenActiveState(stateType);
-      activePart.activeState = stateType.activeState;
-      unsigned frame = stateType.activeState.frame;
-      unsigned nextFrame = stateType.activeState.nextFrame;
-
-      // Then set the part state data, as well as any part state frame data if
-      // the current frame is within the list size.
+    if (matchStateType) {
+      auto partStateType = part.partStates.ptr(matchStateTypeName);
+      auto partState = partStateType->ptr(matchStateName);
       activePart.properties.merge(partState->partStateProperties, true);
-
       activePart.nextProperties.merge(partState->partStateProperties, true);
-
       for (auto const& pair : partState->partStateFrameProperties) {
-        if (frame < pair.second.size())
-          activePart.properties[pair.first] = pair.second.get(frame);
-        if (nextFrame < pair.second.size())
-          activePart.nextProperties[pair.first] = pair.second.get(nextFrame);
+        if (matchFrame < pair.second.size())
+          activePart.properties[pair.first] = pair.second.get(matchFrame);
+        if (matchNextFrame < pair.second.size())
+          activePart.nextProperties[pair.first] = pair.second.get(matchNextFrame);
       }
-
-      // Each part can only have one state type x state match, so we are done.
-      break;
     }
-    if (version() > 0) {
-      auto processTransforms = [](Mat3F mat, JsonArray transforms, JsonObject properties) -> Mat3F {
-        for (auto const& v : transforms) {
-          auto action = v.getString(0);
-          if (action == "reset") {
-            mat = Mat3F::identity();
-          } else if (action == "translate") {
-            mat.translate(jsonToVec2F(v.getArray(1)));
-          } else if (action == "rotate") {
-            mat.rotate(v.getFloat(1), jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "rotateDegrees") { // because radians are fucking annoying
-            mat.rotate(v.getFloat(1) * Star::Constants::pi / 180, jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "scale") {
-            mat.scale(jsonToVec2F(v.getArray(1)), jsonToVec2F(v.getArray(2, properties.maybe("scalingCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "transform") {
-            mat = Mat3F(v.getFloat(1), v.getFloat(2), v.getFloat(3), v.getFloat(4), v.getFloat(5), v.getFloat(6), 0, 0, 1) * mat;
-          }
+    part.resolvedStateTypeName = matchStateTypeName;
+    part.resolvedStateName = matchStateName;
+    part.resolvedFrame = matchFrame;
+    part.resolvedNextFrame = matchNextFrame;
+    part.resolvedValid = true;
+    part.activePartDirty = false;
+    ++m_generation;
+  }
+
+  // ALWAYS refresh activeState (cheap copy) so frameProgress is LIVE for the continuous layer.
+  if (matchStateType)
+    activePart.activeState = matchStateType->activeState;
+  else
+    activePart.activeState = {};
+
+  // (c) CONTINUOUS LAYER (always, when version>0): affine transforms from LIVE frameProgress.
+  if (version() > 0) {
+    auto processTransforms = [](Mat3F mat, JsonArray transforms, JsonObject properties) -> Mat3F {
+      for (auto const& v : transforms) {
+        auto action = v.getString(0);
+        if (action == "reset") {
+          mat = Mat3F::identity();
+        } else if (action == "translate") {
+          mat.translate(jsonToVec2F(v.getArray(1)));
+        } else if (action == "rotate") {
+          mat.rotate(v.getFloat(1), jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "rotateDegrees") { // because radians are fucking annoying
+          mat.rotate(v.getFloat(1) * Star::Constants::pi / 180, jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "scale") {
+          mat.scale(jsonToVec2F(v.getArray(1)), jsonToVec2F(v.getArray(2, properties.maybe("scalingCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "transform") {
+          mat = Mat3F(v.getFloat(1), v.getFloat(2), v.getFloat(3), v.getFloat(4), v.getFloat(5), v.getFloat(6), 0, 0, 1) * mat;
         }
-        return mat;
-      };
+      }
+      return mat;
+    };
 
 
-      if (auto transforms = activePart.properties.ptr("transforms")) {
-        auto mat = processTransforms(activePart.animationAffineTransform(), transforms->toArray(), activePart.properties);
-        if (activePart.properties.maybe("interpolated").value(false).toBool()) {
-          if (auto nextTransforms = activePart.nextProperties.ptr("transforms")) {
-            auto nextMat = processTransforms(activePart.animationAffineTransform(), nextTransforms->toArray(), activePart.nextProperties);
-            activePart.setAnimationAffineTransform(mat, nextMat, activePart.activeState ? activePart.activeState->frameProgress : 1);
-          } else {
-            activePart.setAnimationAffineTransform(mat);
-          }
+    if (auto transforms = activePart.properties.ptr("transforms")) {
+      auto mat = processTransforms(activePart.animationAffineTransform(), transforms->toArray(), activePart.properties);
+      if (activePart.properties.maybe("interpolated").value(false).toBool()) {
+        if (auto nextTransforms = activePart.nextProperties.ptr("transforms")) {
+          auto nextMat = processTransforms(activePart.animationAffineTransform(), nextTransforms->toArray(), activePart.nextProperties);
+          activePart.setAnimationAffineTransform(mat, nextMat, activePart.activeState ? activePart.activeState->frameProgress : 1);
         } else {
           activePart.setAnimationAffineTransform(mat);
         }
+      } else {
+        activePart.setAnimationAffineTransform(mat);
       }
     }
-
-    part.activePartDirty = false;
   }
 }
 
