@@ -129,7 +129,17 @@ bool Telemetry::deepEnabled() { return registry().deepEnabled.load(std::memory_o
 void Telemetry::setDeepEnabled(bool e) { registry().deepEnabled.store(e, std::memory_order_relaxed); }
 
 void Telemetry::markTick(String const& threadTag) {
-  counter(strf("tick.{}.seq", threadTag)).inc();
+  // A tick thread always passes a stable tag, so cache the seq-counter handle thread-locally:
+  // registration (the only mutex-taking path) runs once per thread, then inc() is lock-free —
+  // honoring the lock-free-hot-path constraint for this per-tick call. (If a thread ever marked
+  // ticks under two different tags it would keep using the first; tick threads don't do that.)
+  thread_local TelemetryCounter seq;
+  thread_local bool initialized = false;
+  if (!initialized) {
+    seq = counter(strf("tick.{}.seq", threadTag));
+    initialized = true;
+  }
+  seq.inc();
 }
 
 Json Telemetry::snapshot() {
