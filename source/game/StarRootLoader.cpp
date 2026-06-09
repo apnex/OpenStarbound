@@ -93,6 +93,11 @@ R"JSON(
 
       "monochromeLighting" : false,
 
+      "telemetryEnabled" : true,
+      "telemetryDeepTracing" : false,
+      "telemetryReportInterval" : 0,
+      "telemetryHud" : false,
+
       "safe" : {
         "alwaysAllowClipboard" : false,
         "enableImGui" : false,
@@ -133,6 +138,8 @@ RootLoader::RootLoader(Defaults defaults) {
   addSwitch("runtimeconfig",
       strf("Sets the path to the runtime configuration storage file relative to root directory, defauts to {}",
         defaults.runtimeConfigFile ? *defaults.runtimeConfigFile : "no storage file"));
+  addSwitch("telemetrydeep", "enable telemetry deep tracing (timers)");
+  addParameter("telemetryinterval", "seconds", Optional, "telemetry JSON report interval (0=off)");
   m_defaults = std::move(defaults);
 }
 
@@ -187,6 +194,11 @@ Root::Settings RootLoader::rootSettingsForOptions(Options const& options) const 
         m_defaults.additionalDefaultConfiguration,
         bootConfig.get("defaultConfiguration", {})
       );
+
+    if (options.switches.contains("telemetrydeep"))
+      rootSettings.defaultConfiguration = rootSettings.defaultConfiguration.set("telemetryDeepTracing", true);
+    if (auto ti = options.parameters.value("telemetryinterval").maybeFirst())
+      rootSettings.defaultConfiguration = rootSettings.defaultConfiguration.set("telemetryReportInterval", lexicalCast<int>(*ti));
 
     rootSettings.storageDirectory = bootConfig.getString("storageDirectory");
     rootSettings.logDirectory = bootConfig.optString("logDirectory");
