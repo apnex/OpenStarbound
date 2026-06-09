@@ -480,7 +480,9 @@ void ClientApplication::render() {
       auto worldRenderUs = Time::monotonicMicroseconds() - totalStart;
       LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", worldRenderUs));
       // Telemetry: route the already-computed render delta through a timer (no extra clock read).
-      Telemetry::timer("render.frame.us").record(worldRenderUs);
+      // Cache the handle in a static so the per-frame path stays lock-free (registration once).
+      static auto renderFrameTimer = Telemetry::timer("render.frame.us");
+      renderFrameTimer.record(worldRenderUs);
       
       auto size = Vec2F(renderer->screenSize());
       auto quad = renderFlatRect(RectF::withSize(size / -2, size), Vec4B::filled(0), 0.0f);
