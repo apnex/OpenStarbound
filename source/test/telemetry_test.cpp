@@ -1,6 +1,8 @@
 #include "StarTelemetry.hpp"
+#include "StarTelemetryReporter.hpp"
 #include "StarJson.hpp"
 #include "StarThread.hpp" // for thread smoke test
+#include "StarFile.hpp"
 #include "gtest/gtest.h"
 
 using namespace Star;
@@ -109,4 +111,16 @@ TEST(Telemetry, CounterIsThreadSafe) {
     threads.append(Thread::invoke("telem", [c]() mutable { for (int j = 0; j < kPer; ++j) c.inc(); }));
   threads.clear(); // joins on destruction
   EXPECT_EQ(c.value(), (uint64_t)(kThreads * kPer));
+}
+
+TEST(Telemetry, ReporterWritesSnapshotJsonFile) {
+  telemetrySetUp();
+  Telemetry::counter("test.report.c").inc(5);
+  String dir = File::temporaryDirectory();
+  String path = TelemetryReporter::writeSnapshot(dir); // returns the file path written
+  ASSERT_TRUE(File::exists(path));
+  Json read = Json::parse(File::readFileString(path));
+  EXPECT_EQ(read.getObject("counters").get("test.report.c").toUInt(), 5u);
+  File::remove(path);
+  File::removeDirectoryRecursive(dir);
 }
