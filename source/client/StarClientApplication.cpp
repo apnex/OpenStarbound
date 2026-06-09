@@ -30,6 +30,8 @@
 #include "StarVoiceLuaBindings.hpp"
 #include "StarHttpTrustDialog.hpp"
 #include "StarMainInterfaceTypes.hpp"
+#include "StarTelemetry.hpp"
+#include "StarTelemetryReporter.hpp"
 
 #include "imgui.h"
 #include "imgui_freetype.h"
@@ -264,6 +266,10 @@ void ClientApplication::applicationInit(ApplicationControllerPtr appController) 
 
   m_voice->init();
   m_voice->setLocalSpeaker(0);
+
+  // Telemetry: apply configured gates (read-only; no game-state mutation).
+  Telemetry::setEnabled(configuration->get("telemetryEnabled", true).toBool());
+  Telemetry::setDeepEnabled(configuration->get("telemetryDeepTracing", false).toBool());
 }
 
 void ClientApplication::renderInit(RendererPtr renderer) {
@@ -421,6 +427,16 @@ void ClientApplication::update() {
   m_edgeKeyEvents.clear();
   m_input->update();
   ++m_framesSkipped;
+
+  // Telemetry: one tick mark per client update + interval-driven JSON snapshot (read-only).
+  Telemetry::markTick("client");
+  if (auto interval = m_root->configuration()->get("telemetryReportInterval", 0).toInt(); interval > 0) {
+    m_telemetryReportTimer += dt;
+    if (m_telemetryReportTimer >= (float)interval) {
+      m_telemetryReportTimer = 0.0f;
+      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""));
+    }
+  }
 }
 
 void ClientApplication::render() {
@@ -461,7 +477,10 @@ void ClientApplication::render() {
         return worldClient->waitForLighting(&m_renderData);
       });
       LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - paintStart));
-      LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - totalStart));
+      auto worldRenderUs = Time::monotonicMicroseconds() - totalStart;
+      LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", worldRenderUs));
+      // Telemetry: route the already-computed render delta through a timer (no extra clock read).
+      Telemetry::timer("render.frame.us").record(worldRenderUs);
       
       auto size = Vec2F(renderer->screenSize());
       auto quad = renderFlatRect(RectF::withSize(size / -2, size), Vec4B::filled(0), 0.0f);
@@ -482,6 +501,20 @@ void ClientApplication::render() {
     m_mainInterface->render();
     m_cinematicOverlay->render();
     LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
+  }
+
+  // Telemetry HUD face: curated headline skip-rates (gated; reuses the /debug LogMap, cheap counter reads).
+  if (config->get("telemetryHud", false).toBool()) {
+    auto skipState = Telemetry::counter("animator.state.merge.skipped").value();
+    auto perfState = Telemetry::counter("animator.state.merge.performed").value();
+    uint64_t totalState = skipState + perfState;
+    LogMap::set("telemetry_animator_state_skiprate",
+      strf("{:.1f}% ({}/{})", 100.0 * skipState / (totalState ? totalState : 1), skipState, totalState));
+    auto skipPart = Telemetry::counter("animator.part.merge.skipped").value();
+    auto perfPart = Telemetry::counter("animator.part.merge.performed").value();
+    uint64_t totalPart = skipPart + perfPart;
+    LogMap::set("telemetry_animator_part_skiprate",
+      strf("{:.1f}% ({}/{})", 100.0 * skipPart / (totalPart ? totalPart : 1), skipPart, totalPart));
   }
 
   if (!m_errorScreen->accepted())

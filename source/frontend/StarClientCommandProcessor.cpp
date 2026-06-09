@@ -12,6 +12,8 @@
 #include "StarStatistics.hpp"
 #include "StarInterfaceLuaBindings.hpp"
 #include "StarInput.hpp"
+#include "StarTelemetry.hpp"
+#include "StarTelemetryReporter.hpp"
 
 namespace Star {
 
@@ -55,7 +57,8 @@ ClientCommandProcessor::ClientCommandProcessor(UniverseClientPtr universeClient,
     {"upgradeship", bind(&ClientCommandProcessor::upgradeShip, this, _1)},
     {"swap", bind(&ClientCommandProcessor::swap, this, _1)},
     {"respawnInWorld", bind(&ClientCommandProcessor::respawnInWorld, this, _1)},
-    {"render", bind(&ClientCommandProcessor::render, this, _1)}
+    {"render", bind(&ClientCommandProcessor::render, this, _1)},
+    {"telemetry", bind(&ClientCommandProcessor::telemetry, this, _1)}
   };
 }
 
@@ -597,6 +600,48 @@ String ClientCommandProcessor::render(String const& path) {
   auto fullPath = File::fullPath(outputPath);
   GuiContext::singleton().setClipboardImage(*image, &buffer->data(), &fullPath);
   return strf("Saved '{}.png' ({}x{}) and copied to clipboard", outputName, image->width(), image->height());
+}
+
+String ClientCommandProcessor::telemetry(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  if (args.empty())
+    return strf("telemetry: enabled={} deep={} hud={} interval={}",
+      cfg->get("telemetryEnabled", true).toBool(), cfg->get("telemetryDeepTracing", false).toBool(),
+      cfg->get("telemetryHud", false).toBool(), cfg->get("telemetryReportInterval", 0).toInt());
+
+  String sub = args.at(0);
+  if (sub == "on") {
+    cfg->set("telemetryEnabled", true);
+    Telemetry::setEnabled(true);
+    return "telemetry on";
+  }
+  if (sub == "off") {
+    cfg->set("telemetryEnabled", false);
+    Telemetry::setEnabled(false);
+    return "telemetry off";
+  }
+  if (sub == "deep") {
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("telemetryDeepTracing", v);
+    Telemetry::setDeepEnabled(v);
+    return strf("telemetry deep={}", v);
+  }
+  if (sub == "hud") {
+    bool v = !cfg->get("telemetryHud", false).toBool();
+    cfg->set("telemetryHud", v);
+    return strf("telemetry hud={}", v);
+  }
+  if (sub == "interval") {
+    int s = args.size() > 1 ? lexicalCast<int>(args.at(1)) : 0;
+    cfg->set("telemetryReportInterval", s);
+    return strf("telemetry interval={}", s);
+  }
+  if (sub == "snapshot") {
+    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""));
+    return strf("wrote {}", p);
+  }
+  return "usage: /telemetry [on|off|deep [off]|hud|interval <s>|snapshot]";
 }
 
 

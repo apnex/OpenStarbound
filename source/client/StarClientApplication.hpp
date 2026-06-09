@@ -136,6 +136,7 @@ private:
   int m_cameraZoomDirection = 0;
 
   unsigned m_framesSkipped = 0;
+  float m_telemetryReportTimer = 0.0f;
   float m_minInterfaceScale = 2;
   float m_maxInterfaceScale = 3;
   Vec2F m_crossoverRes;
