@@ -92,3 +92,79 @@ TEST(NetworkedAnimator, RenderVersionBumpsOnNetApplyDiscreteOnly) {
   slave.readNetState(delta2.first);
   EXPECT_GT(slave.renderVersion(), after);
 }
+
+// Conservative + transitive static/live partition.
+//
+// Schema note (verified against AnimatedPartSet's constructor): a part config only
+// has "properties" and "partStates" keys; anchorPart/rotationGroup/transformationGroups/
+// transforms all live INSIDE "properties" (partTransformation reads the merged
+// activePart.properties).
+TEST(NetworkedAnimator, StaticLivePartition) {
+  // body: static. fan: has a "transforms" property -> LIVE. mount: anchored to fan -> LIVE (transitive).
+  char const* cfg = R"JSON({
+    "animatedParts": { "stateTypes": {}, "parts": {
+      "body":  { "properties": { "image": "/b.png" } },
+      "fan":   { "properties": { "image": "/f.png", "transforms": [ ["rotate", 1.0, [0,0]] ] } },
+      "mount": { "properties": { "image": "/m.png", "anchorPart": "fan" } }
+    } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  EXPECT_TRUE(a.partIsStaticCacheable("body"));
+  EXPECT_FALSE(a.partIsStaticCacheable("fan"));    // own transforms
+  EXPECT_FALSE(a.partIsStaticCacheable("mount"));  // anchored to a LIVE part (transitive)
+}
+
+// The remaining LIVE triggers (rotation group, interpolated transformation group,
+// active flash effect), plus the audit's verified-safe-as-static cases
+// (angularVelocity==0 rotation, non-interpolated non-animated group).
+TEST(NetworkedAnimator, StaticLivePartitionTriggers) {
+  char const* cfg = R"JSON({
+    "animatedParts": { "stateTypes": {}, "parts": {
+      "body":   { "properties": { "image": "/b.png" } },
+      "turret": { "properties": { "image": "/t.png", "rotationGroup": "aim" } },
+      "vane":   { "properties": { "image": "/v.png", "rotationGroup": "wind" } },
+      "piston": { "properties": { "image": "/p.png", "transformationGroups": ["slide"] } },
+      "frame":  { "properties": { "image": "/fr.png", "transformationGroups": ["fixed"] } }
+    } },
+    "transformationGroups": { "slide": { "interpolated": true }, "fixed": {} },
+    "rotationGroups": { "aim": { "angularVelocity": 2.0 }, "wind": { "angularVelocity": 0.0 } },
+    "effects": { "blink": { "type": "flash", "time": 0.5, "directives": "fade=ffffff=0.85" } },
+    "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  EXPECT_FALSE(a.partIsStaticCacheable("turret"));  // angularVelocity != 0: continuous currentAngle approach
+  EXPECT_TRUE(a.partIsStaticCacheable("vane"));     // angularVelocity == 0 rotation: verified-safe-as-static
+  EXPECT_FALSE(a.partIsStaticCacheable("piston"));  // interpolated transformation group (slave-side lerp)
+  EXPECT_TRUE(a.partIsStaticCacheable("frame"));    // non-interpolated, not state-animated: static
+  EXPECT_TRUE(a.partIsStaticCacheable("body"));
+
+  // An enabled flash-type effect toggles purely off the per-tick effect timer and its
+  // directive is prepended to EVERY part: global cache-bust.
+  a.setEffectEnabled("blink", true);
+  EXPECT_FALSE(a.partIsStaticCacheable("body"));
+  a.setEffectEnabled("blink", false);
+  EXPECT_TRUE(a.partIsStaticCacheable("body"));
+}
+
+// A version>0 animator whose active state currently names a transformation group
+// animates that group every tick (the transforms seed from the group's current
+// animation transform, so non-reset entries accumulate continuously): LIVE.
+TEST(NetworkedAnimator, StaticLivePartitionStateAnimatedGroup) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": {
+      "stateTypes": { "motion": { "default": "spin", "states": {
+        "spin": { "frames": 1, "properties": { "fixed": [ ["rotate", 0.1] ] } } } } },
+      "parts": {
+        "body":  { "properties": { "image": "/b.png" } },
+        "frame": { "properties": { "image": "/fr.png", "transformationGroups": ["fixed"] } }
+      }
+    },
+    "transformationGroups": { "fixed": {} },
+    "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  EXPECT_FALSE(a.partIsStaticCacheable("frame"));  // group currently named by an active-state property
+  EXPECT_TRUE(a.partIsStaticCacheable("body"));
+}
