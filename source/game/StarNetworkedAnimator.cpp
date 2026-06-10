@@ -862,6 +862,17 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   }
 
   // World translate applied live (everything above is at zero translate).
+  //
+  // Parity policy vs the rebuild: the rebuild folds the world translate into
+  // the part matrix BEFORE Drawable::transform, this path adds it AFTER.
+  // Float addition is non-associative, so for drawables entering the build
+  // with a non-zero base position (m_partDrawables: Humanoid held items, Lua
+  // animator.setPartDrawables) Drawable::position may differ from the rebuild
+  // by ~1 ulp; the plain image path (base position zero) and every other
+  // field, including the image matrix, are bitwise identical.  Anything
+  // comparing the two paths (the DrawableCache parity test, Task 5's
+  // shadowCompare) must compare position with a small ulp tolerance and all
+  // other fields exactly.
   for (auto& p : drawables)
     p.first.translate(position);
 
