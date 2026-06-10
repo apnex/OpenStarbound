@@ -316,7 +316,10 @@ namespace {
   // a 0-ulp bound: held's position diverges in both components from i==0 on),
   // with headroom for FMA contraction differences; real cache bugs (stale
   // offset, missed invalidation, wrong translate) are orders of magnitude
-  // larger.
+  // larger.  This duplicates the engine's shadow-compare policy
+  // (ShadowComparePositionMaxUlps); the duplication is guarded by
+  // CachedEqualsRebuiltAcrossUpdates running with shadow-compare ON and
+  // asserting zero shadowMismatch, cross-checking the two policies.
   int64_t const kPositionMaxUlps = 4;
 
   // Drawable has no operator== in the engine; compare the salient fields
@@ -382,7 +385,16 @@ TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
   // CACHED part-drawables.
   ASSERT_TRUE(a.partIsStaticCacheable("held"));
   auto config = Root::singleton().configuration();
+  // Shadow-compare ON for the whole loop: every drawablesWithZLevel call below
+  // also runs the ENGINE's cached-vs-rebuilt comparison
+  // (NetworkedAnimator::shadowCompare).  held's 1-ulp position divergence is
+  // real here, so the zero-shadowMismatch assertion at the end pins the
+  // engine's ulp policy (ShadowComparePositionMaxUlps) to the very divergence
+  // this test's own kPositionMaxUlps policy tolerates -- if the engine policy
+  // ever drifts from the test policy, shadowMismatch fires and this test reds.
+  Telemetry::reset();
   config->set("renderDrawableCache", true);
+  config->set("renderDrawableCacheShadowCompare", true);
   for (int i = 0; i < 30; ++i) {
     a.update(0.1f, nullptr);
     if (i == 5) {
@@ -422,6 +434,10 @@ TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
     auto cachedAgain = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));     // pure cache hit
     expectParity(cachedAgain, rebuilt, i);
   }
+  // The engine's shadow-compare must agree with this test's parity policy on
+  // every call above (including the genuinely 1-ulp-divergent held part).
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
+  config->set("renderDrawableCacheShadowCompare", false);
   config->set("renderDrawableCache", false);
 }
 
@@ -456,6 +472,57 @@ TEST(DrawableCache, CountsCachedVsRebuilt) {
   EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt").value(), 0u);
   EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
   config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCache", false);
+}
+
+// Cross-state-type animation tags: generation() is LAZY.  A state type that NO
+// part lists in partStates is freshened only by update()'s forEachActiveState
+// or by drawableBuildContext -- NOT by the cache path's part enumeration
+// (freshenActivePart only touches state types with matching partStates).  A
+// master that mutates such a state type (setState/finishAnimations) between
+// update() and drawablesWithZLevel would otherwise leave generation() -- and
+// with it the cache key -- unchanged, and a fully-static animator whose cached
+// part images resolve the state type's <T_state>/<T_frame> tags would serve
+// ONE stale call (self-healing on the next update()).  The cache path must
+// settle every state type before keying.
+TEST(DrawableCache, CrossStateTypeTagSettledWithoutUpdate) {
+  // "aux" has NO matching partStates on any part; lamp is STATIC and its image
+  // resolves through the <aux_state> animation tag (version 1:
+  // drawableBuildContext injects <stateType>_state).  Non-centered: the image
+  // path is fake and centered makeImage hits the image metadata database.
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": {
+      "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 },
+        "on":  { "frames": 1 }
+      } } },
+      "parts": {
+        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } }
+      }
+    },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {},
+    "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  config->set("renderDrawableCache", true);
+
+  a.update(0.1f, nullptr);
+  auto primed = a.drawablesWithZLevel({});  // prime: cache holds /lamp_off.png
+  ASSERT_FALSE(primed.empty());
+
+  // Master-side state flip with NO intervening update(): exactly the
+  // update() -> mutate -> render ordering an entity can produce.  Cache path
+  // FIRST -- calling the rebuild first would freshen "aux" through
+  // drawableBuildContext, bump generation() and mask the stale key.
+  ASSERT_TRUE(a.setState("aux", "on"));
+  auto cached = a.drawablesWithZLevel({});
+  auto rebuilt = a.drawablesWithZLevelRebuild({});
+  ASSERT_FALSE(cached.empty());
+  expectParity(cached, rebuilt, 0);  // stale serve: cached still /lamp_off.png
+
   config->set("renderDrawableCache", false);
 }
 

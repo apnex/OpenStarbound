@@ -836,10 +836,19 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
 
   // Enumerate + stable-sort the active parts exactly as the rebuild does.
   // Enumerating also freshens every part (AnimatedPartSet resolves lazily and
-  // can bump generation() mid-enumeration), settling generation() BEFORE the
-  // cache is keyed on it.
+  // can bump generation() mid-enumeration), but parts only settle the state
+  // types they actually listen to (matching partStates).  A state type NO part
+  // lists still feeds every part's build through drawableBuildContext's
+  // <stateType_*> animation tags, and a pending setState/finishAnimations on
+  // it (master mutation between update() and render) would otherwise not land
+  // in generation() until the next update() -- a one-call stale serve of any
+  // cached image resolving its tags.  So explicitly freshen every state type
+  // too (forEachActiveState is the same lazy-resolve accessor update() uses;
+  // read-only here), settling generation() fully BEFORE the cache is keyed
+  // on it.
   int drawableCount = 0;
   auto parts = sortedActiveParts(drawableCount);
+  m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
 
   auto key = std::make_pair(m_renderVersion, m_animatedParts.generation());
   if (!m_staticCacheValid || m_staticCacheKey != key)
