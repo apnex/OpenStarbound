@@ -5,6 +5,7 @@
 #include "StarParticleDatabase.hpp"
 #include "StarRoot.hpp"
 #include "StarAssets.hpp"
+#include "StarConfiguration.hpp"
 #include "StarLexicalCast.hpp"
 #include "StarDataStreamExtra.hpp"
 #include "StarRandom.hpp"
@@ -274,7 +275,8 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator&& animator) {
   setupNetStates();
   // Assignment replaces every drawable-affecting member wholesale; bump the
   // target's own (never-copied) render version so any cached render output is
-  // invalidated.
+  // invalidated.  The static cache is never copied: drop it explicitly.
+  m_staticCacheValid = false;
   bumpRenderVersion();
 
   return *this;
@@ -304,7 +306,8 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator const& animato
   setupNetStates();
   // Assignment replaces every drawable-affecting member wholesale; bump the
   // target's own (never-copied) render version so any cached render output is
-  // invalidated.
+  // invalidated.  The static cache is never copied: drop it explicitly.
+  m_staticCacheValid = false;
   bumpRenderVersion();
 
   return *this;
@@ -496,10 +499,14 @@ void NetworkedAnimator::setLocalTag(String tagName, Maybe<String> tagValue) {
 
 void NetworkedAnimator::setPartDrawables(String const& partName, List<Drawable> drawables) {
   m_partDrawables.set(partName, drawables);
+  // The render-version bump already re-keys the static cache; the explicit
+  // invalidation is belt-and-braces for changes to the part set itself.
+  m_staticCacheValid = false;
   bumpRenderVersion();
 }
 void NetworkedAnimator::addPartDrawables(String const& partName, List<Drawable> drawables) {
   m_partDrawables.ptr(partName)->appendAll(drawables);
+  m_staticCacheValid = false;
   bumpRenderVersion();
 }
 String NetworkedAnimator::applyPartTags(String const& partName, String apply) const {
@@ -812,11 +819,99 @@ List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
 }
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& position) const {
+  if (!Root::singleton().configuration()->get("renderDrawableCache", false).toBool())
+    return drawablesWithZLevelRebuild(position);
+
   size_t partCount = m_animatedParts.constParts().size();
   if (!partCount)
     return {};
 
-  List<Directives> baseProcessingDirectives = { m_processingDirectives.get() };
+  // Enumerate + stable-sort the active parts exactly as the rebuild does.
+  // Enumerating also freshens every part (AnimatedPartSet resolves lazily and
+  // can bump generation() mid-enumeration), settling generation() BEFORE the
+  // cache is keyed on it.
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+
+  auto key = std::make_pair(m_renderVersion, m_animatedParts.generation());
+  if (!m_staticCacheValid || m_staticCacheKey != key)
+    rebuildStaticCache(parts, key);
+
+  // Assemble in the sorted part order: static parts are served from the cache
+  // (zero-translate copies), LIVE parts are built fresh through the same
+  // per-part helper the rebuild uses.  Drawable order is identical to the
+  // rebuild by construction, so no merge re-sort is needed (and equal-zLevel
+  // ordering is preserved exactly).
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  bool contextBuilt = false;
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (auto cached = m_staticCache.ptr(partName)) {
+      for (auto const& p : *cached)
+        drawables.append(p);
+    } else {
+      if (!contextBuilt) {
+        drawableBuildContext(baseProcessingDirectives, animationTags);
+        contextBuilt = true;
+      }
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, drawables);
+    }
+  }
+
+  // World translate applied live (everything above is at zero translate).
+  for (auto& p : drawables)
+    p.first.translate(position);
+
+  return drawables;
+}
+
+void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
+    pair<uint64_t, uint64_t> const& key) const {
+  m_staticCache.clear();
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  bool contextBuilt = false;
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (!partIsStaticCacheable(partName))
+      continue;
+    if (!contextBuilt) {
+      drawableBuildContext(baseProcessingDirectives, animationTags);
+      contextBuilt = true;
+    }
+    List<pair<Drawable, float>> partDrawables;
+    appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, partDrawables);
+    m_staticCache.set(partName, std::move(partDrawables));
+  }
+  m_staticCacheKey = key;
+  m_staticCacheValid = true;
+}
+
+List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelRebuild(Vec2F const& position) const {
+  size_t partCount = m_animatedParts.constParts().size();
+  if (!partCount)
+    return {};
+
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  drawableBuildContext(baseProcessingDirectives, animationTags);
+
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  for (auto& entry : parts)
+    appendPartDrawables(*get<1>(entry), *get<0>(entry), get<2>(entry), position, baseProcessingDirectives, animationTags, drawables);
+
+  return drawables;
+}
+
+void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags) const {
+  baseProcessingDirectives.append(m_processingDirectives.get());
   for (auto& pair : m_effects) {
     auto const& effectState = pair.second;
 
@@ -833,7 +928,7 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       }
     }
   }
-  HashMap<String, String> animationTags = m_localTags;
+  animationTags = m_localTags;
   if (version() > 0) {
     animationTags.set("relativePath", m_relativePath);
     for (auto& stateTypeName : m_animatedParts.stateTypes()) {
@@ -859,10 +954,11 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       }
     }
   }
+}
 
+List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> NetworkedAnimator::sortedActiveParts(int& drawableCount) const {
   List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> parts;
-  parts.reserve(partCount);
-  int drawableCount = 0;
+  parts.reserve(m_animatedParts.constParts().size());
   m_animatedParts.forEachActivePart([&](String const& partName, AnimatedPartSet::ActivePartInformation const& activePart) {
     Maybe<float> maybeZLevel;
     if (m_flipped.get()) {
@@ -878,30 +974,59 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   });
 
   sort(parts, [](auto const& a, auto const& b) { return get<2>(a) < get<2>(b); });
+  return parts;
+}
 
-  List<pair<Drawable, float>> drawables;
-  drawables.reserve(partCount + drawableCount);
-  for (auto& entry : parts) {
-    auto& activePart = *get<0>(entry);
-    auto& partName = *get<1>(entry);
-    // Make sure we don't copy the original image
-    String fallback = "";
-    Json jImage = activePart.properties.value("image", {});
-    if (version() > 0 && m_flipped.get()) {
-      if (auto maybeFlipped = activePart.properties.value("flippedImage").optString())
-        jImage = *maybeFlipped;
+// The per-part drawable build, extracted VERBATIM from the old
+// drawablesWithZLevel loop body.  Single source of truth: the rebuild path,
+// the static-cache build, and the live-part serve path all call this, so
+// cached and live parts are built identically (output parity by construction).
+void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
+    float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
+    HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables) const {
+  // Make sure we don't copy the original image
+  String fallback = "";
+  Json jImage = activePart.properties.value("image", {});
+  if (version() > 0 && m_flipped.get()) {
+    if (auto maybeFlipped = activePart.properties.value("flippedImage").optString())
+      jImage = *maybeFlipped;
+  }
+
+  String const& image = jImage.isType(Json::Type::String) ? *jImage.stringPtr() : fallback;
+
+  bool centered = activePart.properties.value("centered").optBool().value(true);
+  bool fullbright = activePart.properties.value("fullbright").optBool().value(false);
+
+  size_t originalDirectivesSize = baseProcessingDirectives.size();
+
+  auto const& partTags = m_partTags.get(partName);
+
+  if (auto directives = activePart.properties.value("processingDirectives").optString()) {
+    if (version() > 0){
+      directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
+        if (auto p = animationTags.ptr(tag)) {
+          return StringView(*p);
+        } else if (auto p = partTags.ptr(tag)) {
+          return StringView(*p);
+        } else if (auto p = m_globalTags.ptr(tag)) {
+          return StringView(*p);
+        }
+        return StringView("default");
+      });
     }
+    baseProcessingDirectives.append(*directives);
+  }
 
-    String const& image = jImage.isType(Json::Type::String) ? *jImage.stringPtr() : fallback;
+  Maybe<unsigned> frame;
+  String frameStr;
+  String frameIndexStr;
+  if (activePart.activeState) {
+    unsigned stateFrame = activePart.activeState->frame;
+    frame = stateFrame;
+    frameStr = static_cast<String>(toString(stateFrame + 1));
+    frameIndexStr = static_cast<String>(toString(stateFrame));
 
-    bool centered = activePart.properties.value("centered").optBool().value(true);
-    bool fullbright = activePart.properties.value("fullbright").optBool().value(false);
-
-    size_t originalDirectivesSize = baseProcessingDirectives.size();
-
-    auto const& partTags = m_partTags.get(partName);
-
-    if (auto directives = activePart.properties.value("processingDirectives").optString()) {
+    if (auto directives = activePart.activeState->properties.value("processingDirectives").optString()) {
       if (version() > 0){
         directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
           if (auto p = animationTags.ptr(tag)) {
@@ -916,93 +1041,65 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       }
       baseProcessingDirectives.append(*directives);
     }
-
-    Maybe<unsigned> frame;
-    String frameStr;
-    String frameIndexStr;
-    if (activePart.activeState) {
-      unsigned stateFrame = activePart.activeState->frame;
-      frame = stateFrame;
-      frameStr = static_cast<String>(toString(stateFrame + 1));
-      frameIndexStr = static_cast<String>(toString(stateFrame));
-
-      if (auto directives = activePart.activeState->properties.value("processingDirectives").optString()) {
-        if (version() > 0){
-          directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
-            if (auto p = animationTags.ptr(tag)) {
-              return StringView(*p);
-            } else if (auto p = partTags.ptr(tag)) {
-              return StringView(*p);
-            } else if (auto p = m_globalTags.ptr(tag)) {
-              return StringView(*p);
-            }
-            return StringView("default");
-          });
-        }
-        baseProcessingDirectives.append(*directives);
-      }
-    }
-
-    Maybe<String> processedImage = image.maybeLookupTagsView([&](StringView tag) -> StringView {
-      if (tag == "frame") {
-        if (frame)
-          return frameStr;
-      } else if (tag == "frameIndex") {
-        if (frame)
-          return frameIndexStr;
-      } else if (auto p = animationTags.ptr(tag)) {
-        return StringView(*p);
-      } else if (auto p = partTags.ptr(tag)) {
-        return StringView(*p);
-      } else if (auto p = m_globalTags.ptr(tag)) {
-        return StringView(*p);
-      }
-
-      return StringView("default");
-    });
-    String const& usedImage = processedImage ? processedImage.get() : image;
-
-    auto transformation = globalTransformation() * partTransformation(partName);
-    transformation.translate(position);
-
-    if (!usedImage.empty() && usedImage[0] != ':' && usedImage[0] != '?') {
-      size_t hash = hashOf(usedImage);
-      auto find = m_cachedPartDrawables.find(partName);
-      if (find == m_cachedPartDrawables.end() || find->second.first != hash) {
-        String relativeImage;
-        if (usedImage[0] != '/')
-          relativeImage = AssetPath::relativeTo(m_relativePath, usedImage);
-
-        Drawable drawable = Drawable::makeImage(!relativeImage.empty() ? relativeImage : usedImage, 1.0f / TilePixels, centered, Vec2F());
-        if (find == m_cachedPartDrawables.end())
-          find = m_cachedPartDrawables.emplace(partName, std::pair{ hash, std::move(drawable) }).first;
-        else {
-          find->second.first = hash;
-          find->second.second = std::move(drawable);
-        }
-      }
-
-      Drawable drawable = find->second.second;
-      auto& imagePart = drawable.imagePart();
-      for (Directives const& directives : baseProcessingDirectives)
-        imagePart.addDirectives(directives, centered);
-      drawable.fullbright = fullbright;
-      drawable.transform(transformation);
-      drawables.append({std::move(drawable), get<2>(entry)});
-    }
-
-    if (m_partDrawables.contains(partName)) {
-      auto partDrawables = m_partDrawables.get(partName);
-      Drawable::transformAll(partDrawables, transformation);
-      for (auto drawable : partDrawables) {
-      drawables.append({drawable, get<2>(entry)});
-      }
-    }
-
-    baseProcessingDirectives.resize(originalDirectivesSize);
   }
 
-  return drawables;
+  Maybe<String> processedImage = image.maybeLookupTagsView([&](StringView tag) -> StringView {
+    if (tag == "frame") {
+      if (frame)
+        return frameStr;
+    } else if (tag == "frameIndex") {
+      if (frame)
+        return frameIndexStr;
+    } else if (auto p = animationTags.ptr(tag)) {
+      return StringView(*p);
+    } else if (auto p = partTags.ptr(tag)) {
+      return StringView(*p);
+    } else if (auto p = m_globalTags.ptr(tag)) {
+      return StringView(*p);
+    }
+
+    return StringView("default");
+  });
+  String const& usedImage = processedImage ? processedImage.get() : image;
+
+  auto transformation = globalTransformation() * partTransformation(partName);
+  transformation.translate(translate);
+
+  if (!usedImage.empty() && usedImage[0] != ':' && usedImage[0] != '?') {
+    size_t hash = hashOf(usedImage);
+    auto find = m_cachedPartDrawables.find(partName);
+    if (find == m_cachedPartDrawables.end() || find->second.first != hash) {
+      String relativeImage;
+      if (usedImage[0] != '/')
+        relativeImage = AssetPath::relativeTo(m_relativePath, usedImage);
+
+      Drawable drawable = Drawable::makeImage(!relativeImage.empty() ? relativeImage : usedImage, 1.0f / TilePixels, centered, Vec2F());
+      if (find == m_cachedPartDrawables.end())
+        find = m_cachedPartDrawables.emplace(partName, std::pair{ hash, std::move(drawable) }).first;
+      else {
+        find->second.first = hash;
+        find->second.second = std::move(drawable);
+      }
+    }
+
+    Drawable drawable = find->second.second;
+    auto& imagePart = drawable.imagePart();
+    for (Directives const& directives : baseProcessingDirectives)
+      imagePart.addDirectives(directives, centered);
+    drawable.fullbright = fullbright;
+    drawable.transform(transformation);
+    drawables.append({std::move(drawable), zLevel});
+  }
+
+  if (m_partDrawables.contains(partName)) {
+    auto partDrawables = m_partDrawables.get(partName);
+    Drawable::transformAll(partDrawables, transformation);
+    for (auto drawable : partDrawables) {
+    drawables.append({drawable, zLevel});
+    }
+  }
+
+  baseProcessingDirectives.resize(originalDirectivesSize);
 }
 
 List<LightSource> NetworkedAnimator::lightSources(Vec2F const& translate) const {
@@ -1177,10 +1274,20 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
 
   for (auto& pair : m_rotationGroups) {
     auto& rotationGroup = pair.second;
-    if (rotationGroup.angularVelocity == 0.0f)
-      rotationGroup.currentAngle = rotationGroup.targetAngle.get();
-    else
+    if (rotationGroup.angularVelocity == 0.0f) {
+      // Value-diffed bump: parts on a 0-angularVelocity rotation group are
+      // STATIC-cacheable.  rotateGroup / the net funnel bump renderVersion
+      // when targetAngle changes, but the drawable-visible currentAngle only
+      // snaps HERE -- a drawables() call between the bump and this snap would
+      // otherwise re-key the static cache on the stale angle.
+      float targetAngle = rotationGroup.targetAngle.get();
+      if (rotationGroup.currentAngle != targetAngle) {
+        rotationGroup.currentAngle = targetAngle;
+        bumpRenderVersion();
+      }
+    } else {
       rotationGroup.currentAngle = approachAngle(rotationGroup.targetAngle.get(), rotationGroup.currentAngle, rotationGroup.angularVelocity * dt);
+    }
   }
 
   if (dynamicTarget) {
