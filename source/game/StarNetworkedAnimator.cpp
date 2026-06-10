@@ -10,6 +10,12 @@
 #include "StarDataStreamExtra.hpp"
 #include "StarRandom.hpp"
 #include "StarGameTypes.hpp"
+#include "StarTelemetry.hpp"
+#include "StarLogging.hpp"
+
+#include <cstdint>
+#include <cstring>
+#include <limits>
 
 namespace Star {
 
@@ -819,8 +825,10 @@ List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
 }
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& position) const {
-  if (!Root::singleton().configuration()->get("renderDrawableCache", false).toBool())
+  auto configuration = Root::singleton().configuration();
+  if (!configuration->get("renderDrawableCache", false).toBool())
     return drawablesWithZLevelRebuild(position);
+  bool shadow = configuration->get("renderDrawableCacheShadowCompare", false).toBool();
 
   size_t partCount = m_animatedParts.constParts().size();
   if (!partCount)
@@ -842,14 +850,29 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   // per-part helper the rebuild uses.  Drawable order is identical to the
   // rebuild by construction, so no merge re-sort is needed (and equal-zLevel
   // ordering is preserved exactly).
+  // Telemetry (static-handle idiom: registration/lookup once, then lock-free
+  // increments): "cached" counts static parts served from the cache, "rebuilt"
+  // counts parts built (LIVE parts here every call, static parts inside
+  // rebuildStaticCache).
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+
   List<pair<Drawable, float>> drawables;
   drawables.reserve(partCount + drawableCount);
+  // Maps assembled drawable index -> source part name, for shadow-compare
+  // diagnostics only (populated only while the shadow flag is on).
+  List<pair<size_t, String const*>> partStarts;
+  if (shadow)
+    partStarts.reserve(parts.size());
   List<Directives> baseProcessingDirectives;
   HashMap<String, String> animationTags;
   bool contextBuilt = false;
   for (auto& entry : parts) {
     auto& partName = *get<1>(entry);
+    if (shadow)
+      partStarts.append({drawables.size(), &partName});
     if (auto cached = m_staticCache.ptr(partName)) {
+      s_cachedCounter.inc();
       for (auto const& p : *cached)
         drawables.append(p);
     } else {
@@ -857,6 +880,7 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
         drawableBuildContext(baseProcessingDirectives, animationTags);
         contextBuilt = true;
       }
+      s_rebuiltCounter.inc();
       appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, drawables);
     }
   }
@@ -876,11 +900,18 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   for (auto& p : drawables)
     p.first.translate(position);
 
+  // Shadow-compare (runtime flag): verify this output against a forced full
+  // rebuild for the same state.  Diagnostics only -- the cache-path output is
+  // returned either way.
+  if (shadow)
+    shadowCompare(drawables, drawablesWithZLevelRebuild(position), partStarts);
+
   return drawables;
 }
 
 void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
     pair<uint64_t, uint64_t> const& key) const {
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
   m_staticCache.clear();
   List<Directives> baseProcessingDirectives;
   HashMap<String, String> animationTags;
@@ -894,11 +925,119 @@ void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePar
       contextBuilt = true;
     }
     List<pair<Drawable, float>> partDrawables;
+    s_rebuiltCounter.inc();
     appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, partDrawables);
     m_staticCache.set(partName, std::move(partDrawables));
   }
   m_staticCacheKey = key;
   m_staticCacheValid = true;
+}
+
+// Position parity policy for the shadow compare, shared with the DrawableCache
+// parity test (see the policy note in drawablesWithZLevel and the full
+// derivation in source/test/drawable_cache_test.cpp): the cache path applies
+// the world translate AFTER the part matrix, the rebuild folds it in BEFORE,
+// so drawables entering the build with a non-zero base position
+// (m_partDrawables: Humanoid held items, Lua animator.setPartDrawables) may
+// differ by ~1 ulp per position component.  Position is therefore compared
+// with a tight ulp bound; every other field must be EXACT.  Real cache bugs
+// (stale offset, missed invalidation, wrong translate) are orders of magnitude
+// larger than 4 ulps.
+namespace {
+  int64_t orderedFloatBits(float f) {
+    int32_t i;
+    std::memcpy(&i, &f, sizeof(i));
+    // Map the IEEE-754 sign-magnitude bit pattern to a monotonically ordered
+    // integer so adjacent floats differ by exactly 1.
+    return i >= 0 ? int64_t(i) : int64_t(std::numeric_limits<int32_t>::min()) - i;
+  }
+
+  int64_t ulpDistance(float a, float b) {
+    if (a == b)
+      return 0;  // also covers +0.0 == -0.0
+    int64_t d = orderedFloatBits(a) - orderedFloatBits(b);
+    return d < 0 ? -d : d;
+  }
+
+  int64_t const ShadowComparePositionMaxUlps = 4;
+}
+
+void NetworkedAnimator::shadowCompare(List<pair<Drawable, float>> const& cached,
+    List<pair<Drawable, float>> const& rebuilt,
+    List<pair<size_t, String const*>> const& partStarts) const {
+  static auto s_mismatchCounter = Telemetry::counter("render.drawable.cache.shadowMismatch");
+
+  auto partNameAt = [&](size_t index) -> String {
+    String const* name = nullptr;
+    for (auto const& start : partStarts) {
+      if (start.first > index)
+        break;
+      name = start.second;
+    }
+    return name ? *name : String("<unknown>");
+  };
+
+  // The warn is rate-limited to once per animator, NOT per frame (the mismatch
+  // counter still counts every mismatching drawable).  Always warn, never
+  // error: the test harness installs a strict ErrorLogSink that fails any test
+  // logging an Error.
+  auto report = [&](size_t index, char const* field) {
+    s_mismatchCounter.inc();
+    if (!m_shadowMismatchWarned) {
+      m_shadowMismatchWarned = true;
+      Logger::warn("NetworkedAnimator drawable cache shadow mismatch: part '{}' drawable {} field '{}'",
+          partNameAt(index), index, field);
+    }
+  };
+
+  if (cached.size() != rebuilt.size()) {
+    s_mismatchCounter.inc();
+    if (!m_shadowMismatchWarned) {
+      m_shadowMismatchWarned = true;
+      Logger::warn("NetworkedAnimator drawable cache shadow mismatch: {} cached vs {} rebuilt drawables", cached.size(), rebuilt.size());
+    }
+    return;
+  }
+
+  for (size_t i = 0; i < cached.size(); ++i) {
+    auto const& c = cached[i].first;
+    auto const& r = rebuilt[i].first;
+    if (cached[i].second != rebuilt[i].second) {
+      report(i, "zLevel");
+      continue;
+    }
+    if (c.isImage() != r.isImage() || c.isLine() != r.isLine() || c.isPoly() != r.isPoly()) {
+      report(i, "part type");
+      continue;
+    }
+    if (c.isImage()) {
+      if (!(c.imagePart().image == r.imagePart().image)) {
+        report(i, "image");
+        continue;
+      }
+      // The translation column of the image matrix cancels exactly in both
+      // translate orders, so this compare is exact.
+      if (!(c.imagePart().transformation == r.imagePart().transformation)) {
+        report(i, "image transformation");
+        continue;
+      }
+    }
+    // Line/poly vertex data is bitwise identical between the paths by
+    // construction (Drawable::transform strips the translation before
+    // touching vertices; it lands entirely in position), so position, color
+    // and fullbright are the remaining comparable fields.
+    if (ulpDistance(c.position[0], r.position[0]) > ShadowComparePositionMaxUlps
+        || ulpDistance(c.position[1], r.position[1]) > ShadowComparePositionMaxUlps) {
+      report(i, "position");
+      continue;
+    }
+    if (!(c.color == r.color)) {
+      report(i, "color");
+      continue;
+    }
+    if (c.fullbright != r.fullbright)
+      report(i, "fullbright");
+  }
 }
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelRebuild(Vec2F const& position) const {

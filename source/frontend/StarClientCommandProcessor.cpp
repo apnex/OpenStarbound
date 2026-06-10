@@ -60,6 +60,11 @@ ClientCommandProcessor::ClientCommandProcessor(UniverseClientPtr universeClient,
     {"render", bind(&ClientCommandProcessor::render, this, _1)},
     {"telemetry", bind(&ClientCommandProcessor::telemetry, this, _1)}
   };
+  // The drawable-cache command would prefer /render, but that name is taken by
+  // the image-render command above, so it falls back to /rendercache
+  // (subcommands unchanged: cache on|off, cache shadow on|off, cache status).
+  m_builtinCommands.set(m_builtinCommands.contains("render") ? "rendercache" : "render",
+      bind(&ClientCommandProcessor::renderCache, this, _1));
 }
 
 bool ClientCommandProcessor::adminCommandAllowed() const {
@@ -642,6 +647,41 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
     return strf("wrote {}", p);
   }
   return "usage: /telemetry [on|off|deep [off]|hud|interval <s>|snapshot]";
+}
+
+// Drawable-cache toggles (registered as /rendercache when /render is taken).
+// Frontend-only: reads/writes the runtime config keys the NetworkedAnimator
+// drawable path consults each call -- no game-logic side effects.
+String ClientCommandProcessor::renderCache(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  String const usage = "usage: /rendercache cache [on|off|shadow on|off|status]";
+  auto status = [&]() {
+    return strf("render cache: enabled={} shadowCompare={}",
+      cfg->get("renderDrawableCache", false).toBool(),
+      cfg->get("renderDrawableCacheShadowCompare", false).toBool());
+  };
+
+  if (args.empty() || args.at(0) != "cache")
+    return usage;
+  if (args.size() < 2 || args.at(1) == "status")
+    return status();
+
+  String sub = args.at(1);
+  if (sub == "on") {
+    cfg->set("renderDrawableCache", true);
+    return "render cache on";
+  }
+  if (sub == "off") {
+    cfg->set("renderDrawableCache", false);
+    return "render cache off";
+  }
+  if (sub == "shadow") {
+    bool v = args.size() < 3 || args.at(2) != "off";
+    cfg->set("renderDrawableCacheShadowCompare", v);
+    return strf("render cache shadow={}", v);
+  }
+  return usage;
 }
 
 
