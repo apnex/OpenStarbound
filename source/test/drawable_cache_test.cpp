@@ -1,5 +1,8 @@
 #include "StarNetworkedAnimator.hpp"
 #include "StarJson.hpp"
+#include "StarRoot.hpp"
+#include "StarConfiguration.hpp"
+#include "StarFormat.hpp"
 #include "gtest/gtest.h"
 
 using namespace Star;
@@ -216,6 +219,105 @@ TEST(NetworkedAnimator, RenderVersionBumpsOnNetApplyGroupChanges) {
   EXPECT_EQ(slave.renderVersion(), v2);
   slave.tickNetInterpolation(0.05f);
   EXPECT_EQ(slave.renderVersion(), v2);
+}
+
+namespace {
+  // Richer config for the cache parity test: two-plus static parts on distinct
+  // zLevels (bg/body/frame -- frame on a non-interpolated transformation
+  // group), one LIVE part with a "transforms" property (fan), and one part
+  // anchored to it (mount -> LIVE transitively).  body is state-animated with
+  // a multi-frame "run" state (<frame> image tag) so frame advances exercise
+  // generation()-keyed invalidation; mount's image carries a <color> tag for
+  // the mid-loop setGlobalTag flip.  Every part is non-centered: these image
+  // paths are fake, and both Drawable::makeImage(centered=true) and
+  // addDirectives with keepImageCenterPosition query the image metadata
+  // database (a real asset load).
+  char const* kRichCfg = R"JSON({
+    "version": 1,
+    "animatedParts": {
+      "stateTypes": { "motion": { "default": "idle", "states": {
+        "idle": { "frames": 1 },
+        "run":  { "frames": 4, "cycle": 0.4, "mode": "loop" }
+      } } },
+      "parts": {
+        "bg":    { "properties": { "zLevel": -1, "image": "/bg.png", "centered": false } },
+        "body":  { "properties": { "zLevel": 0, "fullbright": true, "centered": false },
+                   "partStates": { "motion": {
+                     "idle": { "properties": { "image": "/body_idle.png" } },
+                     "run":  { "properties": { "image": "/body_run_<frame>.png" } } } } },
+        "frame": { "properties": { "zLevel": 1, "image": "/fr.png", "centered": false,
+                   "transformationGroups": ["fixed"],
+                   "processingDirectives": "?multiply=<tint>" } },
+        "fan":   { "properties": { "zLevel": 2, "image": "/fan.png", "centered": false,
+                   "transforms": [ ["rotate", 0.3, [0, 0]] ] } },
+        "mount": { "properties": { "zLevel": 3, "image": "/mount_<color>.png", "centered": false,
+                   "anchorPart": "fan", "offset": [0.5, 0.25] } }
+      }
+    },
+    "transformationGroups": { "fixed": {} },
+    "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+
+  NetworkedAnimator makeRichAnim() { return NetworkedAnimator(Json::parse(kRichCfg), "/"); }
+
+  // Drawable has no operator== in the engine; compare the salient fields
+  // (image part path+directives, transformation, position, color, fullbright).
+  void expectDrawableEq(Drawable const& cached, Drawable const& rebuilt, String const& where) {
+    ASSERT_EQ(cached.isImage(), rebuilt.isImage()) << where.utf8Ptr();
+    if (cached.isImage()) {
+      EXPECT_TRUE(cached.imagePart().image == rebuilt.imagePart().image)
+          << where.utf8Ptr() << " image: " << AssetPath::join(cached.imagePart().image).utf8Ptr()
+          << " vs " << AssetPath::join(rebuilt.imagePart().image).utf8Ptr();
+      EXPECT_TRUE(cached.imagePart().transformation == rebuilt.imagePart().transformation) << where.utf8Ptr() << " transformation";
+    }
+    EXPECT_TRUE(cached.position == rebuilt.position) << where.utf8Ptr() << " position";
+    EXPECT_TRUE(cached.color == rebuilt.color) << where.utf8Ptr() << " color";
+    EXPECT_EQ(cached.fullbright, rebuilt.fullbright) << where.utf8Ptr() << " fullbright";
+  }
+
+  void expectParity(List<pair<Drawable, float>> const& cached, List<pair<Drawable, float>> const& rebuilt, int i) {
+    ASSERT_EQ(cached.size(), rebuilt.size()) << "i=" << i;
+    for (size_t k = 0; k < cached.size(); ++k) {
+      String where = strf("i={} k={}", i, k);
+      EXPECT_EQ(cached[k].second, rebuilt[k].second) << where.utf8Ptr() << " zLevel";
+      expectDrawableEq(cached[k].first, rebuilt[k].first, where);
+    }
+  }
+}
+
+// With the cache ON, the drawables produced must EQUAL the rebuild path across
+// a sequence of updates and state changes (shadow-compare).  This pins
+// correctness without a display.  Mid-loop master flips (setGlobalTag /
+// translateTransformationGroup -> renderVersion bump; setState -> generation
+// bump + re-partition) force invalidation and rebuild mid-test, and the second
+// cache-path call per iteration is a guaranteed pure cache HIT (no state
+// change since the first call).
+TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
+  auto a = makeRichAnim();
+  // frame's processingDirectives carries a <tint> tag: version-1 directives
+  // are tag-substituted (and the engine's maybeLookupTagsView path requires at
+  // least one tag in the string), so resolve it to a real color up front.
+  a.setGlobalTag("tint", String("ff0000"));
+  auto config = Root::singleton().configuration();
+  config->set("renderDrawableCache", true);
+  for (int i = 0; i < 30; ++i) {
+    a.update(0.1f, nullptr);
+    if (i == 10)
+      a.setGlobalTag("color", String("red"));                       // master tag setter: renderVersion bump
+    if (i == 15)
+      a.setState("motion", "run");                                  // state change: generation bump + re-partition
+    if (i == 20)
+      a.translateTransformationGroup("fixed", Vec2F(0.5f, 0.25f));  // static-part group setter: renderVersion bump
+
+    auto cached = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));          // cache path (build or serve)
+    auto rebuilt = a.drawablesWithZLevelRebuild(Vec2F(1.0f, 2.0f));  // forced full rebuild (test hook)
+    ASSERT_FALSE(cached.empty());
+    expectParity(cached, rebuilt, i);
+
+    auto cachedAgain = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));     // pure cache hit
+    expectParity(cachedAgain, rebuilt, i);
+  }
+  config->set("renderDrawableCache", false);
 }
 
 // A version>0 animator whose active state currently names a transformation group

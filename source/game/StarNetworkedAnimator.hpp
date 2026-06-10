@@ -221,6 +221,10 @@ public:
 
   List<Drawable> drawables(Vec2F const& translate = Vec2F()) const;
   List<pair<Drawable, float>> drawablesWithZLevel(Vec2F const& translate = Vec2F()) const;
+  // The always-rebuild drawables path (the pre-cache behaviour, kept verbatim).
+  // drawablesWithZLevel delegates here when renderDrawableCache is off, and the
+  // shadow-compare / parity tests use it as the golden master.
+  List<pair<Drawable, float>> drawablesWithZLevelRebuild(Vec2F const& translate = Vec2F()) const;
 
   List<LightSource> lightSources(Vec2F const& translate = Vec2F()) const;
 
@@ -400,6 +404,35 @@ private:
   bool partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const;
   static bool partHasTransformsProperty(AnimatedPartSet::Part const& part);
 
+  // Helpers shared by drawablesWithZLevelRebuild and the static-cache path.
+  // The per-part build (appendPartDrawables) is extracted verbatim from the
+  // old drawablesWithZLevel loop and is the SINGLE source of truth both paths
+  // call, so cached and live parts are built identically (parity by
+  // construction).
+
+  // The per-call build context: effect/processing directives prefix plus the
+  // resolved animation tags.  baseProcessingDirectives is per-part
+  // appended/restored by appendPartDrawables, hence non-const.
+  void drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags) const;
+
+  // All active parts enumerated and stable-sorted by zLevel, exactly the
+  // ordering the rebuild path draws in.  Enumerating freshens every part
+  // (AnimatedPartSet does this lazily), settling generation() before the
+  // cache is keyed on it.  drawableCount accumulates m_partDrawables extras
+  // for reserve().
+  List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> sortedActiveParts(int& drawableCount) const;
+
+  // Builds the given part's drawables (image drawable plus m_partDrawables
+  // extras) at the given translate and appends them to the output list.
+  void appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
+      float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
+      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables) const;
+
+  // Re-partitions and rebuilds m_staticCache (static parts only, ZERO
+  // translate) for the given sorted part list, recording the given cache key.
+  void rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
+      pair<uint64_t, uint64_t> const& key) const;
+
   void netElementsNeedLoad(bool full) override;
   void netElementsNeedStore() override;
 
@@ -432,6 +465,18 @@ private:
   HashMap<String,List<Drawable>> m_partDrawables;
 
   mutable StringMap<std::pair<size_t, Drawable>> m_cachedPartDrawables;
+
+  // Static-partition drawable cache (runtime flag renderDrawableCache), keyed
+  // by part name: presence in the map IS the static partition recorded at
+  // build time, so the serve path builds exactly the complement (LIVE parts)
+  // fresh each call.  Drawables are cached at ZERO translate; the world
+  // translate is applied live after assembly.  Valid only while
+  // m_staticCacheKey == (m_renderVersion, m_animatedParts.generation()).
+  // Main-thread only like m_renderVersion (no atomics); mutable for the const
+  // drawables path.
+  mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
+  mutable bool m_staticCacheValid = false;
+  mutable pair<uint64_t, uint64_t> m_staticCacheKey;
 
   // Main-thread only (no atomics): drawables() and netElementsNeedLoad are
   // expected to run on the same thread.
