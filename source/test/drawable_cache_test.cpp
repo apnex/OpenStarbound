@@ -29,3 +29,19 @@ TEST(NetworkedAnimator, RenderVersionBumpsOnMasterSetters) {
   a.setGlobalTag("x", String("y"));
   EXPECT_GT(a.renderVersion(), v2);
 }
+
+// operator= replaces every drawable-affecting member wholesale (engine does this on
+// live objects, e.g. Humanoid identity reload), so it must invalidate too.
+TEST(NetworkedAnimator, RenderVersionBumpsOnAssignment) {
+  auto a = makeAnim();
+  auto b = makeAnim();
+  b.setZoom(3.0f);
+
+  uint64_t v0 = a.renderVersion();
+  a = b;  // copy assignment
+  EXPECT_GT(a.renderVersion(), v0);
+
+  uint64_t v1 = a.renderVersion();
+  a = makeAnim();  // move assignment
+  EXPECT_GT(a.renderVersion(), v1);
+}
