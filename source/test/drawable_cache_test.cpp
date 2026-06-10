@@ -224,7 +224,10 @@ TEST(NetworkedAnimator, RenderVersionBumpsOnNetApplyGroupChanges) {
 namespace {
   // Richer config for the cache parity test: two-plus static parts on distinct
   // zLevels (bg/body/frame -- frame on a non-interpolated transformation
-  // group), one LIVE part with a "transforms" property (fan), and one part
+  // group), a static part on an angularVelocity==0 rotation group (vane --
+  // STATIC purely via the partition's rotation carve-out, with a non-origin
+  // rotationCenter so its cached zero-translate matrix carries a translation
+  // component), one LIVE part with a "transforms" property (fan), and one part
   // anchored to it (mount -> LIVE transitively).  body is state-animated with
   // a multi-frame "run" state (<frame> image tag) so frame advances exercise
   // generation()-keyed invalidation; mount's image carries a <color> tag for
@@ -251,11 +254,14 @@ namespace {
         "fan":   { "properties": { "zLevel": 2, "image": "/fan.png", "centered": false,
                    "transforms": [ ["rotate", 0.3, [0, 0]] ] } },
         "mount": { "properties": { "zLevel": 3, "image": "/mount_<color>.png", "centered": false,
-                   "anchorPart": "fan", "offset": [0.5, 0.25] } }
+                   "anchorPart": "fan", "offset": [0.5, 0.25] } },
+        "vane":  { "properties": { "zLevel": 4, "image": "/vane.png", "centered": false,
+                   "rotationGroup": "wind" } }
       }
     },
     "transformationGroups": { "fixed": {} },
-    "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+    "rotationGroups": { "wind": { "angularVelocity": 0.0, "rotationCenter": [0.5, 0.5] } },
+    "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
   })JSON";
 
   NetworkedAnimator makeRichAnim() { return NetworkedAnimator(Json::parse(kRichCfg), "/"); }
@@ -287,13 +293,17 @@ namespace {
 
 // With the cache ON, the drawables produced must EQUAL the rebuild path across
 // a sequence of updates and state changes (shadow-compare).  This pins
-// correctness without a display.  Mid-loop master flips (setGlobalTag /
-// translateTransformationGroup -> renderVersion bump; setState -> generation
-// bump + re-partition) force invalidation and rebuild mid-test, and the second
-// cache-path call per iteration is a guaranteed pure cache HIT (no state
-// change since the first call).
+// correctness without a display.  Mid-loop master flips (rotateGroup /
+// setGlobalTag / translateTransformationGroup -> renderVersion bump; setState
+// -> generation bump + re-partition) force invalidation and rebuild mid-test,
+// and the second cache-path call per iteration is a guaranteed pure cache HIT
+// (no state change since the first call).
 TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
   auto a = makeRichAnim();
+  // vane is STATIC purely via the angularVelocity==0 rotation carve-out; if
+  // the partition ever demotes it to LIVE, the rotateGroup flip below would
+  // silently stop exercising the cached-rotation path.
+  ASSERT_TRUE(a.partIsStaticCacheable("vane"));
   // frame's processingDirectives carries a <tint> tag: version-1 directives
   // are tag-substituted (and the engine's maybeLookupTagsView path requires at
   // least one tag in the string), so resolve it to a real color up front.
@@ -302,6 +312,20 @@ TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
   config->set("renderDrawableCache", true);
   for (int i = 0; i < 30; ++i) {
     a.update(0.1f, nullptr);
+    if (i == 5) {
+      // Non-immediate rotation of a STATIC part's 0-angularVelocity group.
+      // rotateGroup bumps renderVersion NOW (targetAngle), but the
+      // drawable-visible currentAngle only snaps in the NEXT iteration's
+      // update() -- whose value-diffed renderVersion bump is the ONLY
+      // invalidation for the snap.  This must happen while body is still in
+      // the 1-frame "idle" state: generation() is stable here, so a missing
+      // snap bump means i==6 serves the stale angle-0 vane from the cache
+      // (after i==15 the 4-frame "run" state bumps generation() every
+      // iteration and would mask exactly that staleness).  From i==6 on, the
+      // cached vane also pins zero-translate caching of a ROTATED static
+      // part (rotation about a non-origin center) against the rebuild.
+      a.rotateGroup("wind", 0.8f);
+    }
     if (i == 10)
       a.setGlobalTag("color", String("red"));                       // master tag setter: renderVersion bump
     if (i == 15)
