@@ -233,6 +233,10 @@ public:
   void finishAnimations();
   uint8_t version() const;
 
+  // Bumps when any drawable-affecting animator state changes (not
+  // generation()'s job).  Main-thread only: not synchronized.
+  uint64_t renderVersion() const;
+
 private:
   struct RotationGroup {
     float angularVelocity;
@@ -354,6 +358,8 @@ private:
 
   void setupNetStates();
 
+  void bumpRenderVersion();
+
   void netElementsNeedLoad(bool full) override;
   void netElementsNeedStore() override;
 
@@ -386,6 +392,10 @@ private:
   HashMap<String,List<Drawable>> m_partDrawables;
 
   mutable StringMap<std::pair<size_t, Drawable>> m_cachedPartDrawables;
+
+  // Main-thread only (no atomics): drawables() and netElementsNeedLoad are
+  // expected to run on the same thread.
+  uint64_t m_renderVersion = 1;
 };
 
 }

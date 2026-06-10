@@ -98,6 +98,9 @@ R"JSON(
       "telemetryReportInterval" : 0,
       "telemetryHud" : false,
 
+      "renderDrawableCache" : false,
+      "renderDrawableCacheShadowCompare" : false,
+
       "safe" : {
         "alwaysAllowClipboard" : false,
         "enableImGui" : false,

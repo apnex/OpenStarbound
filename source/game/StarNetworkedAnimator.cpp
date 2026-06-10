@@ -456,10 +456,12 @@ void NetworkedAnimator::setGlobalTag(String tagName, Maybe<String> tagValue) {
     m_globalTags.set(std::move(tagName), std::move(*tagValue));
   else
     m_globalTags.remove(tagName);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::removeGlobalTag(String const& tagName) {
   m_globalTags.remove(tagName);
+  bumpRenderVersion();
 }
 
 String const* NetworkedAnimator::globalTagPtr(String const& tagName) const {
@@ -472,6 +474,7 @@ void NetworkedAnimator::setPartTag(String const& partType, String tagName, Maybe
     m_partTags[partType].set(std::move(tagName), std::move(*tagValue));
   else
     m_partTags[partType].remove(tagName);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setLocalTag(String tagName, Maybe<String> tagValue) {
@@ -479,13 +482,16 @@ void NetworkedAnimator::setLocalTag(String tagName, Maybe<String> tagValue) {
     m_localTags.set(tagName, *tagValue);
   else
     m_localTags.remove(tagName);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setPartDrawables(String const& partName, List<Drawable> drawables) {
   m_partDrawables.set(partName, drawables);
+  bumpRenderVersion();
 }
 void NetworkedAnimator::addPartDrawables(String const& partName, List<Drawable> drawables) {
   m_partDrawables.ptr(partName)->appendAll(drawables);
+  bumpRenderVersion();
 }
 String NetworkedAnimator::applyPartTags(String const& partName, String apply) const {
   HashMap<String, String> animationTags = m_localTags;
@@ -550,10 +556,12 @@ String NetworkedAnimator::applyPartTags(String const& partName, String apply) co
 
 void NetworkedAnimator::setProcessingDirectives(Directives const& directives) {
   m_processingDirectives.set(directives);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setZoom(float zoom) {
   m_zoom.set(zoom);
+  bumpRenderVersion();
 }
 
 bool NetworkedAnimator::flipped() const {
@@ -567,6 +575,7 @@ float NetworkedAnimator::flippedRelativeCenterLine() const {
 void NetworkedAnimator::setFlipped(bool flipped, float relativeCenterLine) {
   m_flipped.set(flipped);
   m_flippedRelativeCenterLine.set(relativeCenterLine);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setAnimationRate(float rate) {
@@ -589,6 +598,7 @@ void NetworkedAnimator::rotateGroup(String const& rotationGroup, float targetAng
     group.currentAngle = targetAngle;
     group.netImmediateEvent.trigger();
   }
+  bumpRenderVersion();
 }
 
 float NetworkedAnimator::currentRotationAngle(String const& rotationGroup) const {
@@ -602,24 +612,28 @@ bool NetworkedAnimator::hasTransformationGroup(String const& transformationGroup
 void NetworkedAnimator::translateTransformationGroup(String const& transformationGroup, Vec2F const& translation) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::translation(translation) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::rotateTransformationGroup(
     String const& transformationGroup, float rotation, Vec2F const& rotationCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::rotation(rotation, rotationCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleTransformationGroup(
     String const& transformationGroup, float scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleTransformationGroup(
     String const& transformationGroup, Vec2F const& scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::transformTransformationGroup(
@@ -627,14 +641,17 @@ void NetworkedAnimator::transformTransformationGroup(
   auto& group = m_transformationGroups.get(transformationGroup);
   Mat3F transform = Mat3F(a, b, tx, c, d, ty, 0, 0, 1);
   group.setAffineTransform(transform * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::resetTransformationGroup(String const& transformationGroup) {
   m_transformationGroups.get(transformationGroup).setAffineTransform(Mat3F::identity());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setTransformationGroup(String const& transformationGroup, Mat3F transform) {
   m_transformationGroups.get(transformationGroup).setAffineTransform(transform);
+  bumpRenderVersion();
 }
 
 Mat3F NetworkedAnimator::getTransformationGroup(String const& transformationGroup) {
@@ -643,24 +660,28 @@ Mat3F NetworkedAnimator::getTransformationGroup(String const& transformationGrou
 void NetworkedAnimator::translateLocalTransformationGroup(String const& transformationGroup, Vec2F const& translation) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::translation(translation) * group.localAffineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::rotateLocalTransformationGroup(
     String const& transformationGroup, float rotation, Vec2F const& rotationCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::rotation(rotation, rotationCenter) * group.localAffineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleLocalTransformationGroup(
     String const& transformationGroup, float scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.localAffineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleLocalTransformationGroup(
     String const& transformationGroup, Vec2F const& scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.localAffineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::transformLocalTransformationGroup(
@@ -668,14 +689,17 @@ void NetworkedAnimator::transformLocalTransformationGroup(
   auto& group = m_transformationGroups.get(transformationGroup);
   Mat3F transform = Mat3F(a, b, tx, c, d, ty, 0, 0, 1);
   group.setLocalAffineTransform(transform * group.localAffineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::resetLocalTransformationGroup(String const& transformationGroup) {
   m_transformationGroups.get(transformationGroup).setLocalAffineTransform(Mat3F::identity());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setLocalTransformationGroup(String const& transformationGroup, Mat3F transform) {
   m_transformationGroups.get(transformationGroup).setLocalAffineTransform(transform);
+  bumpRenderVersion();
 }
 
 Mat3F NetworkedAnimator::getLocalTransformationGroup(String const& transformationGroup) {
@@ -768,6 +792,7 @@ void NetworkedAnimator::stopAllSounds(String const& soundName, float rampTime) {
 
 void NetworkedAnimator::setEffectEnabled(String const& effect, bool enabled) {
   m_effects.get(effect).enabled.set(enabled);
+  bumpRenderVersion();
 }
 
 List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
@@ -1452,6 +1477,14 @@ void NetworkedAnimator::netElementsNeedStore() {
 
 uint8_t NetworkedAnimator::version() const {
   return m_animatorVersion;
+}
+
+uint64_t NetworkedAnimator::renderVersion() const {
+  return m_renderVersion;
+}
+
+void NetworkedAnimator::bumpRenderVersion() {
+  ++m_renderVersion;
 }
 
 Json NetworkedAnimator::mergeIncludes(Json config, Json includes, String relativePath){
