@@ -255,6 +255,13 @@ private:
     float currentAngle;
 
     NetElementEvent netImmediateEvent;
+
+    // Shadow of targetAngle.get() last seen by netElementsNeedLoad, for the
+    // slave-side discrete-change diff (rotateGroup never runs on slaves, and
+    // update() snaps/approaches currentAngle from the netted targetAngle).
+    // targetAngle never has an interpolator, so the diff is tick-quiet.
+    // Matches NetElementFloat's default value.
+    float lastSeenTargetAngle = 0.0f;
   };
 
   struct TransformationGroup {
@@ -286,6 +293,19 @@ private:
     float xShearAnimation;
     float yShearAnimation;
 
+    // Shadows of the six networked floats last seen by netElementsNeedLoad,
+    // for the slave-side discrete-change diff (the *TransformationGroup
+    // setters never run on slaves).  Only diffed for NON-interpolated groups:
+    // those floats have no interpolators and change only at delta-apply, so
+    // the diff is tick-quiet; interpolated groups lerp every tick, and parts
+    // referencing them are LIVE in partIsStaticCacheable anyway.  Defaults
+    // match the identity affine transform the constructor installs.
+    float lastSeenXTranslation = 0.0f;
+    float lastSeenYTranslation = 0.0f;
+    float lastSeenXScale = 1.0f;
+    float lastSeenYScale = 1.0f;
+    float lastSeenXShear = 0.0f;
+    float lastSeenYShear = 0.0f;
   };
 
   struct ParticleEmitter {
