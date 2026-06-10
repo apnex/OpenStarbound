@@ -1471,6 +1471,44 @@ void NetworkedAnimator::netElementsNeedLoad(bool initial) {
     if (pair.second.netImmediateEvent.pullOccurred() || initial)
       pair.second.currentAngle = pair.second.targetAngle.get();
   }
+
+  // Slaves never call the setters; NetElement deserialization writes storage
+  // directly, and this funnel runs after netLoad, readNetDelta, and net
+  // interpolation ticks.  Bump the render version ONLY on a discrete
+  // drawable-affecting change (NOT every interpolation tick, or the static
+  // cache thrashes on moving entities).
+  bool discrete = false;
+  discrete |= m_globalTags.pullUpdated();
+  for (auto& pair : m_partTags)
+    discrete |= pair.second.pullUpdated();
+  // Value-diff the scalar/data NetElements against shadow copies kept on the
+  // animator (NetElementFloating has no pullUpdated, and a value-diff stays
+  // quiet across pure interpolation ticks since none of these interpolate).
+  if (m_processingDirectives.get() != m_lastSeenProcessingDirectives) {
+    m_lastSeenProcessingDirectives = m_processingDirectives.get();
+    discrete = true;
+  }
+  if (m_zoom.get() != m_lastSeenZoom) {
+    m_lastSeenZoom = m_zoom.get();
+    discrete = true;
+  }
+  if (m_flipped.get() != m_lastSeenFlipped) {
+    m_lastSeenFlipped = m_flipped.get();
+    discrete = true;
+  }
+  if (m_flippedRelativeCenterLine.get() != m_lastSeenCenterLine) {
+    m_lastSeenCenterLine = m_flippedRelativeCenterLine.get();
+    discrete = true;
+  }
+  for (auto& pair : m_effects) {
+    bool en = pair.second.enabled.get();
+    if (en != pair.second.lastSeenEnabled) {
+      pair.second.lastSeenEnabled = en;
+      discrete = true;
+    }
+  }
+  if (discrete)
+    bumpRenderVersion();
 }
 
 void NetworkedAnimator::netElementsNeedStore() {
