@@ -1,6 +1,7 @@
 #include "StarNetworkedAnimator.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarIterator.hpp"
+#include "StarSet.hpp"
 #include "StarParticleDatabase.hpp"
 #include "StarRoot.hpp"
 #include "StarAssets.hpp"
@@ -1531,6 +1532,137 @@ uint64_t NetworkedAnimator::renderVersion() const {
 
 void NetworkedAnimator::bumpRenderVersion() {
   ++m_renderVersion;
+}
+
+// Collects every value the given key could resolve to in a part's merged
+// activePart.properties: the base partProperties, every partState's
+// partStateProperties, and every per-frame value in partStateFrameProperties
+// (freshenActivePart merges exactly these three layers).  State-independent,
+// so the answer is conservative across state changes.
+static void collectPartPropertyValues(AnimatedPartSet::Part const& part, String const& key, List<Json>& values) {
+  if (auto v = part.partProperties.ptr(key))
+    values.append(*v);
+  for (auto const& stateTypePair : part.partStates) {
+    for (auto const& statePair : stateTypePair.second) {
+      if (auto v = statePair.second.partStateProperties.ptr(key))
+        values.append(*v);
+      if (auto frameValues = statePair.second.partStateFrameProperties.ptr(key)) {
+        // Frame properties are arrays of per-frame values.
+        if (frameValues->isType(Json::Type::Array)) {
+          for (auto const& v : frameValues->iterateArray())
+            values.append(v);
+        } else {
+          values.append(*frameValues);
+        }
+      }
+    }
+  }
+}
+
+bool NetworkedAnimator::anyFlashEffectActive() const {
+  for (auto const& pair : m_effects) {
+    if (pair.second.enabled.get() && pair.second.type == "flash")
+      return true;
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partReferencesLiveRotationGroup(AnimatedPartSet::Part const& part) const {
+  List<Json> refs;
+  collectPartPropertyValues(part, "rotationGroup", refs);
+  for (auto const& ref : refs) {
+    if (!ref.isType(Json::Type::String))
+      return true; // unintelligible reference: conservative live
+    auto group = m_rotationGroups.ptr(ref.toString());
+    if (!group)
+      return true; // unknown group: conservative live
+    // angularVelocity != 0 approaches the target angle continuously in
+    // update(); angularVelocity == 0 snaps (verified-safe-as-static).
+    if (group->angularVelocity != 0.0f)
+      return true;
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const {
+  List<Json> refs;
+  collectPartPropertyValues(part, "transformationGroups", refs);
+  for (auto const& ref : refs) {
+    if (!ref.isType(Json::Type::Array))
+      return true; // unintelligible reference list: conservative live
+    for (auto const& nameJson : ref.iterateArray()) {
+      if (!nameJson.isType(Json::Type::String))
+        return true;
+      String name = nameJson.toString();
+      auto group = m_transformationGroups.ptr(name);
+      if (!group)
+        return true; // unknown group: conservative live
+      // Interpolated groups lerp their networked affine components between
+      // deltas on slaves, and blend state animation by frameProgress: live.
+      if (group->interpolated)
+        return true;
+      // The active-state-animated case (update()): a group currently named by
+      // an active-state property is re-seeded from its own current animation
+      // transform every tick, so non-reset transforms accumulate continuously.
+      // Conservative: any currently-animated group is live.  Mirrors the
+      // version() > 0 gate and all-state-types scan of update().
+      if (version() > 0) {
+        for (auto const& stateTypeName : m_animatedParts.stateTypes()) {
+          if (m_animatedParts.activeState(stateTypeName).properties.contains(name))
+            return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partHasTransformsProperty(AnimatedPartSet::Part const& part) {
+  // Part-local transforms interpolate by frameProgress or accumulate per tick
+  // (AnimatedPartSet::freshenActivePart).  Conservative: ANY entry is live.
+  List<Json> refs;
+  collectPartPropertyValues(part, "transforms", refs);
+  return !refs.empty();
+}
+
+bool NetworkedAnimator::partIsStaticCacheable(String const& partName) const {
+  // A flash-type effect toggles its directive purely off the per-tick effect
+  // timer and is prepended to every part's directives: global cache-bust.
+  if (anyFlashEffectActive())
+    return false;
+
+  auto const& parts = m_animatedParts.constParts();
+
+  // A part is static-cacheable iff it AND its whole anchorPart chain have: no
+  // live rotation-group ref, no interpolated/active-state-animated
+  // transformation group, and no "transforms" property (partTransformation
+  // composes anchor transforms transitively).  anchorPart may be introduced by
+  // any partState, so follow every possible anchor value; `seen` guards
+  // against anchor cycles.
+  StringList pending = {partName};
+  Set<String> seen;
+  while (!pending.empty()) {
+    String current = pending.takeLast();
+    if (!seen.add(current))
+      continue;
+    auto part = parts.ptr(current);
+    if (!part)
+      return false; // unknown part: conservative live
+    if (partReferencesLiveRotationGroup(*part))
+      return false;
+    if (partReferencesLiveTransformationGroup(*part))
+      return false;
+    if (partHasTransformsProperty(*part))
+      return false;
+    List<Json> anchors;
+    collectPartPropertyValues(*part, "anchorPart", anchors);
+    for (auto const& anchor : anchors) {
+      if (!anchor.isType(Json::Type::String))
+        return false; // unintelligible anchor: conservative live
+      pending.append(anchor.toString());
+    }
+  }
+  return true;
 }
 
 Json NetworkedAnimator::mergeIncludes(Json config, Json includes, String relativePath){

@@ -237,6 +237,15 @@ public:
   // generation()'s job).  Main-thread only: not synchronized.
   uint64_t renderVersion() const;
 
+  // Static/live partition (conservative + transitive): true iff this part's
+  // drawable is fully determined by (renderVersion, generation), i.e. it and
+  // its whole anchorPart chain reference no continuously-interpolated state.
+  // Conservative: anything unintelligible is treated as live (not cacheable).
+  // Re-evaluate whenever generation() bumps (a state change can re-target
+  // which transformation group an active-state property animates).
+  // Main-thread only, like renderVersion().
+  bool partIsStaticCacheable(String const& partName) const;
+
 private:
   struct RotationGroup {
     float angularVelocity;
@@ -362,6 +371,14 @@ private:
   void setupNetStates();
 
   void bumpRenderVersion();
+
+  // Helpers for partIsStaticCacheable.  Each scans the part's full config
+  // structure (base partProperties plus every partState's properties and
+  // frameProperties), so the answer is conservative across state changes.
+  bool anyFlashEffectActive() const;
+  bool partReferencesLiveRotationGroup(AnimatedPartSet::Part const& part) const;
+  bool partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const;
+  static bool partHasTransformsProperty(AnimatedPartSet::Part const& part);
 
   void netElementsNeedLoad(bool full) override;
   void netElementsNeedStore() override;
