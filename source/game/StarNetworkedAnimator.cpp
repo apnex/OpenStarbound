@@ -271,6 +271,10 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator&& animator) {
   m_localTags = std::move(animator.m_localTags);
   m_animatorVersion = std::move(animator.m_animatorVersion);
   setupNetStates();
+  // Assignment replaces every drawable-affecting member wholesale; bump the
+  // target's own (never-copied) render version so any cached render output is
+  // invalidated.
+  bumpRenderVersion();
 
   return *this;
 }
@@ -297,6 +301,10 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator const& animato
   m_localTags = animator.m_localTags;
   m_animatorVersion = animator.m_animatorVersion;
   setupNetStates();
+  // Assignment replaces every drawable-affecting member wholesale; bump the
+  // target's own (never-copied) render version so any cached render output is
+  // invalidated.
+  bumpRenderVersion();
 
   return *this;
 }
