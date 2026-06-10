@@ -346,6 +346,9 @@ private:
     Directives directives;
 
     NetElementBool enabled;
+    // Shadow of enabled.get() last seen by netElementsNeedLoad, for the
+    // slave-side discrete-change diff.
+    bool lastSeenEnabled = false;
     float timer;
   };
 
@@ -396,6 +399,16 @@ private:
   // Main-thread only (no atomics): drawables() and netElementsNeedLoad are
   // expected to run on the same thread.
   uint64_t m_renderVersion = 1;
+
+  // Shadow copies of the last values of the discrete drawable-affecting
+  // NetElements seen by netElementsNeedLoad.  On slaves the setters are never
+  // called (NetElement deserialization writes storage directly), so the net
+  // funnel value-diffs against these to detect discrete changes.  Initialised
+  // to the same defaults the default constructor gives their NetElements.
+  Directives m_lastSeenProcessingDirectives;
+  float m_lastSeenZoom = 1.0f;
+  bool m_lastSeenFlipped = false;
+  float m_lastSeenCenterLine = 0.0f;
 };
 
 }
