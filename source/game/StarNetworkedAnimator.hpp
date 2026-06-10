@@ -433,6 +433,18 @@ private:
   void rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
       pair<uint64_t, uint64_t> const& key) const;
 
+  // Shadow-compare (runtime flag renderDrawableCacheShadowCompare):
+  // diagnostics-only check of the assembled cache-path output against a
+  // forced rebuild for the same state.  Same size + per-drawable equality;
+  // position is compared with a small ulp tolerance (the two paths apply the
+  // world translate in a different order -- see the parity note in
+  // drawablesWithZLevel), every other field exactly.  Each mismatching
+  // drawable counts into render.drawable.cache.shadowMismatch; the
+  // Logger::warn is rate-limited to once per animator.  partStarts maps
+  // assembled drawable index -> source part name for the warn's diagnostics.
+  void shadowCompare(List<pair<Drawable, float>> const& cached, List<pair<Drawable, float>> const& rebuilt,
+      List<pair<size_t, String const*>> const& partStarts) const;
+
   void netElementsNeedLoad(bool full) override;
   void netElementsNeedStore() override;
 
@@ -477,6 +489,11 @@ private:
   mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
   mutable bool m_staticCacheValid = false;
   mutable pair<uint64_t, uint64_t> m_staticCacheKey;
+
+  // Rate-limits the shadow-mismatch Logger::warn to once per animator (the
+  // shadowMismatch counter still counts every mismatch).  Main-thread only
+  // like the cache; mutable for the const drawables path.
+  mutable bool m_shadowMismatchWarned = false;
 
   // Main-thread only (no atomics): drawables() and netElementsNeedLoad are
   // expected to run on the same thread.

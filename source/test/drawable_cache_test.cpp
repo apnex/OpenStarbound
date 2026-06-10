@@ -4,6 +4,7 @@
 #include "StarRoot.hpp"
 #include "StarConfiguration.hpp"
 #include "StarFormat.hpp"
+#include "StarTelemetry.hpp"
 #include "gtest/gtest.h"
 
 #include <cstdint>
@@ -421,6 +422,40 @@ TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
     auto cachedAgain = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));     // pure cache hit
     expectParity(cachedAgain, rebuilt, i);
   }
+  config->set("renderDrawableCache", false);
+}
+
+// Telemetry: the cache path counts static parts served from the cache
+// ("render.drawable.parts.cached") vs parts built ("render.drawable.parts.rebuilt"
+// -- static-cache builds plus per-call LIVE builds).  The single "body" part is
+// static (non-centered: the image path is fake and centered makeImage hits the
+// image metadata database), so the first drawablesWithZLevel builds the cache
+// (rebuilt++) and serves it (cached++); the second call, with no state change,
+// is a pure cache hit (cached++ only).  Shadow-compare is enabled for both
+// calls: matching paths must record ZERO render.drawable.cache.shadowMismatch
+// (and no warn -- the harness's strict ErrorLogSink would not catch warns, but
+// a mismatch here would fail the counter check regardless).
+TEST(DrawableCache, CountsCachedVsRebuilt) {
+  char const* cfg = R"JSON({
+    "globalTagDefaults": {},
+    "animatedParts": { "stateTypes": {}, "parts": {
+      "body": { "properties": { "zLevel": 0, "image": "/a.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "particleEmitters": {},
+    "lights": {}, "sounds": {}, "effects": {}
+  })JSON";
+  Telemetry::reset();
+  auto config = Root::singleton().configuration();
+  config->set("renderDrawableCache", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});  // first: builds static cache (rebuilt++), serves it (cached++)
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});  // unchanged static parts -> served cached
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), 0u);
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt").value(), 0u);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
+  config->set("renderDrawableCacheShadowCompare", false);
   config->set("renderDrawableCache", false);
 }
 
