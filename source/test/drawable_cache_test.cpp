@@ -147,6 +147,77 @@ TEST(NetworkedAnimator, StaticLivePartitionTriggers) {
   EXPECT_TRUE(a.partIsStaticCacheable("body"));
 }
 
+// Slave-side net-apply coverage for the two static-safe carve-outs in
+// partIsStaticCacheable.  An angularVelocity==0 rotation group and a
+// non-interpolated transformation group are STATIC only because every
+// drawable-affecting change to them funnels through a renderVersion bump: on a
+// slave, rotateGroup / *TransformationGroup arrive as NetElement
+// deserialization (setters never run), so netElementsNeedLoad must value-diff
+// RotationGroup::targetAngle and the six non-interpolated group floats.
+// Interpolated groups lerp their floats every tick on slaves; parts that
+// reference them are LIVE already, so the funnel must NOT bump for them (or
+// the static cache thrashes on every continuously-animated entity).
+TEST(NetworkedAnimator, RenderVersionBumpsOnNetApplyGroupChanges) {
+  char const* cfg = R"JSON({
+    "animatedParts": { "stateTypes": {}, "parts": {
+      "vane":   { "properties": { "image": "/v.png", "rotationGroup": "wind" } },
+      "frame":  { "properties": { "image": "/fr.png", "transformationGroups": ["fixed"] } },
+      "piston": { "properties": { "image": "/p.png", "transformationGroups": ["slide"] } }
+    } },
+    "transformationGroups": { "fixed": {}, "slide": { "interpolated": true } },
+    "rotationGroups": { "wind": { "angularVelocity": 0.0 } },
+    "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+
+  NetElementTop<NetworkedAnimator> master;
+  NetElementTop<NetworkedAnimator> slave;
+  static_cast<NetworkedAnimator&>(master) = NetworkedAnimator(Json::parse(cfg), "/");
+  static_cast<NetworkedAnimator&>(slave) = NetworkedAnimator(Json::parse(cfg), "/");
+  slave.enableNetInterpolation();
+
+  auto initial = master.writeNetState();
+  slave.readNetState(initial.first);
+
+  // The carve-outs under test: both parts are STATIC on the slave, which is
+  // only sound if the deltas below bump renderVersion.
+  EXPECT_TRUE(slave.partIsStaticCacheable("vane"));
+  EXPECT_TRUE(slave.partIsStaticCacheable("frame"));
+  EXPECT_FALSE(slave.partIsStaticCacheable("piston"));
+  uint64_t v0 = slave.renderVersion();
+
+  // rotateGroup on a 0-angularVelocity group: the slave's update() snaps
+  // currentAngle to the netted targetAngle, so the delta-apply must bump.
+  master.rotateGroup("wind", 1.5f);
+  auto delta1 = master.writeNetState(initial.second);
+  ASSERT_FALSE(delta1.first.empty());
+  slave.readNetState(delta1.first);
+  EXPECT_GT(slave.renderVersion(), v0);
+  EXPECT_TRUE(slave.partIsStaticCacheable("vane"));  // stays static; now funnel-covered
+  uint64_t v1 = slave.renderVersion();
+
+  // translateTransformationGroup on a non-interpolated group: the six floats
+  // are networked with no interpolators (discrete at delta-apply): must bump.
+  master.translateTransformationGroup("fixed", Vec2F(1, 0));
+  auto delta2 = master.writeNetState(delta1.second);
+  ASSERT_FALSE(delta2.first.empty());
+  slave.readNetState(delta2.first);
+  EXPECT_GT(slave.renderVersion(), v1);
+  EXPECT_TRUE(slave.partIsStaticCacheable("frame"));
+  uint64_t v2 = slave.renderVersion();
+
+  // Interpolated group: delta applies into interpolation data points and the
+  // floats lerp across the following ticks.  No bump at apply or per tick.
+  master.translateTransformationGroup("slide", Vec2F(2, 0));
+  auto delta3 = master.writeNetState(delta2.second);
+  ASSERT_FALSE(delta3.first.empty());
+  slave.readNetState(delta3.first, 0.1f);
+  EXPECT_EQ(slave.renderVersion(), v2);
+  slave.tickNetInterpolation(0.05f);  // mid-lerp: slide's floats are changing
+  EXPECT_EQ(slave.renderVersion(), v2);
+  slave.tickNetInterpolation(0.05f);
+  EXPECT_EQ(slave.renderVersion(), v2);
+}
+
 // A version>0 animator whose active state currently names a transformation group
 // animates that group every tick (the transforms seed from the group's current
 // animation transform, so non-reset entries accumulate continuously): LIVE.

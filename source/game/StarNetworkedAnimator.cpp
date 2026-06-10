@@ -1508,6 +1508,39 @@ void NetworkedAnimator::netElementsNeedLoad(bool initial) {
       discrete = true;
     }
   }
+  // RotationGroup::targetAngle and the non-interpolated TransformationGroup
+  // floats are likewise storage-written by deserialization on slaves, and
+  // partIsStaticCacheable keeps parts referencing them STATIC, so this funnel
+  // is their only invalidation path.  Neither has an interpolator (rotation
+  // targetAngle never; group floats only when interpolated, see
+  // setupNetStates), so these value-diffs only fire at delta-apply.
+  // Interpolated groups' floats lerp every tick and their referencing parts
+  // are LIVE already: skip them, or the static cache thrashes.
+  for (auto& pair : m_rotationGroups) {
+    float targetAngle = pair.second.targetAngle.get();
+    if (targetAngle != pair.second.lastSeenTargetAngle) {
+      pair.second.lastSeenTargetAngle = targetAngle;
+      discrete = true;
+    }
+  }
+  for (auto& pair : m_transformationGroups) {
+    auto& group = pair.second;
+    if (group.interpolated)
+      continue;
+    auto diff = [&discrete](NetElementFloat const& element, float& lastSeen) {
+      float value = element.get();
+      if (value != lastSeen) {
+        lastSeen = value;
+        discrete = true;
+      }
+    };
+    diff(group.xTranslation, group.lastSeenXTranslation);
+    diff(group.yTranslation, group.lastSeenYTranslation);
+    diff(group.xScale, group.lastSeenXScale);
+    diff(group.yScale, group.lastSeenYScale);
+    diff(group.xShear, group.lastSeenXShear);
+    diff(group.yShear, group.lastSeenYShear);
+  }
   if (discrete)
     bumpRenderVersion();
 }
