@@ -493,18 +493,37 @@ TEST(DrawableCache, RekeyReasonCounters) {
   a.update(0.1f, nullptr);
   (void)a.drawablesWithZLevel(Vec2F());  // prime: first build is a cold-cache rekey too
   uint64_t rekeyV0 = Telemetry::counter("render.drawable.cache.rekey.version").value();
+  uint64_t rekeyG0 = Telemetry::counter("render.drawable.cache.rekey.generation").value();
+  uint64_t rebuiltRekey0 = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
   a.setGlobalTag("k", String("v1"));     // version bump -> next call re-keys for 'version'
   (void)a.drawablesWithZLevel(Vec2F());
   EXPECT_GT(Telemetry::counter("render.drawable.cache.rekey.version").value(), rekeyV0);
-  EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), 0u);
+  // generation() is stable across these two calls (no update(); setGlobalTag
+  // never touches the AnimatedPartSet), so the re-key must be attributed to
+  // 'version' ONLY.  An implementation that bumps both reasons on every
+  // mismatch is exactly the mis-signal that would corrupt the version-churn
+  // vs animation-frame-churn diagnosis this split exists for.
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.rekey.generation").value(), rekeyG0);
+  // The warm version re-key itself rebuilt static parts, so rebuilt.rekey must
+  // have grown SINCE the prime (not merely be non-zero from the cold build).
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), rebuiltRekey0);
   // A pure cache-hit call must not move any rekey counter (no state change
   // since the previous call: renderVersion and generation() are both stable --
   // the parity test's per-iteration cachedAgain hit relies on the same).
   uint64_t rv = Telemetry::counter("render.drawable.cache.rekey.version").value();
   uint64_t rg = Telemetry::counter("render.drawable.cache.rekey.generation").value();
+  uint64_t rk = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
+  uint64_t rb = Telemetry::counter("render.drawable.parts.rebuilt").value();
   (void)a.drawablesWithZLevel(Vec2F());
   EXPECT_EQ(Telemetry::counter("render.drawable.cache.rekey.version").value(), rv);
   EXPECT_EQ(Telemetry::counter("render.drawable.cache.rekey.generation").value(), rg);
+  // rebuilt.rekey counts ONLY rebuildStaticCache's static-part builds: the
+  // pure hit still builds the rich config's LIVE parts (fan, mount) through
+  // the live-part site, so plain rebuilt grows while rebuilt.rekey stays flat
+  // -- pinning the two counters' sites apart (rebuilt - rebuilt.rekey =
+  // genuinely-live builds).
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt").value(), rb);
+  EXPECT_EQ(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), rk);
   config->set("renderDrawableCache", false);
 }
 
