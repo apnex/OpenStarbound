@@ -470,16 +470,23 @@ Maybe<PolyF> NetworkedAnimator::partPoly(String const& partName, String const& p
 }
 
 void NetworkedAnimator::setGlobalTag(String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    if (auto current = m_globalTags.ptr(tagName); current && *current == *tagValue)
+      return;
     m_globalTags.set(std::move(tagName), std::move(*tagValue));
-  else
-    m_globalTags.remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    if (!m_globalTags.remove(tagName))
+      return;
+  }
   bumpRenderVersion();
 }
 
 void NetworkedAnimator::removeGlobalTag(String const& tagName) {
-  m_globalTags.remove(tagName);
-  bumpRenderVersion();
+  // Observable state identical (removing an absent tag) => skip write + version bump.
+  if (m_globalTags.remove(tagName))
+    bumpRenderVersion();
 }
 
 String const* NetworkedAnimator::globalTagPtr(String const& tagName) const {
@@ -488,22 +495,78 @@ String const* NetworkedAnimator::globalTagPtr(String const& tagName) const {
 
 
 void NetworkedAnimator::setPartTag(String const& partType, String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    // ptr() to avoid operator[]'s insertion: setupNetStates pre-registers an
+    // entry per part, so a miss here means an unknown partType.
+    if (auto tags = m_partTags.ptr(partType))
+      if (auto current = tags->ptr(tagName); current && *current == *tagValue)
+        return;
     m_partTags[partType].set(std::move(tagName), std::move(*tagValue));
-  else
-    m_partTags[partType].remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    auto tags = m_partTags.ptr(partType);
+    if (!tags || !tags->remove(tagName))
+      return;
+  }
   bumpRenderVersion();
 }
 
 void NetworkedAnimator::setLocalTag(String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    if (auto current = m_localTags.ptr(tagName); current && *current == *tagValue)
+      return;
     m_localTags.set(tagName, *tagValue);
-  else
-    m_localTags.remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    if (!m_localTags.remove(tagName))
+      return;
+  }
   bumpRenderVersion();
 }
 
+namespace {
+  // Exact per-field Drawable comparison for the setPartDrawables no-op guard:
+  // the same salient fields shadowCompare diffs, but EXACT everywhere (these
+  // are caller-provided values compared against their previously-stored
+  // selves, not cross-path arithmetic, so no ulp tolerance applies).
+  bool drawableEquals(Drawable const& a, Drawable const& b) {
+    if (a.position != b.position || !(a.color == b.color) || a.fullbright != b.fullbright)
+      return false;
+    if (a.isImage() != b.isImage() || a.isLine() != b.isLine() || a.isPoly() != b.isPoly())
+      return false;
+    if (a.isImage()) {
+      auto const& ai = a.imagePart();
+      auto const& bi = b.imagePart();
+      return ai.image == bi.image && ai.transformation == bi.transformation;
+    }
+    if (a.isLine()) {
+      auto const& al = a.linePart();
+      auto const& bl = b.linePart();
+      return al.line == bl.line && al.width == bl.width && al.endColor == bl.endColor;
+    }
+    if (a.isPoly())
+      return a.polyPart().poly == b.polyPart().poly;
+    return true;  // both part-less
+  }
+
+  bool drawableListsEqual(List<Drawable> const& a, List<Drawable> const& b) {
+    if (a.size() != b.size())
+      return false;
+    for (size_t i = 0; i < a.size(); ++i)
+      if (!drawableEquals(a[i], b[i]))
+        return false;
+    return true;
+  }
+}
+
 void NetworkedAnimator::setPartDrawables(String const& partName, List<Drawable> drawables) {
+  // Observable state identical (stored list matches field-for-field) => skip
+  // write + version bump.  Only when an entry already exists: the first set
+  // also establishes the m_partDrawables entry addPartDrawables appends to.
+  if (auto current = m_partDrawables.ptr(partName); current && drawableListsEqual(*current, drawables))
+    return;
   m_partDrawables.set(partName, drawables);
   // The render-version bump already re-keys the static cache; the explicit
   // invalidation is belt-and-braces for changes to the part set itself.
@@ -511,6 +574,9 @@ void NetworkedAnimator::setPartDrawables(String const& partName, List<Drawable> 
   bumpRenderVersion();
 }
 void NetworkedAnimator::addPartDrawables(String const& partName, List<Drawable> drawables) {
+  // Observable state identical (appending nothing) => skip write + version bump.
+  if (drawables.empty())
+    return;
   m_partDrawables.ptr(partName)->appendAll(drawables);
   m_staticCacheValid = false;
   bumpRenderVersion();
@@ -614,6 +680,10 @@ bool NetworkedAnimator::hasRotationGroup(String const& rotationGroup) const {
 
 void NetworkedAnimator::rotateGroup(String const& rotationGroup, float targetAngle, bool immediate) {
   auto& group = m_rotationGroups.get(rotationGroup);
+  // Observable state identical (same target, and nothing to snap unless
+  // immediate) => skip write + version bump.
+  if (group.targetAngle.get() == targetAngle && (!immediate || group.currentAngle == targetAngle))
+    return;
   group.targetAngle.set(targetAngle);
 
   if (immediate) {
