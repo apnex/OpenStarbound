@@ -676,6 +676,32 @@ TEST(DrawableCache, StationaryLocalTransformPatternDoesNotRekey) {
   Root::singleton().configuration()->set("renderDrawableCache", false);
 }
 
+// Partition memoization: the structural static/live walk scans each part's
+// FULL config (every state's properties), and rebuildStaticCache re-runs it
+// for every part on EVERY re-key -- including pure renderVersion re-keys
+// (master tag flips), where no partition input changed.  The structural
+// verdict must be memoized per part ("render.drawable.partition.scans" counts
+// the structural walks, i.e. memo misses): a version-only re-key must serve
+// every verdict from the memo and add ZERO new scans.  The flash-effect gate
+// is a runtime input and stays OUTSIDE the memo (StaticLivePartitionTriggers
+// pins that it remains live).
+TEST(DrawableCache, PartitionScansAreMemoized) {
+  Telemetry::reset();
+  Root::singleton().configuration()->set("renderDrawableCache", true);
+  auto a = makeRichAnim();
+  // frame's processingDirectives carries a <tint> tag: resolve it up front,
+  // exactly as CachedEqualsRebuiltAcrossUpdates does.
+  a.setGlobalTag("tint", String("ff0000"));
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel(Vec2F());           // cold rebuild: scans > 0
+  uint64_t s0 = Telemetry::counter("render.drawable.partition.scans").value();
+  EXPECT_GT(s0, 0u);
+  a.setGlobalTag("k", String("v1"));              // force a version re-key -> rebuildStaticCache runs again
+  (void)a.drawablesWithZLevel(Vec2F());
+  EXPECT_EQ(Telemetry::counter("render.drawable.partition.scans").value(), s0);  // memo served, no new scans
+  Root::singleton().configuration()->set("renderDrawableCache", false);
+}
+
 // A version>0 animator whose active state currently names a transformation group
 // animates that group every tick (the transforms seed from the group's current
 // animation transform, so non-reset entries accumulate continuously): LIVE.
