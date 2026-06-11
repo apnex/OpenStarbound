@@ -578,6 +578,44 @@ TEST(DrawableCache, CrossStateTypeTagSettledWithoutUpdate) {
   config->set("renderDrawableCache", false);
 }
 
+// Value-diff no-op guards in the per-frame master setters: a call that leaves
+// observable animator state identical (same tag value, clearing an absent tag,
+// same part-drawables list, same rotation target) must NOT bump renderVersion
+// -- Humanoid::render issues exactly such calls every frame on visually
+// stationary entities, and each spurious bump re-keys the static cache.  Real
+// changes must keep bumping.
+TEST(NetworkedAnimator, NoOpSettersDoNotBumpRenderVersion) {
+  // makeAnim's config has no rotation groups; mirror it with one added
+  // ("rot", angularVelocity 0 like StaticLivePartition's "wind").
+  char const* cfg = R"JSON({
+    "globalTagDefaults": {},
+    "animatedParts": { "stateTypes": {}, "parts": {
+      "body": { "properties": { "zLevel": 0, "image": "/a.png" } } } },
+    "transformationGroups": {}, "rotationGroups": { "rot": { "angularVelocity": 0.0 } },
+    "particleEmitters": {}, "lights": {}, "sounds": {}, "effects": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  a.setGlobalTag("x", String("y"));
+  a.setPartTag("body", "pt", String("pv"));
+  a.setPartDrawables("body", {});  // establish empty
+  a.rotateGroup("rot", 0.5f);
+  uint64_t v = a.renderVersion();
+  a.setGlobalTag("x", String("y"));        // same value -> no bump
+  a.setPartTag("body", "pt", String("pv"));  // same value -> no bump
+  a.setLocalTag("l");                      // clearing an absent local tag -> no bump
+  a.removeGlobalTag("absent");             // removing an absent global tag -> no bump
+  a.setPartDrawables("body", {});          // same (empty) drawables -> no bump
+  a.addPartDrawables("body", {});          // appending nothing -> no bump
+  a.rotateGroup("rot", 0.5f);              // same target angle -> no bump
+  EXPECT_EQ(a.renderVersion(), v);
+  // and real changes still bump:
+  a.setGlobalTag("x", String("z"));
+  EXPECT_GT(a.renderVersion(), v);
+  uint64_t v2 = a.renderVersion();
+  a.setPartDrawables("body", {Drawable::makeLine(Line2F({0, 0}, {1, 1}), 1.0f, Color::White)});
+  EXPECT_GT(a.renderVersion(), v2);
+}
+
 // A version>0 animator whose active state currently names a transformation group
 // animates that group every tick (the transforms seed from the group's current
 // animation transform, so non-reset entries accumulate continuously): LIVE.
