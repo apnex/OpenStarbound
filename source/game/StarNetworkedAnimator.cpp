@@ -281,8 +281,13 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator&& animator) {
   setupNetStates();
   // Assignment replaces every drawable-affecting member wholesale; bump the
   // target's own (never-copied) render version so any cached render output is
-  // invalidated.  The static cache is never copied: drop it explicitly.
+  // invalidated.  The static cache is never copied: drop it explicitly.  The
+  // partition memo's verdicts are for the REPLACED config, and the incoming
+  // AnimatedPartSet's generation could collide with the recorded one: drop it
+  // too.
   m_staticCacheValid = false;
+  m_partitionMemo.clear();
+  m_partitionMemoGeneration = 0;
   bumpRenderVersion();
 
   return *this;
@@ -312,8 +317,13 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator const& animato
   setupNetStates();
   // Assignment replaces every drawable-affecting member wholesale; bump the
   // target's own (never-copied) render version so any cached render output is
-  // invalidated.  The static cache is never copied: drop it explicitly.
+  // invalidated.  The static cache is never copied: drop it explicitly.  The
+  // partition memo's verdicts are for the REPLACED config, and the incoming
+  // AnimatedPartSet's generation could collide with the recorded one: drop it
+  // too.
   m_staticCacheValid = false;
+  m_partitionMemo.clear();
+  m_partitionMemoGeneration = 0;
   bumpRenderVersion();
 
   return *this;
@@ -2041,10 +2051,37 @@ bool NetworkedAnimator::partHasTransformsProperty(AnimatedPartSet::Part const& p
 bool NetworkedAnimator::partIsStaticCacheable(String const& partName) const {
   // A flash-type effect toggles its directive purely off the per-tick effect
   // timer and is prepended to every part's directives: global cache-bust.
+  // Runtime input (effect enabled flags): checked LIVE, OUTSIDE the
+  // structural memo.
   if (anyFlashEffectActive())
     return false;
+  return partIsStaticCacheableStructural(partName);
+}
 
-  auto const& parts = m_animatedParts.constParts();
+bool NetworkedAnimator::partIsStaticCacheableStructural(String const& partName) const {
+  // Memoized: every input of the walk below is construction-constant (part
+  // configs scanned across ALL states, anchor chain, group structure,
+  // RotationGroup::angularVelocity, TransformationGroup::interpolated,
+  // version()) EXCEPT the active-state-animated transformation-group check,
+  // which reads activeState(...).properties -- those re-merge only under a
+  // generation() bump (AnimatedPartSet's freshen layers).  Keying the memo on
+  // generation() therefore makes stale verdicts impossible, while a
+  // renderVersion-only re-key (the per-frame Humanoid tag/part-drawables
+  // pattern) reuses the partition wholesale instead of re-scanning every
+  // part's full config.
+  uint64_t generation = m_animatedParts.generation();
+  if (m_partitionMemoGeneration != generation) {
+    m_partitionMemo.clear();
+    m_partitionMemoGeneration = generation;
+  }
+  if (auto memo = m_partitionMemo.maybe(partName))
+    return *memo;
+
+  // Counts structural walks, i.e. memo MISSES -- the direct 'partition work'
+  // signal for the cache A/B.  Cache-path only: rebuildStaticCache is the
+  // sole engine caller (static-handle idiom: registration/lookup once).
+  static auto s_partitionScansCounter = Telemetry::counter("render.drawable.partition.scans");
+  s_partitionScansCounter.inc();
 
   // A part is static-cacheable iff it AND its whole anchorPart chain have: no
   // live rotation-group ref, no interpolated/active-state-animated
@@ -2052,30 +2089,35 @@ bool NetworkedAnimator::partIsStaticCacheable(String const& partName) const {
   // composes anchor transforms transitively).  anchorPart may be introduced by
   // any partState, so follow every possible anchor value; `seen` guards
   // against anchor cycles.
-  StringList pending = {partName};
-  Set<String> seen;
-  while (!pending.empty()) {
-    String current = pending.takeLast();
-    if (!seen.add(current))
-      continue;
-    auto part = parts.ptr(current);
-    if (!part)
-      return false; // unknown part: conservative live
-    if (partReferencesLiveRotationGroup(*part))
-      return false;
-    if (partReferencesLiveTransformationGroup(*part))
-      return false;
-    if (partHasTransformsProperty(*part))
-      return false;
-    List<Json> anchors;
-    collectPartPropertyValues(*part, "anchorPart", anchors);
-    for (auto const& anchor : anchors) {
-      if (!anchor.isType(Json::Type::String))
-        return false; // unintelligible anchor: conservative live
-      pending.append(anchor.toString());
+  bool result = [&]() {
+    auto const& parts = m_animatedParts.constParts();
+    StringList pending = {partName};
+    Set<String> seen;
+    while (!pending.empty()) {
+      String current = pending.takeLast();
+      if (!seen.add(current))
+        continue;
+      auto part = parts.ptr(current);
+      if (!part)
+        return false; // unknown part: conservative live
+      if (partReferencesLiveRotationGroup(*part))
+        return false;
+      if (partReferencesLiveTransformationGroup(*part))
+        return false;
+      if (partHasTransformsProperty(*part))
+        return false;
+      List<Json> anchors;
+      collectPartPropertyValues(*part, "anchorPart", anchors);
+      for (auto const& anchor : anchors) {
+        if (!anchor.isType(Json::Type::String))
+          return false; // unintelligible anchor: conservative live
+        pending.append(anchor.toString());
+      }
     }
-  }
-  return true;
+    return true;
+  }();
+  m_partitionMemo[partName] = result;
+  return result;
 }
 
 Json NetworkedAnimator::mergeIncludes(Json config, Json includes, String relativePath){

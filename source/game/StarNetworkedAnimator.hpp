@@ -410,6 +410,11 @@ private:
   // structure (base partProperties plus every partState's properties and
   // frameProperties), so the answer is conservative across state changes.
   bool anyFlashEffectActive() const;
+  // The full structural walk behind partIsStaticCacheable (anchor chain,
+  // rotation/transformation groups, transforms property), memoized per part in
+  // m_partitionMemo.  The flash-effect gate is a runtime input and stays
+  // OUTSIDE, in partIsStaticCacheable itself.
+  bool partIsStaticCacheableStructural(String const& partName) const;
   bool partReferencesLiveRotationGroup(AnimatedPartSet::Part const& part) const;
   bool partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const;
   static bool partHasTransformsProperty(AnimatedPartSet::Part const& part);
@@ -499,6 +504,20 @@ private:
   mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
   mutable bool m_staticCacheValid = false;
   mutable tuple<uint64_t, uint64_t, uint64_t> m_staticCacheKey;
+
+  // Memo of partIsStaticCacheableStructural verdicts.  Every structural input
+  // is construction-constant (part configs, anchor chain, group structure,
+  // angularVelocity, interpolated, version()) EXCEPT the active-state-animated
+  // transformation-group check, which reads activeState(...).properties --
+  // those re-merge only under a generation() bump (AnimatedPartSet's freshen
+  // layers), so the memo is keyed on generation() (m_partitionMemoGeneration)
+  // and stale verdicts are impossible.  Cleared by operator= (assignment
+  // replaces the whole config; generations are per-AnimatedPartSet counters
+  // and could collide).  The flash-effect gate is a runtime input and stays
+  // OUTSIDE the memo.  Main-thread only like the cache; mutable for the const
+  // drawables path.
+  mutable StringMap<bool> m_partitionMemo;
+  mutable uint64_t m_partitionMemoGeneration = 0;
 
   // Rate-limits the shadow-mismatch Logger::warn to once per animator (the
   // shadowMismatch counter still counts every mismatch).  Main-thread only
