@@ -614,6 +614,22 @@ TEST(NetworkedAnimator, NoOpSettersDoNotBumpRenderVersion) {
   uint64_t v2 = a.renderVersion();
   a.setPartDrawables("body", {Drawable::makeLine(Line2F({0, 0}, {1, 1}), 1.0f, Color::White)});
   EXPECT_GT(a.renderVersion(), v2);
+  // The per-field comparison must be pinned on NON-EMPTY lists too (the cases
+  // above only ever reach the size check, never drawableEquals' field diffs):
+  uint64_t v3 = a.renderVersion();
+  a.setPartDrawables("body", {Drawable::makeLine(Line2F({0, 0}, {1, 1}), 1.0f, Color::White)});  // identical non-empty list -> no bump
+  EXPECT_EQ(a.renderVersion(), v3);
+  a.setPartDrawables(  // same size, only position changed -> must bump (stale-cache hazard otherwise)
+      "body", {Drawable::makeLine(Line2F({0, 0}, {1, 1}), 1.0f, Color::White, Vec2F(0, 2))});
+  EXPECT_GT(a.renderVersion(), v3);
+  // Image branch: centered=false avoids any Root/asset access.
+  a.setPartDrawables("body", {Drawable::makeImage("/a.png", 1.0f, false, Vec2F())});
+  uint64_t v4 = a.renderVersion();
+  EXPECT_GT(v4, v3);  // line -> image swap at equal size is a change
+  a.setPartDrawables("body", {Drawable::makeImage("/a.png", 1.0f, false, Vec2F())});  // identical image drawable -> no bump
+  EXPECT_EQ(a.renderVersion(), v4);
+  a.setPartDrawables("body", {Drawable::makeImage("/b.png", 1.0f, false, Vec2F())});  // same size, image path changed -> bump
+  EXPECT_GT(a.renderVersion(), v4);
 }
 
 // A version>0 animator whose active state currently names a transformation group
