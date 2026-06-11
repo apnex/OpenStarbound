@@ -851,8 +851,18 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
 
   auto key = std::make_pair(m_renderVersion, m_animatedParts.generation());
-  if (!m_staticCacheValid || m_staticCacheKey != key)
+  if (!m_staticCacheValid || m_staticCacheKey != key) {
+    // Re-key reason attribution (diagnostics): which key component moved --
+    // renderVersion (first) vs generation (second).  A cold/invalid cache
+    // counts toward both reasons.
+    static auto s_rekeyVersionCounter = Telemetry::counter("render.drawable.cache.rekey.version");
+    static auto s_rekeyGenerationCounter = Telemetry::counter("render.drawable.cache.rekey.generation");
+    if (!m_staticCacheValid || m_staticCacheKey.first != key.first)
+      s_rekeyVersionCounter.inc();
+    if (!m_staticCacheValid || m_staticCacheKey.second != key.second)
+      s_rekeyGenerationCounter.inc();
     rebuildStaticCache(parts, key);
+  }
 
   // Assemble in the sorted part order: static parts are served from the cache
   // (zero-translate copies), LIVE parts are built fresh through the same
@@ -921,6 +931,10 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
 void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
     pair<uint64_t, uint64_t> const& key) const {
   static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  // rebuilt.rekey counts ONLY the static-part builds done here (re-key churn);
+  // the live-part build site in drawablesWithZLevel increments plain rebuilt
+  // only, so rebuilt - rebuilt.rekey = genuinely-live part builds.
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
   m_staticCache.clear();
   List<Directives> baseProcessingDirectives;
   HashMap<String, String> animationTags;
@@ -935,6 +949,7 @@ void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePar
     }
     List<pair<Drawable, float>> partDrawables;
     s_rebuiltCounter.inc();
+    s_rebuiltRekeyCounter.inc();
     appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, partDrawables);
     m_staticCache.set(partName, std::move(partDrawables));
   }

@@ -475,6 +475,39 @@ TEST(DrawableCache, CountsCachedVsRebuilt) {
   config->set("renderDrawableCache", false);
 }
 
+// Re-key reason split: when the cache key mismatches, the cache path must
+// attribute WHICH component moved ("render.drawable.cache.rekey.version" /
+// "render.drawable.cache.rekey.generation"; a cold cache counts toward both),
+// and rebuildStaticCache must count its static-part builds separately as
+// "render.drawable.parts.rebuilt.rekey" alongside the existing plain rebuilt
+// counter -- so rebuilt.rekey isolates re-key churn and rebuilt - rebuilt.rekey
+// is the genuinely-live build load.  A pure cache hit moves no rekey counter.
+TEST(DrawableCache, RekeyReasonCounters) {
+  Telemetry::reset();
+  auto config = Root::singleton().configuration();
+  config->set("renderDrawableCache", true);
+  auto a = makeRichAnim();
+  // frame's processingDirectives carries a <tint> tag: resolve it up front,
+  // exactly as CachedEqualsRebuiltAcrossUpdates does.
+  a.setGlobalTag("tint", String("ff0000"));
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel(Vec2F());  // prime: first build is a cold-cache rekey too
+  uint64_t rekeyV0 = Telemetry::counter("render.drawable.cache.rekey.version").value();
+  a.setGlobalTag("k", String("v1"));     // version bump -> next call re-keys for 'version'
+  (void)a.drawablesWithZLevel(Vec2F());
+  EXPECT_GT(Telemetry::counter("render.drawable.cache.rekey.version").value(), rekeyV0);
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), 0u);
+  // A pure cache-hit call must not move any rekey counter (no state change
+  // since the previous call: renderVersion and generation() are both stable --
+  // the parity test's per-iteration cachedAgain hit relies on the same).
+  uint64_t rv = Telemetry::counter("render.drawable.cache.rekey.version").value();
+  uint64_t rg = Telemetry::counter("render.drawable.cache.rekey.generation").value();
+  (void)a.drawablesWithZLevel(Vec2F());
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.rekey.version").value(), rv);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.rekey.generation").value(), rg);
+  config->set("renderDrawableCache", false);
+}
+
 // Cross-state-type animation tags: generation() is LAZY.  A state type that NO
 // part lists in partStates is freshened only by update()'s forEachActiveState
 // or by drawableBuildContext -- NOT by the cache path's part enumeration
