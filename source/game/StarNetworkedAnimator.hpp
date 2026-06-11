@@ -396,6 +396,16 @@ private:
 
   void bumpRenderVersion();
 
+  // Order-stable hash of every transformation group's localTransform matrix.
+  // Local matrices are excluded from m_renderVersion (their setters are called
+  // in reset+rotate pairs every frame by Humanoid; per-call bumps would re-key
+  // a visually-stationary animator), so the combined matrix state keys the
+  // static cache as the third cache-key component instead.  Hashes ALL groups
+  // (no dirty bits); computed only on the cache path.  Iteration order only
+  // ever compares against the SAME animator's previous value, so the
+  // OrderedHashMap's stable per-instance order is sufficient.
+  uint64_t localTransformHash() const;
+
   // Helpers for partIsStaticCacheable.  Each scans the part's full config
   // structure (base partProperties plus every partState's properties and
   // frameProperties), so the answer is conservative across state changes.
@@ -431,7 +441,7 @@ private:
   // Re-partitions and rebuilds m_staticCache (static parts only, ZERO
   // translate) for the given sorted part list, recording the given cache key.
   void rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
-      pair<uint64_t, uint64_t> const& key) const;
+      tuple<uint64_t, uint64_t, uint64_t> const& key) const;
 
   // Shadow-compare (runtime flag renderDrawableCacheShadowCompare):
   // diagnostics-only check of the assembled cache-path output against a
@@ -483,12 +493,12 @@ private:
   // build time, so the serve path builds exactly the complement (LIVE parts)
   // fresh each call.  Drawables are cached at ZERO translate; the world
   // translate is applied live after assembly.  Valid only while
-  // m_staticCacheKey == (m_renderVersion, m_animatedParts.generation()).
-  // Main-thread only like m_renderVersion (no atomics); mutable for the const
-  // drawables path.
+  // m_staticCacheKey == (m_renderVersion, m_animatedParts.generation(),
+  // localTransformHash()).  Main-thread only like m_renderVersion (no
+  // atomics); mutable for the const drawables path.
   mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
   mutable bool m_staticCacheValid = false;
-  mutable pair<uint64_t, uint64_t> m_staticCacheKey;
+  mutable tuple<uint64_t, uint64_t, uint64_t> m_staticCacheKey;
 
   // Rate-limits the shadow-mismatch Logger::warn to once per animator (the
   // shadowMismatch counter still counts every mismatch).  Main-thread only

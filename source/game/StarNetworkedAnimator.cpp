@@ -749,31 +749,35 @@ void NetworkedAnimator::setTransformationGroup(String const& transformationGroup
 Mat3F NetworkedAnimator::getTransformationGroup(String const& transformationGroup) {
   return m_transformationGroups.get(transformationGroup).affineTransform();
 }
+// The Local transformation-group setters deliberately do NOT bump
+// renderVersion: Humanoid::render calls them in reset+rotate(SAME angle) pairs
+// every frame, and reset->identity->rotate-back is two real value changes
+// netting to zero, so neither per-call bumps nor per-call value-diffs can keep
+// a visually-stationary animator's cache key stable.  Instead the combined
+// matrix state keys the static cache directly via localTransformHash() (see
+// drawablesWithZLevel): if ANY group's localTransform matrix differs, the key
+// differs -- exactly the invalidation coverage the bumps used to provide.
 void NetworkedAnimator::translateLocalTransformationGroup(String const& transformationGroup, Vec2F const& translation) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::translation(translation) * group.localAffineTransform());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::rotateLocalTransformationGroup(
     String const& transformationGroup, float rotation, Vec2F const& rotationCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::rotation(rotation, rotationCenter) * group.localAffineTransform());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleLocalTransformationGroup(
     String const& transformationGroup, float scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.localAffineTransform());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleLocalTransformationGroup(
     String const& transformationGroup, Vec2F const& scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.localAffineTransform());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::transformLocalTransformationGroup(
@@ -781,17 +785,14 @@ void NetworkedAnimator::transformLocalTransformationGroup(
   auto& group = m_transformationGroups.get(transformationGroup);
   Mat3F transform = Mat3F(a, b, tx, c, d, ty, 0, 0, 1);
   group.setLocalAffineTransform(transform * group.localAffineTransform());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::resetLocalTransformationGroup(String const& transformationGroup) {
   m_transformationGroups.get(transformationGroup).setLocalAffineTransform(Mat3F::identity());
-  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setLocalTransformationGroup(String const& transformationGroup, Mat3F transform) {
   m_transformationGroups.get(transformationGroup).setLocalAffineTransform(transform);
-  bumpRenderVersion();
 }
 
 Mat3F NetworkedAnimator::getLocalTransformationGroup(String const& transformationGroup) {
@@ -920,17 +921,25 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   auto parts = sortedActiveParts(drawableCount);
   m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
 
-  auto key = std::make_pair(m_renderVersion, m_animatedParts.generation());
+  // The third key component covers the local transformation-group matrices,
+  // which are excluded from m_renderVersion (see localTransformHash and the
+  // note at the Local setters).  Computed here only -- after the flag check --
+  // so the flag-off path stays untouched.
+  uint64_t lth = localTransformHash();
+  auto key = std::make_tuple(m_renderVersion, m_animatedParts.generation(), lth);
   if (!m_staticCacheValid || m_staticCacheKey != key) {
     // Re-key reason attribution (diagnostics): which key component moved --
-    // renderVersion (first) vs generation (second).  A cold/invalid cache
-    // counts toward both reasons.
+    // renderVersion (0) vs generation (1) vs the local-transform hash (2).  A
+    // cold/invalid cache counts toward all reasons.
     static auto s_rekeyVersionCounter = Telemetry::counter("render.drawable.cache.rekey.version");
     static auto s_rekeyGenerationCounter = Telemetry::counter("render.drawable.cache.rekey.generation");
-    if (!m_staticCacheValid || m_staticCacheKey.first != key.first)
+    static auto s_rekeyLocalTransformCounter = Telemetry::counter("render.drawable.cache.rekey.localtransform");
+    if (!m_staticCacheValid || std::get<0>(m_staticCacheKey) != std::get<0>(key))
       s_rekeyVersionCounter.inc();
-    if (!m_staticCacheValid || m_staticCacheKey.second != key.second)
+    if (!m_staticCacheValid || std::get<1>(m_staticCacheKey) != std::get<1>(key))
       s_rekeyGenerationCounter.inc();
+    if (!m_staticCacheValid || std::get<2>(m_staticCacheKey) != lth)
+      s_rekeyLocalTransformCounter.inc();
     rebuildStaticCache(parts, key);
   }
 
@@ -999,7 +1008,7 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
 }
 
 void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
-    pair<uint64_t, uint64_t> const& key) const {
+    tuple<uint64_t, uint64_t, uint64_t> const& key) const {
   static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
   // rebuilt.rekey counts ONLY the static-part builds done here (re-key churn);
   // the live-part build site in drawablesWithZLevel increments plain rebuilt
@@ -1916,6 +1925,26 @@ uint64_t NetworkedAnimator::renderVersion() const {
 
 void NetworkedAnimator::bumpRenderVersion() {
   ++m_renderVersion;
+}
+
+uint64_t NetworkedAnimator::localTransformHash() const {
+  // Local transformation-group matrices are excluded from m_renderVersion
+  // (their setters are called in reset+rotate pairs every frame by Humanoid;
+  // per-call bumps would re-key a visually-stationary animator).  Instead the
+  // combined matrix state keys the static cache.  Hashes the raw float bits of
+  // ALL groups' localTransform (no dirty bits): if any matrix differs, the
+  // hash -- and with it the cache key -- differs.
+  uint64_t h = 5381;
+  for (auto const& pair : m_transformationGroups) {
+    auto const& m = pair.second.localTransform;
+    for (size_t r = 0; r < 3; ++r)
+      for (size_t c = 0; c < 3; ++c) {
+        uint32_t bits;
+        std::memcpy(&bits, &m[r][c], sizeof(bits));
+        h = (h * 1099511628211ull) ^ bits;
+      }
+  }
+  return h;
 }
 
 // Collects every value the given key could resolve to in a part's merged

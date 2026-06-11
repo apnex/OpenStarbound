@@ -632,6 +632,50 @@ TEST(NetworkedAnimator, NoOpSettersDoNotBumpRenderVersion) {
   EXPECT_GT(a.renderVersion(), v4);
 }
 
+// Humanoid's per-frame pattern: reset + rotate to the SAME angle must not
+// re-key the cache; rotating to a DIFFERENT angle must.  Local transformation
+// matrices are excluded from renderVersion (reset->identity->rotate-back is
+// two real value changes netting to zero, so per-call value-diffs cannot
+// help); instead the combined localTransform matrix state keys the cache via
+// "render.drawable.cache.rekey.localtransform".  Same literal in = same bits
+// out: Mat3F::rotation(0.7f, ...) * identity is deterministic same-TU float
+// math, so the steady-state matrix is bitwise stable across iterations.
+TEST(DrawableCache, StationaryLocalTransformPatternDoesNotRekey) {
+  Telemetry::reset();
+  Root::singleton().configuration()->set("renderDrawableCache", true);
+  // The rich config's "fixed" group is non-interpolated and referenced by the
+  // STATIC parts frame and held; body's default "motion" state is the 1-frame
+  // "idle", so generation() is stable across the no-update() calls below (the
+  // pure-hit assertions in RekeyReasonCounters rely on the same).
+  auto a = makeRichAnim();
+  // frame's processingDirectives carries a <tint> tag: resolve it up front,
+  // exactly as CachedEqualsRebuiltAcrossUpdates does.
+  a.setGlobalTag("tint", String("ff0000"));
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel(Vec2F());           // prime
+  auto rekeys = [] {
+    return Telemetry::counter("render.drawable.cache.rekey.version").value()
+         + Telemetry::counter("render.drawable.cache.rekey.generation").value()
+         + Telemetry::counter("render.drawable.cache.rekey.localtransform").value();
+  };
+  // settle one frame of the pattern so the local matrix reaches its steady value:
+  a.resetLocalTransformationGroup("fixed");
+  a.rotateLocalTransformationGroup("fixed", 0.7f, Vec2F(1, 2));
+  (void)a.drawablesWithZLevel(Vec2F());
+  uint64_t r0 = rekeys();
+  for (int i = 0; i < 3; ++i) {                   // stationary frames: reset + same rotate
+    a.resetLocalTransformationGroup("fixed");
+    a.rotateLocalTransformationGroup("fixed", 0.7f, Vec2F(1, 2));
+    (void)a.drawablesWithZLevel(Vec2F());
+  }
+  EXPECT_EQ(rekeys(), r0);                        // no re-keys while visually stationary
+  a.resetLocalTransformationGroup("fixed");
+  a.rotateLocalTransformationGroup("fixed", 0.9f, Vec2F(1, 2));  // real change
+  (void)a.drawablesWithZLevel(Vec2F());
+  EXPECT_GT(rekeys(), r0);                        // localtransform re-key fired
+  Root::singleton().configuration()->set("renderDrawableCache", false);
+}
+
 // A version>0 animator whose active state currently names a transformation group
 // animates that group every tick (the transforms seed from the group's current
 // animation transform, so non-reset entries accumulate continuously): LIVE.
