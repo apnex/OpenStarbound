@@ -98,6 +98,8 @@ R"JSON(
       "telemetryReportInterval" : 0,
       "telemetryHud" : false,
 
+      "lightingGpu" : false,
+
       "safe" : {
         "alwaysAllowClipboard" : false,
         "enableImGui" : false,

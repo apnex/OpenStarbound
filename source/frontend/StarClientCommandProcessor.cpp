@@ -58,7 +58,8 @@ ClientCommandProcessor::ClientCommandProcessor(UniverseClientPtr universeClient,
     {"swap", bind(&ClientCommandProcessor::swap, this, _1)},
     {"respawnInWorld", bind(&ClientCommandProcessor::respawnInWorld, this, _1)},
     {"render", bind(&ClientCommandProcessor::render, this, _1)},
-    {"telemetry", bind(&ClientCommandProcessor::telemetry, this, _1)}
+    {"telemetry", bind(&ClientCommandProcessor::telemetry, this, _1)},
+    {"lighting", bind(&ClientCommandProcessor::lighting, this, _1)}
   };
 }
 
@@ -642,6 +643,34 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
     return strf("wrote {}", p);
   }
   return "usage: /telemetry [on|off|deep [off]|hud|interval <s>|snapshot]";
+}
+
+
+// GPU lighting toggle (Slice 1: passthrough plumbing spike). Frontend-only:
+// reads/writes the runtime config key WorldPainter consults each frame.
+String ClientCommandProcessor::lighting(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  String const usage = "usage: /lighting gpu [on|off|status]";
+  auto status = [&]() {
+    return strf("lighting gpu: enabled={}", cfg->get("lightingGpu", false).toBool());
+  };
+
+  if (args.empty() || args.at(0) != "gpu")
+    return usage;
+  if (args.size() < 2 || args.at(1) == "status")
+    return status();
+
+  String sub = args.at(1);
+  if (sub == "on") {
+    cfg->set("lightingGpu", true);
+    return "lighting gpu on";
+  }
+  if (sub == "off") {
+    cfg->set("lightingGpu", false);
+    return "lighting gpu off";
+  }
+  return usage;
 }
 
 

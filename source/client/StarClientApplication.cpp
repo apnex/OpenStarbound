@@ -563,7 +563,8 @@ void ClientApplication::renderReload() {
   renderer->loadConfig(assets->json("/rendering/opengl.config"));
   
   loadEffectConfig("world");
-  
+  loadEffectConfig("lightingPassthrough");
+
   // define post process groups and set them to be enabled/disabled based on config
   
   auto config = m_root->configuration();

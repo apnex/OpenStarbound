@@ -62,6 +62,7 @@ private:
   String respawnInWorld(String const& argumentsString);
   String render(String const& imagePath);
   String telemetry(String const& argumentsString);
+  String lighting(String const& argumentsString);
 
   UniverseClientPtr m_universeClient;
   CinematicPtr m_cinematicOverlay;
