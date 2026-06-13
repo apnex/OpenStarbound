@@ -4,6 +4,7 @@
 #include "StarConfiguration.hpp"
 #include "StarAssets.hpp"
 #include "StarJsonExtra.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -85,7 +86,12 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   } else {
     if (lightMapUpdated) {
       adjustLighting(renderData);
-      m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+      {
+        // lightMap GPU upload (deep-gated; TelemetryScope records only under deep tracing).
+        static auto uploadTimer = Telemetry::timer("lighting.upload.us");
+        TelemetryScope uploadScope(uploadTimer);
+        m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+      }
     }
     m_renderer->setEffectParameter("lightMapMultiplier", m_assets->json("/rendering.config:lightMapMultiplier").toFloat());
     m_renderer->setEffectParameter("lightMapScale", Vec2F::filled(TilePixels * m_camera.pixelRatio()));
