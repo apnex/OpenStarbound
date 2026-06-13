@@ -15,6 +15,10 @@ STAR_CLASS(GpuLightmapPass);
 // with the real spread / point / compose passes; the drive sequence here is the scaffold.
 //
 // Runs on the render thread (the async lighting thread has no GL context). Same-thread only.
+//
+// Emits telemetry: 'lighting.gpu.cpu_cost.us' (render-thread CPU cost of driving the pass, a
+// deep-gated timer) and 'lighting.gpu.spread.passes' (spread iterations run; placeholder of 1 per
+// passthrough call until Task 4 makes it the K Jacobi iterations).
 class GpuLightmapPass {
 public:
   explicit GpuLightmapPass(Renderer* renderer);

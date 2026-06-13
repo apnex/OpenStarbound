@@ -1,10 +1,18 @@
 #include "StarGpuLightmapPass.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
 bool GpuLightmapPass::process(ImageView const& cpuLightmap) {
+  // Telemetry handles (by-value static idiom: registered once on first call, then lock-free).
+  // The scope times the whole body -- the render-thread CPU cost of driving the GPU lighting pass
+  // (deep-gated; records only under deep tracing). The counter tracks spread iterations run.
+  static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
+  static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
+  TelemetryScope cpuCostScope(cpuCostTimer);
+
   Vec2U size = cpuLightmap.size;
   if (size[0] == 0 || size[1] == 0)
     return false;
@@ -14,6 +22,11 @@ bool GpuLightmapPass::process(ImageView const& cpuLightmap) {
   // us from reaching setRenderTarget("lightingGpu") when that framebuffer is likewise absent.
   if (!m_renderer->switchEffectConfig("lightingPassthrough"))
     return false;
+
+  // The spread pass is running. The Slice-1 passthrough is a single pass, so bump by 1 here as a
+  // placeholder hook; Task 4 replaces the passthrough with the K-iteration Jacobi ping-pong and
+  // sets this to the iteration count K (inc(K)).
+  spreadPasses.inc(1);
 
   // Target the lightmap-sized off-screen float buffer (setRenderTarget resizes it + sets the
   // viewport and the screenSize uniform to `size`).
