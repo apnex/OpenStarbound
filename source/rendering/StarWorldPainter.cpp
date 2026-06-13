@@ -8,6 +8,47 @@
 
 namespace Star {
 
+// GPU-lighting parity shadow-compare (diagnostics only). The GPU spread result is calc-region
+// sized (RGB_F); the CPU lightMap is query-region sized. Crop the GPU result to the query
+// sub-rect (offset = border on each axis) and compare per channel against the CPU spread.
+// Tolerance is perceptual (sweep-vs-Jacobi is algorithmic, not ulp): mean abs <= 1.5/255, max
+// <= 6/255. Records render.drawable-style telemetry + a rate-limited warn on the worst cell.
+static void shadowCompareLightmap(Image const& gpuCalc, Lightmap const& cpuQuery, int border) {
+  static auto mismatchCounter = Telemetry::counter("lighting.gpu.spread.mismatch");
+  unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
+  Vec2U gpuSize = gpuCalc.size();
+  if (qw == 0 || qh == 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
+    return;
+
+  float const meanTol = 1.5f / 255.0f, maxTol = 6.0f / 255.0f;
+  double sumAbs = 0.0;
+  float worst = 0.0f;
+  unsigned worstX = 0, worstY = 0;
+  float const* gpuData = (float const*)gpuCalc.data();
+  for (unsigned y = 0; y < qh; ++y) {
+    for (unsigned x = 0; x < qw; ++x) {
+      Vec3F cpu = cpuQuery.get(x, y);
+      size_t g = ((size_t)(y + border) * gpuSize[0] + (x + border)) * 3;
+      Vec3F gpu(gpuData[g], gpuData[g + 1], gpuData[g + 2]);
+      for (size_t c = 0; c < 3; ++c) {
+        float e = std::fabs(cpu[c] - gpu[c]);
+        sumAbs += e;
+        if (e > worst) { worst = e; worstX = x; worstY = y; }
+      }
+    }
+  }
+  float mean = (float)(sumAbs / (qw * qh * 3));
+  if (mean > meanTol || worst > maxTol) {
+    mismatchCounter.inc(1);
+    static int warnBudget = 8;   // rate-limited; the counter carries the running total
+    if (warnBudget > 0) {
+      --warnBudget;
+      Logger::warn("GPU lighting spread parity exceeded: mean={:.4f}/255 max={:.4f}/255 at query cell ({},{})",
+          mean * 255.0f, worst * 255.0f, worstX, worstY);
+    }
+  }
+}
+
 WorldPainter::WorldPainter() {
   m_assets = Root::singleton().assets();
 
@@ -101,19 +142,31 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         float spreadMaxObstacle = lightingConfig.getFloat("spreadMaxObstacle");
         float brightnessLimit = lightingConfig.getFloat("brightnessLimit");
         unsigned iterations = config->get("lightingGpuSpreadIterations").optUInt().value((unsigned)ceil(spreadMaxAir));
+        bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
+        Image gpuResult;
         gpuLightmap = m_gpuLightmapPass->processSpread(renderData.lightingEmission, renderData.lightingObstacle,
-            iterations, spreadMaxAir, spreadMaxObstacle, brightnessLimit);
+            iterations, spreadMaxAir, spreadMaxObstacle, brightnessLimit, shadowCompare, &gpuResult);
+        if (gpuLightmap) {
+          // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
+          // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
+          m_lightMapBorder = ((int)renderData.lightingEmission.size()[0] - (int)renderData.lightMap.width()) / 2;
+          if (shadowCompare && gpuResult.size()[0] > 0)
+            shadowCompareLightmap(gpuResult, renderData.lightMap, m_lightMapBorder);
+        }
       }
       if (!gpuLightmap) {
         // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
         static auto uploadTimer = Telemetry::timer("lighting.upload.us");
         TelemetryScope uploadScope(uploadTimer);
         m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+        m_lightMapBorder = 0;
       }
     }
     m_renderer->setEffectParameter("lightMapMultiplier", m_assets->json("/rendering.config:lightMapMultiplier").toFloat());
     m_renderer->setEffectParameter("lightMapScale", Vec2F::filled(TilePixels * m_camera.pixelRatio()));
-    m_renderer->setEffectParameter("lightMapOffset", m_camera.worldToScreen(Vec2F(renderData.lightMinPosition)));
+    // m_lightMapBorder persists across non-update frames to match the persistent lightMap binding.
+    m_renderer->setEffectParameter("lightMapOffset",
+        m_camera.worldToScreen(Vec2F(renderData.lightMinPosition) - Vec2F((float)m_lightMapBorder, (float)m_lightMapBorder)));
   }
 
   // Parallax layers

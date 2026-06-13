@@ -103,6 +103,7 @@ R"JSON(
 
       "lightingGpu" : false,
       "lightingGpuSpreadIterations" : 8,
+      "lightingGpuShadowCompare" : false,
 
       "safe" : {
         "alwaysAllowClipboard" : false,
