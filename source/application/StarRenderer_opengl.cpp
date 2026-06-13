@@ -559,7 +559,14 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
     return;
   }
 
-  auto buf = getGlFrameBuffer(*frameBufferId);
+  // Tolerate a missing target rather than crashing the frame: callers (e.g. GpuLightmapPass)
+  // degrade to their CPU path. Warn once via the renderer log on the absent id.
+  auto bufPtr = m_frameBuffers.ptr(*frameBufferId);
+  if (!bufPtr) {
+    Logger::warn("setRenderTarget: frame buffer '{}' does not exist; ignoring", *frameBufferId);
+    return;
+  }
+  auto buf = *bufPtr;
 
   // (Re)allocate the target's color texture when a non-zero size differs from the current one.
   // Off-screen lighting targets are lightmap-sized (small, view-dependent), not screen-sized.

@@ -4,14 +4,19 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-void GpuLightmapPass::process(ImageView const& cpuLightmap) {
+bool GpuLightmapPass::process(ImageView const& cpuLightmap) {
   Vec2U size = cpuLightmap.size;
   if (size[0] == 0 || size[1] == 0)
-    return;
+    return false;
 
-  // Bind the passthrough program, then target the lightmap-sized off-screen float buffer
-  // (setRenderTarget resizes it + sets the viewport and the screenSize uniform to `size`).
-  m_renderer->switchEffectConfig("lightingPassthrough");
+  // Bind the passthrough program. If it isn't loaded (e.g. out-of-date asset pack), bail without
+  // touching the render target -- the caller falls back to the CPU lightmap path. This also keeps
+  // us from reaching setRenderTarget("lightingGpu") when that framebuffer is likewise absent.
+  if (!m_renderer->switchEffectConfig("lightingPassthrough"))
+    return false;
+
+  // Target the lightmap-sized off-screen float buffer (setRenderTarget resizes it + sets the
+  // viewport and the screenSize uniform to `size`).
   m_renderer->setRenderTarget(String("lightingGpu"), size);
   m_renderer->setEffectTexture("inputTexture", cpuLightmap);
 
@@ -26,6 +31,7 @@ void GpuLightmapPass::process(ImageView const& cpuLightmap) {
   m_renderer->setRenderTarget({});
   m_renderer->switchEffectConfig("world");
   m_renderer->setEffectTextureFromTarget("lightMap", "lightingGpu");
+  return true;
 }
 
 }
