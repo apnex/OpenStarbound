@@ -102,7 +102,7 @@ R"JSON(
       "renderDrawableCacheShadowCompare" : false,
 
       "lightingGpu" : false,
-      "lightingGpuSpreadIterations" : 8,
+      "lightingGpuSpreadIterations" : 64,
       "lightingGpuShadowCompare" : false,
 
       "safe" : {
