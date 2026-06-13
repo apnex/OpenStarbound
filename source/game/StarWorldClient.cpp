@@ -1503,6 +1503,7 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
       renderData->lightingEmission = std::move(m_lightingEmission);
       renderData->lightingObstacle = std::move(m_lightingObstacle);
       renderData->lightingPointLights = std::move(m_lightingPointLights);
+      renderData->lightMapBorder = m_lightingBorder;
     }
     return true;
   }
@@ -1811,9 +1812,15 @@ void WorldClient::lightingCalc() {
   // the spread result.
   bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
   bool shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
+  int lightMapBorder = 0;
   if (lightingGpu) {
     m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
     m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
+    // Border (cells) between the calc-region-sized GPU result and the query region the world shader
+    // samples. calculationRegion == queryRegion(lightRange).padded(borderCells), so this is exactly
+    // borderCells. Computed here from the calculator's geometry and carried in renderData; WorldPainter
+    // must NOT reverse-derive it from the CPU lightMap width, which is empty when the CPU calc is skipped.
+    lightMapBorder = ((int)m_lightingCalculator.calculationRegion().width() - (int)lightRange.width()) / 2;
   }
 
   // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
@@ -1842,6 +1849,7 @@ void WorldClient::lightingCalc() {
       m_lightingEmission = std::move(m_pendingLightingEmission);
       m_lightingObstacle = std::move(m_pendingLightingObstacle);
       m_lightingPointLights = std::move(m_pendingLightingPointLights);
+      m_lightingBorder = lightMapBorder;
     }
   }
 }
