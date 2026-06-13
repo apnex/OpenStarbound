@@ -17,7 +17,9 @@ STAR_CLASS(GpuLightmapPass);
 // is NOT yet on the GPU (Slice 3), so this is correct only in spread-only scenes.
 //
 // Emits telemetry: 'lighting.gpu.cpu_cost.us' (render-thread CPU cost of driving the pass, a
-// deep-gated timer) and 'lighting.gpu.spread.passes' (Jacobi iterations K run).
+// deep-gated timer) and 'lighting.gpu.spread.passes' (Jacobi iterations K run). Also registers the
+// point-pass counters 'lighting.gpu.point.lights' (point lights drawn per frame) and
+// 'lighting.gpu.point.mismatch' (parity mismatches); these are driven later (Task 4/5).
 class GpuLightmapPass {
 public:
   explicit GpuLightmapPass(Renderer* renderer);
