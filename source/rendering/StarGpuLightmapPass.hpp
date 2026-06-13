@@ -35,7 +35,8 @@ public:
   // is set, reads the final result back into `gpuResult` for the caller's parity check (diagnostics).
   bool processFull(ImageView const& emission, ImageView const& obstacle,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-      PointParameters const& params, bool shadowCompare = false, Image* gpuResult = nullptr);
+      PointParameters const& params, float brightnessScale = 1.0f,
+      bool shadowCompare = false, Image* gpuResult = nullptr);
 
 private:
   Renderer* m_renderer;
