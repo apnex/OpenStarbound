@@ -11,6 +11,11 @@ bool GpuLightmapPass::processSpread(ImageView const& emission, ImageView const& 
   // Telemetry: time the whole drive (render-thread CPU cost; deep-gated) + record the iteration count.
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
+  // Point-pass counters registered here so the keys exist (driven later): Task 4 increments
+  // point.lights by the light count when the per-light-quad point pass runs; Task 5 increments
+  // point.mismatch in the full-result shadow-compare.
+  static auto pointLights = Telemetry::counter("lighting.gpu.point.lights");
+  static auto pointMismatch = Telemetry::counter("lighting.gpu.point.mismatch");
   TelemetryScope cpuCostScope(cpuCostTimer);
 
   Vec2U size = emission.size;
