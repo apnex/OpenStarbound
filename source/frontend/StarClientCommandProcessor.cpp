@@ -651,12 +651,13 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>]";
   auto status = [&]() {
-    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations={}",
+    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={}",
       cfg->get("lightingGpu", false).toBool(),
       cfg->get("lightingGpuShadowCompare", false).toBool(),
-      cfg->get("lightingGpuSpreadIterations", 8).toUInt());
+      cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
+      cfg->get("lightingGpuBrightness", 1.0f).toFloat());
   };
 
   if (args.empty() || args.at(0) != "gpu")
@@ -683,6 +684,13 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     if (n) {
       cfg->set("lightingGpuSpreadIterations", *n);
       return strf("lighting gpu spreadIterations={}", *n);
+    }
+  }
+  if (sub == "brightness" && args.size() >= 3) {
+    auto v = maybeLexicalCast<float>(args.at(2));
+    if (v) {
+      cfg->set("lightingGpuBrightness", *v);
+      return strf("lighting gpu brightness={}", *v);
     }
   }
   return usage;

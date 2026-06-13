@@ -8,6 +8,7 @@ uniform sampler2D inputTexture;
 uniform vec2 inputTextureSize;
 uniform bool applyCap;
 uniform float brightnessLimit;
+uniform float brightnessScale;   // GPU-only final tone (1.0 = no change); tune to match a reference build
 
 in vec2 fragTexCoord;
 
@@ -20,6 +21,7 @@ void main() {
     if (intensity > brightnessLimit)
       c.rgb *= brightnessLimit / intensity;
   }
+  c.rgb *= brightnessScale;   // applied after the cap: uniform final tone-down/up
   // Force alpha = 1.0: the point pass accumulates alpha additively (1.0 per light), so the input
   // alpha can be >> 1. The engine's alpha-blend compose (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
   // would then amplify src by that alpha (and, with clear:false, feed back on the prior frame) ->
