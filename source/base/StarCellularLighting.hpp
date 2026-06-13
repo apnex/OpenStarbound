@@ -151,6 +151,10 @@ public:
   // spreadJacobiReference in StarCellularLightArray.hpp). spreadParameters()
   // returns the spread dropoff + brightnessLimit pulled from the active config.
   SpreadParameters spreadParameters() const;
+  // pointParameters() returns the point/spread dropoffs + brightnessLimit pulled
+  // from the active config, consumed by the point-lighting reference (see
+  // pointLightingReference in StarCellularLightArray.hpp).
+  PointParameters pointParameters() const;
   // Runs ONLY the spread-light seeding step and copies the resulting per-cell
   // emission (light) and obstacle grids over the full calculation region, in
   // the array's column-major (x * height + y) layout. Mutates internal cell

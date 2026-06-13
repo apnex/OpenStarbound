@@ -73,6 +73,7 @@ SET (star_game_tests_SOURCES
       drawable_cache_test.cpp
       lighting_telemetry_test.cpp
       lighting_spread_test.cpp
+      lighting_point_test.cpp
       function_test.cpp
       item_test.cpp
       root_test.cpp
