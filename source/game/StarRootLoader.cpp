@@ -99,6 +99,7 @@ R"JSON(
       "telemetryHud" : false,
 
       "lightingGpu" : false,
+      "lightingGpuSpreadIterations" : 8,
 
       "safe" : {
         "alwaysAllowClipboard" : false,

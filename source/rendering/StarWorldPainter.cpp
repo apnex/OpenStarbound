@@ -87,14 +87,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     if (lightMapUpdated) {
       adjustLighting(renderData);
       bool gpuLightmap = false;
-      if (Root::singleton().configuration()->get("lightingGpu").optBool().value(false)) {
-        // Slice-1 spike: round the lightmap through one passthrough GPU pass. process() restores
-        // the screen target + the world effect and binds the result as lightMap. Identity by
-        // construction -- an unchanged screen proves the GPU plumbing end-to-end. Returns false
-        // (and we fall back below) if the GPU lighting assets are missing.
+      auto config = Root::singleton().configuration();
+      if (config->get("lightingGpu").optBool().value(false) && renderData.lightingInputsValid) {
+        // Slice 2: compute the SPREAD pass on the GPU (K Jacobi iterations) from the exported
+        // emission+obstacle grids; processSpread restores the world effect + binds the result as
+        // lightMap. Returns false (fall back to CPU below) if the GPU lighting assets are missing.
+        // NOTE: point lighting is not yet on the GPU (Slice 3), so this is correct only in
+        // spread-only scenes.
         if (!m_gpuLightmapPass)
           m_gpuLightmapPass = make_shared<GpuLightmapPass>(m_renderer.get());
-        gpuLightmap = m_gpuLightmapPass->process(renderData.lightMap);
+        auto lightingConfig = m_assets->json("/lighting.config:lighting");
+        float spreadMaxAir = lightingConfig.getFloat("spreadMaxAir");
+        float spreadMaxObstacle = lightingConfig.getFloat("spreadMaxObstacle");
+        float brightnessLimit = lightingConfig.getFloat("brightnessLimit");
+        unsigned iterations = config->get("lightingGpuSpreadIterations").optUInt().value((unsigned)ceil(spreadMaxAir));
+        gpuLightmap = m_gpuLightmapPass->processSpread(renderData.lightingEmission, renderData.lightingObstacle,
+            iterations, spreadMaxAir, spreadMaxObstacle, brightnessLimit);
       }
       if (!gpuLightmap) {
         // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).

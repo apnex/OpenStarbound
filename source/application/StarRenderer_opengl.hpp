@@ -46,6 +46,7 @@ public:
 
   void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
   void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
+  Image readFrameBuffer(String const& frameBufferId) override;
 
   TexturePtr createTexture(Image const& texture, TextureAddressing addressing, TextureFiltering filtering) override;
   void setSizeLimitEnabled(bool enabled) override;
