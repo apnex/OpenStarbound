@@ -86,15 +86,18 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   } else {
     if (lightMapUpdated) {
       adjustLighting(renderData);
+      bool gpuLightmap = false;
       if (Root::singleton().configuration()->get("lightingGpu").optBool().value(false)) {
         // Slice-1 spike: round the lightmap through one passthrough GPU pass. process() restores
         // the screen target + the world effect and binds the result as lightMap. Identity by
-        // construction -- an unchanged screen proves the GPU plumbing end-to-end.
+        // construction -- an unchanged screen proves the GPU plumbing end-to-end. Returns false
+        // (and we fall back below) if the GPU lighting assets are missing.
         if (!m_gpuLightmapPass)
           m_gpuLightmapPass = make_shared<GpuLightmapPass>(m_renderer.get());
-        m_gpuLightmapPass->process(renderData.lightMap);
-      } else {
-        // lightMap GPU upload (deep-gated; TelemetryScope records only under deep tracing).
+        gpuLightmap = m_gpuLightmapPass->process(renderData.lightMap);
+      }
+      if (!gpuLightmap) {
+        // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
         static auto uploadTimer = Telemetry::timer("lighting.upload.us");
         TelemetryScope uploadScope(uploadTimer);
         m_renderer->setEffectTexture("lightMap", renderData.lightMap);
