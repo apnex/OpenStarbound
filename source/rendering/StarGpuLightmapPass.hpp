@@ -8,27 +8,29 @@ namespace Star {
 
 STAR_CLASS(GpuLightmapPass);
 
-// Slice-1 GPU plumbing spike. Rounds the CPU-computed lightmap through one passthrough GPU pass
-// into a float off-screen target and binds the result as the world shader's "lightMap" sampler.
-// Identity by construction -- a visually identical screen with the pass enabled proves the whole
-// upload -> off-screen float pass -> consume chain on the GPU. Slices 2-4 replace the passthrough
-// with the real spread / point / compose passes; the drive sequence here is the scaffold.
+// GPU lighting pass driver (render thread; the async lighting thread has no GL context).
 //
-// Runs on the render thread (the async lighting thread has no GL context). Same-thread only.
+// Slice 2: computes the lightmap SPREAD on the GPU via K parallel-Jacobi relaxation iterations
+// (the lightingSpread effect), ping-ponging two float framebuffers, from uploaded emission +
+// obstacle grids -- matching the CPU spread (spreadJacobiReference is the oracle). Restores the
+// screen target + the "world" effect and binds the result as the world "lightMap". Point lighting
+// is NOT yet on the GPU (Slice 3), so this is correct only in spread-only scenes.
 //
 // Emits telemetry: 'lighting.gpu.cpu_cost.us' (render-thread CPU cost of driving the pass, a
-// deep-gated timer) and 'lighting.gpu.spread.passes' (spread iterations run; placeholder of 1 per
-// passthrough call until Task 4 makes it the K Jacobi iterations).
+// deep-gated timer) and 'lighting.gpu.spread.passes' (Jacobi iterations K run).
 class GpuLightmapPass {
 public:
   explicit GpuLightmapPass(Renderer* renderer);
 
-  // Runs the passthrough pass for `cpuLightmap` into the "lightingGpu" framebuffer, restores the
-  // screen target + the "world" effect, and binds the result texture as the world "lightMap".
-  // Takes an ImageView so the engine's Lightmap converts directly (as setEffectTexture does).
-  // Returns false (doing nothing) for an empty lightmap or if the GPU lighting assets are missing
-  // -- the caller must then bind the CPU lightmap itself (fail-forward: never crash the frame).
-  bool process(ImageView const& cpuLightmap);
+  // Runs K Jacobi spread iterations for the given emission + obstacle grids (same dimensions),
+  // applies the brightnessLimit cap on the final pass, restores the screen target + "world"
+  // effect, and binds the result as the world "lightMap". Returns false (doing nothing) for empty
+  // inputs or if the GPU lighting assets are missing -- the caller then binds the CPU lightmap.
+  // When shadowCompare is set, also reads the result back and returns it via `gpuResult` for the
+  // caller's parity check (diagnostics only).
+  bool processSpread(ImageView const& emission, ImageView const& obstacle, unsigned iterations,
+      float spreadMaxAir, float spreadMaxObstacle, float brightnessLimit,
+      bool shadowCompare = false, Image* gpuResult = nullptr);
 
 private:
   Renderer* m_renderer;
