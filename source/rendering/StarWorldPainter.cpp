@@ -168,7 +168,21 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
             config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
             lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
             lc.getFloat("brightnessLimit")};
-        unsigned iterations = config->get("lightingGpuSpreadIterations").optUInt().value((unsigned)ceil(params.spreadMaxAir));
+        // Auto-scale spread Jacobi iterations to the emission's peak intensity. Production's
+        // Gauss-Seidel sweep propagates fully in 2 sweeps; a parallel Jacobi needs
+        // ~ceil(maxIntensity * spreadMaxAir) steps to reach the same distance (the de-risk's K
+        // bound). A fixed K under-propagated bright (>1.0) FU spread lights -> dimmer-far-from-source
+        // cells. Scan the (small) emission for its max channel; clamp [8, lightingGpuSpreadIterations].
+        float maxEmission = 0.0f;
+        {
+          auto const& em = renderData.lightingEmission;
+          float const* ed = (float const*)em.data();
+          size_t n = (size_t)em.size()[0] * em.size()[1] * 3;
+          for (size_t i = 0; i < n; ++i)
+            maxEmission = std::max(maxEmission, ed[i]);
+        }
+        unsigned cap = config->get("lightingGpuSpreadIterations").optUInt().value(64);
+        unsigned iterations = std::min(cap, std::max(8u, (unsigned)std::ceil(maxEmission * params.spreadMaxAir)));
         bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
         Image gpuResult;
         gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingObstacle,
