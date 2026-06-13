@@ -45,6 +45,10 @@ private:
   EnvironmentPainterPtr m_environmentPainter;
   TilePainterPtr m_tilePainter;
   GpuLightmapPassPtr m_gpuLightmapPass;
+  // Border (in cells) between the bound lightMap texture and the query region: 0 for the CPU
+  // (query-sized) lightMap, borderCells for the GPU (calc-region-sized) result. Persists across
+  // non-update frames since the lightMap binding persists. Shifts lightMapOffset accordingly.
+  int m_lightMapBorder = 0;
 
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
