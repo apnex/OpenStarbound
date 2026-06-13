@@ -297,3 +297,59 @@ TEST(LightingPoint, ShadowBehindWall) {
   EXPECT_GT(prodLit.max(), 0.4f) << "near unobstructed cell should be brightly lit";
   EXPECT_LT(refShadow.max(), 0.1f) << "reference must reproduce the production shadow";
 }
+
+// Proves CellularLightingCalculator::exportPointLights hands the GPU point pass
+// the exact point-light list that was added: same count, same insertion order,
+// and per-light array-relative position (world - calcRegion.min), value, beam,
+// beamAngle, beamAmbience, asSpread -- bit-for-bit what addPointLight stored.
+TEST(LightingPoint, ExportPointLightsMatchesAdded) {
+  struct AddedLight {
+    Vec2F worldPos;
+    Vec3F value;
+    float beam;
+    float beamAngle;
+    float beamAmbience;
+    bool asSpread;
+  };
+  // Varied position / value / beam / asSpread (one plain omni, one beam, one
+  // asSpread-hybrid point) so each field is exercised independently.
+  AddedLight const added[] = {
+    {{18.0f, 22.0f}, {0.90f, 0.70f, 0.50f}, 0.0f, 0.0f, 0.0f, false},
+    {{40.0f, 30.0f}, {0.30f, 0.80f, 0.95f}, 2.0f, (float)Constants::pi, 0.25f, false},
+    {{12.5f, 9.0f},  {1.00f, 0.40f, 0.40f}, 1.5f, (float)Constants::pi * 0.5f, 0.10f, true},
+  };
+
+  RectI queryRegion = RectI::withSize(Vec2I(0, 0), Vec2I(64, 48));
+  CellularLightingCalculator calc;
+  calc.setParameters(pointConfig());
+  calc.setMonochrome(false);
+  calc.begin(queryRegion);
+
+  // A wall, so the scene mirrors a real calc (not load-bearing for the export).
+  for (int y = kWallWorldY0; y < kWallWorldY1; ++y)
+    calc.setCellIndex(calc.baseIndexFor(Vec2I(kWallWorldX, y)), Vec3F(0.0f, 0.0f, 0.0f), true);
+
+  for (auto const& a : added)
+    calc.addPointLight(a.worldPos, a.value, a.beam, a.beamAngle, a.beamAmbience, a.asSpread);
+
+  List<ColoredCellularLightArray::PointLight> lights;
+  calc.exportPointLights(lights);
+
+  ASSERT_EQ(lights.size(), sizeof(added) / sizeof(added[0]));
+
+  Vec2F calcMin = Vec2F(calc.calculationRegion().min());
+  for (size_t i = 0; i < lights.size(); ++i) {
+    auto const& got = lights[i];
+    auto const& want = added[i];
+    Vec2F wantPos = want.worldPos - calcMin; // addPointLight's world->array conversion
+    EXPECT_FLOAT_EQ(got.position[0], wantPos[0]) << "light " << i << " position.x";
+    EXPECT_FLOAT_EQ(got.position[1], wantPos[1]) << "light " << i << " position.y";
+    EXPECT_FLOAT_EQ(got.value[0], want.value[0]) << "light " << i << " value.r";
+    EXPECT_FLOAT_EQ(got.value[1], want.value[1]) << "light " << i << " value.g";
+    EXPECT_FLOAT_EQ(got.value[2], want.value[2]) << "light " << i << " value.b";
+    EXPECT_FLOAT_EQ(got.beam, want.beam) << "light " << i << " beam";
+    EXPECT_FLOAT_EQ(got.beamAngle, want.beamAngle) << "light " << i << " beamAngle";
+    EXPECT_FLOAT_EQ(got.beamAmbience, want.beamAmbience) << "light " << i << " beamAmbience";
+    EXPECT_EQ(got.asSpread, want.asSpread) << "light " << i << " asSpread";
+  }
+}

@@ -273,6 +273,20 @@ void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obst
   }
 }
 
+void CellularLightingCalculator::exportPointLights(List<ColoredCellularLightArray::PointLight>& out) {
+  // Mirror exportSpreadInputs' monochrome/colored branch. The colored array
+  // already stores ColoredCellularLightArray::PointLight, so copy directly; the
+  // monochrome array stores a scalar value, broadcast it to all channels (as the
+  // monochrome emission export does) so the GPU point pass sees one struct type.
+  out.clear();
+  if (m_monochrome) {
+    for (auto const& light : m_lightArray.right().pointLights())
+      out.append({light.position, Vec3F::filled(light.value), light.beam, light.beamAngle, light.beamAmbience, light.asSpread});
+  } else {
+    out = m_lightArray.left().pointLights();
+  }
+}
+
 void CellularLightingCalculator::setupImage(Image& image, PixelFormat format) const {
   Vec2S arrayMin = Vec2S(m_queryRegion.min() - m_calculationRegion.min());
   Vec2S arrayMax = Vec2S(m_queryRegion.max() - m_calculationRegion.min());

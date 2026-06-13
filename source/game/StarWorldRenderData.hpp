@@ -10,6 +10,7 @@
 #include "StarEntity.hpp"
 #include "StarThread.hpp"
 #include "StarCellularLighting.hpp"
+#include "StarCellularLightArray.hpp"
 
 namespace Star {
 
@@ -34,6 +35,10 @@ struct WorldRenderData {
   // is RGB24 (255 obstacle / 0 air). lightingInputsValid gates their use.
   Image lightingEmission;
   Image lightingObstacle;
+  // The point lights (array-relative, insertion order) for the GPU per-light-quad
+  // point pass (Slice 3). Travels alongside emission/obstacle, gated by
+  // lightingInputsValid.
+  List<ColoredCellularLightArray::PointLight> lightingPointLights;
   bool lightingInputsValid = false;
 
   List<EntityDrawables> entityDrawables;
