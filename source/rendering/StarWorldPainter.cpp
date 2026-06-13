@@ -199,11 +199,20 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       }
       if (!gpuLightmap) {
         // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
-        static auto uploadTimer = Telemetry::timer("lighting.upload.us");
-        TelemetryScope uploadScope(uploadTimer);
-        m_renderer->setEffectTexture("lightMap", renderData.lightMap);
-        m_lightMapBorder = 0;
+        if (!renderData.lightMap.empty()) {
+          static auto uploadTimer = Telemetry::timer("lighting.upload.us");
+          TelemetryScope uploadScope(uploadTimer);
+          m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+          m_lightMapBorder = 0;
+        }
+        // else (Slice 4): GPU pass failed AND no CPU lightMap this frame -- the skip-calculate
+        // latch raced a transient GPU failure. Keep the previous lightMap binding for this one
+        // frame; reporting m_gpuLightingActive=false (below) re-arms the CPU path on the lighting
+        // thread, so a real lightMap returns within ~1 frame. (Empty upload would flash black.)
       }
+      // Slice 4: report this frame's GPU outcome so the lighting thread can drop the
+      // redundant CPU calculate() once the GPU path is confirmed working.
+      m_gpuLightingActive = gpuLightmap;
     }
     m_renderer->setEffectParameter("lightMapMultiplier", m_assets->json("/rendering.config:lightMapMultiplier").toFloat());
     m_renderer->setEffectParameter("lightMapScale", Vec2F::filled(TilePixels * m_camera.pixelRatio()));
