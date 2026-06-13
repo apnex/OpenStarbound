@@ -26,6 +26,7 @@ static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, in
   double sumAbs = 0.0;
   float worst = 0.0f;
   unsigned worstX = 0, worstY = 0;
+  Vec3F worstCpu, worstGpu;
   float const* gpuData = (float const*)gpuCalc.data();
   for (unsigned y = 0; y < qh; ++y) {
     for (unsigned x = 0; x < qw; ++x) {
@@ -35,7 +36,7 @@ static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, in
       for (size_t c = 0; c < 3; ++c) {
         float e = std::fabs(cpu[c] - gpu[c]);
         sumAbs += e;
-        if (e > worst) { worst = e; worstX = x; worstY = y; }
+        if (e > worst) { worst = e; worstX = x; worstY = y; worstCpu = cpu; worstGpu = gpu; }
       }
     }
   }
@@ -45,8 +46,12 @@ static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, in
     static int warnBudget = 8;   // rate-limited; the counter carries the running total
     if (warnBudget > 0) {
       --warnBudget;
-      Logger::warn("GPU lighting full parity exceeded vs CPU lightMap: mean={:.4f}/255 max={:.4f}/255 at query cell ({},{})",
-          mean * 255.0f, worst * 255.0f, worstX, worstY);
+      // Dump the worst cell's CPU vs GPU RGB to characterise the residual: a uniform GPU>CPU
+      // (or per-channel) offset points at the point-pass math; a value-magnitude-scaled gap
+      // points at RGBA16F accumulation precision (vs the CPU's 32F).
+      Logger::warn("GPU lighting full parity: mean={:.4f}/255 max={:.4f}/255 at ({},{}) cpu=({:.3f},{:.3f},{:.3f}) gpu=({:.3f},{:.3f},{:.3f})",
+          mean * 255.0f, worst * 255.0f, worstX, worstY,
+          worstCpu[0], worstCpu[1], worstCpu[2], worstGpu[0], worstGpu[1], worstGpu[2]);
     }
   }
 }
