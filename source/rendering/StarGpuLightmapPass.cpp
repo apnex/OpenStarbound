@@ -4,8 +4,8 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-void GpuLightmapPass::process(Image const& cpuLightmap) {
-  Vec2U size = cpuLightmap.size();
+void GpuLightmapPass::process(ImageView const& cpuLightmap) {
+  Vec2U size = cpuLightmap.size;
   if (size[0] == 0 || size[1] == 0)
     return;
 
