@@ -26,6 +26,11 @@ public:
   void update(float dt);
   void render(WorldRenderData& renderData, function<bool()> lightWaiter);
   void adjustLighting(WorldRenderData& renderData);
+  // Slice 4: did the GPU lightmap pass produce this frame's lightMap? The render loop
+  // feeds this back to WorldClient (setGpuLightingActive) so the lighting thread can
+  // drop the redundant CPU calculate(). False whenever GPU lighting is off, inputs are
+  // invalid, the world is fullbright, or the GPU pass fell back to CPU.
+  bool gpuLightingActive() const { return m_gpuLightingActive; }
 
 private:
   void renderParticles(WorldRenderData& renderData, Particle::Layer layer);
@@ -49,6 +54,8 @@ private:
   // (query-sized) lightMap, borderCells for the GPU (calc-region-sized) result. Persists across
   // non-update frames since the lightMap binding persists. Shifts lightMapOffset accordingly.
   int m_lightMapBorder = 0;
+  // Slice 4: latest GPU-lightmap-pass outcome, reported back to WorldClient each frame.
+  bool m_gpuLightingActive = false;
 
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
