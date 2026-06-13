@@ -546,6 +546,56 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   return true;
 }
 
+void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size) {
+  flushImmediatePrimitives();
+
+  if (!frameBufferId) {
+    // Restore the screen as the draw target and the full-screen viewport/screenSize.
+    m_currentFrameBuffer.reset();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glViewport(0, 0, m_screenSize[0], m_screenSize[1]);
+    if (m_screenSizeUniform != -1)
+      glUniform2f(m_screenSizeUniform, (float)m_screenSize[0], (float)m_screenSize[1]);
+    return;
+  }
+
+  auto buf = getGlFrameBuffer(*frameBufferId);
+
+  // (Re)allocate the target's color texture when a non-zero size differs from the current one.
+  // Off-screen lighting targets are lightmap-sized (small, view-dependent), not screen-sized.
+  if (size[0] != 0 && size[1] != 0 && buf->texture->textureSize != size) {
+    bool hdr = settingModeValue(buf->hdrMode, buf->config.getBool("hdrSetting", false));
+    auto format = buf->alpha ? GL_RGBA : GL_RGB;
+    auto internalFormat = hdr ? (buf->alpha ? GL_RGBA16F : GL_RGB16F) : (buf->alpha ? GL_RGBA8 : GL_RGB8);
+    auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+    glBindTexture(GL_TEXTURE_2D, buf->texture->textureId);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
+    buf->texture->textureSize = size;
+  }
+
+  switchGlFrameBuffer(buf);
+  Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->texture->textureSize;
+  glViewport(0, 0, vp[0], vp[1]);
+  if (m_screenSizeUniform != -1)
+    glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
+}
+
+void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) {
+  auto ptr = m_currentEffect->textures.ptr(textureName);
+  if (!ptr)
+    return;
+
+  flushImmediatePrimitives();
+
+  // Bind the framebuffer's color texture (a GlLoneTexture, same type setEffectTexture produces)
+  // directly to the sampler -- no CPU upload.
+  ptr->textureValue = getGlFrameBuffer(frameBufferId)->texture;
+  if (ptr->textureSizeUniform != -1) {
+    auto textureSize = ptr->textureValue->glTextureSize();
+    glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
+  }
+}
+
 void OpenGlRenderer::setScissorRect(Maybe<RectI> const& scissorRect) {
   if (scissorRect == m_scissorRect)
     return;
