@@ -1,6 +1,7 @@
 #include "StarWorldClient.hpp"
 #include "StarIterator.hpp"
 #include "StarLogging.hpp"
+#include "StarTelemetry.hpp"
 #include "StarBiome.hpp"
 #include "StarMaterialRenderProfile.hpp"
 #include "StarLiquidTypes.hpp"
@@ -1731,9 +1732,15 @@ void WorldClient::lightingTileGather() {
 }
 
 void WorldClient::lightingCalc() {
+  // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
+  // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
+  static auto totalTimer = Telemetry::timer("lighting.cpu.total.us");
+  static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us");
+
   MutexLocker prepLocker(m_lightMapPrepMutex);
   if (!m_pendingLightReady.load())
     return;
+  TelemetryScope totalScope(totalTimer);
   m_pendingLightReady = false;
   RectI lightRange = m_pendingLightRange;
   List<LightSource> lights = std::move(m_pendingLights);
@@ -1745,7 +1752,10 @@ void WorldClient::lightingCalc() {
   m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
   m_lightingCalculator.setMonochrome(monochrome);
   m_lightingCalculator.begin(lightRange);
-  lightingTileGather();
+  {
+    TelemetryScope gatherScope(gatherTimer);
+    lightingTileGather();
+  }
 
   prepLocker.unlock();
 
