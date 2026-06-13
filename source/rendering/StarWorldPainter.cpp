@@ -150,6 +150,10 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   if (renderData.isFullbright) {
     m_renderer->setEffectTexture("lightMap", Image::filled(Vec2U(1, 1), { 255, 255, 255, 255 }, PixelFormat::RGB24));
     m_renderer->setEffectParameter("lightMapMultiplier", 1.0f);
+    // Invariant: m_lightMapBorder always matches the currently-bound lightMap. The 1x1 white
+    // texture is offset-invariant so this is defensive, but keeps the border consistent if the
+    // binding persists into a later non-fullbright frame before a fresh lighting frame arrives.
+    m_lightMapBorder = 0;
   } else {
     if (lightMapUpdated) {
       adjustLighting(renderData);

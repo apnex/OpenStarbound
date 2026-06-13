@@ -1480,12 +1480,19 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
   // m_lightingEmission is moved out below, so !empty() is a fresh-once signal -- the
   // same consume-once mechanic m_lightMap uses.
   if (renderData && (!m_lightMap.empty() || (m_lightingInputsValid && !m_lightingEmission.empty()))) {
-    for (auto& previewTile : m_previewTiles) {
-      if (previewTile.updateLight) {
-        Vec2I lightArrayPos = m_geometry.diff(previewTile.position, m_lightMinPosition);
-        if (lightArrayPos[0] >= 0 && lightArrayPos[0] < (int)m_lightMap.width()
-         && lightArrayPos[1] >= 0 && lightArrayPos[1] < (int)m_lightMap.height())
-          m_lightMap.set(lightArrayPos[0], lightArrayPos[1], Color::v3bToFloat(previewTile.light));
+    // Preview-tile light injection patches the CPU lightMap so client-predicted (pre-server-confirm)
+    // block placement lights up instantly. Known limitation (Slice 4): in skip-calculate GPU mode
+    // m_lightMap is intentionally empty, so this patch is unavailable -- a placed block's light
+    // appears one server-confirm round-trip later (once it enters the tile gather -> export -> GPU).
+    // The empty-guard makes that skip explicit (the bounds checks would no-op against width/height 0).
+    if (!m_lightMap.empty()) {
+      for (auto& previewTile : m_previewTiles) {
+        if (previewTile.updateLight) {
+          Vec2I lightArrayPos = m_geometry.diff(previewTile.position, m_lightMinPosition);
+          if (lightArrayPos[0] >= 0 && lightArrayPos[0] < (int)m_lightMap.width()
+           && lightArrayPos[1] >= 0 && lightArrayPos[1] < (int)m_lightMap.height())
+            m_lightMap.set(lightArrayPos[0], lightArrayPos[1], Color::v3bToFloat(previewTile.light));
+        }
       }
     }
     renderData->lightMap = std::move(m_lightMap);
