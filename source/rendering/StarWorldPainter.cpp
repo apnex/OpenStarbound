@@ -15,7 +15,9 @@ namespace Star {
 // GPU result to the query sub-rect (offset = border on each axis) and compare per channel.
 // Tolerance allows RGBA16F + additive float-add order + the DDA-vs-Xiaolin-Wu residual: mean abs
 // <= 3/255, max <= 10/255.
-static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border) {
+static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border,
+    ImageView const& emission, ImageView const& obstacle,
+    List<ColoredCellularLightArray::PointLight> const& lights, PointParameters const& params, unsigned iterations) {
   static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch");
   unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
   Vec2U gpuSize = gpuCalc.size();
@@ -46,12 +48,29 @@ static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, in
     static int warnBudget = 8;   // rate-limited; the counter carries the running total
     if (warnBudget > 0) {
       --warnBudget;
-      // Dump the worst cell's CPU vs GPU RGB to characterise the residual: a uniform GPU>CPU
-      // (or per-channel) offset points at the point-pass math; a value-magnitude-scaled gap
-      // points at RGBA16F accumulation precision (vs the CPU's 32F).
-      Logger::warn("GPU lighting full parity: mean={:.4f}/255 max={:.4f}/255 at ({},{}) cpu=({:.3f},{:.3f},{:.3f}) gpu=({:.3f},{:.3f},{:.3f})",
+      // 3-way localizer: compute the CPU reference (proven spreadJacobiReference + pointLightingReference
+      // on the SAME exported inputs) at the worst cell. production==reference but GPU differs => GLSL
+      // port bug at this geometry; reference==GPU but production differs => export/reference issue.
+      Vec3F ref(-1, -1, -1);
+      size_t w = emission.size[0], h = emission.size[1];
+      if (w == gpuSize[0] && h == gpuSize[1] && emission.size == obstacle.size) {
+        List<Vec3F> em; em.resize(w * h);
+        List<uint8_t> ob; ob.resize(w * h);
+        float const* eData = (float const*)emission.data;
+        uint8_t const* oData = (uint8_t const*)obstacle.data;
+        for (size_t x = 0; x < w; ++x)
+          for (size_t y = 0; y < h; ++y) {
+            size_t px = (y * w + x) * 3;
+            em[x * h + y] = Vec3F(eData[px], eData[px + 1], eData[px + 2]);
+            ob[x * h + y] = oData[px] > 127 ? 1 : 0;
+          }
+        auto spread = spreadJacobiReference(em, ob, w, h, SpreadParameters{params.spreadMaxAir, params.spreadMaxObstacle, params.brightnessLimit}, iterations);
+        auto full = pointLightingReference(spread, ob, lights, w, h, params);
+        ref = full[((size_t)worstX + border) * h + ((size_t)worstY + border)];
+      }
+      Logger::warn("GPU lighting full parity: mean={:.4f}/255 max={:.4f}/255 at ({},{}) cpu=({:.3f},{:.3f},{:.3f}) gpu=({:.3f},{:.3f},{:.3f}) ref=({:.3f},{:.3f},{:.3f})",
           mean * 255.0f, worst * 255.0f, worstX, worstY,
-          worstCpu[0], worstCpu[1], worstCpu[2], worstGpu[0], worstGpu[1], worstGpu[2]);
+          worstCpu[0], worstCpu[1], worstCpu[2], worstGpu[0], worstGpu[1], worstGpu[2], ref[0], ref[1], ref[2]);
     }
   }
 }
@@ -159,7 +178,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
           // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
           m_lightMapBorder = ((int)renderData.lightingEmission.size()[0] - (int)renderData.lightMap.width()) / 2;
           if (shadowCompare && gpuResult.size()[0] > 0)
-            shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder);
+            shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder,
+                renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights, params, iterations);
         }
       }
       if (!gpuLightmap) {
