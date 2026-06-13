@@ -1474,7 +1474,12 @@ void WorldClient::collectLiquid(List<Vec2I> const& tilePositions, LiquidId liqui
 bool WorldClient::waitForLighting(WorldRenderData* renderData) {
   MutexLocker prepLocker(m_lightMapPrepMutex);
   MutexLocker lightMapLocker(m_lightMapMutex);
-  if (renderData && !m_lightMap.empty()) {
+  // Slice 4: a lighting frame is "ready to consume" when either the CPU lightMap is
+  // fresh (CPU mode / first GPU frame / shadow-compare) OR fresh GPU inputs were
+  // exported (skip-calculate GPU mode, where m_lightMap is intentionally empty).
+  // m_lightingEmission is moved out below, so !empty() is a fresh-once signal -- the
+  // same consume-once mechanic m_lightMap uses.
+  if (renderData && (!m_lightMap.empty() || (m_lightingInputsValid && !m_lightingEmission.empty()))) {
     for (auto& previewTile : m_previewTiles) {
       if (previewTile.updateLight) {
         Vec2I lightArrayPos = m_geometry.diff(previewTile.position, m_lightMinPosition);
@@ -1495,6 +1500,10 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
     return true;
   }
   return false;
+}
+
+void WorldClient::setGpuLightingActive(bool active) {
+  m_gpuLightingActive.store(active, std::memory_order_relaxed);
 }
 
 WorldClient::BroadcastCallback& WorldClient::broadcastCallback() {
@@ -1789,19 +1798,34 @@ void WorldClient::lightingCalc() {
     m_lightingCalculator.addSpreadLight(position, lightPair.second);
   }
 
-  // GPU spread (Slice 2): when the lightingGpu flag is on, export the seeded
-  // emission + obstacle grids for the GPU spread pass. exportSpreadInputs must
-  // run BEFORE calculate(), which overwrites the cells with the spread result.
-  // We KEEP calling calculate() this slice so the CPU lightMap still exists for
-  // the shadow-compare and the CPU fallback path -- the redundant CPU spread
-  // cost is accepted while GPU spread is unproven, and is removed in Slice 4.
+  // GPU lighting (Slice 2/3): when the lightingGpu flag is on, export the seeded
+  // emission + obstacle grids and the point-light list for the GPU passes.
+  // exportSpreadInputs must run BEFORE calculate(), which overwrites the cells with
+  // the spread result.
   bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
+  bool shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
   if (lightingGpu) {
     m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
     m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
   }
 
-  m_lightingCalculator.calculate(m_pendingLightMap);
+  // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
+  // exported grids, so the CPU calculate() (spread sweep + point raycast, the bulk of
+  // the CPU lighting cost) is pure redundant work -- skip it. Guards:
+  //  - m_gpuLightingActive: only skip once the render thread has confirmed a successful
+  //    GPU pass. The first lighting frame (latch off) runs the CPU path so a valid
+  //    m_lightMap exists for the fallback; if a later GPU frame fails, the render thread
+  //    reports false and the CPU path re-arms within ~1 frame (self-healing).
+  //  - !shadowCompare: shadow-compare keeps the CPU lightMap as the parity reference.
+  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran");
+  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped");
+  bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
+  if (skipCpuCalc) {
+    calcSkipped.inc(1);
+  } else {
+    m_lightingCalculator.calculate(m_pendingLightMap);
+    calcRan.inc(1);
+  }
   {
     MutexLocker mapLocker(m_lightMapMutex);
     m_lightMinPosition = lightRange.min();
