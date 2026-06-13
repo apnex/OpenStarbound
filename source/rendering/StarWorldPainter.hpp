@@ -6,6 +6,7 @@
 #include "StarTextPainter.hpp"
 #include "StarDrawablePainter.hpp"
 #include "StarRenderer.hpp"
+#include "StarGpuLightmapPass.hpp"
 
 namespace Star {
 
@@ -43,6 +44,7 @@ private:
   DrawablePainterPtr m_drawablePainter;
   EnvironmentPainterPtr m_environmentPainter;
   TilePainterPtr m_tilePainter;
+  GpuLightmapPassPtr m_gpuLightmapPass;
 
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
