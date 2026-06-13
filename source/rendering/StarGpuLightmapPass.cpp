@@ -8,7 +8,7 @@ GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
 bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& obstacle,
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-    PointParameters const& params, bool shadowCompare, Image* gpuResult) {
+    PointParameters const& params, float brightnessScale, bool shadowCompare, Image* gpuResult) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
   static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights");
@@ -86,6 +86,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& ob
   m_renderer->switchEffectConfig("lightingPassthrough");        // flushes the final point quad
   m_renderer->setEffectParameter("applyCap", true);
   m_renderer->setEffectParameter("brightnessLimit", params.brightnessLimit);
+  m_renderer->setEffectParameter("brightnessScale", brightnessScale);
   m_renderer->setEffectTextureFromTarget("inputTexture", lastTarget);
   m_renderer->setRenderTarget(String(composeTarget), size);
   m_renderer->render(fullQuad);

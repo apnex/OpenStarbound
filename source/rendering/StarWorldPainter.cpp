@@ -185,8 +185,9 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         unsigned iterations = std::min(cap, std::max(8u, (unsigned)std::ceil(maxEmission * params.spreadMaxAir)));
         bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
         Image gpuResult;
+        float brightnessScale = config->get("lightingGpuBrightness").optFloat().value(1.0f);
         gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingObstacle,
-            renderData.lightingPointLights, iterations, params, shadowCompare, &gpuResult);
+            renderData.lightingPointLights, iterations, params, brightnessScale, shadowCompare, &gpuResult);
         if (gpuLightmap) {
           // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
           // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
