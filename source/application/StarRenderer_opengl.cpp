@@ -622,6 +622,15 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   return result;
 }
 
+void OpenGlRenderer::setBlendMode(BlendMode mode) {
+  flushImmediatePrimitives();
+  switch (mode) {
+    case BlendMode::Alpha:    glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
+    case BlendMode::Additive: glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_ONE, GL_ONE); break;
+    case BlendMode::Max:      glBlendEquation(GL_MAX); glBlendFunc(GL_ONE, GL_ONE); break;
+  }
+}
+
 void OpenGlRenderer::setScissorRect(Maybe<RectI> const& scissorRect) {
   if (scissorRect == m_scissorRect)
     return;

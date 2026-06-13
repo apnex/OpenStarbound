@@ -3,6 +3,7 @@
 
 #include "StarRenderer.hpp"
 #include "StarImage.hpp"
+#include "StarCellularLightArray.hpp"   // PointParameters, ColoredCellularLightArray::PointLight
 
 namespace Star {
 
@@ -24,15 +25,17 @@ class GpuLightmapPass {
 public:
   explicit GpuLightmapPass(Renderer* renderer);
 
-  // Runs K Jacobi spread iterations for the given emission + obstacle grids (same dimensions),
-  // applies the brightnessLimit cap on the final pass, restores the screen target + "world"
-  // effect, and binds the result as the world "lightMap". Returns false (doing nothing) for empty
-  // inputs or if the GPU lighting assets are missing -- the caller then binds the CPU lightmap.
-  // When shadowCompare is set, also reads the result back and returns it via `gpuResult` for the
-  // caller's parity check (diagnostics only).
-  bool processSpread(ImageView const& emission, ImageView const& obstacle, unsigned iterations,
-      float spreadMaxAir, float spreadMaxObstacle, float brightnessLimit,
-      bool shadowCompare = false, Image* gpuResult = nullptr);
+  // Computes the COMPLETE lightmap on the GPU: spreadIterations Jacobi spread passes (no cap) from
+  // emission+obstacle, then one blended per-light-quad point pass on top (additive or GL_MAX per
+  // params.pointAdditive), then a brightnessLimit cap-compose; restores the screen target + "world"
+  // effect and binds the result as the world "lightMap". emission/obstacle are calc-region grids
+  // (ImageView so Lightmap converts directly); lights are array-relative.
+  // Returns false (doing nothing) for empty inputs or if the GPU lighting assets are missing --
+  // the caller then binds the CPU lightmap (fail-forward: never crash the frame). When shadowCompare
+  // is set, reads the final result back into `gpuResult` for the caller's parity check (diagnostics).
+  bool processFull(ImageView const& emission, ImageView const& obstacle,
+      List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
+      PointParameters const& params, bool shadowCompare = false, Image* gpuResult = nullptr);
 
 private:
   Renderer* m_renderer;
