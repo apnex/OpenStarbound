@@ -170,6 +170,55 @@ struct SpreadParameters {
 List<Vec3F> spreadJacobiReference(List<Vec3F> const& emission, List<uint8_t> const& obstacle,
     size_t width, size_t height, SpreadParameters const& params, unsigned iterations);
 
+// Parameters consumed by the point-lighting reference (see pointLightingReference).
+// Mirrors the point/spread dropoffs + brightnessLimit from the active config.
+struct PointParameters {
+  float pointMaxAir;
+  float pointMaxObstacle;
+  float pointObstacleBoost;
+  bool pointAdditive;
+  float spreadMaxAir;
+  float spreadMaxObstacle;
+  float brightnessLimit;
+};
+
+// Selects the obstacle raycast pointLightingReference uses for the per-light
+// shadow term:
+//  - LineAttenuation: a verbatim mirror of CellularLightArray::lineAttenuation
+//    (Xiaolin-Wu anti-aliased line + early-exit) over the obstacle grid. Gives
+//    near-exact parity with production.
+//  - PortableDDA: the GLSL-portable form a fragment shader will run -- a single
+//    uniform-loop major-axis DDA with fpart/rfpart straddle weighting and
+//    fractional endpoint coverage + early-exit, no recursion, loop bounded by the
+//    major-axis cell distance. This is the Xiaolin-Wu-portability de-risk: it must
+//    match production within a looser perceptual tolerance. (The endpoint coverage
+//    term is required; dropping it diverges by ~26/255 at obstacle cells.)
+enum class ObstacleRaycast {
+  LineAttenuation,
+  PortableDDA
+};
+
+// Parallel-friendly per-cell-per-light point reference for the colored point
+// sweep (CellularLightArray<ColoredLightTraits>::calculatePointLighting). Runs
+// the EXACT production per-cell math (air attenuation, beam cone with
+// beamDirection = Vec2F(1,0).rotate(beamAngle), circularized obstacle term,
+// single-obstacle boost when !asSpread, additive vs max blend, colored
+// hue-preserving subtract) on top of a spread-only 'base', accumulating point
+// lights in the given order -- exactly as production reads getLight and writes
+// setLight on the post-spread buffer. brightnessLimit is NOT applied here (apply
+// it after, like CellularLightingCalculator::calculate). This exists to PROVE the
+// point math is reproducible off the production CellularLightArray (a GPU per-
+// light-quad shader runs the same math) and to lock the GLSL-portable raycast.
+//
+//   base     : per-cell spread-only light, column-major (x * height + y),
+//              matching CellularLightArray's internal layout.
+//   obstacle : per-cell obstacle flag (1/0), same layout. uint8_t.
+//   lights   : array-relative point lights, in production insertion order.
+//   raycast  : obstacle term form (see ObstacleRaycast).
+List<Vec3F> pointLightingReference(List<Vec3F> const& base, List<uint8_t> const& obstacle,
+    List<ColoredCellularLightArray::PointLight> const& lights, size_t width, size_t height,
+    PointParameters const& params, ObstacleRaycast raycast = ObstacleRaycast::LineAttenuation);
+
 inline float ScalarLightTraits::spread(float source, float dest, float drop) {
   return std::max(source - drop, dest);
 }

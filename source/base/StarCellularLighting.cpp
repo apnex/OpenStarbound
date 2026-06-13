@@ -198,6 +198,18 @@ SpreadParameters CellularLightingCalculator::spreadParameters() const {
     };
 }
 
+PointParameters CellularLightingCalculator::pointParameters() const {
+  return PointParameters{
+      m_config.getFloat("pointMaxAir"),
+      m_config.getFloat("pointMaxObstacle"),
+      m_config.getFloat("pointObstacleBoost"),
+      m_config.getBool("pointAdditive", false),
+      m_config.getFloat("spreadMaxAir"),
+      m_config.getFloat("spreadMaxObstacle"),
+      m_config.getFloat("brightnessLimit")
+    };
+}
+
 void CellularLightingCalculator::snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle) {
   size_t width = m_calculationRegion.width();
   size_t height = m_calculationRegion.height();
