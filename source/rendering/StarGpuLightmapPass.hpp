@@ -22,8 +22,9 @@ public:
   // Runs the passthrough pass for `cpuLightmap` into the "lightingGpu" framebuffer, restores the
   // screen target + the "world" effect, and binds the result texture as the world "lightMap".
   // Takes an ImageView so the engine's Lightmap converts directly (as setEffectTexture does).
-  // No-op for an empty lightmap.
-  void process(ImageView const& cpuLightmap);
+  // Returns false (doing nothing) for an empty lightmap or if the GPU lighting assets are missing
+  // -- the caller must then bind the CPU lightmap itself (fail-forward: never crash the frame).
+  bool process(ImageView const& cpuLightmap);
 
 private:
   Renderer* m_renderer;
