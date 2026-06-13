@@ -564,6 +564,7 @@ void ClientApplication::renderReload() {
   
   loadEffectConfig("world");
   loadEffectConfig("lightingPassthrough");
+  loadEffectConfig("lightingSpread");
 
   // define post process groups and set them to be enabled/disabled based on config
   

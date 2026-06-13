@@ -603,6 +603,25 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
   }
 }
 
+Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
+  flushImmediatePrimitives();
+
+  auto bufPtr = m_frameBuffers.ptr(frameBufferId);
+  if (!bufPtr) {
+    Logger::warn("readFrameBuffer: frame buffer '{}' does not exist", frameBufferId);
+    return Image();
+  }
+  auto buf = *bufPtr;
+  Vec2U size = buf->texture->textureSize;
+  Image result(size, PixelFormat::RGB_F);
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, buf->id);
+  glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
+  // Restore the read binding to whatever draw target is current (screen if none).
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
+  return result;
+}
+
 void OpenGlRenderer::setScissorRect(Maybe<RectI> const& scissorRect) {
   if (scissorRect == m_scissorRect)
     return;

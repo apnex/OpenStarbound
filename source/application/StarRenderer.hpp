@@ -154,6 +154,9 @@ public:
   // named sampler, consuming a prior pass's output with no CPU round-trip.
   virtual void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) = 0;
   virtual void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) = 0;
+  // Read a config framebuffer's color texture back to a CPU RGB_F image (diagnostics, e.g. GPU
+  // lighting parity shadow-compare). Returns an empty image if the framebuffer is absent.
+  virtual Image readFrameBuffer(String const& frameBufferId) = 0;
 
   // Any further rendering will be scissored based on this rect, specified in
   // pixels
