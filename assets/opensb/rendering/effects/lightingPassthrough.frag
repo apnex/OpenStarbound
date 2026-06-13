@@ -20,5 +20,9 @@ void main() {
     if (intensity > brightnessLimit)
       c.rgb *= brightnessLimit / intensity;
   }
-  fragColor = c;
+  // Force alpha = 1.0: the point pass accumulates alpha additively (1.0 per light), so the input
+  // alpha can be >> 1. The engine's alpha-blend compose (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+  // would then amplify src by that alpha (and, with clear:false, feed back on the prior frame) ->
+  // runaway over-brightness. Writing alpha 1.0 makes the compose a clean replace.
+  fragColor = vec4(c.rgb, 1.0);
 }
