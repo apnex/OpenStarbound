@@ -40,6 +40,12 @@ struct WorldRenderData {
   // lightingInputsValid.
   List<ColoredCellularLightArray::PointLight> lightingPointLights;
   bool lightingInputsValid = false;
+  // GPU lightmap border in cells: the GPU result is calc-region-sized (= emission size), so the
+  // world shader offsets by this border (calc-vs-query padding) to sample the query region. Carried
+  // here from the calculator's known geometry (Slice 4) because the CPU lightMap -- which WorldPainter
+  // previously reverse-derived the border from -- is empty when the redundant CPU calc is skipped.
+  // 0 for the CPU path (the lightMap is itself query-sized).
+  int lightMapBorder = 0;
 
   List<EntityDrawables> entityDrawables;
   List<Particle> const* particles;

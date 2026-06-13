@@ -308,6 +308,9 @@ private:
   List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;
   List<ColoredCellularLightArray::PointLight> m_lightingPointLights;
   bool m_lightingInputsValid = false;
+  // GPU lightmap border (cells) = calc-vs-query region padding, computed from the calculator's
+  // geometry and published alongside the GPU inputs for waitForLighting to travel into renderData.
+  int m_lightingBorder = 0;
   // Slice 4: set by the render thread via setGpuLightingActive(); read by the lighting
   // thread (lightingCalc) to skip the redundant CPU calculate() in confirmed GPU mode.
   atomic<bool> m_gpuLightingActive{false};
