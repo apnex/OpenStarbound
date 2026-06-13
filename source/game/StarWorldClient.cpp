@@ -1485,6 +1485,12 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
     }
     renderData->lightMap = std::move(m_lightMap);
     renderData->lightMinPosition = m_lightMinPosition;
+    // Travel the GPU-spread inputs alongside the lightmap when present.
+    renderData->lightingInputsValid = m_lightingInputsValid;
+    if (m_lightingInputsValid) {
+      renderData->lightingEmission = std::move(m_lightingEmission);
+      renderData->lightingObstacle = std::move(m_lightingObstacle);
+    }
     return true;
   }
   return false;
@@ -1782,11 +1788,26 @@ void WorldClient::lightingCalc() {
     m_lightingCalculator.addSpreadLight(position, lightPair.second);
   }
 
+  // GPU spread (Slice 2): when the lightingGpu flag is on, export the seeded
+  // emission + obstacle grids for the GPU spread pass. exportSpreadInputs must
+  // run BEFORE calculate(), which overwrites the cells with the spread result.
+  // We KEEP calling calculate() this slice so the CPU lightMap still exists for
+  // the shadow-compare and the CPU fallback path -- the redundant CPU spread
+  // cost is accepted while GPU spread is unproven, and is removed in Slice 4.
+  bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
+  if (lightingGpu)
+    m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
+
   m_lightingCalculator.calculate(m_pendingLightMap);
   {
     MutexLocker mapLocker(m_lightMapMutex);
     m_lightMinPosition = lightRange.min();
     m_lightMap = std::move(m_pendingLightMap);
+    m_lightingInputsValid = lightingGpu;
+    if (lightingGpu) {
+      m_lightingEmission = std::move(m_pendingLightingEmission);
+      m_lightingObstacle = std::move(m_pendingLightingObstacle);
+    }
   }
 }
 

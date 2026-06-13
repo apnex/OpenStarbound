@@ -157,6 +157,16 @@ public:
   // state (idempotent seeding); does NOT run the spread or point passes.
   void snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle);
 
+  // GPU-spread input export (Slice 2): seeds the spread lights into the cell
+  // grid (the pre-sweep emission state) then copies the full calculation region
+  // into upload images. 'emission' is reset to RGB_F (per-cell Vec3F light) and
+  // 'obstacle' to RGB24 with each obstacle cell 255 and air 0 (the engine has no
+  // single-channel pixel format; the GPU shader samples .r). The array's
+  // column-major (x * height + y) cell maps to image pixel (x, y). Mutates
+  // internal cell state (idempotent seeding); does NOT run the spread or point
+  // passes -- call BEFORE calculate(), which would overwrite the cells.
+  void exportSpreadInputs(Image& emission, Image& obstacle);
+
 private:
   Json m_config;
   bool m_monochrome;
