@@ -146,6 +146,17 @@ public:
   void calculate(Lightmap& output);
 
   void setupImage(Image& image, PixelFormat format = PixelFormat::RGB24) const;
+
+  // Test/tooling hooks for the Jacobi spread reference (see
+  // spreadJacobiReference in StarCellularLightArray.hpp). spreadParameters()
+  // returns the spread dropoff + brightnessLimit pulled from the active config.
+  SpreadParameters spreadParameters() const;
+  // Runs ONLY the spread-light seeding step and copies the resulting per-cell
+  // emission (light) and obstacle grids over the full calculation region, in
+  // the array's column-major (x * height + y) layout. Mutates internal cell
+  // state (idempotent seeding); does NOT run the spread or point passes.
+  void snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle);
+
 private:
   Json m_config;
   bool m_monochrome;
