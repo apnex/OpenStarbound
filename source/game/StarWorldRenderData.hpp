@@ -29,6 +29,13 @@ struct WorldRenderData {
   Vec2I lightMinPosition;
   Lightmap lightMap;
 
+  // GPU-spread inputs (Slice 2), populated by waitForLighting only when the
+  // 'lightingGpu' flag is on. emission is RGB_F per-cell seeded light; obstacle
+  // is RGB24 (255 obstacle / 0 air). lightingInputsValid gates their use.
+  Image lightingEmission;
+  Image lightingObstacle;
+  bool lightingInputsValid = false;
+
   List<EntityDrawables> entityDrawables;
   List<Particle> const* particles;
 
@@ -50,6 +57,7 @@ struct WorldRenderData {
 inline void WorldRenderData::clear() {
   tiles.resize({0, 0}); // keep reserved
 
+  lightingInputsValid = false;
   entityDrawables.clear();
   particles = nullptr;
   overheadBars.clear();

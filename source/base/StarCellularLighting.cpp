@@ -222,6 +222,45 @@ void CellularLightingCalculator::snapshotSpreadInput(List<Vec3F>& emission, List
   }
 }
 
+void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obstacle) {
+  unsigned width = (unsigned)m_calculationRegion.width();
+  unsigned height = (unsigned)m_calculationRegion.height();
+
+  // RGB_F float emission for the GPU spread; RGB24 obstacle mask (no
+  // single-channel format exists, the shader reads .r). reset() zero-fills.
+  emission.reset(width, height, PixelFormat::RGB_F);
+  obstacle.reset(width, height, PixelFormat::RGB24);
+
+  float* emissionData = (float*)emission.data();
+  Vec3B const obstacleByte(255, 255, 255);
+  Vec3B const airByte(0, 0, 0);
+
+  // Cell index x * height + y (array column-major) -> image pixel (x, y).
+  if (m_monochrome) {
+    m_lightArray.right().seedSpreadLights();
+    for (unsigned x = 0; x < width; ++x) {
+      for (unsigned y = 0; y < height; ++y) {
+        auto const& cell = m_lightArray.right().cellAtIndex((size_t)x * height + y);
+        size_t pixel = ((size_t)y * width + x) * 3;
+        emissionData[pixel] = emissionData[pixel + 1] = emissionData[pixel + 2] = cell.light;
+        obstacle.set24(x, y, cell.obstacle ? obstacleByte : airByte);
+      }
+    }
+  } else {
+    m_lightArray.left().seedSpreadLights();
+    for (unsigned x = 0; x < width; ++x) {
+      for (unsigned y = 0; y < height; ++y) {
+        auto const& cell = m_lightArray.left().cellAtIndex((size_t)x * height + y);
+        size_t pixel = ((size_t)y * width + x) * 3;
+        emissionData[pixel] = cell.light[0];
+        emissionData[pixel + 1] = cell.light[1];
+        emissionData[pixel + 2] = cell.light[2];
+        obstacle.set24(x, y, cell.obstacle ? obstacleByte : airByte);
+      }
+    }
+  }
+}
+
 void CellularLightingCalculator::setupImage(Image& image, PixelFormat format) const {
   Vec2S arrayMin = Vec2S(m_queryRegion.min() - m_calculationRegion.min());
   Vec2S arrayMax = Vec2S(m_queryRegion.max() - m_calculationRegion.min());

@@ -289,6 +289,15 @@ private:
 
   Lightmap m_pendingLightMap;
   Lightmap m_lightMap;
+  // GPU-spread inputs (Slice 2): exported alongside the lightmap when the
+  // 'lightingGpu' flag is on. The pending pair is filled in lightingCalc outside
+  // the map mutex, then published under m_lightMapMutex into the m_lighting* pair
+  // (gated by m_lightingInputsValid) for waitForLighting to move into renderData.
+  Image m_pendingLightingEmission;
+  Image m_pendingLightingObstacle;
+  Image m_lightingEmission;
+  Image m_lightingObstacle;
+  bool m_lightingInputsValid = false;
   List<LightSource> m_pendingLights;
   List<std::pair<Vec2F, Vec3F>> m_pendingParticleLights;
   RectI m_pendingLightRange;
