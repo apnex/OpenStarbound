@@ -147,6 +147,14 @@ public:
   virtual void setEffectTexture(String const& textureName, ImageView const& image) = 0;
   virtual bool switchEffectConfig(String const& name) = 0;
 
+  // Off-screen multi-pass support (e.g. GPU lighting). setRenderTarget binds the named config
+  // framebuffer as the draw target, (re)sizing its color texture to `size` and matching the
+  // viewport + screenSize uniform; an empty Maybe restores the screen target and full viewport.
+  // setEffectTextureFromTarget binds a config framebuffer's color texture to the current effect's
+  // named sampler, consuming a prior pass's output with no CPU round-trip.
+  virtual void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) = 0;
+  virtual void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) = 0;
+
   // Any further rendering will be scissored based on this rect, specified in
   // pixels
   virtual void setScissorRect(Maybe<RectI> const& scissorRect) = 0;

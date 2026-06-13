@@ -14,6 +14,7 @@ SET (star_rendering_HEADERS
       StarDrawablePainter.hpp
       StarEnvironmentPainter.hpp
       StarFontTextureGroup.hpp
+      StarGpuLightmapPass.hpp
       StarTextPainter.hpp
       StarTilePainter.hpp
       StarWorldPainter.hpp
@@ -25,6 +26,7 @@ SET (star_rendering_SOURCES
       StarDrawablePainter.cpp
       StarEnvironmentPainter.cpp
       StarFontTextureGroup.cpp
+      StarGpuLightmapPass.cpp
       StarTextPainter.cpp
       StarTilePainter.cpp
       StarWorldPainter.cpp
