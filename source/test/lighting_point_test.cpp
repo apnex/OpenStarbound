@@ -353,3 +353,35 @@ TEST(LightingPoint, ExportPointLightsMatchesAdded) {
     EXPECT_EQ(got.asSpread, want.asSpread) << "light " << i << " asSpread";
   }
 }
+
+// Slice 4 regression guard. The GPU lightmap is calc-region-sized; WorldPainter offsets it by a
+// "border" (cells) to sample the query region. WorldClient computes and carries that border as
+// (calcWidth - queryWidth) / 2. This MUST equal the true per-axis padding between the calc region
+// and the query region (queryRegion.min - calcRegion.min) on BOTH axes. The original Slice-4 bug
+// reverse-derived the border from the CPU lightMap width instead -- which is empty (=> garbage
+// offset, black world) once the redundant CPU calc is skipped. Lock the geometry so the carried
+// value can't silently drift.
+TEST(LightingPoint, GpuBorderMatchesCalcQueryPadding) {
+  RectI const queries[] = {
+    RectI::withSize(Vec2I(0, 0), Vec2I(64, 48)),
+    RectI::withSize(Vec2I(-13, 7), Vec2I(33, 91)),    // non-zero, asymmetric origin
+    RectI::withSize(Vec2I(5, -20), Vec2I(128, 16)),
+  };
+  for (auto const& queryRegion : queries) {
+    CellularLightingCalculator calc;
+    calc.setParameters(pointConfig());
+    calc.setMonochrome(false);
+    calc.begin(queryRegion);
+    RectI calcRegion = calc.calculationRegion();
+
+    int border = ((int)calcRegion.width() - (int)queryRegion.width()) / 2;  // WorldClient's formula
+    Vec2I pad = queryRegion.min() - calcRegion.min();                       // WorldPainter's true offset
+
+    EXPECT_GT(border, 0) << "border must be positive (spread padding) for query origin "
+                         << queryRegion.min()[0] << "," << queryRegion.min()[1];
+    EXPECT_EQ(border, pad[0]) << "carried border vs x-padding";
+    EXPECT_EQ(border, pad[1]) << "carried border vs y-padding";
+    EXPECT_EQ((int)calcRegion.width() - (int)queryRegion.width(),
+              (int)calcRegion.height() - (int)queryRegion.height()) << "padding symmetric across axes";
+  }
+}

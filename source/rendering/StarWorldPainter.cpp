@@ -194,8 +194,10 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
             renderData.lightingPointLights, iterations, params, brightnessScale, shadowCompare, &gpuResult);
         if (gpuLightmap) {
           // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
-          // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
-          m_lightMapBorder = ((int)renderData.lightingEmission.size()[0] - (int)renderData.lightMap.width()) / 2;
+          // world shader samples the query region. The border is carried in renderData from the
+          // calculator's geometry (Slice 4) -- it must NOT be reverse-derived from renderData.lightMap
+          // width, which is empty (=> a garbage offset, dark world) when the CPU calc is skipped.
+          m_lightMapBorder = renderData.lightMapBorder;
           if (shadowCompare && gpuResult.size()[0] > 0)
             shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder,
                 renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights, params, iterations);
