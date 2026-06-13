@@ -178,6 +178,12 @@ public:
 
   bool waitForLighting(WorldRenderData* renderData = nullptr);
 
+  // Slice 4: render-thread feedback. The render thread (ClientApplication) reports
+  // whether the GPU lightmap pass succeeded this frame; the lighting thread reads it
+  // to decide whether the CPU calculate() is redundant. Latches off (CPU keeps running)
+  // until a real GPU success, and re-arms the CPU path the moment a GPU frame fails.
+  void setGpuLightingActive(bool active);
+
   typedef std::function<bool(PlayerPtr, StringView)> BroadcastCallback;
   BroadcastCallback& broadcastCallback();
 
@@ -302,6 +308,9 @@ private:
   List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;
   List<ColoredCellularLightArray::PointLight> m_lightingPointLights;
   bool m_lightingInputsValid = false;
+  // Slice 4: set by the render thread via setGpuLightingActive(); read by the lighting
+  // thread (lightingCalc) to skip the redundant CPU calculate() in confirmed GPU mode.
+  atomic<bool> m_gpuLightingActive{false};
   List<LightSource> m_pendingLights;
   List<std::pair<Vec2F, Vec3F>> m_pendingParticleLights;
   RectI m_pendingLightRange;
