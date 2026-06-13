@@ -69,6 +69,7 @@ SET (star_game_tests_SOURCES
 
       StarTestUniverse.cpp
       assets_test.cpp
+      lighting_telemetry_test.cpp
       function_test.cpp
       item_test.cpp
       root_test.cpp
