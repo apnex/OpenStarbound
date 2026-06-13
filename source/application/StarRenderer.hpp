@@ -122,6 +122,11 @@ public:
 
 typedef Variant<float, int, Vec4F, Vec3F, Vec2F, bool> RenderEffectParameter;
 
+// Blend mode for the current draw target. Alpha is the engine default; Additive (dest += src)
+// and Max (dest = max(src,dest)) drive the GPU point-lighting accumulation (both order-independent
+// so they match the CPU's per-light additive / max blend).
+enum class BlendMode { Alpha, Additive, Max };
+
 class Renderer {
 public:
   virtual ~Renderer() = default;
@@ -157,6 +162,9 @@ public:
   // Read a config framebuffer's color texture back to a CPU RGB_F image (diagnostics, e.g. GPU
   // lighting parity shadow-compare). Returns an empty image if the framebuffer is absent.
   virtual Image readFrameBuffer(String const& frameBufferId) = 0;
+  // Set the blend mode for subsequent draws (e.g. additive/max for GPU point-light accumulation);
+  // restore to BlendMode::Alpha after. Flushes pending primitives so the mode applies cleanly.
+  virtual void setBlendMode(BlendMode mode) = 0;
 
   // Any further rendering will be scissored based on this rect, specified in
   // pixels

@@ -9,60 +9,43 @@
 
 namespace Star {
 
-// GPU-lighting SPREAD parity shadow-compare (diagnostics only). Compares the GPU spread result
-// against a CPU spread-only reference (spreadJacobiReference -- the oracle Phase 1 proved equals
-// the production sweep) computed from the SAME exported emission+obstacle. Both are calc-region
-// sized and spread-only, so this is valid in ANY scene (it does NOT compare against the full CPU
-// lightMap, which would be confounded by point lighting). Tolerance allows for RGBA16F storage +
-// K-pass accumulation (not just ulp): mean abs <= 2/255, max <= 8/255.
-static void shadowCompareSpread(Image const& gpuResult, ImageView const& emission, ImageView const& obstacle,
-    SpreadParameters const& params, unsigned iterations) {
-  static auto mismatchCounter = Telemetry::counter("lighting.gpu.spread.mismatch");
-  Vec2U size = emission.size;
-  Vec2U gpuSize = gpuResult.size();
-  if (size[0] == 0 || size[1] == 0 || gpuSize != size)
+// GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
+// point + cap) is calc-region sized; the CPU lightMap is the full (spread+point+cap) query-region
+// result. With point lighting now on BOTH sides this is apples-to-apples in ANY scene. Crop the
+// GPU result to the query sub-rect (offset = border on each axis) and compare per channel.
+// Tolerance allows RGBA16F + additive float-add order + the DDA-vs-Xiaolin-Wu residual: mean abs
+// <= 3/255, max <= 10/255.
+static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border) {
+  static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch");
+  unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
+  Vec2U gpuSize = gpuCalc.size();
+  if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
     return;
 
-  // Rebuild the CPU reference inputs in the array's column-major layout (x*height+y). The export
-  // wrote image pixel (x,y) = ((y*width+x)*3) from cell (x*height+y); invert that here.
-  size_t width = size[0], height = size[1];
-  List<Vec3F> emissionList; emissionList.resize(width * height);
-  List<uint8_t> obstacleList; obstacleList.resize(width * height);
-  float const* eData = (float const*)emission.data;
-  uint8_t const* oData = (uint8_t const*)obstacle.data;
-  for (size_t x = 0; x < width; ++x) {
-    for (size_t y = 0; y < height; ++y) {
-      size_t px = (y * width + x) * 3;
-      emissionList[x * height + y] = Vec3F(eData[px], eData[px + 1], eData[px + 2]);
-      obstacleList[x * height + y] = oData[px] > 127 ? 1 : 0;
-    }
-  }
-  List<Vec3F> cpuRef = spreadJacobiReference(emissionList, obstacleList, width, height, params, iterations);
-
-  float const meanTol = 2.0f / 255.0f, maxTol = 8.0f / 255.0f;
+  float const meanTol = 3.0f / 255.0f, maxTol = 10.0f / 255.0f;
   double sumAbs = 0.0;
   float worst = 0.0f;
   unsigned worstX = 0, worstY = 0;
-  float const* gpuData = (float const*)gpuResult.data();
-  for (size_t x = 0; x < width; ++x) {
-    for (size_t y = 0; y < height; ++y) {
-      Vec3F ref = cpuRef[x * height + y];
-      size_t g = (y * width + x) * 3;
+  float const* gpuData = (float const*)gpuCalc.data();
+  for (unsigned y = 0; y < qh; ++y) {
+    for (unsigned x = 0; x < qw; ++x) {
+      Vec3F cpu = cpuQuery.get(x, y);
+      size_t g = ((size_t)(y + border) * gpuSize[0] + (x + border)) * 3;
       Vec3F gpu(gpuData[g], gpuData[g + 1], gpuData[g + 2]);
       for (size_t c = 0; c < 3; ++c) {
-        float e = std::fabs(ref[c] - gpu[c]);
+        float e = std::fabs(cpu[c] - gpu[c]);
         sumAbs += e;
-        if (e > worst) { worst = e; worstX = (unsigned)x; worstY = (unsigned)y; }
+        if (e > worst) { worst = e; worstX = x; worstY = y; }
       }
     }
   }
-  float mean = (float)(sumAbs / (width * height * 3));
+  float mean = (float)(sumAbs / (qw * qh * 3));
   if (mean > meanTol || worst > maxTol) {
     mismatchCounter.inc(1);
     static int warnBudget = 8;   // rate-limited; the counter carries the running total
     if (warnBudget > 0) {
       --warnBudget;
-      Logger::warn("GPU lighting spread parity exceeded vs CPU spread reference: mean={:.4f}/255 max={:.4f}/255 at calc cell ({},{})",
+      Logger::warn("GPU lighting full parity exceeded vs CPU lightMap: mean={:.4f}/255 max={:.4f}/255 at query cell ({},{})",
           mean * 255.0f, worst * 255.0f, worstX, worstY);
     }
   }
@@ -149,29 +132,29 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       bool gpuLightmap = false;
       auto config = Root::singleton().configuration();
       if (config->get("lightingGpu").optBool().value(false) && renderData.lightingInputsValid) {
-        // Slice 2: compute the SPREAD pass on the GPU (K Jacobi iterations) from the exported
-        // emission+obstacle grids; processSpread restores the world effect + binds the result as
-        // lightMap. Returns false (fall back to CPU below) if the GPU lighting assets are missing.
-        // NOTE: point lighting is not yet on the GPU (Slice 3), so this is correct only in
-        // spread-only scenes.
+        // Slice 3: compute the COMPLETE lightmap on the GPU (spread + per-light point + cap) from
+        // the exported emission/obstacle/point-light grids; processFull restores the world effect +
+        // binds the result as lightMap. Returns false (fall back to CPU below) if assets are missing.
         if (!m_gpuLightmapPass)
           m_gpuLightmapPass = make_shared<GpuLightmapPass>(m_renderer.get());
-        auto lightingConfig = m_assets->json("/lighting.config:lighting");
-        float spreadMaxAir = lightingConfig.getFloat("spreadMaxAir");
-        float spreadMaxObstacle = lightingConfig.getFloat("spreadMaxObstacle");
-        float brightnessLimit = lightingConfig.getFloat("brightnessLimit");
-        unsigned iterations = config->get("lightingGpuSpreadIterations").optUInt().value((unsigned)ceil(spreadMaxAir));
+        auto lc = m_assets->json("/lighting.config:lighting");
+        PointParameters params{
+            lc.getFloat("pointMaxAir"), lc.getFloat("pointMaxObstacle"),
+            lc.getFloat("pointObstacleBoost"),
+            config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
+            lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
+            lc.getFloat("brightnessLimit")};
+        unsigned iterations = config->get("lightingGpuSpreadIterations").optUInt().value((unsigned)ceil(params.spreadMaxAir));
         bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
         Image gpuResult;
-        gpuLightmap = m_gpuLightmapPass->processSpread(renderData.lightingEmission, renderData.lightingObstacle,
-            iterations, spreadMaxAir, spreadMaxObstacle, brightnessLimit, shadowCompare, &gpuResult);
+        gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingObstacle,
+            renderData.lightingPointLights, iterations, params, shadowCompare, &gpuResult);
         if (gpuLightmap) {
           // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
           // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
           m_lightMapBorder = ((int)renderData.lightingEmission.size()[0] - (int)renderData.lightMap.width()) / 2;
           if (shadowCompare && gpuResult.size()[0] > 0)
-            shadowCompareSpread(gpuResult, renderData.lightingEmission, renderData.lightingObstacle,
-                SpreadParameters{spreadMaxAir, spreadMaxObstacle, brightnessLimit}, iterations);
+            shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder);
         }
       }
       if (!gpuLightmap) {
