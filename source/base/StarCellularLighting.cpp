@@ -190,6 +190,38 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
   }
 }
 
+SpreadParameters CellularLightingCalculator::spreadParameters() const {
+  return SpreadParameters{
+      m_config.getFloat("spreadMaxAir"),
+      m_config.getFloat("spreadMaxObstacle"),
+      m_config.getFloat("brightnessLimit")
+    };
+}
+
+void CellularLightingCalculator::snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle) {
+  size_t width = m_calculationRegion.width();
+  size_t height = m_calculationRegion.height();
+  size_t count = width * height;
+  emission.resize(count);
+  obstacle.resize(count);
+
+  if (m_monochrome) {
+    m_lightArray.right().seedSpreadLights();
+    for (size_t i = 0; i < count; ++i) {
+      auto const& cell = m_lightArray.right().cellAtIndex(i);
+      emission[i] = Vec3F::filled(cell.light);
+      obstacle[i] = cell.obstacle ? 1 : 0;
+    }
+  } else {
+    m_lightArray.left().seedSpreadLights();
+    for (size_t i = 0; i < count; ++i) {
+      auto const& cell = m_lightArray.left().cellAtIndex(i);
+      emission[i] = cell.light;
+      obstacle[i] = cell.obstacle ? 1 : 0;
+    }
+  }
+}
+
 void CellularLightingCalculator::setupImage(Image& image, PixelFormat format) const {
   Vec2S arrayMin = Vec2S(m_queryRegion.min() - m_calculationRegion.min());
   Vec2S arrayMax = Vec2S(m_queryRegion.max() - m_calculationRegion.min());
