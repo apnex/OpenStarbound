@@ -1490,6 +1490,7 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
     if (m_lightingInputsValid) {
       renderData->lightingEmission = std::move(m_lightingEmission);
       renderData->lightingObstacle = std::move(m_lightingObstacle);
+      renderData->lightingPointLights = std::move(m_lightingPointLights);
     }
     return true;
   }
@@ -1795,8 +1796,10 @@ void WorldClient::lightingCalc() {
   // the shadow-compare and the CPU fallback path -- the redundant CPU spread
   // cost is accepted while GPU spread is unproven, and is removed in Slice 4.
   bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
-  if (lightingGpu)
+  if (lightingGpu) {
     m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
+    m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
+  }
 
   m_lightingCalculator.calculate(m_pendingLightMap);
   {
@@ -1807,6 +1810,7 @@ void WorldClient::lightingCalc() {
     if (lightingGpu) {
       m_lightingEmission = std::move(m_pendingLightingEmission);
       m_lightingObstacle = std::move(m_pendingLightingObstacle);
+      m_lightingPointLights = std::move(m_pendingLightingPointLights);
     }
   }
 }

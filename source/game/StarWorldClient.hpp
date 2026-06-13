@@ -297,6 +297,10 @@ private:
   Image m_pendingLightingObstacle;
   Image m_lightingEmission;
   Image m_lightingObstacle;
+  // The point-light list (Slice 3), exported/published alongside the emission +
+  // obstacle grids for the GPU point pass; same pending->published handoff.
+  List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;
+  List<ColoredCellularLightArray::PointLight> m_lightingPointLights;
   bool m_lightingInputsValid = false;
   List<LightSource> m_pendingLights;
   List<std::pair<Vec2F, Vec3F>> m_pendingParticleLights;

@@ -171,6 +171,14 @@ public:
   // passes -- call BEFORE calculate(), which would overwrite the cells.
   void exportSpreadInputs(Image& emission, Image& obstacle);
 
+  // GPU-point input export (Slice 3): copies the configured point lights
+  // (array-relative position, in insertion order) for the GPU per-light-quad
+  // point pass -- the same list production's calculatePointLighting consumes.
+  // 'out' is cleared first. The colored array's lights are copied directly; the
+  // monochrome array's scalar value is broadcast to all channels (mirroring
+  // exportSpreadInputs' monochrome branch). Does NOT run any lighting pass.
+  void exportPointLights(List<ColoredCellularLightArray::PointLight>& out);
+
 private:
   Json m_config;
   bool m_monochrome;
