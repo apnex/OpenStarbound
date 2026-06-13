@@ -150,4 +150,69 @@ void CellularLightArray<ColoredLightTraits>::calculatePointLighting(size_t xmin,
   }
 }
 
+List<Vec3F> spreadJacobiReference(List<Vec3F> const& emission, List<uint8_t> const& obstacle,
+    size_t width, size_t height, SpreadParameters const& params, unsigned iterations) {
+  starAssert(emission.size() == width * height && obstacle.size() == width * height);
+
+  float dropoffAir = 1.0f / params.spreadMaxAir;
+  float dropoffObstacle = 1.0f / params.spreadMaxObstacle;
+
+  // 8-connected neighbour offsets; index layout is x * height + y to match
+  // CellularLightArray::cell.
+  static int const offsets[8][2] = {
+    {-1, -1}, {-1, 0}, {-1, 1},
+    { 0, -1},          { 0, 1},
+    { 1, -1}, { 1, 0}, { 1, 1}
+  };
+
+  // Ping-pong two buffers via raw pointers (List::swap is an element-by-index
+  // swap, not a buffer swap, so std::swap on the pointers is what we want).
+  List<Vec3F> bufferA = emission;
+  List<Vec3F> bufferB;
+  bufferB.resize(emission.size());
+  List<Vec3F>* in = &bufferA;
+  List<Vec3F>* out = &bufferB;
+
+  for (unsigned iter = 0; iter < iterations; ++iter) {
+    for (size_t x = 0; x < width; ++x) {
+      for (size_t y = 0; y < height; ++y) {
+        size_t t = x * height + y;
+        // Base each cell on its own emission, then accumulate (per-channel max,
+        // via spread) the contribution of each neighbour acting as a SOURCE.
+        // This is the parallel analogue of calculateLightSpread, whose dropoff
+        // is keyed on the source cell's obstacle flag -> here obstacle[n].
+        Vec3F value = emission[t];
+        for (auto const& off : offsets) {
+          int nx = (int)x + off[0];
+          int ny = (int)y + off[1];
+          if (nx < 0 || ny < 0 || nx >= (int)width || ny >= (int)height)
+            continue;
+          size_t n = (size_t)nx * height + (size_t)ny;
+          bool diagonal = off[0] != 0 && off[1] != 0;
+          float dropoff = obstacle[n] ? dropoffObstacle : dropoffAir;
+          if (diagonal)
+            dropoff = (float)(dropoff * Constants::sqrt2);
+          value = ColoredLightTraits::spread((*in)[n], value, dropoff);
+        }
+        (*out)[t] = value;
+      }
+    }
+    std::swap(in, out);
+  }
+
+  // After the final swap, *in holds the latest iteration. brightnessLimit
+  // post-step, matching CellularLightingCalculator::calculate (colored:
+  // proportional cap preserving hue).
+  List<Vec3F>& result = *in;
+  for (size_t i = 0; i < result.size(); ++i) {
+    Vec3F light = result[i];
+    float intensity = ColoredLightTraits::maxIntensity(light);
+    if (intensity > params.brightnessLimit)
+      light *= params.brightnessLimit / intensity;
+    result[i] = light;
+  }
+
+  return result;
+}
+
 }
