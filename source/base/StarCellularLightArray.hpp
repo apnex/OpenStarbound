@@ -95,6 +95,11 @@ public:
   Cell const& cellAtIndex(size_t index) const;
   Cell& cellAtIndex(size_t index);
 
+  // Read-only access to the configured point lights (array-relative position,
+  // in insertion order). Exposed so the GPU point pass can export the same list
+  // production's calculatePointLighting consumes.
+  List<PointLight> const& pointLights() const;
+
   // Calculate lighting in the given sub-rect, in order to properly do spread
   // lighting, and initial lighting must be given for the ambient border this
   // given rect, and the array size must be at least that large.  xMax / yMax
@@ -373,6 +378,11 @@ template <typename LightTraits>
 auto CellularLightArray<LightTraits>::cellAtIndex(size_t index) -> Cell & {
   starAssert(index < m_width * m_height);
   return m_cells[index];
+}
+
+template <typename LightTraits>
+auto CellularLightArray<LightTraits>::pointLights() const -> List<PointLight> const & {
+  return m_pointLights;
 }
 
 template <typename LightTraits>
