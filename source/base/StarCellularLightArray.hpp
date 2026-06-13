@@ -2,6 +2,7 @@
 
 #include "StarList.hpp"
 #include "StarVector.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -293,9 +294,20 @@ auto CellularLightArray<LightTraits>::cellAtIndex(size_t index) -> Cell & {
 
 template <typename LightTraits>
 void CellularLightArray<LightTraits>::calculate(size_t xMin, size_t yMin, size_t xMax, size_t yMax) {
+  // Both template instantiations (colored/scalar) intentionally report into the same
+  // telemetry keys: per-instantiation function-local statics resolve to one registry
+  // node per key. Timers record only under deep tracing (TelemetryScope gates itself).
   setSpreadLightingPoints();
-  calculateLightSpread(xMin, yMin, xMax, yMax);
-  calculatePointLighting(xMin, yMin, xMax, yMax);
+  {
+    static auto spreadTimer = Telemetry::timer("lighting.cpu.spread.us");
+    TelemetryScope scope(spreadTimer);
+    calculateLightSpread(xMin, yMin, xMax, yMax);
+  }
+  {
+    static auto pointTimer = Telemetry::timer("lighting.cpu.point.us");
+    TelemetryScope scope(pointTimer);
+    calculatePointLighting(xMin, yMin, xMax, yMax);
+  }
 }
 
 template <typename LightTraits>

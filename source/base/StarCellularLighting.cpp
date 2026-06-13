@@ -1,4 +1,5 @@
 #include "StarCellularLighting.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -104,6 +105,8 @@ RectI CellularLightingCalculator::calculationRegion() const {
 }
 
 void CellularLightingCalculator::addSpreadLight(Vec2F const& position, Vec3F const& light) {
+  static auto spreadLightCounter = Telemetry::counter("lighting.lights.spread");
+  spreadLightCounter.inc();
   Vec2F arrayPosition = position - Vec2F(m_calculationRegion.min());
   if (m_monochrome)
     m_lightArray.right().addSpreadLight({arrayPosition, light.max()});
@@ -112,6 +115,8 @@ void CellularLightingCalculator::addSpreadLight(Vec2F const& position, Vec3F con
 }
 
 void CellularLightingCalculator::addPointLight(Vec2F const& position, Vec3F const& light, float beam, float beamAngle, float beamAmbience, bool asSpread) {
+  static auto pointLightCounter = Telemetry::counter("lighting.lights.point");
+  pointLightCounter.inc();
   Vec2F arrayPosition = position - Vec2F(m_calculationRegion.min());
   if (m_monochrome)
     m_lightArray.right().addPointLight({arrayPosition, light.max(), beam, beamAngle, beamAmbience, asSpread});
@@ -153,6 +158,13 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
     m_lightArray.right().calculate(arrayMin[0], arrayMin[1], arrayMax[0], arrayMax[1]);
   else
     m_lightArray.left().calculate(arrayMin[0], arrayMin[1], arrayMax[0], arrayMax[1]);
+
+  // 'post' phase: output copy + brightness cap. Timer records only under deep
+  // tracing (TelemetryScope gates itself); the gauge is set unconditionally.
+  static auto postTimer = Telemetry::timer("lighting.cpu.post.us");
+  static auto cellsGauge = Telemetry::gauge("lighting.cells");
+  cellsGauge.set(int64_t((arrayMax[0] - arrayMin[0]) * (arrayMax[1] - arrayMin[1])));
+  TelemetryScope postScope(postTimer);
 
   output = Lightmap(arrayMax[0] - arrayMin[0], arrayMax[1] - arrayMin[1]);
 
