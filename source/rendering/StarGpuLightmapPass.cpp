@@ -6,61 +6,97 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-bool GpuLightmapPass::processSpread(ImageView const& emission, ImageView const& obstacle, unsigned iterations,
-    float spreadMaxAir, float spreadMaxObstacle, float brightnessLimit, bool shadowCompare, Image* gpuResult) {
-  // Telemetry: time the whole drive (render-thread CPU cost; deep-gated) + record the iteration count.
+bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& obstacle,
+    List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
+    PointParameters const& params, bool shadowCompare, Image* gpuResult) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
-  // Point-pass counters registered here so the keys exist (driven later): Task 4 increments
-  // point.lights by the light count when the per-light-quad point pass runs; Task 5 increments
-  // point.mismatch in the full-result shadow-compare.
-  static auto pointLights = Telemetry::counter("lighting.gpu.point.lights");
-  static auto pointMismatch = Telemetry::counter("lighting.gpu.point.mismatch");
+  static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights");
   TelemetryScope cpuCostScope(cpuCostTimer);
 
   Vec2U size = emission.size;
-  if (size[0] == 0 || size[1] == 0 || iterations == 0)
+  float w = (float)size[0], h = (float)size[1];
+  if (size[0] == 0 || size[1] == 0 || spreadIterations == 0)
     return false;
-
-  // Bind the spread program; bail (caller falls back to CPU) if the assets are missing.
   if (!m_renderer->switchEffectConfig("lightingSpread"))
-    return false;
+    return false;   // assets missing -> caller falls back to CPU
 
-  // Constant inputs across iterations: the seeded emission (also the iteration-0 light state) and
-  // the obstacle grid. lightState is re-pointed at the previous ping-pong buffer each iteration.
+  auto fullQuad = renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f);
+  char const* targets[2] = {"lightingGpu", "lightingGpuB"};
+
+  // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
   m_renderer->setEffectTexture("emission", emission);
   m_renderer->setEffectTexture("obstacle", obstacle);
-  m_renderer->setEffectTexture("lightState", emission);   // iteration-0 seed == emission
-  m_renderer->setEffectParameter("dropoffAir", 1.0f / spreadMaxAir);
-  m_renderer->setEffectParameter("dropoffObstacle", 1.0f / spreadMaxObstacle);
-  m_renderer->setEffectParameter("brightnessLimit", brightnessLimit);
+  m_renderer->setEffectTexture("lightState", emission);   // iteration-0 light state == emission
+  m_renderer->setEffectParameter("dropoffAir", 1.0f / params.spreadMaxAir);
+  m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
   m_renderer->setEffectParameter("applyCap", false);
 
-  auto quad = renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f);
-  char const* targets[2] = {"lightingGpu", "lightingGpuB"};
   char const* lastTarget = nullptr;
-
-  for (unsigned i = 0; i < iterations; ++i) {
+  for (unsigned i = 0; i < spreadIterations; ++i) {
     char const* target = targets[i % 2];
-    if (i + 1 == iterations)
-      m_renderer->setEffectParameter("applyCap", true);   // proportional brightnessLimit on the final pass
-    m_renderer->setRenderTarget(String(target), size);     // resize + viewport + screenSize uniform
+    m_renderer->setRenderTarget(String(target), size);
     if (i > 0)
-      m_renderer->setEffectTextureFromTarget("lightState", lastTarget);   // previous iteration's output
-    m_renderer->render(quad);
+      m_renderer->setEffectTextureFromTarget("lightState", lastTarget);
+    m_renderer->render(fullQuad);
     lastTarget = target;
   }
-  m_renderer->flush();   // flush the final iteration's quad into lastTarget
+  spreadPasses.inc(spreadIterations);
 
-  if (shadowCompare && gpuResult && lastTarget)
-    *gpuResult = m_renderer->readFrameBuffer(lastTarget);
+  // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
+  if (!lights.empty()) {
+    m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
+    m_renderer->setEffectTexture("obstacle", obstacle);
+    m_renderer->setEffectParameter("pointMaxAir", params.pointMaxAir);
+    m_renderer->setEffectParameter("pointMaxObstacle", params.pointMaxObstacle);
+    m_renderer->setEffectParameter("spreadMaxAir", params.spreadMaxAir);
+    m_renderer->setEffectParameter("spreadMaxObstacle", params.spreadMaxObstacle);
+    m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
+    m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
+    m_renderer->setBlendMode(params.pointAdditive ? BlendMode::Additive : BlendMode::Max);
 
-  // Restore the screen target + the world effect, then bind the spread result as the world lightMap.
+    unsigned drawn = 0;
+    for (auto const& light : lights) {
+      // Match production: skip lights whose center is outside the grid.
+      if (light.position[0] < 0 || light.position[0] > w - 1 || light.position[1] < 0 || light.position[1] > h - 1)
+        continue;
+      float maxIntensity = max(light.value[0], max(light.value[1], light.value[2]));
+      float maxRange = maxIntensity * (light.asSpread ? params.spreadMaxAir : params.pointMaxAir);
+      float lxmin = floor(std::max(0.0f, light.position[0] - maxRange));
+      float lymin = floor(std::max(0.0f, light.position[1] - maxRange));
+      float lxmax = ceil(std::min(w, light.position[0] + maxRange));
+      float lymax = ceil(std::min(h, light.position[1] + maxRange));
+      if (lxmax <= lxmin || lymax <= lymin)
+        continue;
+      m_renderer->setEffectParameter("lightPosition", Vec2F(light.position));
+      m_renderer->setEffectParameter("lightValue", Vec3F(light.value));
+      m_renderer->setEffectParameter("lightBeam", light.beam);
+      m_renderer->setEffectParameter("lightBeamAngle", light.beamAngle);
+      m_renderer->setEffectParameter("lightBeamAmbience", light.beamAmbience);
+      m_renderer->setEffectParameter("lightAsSpread", light.asSpread);
+      m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
+      ++drawn;
+    }
+    m_renderer->setBlendMode(BlendMode::Alpha);   // restore before the compose + world draw
+    pointLightsDrawn.inc(drawn);
+  }
+
+  // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
+  char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
+  m_renderer->switchEffectConfig("lightingPassthrough");        // flushes the final point quad
+  m_renderer->setEffectParameter("applyCap", true);
+  m_renderer->setEffectParameter("brightnessLimit", params.brightnessLimit);
+  m_renderer->setEffectTextureFromTarget("inputTexture", lastTarget);
+  m_renderer->setRenderTarget(String(composeTarget), size);
+  m_renderer->render(fullQuad);
+  m_renderer->flush();
+
+  if (shadowCompare && gpuResult)
+    *gpuResult = m_renderer->readFrameBuffer(composeTarget);
+
   m_renderer->setRenderTarget({});
   m_renderer->switchEffectConfig("world");
-  m_renderer->setEffectTextureFromTarget("lightMap", lastTarget);
-
-  spreadPasses.inc(iterations);
+  m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
   return true;
 }
 
