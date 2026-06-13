@@ -5,45 +5,64 @@
 #include "StarAssets.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarTelemetry.hpp"
+#include "StarCellularLightArray.hpp"  // spreadJacobiReference (CPU spread oracle for parity)
 
 namespace Star {
 
-// GPU-lighting parity shadow-compare (diagnostics only). The GPU spread result is calc-region
-// sized (RGB_F); the CPU lightMap is query-region sized. Crop the GPU result to the query
-// sub-rect (offset = border on each axis) and compare per channel against the CPU spread.
-// Tolerance is perceptual (sweep-vs-Jacobi is algorithmic, not ulp): mean abs <= 1.5/255, max
-// <= 6/255. Records render.drawable-style telemetry + a rate-limited warn on the worst cell.
-static void shadowCompareLightmap(Image const& gpuCalc, Lightmap const& cpuQuery, int border) {
+// GPU-lighting SPREAD parity shadow-compare (diagnostics only). Compares the GPU spread result
+// against a CPU spread-only reference (spreadJacobiReference -- the oracle Phase 1 proved equals
+// the production sweep) computed from the SAME exported emission+obstacle. Both are calc-region
+// sized and spread-only, so this is valid in ANY scene (it does NOT compare against the full CPU
+// lightMap, which would be confounded by point lighting). Tolerance allows for RGBA16F storage +
+// K-pass accumulation (not just ulp): mean abs <= 2/255, max <= 8/255.
+static void shadowCompareSpread(Image const& gpuResult, ImageView const& emission, ImageView const& obstacle,
+    SpreadParameters const& params, unsigned iterations) {
   static auto mismatchCounter = Telemetry::counter("lighting.gpu.spread.mismatch");
-  unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
-  Vec2U gpuSize = gpuCalc.size();
-  if (qw == 0 || qh == 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
+  Vec2U size = emission.size;
+  Vec2U gpuSize = gpuResult.size();
+  if (size[0] == 0 || size[1] == 0 || gpuSize != size)
     return;
 
-  float const meanTol = 1.5f / 255.0f, maxTol = 6.0f / 255.0f;
+  // Rebuild the CPU reference inputs in the array's column-major layout (x*height+y). The export
+  // wrote image pixel (x,y) = ((y*width+x)*3) from cell (x*height+y); invert that here.
+  size_t width = size[0], height = size[1];
+  List<Vec3F> emissionList; emissionList.resize(width * height);
+  List<uint8_t> obstacleList; obstacleList.resize(width * height);
+  float const* eData = (float const*)emission.data;
+  uint8_t const* oData = (uint8_t const*)obstacle.data;
+  for (size_t x = 0; x < width; ++x) {
+    for (size_t y = 0; y < height; ++y) {
+      size_t px = (y * width + x) * 3;
+      emissionList[x * height + y] = Vec3F(eData[px], eData[px + 1], eData[px + 2]);
+      obstacleList[x * height + y] = oData[px] > 127 ? 1 : 0;
+    }
+  }
+  List<Vec3F> cpuRef = spreadJacobiReference(emissionList, obstacleList, width, height, params, iterations);
+
+  float const meanTol = 2.0f / 255.0f, maxTol = 8.0f / 255.0f;
   double sumAbs = 0.0;
   float worst = 0.0f;
   unsigned worstX = 0, worstY = 0;
-  float const* gpuData = (float const*)gpuCalc.data();
-  for (unsigned y = 0; y < qh; ++y) {
-    for (unsigned x = 0; x < qw; ++x) {
-      Vec3F cpu = cpuQuery.get(x, y);
-      size_t g = ((size_t)(y + border) * gpuSize[0] + (x + border)) * 3;
+  float const* gpuData = (float const*)gpuResult.data();
+  for (size_t x = 0; x < width; ++x) {
+    for (size_t y = 0; y < height; ++y) {
+      Vec3F ref = cpuRef[x * height + y];
+      size_t g = (y * width + x) * 3;
       Vec3F gpu(gpuData[g], gpuData[g + 1], gpuData[g + 2]);
       for (size_t c = 0; c < 3; ++c) {
-        float e = std::fabs(cpu[c] - gpu[c]);
+        float e = std::fabs(ref[c] - gpu[c]);
         sumAbs += e;
-        if (e > worst) { worst = e; worstX = x; worstY = y; }
+        if (e > worst) { worst = e; worstX = (unsigned)x; worstY = (unsigned)y; }
       }
     }
   }
-  float mean = (float)(sumAbs / (qw * qh * 3));
+  float mean = (float)(sumAbs / (width * height * 3));
   if (mean > meanTol || worst > maxTol) {
     mismatchCounter.inc(1);
     static int warnBudget = 8;   // rate-limited; the counter carries the running total
     if (warnBudget > 0) {
       --warnBudget;
-      Logger::warn("GPU lighting spread parity exceeded: mean={:.4f}/255 max={:.4f}/255 at query cell ({},{})",
+      Logger::warn("GPU lighting spread parity exceeded vs CPU spread reference: mean={:.4f}/255 max={:.4f}/255 at calc cell ({},{})",
           mean * 255.0f, worst * 255.0f, worstX, worstY);
     }
   }
@@ -151,7 +170,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
           // world shader samples the query region. Border is symmetric: (calcW - queryW) / 2.
           m_lightMapBorder = ((int)renderData.lightingEmission.size()[0] - (int)renderData.lightMap.width()) / 2;
           if (shadowCompare && gpuResult.size()[0] > 0)
-            shadowCompareLightmap(gpuResult, renderData.lightMap, m_lightMapBorder);
+            shadowCompareSpread(gpuResult, renderData.lightingEmission, renderData.lightingObstacle,
+                SpreadParameters{spreadMaxAir, spreadMaxObstacle, brightnessLimit}, iterations);
         }
       }
       if (!gpuLightmap) {
