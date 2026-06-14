@@ -171,6 +171,10 @@ AnimatedPartSet::State const& AnimatedPartSet::getState(String const& stateTypeN
   return *m_stateTypes.get(stateTypeName).states.get(stateName);
 }
 
+JsonObject const& AnimatedPartSet::stateTypeProperties(String const& stateTypeName) const {
+  return m_stateTypes.get(stateTypeName).stateTypeProperties;
+}
+
 StringMap<AnimatedPartSet::Part> const& AnimatedPartSet::constParts() const {
   return m_parts;
 }

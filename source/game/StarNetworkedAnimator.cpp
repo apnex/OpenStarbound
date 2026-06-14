@@ -1061,13 +1061,16 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
 
   // Freshen all parts (enumerate + stable-sort, settling each part's
   // partGeneration) and settle every state type so parts that DO rebuild this
-  // call resolve current animation tags.  NOTE: unlike the whole-entity path,
-  // settling state types does NOT protect the per-part cache KEY -- partGeneration
-  // tracks only a part's OWN resolved state, so a static part whose image resolves
-  // ANOTHER state type's <T_state>/<T_frame> tag is NOT invalidated when that
-  // state type changes (KNOWN LIMITATION; shadow-compare detects it; flag is
-  // default-off; must be fixed before default-on -- see the test
-  // PerPartCrossStateTypeTagKnownStaleLimitation and the plan).
+  // call resolve current animation tags.  partGeneration alone tracks only a
+  // part's OWN resolved state, so cross-state-type tag dependencies are tracked
+  // separately in the cache entry: when a part resolves ANOTHER state type's
+  // built-in <T_state>/<T_frame>/<T_frameIndex> tag, appendPartDrawables records
+  // a PRECISE per-state-type dep (stateTypeDeps, checked against that state
+  // type's generation); when it resolves any custom animationTags key (whose
+  // first-definer owner can shift), it records the conservative stateTypesEpoch
+  // dep (dependsAllStateTypes).  Either firing invalidates the entry, so a static
+  // part stays correct when a foreign state type changes (proven by the
+  // DrawableCache.PerPart* invalidation tests).
   int drawableCount = 0;
   auto parts = sortedActiveParts(drawableCount);
   m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
@@ -1338,12 +1341,30 @@ void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDir
       // now, but a part whose image references it would silently consume a stale
       // "default" and never call recordDep.  Collecting every possible custom tag
       // key lets recordDep correctly mark any consumer as epoch-dependent.
+      //
+      // The scan must cover EVERY source that freshenActiveState merges into
+      // activeState.properties (see StarAnimatedPartSet.cpp): the state type's
+      // stateTypeProperties, each state's stateProperties, and each state's
+      // stateFrameProperties (per-frame, an object of arrays).  The merge is a
+      // flat overwrite, so a key present only at one level (e.g. a frame-varying
+      // tag, or a state-type-level tag hidden by a frame override in the active
+      // state) would otherwise be missed -> stale serve.  Over-collecting keys is
+      // safe (conservative epoch dep); under-collecting is a stale-serve bug.
       if (tagDeps) {
+        auto collect = [&](Json const& animTags) {
+          if (animTags.isType(Json::Type::Object))
+            for (auto const& kv : animTags.iterateObject())
+              tagDeps->customTags.insert(kv.first);
+        };
+        collect(m_animatedParts.stateTypeProperties(stateTypeName).maybe("animationTags").value(Json()));
         for (auto const& stateName : m_animatedParts.states(stateTypeName)) {
           auto const& state = m_animatedParts.getState(stateTypeName, stateName);
-          if (auto p = state.stateProperties.ptr("animationTags"))
-            for (auto const& kv : p->iterateObject())
-              tagDeps->customTags.insert(kv.first);
+          collect(state.stateProperties.maybe("animationTags").value(Json()));
+          // stateFrameProperties["animationTags"] is an array of per-frame objects.
+          if (auto p = state.stateFrameProperties.ptr("animationTags"))
+            if (p->isType(Json::Type::Array))
+              for (auto const& frameTags : p->iterateArray())
+                collect(frameTags);
         }
       }
     }
@@ -1398,9 +1419,10 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
 
   auto recordDep = [&](StringView tag) {
     if (!tagDeps) return;
-    if (auto owner = tagDeps->stateTagOwner.ptr(String(tag))) {
+    String tagStr(tag);
+    if (auto owner = tagDeps->stateTagOwner.ptr(tagStr)) {
       if (consumedStateTypes) consumedStateTypes->insert(*owner);
-    } else if (tagDeps->customTags.contains(String(tag))) {
+    } else if (tagDeps->customTags.contains(tagStr)) {
       if (consumedCustomTag) *consumedCustomTag = true;
     }
   };
@@ -1408,16 +1430,19 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
   if (auto directives = activePart.properties.value("processingDirectives").optString()) {
     if (version() > 0){
       directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
+        // recordDep fires for EVERY resolved tag, before the lookups: a built-in
+        // <T_*> tag records its precise per-state-type dep, a custom tag (active,
+        // inactive, or shadowed by a higher-precedence source) marks the epoch
+        // dep, and a genuine global/part-only tag is a self-gated no-op.  This
+        // catches a global/part default shadowed by a per-state custom key.
+        recordDep(tag);
         if (auto p = animationTags.ptr(tag)) {
-          recordDep(tag);
           return StringView(*p);
         } else if (auto p = partTags.ptr(tag)) {
           return StringView(*p);
         } else if (auto p = m_globalTags.ptr(tag)) {
           return StringView(*p);
         }
-        // Tag not found anywhere: may be a custom tag inactive in the current state.
-        recordDep(tag);
         return StringView("default");
       });
     }
@@ -1436,16 +1461,15 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
     if (auto directives = activePart.activeState->properties.value("processingDirectives").optString()) {
       if (version() > 0){
         directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
+          // recordDep before the lookups -- see the part-level lambda above.
+          recordDep(tag);
           if (auto p = animationTags.ptr(tag)) {
-            recordDep(tag);
             return StringView(*p);
           } else if (auto p = partTags.ptr(tag)) {
             return StringView(*p);
           } else if (auto p = m_globalTags.ptr(tag)) {
             return StringView(*p);
           }
-          // Tag not found anywhere: may be a custom tag inactive in the current state.
-          recordDep(tag);
           return StringView("default");
         });
       }
@@ -1454,6 +1478,11 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
   }
 
   Maybe<String> processedImage = image.maybeLookupTagsView([&](StringView tag) -> StringView {
+    // recordDep before the lookups -- see the part-level lambda above.  The literal
+    // <frame>/<frameIndex> special-cases are self-gated no-ops here (not built-in
+    // <T_*> keys nor custom keys); the per-part <T_frame>/<T_frameIndex> deps come
+    // from the prefixed tags in animationTags/stateTagOwner.
+    recordDep(tag);
     if (tag == "frame") {
       if (frame)
         return frameStr;
@@ -1461,15 +1490,12 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
       if (frame)
         return frameIndexStr;
     } else if (auto p = animationTags.ptr(tag)) {
-      recordDep(tag);
       return StringView(*p);
     } else if (auto p = partTags.ptr(tag)) {
       return StringView(*p);
     } else if (auto p = m_globalTags.ptr(tag)) {
       return StringView(*p);
     }
-    // Tag not found anywhere: may be a custom tag inactive in the current state.
-    recordDep(tag);
     return StringView("default");
   });
   String const& usedImage = processedImage ? processedImage.get() : image;

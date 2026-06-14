@@ -170,6 +170,10 @@ public:
   ActiveStateInformation const& activeState(String const& stateTypeName) const;
   ActivePartInformation const& activePart(String const& partName) const;
   State const& getState(String const& stateTypeName, String const& stateName) const;
+  // The raw (unmerged) state-type-level properties. Used by the per-part drawable
+  // cache to scan custom animationTags keys defined at the state-type level, which
+  // the flat (overwrite) state/frame merge can hide from any single active state.
+  JsonObject const& stateTypeProperties(String const& stateTypeName) const;
 
   StringMap<Part> const& constParts() const;
   StringMap<Part>& parts();

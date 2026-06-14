@@ -1030,3 +1030,63 @@ TEST(AnimatedPartSet, StateTypeGenerationIsPerStateType) {
   EXPECT_EQ(a.stateTypeGeneration("motion"), motionA) << "aux flip must not bump motion";
   EXPECT_GT(a.stateTypesEpoch(), epochA);
 }
+
+// HOLE 1: a global tag default shadowed by a per-state custom animationTags key.
+// When aux activates, animationTags "glow"=bright shadows the global "glow"=dim;
+// the per-part cache must invalidate (the tag was resolved via globalTags at prime).
+TEST(DrawableCache, PerPartGlobalTagShadowedByCustomInvalidates) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "globalTagDefaults": { "glow": "dim" },
+    "animatedParts": { "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 },
+        "on":  { "frames": 1, "properties": { "animationTags": { "glow": "bright" } } } } } },
+      "parts": { "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<glow>.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});                 // prime: <glow> resolves via globalTags -> /lamp_dim
+  ASSERT_TRUE(a.setState("aux", "on"));            // animationTags now shadows: glow=bright
+  auto served = a.drawablesWithZLevel({});
+  auto rebuilt = a.drawablesWithZLevelRebuild({});
+  expectParity(served, rebuilt, 0);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "global tag shadowed by a per-state custom tag must invalidate";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// HOLE 2: a custom animationTags key defined only in an inactive state's
+// stateFrameProperties (frame-varying). Must still be collected -> invalidate.
+TEST(DrawableCache, PerPartInactiveFrameCustomTagInvalidates) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": { "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 },
+        "on":  { "frames": 2, "frameProperties": { "animationTags": [ { "hue": "red" }, { "hue": "blue" } ] } } } } },
+      "parts": { "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<hue>.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});                 // prime: aux=off, <hue> undefined -> default
+  ASSERT_TRUE(a.setState("aux", "on"));            // aux.on frame 0 defines hue=red
+  auto served = a.drawablesWithZLevel({});
+  auto rebuilt = a.drawablesWithZLevelRebuild({});
+  expectParity(served, rebuilt, 0);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "custom tag in an inactive state's frameProperties must invalidate";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
