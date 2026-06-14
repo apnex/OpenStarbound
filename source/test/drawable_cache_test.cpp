@@ -846,3 +846,57 @@ TEST(DrawableCache, PerPartRebuildsOnlyChangedParts) {
   EXPECT_GT(wholeEntityChurn, perPartChurn * 2)
       << "kRichCfg has 5 static parts; whole-entity should rebuild far more per frame";
 }
+
+// KNOWN LIMITATION of the per-part cache (renderDrawableCachePerPart): a static
+// part whose image resolves ANOTHER state type's animation tag (<aux_state>) is
+// NOT invalidated when that state type changes -- partGeneration tracks only the
+// part's own resolved key, and setState does not bump renderVersion.  The
+// whole-entity path settles generation() into its key and stays correct
+// (CrossStateTypeTagSettledWithoutUpdate); the per-part path serves STALE.  This
+// test PINS that the gap exists AND that shadow-compare (the A/B safety net)
+// detects it.  The flag is default-off; this gap must be fixed (per-part
+// tag-dependency tracking) before renderDrawableCachePerPart can default-on (see
+// plan 2026-06-14-drawable-cache-perpart.md Task 6 Step 4).  WHEN FIXED: the
+// shadowMismatch below drops to 0 -> this test fails -> flip it to assert parity
+// and proceed with the default-on decision.
+TEST(DrawableCache, PerPartCrossStateTypeTagKnownStaleLimitation) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": {
+      "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 },
+        "on":  { "frames": 1 }
+      } } },
+      "parts": {
+        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } }
+      }
+    },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {},
+    "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+
+  a.update(0.1f, nullptr);
+  auto primed = a.drawablesWithZLevel({});   // prime: per-part caches /lamp_off.png (parity, no mismatch)
+  ASSERT_FALSE(primed.empty());
+  ASSERT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "prime call must be parity-clean";
+
+  // Master-side state flip with NO intervening update() (the update -> mutate ->
+  // render ordering an entity produces).  setState does not bump renderVersion,
+  // and lamp does not list "aux", so its partGeneration/key do not move -> the
+  // per-part cache serves the stale /lamp_off.png.
+  ASSERT_TRUE(a.setState("aux", "on"));
+  (void)a.drawablesWithZLevel({});           // per-part serves STALE; shadow-compare flags it
+  EXPECT_GT(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "KNOWN per-part limitation: cross-state-type tag served stale; shadow-compare must catch it. "
+         "When the gap is fixed this stays 0 -> flip this test to assert parity and gate default-on.";
+
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
