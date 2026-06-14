@@ -603,6 +603,23 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
   }
 }
 
+void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) {
+  auto dest = m_currentEffect->textures.ptr(destTextureName);
+  auto src = m_currentEffect->textures.ptr(sourceTextureName);
+  if (!dest || !src || !src->textureValue)
+    return;
+
+  flushImmediatePrimitives();
+
+  // Share the source sampler's already-uploaded texture (same GlLoneTexture, ref-counted) with the
+  // dest sampler -- the per-draw bind loop will bind it to dest's texture unit. No CPU upload.
+  dest->textureValue = src->textureValue;
+  if (dest->textureSizeUniform != -1) {
+    auto textureSize = dest->textureValue->glTextureSize();
+    glUniform2f(dest->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
+  }
+}
+
 Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   flushImmediatePrimitives();
 
