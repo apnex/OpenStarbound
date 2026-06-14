@@ -33,7 +33,10 @@ public:
   // Returns false (doing nothing) for empty inputs or if the GPU lighting assets are missing --
   // the caller then binds the CPU lightmap (fail-forward: never crash the frame). When shadowCompare
   // is set, reads the final result back into `gpuResult` for the caller's parity check (diagnostics).
-  bool processFull(ImageView const& emission, ImageView const& obstacle,
+  // emissionHalf is the emission grid pre-converted to 16-bit half-floats (RGB packed) on the lighting
+  // thread; when it matches emission's texel count it is uploaded as RGB16F (half the bytes), else the
+  // RGB_F emission is uploaded as a fallback.
+  bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf, ImageView const& obstacle,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
       PointParameters const& params, float brightnessScale = 1.0f,
       bool shadowCompare = false, Image* gpuResult = nullptr);

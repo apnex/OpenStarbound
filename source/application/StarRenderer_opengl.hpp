@@ -47,6 +47,7 @@ public:
   void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
   void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
   void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
+  void setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) override;
   Image readFrameBuffer(String const& frameBufferId) override;
   void setBlendMode(BlendMode mode) override;
 
