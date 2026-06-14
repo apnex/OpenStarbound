@@ -25,6 +25,26 @@
 
 namespace Star {
 
+// IEEE-754 float32 -> float16 (half) with round-to-nearest. Used to pre-convert the GPU-lighting
+// emission grid on the lighting thread so the render thread uploads RGB16F (half the bytes). Lighting
+// values are non-negative and moderate, so the simple range handling (flush tiny to 0, clamp big to
+// inf) is sufficient; the spread pipeline already runs at 16F precision.
+static uint16_t floatToHalf(float f) {
+  uint32_t x;
+  memcpy(&x, &f, sizeof(x));
+  uint32_t sign = (x >> 16) & 0x8000u;
+  int32_t exp = (int32_t)((x >> 23) & 0xffu) - 127 + 15;
+  uint32_t mant = x & 0x7fffffu;
+  if (exp <= 0)
+    return (uint16_t)sign;                          // subnormal/zero -> 0
+  if (exp >= 31)
+    return (uint16_t)(sign | 0x7c00u);              // overflow/inf/nan -> inf
+  uint16_t h = (uint16_t)(sign | ((uint32_t)exp << 10) | (mant >> 13));
+  if (mant & 0x1000u)                               // round to nearest (dropped-bit MSB set)
+    ++h;
+  return h;
+}
+
 const std::string SECRET_BROADCAST_PUBLIC_KEY = "SecretBroadcastPublicKey";
 const std::string SECRET_BROADCAST_PREFIX = "\0Broadcast\0"s;
 
@@ -1503,6 +1523,7 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
       renderData->lightingEmission = std::move(m_lightingEmission);
       renderData->lightingObstacle = std::move(m_lightingObstacle);
       renderData->lightingPointLights = std::move(m_lightingPointLights);
+      renderData->lightingEmissionHalf = std::move(m_lightingEmissionHalf);
       renderData->lightMapBorder = m_lightingBorder;
     }
     return true;
@@ -1821,6 +1842,17 @@ void WorldClient::lightingCalc() {
     // borderCells. Computed here from the calculator's geometry and carried in renderData; WorldPainter
     // must NOT reverse-derive it from the CPU lightMap width, which is empty when the CPU calc is skipped.
     lightMapBorder = ((int)m_lightingCalculator.calculationRegion().width() - (int)lightRange.width()) / 2;
+    // Convert the RGB_F emission grid to 16-bit half-floats HERE (lighting thread, idle) so the render
+    // thread uploads RGB16F -- half the per-frame transfer/store. No precision loss (the spread FBOs
+    // are already 16F). The RGB_F emission is still kept for the auto-K scan + shadow-compare reference.
+    {
+      float const* ef = (float const*)m_pendingLightingEmission.data();
+      size_t n = (size_t)m_pendingLightingEmission.size()[0] * m_pendingLightingEmission.size()[1] * 3;
+      m_pendingLightingEmissionHalf.resize(n);
+      uint16_t* hf = m_pendingLightingEmissionHalf.ptr();
+      for (size_t i = 0; i < n; ++i)
+        hf[i] = floatToHalf(ef[i]);
+    }
   }
 
   // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
@@ -1849,6 +1881,7 @@ void WorldClient::lightingCalc() {
       m_lightingEmission = std::move(m_pendingLightingEmission);
       m_lightingObstacle = std::move(m_pendingLightingObstacle);
       m_lightingPointLights = std::move(m_pendingLightingPointLights);
+      m_lightingEmissionHalf = std::move(m_pendingLightingEmissionHalf);
       m_lightingBorder = lightMapBorder;
     }
   }

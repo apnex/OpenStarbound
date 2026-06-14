@@ -6,7 +6,7 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& obstacle,
+bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf, ImageView const& obstacle,
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
     PointParameters const& params, float brightnessScale, bool shadowCompare, Image* gpuResult) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
@@ -25,7 +25,12 @@ bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& ob
   char const* targets[2] = {"lightingGpu", "lightingGpuB"};
 
   // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
-  m_renderer->setEffectTexture("emission", emission);
+  // Upload emission as RGB16F from the lighting-thread-converted half buffer (half the per-frame
+  // transfer); fall back to the RGB_F upload if the half buffer is absent/mismatched.
+  if (emissionHalf.size() == (size_t)size[0] * size[1] * 3)
+    m_renderer->setEffectTextureHalfRGB("emission", size, emissionHalf.ptr());
+  else
+    m_renderer->setEffectTexture("emission", emission);
   m_renderer->setEffectTexture("obstacle", obstacle);
   m_renderer->setEffectParameter("dropoffAir", 1.0f / params.spreadMaxAir);
   m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
