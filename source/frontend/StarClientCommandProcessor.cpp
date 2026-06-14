@@ -656,10 +656,11 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::renderCache(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /rendercache cache [on|off|shadow on|off|status]";
+  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status]";
   auto status = [&]() {
-    return strf("render cache: enabled={} shadowCompare={}",
+    return strf("render cache: enabled={} perPart={} shadowCompare={}",
       cfg->get("renderDrawableCache", false).toBool(),
+      cfg->get("renderDrawableCachePerPart", false).toBool(),
       cfg->get("renderDrawableCacheShadowCompare", false).toBool());
   };
 
@@ -676,6 +677,11 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
   if (sub == "off") {
     cfg->set("renderDrawableCache", false);
     return "render cache off";
+  }
+  if (sub == "perpart") {
+    bool v = args.size() < 3 || args.at(2) != "off";
+    cfg->set("renderDrawableCachePerPart", v);
+    return strf("render cache perPart={}", v);
   }
   if (sub == "shadow") {
     bool v = args.size() < 3 || args.at(2) != "off";
