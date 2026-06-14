@@ -1,4 +1,5 @@
 #include "StarNetworkedAnimator.hpp"
+#include "StarAnimatedPartSet.hpp"
 #include "StarGameTypes.hpp"
 #include "StarJson.hpp"
 #include "StarRoot.hpp"
@@ -722,4 +723,180 @@ TEST(NetworkedAnimator, StaticLivePartitionStateAnimatedGroup) {
   auto a = NetworkedAnimator(Json::parse(cfg), "/");
   EXPECT_FALSE(a.partIsStaticCacheable("frame"));  // group currently named by an active-state property
   EXPECT_TRUE(a.partIsStaticCacheable("body"));
+}
+
+// Per-part generation: advancing a multi-frame state on ONE part must bump that
+// part's partGeneration but leave an unrelated static part's stamp untouched --
+// this is what lets the per-part drawable cache invalidate one part without its
+// siblings.  generation() is LAZY (bumped inside freshenActivePart), so freshen
+// every part (forEachActivePart) before reading, exactly as the drawable path does.
+TEST(AnimatedPartSet, PartGenerationIsPerPart) {
+  char const* cfg = R"JSON({
+    "stateTypes": { "motion": { "default": "run", "states": {
+      "run": { "frames": 4, "cycle": 0.4, "mode": "loop" } } } },
+    "parts": {
+      "bg":   { "properties": { "image": "/bg.png" } },
+      "body": { "partStates": { "motion": { "run": { "properties": { "image": "/body_<frame>.png" } } } } }
+    }
+  })JSON";
+  AnimatedPartSet a(Json::parse(cfg), 1);
+  a.setActiveState("motion", "run");
+  auto freshen = [&] {
+    a.forEachActivePart([](String const&, AnimatedPartSet::ActivePartInformation const&) {});
+  };
+  freshen();                                  // initial resolve (bumps both parts once)
+  uint64_t bgG0 = a.partGeneration("bg");
+  uint64_t bodyG0 = a.partGeneration("body");
+  bool bodyBumped = false;
+  for (int i = 0; i < 8; ++i) {
+    a.update(0.1f);                           // advances "run" by ~1 frame each tick
+    freshen();
+    if (a.partGeneration("body") != bodyG0)
+      bodyBumped = true;
+  }
+  EXPECT_TRUE(bodyBumped) << "body's animation frame advanced; its partGeneration must bump";
+  EXPECT_EQ(a.partGeneration("bg"), bgG0) << "bg never changed; its partGeneration must stay fixed";
+  EXPECT_EQ(a.partGeneration("nonexistent"), 0u) << "unknown part name returns 0";
+}
+
+// Per-part parity: with the PER-PART cache on, drawables must EQUAL the full
+// rebuild across the same update/flip sequence the whole-entity parity test
+// uses, with shadow-compare ON (zero mismatches).  The final cached-counter
+// assertion guarantees the per-part path actually served from cache (not the
+// rebuild fallback), so this is a genuine red before the path exists.
+TEST(DrawableCache, PerPartCachedEqualsRebuiltAcrossUpdates) {
+  auto a = makeRichAnim();
+  ASSERT_TRUE(a.partIsStaticCacheable("vane"));
+  a.setGlobalTag("tint", String("ff0000"));
+  a.setPartDrawables("held",
+      {Drawable::makeImage("/held.png", 1.0f / TilePixels, false, Vec2F(0.05f, 0.05f))});
+  ASSERT_TRUE(a.partIsStaticCacheable("held"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  for (int i = 0; i < 30; ++i) {
+    a.update(0.1f, nullptr);
+    if (i == 5)
+      a.rotateGroup("wind", 0.8f);
+    if (i == 10)
+      a.setGlobalTag("color", String("red"));
+    if (i == 15)
+      a.setState("motion", "run");
+    if (i == 20)
+      a.translateTransformationGroup("fixed", Vec2F(0.5f, 0.25f));
+    if (i == 25)
+      a.setPartDrawables("held",
+          {Drawable::makeImage("/held.png", 1.0f / TilePixels, false, Vec2F(0.05f, 0.05f)),
+           Drawable::makeImage("/held2.png", 1.0f / TilePixels, false, Vec2F(0.65f, 0.35f))});
+
+    auto cached = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));          // per-part path
+    auto rebuilt = a.drawablesWithZLevelRebuild(Vec2F(1.0f, 2.0f));  // forced full rebuild
+    ASSERT_FALSE(cached.empty());
+    expectParity(cached, rebuilt, i);
+
+    auto cachedAgain = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));     // pure cache hit
+    expectParity(cachedAgain, rebuilt, i);
+  }
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), 0u)
+      << "per-part path must actually serve from cache (not fall back to rebuild)";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// The win: when ONE part loops (body's 4-frame "run" state advances generation()
+// every tick), the whole-entity cache rebuilds ALL static parts each frame, while
+// the per-part cache rebuilds only body and serves bg/frame/vane/held from cache.
+// Compare re-key churn (rebuilt.rekey counts static-part rebuilds): per-part must
+// be strictly, substantially smaller.
+TEST(DrawableCache, PerPartRebuildsOnlyChangedParts) {
+  auto config = Root::singleton().configuration();
+  auto runSequence = [&](bool perPart) -> uint64_t {
+    Telemetry::reset();
+    config->set("renderDrawableCachePerPart", perPart);
+    config->set("renderDrawableCache", !perPart);
+    auto a = makeRichAnim();
+    a.setGlobalTag("tint", String("ff0000"));
+    a.setState("motion", "run");              // 4-frame loop on the "body" part only
+    a.update(0.1f, nullptr);
+    (void)a.drawablesWithZLevel(Vec2F());     // prime: build all static parts
+    uint64_t r0 = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
+    uint64_t c0 = Telemetry::counter("render.drawable.parts.cached").value();
+    for (int i = 0; i < 8; ++i) {             // 8 frame advances (cycle 0.4 / 4 frames)
+      a.update(0.1f, nullptr);
+      (void)a.drawablesWithZLevel(Vec2F());
+    }
+    uint64_t churn = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value() - r0;
+    if (perPart) {
+      // Static siblings (bg/frame/vane/held) keep getting served while body loops.
+      EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), c0)
+          << "per-part: static siblings must be served from cache while body animates";
+    }
+    config->set("renderDrawableCachePerPart", false);
+    config->set("renderDrawableCache", false);
+    return churn;
+  };
+  uint64_t wholeEntityChurn = runSequence(false);   // renderDrawableCache only
+  uint64_t perPartChurn = runSequence(true);        // renderDrawableCachePerPart only
+  // body bumps generation() every frame advance.  Whole-entity rebuilds every
+  // static part each time (>=4 static siblings + body); per-part rebuilds body only.
+  EXPECT_LT(perPartChurn, wholeEntityChurn)
+      << "per-part churn=" << perPartChurn << " whole-entity churn=" << wholeEntityChurn;
+  EXPECT_GT(wholeEntityChurn, perPartChurn * 2)
+      << "kRichCfg has 5 static parts; whole-entity should rebuild far more per frame";
+}
+
+// KNOWN LIMITATION of the per-part cache (renderDrawableCachePerPart): a static
+// part whose image resolves ANOTHER state type's animation tag (<aux_state>) is
+// NOT invalidated when that state type changes -- partGeneration tracks only the
+// part's own resolved key, and setState does not bump renderVersion.  The
+// whole-entity path settles generation() into its key and stays correct
+// (CrossStateTypeTagSettledWithoutUpdate); the per-part path serves STALE.  This
+// test PINS that the gap exists AND that shadow-compare (the A/B safety net)
+// detects it.  The flag is default-off; this gap must be fixed (per-part
+// tag-dependency tracking) before renderDrawableCachePerPart can default-on (see
+// plan 2026-06-14-drawable-cache-perpart.md Task 6 Step 4).  WHEN FIXED: the
+// shadowMismatch below drops to 0 -> this test fails -> flip it to assert parity
+// and proceed with the default-on decision.
+TEST(DrawableCache, PerPartCrossStateTypeTagKnownStaleLimitation) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": {
+      "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 },
+        "on":  { "frames": 1 }
+      } } },
+      "parts": {
+        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } }
+      }
+    },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {},
+    "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+
+  a.update(0.1f, nullptr);
+  auto primed = a.drawablesWithZLevel({});   // prime: per-part caches /lamp_off.png (parity, no mismatch)
+  ASSERT_FALSE(primed.empty());
+  ASSERT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "prime call must be parity-clean";
+
+  // Master-side state flip with NO intervening update() (the update -> mutate ->
+  // render ordering an entity produces).  setState does not bump renderVersion,
+  // and lamp does not list "aux", so its partGeneration/key do not move -> the
+  // per-part cache serves the stale /lamp_off.png.
+  ASSERT_TRUE(a.setState("aux", "on"));
+  (void)a.drawablesWithZLevel({});           // per-part serves STALE; shadow-compare flags it
+  EXPECT_GT(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "KNOWN per-part limitation: cross-state-type tag served stale; shadow-compare must catch it. "
+         "When the gap is fixed this stays 0 -> flip this test to assert parity and gate default-on.";
+
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
 }
