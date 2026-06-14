@@ -1090,10 +1090,11 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
     partStarts.reserve(parts.size());
   List<Directives> baseProcessingDirectives;
   HashMap<String, String> animationTags;
+  TagDeps tagDeps;
   bool contextBuilt = false;
   auto ensureContext = [&]() {
     if (!contextBuilt) {
-      drawableBuildContext(baseProcessingDirectives, animationTags);
+      drawableBuildContext(baseProcessingDirectives, animationTags, &tagDeps);
       contextBuilt = true;
     }
   };
@@ -1106,12 +1107,16 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
     if (partIsStaticCacheable(partName)) {
       uint64_t pg = m_animatedParts.partGeneration(partName);
       auto cached = m_staticCachePerPart.ptr(partName);
-      if (cached && cached->renderVersion == rv && cached->partGeneration == pg
-          && cached->localTransformHash == lth) {
-        // HIT: serve this part's cached zero-translate drawables.
+      bool depsFresh = cached
+          && cached->renderVersion == rv && cached->partGeneration == pg
+          && cached->localTransformHash == lth
+          && (!cached->dependsAllStateTypes || cached->stateTypesEpoch == m_animatedParts.stateTypesEpoch());
+      if (depsFresh)
+        for (auto const& dep : cached->stateTypeDeps)
+          if (m_animatedParts.stateTypeGeneration(dep.first) != dep.second) { depsFresh = false; break; }
+      if (depsFresh) {
         s_cachedCounter.inc();
-        for (auto const& p : cached->drawables)
-          drawables.append(p);
+        for (auto const& p : cached->drawables) drawables.append(p);
         continue;
       }
       // MISS: rebuild ONLY this part and store its entry under its own key.
@@ -1121,11 +1126,17 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
       List<pair<Drawable, float>> partDrawables;
       s_rebuiltCounter.inc();
       s_rebuiltRekeyCounter.inc();
+      Set<String> consumed;
+      bool consumedCustom = false;
       appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(),
-          baseProcessingDirectives, animationTags, partDrawables);
+          baseProcessingDirectives, animationTags, partDrawables, &tagDeps, &consumed, &consumedCustom);
       for (auto const& p : partDrawables)
         drawables.append(p);
-      m_staticCachePerPart.set(partName, StaticPartCacheEntry{std::move(partDrawables), rv, pg, lth});
+      List<pair<String, uint64_t>> deps;
+      deps.reserve(consumed.size());
+      for (auto const& st : consumed) deps.append({st, m_animatedParts.stateTypeGeneration(st)});
+      m_staticCachePerPart.set(partName, StaticPartCacheEntry{std::move(partDrawables), rv, pg, lth,
+          std::move(deps), consumedCustom, m_animatedParts.stateTypesEpoch()});
     } else {
       // LIVE part: never cached, always built fresh (same as the whole-entity path).
       ensureContext();
@@ -1322,6 +1333,19 @@ void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDir
             if (tagDeps) tagDeps->customTags.insert(tag.first);
           }
       }
+      // Scan ALL states (including inactive ones) for potential custom tags.
+      // A custom tag defined only in an inactive state is absent from animationTags
+      // now, but a part whose image references it would silently consume a stale
+      // "default" and never call recordDep.  Collecting every possible custom tag
+      // key lets recordDep correctly mark any consumer as epoch-dependent.
+      if (tagDeps) {
+        for (auto const& stateName : m_animatedParts.states(stateTypeName)) {
+          auto const& state = m_animatedParts.getState(stateTypeName, stateName);
+          if (auto p = state.stateProperties.ptr("animationTags"))
+            for (auto const& kv : p->iterateObject())
+              tagDeps->customTags.insert(kv.first);
+        }
+      }
     }
   }
 }
@@ -1392,6 +1416,8 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
         } else if (auto p = m_globalTags.ptr(tag)) {
           return StringView(*p);
         }
+        // Tag not found anywhere: may be a custom tag inactive in the current state.
+        recordDep(tag);
         return StringView("default");
       });
     }
@@ -1418,6 +1444,8 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
           } else if (auto p = m_globalTags.ptr(tag)) {
             return StringView(*p);
           }
+          // Tag not found anywhere: may be a custom tag inactive in the current state.
+          recordDep(tag);
           return StringView("default");
         });
       }
@@ -1440,7 +1468,8 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
     } else if (auto p = m_globalTags.ptr(tag)) {
       return StringView(*p);
     }
-
+    // Tag not found anywhere: may be a custom tag inactive in the current state.
+    recordDep(tag);
     return StringView("default");
   });
   String const& usedImage = processedImage ? processedImage.get() : image;
