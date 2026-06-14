@@ -395,6 +395,7 @@ TEST(DrawableCache, CachedEqualsRebuiltAcrossUpdates) {
   // ever drifts from the test policy, shadowMismatch fires and this test reds.
   Telemetry::reset();
   config->set("renderDrawableCache", true);
+  config->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
   config->set("renderDrawableCacheShadowCompare", true);
   for (int i = 0; i < 30; ++i) {
     a.update(0.1f, nullptr);
@@ -463,6 +464,7 @@ TEST(DrawableCache, CountsCachedVsRebuilt) {
   Telemetry::reset();
   auto config = Root::singleton().configuration();
   config->set("renderDrawableCache", true);
+  config->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
   config->set("renderDrawableCacheShadowCompare", true);
   auto a = NetworkedAnimator(Json::parse(cfg), "/");
   a.update(0.1f, nullptr);
@@ -487,6 +489,7 @@ TEST(DrawableCache, RekeyReasonCounters) {
   Telemetry::reset();
   auto config = Root::singleton().configuration();
   config->set("renderDrawableCache", true);
+  config->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
   auto a = makeRichAnim();
   // frame's processingDirectives carries a <tint> tag: resolve it up front,
   // exactly as CachedEqualsRebuiltAcrossUpdates does.
@@ -561,6 +564,7 @@ TEST(DrawableCache, CrossStateTypeTagSettledWithoutUpdate) {
   ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
   auto config = Root::singleton().configuration();
   config->set("renderDrawableCache", true);
+  config->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
 
   a.update(0.1f, nullptr);
   auto primed = a.drawablesWithZLevel({});  // prime: cache holds /lamp_off.png
@@ -644,6 +648,7 @@ TEST(NetworkedAnimator, NoOpSettersDoNotBumpRenderVersion) {
 TEST(DrawableCache, StationaryLocalTransformPatternDoesNotRekey) {
   Telemetry::reset();
   Root::singleton().configuration()->set("renderDrawableCache", true);
+  Root::singleton().configuration()->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
   // The rich config's "fixed" group is non-interpolated and referenced by the
   // STATIC parts frame and held; body's default "motion" state is the 1-frame
   // "idle", so generation() is stable across the no-update() calls below (the
@@ -689,6 +694,7 @@ TEST(DrawableCache, StationaryLocalTransformPatternDoesNotRekey) {
 TEST(DrawableCache, PartitionScansAreMemoized) {
   Telemetry::reset();
   Root::singleton().configuration()->set("renderDrawableCache", true);
+  Root::singleton().configuration()->set("renderDrawableCachePerPart", false);  // pin whole-entity path (default is now per-part)
   auto a = makeRichAnim();
   // frame's processingDirectives carries a <tint> tag: resolve it up front,
   // exactly as CachedEqualsRebuiltAcrossUpdates does.
