@@ -447,6 +447,7 @@ private:
   // translate) for the given sorted part list, recording the given cache key.
   void rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
       tuple<uint64_t, uint64_t, uint64_t> const& key) const;
+  List<pair<Drawable, float>> drawablesWithZLevelPerPart(Vec2F const& position) const;
 
   // Shadow-compare (runtime flag renderDrawableCacheShadowCompare):
   // diagnostics-only check of the assembled cache-path output against a
@@ -504,6 +505,31 @@ private:
   mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
   mutable bool m_staticCacheValid = false;
   mutable tuple<uint64_t, uint64_t, uint64_t> m_staticCacheKey;
+
+  // Per-part static drawable cache (runtime flag renderDrawableCachePerPart):
+  // the part-granular refinement of m_staticCache above.  Each static part
+  // caches its zero-translate drawables under its OWN key
+  // (m_renderVersion, m_animatedParts.partGeneration(part), localTransformHash()),
+  // so a sibling part advancing its animation frame -- which bumps the
+  // whole-entity generation() and would re-key the single m_staticCacheKey,
+  // clearing the WHOLE m_staticCache -- no longer invalidates parts that did not
+  // themselves change.  Same zero-translate / world-translate-after convention
+  // and same partIsStaticCacheable partition as m_staticCache.  Correctness on
+  // config replacement is covered by the renderVersion key component (operator=
+  // bumps renderVersion); also cleared in operator= for memory hygiene.
+  // Main-thread only; mutable for the const drawables path.
+  // KNOWN LIMITATION: the per-part key does not capture cross-state-type
+  // animation tags -- a static part resolving another state type's <T_state>/
+  // <T_frame> can serve stale until an unrelated renderVersion/partGeneration/lth
+  // change.  Detected by shadow-compare; flag default-off; must be fixed
+  // (per-part tag-dependency tracking) before default-on.
+  struct StaticPartCacheEntry {
+    List<pair<Drawable, float>> drawables;
+    uint64_t renderVersion = 0;
+    uint64_t partGeneration = 0;
+    uint64_t localTransformHash = 0;
+  };
+  mutable StringMap<StaticPartCacheEntry> m_staticCachePerPart;
 
   // Memo of partIsStaticCacheableStructural verdicts.  Every structural input
   // is construction-constant (part configs, anchor chain, group structure,

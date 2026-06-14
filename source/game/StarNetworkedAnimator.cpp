@@ -286,6 +286,7 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator&& animator) {
   // AnimatedPartSet's generation could collide with the recorded one: drop it
   // too.
   m_staticCacheValid = false;
+  m_staticCachePerPart.clear();
   m_partitionMemo.clear();
   m_partitionMemoGeneration = 0;
   bumpRenderVersion();
@@ -322,6 +323,7 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator const& animato
   // AnimatedPartSet's generation could collide with the recorded one: drop it
   // too.
   m_staticCacheValid = false;
+  m_staticCachePerPart.clear();
   m_partitionMemo.clear();
   m_partitionMemoGeneration = 0;
   bumpRenderVersion();
@@ -907,6 +909,9 @@ List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& position) const {
   auto configuration = Root::singleton().configuration();
+  // Per-part cache wins over whole-entity when both are on (A/B sets exactly one).
+  if (configuration->get("renderDrawableCachePerPart", false).toBool())
+    return drawablesWithZLevelPerPart(position);
   if (!configuration->get("renderDrawableCache", false).toBool())
     return drawablesWithZLevelRebuild(position);
   bool shadow = configuration->get("renderDrawableCacheShadowCompare", false).toBool();
@@ -1044,6 +1049,101 @@ void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePar
   }
   m_staticCacheKey = key;
   m_staticCacheValid = true;
+}
+
+List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F const& position) const {
+  auto configuration = Root::singleton().configuration();
+  bool shadow = configuration->get("renderDrawableCacheShadowCompare", false).toBool();
+
+  size_t partCount = m_animatedParts.constParts().size();
+  if (!partCount)
+    return {};
+
+  // Freshen all parts (enumerate + stable-sort, settling each part's
+  // partGeneration) and settle every state type so parts that DO rebuild this
+  // call resolve current animation tags.  NOTE: unlike the whole-entity path,
+  // settling state types does NOT protect the per-part cache KEY -- partGeneration
+  // tracks only a part's OWN resolved state, so a static part whose image resolves
+  // ANOTHER state type's <T_state>/<T_frame> tag is NOT invalidated when that
+  // state type changes (KNOWN LIMITATION; shadow-compare detects it; flag is
+  // default-off; must be fixed before default-on -- see the test
+  // PerPartCrossStateTypeTagKnownStaleLimitation and the plan).
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+  m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
+
+  // renderVersion and localTransformHash are GLOBAL key components (a global
+  // tag/directive/effect or local-transform change re-validates every part);
+  // partGeneration is the per-part component that lets a looping part rebuild
+  // alone.
+  uint64_t rv = m_renderVersion;
+  uint64_t lth = localTransformHash();
+
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
+
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  List<pair<size_t, String const*>> partStarts;
+  if (shadow)
+    partStarts.reserve(parts.size());
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  bool contextBuilt = false;
+  auto ensureContext = [&]() {
+    if (!contextBuilt) {
+      drawableBuildContext(baseProcessingDirectives, animationTags);
+      contextBuilt = true;
+    }
+  };
+
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (shadow)
+      partStarts.append({drawables.size(), &partName});
+
+    if (partIsStaticCacheable(partName)) {
+      uint64_t pg = m_animatedParts.partGeneration(partName);
+      auto cached = m_staticCachePerPart.ptr(partName);
+      if (cached && cached->renderVersion == rv && cached->partGeneration == pg
+          && cached->localTransformHash == lth) {
+        // HIT: serve this part's cached zero-translate drawables.
+        s_cachedCounter.inc();
+        for (auto const& p : cached->drawables)
+          drawables.append(p);
+        continue;
+      }
+      // MISS: rebuild ONLY this part and store its entry under its own key.
+      // rebuilt.rekey counts per-part static rebuilds (re-key churn), exactly as
+      // in rebuildStaticCache, so rebuilt - rebuilt.rekey stays = genuinely-live builds.
+      ensureContext();
+      List<pair<Drawable, float>> partDrawables;
+      s_rebuiltCounter.inc();
+      s_rebuiltRekeyCounter.inc();
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(),
+          baseProcessingDirectives, animationTags, partDrawables);
+      for (auto const& p : partDrawables)
+        drawables.append(p);
+      m_staticCachePerPart.set(partName, StaticPartCacheEntry{std::move(partDrawables), rv, pg, lth});
+    } else {
+      // LIVE part: never cached, always built fresh (same as the whole-entity path).
+      ensureContext();
+      s_rebuiltCounter.inc();
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(),
+          baseProcessingDirectives, animationTags, drawables);
+    }
+  }
+
+  // World translate applied live (everything above is at zero translate) -- same
+  // parity policy as the whole-entity path (see the comment block below).
+  for (auto& p : drawables)
+    p.first.translate(position);
+
+  if (shadow)
+    shadowCompare(drawables, drawablesWithZLevelRebuild(position), partStarts);
+
+  return drawables;
 }
 
 // Position parity policy for the shadow compare, shared with the DrawableCache
