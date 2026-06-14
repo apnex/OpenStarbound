@@ -533,11 +533,14 @@ private:
   // config replacement is covered by the renderVersion key component (operator=
   // bumps renderVersion); also cleared in operator= for memory hygiene.
   // Main-thread only; mutable for the const drawables path.
-  // KNOWN LIMITATION: the per-part key does not capture cross-state-type
-  // animation tags -- a static part resolving another state type's <T_state>/
-  // <T_frame> can serve stale until an unrelated renderVersion/partGeneration/lth
-  // change.  Detected by shadow-compare; flag default-off; must be fixed
-  // (per-part tag-dependency tracking) before default-on.
+  // Cross-state-type animation tags ARE captured per entry (the partGeneration
+  // key tracks only a part's OWN resolved state).  A static part resolving
+  // another state type's built-in <T_state>/<T_frame>/<T_frameIndex> tag records
+  // a PRECISE per-state-type dependency (stateTypeDeps, checked against that
+  // state type's generation); resolving any custom animationTags key records the
+  // conservative stateTypesEpoch dependency (dependsAllStateTypes).  Either
+  // invalidates the entry when the foreign state type changes, so the per-part
+  // cache stays correct (DrawableCache.PerPart* tests).
   struct StaticPartCacheEntry {
     List<pair<Drawable, float>> drawables;
     uint64_t renderVersion = 0;
