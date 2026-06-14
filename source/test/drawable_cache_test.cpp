@@ -758,3 +758,91 @@ TEST(AnimatedPartSet, PartGenerationIsPerPart) {
   EXPECT_EQ(a.partGeneration("bg"), bgG0) << "bg never changed; its partGeneration must stay fixed";
   EXPECT_EQ(a.partGeneration("nonexistent"), 0u) << "unknown part name returns 0";
 }
+
+// Per-part parity: with the PER-PART cache on, drawables must EQUAL the full
+// rebuild across the same update/flip sequence the whole-entity parity test
+// uses, with shadow-compare ON (zero mismatches).  The final cached-counter
+// assertion guarantees the per-part path actually served from cache (not the
+// rebuild fallback), so this is a genuine red before the path exists.
+TEST(DrawableCache, PerPartCachedEqualsRebuiltAcrossUpdates) {
+  auto a = makeRichAnim();
+  ASSERT_TRUE(a.partIsStaticCacheable("vane"));
+  a.setGlobalTag("tint", String("ff0000"));
+  a.setPartDrawables("held",
+      {Drawable::makeImage("/held.png", 1.0f / TilePixels, false, Vec2F(0.05f, 0.05f))});
+  ASSERT_TRUE(a.partIsStaticCacheable("held"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  for (int i = 0; i < 30; ++i) {
+    a.update(0.1f, nullptr);
+    if (i == 5)
+      a.rotateGroup("wind", 0.8f);
+    if (i == 10)
+      a.setGlobalTag("color", String("red"));
+    if (i == 15)
+      a.setState("motion", "run");
+    if (i == 20)
+      a.translateTransformationGroup("fixed", Vec2F(0.5f, 0.25f));
+    if (i == 25)
+      a.setPartDrawables("held",
+          {Drawable::makeImage("/held.png", 1.0f / TilePixels, false, Vec2F(0.05f, 0.05f)),
+           Drawable::makeImage("/held2.png", 1.0f / TilePixels, false, Vec2F(0.65f, 0.35f))});
+
+    auto cached = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));          // per-part path
+    auto rebuilt = a.drawablesWithZLevelRebuild(Vec2F(1.0f, 2.0f));  // forced full rebuild
+    ASSERT_FALSE(cached.empty());
+    expectParity(cached, rebuilt, i);
+
+    auto cachedAgain = a.drawablesWithZLevel(Vec2F(1.0f, 2.0f));     // pure cache hit
+    expectParity(cachedAgain, rebuilt, i);
+  }
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), 0u)
+      << "per-part path must actually serve from cache (not fall back to rebuild)";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// The win: when ONE part loops (body's 4-frame "run" state advances generation()
+// every tick), the whole-entity cache rebuilds ALL static parts each frame, while
+// the per-part cache rebuilds only body and serves bg/frame/vane/held from cache.
+// Compare re-key churn (rebuilt.rekey counts static-part rebuilds): per-part must
+// be strictly, substantially smaller.
+TEST(DrawableCache, PerPartRebuildsOnlyChangedParts) {
+  auto config = Root::singleton().configuration();
+  auto runSequence = [&](bool perPart) -> uint64_t {
+    Telemetry::reset();
+    config->set("renderDrawableCachePerPart", perPart);
+    config->set("renderDrawableCache", !perPart);
+    auto a = makeRichAnim();
+    a.setGlobalTag("tint", String("ff0000"));
+    a.setState("motion", "run");              // 4-frame loop on the "body" part only
+    a.update(0.1f, nullptr);
+    (void)a.drawablesWithZLevel(Vec2F());     // prime: build all static parts
+    uint64_t r0 = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
+    uint64_t c0 = Telemetry::counter("render.drawable.parts.cached").value();
+    for (int i = 0; i < 8; ++i) {             // 8 frame advances (cycle 0.4 / 4 frames)
+      a.update(0.1f, nullptr);
+      (void)a.drawablesWithZLevel(Vec2F());
+    }
+    uint64_t churn = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value() - r0;
+    if (perPart) {
+      // Static siblings (bg/frame/vane/held) keep getting served while body loops.
+      EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), c0)
+          << "per-part: static siblings must be served from cache while body animates";
+    }
+    config->set("renderDrawableCachePerPart", false);
+    config->set("renderDrawableCache", false);
+    return churn;
+  };
+  uint64_t wholeEntityChurn = runSequence(false);   // renderDrawableCache only
+  uint64_t perPartChurn = runSequence(true);        // renderDrawableCachePerPart only
+  // body bumps generation() every frame advance.  Whole-entity rebuilds every
+  // static part each time (>=4 static siblings + body); per-part rebuilds body only.
+  EXPECT_LT(perPartChurn, wholeEntityChurn)
+      << "per-part churn=" << perPartChurn << " whole-entity churn=" << wholeEntityChurn;
+  EXPECT_GT(wholeEntityChurn, perPartChurn * 2)
+      << "kRichCfg has 5 static parts; whole-entity should rebuild far more per frame";
+}
