@@ -191,8 +191,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         Image gpuResult;
         float brightnessScale = config->get("lightingGpuBrightness").optFloat().value(1.0f);
         gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
-            renderData.lightingObstacle, renderData.lightingPointLights, iterations, params, brightnessScale,
-            shadowCompare, &gpuResult);
+            renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+            iterations, params, brightnessScale, shadowCompare, &gpuResult);
         if (gpuLightmap) {
           // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
           // world shader samples the query region. The border is carried in renderData from the

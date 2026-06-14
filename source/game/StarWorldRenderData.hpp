@@ -39,6 +39,10 @@ struct WorldRenderData {
   // GPU upload is RGB16F (half the per-frame transfer). Travels alongside lightingEmission; the RGB_F
   // version is still kept for the auto-K scan + shadow-compare reference.
   List<uint16_t> lightingEmissionHalf;
+  // The obstacle mask as single-channel R8 bytes (0/255), pre-extracted on the lighting thread so the
+  // GPU upload is R8 (a third the bytes of RGB24). Travels alongside lightingObstacle (RGB24 kept for
+  // the shadow-compare reference).
+  List<uint8_t> lightingObstacleR8;
   // The point lights (array-relative, insertion order) for the GPU per-light-quad
   // point pass (Slice 3). Travels alongside emission/obstacle, gated by
   // lightingInputsValid.

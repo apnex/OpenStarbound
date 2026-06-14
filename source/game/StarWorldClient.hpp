@@ -307,6 +307,10 @@ private:
   // the render thread uploads RGB16F (half the bytes) instead of RGB_F. Same pending->published handoff.
   List<uint16_t> m_pendingLightingEmissionHalf;
   List<uint16_t> m_lightingEmissionHalf;
+  // The obstacle mask as single-channel R8 bytes (0/255), extracted on the lighting thread so the GPU
+  // upload is R8 (a third the bytes of RGB24). Same pending->published handoff.
+  List<uint8_t> m_pendingLightingObstacleR8;
+  List<uint8_t> m_lightingObstacleR8;
   // The point-light list (Slice 3), exported/published alongside the emission +
   // obstacle grids for the GPU point pass; same pending->published handoff.
   List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;

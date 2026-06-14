@@ -11,7 +11,7 @@
 // brightnessLimit (proportional, hue-preserving) exactly as CellularLightingCalculator::calculate.
 uniform sampler2D emission;     // seeded spread light (constant across iterations), RGB float
 uniform sampler2D lightState;   // previous iteration's light (== emission on iteration 0)
-uniform sampler2D obstacle;     // RGB24, obstacle in R channel (255 obstacle / 0 air)
+uniform sampler2D obstacle;     // R8, obstacle in R channel (1.0 obstacle / 0 air)
 uniform vec2 lightStateSize;    // texel dimensions of the lightmap grid
 uniform float dropoffAir;       // 1 / spreadMaxAir
 uniform float dropoffObstacle;  // 1 / spreadMaxObstacle
