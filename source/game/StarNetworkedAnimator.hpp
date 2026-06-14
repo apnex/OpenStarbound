@@ -543,6 +543,11 @@ private:
     uint64_t renderVersion = 0;
     uint64_t partGeneration = 0;
     uint64_t localTransformHash = 0;
+    // Cross-state-type-tag dependency (Lever 1b): built-in foreign tags -> exact
+    // per-state-type deps; any custom-tag consumption -> depend on stateTypesEpoch.
+    List<pair<String, uint64_t>> stateTypeDeps;
+    bool dependsAllStateTypes = false;
+    uint64_t stateTypesEpoch = 0;
   };
   mutable StringMap<StaticPartCacheEntry> m_staticCachePerPart;
 

@@ -847,32 +847,14 @@ TEST(DrawableCache, PerPartRebuildsOnlyChangedParts) {
       << "kRichCfg has 5 static parts; whole-entity should rebuild far more per frame";
 }
 
-// KNOWN LIMITATION of the per-part cache (renderDrawableCachePerPart): a static
-// part whose image resolves ANOTHER state type's animation tag (<aux_state>) is
-// NOT invalidated when that state type changes -- partGeneration tracks only the
-// part's own resolved key, and setState does not bump renderVersion.  The
-// whole-entity path settles generation() into its key and stays correct
-// (CrossStateTypeTagSettledWithoutUpdate); the per-part path serves STALE.  This
-// test PINS that the gap exists AND that shadow-compare (the A/B safety net)
-// detects it.  The flag is default-off; this gap must be fixed (per-part
-// tag-dependency tracking) before renderDrawableCachePerPart can default-on (see
-// plan 2026-06-14-drawable-cache-perpart.md Task 6 Step 4).  WHEN FIXED: the
-// shadowMismatch below drops to 0 -> this test fails -> flip it to assert parity
-// and proceed with the default-on decision.
-TEST(DrawableCache, PerPartCrossStateTypeTagKnownStaleLimitation) {
+// Cross-state-type tag now INVALIDATES correctly (was the pinned-limitation test).
+TEST(DrawableCache, PerPartCrossStateTypeTagInvalidates) {
   char const* cfg = R"JSON({
     "version": 1,
-    "animatedParts": {
-      "stateTypes": { "aux": { "default": "off", "states": {
-        "off": { "frames": 1 },
-        "on":  { "frames": 1 }
-      } } },
-      "parts": {
-        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } }
-      }
-    },
-    "transformationGroups": {}, "rotationGroups": {}, "effects": {},
-    "particleEmitters": {}, "lights": {}, "sounds": {}
+    "animatedParts": { "stateTypes": { "aux": { "default": "off", "states": {
+        "off": { "frames": 1 }, "on": { "frames": 1 } } } },
+      "parts": { "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
   })JSON";
   auto a = NetworkedAnimator(Json::parse(cfg), "/");
   ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
@@ -880,23 +862,140 @@ TEST(DrawableCache, PerPartCrossStateTypeTagKnownStaleLimitation) {
   Telemetry::reset();
   config->set("renderDrawableCachePerPart", true);
   config->set("renderDrawableCacheShadowCompare", true);
-
   a.update(0.1f, nullptr);
-  auto primed = a.drawablesWithZLevel({});   // prime: per-part caches /lamp_off.png (parity, no mismatch)
+  auto primed = a.drawablesWithZLevel({});
   ASSERT_FALSE(primed.empty());
-  ASSERT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
-      << "prime call must be parity-clean";
-
-  // Master-side state flip with NO intervening update() (the update -> mutate ->
-  // render ordering an entity produces).  setState does not bump renderVersion,
-  // and lamp does not list "aux", so its partGeneration/key do not move -> the
-  // per-part cache serves the stale /lamp_off.png.
+  ASSERT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
   ASSERT_TRUE(a.setState("aux", "on"));
-  (void)a.drawablesWithZLevel({});           // per-part serves STALE; shadow-compare flags it
-  EXPECT_GT(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
-      << "KNOWN per-part limitation: cross-state-type tag served stale; shadow-compare must catch it. "
-         "When the gap is fixed this stays 0 -> flip this test to assert parity and gate default-on.";
+  auto served = a.drawablesWithZLevel({});
+  auto rebuilt = a.drawablesWithZLevelRebuild({});
+  ASSERT_FALSE(served.empty());
+  expectParity(served, rebuilt, 0);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "cross-state-type tag must invalidate the per-part entry";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
 
+// Critic Finding 1: a CUSTOM animationTags key defined by TWO state types
+// (first-definer-wins). Flipping the earlier-iterated definer can shift the owner;
+// the conservative custom-tag dependency (stateTypesEpoch) must catch it.
+TEST(DrawableCache, PerPartCustomTagMultiDefinerInvalidates) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": { "stateTypes": {
+        "aux":    { "default": "off", "states": { "off": { "frames": 1 },
+                    "on":  { "frames": 1, "properties": { "animationTags": { "glow": "bright" } } } } },
+        "motion": { "default": "run", "states": {
+                    "run": { "frames": 1, "properties": { "animationTags": { "glow": "dim" } } } } } },
+      "parts": { "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<glow>.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  ASSERT_TRUE(a.partIsStaticCacheable("lamp"));
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});
+  ASSERT_TRUE(a.setState("aux", "on"));
+  auto served = a.drawablesWithZLevel({});
+  auto rebuilt = a.drawablesWithZLevelRebuild({});
+  expectParity(served, rebuilt, 0);
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u)
+      << "custom-tag consumer must conservatively invalidate on any state-type change";
+  config->set("renderDrawableCacheShadowCompare", false);
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// Precision + win: a foreign-tag part rebuilds on aux change; a tag-free static sibling stays cached.
+TEST(DrawableCache, PerPartForeignTagPrecision) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": { "stateTypes": { "aux": { "default": "off", "states": { "off": { "frames": 1 }, "on": { "frames": 1 } } } },
+      "parts": {
+        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } },
+        "sign": { "properties": { "zLevel": 1, "image": "/sign.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});
+  uint64_t rekey0 = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
+  uint64_t cached0 = Telemetry::counter("render.drawable.parts.cached").value();
+  a.setState("aux", "on");
+  (void)a.drawablesWithZLevel({});
+  EXPECT_EQ(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), rekey0 + 1) << "exactly lamp rebuilds";
+  EXPECT_GT(Telemetry::counter("render.drawable.parts.cached").value(), cached0) << "sign stays cached";
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// Dep recapture: switch the part to a state with NO foreign tag, then flip aux -> must NOT invalidate.
+TEST(DrawableCache, PerPartDepRecaptureOnOwnStateChange) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": { "stateTypes": {
+        "aux": { "default": "off", "states": { "off": { "frames": 1 }, "on": { "frames": 1 } } },
+        "mode": { "default": "a", "states": { "a": { "frames": 1 }, "b": { "frames": 1 } } } },
+      "parts": { "lamp": { "partStates": { "mode": {
+          "a": { "properties": { "zLevel": 0, "image": "/x_<aux_state>.png", "centered": false } },
+          "b": { "properties": { "zLevel": 0, "image": "/y.png", "centered": false } } } } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  a.update(0.1f, nullptr);
+  (void)a.drawablesWithZLevel({});
+  a.setState("mode", "b"); a.update(0.0f, nullptr);
+  (void)a.drawablesWithZLevel({});
+  uint64_t rekey0 = Telemetry::counter("render.drawable.parts.rebuilt.rekey").value();
+  a.setState("aux", "on");
+  (void)a.drawablesWithZLevel({});
+  EXPECT_EQ(Telemetry::counter("render.drawable.parts.rebuilt.rekey").value(), rekey0)
+      << "in state b the part no longer depends on aux -> no rebuild";
+  config->set("renderDrawableCachePerPart", false);
+}
+
+// Randomized multi-state-type sequence with shadow-compare ON; per-part must never diverge from full rebuild.
+TEST(DrawableCache, PerPartShadowFuzz) {
+  char const* cfg = R"JSON({
+    "version": 1,
+    "animatedParts": { "stateTypes": {
+        "aux": { "default": "off", "states": { "off": { "frames": 1 }, "on": { "frames": 2, "cycle": 0.2, "mode": "loop" } } },
+        "mode": { "default": "a", "states": { "a": { "frames": 1 }, "b": { "frames": 3, "cycle": 0.3, "mode": "loop",
+                  "properties": { "animationTags": { "hue": "red" } } } } } },
+      "parts": {
+        "lamp": { "properties": { "zLevel": 0, "image": "/lamp_<aux_state>.png", "centered": false } },
+        "panel": { "properties": { "zLevel": 1, "image": "/panel_<mode_frame>.png", "centered": false } },
+        "tint": { "properties": { "zLevel": 2, "image": "/tint_<hue>.png", "centered": false } },
+        "plain": { "properties": { "zLevel": 3, "image": "/plain.png", "centered": false } } } },
+    "transformationGroups": {}, "rotationGroups": {}, "effects": {}, "particleEmitters": {}, "lights": {}, "sounds": {}
+  })JSON";
+  auto a = NetworkedAnimator(Json::parse(cfg), "/");
+  auto config = Root::singleton().configuration();
+  Telemetry::reset();
+  config->set("renderDrawableCachePerPart", true);
+  config->set("renderDrawableCacheShadowCompare", true);
+  uint32_t s = 0x1234567u;
+  auto rnd = [&]{ s = s * 1103515245u + 12345u; return (s >> 16) & 0x7fff; };
+  for (int i = 0; i < 120; ++i) {
+    a.update(0.05f * (1 + (rnd() % 3)), nullptr);
+    switch (rnd() % 4) {
+      case 0: a.setState("aux", (rnd() & 1) ? "on" : "off"); break;
+      case 1: a.setState("mode", (rnd() & 1) ? "b" : "a"); break;
+      default: break;
+    }
+    auto served = a.drawablesWithZLevel(Vec2F(1, 2));
+    auto rebuilt = a.drawablesWithZLevelRebuild(Vec2F(1, 2));
+    expectParity(served, rebuilt, i);
+  }
+  EXPECT_EQ(Telemetry::counter("render.drawable.cache.shadowMismatch").value(), 0u);
   config->set("renderDrawableCacheShadowCompare", false);
   config->set("renderDrawableCachePerPart", false);
 }
