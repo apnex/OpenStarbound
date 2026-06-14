@@ -167,6 +167,9 @@ public:
   // the per-frame transfer/store vs RGB_F. Used for GPU lighting's emission grid (the pipeline's FBOs
   // are already 16F, so no precision is lost); the float->half conversion is done off the render thread.
   virtual void setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) = 0;
+  // Upload single-channel 8-bit data to an effect sampler as an R8 texture (sampled via .r), a third
+  // the bytes of RGB24. Used for GPU lighting's obstacle mask (a binary 0/255 flag, read as .r > 0.5).
+  virtual void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) = 0;
   // Read a config framebuffer's color texture back to a CPU RGB_F image (diagnostics, e.g. GPU
   // lighting parity shadow-compare). Returns an empty image if the framebuffer is absent.
   virtual Image readFrameBuffer(String const& frameBufferId) = 0;

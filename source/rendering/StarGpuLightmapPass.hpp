@@ -36,7 +36,10 @@ public:
   // emissionHalf is the emission grid pre-converted to 16-bit half-floats (RGB packed) on the lighting
   // thread; when it matches emission's texel count it is uploaded as RGB16F (half the bytes), else the
   // RGB_F emission is uploaded as a fallback.
-  bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf, ImageView const& obstacle,
+  // obstacleR8 is the obstacle mask as single-channel bytes; when it matches the texel count it is
+  // uploaded as R8 (a third the bytes of the RGB24 obstacle), else the RGB24 obstacle is the fallback.
+  bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
+      ImageView const& obstacle, List<uint8_t> const& obstacleR8,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
       PointParameters const& params, float brightnessScale = 1.0f,
       bool shadowCompare = false, Image* gpuResult = nullptr);

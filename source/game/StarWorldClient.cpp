@@ -1524,6 +1524,7 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
       renderData->lightingObstacle = std::move(m_lightingObstacle);
       renderData->lightingPointLights = std::move(m_lightingPointLights);
       renderData->lightingEmissionHalf = std::move(m_lightingEmissionHalf);
+      renderData->lightingObstacleR8 = std::move(m_lightingObstacleR8);
       renderData->lightMapBorder = m_lightingBorder;
     }
     return true;
@@ -1853,6 +1854,16 @@ void WorldClient::lightingCalc() {
       for (size_t i = 0; i < n; ++i)
         hf[i] = floatToHalf(ef[i]);
     }
+    // Extract the obstacle mask's R channel (RGB24 0/255) into a single-channel R8 buffer so the GPU
+    // upload is R8 (a third the bytes); the shaders already read obstacle as .r.
+    {
+      uint8_t const* ob = (uint8_t const*)m_pendingLightingObstacle.data();
+      size_t cells = (size_t)m_pendingLightingObstacle.size()[0] * m_pendingLightingObstacle.size()[1];
+      m_pendingLightingObstacleR8.resize(cells);
+      uint8_t* r8 = m_pendingLightingObstacleR8.ptr();
+      for (size_t i = 0; i < cells; ++i)
+        r8[i] = ob[i * 3];   // R channel of each RGB24 texel
+    }
   }
 
   // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
@@ -1882,6 +1893,7 @@ void WorldClient::lightingCalc() {
       m_lightingObstacle = std::move(m_pendingLightingObstacle);
       m_lightingPointLights = std::move(m_pendingLightingPointLights);
       m_lightingEmissionHalf = std::move(m_pendingLightingEmissionHalf);
+      m_lightingObstacleR8 = std::move(m_pendingLightingObstacleR8);
       m_lightingBorder = lightMapBorder;
     }
   }

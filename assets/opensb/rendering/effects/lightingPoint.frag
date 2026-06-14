@@ -6,7 +6,7 @@
 // subtract(value, attenuation); blended onto the spread accumulation by the caller (additive for
 // pointAdditive, GL_MAX otherwise). Output 0 when the cell gets no contribution (additive +0 / max
 // no-op). One draw per light over the light's bbox quad.
-uniform sampler2D obstacle;     // RGB24, obstacle in R (255 obstacle / 0 air), texel (x,y) = cell (x,y)
+uniform sampler2D obstacle;     // R8, obstacle in R (1.0 obstacle / 0 air), texel (x,y) = cell (x,y)
 uniform vec2 lightStateSize;    // grid dims (w,h)
 uniform vec2 lightPosition;     // array-relative grid coords
 uniform vec3 lightValue;
