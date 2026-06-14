@@ -1,4 +1,5 @@
 #include "StarNetworkedAnimator.hpp"
+#include "StarAnimatedPartSet.hpp"
 #include "StarGameTypes.hpp"
 #include "StarJson.hpp"
 #include "StarRoot.hpp"
@@ -722,4 +723,38 @@ TEST(NetworkedAnimator, StaticLivePartitionStateAnimatedGroup) {
   auto a = NetworkedAnimator(Json::parse(cfg), "/");
   EXPECT_FALSE(a.partIsStaticCacheable("frame"));  // group currently named by an active-state property
   EXPECT_TRUE(a.partIsStaticCacheable("body"));
+}
+
+// Per-part generation: advancing a multi-frame state on ONE part must bump that
+// part's partGeneration but leave an unrelated static part's stamp untouched --
+// this is what lets the per-part drawable cache invalidate one part without its
+// siblings.  generation() is LAZY (bumped inside freshenActivePart), so freshen
+// every part (forEachActivePart) before reading, exactly as the drawable path does.
+TEST(AnimatedPartSet, PartGenerationIsPerPart) {
+  char const* cfg = R"JSON({
+    "stateTypes": { "motion": { "default": "run", "states": {
+      "run": { "frames": 4, "cycle": 0.4, "mode": "loop" } } } },
+    "parts": {
+      "bg":   { "properties": { "image": "/bg.png" } },
+      "body": { "partStates": { "motion": { "run": { "properties": { "image": "/body_<frame>.png" } } } } }
+    }
+  })JSON";
+  AnimatedPartSet a(Json::parse(cfg), 1);
+  a.setActiveState("motion", "run");
+  auto freshen = [&] {
+    a.forEachActivePart([](String const&, AnimatedPartSet::ActivePartInformation const&) {});
+  };
+  freshen();                                  // initial resolve (bumps both parts once)
+  uint64_t bgG0 = a.partGeneration("bg");
+  uint64_t bodyG0 = a.partGeneration("body");
+  bool bodyBumped = false;
+  for (int i = 0; i < 8; ++i) {
+    a.update(0.1f);                           // advances "run" by ~1 frame each tick
+    freshen();
+    if (a.partGeneration("body") != bodyG0)
+      bodyBumped = true;
+  }
+  EXPECT_TRUE(bodyBumped) << "body's animation frame advanced; its partGeneration must bump";
+  EXPECT_EQ(a.partGeneration("bg"), bgG0) << "bg never changed; its partGeneration must stay fixed";
+  EXPECT_EQ(a.partGeneration("nonexistent"), 0u) << "unknown part name returns 0";
 }

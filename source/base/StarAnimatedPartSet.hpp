@@ -125,6 +125,12 @@ public:
     unsigned resolvedFrame = ~0u;
     unsigned resolvedNextFrame = ~0u;
     bool resolvedValid = false;
+
+    // Per-part counterpart of generation(): bumped only when THIS part's resolved
+    // (stateType,state,frame,nextFrame) key changes (same site as the whole-entity
+    // generation() bump).  Lets the per-part drawable cache invalidate one part
+    // without rebuilding its siblings.  Per-instance; never serialized.
+    uint64_t partGeneration = 1;
   };
 
   AnimatedPartSet();
@@ -189,6 +195,12 @@ public:
   // integer frame/nextFrame, reverse, or part property resolution) changes. Does NOT
   // change for sub-frame frameProgress / continuous transforms. Per-instance; never serialized.
   uint64_t generation() const;
+
+  // Per-part counterpart of generation(): the monotonic stamp for one part,
+  // bumped only when that part's resolved key changes.  Returns 0 for an unknown
+  // part name.  Read AFTER freshening (forEachActivePart / the drawable path's
+  // part enumeration), exactly like generation().
+  uint64_t partGeneration(String const& partName) const;
 
   Json getStateFrameProperty(String const& stateType, String const& propertyName, String state, int frame) const;
   Json getPartStateFrameProperty(String const& partName, String const& propertyName, String const& stateType, String state, int frame) const;

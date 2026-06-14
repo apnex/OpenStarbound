@@ -400,6 +400,7 @@ void AnimatedPartSet::freshenActivePart(Part& part) {
     part.resolvedNextFrame = matchNextFrame;
     part.resolvedValid = true;
     ++m_generation;
+    ++part.partGeneration;
     cPerformed.inc();
   } else {
     cSkipped.inc();
@@ -491,6 +492,12 @@ uint8_t AnimatedPartSet::version() const {
 
 uint64_t AnimatedPartSet::generation() const {
   return m_generation;
+}
+
+uint64_t AnimatedPartSet::partGeneration(String const& partName) const {
+  if (auto part = m_parts.ptr(partName))
+    return part->partGeneration;
+  return 0;
 }
 
 Json AnimatedPartSet::getStateFrameProperty(String const & stateTypeName, String const & propertyName, String stateName, int frame) const {
