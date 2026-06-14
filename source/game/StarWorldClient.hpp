@@ -303,6 +303,10 @@ private:
   Image m_pendingLightingObstacle;
   Image m_lightingEmission;
   Image m_lightingObstacle;
+  // The emission grid pre-converted to 16-bit half-floats (RGB, packed) on the lighting thread, so
+  // the render thread uploads RGB16F (half the bytes) instead of RGB_F. Same pending->published handoff.
+  List<uint16_t> m_pendingLightingEmissionHalf;
+  List<uint16_t> m_lightingEmissionHalf;
   // The point-light list (Slice 3), exported/published alongside the emission +
   // obstacle grids for the GPU point pass; same pending->published handoff.
   List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;

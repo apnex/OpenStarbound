@@ -35,6 +35,10 @@ struct WorldRenderData {
   // is RGB24 (255 obstacle / 0 air). lightingInputsValid gates their use.
   Image lightingEmission;
   Image lightingObstacle;
+  // The emission grid as 16-bit half-floats (RGB packed), pre-converted on the lighting thread so the
+  // GPU upload is RGB16F (half the per-frame transfer). Travels alongside lightingEmission; the RGB_F
+  // version is still kept for the auto-K scan + shadow-compare reference.
+  List<uint16_t> lightingEmissionHalf;
   // The point lights (array-relative, insertion order) for the GPU per-light-quad
   // point pass (Slice 3). Travels alongside emission/obstacle, gated by
   // lightingInputsValid.

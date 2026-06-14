@@ -620,6 +620,41 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
   }
 }
 
+void OpenGlRenderer::setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) {
+  auto ptr = m_currentEffect->textures.ptr(textureName);
+  if (!ptr || size[0] == 0 || size[1] == 0)
+    return;
+
+  flushImmediatePrimitives();
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  if (!ptr->textureValue || ptr->textureValue->textureId == 0) {
+    auto tex = make_ref<GlLoneTexture>();
+    tex->textureFiltering = ptr->textureFiltering;
+    tex->textureAddressing = ptr->textureAddressing;
+    tex->textureSize = size;
+    glGenTextures(1, &tex->textureId);
+    glBindTexture(GL_TEXTURE_2D, tex->textureId);
+    GLenum wrap = ptr->textureAddressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+    GLenum filt = ptr->textureFiltering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
+    ptr->textureValue = tex;
+  } else {
+    glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
+    ptr->textureValue->textureSize = size;
+  }
+  // RGB16F storage + GL_HALF_FLOAT source: half the bytes of RGB_F, no precision loss (FBOs are 16F).
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, size[0], size[1], 0, GL_RGB, GL_HALF_FLOAT, halfData);
+
+  if (ptr->textureSizeUniform != -1) {
+    auto textureSize = ptr->textureValue->glTextureSize();
+    glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
+  }
+}
+
 Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   flushImmediatePrimitives();
 
