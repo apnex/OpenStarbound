@@ -1059,10 +1059,15 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
   if (!partCount)
     return {};
 
-  // Same full freshen as the whole-entity path: enumerate + stable-sort the
-  // active parts (freshening each, which settles per-part partGeneration), then
-  // settle every state type so cross-state-type animation tags are current
-  // BEFORE any part is keyed (see the note in drawablesWithZLevel).
+  // Freshen all parts (enumerate + stable-sort, settling each part's
+  // partGeneration) and settle every state type so parts that DO rebuild this
+  // call resolve current animation tags.  NOTE: unlike the whole-entity path,
+  // settling state types does NOT protect the per-part cache KEY -- partGeneration
+  // tracks only a part's OWN resolved state, so a static part whose image resolves
+  // ANOTHER state type's <T_state>/<T_frame> tag is NOT invalidated when that
+  // state type changes (KNOWN LIMITATION; shadow-compare detects it; flag is
+  // default-off; must be fixed before default-on -- see the test
+  // PerPartCrossStateTypeTagKnownStaleLimitation and the plan).
   int drawableCount = 0;
   auto parts = sortedActiveParts(drawableCount);
   m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
