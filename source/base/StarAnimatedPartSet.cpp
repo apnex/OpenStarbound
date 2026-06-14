@@ -171,6 +171,10 @@ AnimatedPartSet::State const& AnimatedPartSet::getState(String const& stateTypeN
   return *m_stateTypes.get(stateTypeName).states.get(stateName);
 }
 
+JsonObject const& AnimatedPartSet::stateTypeProperties(String const& stateTypeName) const {
+  return m_stateTypes.get(stateTypeName).stateTypeProperties;
+}
+
 StringMap<AnimatedPartSet::Part> const& AnimatedPartSet::constParts() const {
   return m_parts;
 }
@@ -336,6 +340,8 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
   stateType.resolvedValid = true;
   stateType.activeStateDirty = false;
   ++m_generation;
+  ++stateType.generation;
+  ++m_stateTypesEpoch;
   cPerformed.inc();
 }
 
@@ -498,6 +504,16 @@ uint64_t AnimatedPartSet::partGeneration(String const& partName) const {
   if (auto part = m_parts.ptr(partName))
     return part->partGeneration;
   return 0;
+}
+
+uint64_t AnimatedPartSet::stateTypeGeneration(String const& stateTypeName) const {
+  if (auto stateType = m_stateTypes.ptr(stateTypeName))
+    return stateType->generation;
+  return 0;
+}
+
+uint64_t AnimatedPartSet::stateTypesEpoch() const {
+  return m_stateTypesEpoch;
 }
 
 Json AnimatedPartSet::getStateFrameProperty(String const & stateTypeName, String const & propertyName, String stateName, int frame) const {

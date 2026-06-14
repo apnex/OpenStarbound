@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarPeriodicFunction.hpp"
+#include "StarSet.hpp"
 #include "StarAnimatedPartSet.hpp"
 #include "StarNetElementSystem.hpp"
 #include "StarDrawable.hpp"
@@ -425,10 +426,22 @@ private:
   // call, so cached and live parts are built identically (parity by
   // construction).
 
+  // Tag-dependency capture for the per-part cache. Populated by drawableBuildContext
+  // (per drawable call), read by appendPartDrawables. stateTagOwner maps a BUILT-IN
+  // animation tag key (<T>_frame/_frameIndex/_state) to its owning state type T
+  // (unique definer). customTags lists CUSTOM animationTags keys, whose first-definer
+  // owner can shift between state types -> a consumer of any custom tag must depend on
+  // the global stateTypesEpoch, not a single owner.
+  struct TagDeps {
+    HashMap<String, String> stateTagOwner;
+    Set<String> customTags;
+  };
+
   // The per-call build context: effect/processing directives prefix plus the
   // resolved animation tags.  baseProcessingDirectives is per-part
   // appended/restored by appendPartDrawables, hence non-const.
-  void drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags) const;
+  void drawableBuildContext(List<Directives>& baseProcessingDirectives,
+      HashMap<String, String>& animationTags, TagDeps* tagDeps = nullptr) const;
 
   // All active parts enumerated and stable-sorted by zLevel, exactly the
   // ordering the rebuild path draws in.  Enumerating freshens every part
@@ -441,7 +454,9 @@ private:
   // extras) at the given translate and appends them to the output list.
   void appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
       float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
-      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables) const;
+      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables,
+      TagDeps const* tagDeps = nullptr, Set<String>* consumedStateTypes = nullptr,
+      bool* consumedCustomTag = nullptr) const;
 
   // Re-partitions and rebuilds m_staticCache (static parts only, ZERO
   // translate) for the given sorted part list, recording the given cache key.
@@ -518,16 +533,24 @@ private:
   // config replacement is covered by the renderVersion key component (operator=
   // bumps renderVersion); also cleared in operator= for memory hygiene.
   // Main-thread only; mutable for the const drawables path.
-  // KNOWN LIMITATION: the per-part key does not capture cross-state-type
-  // animation tags -- a static part resolving another state type's <T_state>/
-  // <T_frame> can serve stale until an unrelated renderVersion/partGeneration/lth
-  // change.  Detected by shadow-compare; flag default-off; must be fixed
-  // (per-part tag-dependency tracking) before default-on.
+  // Cross-state-type animation tags ARE captured per entry (the partGeneration
+  // key tracks only a part's OWN resolved state).  A static part resolving
+  // another state type's built-in <T_state>/<T_frame>/<T_frameIndex> tag records
+  // a PRECISE per-state-type dependency (stateTypeDeps, checked against that
+  // state type's generation); resolving any custom animationTags key records the
+  // conservative stateTypesEpoch dependency (dependsAllStateTypes).  Either
+  // invalidates the entry when the foreign state type changes, so the per-part
+  // cache stays correct (DrawableCache.PerPart* tests).
   struct StaticPartCacheEntry {
     List<pair<Drawable, float>> drawables;
     uint64_t renderVersion = 0;
     uint64_t partGeneration = 0;
     uint64_t localTransformHash = 0;
+    // Cross-state-type-tag dependency (Lever 1b): built-in foreign tags -> exact
+    // per-state-type deps; any custom-tag consumption -> depend on stateTypesEpoch.
+    List<pair<String, uint64_t>> stateTypeDeps;
+    bool dependsAllStateTypes = false;
+    uint64_t stateTypesEpoch = 0;
   };
   mutable StringMap<StaticPartCacheEntry> m_staticCachePerPart;
 

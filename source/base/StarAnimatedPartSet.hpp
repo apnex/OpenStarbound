@@ -105,6 +105,13 @@ public:
     unsigned resolvedNextFrame = ~0u;
     bool resolvedReverse = false;
     bool resolvedValid = false;
+
+    // Per-state-type counterpart of generation(): bumped only when THIS state
+    // type's resolved (stateName, frame, nextFrame, reverse) key changes -- i.e.
+    // exactly when its <T_state>/<T_frame>/<T_frameIndex> tags (and re-merged
+    // custom animationTags) change. Lets the per-part drawable cache invalidate
+    // a part that resolves a FOREIGN state type's tag. Per-instance; not serialized.
+    uint64_t generation = 1;
   };
 
   struct PartState {
@@ -163,6 +170,10 @@ public:
   ActiveStateInformation const& activeState(String const& stateTypeName) const;
   ActivePartInformation const& activePart(String const& partName) const;
   State const& getState(String const& stateTypeName, String const& stateName) const;
+  // The raw (unmerged) state-type-level properties. Used by the per-part drawable
+  // cache to scan custom animationTags keys defined at the state-type level, which
+  // the flat (overwrite) state/frame merge can hide from any single active state.
+  JsonObject const& stateTypeProperties(String const& stateTypeName) const;
 
   StringMap<Part> const& constParts() const;
   StringMap<Part>& parts();
@@ -202,6 +213,12 @@ public:
   // part enumeration), exactly like generation().
   uint64_t partGeneration(String const& partName) const;
 
+  // Per-state-type counterpart of generation(); 0 for an unknown state type.
+  uint64_t stateTypeGeneration(String const& stateTypeName) const;
+  // Bumps whenever ANY state type's resolved key changes. Conservative dependency
+  // for parts that consume custom animationTags (whose first-definer owner can shift).
+  uint64_t stateTypesEpoch() const;
+
   Json getStateFrameProperty(String const& stateType, String const& propertyName, String state, int frame) const;
   Json getPartStateFrameProperty(String const& partName, String const& propertyName, String const& stateType, String state, int frame) const;
 
@@ -216,6 +233,7 @@ private:
 
   uint8_t m_animatorVersion;
   uint64_t m_generation = 1;
+  uint64_t m_stateTypesEpoch = 1;
 };
 
 }
