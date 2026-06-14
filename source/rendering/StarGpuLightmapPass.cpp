@@ -6,7 +6,8 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf, ImageView const& obstacle,
+bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
+    ImageView const& obstacle, List<uint8_t> const& obstacleR8,
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
     PointParameters const& params, float brightnessScale, bool shadowCompare, Image* gpuResult) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
@@ -24,6 +25,16 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   auto fullQuad = renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f);
   char const* targets[2] = {"lightingGpu", "lightingGpuB"};
 
+  // Upload the obstacle mask to the current effect's "obstacle" sampler as R8 (a third the bytes of
+  // RGB24) from the lighting-thread-extracted mask; fall back to RGB24 if absent. Used by BOTH the
+  // spread and point effects (each has its own sampler), so this runs once per effect.
+  auto uploadObstacle = [&]() {
+    if (obstacleR8.size() == (size_t)size[0] * size[1])
+      m_renderer->setEffectTextureR8("obstacle", size, obstacleR8.ptr());
+    else
+      m_renderer->setEffectTexture("obstacle", obstacle);
+  };
+
   // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
   // Upload emission as RGB16F from the lighting-thread-converted half buffer (half the per-frame
   // transfer); fall back to the RGB_F upload if the half buffer is absent/mismatched.
@@ -31,7 +42,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     m_renderer->setEffectTextureHalfRGB("emission", size, emissionHalf.ptr());
   else
     m_renderer->setEffectTexture("emission", emission);
-  m_renderer->setEffectTexture("obstacle", obstacle);
+  uploadObstacle();
   m_renderer->setEffectParameter("dropoffAir", 1.0f / params.spreadMaxAir);
   m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
   m_renderer->setEffectParameter("applyCap", false);
@@ -54,7 +65,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
-    m_renderer->setEffectTexture("obstacle", obstacle);
+    uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointMaxAir", params.pointMaxAir);
     m_renderer->setEffectParameter("pointMaxObstacle", params.pointMaxObstacle);
     m_renderer->setEffectParameter("spreadMaxAir", params.spreadMaxAir);
