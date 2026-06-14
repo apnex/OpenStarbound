@@ -900,3 +900,34 @@ TEST(DrawableCache, PerPartCrossStateTypeTagKnownStaleLimitation) {
   config->set("renderDrawableCacheShadowCompare", false);
   config->set("renderDrawableCachePerPart", false);
 }
+
+// Per-state-type generation: advancing/flipping ONE state type bumps that state
+// type's generation (and the global stateTypesEpoch) but not an unrelated state
+// type's generation. Underpins per-part foreign-tag dependency tracking.
+TEST(AnimatedPartSet, StateTypeGenerationIsPerStateType) {
+  char const* cfg = R"JSON({
+    "stateTypes": {
+      "motion": { "default": "run", "states": { "run": { "frames": 4, "cycle": 0.4, "mode": "loop" } } },
+      "aux":    { "default": "off", "states": { "off": { "frames": 1 }, "on": { "frames": 1 } } }
+    },
+    "parts": { "body": { "partStates": { "motion": { "run": { "properties": { "image": "/b_<frame>.png" } } } } } }
+  })JSON";
+  AnimatedPartSet a(Json::parse(cfg), 1);
+  a.setActiveState("motion", "run");
+  auto freshen = [&]{ a.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&){}); };
+  freshen();
+  uint64_t motion0 = a.stateTypeGeneration("motion");
+  uint64_t aux0 = a.stateTypeGeneration("aux");
+  uint64_t epoch0 = a.stateTypesEpoch();
+  bool motionBumped = false;
+  for (int i = 0; i < 8; ++i) { a.update(0.1f); freshen(); if (a.stateTypeGeneration("motion") != motion0) motionBumped = true; }
+  EXPECT_TRUE(motionBumped) << "motion advanced -> its generation must bump";
+  EXPECT_EQ(a.stateTypeGeneration("aux"), aux0) << "aux unchanged -> its generation must hold";
+  EXPECT_GT(a.stateTypesEpoch(), epoch0) << "any state-type change must bump the epoch";
+  EXPECT_EQ(a.stateTypeGeneration("nonexistent"), 0u) << "unknown -> 0";
+  uint64_t motionA = a.stateTypeGeneration("motion"), epochA = a.stateTypesEpoch();
+  a.setActiveState("aux", "on"); freshen();
+  EXPECT_GT(a.stateTypeGeneration("aux"), aux0);
+  EXPECT_EQ(a.stateTypeGeneration("motion"), motionA) << "aux flip must not bump motion";
+  EXPECT_GT(a.stateTypesEpoch(), epochA);
+}
