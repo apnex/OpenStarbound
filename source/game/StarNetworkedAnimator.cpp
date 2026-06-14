@@ -1273,7 +1273,7 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelRebuild(Vec2F 
   return drawables;
 }
 
-void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags) const {
+void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags, TagDeps* tagDeps) const {
   baseProcessingDirectives.append(m_processingDirectives.get());
   for (auto& pair : m_effects) {
     auto const& effectState = pair.second;
@@ -1307,13 +1307,20 @@ void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDir
       if (frame) {
         animationTags.set(stateTypeName + "_frame", frameStr);
         animationTags.set(stateTypeName + "_frameIndex", frameIndexStr);
+        if (tagDeps) {
+          tagDeps->stateTagOwner[stateTypeName + "_frame"] = stateTypeName;
+          tagDeps->stateTagOwner[stateTypeName + "_frameIndex"] = stateTypeName;
+        }
       }
       animationTags.set(stateTypeName + "_state", activeState.stateName);
+      if (tagDeps) tagDeps->stateTagOwner[stateTypeName + "_state"] = stateTypeName;
 
       if (auto p = activeState.properties.ptr("animationTags")) {
         for (auto tag : p->iterateObject())
-          if (!animationTags.contains(tag.first))
+          if (!animationTags.contains(tag.first)) {
             animationTags.set(tag.first, tag.second.toString());
+            if (tagDeps) tagDeps->customTags.insert(tag.first);
+          }
       }
     }
   }
@@ -1346,7 +1353,8 @@ List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>>
 // cached and live parts are built identically (output parity by construction).
 void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
     float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
-    HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables) const {
+    HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables,
+    TagDeps const* tagDeps, Set<String>* consumedStateTypes, bool* consumedCustomTag) const {
   // Make sure we don't copy the original image
   String fallback = "";
   Json jImage = activePart.properties.value("image", {});
@@ -1364,10 +1372,20 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
 
   auto const& partTags = m_partTags.get(partName);
 
+  auto recordDep = [&](StringView tag) {
+    if (!tagDeps) return;
+    if (auto owner = tagDeps->stateTagOwner.ptr(String(tag))) {
+      if (consumedStateTypes) consumedStateTypes->insert(*owner);
+    } else if (tagDeps->customTags.contains(String(tag))) {
+      if (consumedCustomTag) *consumedCustomTag = true;
+    }
+  };
+
   if (auto directives = activePart.properties.value("processingDirectives").optString()) {
     if (version() > 0){
       directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
         if (auto p = animationTags.ptr(tag)) {
+          recordDep(tag);
           return StringView(*p);
         } else if (auto p = partTags.ptr(tag)) {
           return StringView(*p);
@@ -1393,6 +1411,7 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
       if (version() > 0){
         directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
           if (auto p = animationTags.ptr(tag)) {
+            recordDep(tag);
             return StringView(*p);
           } else if (auto p = partTags.ptr(tag)) {
             return StringView(*p);
@@ -1414,6 +1433,7 @@ void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPart
       if (frame)
         return frameIndexStr;
     } else if (auto p = animationTags.ptr(tag)) {
+      recordDep(tag);
       return StringView(*p);
     } else if (auto p = partTags.ptr(tag)) {
       return StringView(*p);
