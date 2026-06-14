@@ -27,7 +27,6 @@ bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& ob
   // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
   m_renderer->setEffectTexture("emission", emission);
   m_renderer->setEffectTexture("obstacle", obstacle);
-  m_renderer->setEffectTexture("lightState", emission);   // iteration-0 light state == emission
   m_renderer->setEffectParameter("dropoffAir", 1.0f / params.spreadMaxAir);
   m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
   m_renderer->setEffectParameter("applyCap", false);
@@ -36,7 +35,11 @@ bool GpuLightmapPass::processFull(ImageView const& emission, ImageView const& ob
   for (unsigned i = 0; i < spreadIterations; ++i) {
     char const* target = targets[i % 2];
     m_renderer->setRenderTarget(String(target), size);
-    if (i > 0)
+    if (i == 0)
+      // iteration-0 light state == emission: alias the already-uploaded emission texture into the
+      // lightState sampler instead of uploading the same grid a second time (per-frame upload cut).
+      m_renderer->setEffectTextureAlias("lightState", "emission");
+    else
       m_renderer->setEffectTextureFromTarget("lightState", lastTarget);
     m_renderer->render(fullQuad);
     lastTarget = target;
