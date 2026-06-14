@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarPeriodicFunction.hpp"
+#include "StarSet.hpp"
 #include "StarAnimatedPartSet.hpp"
 #include "StarNetElementSystem.hpp"
 #include "StarDrawable.hpp"
@@ -425,10 +426,22 @@ private:
   // call, so cached and live parts are built identically (parity by
   // construction).
 
+  // Tag-dependency capture for the per-part cache. Populated by drawableBuildContext
+  // (per drawable call), read by appendPartDrawables. stateTagOwner maps a BUILT-IN
+  // animation tag key (<T>_frame/_frameIndex/_state) to its owning state type T
+  // (unique definer). customTags lists CUSTOM animationTags keys, whose first-definer
+  // owner can shift between state types -> a consumer of any custom tag must depend on
+  // the global stateTypesEpoch, not a single owner.
+  struct TagDeps {
+    HashMap<String, String> stateTagOwner;
+    Set<String> customTags;
+  };
+
   // The per-call build context: effect/processing directives prefix plus the
   // resolved animation tags.  baseProcessingDirectives is per-part
   // appended/restored by appendPartDrawables, hence non-const.
-  void drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags) const;
+  void drawableBuildContext(List<Directives>& baseProcessingDirectives,
+      HashMap<String, String>& animationTags, TagDeps* tagDeps = nullptr) const;
 
   // All active parts enumerated and stable-sorted by zLevel, exactly the
   // ordering the rebuild path draws in.  Enumerating freshens every part
@@ -441,7 +454,9 @@ private:
   // extras) at the given translate and appends them to the output list.
   void appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
       float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
-      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables) const;
+      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables,
+      TagDeps const* tagDeps = nullptr, Set<String>* consumedStateTypes = nullptr,
+      bool* consumedCustomTag = nullptr) const;
 
   // Re-partitions and rebuilds m_staticCache (static parts only, ZERO
   // translate) for the given sorted part list, recording the given cache key.
