@@ -294,6 +294,7 @@ private:
 
   List<CollisionPoly> m_workingCollisions;
   List<PolyF> m_collisionBuffers;
+  List<CollisionBlockRef> m_collisionBlockBuffer;
 };
 
 }
