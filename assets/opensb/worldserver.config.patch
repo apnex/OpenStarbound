@@ -1,3 +1,11 @@
 {
-  "scriptContexts" : { "OpenStarbound" : ["/scripts/opensb/worldserver/worldserver.lua"] }
+  "scriptContexts" : { "OpenStarbound" : ["/scripts/opensb/worldserver/worldserver.lua"] },
+
+  // Lua GC: raise luaGcPause 1.2 -> 4.0 (LUA_GCPAUSE 120 -> 400); HOLD luaGcStepMultiplier
+  // at vanilla 1.2 (raising it adds per-step GC work and offsets the pause win). Clean A/B
+  // on the WorldServerThread at a steady base: GC self 1.12% -> ~0% (GC's share of Lua
+  // 0.083 -> 0.005, ~16x), no stutter. Est ~4% of the thread reclaimed under heavy-AI
+  // exploring (GC was ~4.2% there). Trades larger peak Lua heap (trivial on this box). Lever #1.
+  "luaGcPause" : 4.0,
+  "luaGcStepMultiplier" : 1.2
 }
