@@ -832,14 +832,16 @@ CollisionKind WorldServer::tileCollisionKind(Vec2I const& pos) const {
 
 void WorldServer::forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const {
   const_cast<WorldServer*>(this)->freshenCollision(region);
-  m_tileArray->tileEach(region, [iterator](Vec2I const& pos, ServerTile const& tile) {
-      if (tile.getCollision() == CollisionKind::Null) {
-        iterator(CollisionBlock::nullBlock(pos));
-      } else {
-        starAssert(!tile.collisionCacheDirty);
-        for (auto const& block : tile.collisionCache)
-          iterator(block);
-      }
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&iterator](Vec2I const& pos, CollisionBlock const* block) {
+      if (block) iterator(*block);
+      else iterator(CollisionBlock::nullBlock(pos));
+    });
+}
+
+void WorldServer::getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const {
+  const_cast<WorldServer*>(this)->freshenCollision(region);
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&output](Vec2I const& pos, CollisionBlock const* block) {
+      output.append(CollisionBlockRef{pos, block});
     });
 }
 

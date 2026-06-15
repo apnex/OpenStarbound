@@ -90,6 +90,12 @@ public:
   // tile bounds.
   virtual void forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const = 0;
 
+  // Buffered, inlinable variant of forEachCollisionBlock: appends a CollisionBlockRef per
+  // block (real blocks point into the tile collisionCache; Null tiles -> {space, nullptr}).
+  // Refs valid only until the next tile mutation on this world thread (single-threaded);
+  // caller must consume before yielding. Order matches forEachCollisionBlock exactly.
+  virtual void getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const = 0;
+
   // Is there some connectable tile / tile based entity in this position?  If
   // tilesOnly is true, only checks to see whether that tile is a connectable
   // material.
