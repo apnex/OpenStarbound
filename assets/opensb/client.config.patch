@@ -1,6 +1,13 @@
 {
   "universeScriptContexts" : { "OpenStarbound" : ["/scripts/opensb/universeclient/universeclient.lua"] },
 
+  // Lua GC: luaGcPause 1.2 -> 4.0 (LUA_GCPAUSE 120 -> 400), luaGcStepMultiplier held at
+  // vanilla 1.2 — client-side Lua (entity scripts on the render path). Same lever as
+  // worldserver.config.patch (A/B-measured there: GC's share of Lua 0.083 -> 0.005, no
+  // stutter); trims the render-thread GC slice, all-modes. Lever #1.
+  "luaGcPause" : 4.0,
+  "luaGcStepMultiplier" : 1.2,
+
   // Disables scissoring and letterboxing on vanilla and modded warp cinematics
   "warpCinematicBase" : {
     "scissor" : false,
