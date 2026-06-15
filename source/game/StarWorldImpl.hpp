@@ -223,6 +223,24 @@ namespace WorldImpl {
     return res;
   }
 
+  // Single source of the collision-block tile-walk, shared by World{Server,Client}'s
+  // std::function forEachCollisionBlock overload AND the buffered getCollisionBlocks, so the
+  // two CANNOT diverge in which blocks they yield or in what ORDER. `op` is a concrete functor
+  // (not std::function) so the whole chain through tileEach monomorphizes and inlines.
+  // Does NOT call freshenCollision -- the wrappers do.
+  template <typename TileSectorArray, typename BlockOp>
+  void forEachCollisionBlock(shared_ptr<TileSectorArray> const& tileArray, RectI const& region, BlockOp&& op) {
+    tileArray->tileEach(region, [&op](Vec2I const& pos, typename TileSectorArray::Tile const& tile) {
+        if (tile.getCollision() == CollisionKind::Null) {
+          op(pos, (CollisionBlock const*)nullptr);
+        } else {
+          starAssert(!tile.collisionCacheDirty);
+          for (auto const& block : tile.collisionCache)
+            op(pos, &block);
+        }
+      });
+  }
+
   inline TileDamageParameters tileDamageParameters(WorldTile* tile, TileLayer layer, TileDamage const& tileDamage) {
     bool foreground = layer == TileLayer::Foreground;
     auto materialDatabase = Root::singleton().materialDatabase();

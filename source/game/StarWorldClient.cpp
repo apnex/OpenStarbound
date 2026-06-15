@@ -300,16 +300,19 @@ CollisionKind WorldClient::tileCollisionKind(Vec2I const& pos) const {
 void WorldClient::forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const {
   if (!inWorld())
     return;
-
   const_cast<WorldClient*>(this)->freshenCollision(region);
-  m_tileArray->tileEach(region, [iterator](Vec2I const& pos, ClientTile const& tile) {
-      if (tile.getCollision() == CollisionKind::Null) {
-        iterator(CollisionBlock::nullBlock(pos));
-      } else {
-        starAssert(!tile.collisionCacheDirty);
-        for (auto const& block : tile.collisionCache)
-          iterator(block);
-      }
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&iterator](Vec2I const& pos, CollisionBlock const* block) {
+      if (block) iterator(*block);
+      else iterator(CollisionBlock::nullBlock(pos));
+    });
+}
+
+void WorldClient::getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const {
+  if (!inWorld())
+    return;
+  const_cast<WorldClient*>(this)->freshenCollision(region);
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&output](Vec2I const& pos, CollisionBlock const* block) {
+      output.append(CollisionBlockRef{pos, block});
     });
 }
 
