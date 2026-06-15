@@ -1082,7 +1082,15 @@ void MovementController::queryCollisions(RectF const& region) {
 
   auto geometry = world()->geometry();
 
-  world()->forEachCollisionBlock(RectI::integral(region.padded(1)), [&](CollisionBlock const& block) {
+  // Buffered broad-phase: one virtual call + inlined loop instead of a per-block std::function
+  // dispatch (and the per-query std::function heap-alloc the captured closure caused).
+  // EQUIVALENCE rests on ORDER PRESERVATION: getCollisionBlocks yields the same blocks in the
+  // same tileEach order as the std::function overload (shared WorldImpl template). Do NOT reorder
+  // this buffer -- collisionSeparate's std::sort is UNSTABLE and ties occur, so a reorder could
+  // change the resolved position at tie boundaries.
+  m_collisionBlockBuffer.clear();   // keeps capacity (no per-call alloc, like EntityMap::m_entrySortBuffer)
+  world()->getCollisionBlocks(RectI::integral(region.padded(1)), m_collisionBlockBuffer);
+  auto consumeBlock = [&](CollisionBlock const& block) {
       if (block.kind != CollisionKind::None && !block.poly.isNull()) {
         RectF polyBounds = block.polyBounds;
         Vec2F basePosition = block.poly.vertex(0);
@@ -1099,7 +1107,13 @@ void MovementController::queryCollisions(RectF const& region) {
           collisionPoly.collisionKind = block.kind;
         }
       }
-    });
+    };
+  for (auto const& ref : m_collisionBlockBuffer) {
+    if (ref.block)
+      consumeBlock(*ref.block);
+    else
+      consumeBlock(CollisionBlock::nullBlock(ref.space));   // Null tile (unloaded chunk): reconstruct
+  }
 
   forEachMovingCollision(region, [&](MovingCollisionId id, PhysicsMovingCollision mc, PolyF poly, RectF bounds) {
     CollisionPoly& collisionPoly = newCollisionPoly();
