@@ -169,6 +169,76 @@ TEST(JsonTest, Query) {
   EXPECT_THROW(v.query("baf.nothing"), JsonException);
 }
 
+TEST(JsonTest, QueryFastPathEquivalence) {
+  // ORACLE: JsonPath::pathFind(base, parseQueryPath, key) is the EXACT pre-fastpath body
+  // of Json::query(key, def). Assert the live Json::query matches it for VALUE and for
+  // THROW-vs-def behavior over a wide (base, key) corpus. If the fast-path guard ever
+  // diverges from parseQueryPath's separator set, this test fails (Lever #6).
+  Json const def = Json("__DEFAULT__");
+
+  List<Json> bases = {
+    Json(),                                         // null base
+    Json(true), Json(1), Json(2.5), Json("scalar"), // scalar bases
+    Json::parse("[10, 20, 30]"),                    // array base
+    Json::parse("{}"),                              // empty object
+    Json::parse(R"JSON(
+      {
+        "foo": "bar",
+        "baz": {"baf": [1, 2], "bal": 2},
+        "nullval": null,
+        "0": "zerokey",
+        "1": "onekey",
+        "with space": "ws",
+        "with]bracket": "rb",
+        "with.dot": "innerdot",
+        "unïcodé": "uni",
+        "": "emptykey",
+        "tab\tkey": "tabbed"
+      }
+    )JSON")
+  };
+
+  List<String> keys = {
+    "", "foo", "baz", "nullval", "0", "1", "absent",
+    "with space", "with]bracket", "unïcodé", "tab\tkey",
+    "with.dot", "baz.baf", "baz.baf[1]", "baz.baf[3]",
+    "baz.bal", "baz.bal.a", "baz[0]", "[0]", "[1]", "[3]",
+    ".leadingdot", "baz..baf", "baz.baf[whee]", "trailingdot.",
+    "-", "100"
+  };
+
+  auto reference = [&](Json const& base, String const& key, bool& threw) -> Json {
+    threw = false;
+    try {
+      if (auto j = JsonPath::pathFind(base, JsonPath::parseQueryPath, key))
+        return *j;
+      return def;
+    } catch (StarException const&) {
+      threw = true;
+      return Json();
+    }
+  };
+
+  for (auto const& base : bases) {
+    for (auto const& key : keys) {
+      bool refThrew = false;
+      Json refVal = reference(base, key, refThrew);
+
+      bool actThrew = false;
+      Json actVal;
+      try {
+        actVal = base.query(key, def);
+      } catch (StarException const&) {
+        actThrew = true;
+      }
+
+      EXPECT_EQ(refThrew, actThrew) << "throw mismatch for key '" << key.utf8Ptr() << "'";
+      if (!refThrew && !actThrew)
+        EXPECT_EQ(refVal, actVal) << "value mismatch for key '" << key.utf8Ptr() << "'";
+    }
+  }
+}
+
 TEST(JsonTest, PatchingAdd) {
   Json before = Json::parse(R"JSON(
       {
