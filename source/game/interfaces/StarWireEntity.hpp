@@ -11,6 +11,8 @@ class WireEntity : public virtual TileEntity {
 public:
   virtual ~WireEntity() {}
 
+  WireEntity* asWireEntity() override { return this; }
+
   virtual size_t nodeCount(WireDirection direction) const = 0;
   virtual Vec2I nodePosition(WireNode wireNode) const = 0;
   virtual List<WireConnection> connectionsForNode(WireNode wireNode) const = 0;

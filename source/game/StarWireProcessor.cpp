@@ -13,7 +13,7 @@ WireProcessor::WireProcessor(WorldStoragePtr worldStorage) {
 void WireProcessor::process() {
   // First, populate all the working entities that are already live
   m_worldStorage->entityMap()->forAllEntities([&](EntityPtr const& entity) {
-    if (auto wireEntity = as<WireEntity>(entity.get()))
+    if (auto* wireEntity = entity->asWireEntity())
       populateWorking(wireEntity);
   });
 
@@ -84,7 +84,7 @@ void WireProcessor::loadNetwork(Vec2I tilePosition) {
     } else {
       m_worldStorage->loadSector(*sector);
       m_worldStorage->entityMap()->forEachEntity(RectF(*m_worldStorage->regionForSector(*sector)), [&](EntityPtr const& entity) {
-          if (auto wireEntity = as<WireEntity>(entity.get()))
+          if (auto* wireEntity = entity->asWireEntity())
             populateWorking(wireEntity);
         });
     }
