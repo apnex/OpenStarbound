@@ -648,7 +648,7 @@ void WorldServer::update(float dt) {
   m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
       entity->update(dt, m_currentStep);
 
-      if (auto tileEntity = as<TileEntity>(entity)) {
+      if (auto* tileEntity = entity->asTileEntity()) {
         // Only do break checks on objects if all sectors the object touches
         // *and surrounding sectors* are active.  Objects that this object
         // rests on can be up to an entire sector large in any direction.
@@ -790,7 +790,7 @@ void WorldServer::addEntity(EntityPtr const& entity, EntityId entityId) {
   entity->init(this, m_entityMap->reserveEntityId(entityId), EntityMode::Master);
   m_entityMap->addEntity(entity);
 
-  if (auto tileEntity = as<TileEntity>(entity))
+  if (auto* tileEntity = entity->asTileEntity())
     updateTileEntityTiles(tileEntity);
 }
 
@@ -1659,7 +1659,7 @@ TileModificationList WorldServer::doApplyTileModifications(TileModificationList 
   return unapplied;
 }
 
-void WorldServer::updateTileEntityTiles(TileEntityPtr const& entity, bool removing, bool checkBreaks) {
+void WorldServer::updateTileEntityTiles(TileEntity* entity, bool removing, bool checkBreaks) {
   // This method of updating tile entity collision only works if each tile
   // entity's collision spaces are a subset of their normal spaces, and thus no
   // two tile entities can have collision spaces that overlap.
@@ -2231,7 +2231,7 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
   if (!entity)
     return;
 
-  if (auto tileEntity = as<TileEntity>(entity))
+  if (auto* tileEntity = entity->asTileEntity())
     updateTileEntityTiles(tileEntity, true);
 
   if (andDie)

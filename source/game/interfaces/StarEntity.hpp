@@ -11,6 +11,8 @@ STAR_CLASS(RenderCallback);
 STAR_CLASS(World);
 STAR_STRUCT(DamageNotification);
 STAR_CLASS(Entity);
+STAR_CLASS(TileEntity);
+STAR_CLASS(WireEntity);
 
 STAR_EXCEPTION(EntityException, StarException);
 
@@ -50,6 +52,14 @@ public:
   virtual ~Entity();
 
   virtual EntityType entityType() const = 0;
+
+  // Fast-path downcasts for the per-tick entity hot paths: a single virtual
+  // dispatch instead of an expensive dynamic_cast through the entity's
+  // virtual-inheritance hierarchy. The base returns nullptr; TileEntity and
+  // WireEntity override to return `this`. Semantically identical to
+  // as<TileEntity>()/as<WireEntity>() but without the RTTI traversal.
+  virtual TileEntity* asTileEntity() { return nullptr; }
+  virtual WireEntity* asWireEntity() { return nullptr; }
 
   // Called when an entity is first inserted into a World.  Calling base class
   // init sets the world pointer, entityId, and entityMode.
