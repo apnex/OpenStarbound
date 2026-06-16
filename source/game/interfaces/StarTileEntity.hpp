@@ -28,6 +28,8 @@ class TileEntity : public virtual InteractiveEntity {
 public:
   TileEntity();
 
+  TileEntity* asTileEntity() override { return this; }
+
   // position() here is simply the tilePosition (but Vec2F)
   virtual Vec2F position() const override;
 

@@ -228,7 +228,7 @@ public:
   List<ItemDescriptor> destroyBlock(TileLayer layer, Vec2I const& pos, bool genItems, bool destroyModFirst, bool updateNeighbors = true);
   void removeEntity(EntityId entityId, bool andDie);
 
-  void updateTileEntityTiles(TileEntityPtr const& object, bool removing = false, bool checkBreaks = true);
+  void updateTileEntityTiles(TileEntity* object, bool removing = false, bool checkBreaks = true);
 
   bool isVisibleToPlayer(RectF const& region) const;
   void activateLiquidRegion(RectI const& region);
