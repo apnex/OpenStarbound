@@ -335,8 +335,10 @@ private:
 
   TileModificationList doApplyTileModifications(TileModificationList const& modificationList, bool allowEntityOverlap, bool ignoreTileProtection = false, bool updateNeighbors = true);
 
-  // Queues pending (step based) updates to the given player
-  void queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates);
+  // Queues pending (step based) updates to the given player. monitoringRegions is the
+  // caller's already-computed clientInfo->monitoringRegions(m_entityMap) for this tick,
+  // passed in to avoid recomputing it here (Lever #10).
+  void queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates, List<RectI> const& monitoringRegions);
   void updateDamage(float dt);
 
   void updateDamagedBlocks(float dt);
