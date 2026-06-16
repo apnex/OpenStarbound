@@ -726,9 +726,14 @@ void WorldServer::update(float dt) {
 
   bool sendRemoteUpdates = m_entityUpdateTimer.wrapTick(dt);
   for (auto const& pair : m_clientInfo) {
-    for (auto const& monitoredRegion : pair.second->monitoringRegions(m_entityMap))
+    // Compute this client's monitoring regions once per tick and reuse them for both the
+    // signalRegion pass and queueUpdatePackets (which used to recompute them internally).
+    // Nothing between here and that use moves entities or changes the client's tracked set
+    // (signalRegion only marks regions active), so the two computations are identical. (Lever #10)
+    auto monitoringRegions = pair.second->monitoringRegions(m_entityMap);
+    for (auto const& monitoredRegion : monitoringRegions)
       signalRegion(monitoredRegion.padded(jsonToVec2I(m_serverConfig.get("playerActiveRegionPad"))));
-    queueUpdatePackets(pair.first, sendRemoteUpdates);
+    queueUpdatePackets(pair.first, sendRemoteUpdates, monitoringRegions);
   }
   m_netStateCache.clear();
 
@@ -1937,7 +1942,7 @@ List<ItemDescriptor> WorldServer::destroyBlock(TileLayer layer, Vec2I const& pos
   return drops;
 }
 
-void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates) {
+void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates, List<RectI> const& monitoringRegions) {
   auto const& clientInfo = m_clientInfo.get(clientId);
   clientInfo->outgoingPackets.append(make_shared<StepUpdatePacket>(m_currentTime));
 
@@ -1996,7 +2001,7 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
   clientInfo->pendingLiquidUpdates.clear();
 
   HashSet<EntityPtr> monitoredEntities;
-  for (auto const& monitoredRegion : clientInfo->monitoringRegions(m_entityMap))
+  for (auto const& monitoredRegion : monitoringRegions)
     monitoredEntities.addAll(m_entityMap->entityQuery(RectF(monitoredRegion)));
 
   auto entityFactory = Root::singleton().entityFactory();
