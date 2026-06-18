@@ -151,4 +151,9 @@ void NetElementGroup::blankNetDelta(float interpolationTime) {
   }
 }
 
+void NetElementGroup::netStorePump() {
+  for (auto& p : m_elements)
+    p.first->netStorePump();
+}
+
 }

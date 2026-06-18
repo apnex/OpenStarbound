@@ -1747,6 +1747,10 @@ pair<ByteArray, uint64_t> Player::writeNetState(uint64_t fromVersion, NetCompati
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Player::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Player::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

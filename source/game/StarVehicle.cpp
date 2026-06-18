@@ -252,6 +252,10 @@ pair<ByteArray, uint64_t> Vehicle::writeNetState(uint64_t fromVersion, NetCompat
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Vehicle::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Vehicle::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

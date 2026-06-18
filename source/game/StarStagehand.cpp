@@ -80,6 +80,10 @@ pair<ByteArray, uint64_t> Stagehand::writeNetState(uint64_t fromVersion, NetComp
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Stagehand::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Stagehand::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

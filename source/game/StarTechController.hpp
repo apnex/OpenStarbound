@@ -100,6 +100,7 @@ private:
     bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
     void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
     void blankNetDelta(float interpolationTime) override;
+    void netStorePump() override;
 
     // If setting invisible, stops all playing audio
     void setVisible(bool visible);
