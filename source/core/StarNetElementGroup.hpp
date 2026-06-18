@@ -34,6 +34,7 @@ public:
   bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime) override;
+  void netStorePump() override;
 
   NetElementVersion const* netVersion() const;
   bool netInterpolationEnabled() const;

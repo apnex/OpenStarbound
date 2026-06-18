@@ -72,8 +72,11 @@ void NetElementFloating<T>::set(T value) {
   if (m_value != value) {
     // Only mark the step as updated here if it actually would change the
     // transmitted value.
-    if (!m_fixedPointBase || round(m_value / *m_fixedPointBase) != round(value / *m_fixedPointBase))
+    if (!m_fixedPointBase || round(m_value / *m_fixedPointBase) != round(value / *m_fixedPointBase)) {
       m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+      if (m_netVersion)
+        m_netVersion->markChanged();
+    }
 
     m_value = value;
 
@@ -144,6 +147,8 @@ void NetElementFloating<T>::netLoad(DataStream& ds, NetCompatibilityRules rules)
   if (!checkWithRules(rules)) return;
   m_value = readValue(ds);
   m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   if (m_interpolationDataPoints) {
     m_interpolationDataPoints->clear();
     m_interpolationDataPoints->append({0.0f, m_value});
@@ -170,6 +175,8 @@ void NetElementFloating<T>::readNetDelta(DataStream& ds, float interpolationTime
   T t = readValue(ds);
 
   m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   if (m_interpolationDataPoints) {
     if (interpolationTime < m_interpolationDataPoints->last().first)
       m_interpolationDataPoints->clear();

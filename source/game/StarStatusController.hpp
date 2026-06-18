@@ -114,6 +114,7 @@ public:
   bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime) override;
+  void netStorePump() override;
 
   void tickMaster(float dt);
   void tickSlave(float dt);
@@ -148,6 +149,7 @@ private:
     bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
     void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
     void blankNetDelta(float interpolationTime) override;
+    void netStorePump() override;
 
     Maybe<String> animationConfig;
     NetworkedAnimator animator;

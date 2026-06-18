@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "StarDataStream.hpp"
 
 namespace Star {
@@ -11,9 +13,38 @@ public:
   uint64_t current() const;
   uint64_t increment();
 
+  // Per-entity aggregate: the highest version at which ANY element in this
+  // network recorded a change. Enables the O(1) net-delta dirty-version
+  // early-out (Lever #4). const + mutable because children hold a
+  // NetElementVersion const* and must bump the aggregate without re-threading
+  // a non-const pointer through the whole hierarchy. markChanged() records the
+  // UN-incremented m_version (== current()) — the same units every per-element
+  // delta test compares against (leaf m_latestUpdateVersion, signal/dynamic/map
+  // change-version).
+  void markChanged() const;
+  uint64_t latestChange() const;
+
 private:
   uint64_t m_version = 0;
+  mutable uint64_t m_latestChange = 0;
 };
+
+// Process-global gates for the net-delta dirty-version early-out (Lever #4),
+// set once from worldserver.config in WorldServer::init (both default OFF, so a
+// shipped binary is byte-identical to today until a key is flipped). Kept
+// process-global rather than threaded through World because
+// NetElementTop::writeNetState is per-element and has no World/Entity
+// back-pointer; mirrors the file-static atomic pattern in StarTelemetry.cpp.
+namespace NetElementEarlyOut {
+  extern std::atomic<bool> enabled;   // gate the O(1) early-out
+  extern std::atomic<bool> validate;  // dual-run + contract-equality check
+  // True when the pump is needed this tick (either gate on). When BOTH are OFF
+  // the drivers skip netStorePump() entirely, so the shipped default adds zero
+  // cost (no redundant store pass on top of the unchanged writeNetDelta walk).
+  inline bool active() {
+    return enabled.load(std::memory_order_relaxed) || validate.load(std::memory_order_relaxed);
+  }
+}
 
 // Primary interface for the composable network synchronizable element system.
 class NetElement {
@@ -54,6 +85,14 @@ public:
   // When extrapolating, it is important to notify when a delta WOULD have been
   // received even if no deltas are produced, so no extrapolation takes place.
   virtual void blankNetDelta(float interpolationTime);
+
+  // Run any deferred lazy stores (e.g. NetElementSyncGroup::netElementsNeedStore
+  // and embedded composite stores) so the shared per-entity NetElementVersion
+  // aggregate is authoritative BEFORE a dirty-version early-out in
+  // NetElementTop::writeNetState can skip the delta tree-walk (Lever #4). Must
+  // be driven once per master entity per tick before its first writeNetState.
+  // Default no-op (leaves and signals have no deferred store).
+  virtual void netStorePump() {}
 
   VersionNumber compatibilityVersion() const;
   void setCompatibilityVersion(VersionNumber version);

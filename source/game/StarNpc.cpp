@@ -301,6 +301,25 @@ pair<ByteArray, uint64_t> Npc::writeNetState(uint64_t fromVersion, NetCompatibil
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Npc::netStorePump() {
+  // Mirror writeNetState's overrideNetPoly scrungle so the once-per-tick pump
+  // stores the same (degenerate) collision poly the per-client delta would —
+  // otherwise the early-out could serve the real poly and break the hack.
+  if (m_npcVariant.overrides && m_npcVariant.overrides.getBool("overrideNetPoly", false)) {
+    if (auto mode = entityMode()) {
+      if (*mode == EntityMode::Master && connectionForEntity(entityId()) != ServerConnectionId) {
+        PolyF poly = m_movementController->collisionPoly();
+        m_movementController->setCollisionPoly({ { 0.0f, -3.402823466e+38F }});
+        m_netGroup.netStorePump();
+        m_movementController->setCollisionPoly(poly);
+        return;
+      }
+    }
+  }
+
+  m_netGroup.netStorePump();
+}
+
 void Npc::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

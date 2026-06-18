@@ -387,6 +387,10 @@ bool TechController::TechAnimator::writeNetDelta(DataStream& ds, uint64_t fromVe
   return netGroup.writeNetDelta(ds, fromVersion, rules);
 }
 
+void TechController::TechAnimator::netStorePump() {
+  netGroup.netStorePump();
+}
+
 void TechController::TechAnimator::readNetDelta(DataStream& ds, float interpolationTime, NetCompatibilityRules rules) {
   netGroup.readNetDelta(ds, interpolationTime, rules);
 }

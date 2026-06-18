@@ -70,6 +70,10 @@ pair<ByteArray, uint64_t> Sky::writeUpdate(uint64_t fromVersion, NetCompatibilit
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Sky::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Sky::readUpdate(ByteArray data, NetCompatibilityRules rules) {
   m_netGroup.readNetState(std::move(data), 0.0f, rules);
 }

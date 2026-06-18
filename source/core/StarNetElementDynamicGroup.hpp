@@ -51,6 +51,7 @@ public:
   bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime = 0.0f) override;
+  void netStorePump() override;
 
 private:
   // If a delta is written from further back than this many versions, the delta
@@ -304,8 +305,16 @@ void NetElementDynamicGroup<Element>::blankNetDelta(float interpolationTime) {
 }
 
 template <typename Element>
+void NetElementDynamicGroup<Element>::netStorePump() {
+  for (auto& p : m_idMap)
+    p.second->netStorePump();
+}
+
+template <typename Element>
 void NetElementDynamicGroup<Element>::addChangeData(ElementChange change) {
   uint64_t currentVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   starAssert(m_changeData.empty() || m_changeData.last().first <= currentVersion);
 
   m_changeData.append({currentVersion, std::move(change)});

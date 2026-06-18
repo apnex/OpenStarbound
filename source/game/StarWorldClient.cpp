@@ -1577,6 +1577,11 @@ void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
     auto netRules = m_clientState.netCompatibilityRules();
     m_entityMap->forAllEntities([&](EntityPtr const& entity) {
         if (auto version = m_masterEntitiesNetVersion.ptr(entity->entityId())) {
+          // Lever #4: pump deferred stores before the early-out — the client's
+          // master entities (e.g. the player in single-player) are gated by the
+          // same process-global flag set in WorldServer::init.
+          if (NetElementEarlyOut::active())
+            entity->netStorePump();
           auto updateAndVersion = entity->writeNetState(*version, netRules);
           if (!updateAndVersion.first.empty())
             entityUpdateSet->deltas[entity->entityId()] = std::move(updateAndVersion.first);

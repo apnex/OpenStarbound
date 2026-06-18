@@ -405,6 +405,9 @@ private:
   List<CollisionBlock> m_workingCollisionBlocks;
 
   HashMap<NetCompatibilityRules, HashMap<pair<EntityId, uint64_t>, pair<ByteArray, uint64_t>>> m_netStateCache;
+  // Lever #4: master entities whose netStorePump() ran this tick — deduped so one
+  // pump feeds every netRules bucket and every client. Cleared each tick.
+  HashSet<EntityId> m_netStorePumpedThisTick;
   OrderedHashMap<ConnectionId, shared_ptr<ClientInfo>> m_clientInfo;
 
   GameTimer m_entityUpdateTimer;
