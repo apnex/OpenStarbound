@@ -22,6 +22,8 @@ uint64_t NetElementVersion::latestChange() const {
 namespace NetElementEarlyOut {
   std::atomic<bool> enabled{false};
   std::atomic<bool> validate{false};
+  std::atomic<uint64_t> hits{0};
+  std::atomic<uint64_t> walks{0};
 }
 
 void NetElement::enableNetInterpolation(float) {}
