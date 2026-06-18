@@ -9,6 +9,8 @@ void NetElementGroup::addNetElement(NetElement* element, bool propagateInterpola
   if (m_interpolationEnabled && propagateInterpolation)
     element->enableNetInterpolation(m_extrapolationHint);
   m_elements.append(pair<NetElement*, bool>(element, propagateInterpolation));
+  if (element->netStoreNeedsPump())
+    m_pumpElements.append(element);
 
 
   for (VersionNumber i = 0; i < (CurrentStreamVersion + 1); i++) {
@@ -20,6 +22,7 @@ void NetElementGroup::addNetElement(NetElement* element, bool propagateInterpola
 void NetElementGroup::clearNetElements() {
   m_elementCounts.clear();
   m_elements.clear();
+  m_pumpElements.clear();
 }
 
 void NetElementGroup::initNetVersion(NetElementVersion const* version) {
@@ -152,8 +155,9 @@ void NetElementGroup::blankNetDelta(float interpolationTime) {
 }
 
 void NetElementGroup::netStorePump() {
-  for (auto& p : m_elements)
-    p.first->netStorePump();
+  // Lever #4b: only the deferred-store composites, not every leaf field.
+  for (auto* e : m_pumpElements)
+    e->netStorePump();
 }
 
 }
