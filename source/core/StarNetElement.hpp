@@ -101,6 +101,17 @@ public:
   // Default no-op (leaves and signals have no deferred store).
   virtual void netStorePump() {}
 
+  // Whether netStorePump() does non-trivial deferred-store work (Lever #4b).
+  // NetElementGroup uses this to build a sublist of just the composite children
+  // that actually defer a store, skipping the majority of children that are
+  // leaf fields (which markChanged eagerly and have a no-op pump) — that leaf
+  // iteration was ~5% of the WorldServerThread. INVARIANT: any subclass that
+  // overrides netStorePump() to do real work MUST also override this to return
+  // true, or its deferred store can be skipped before a dirty-version early-out
+  // -> a dropped delta -> desync. Validate-mode surfaces a violation as a
+  // logged MISMATCH (the same net it caught the client-teardown gap with).
+  virtual bool netStoreNeedsPump() const { return false; }
+
   VersionNumber compatibilityVersion() const;
   void setCompatibilityVersion(VersionNumber version);
   bool checkWithRules(NetCompatibilityRules const& rules) const;

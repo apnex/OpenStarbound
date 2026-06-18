@@ -52,6 +52,7 @@ public:
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime = 0.0f) override;
   void netStorePump() override;
+  bool netStoreNeedsPump() const override { return true; }  // Lever #4b: deferred per-element stores
 
 private:
   // If a delta is written from further back than this many versions, the delta
