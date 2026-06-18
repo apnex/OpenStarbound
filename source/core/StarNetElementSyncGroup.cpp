@@ -44,6 +44,13 @@ bool NetElementSyncGroup::writeNetDelta(DataStream& ds, uint64_t fromVersion, Ne
   return NetElementGroup::writeNetDelta(ds, fromVersion, rules);
 }
 
+void NetElementSyncGroup::netStorePump() {
+  // Run the deferred store (the same pull writeNetDelta does lazily) so the
+  // aggregate reflects this tick's changes before any early-out, then recurse.
+  netElementsNeedStore();
+  NetElementGroup::netStorePump();
+}
+
 void NetElementSyncGroup::readNetDelta(DataStream& ds, float interpolationTime, NetCompatibilityRules rules) {
   if (!checkWithRules(rules)) return;
   NetElementGroup::readNetDelta(ds, interpolationTime, rules);

@@ -1,4 +1,5 @@
 #include "StarWorldServer.hpp"
+#include "StarNetElement.hpp"
 #include "StarLogging.hpp"
 #include "StarIterator.hpp"
 #include "StarDataStreamExtra.hpp"
@@ -725,6 +726,10 @@ void WorldServer::update(float dt) {
   }
 
   bool sendRemoteUpdates = m_entityUpdateTimer.wrapTick(dt);
+  // Lever #4: pump the sky's deferred store once before the per-client loop
+  // (Sky::writeUpdate has a setNeedsStoreCallback and shares the early-out gate).
+  if (NetElementEarlyOut::active())
+    m_sky->netStorePump();
   for (auto const& pair : m_clientInfo) {
     // Compute this client's monitoring regions once per tick and reuse them for both the
     // signalRegion pass and queueUpdatePackets (which used to recompute them internally).
@@ -736,6 +741,20 @@ void WorldServer::update(float dt) {
     queueUpdatePackets(pair.first, sendRemoteUpdates, monitoringRegions);
   }
   m_netStateCache.clear();
+  m_netStorePumpedThisTick.clear();
+
+  // Lever #4 measurement: while a gate is on, log the early-out coverage
+  // (hits/(hits+walks)) roughly every ~10s and reset the window. Counts are
+  // process-global (aggregate across all active server worlds); zero overhead
+  // and no log line when both gates are OFF.
+  if (NetElementEarlyOut::active() && ++m_netDeltaStatTick >= 600) {
+    m_netDeltaStatTick = 0;
+    uint64_t h = NetElementEarlyOut::hits.exchange(0, std::memory_order_relaxed);
+    uint64_t total = h + NetElementEarlyOut::walks.exchange(0, std::memory_order_relaxed);
+    if (total > 0)
+      Logger::info("netDelta early-out coverage: {}/{} entity-writes skipped ({:.1f}%) over last window",
+          h, total, 100.0 * (double)h / (double)total);
+  }
 
   for (auto& pair : m_clientInfo)
     pair.second->pendingForward = false;
@@ -1411,6 +1430,10 @@ void WorldServer::init(bool firstTime) {
   auto liquidsDatabase = root.liquidsDatabase();
 
   m_serverConfig = assets->json("/worldserver.config");
+  // Lever #4: load the net-delta dirty-version early-out gates (process-global,
+  // default OFF). Idempotent across worlds (every world loads the same asset).
+  NetElementEarlyOut::enabled.store(m_serverConfig.getBool("netDeltaDirtyVersionEarlyOut", false), std::memory_order_relaxed);
+  NetElementEarlyOut::validate.store(m_serverConfig.getBool("netDeltaDirtyVersionValidate", false), std::memory_order_relaxed);
   setFidelity(WorldServerFidelity::Medium);
 
   m_worldStorage->setFloatingDungeonWorld(isFloatingDungeonWorld());
@@ -2025,6 +2048,11 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
     EntityId entityId = monitoredEntity->entityId();
     ConnectionId connectionId = connectionForEntity(entityId);
     if (connectionId != clientId) {
+      // Lever #4: run the deferred-store pump once per master entity per tick
+      // (before its first writeNetState, across all clients/netRules buckets) so
+      // the latestChange aggregate is authoritative for the early-out.
+      if (NetElementEarlyOut::active() && m_netStorePumpedThisTick.add(entityId))
+        monitoredEntity->netStorePump();
       auto netRules = clientInfo->clientState.netCompatibilityRules();
       if (auto version = clientInfo->clientSlavesNetVersion.ptr(entityId)) {
         if (auto updateSetPacket = updateSetPackets.value(connectionId)) {
@@ -2236,6 +2264,11 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
 
   if (andDie)
     entity->destroy(nullptr);
+
+  // Lever #4: pump deferred stores so the final delta below isn't dropped by an
+  // early-out (entity is processed once here then removed, so no dedup needed).
+  if (NetElementEarlyOut::active())
+    entity->netStorePump();
 
   for (auto const& pair : m_clientInfo) {
     auto& clientInfo = pair.second;

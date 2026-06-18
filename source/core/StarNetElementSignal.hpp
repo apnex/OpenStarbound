@@ -125,6 +125,8 @@ void NetElementSignal<Signal>::readNetDelta(DataStream& ds, float interpolationT
 template <typename Signal>
 void NetElementSignal<Signal>::send(Signal signal) {
   m_signals.append({m_netVersion ? m_netVersion->current() : 0, signal, false});
+  if (m_netVersion)
+    m_netVersion->markChanged();
   while (m_signals.size() > m_maxSignalQueue)
     m_signals.removeFirst();
 }

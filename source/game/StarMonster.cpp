@@ -214,6 +214,10 @@ pair<ByteArray, uint64_t> Monster::writeNetState(uint64_t fromVersion, NetCompat
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Monster::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Monster::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

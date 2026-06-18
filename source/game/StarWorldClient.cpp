@@ -179,6 +179,12 @@ void WorldClient::resendEntity(EntityId entityId) {
 
   auto fromVersion = m_masterEntitiesNetVersion.take(entity->entityId());
   auto netRules = m_clientState.netCompatibilityRules();
+  // Lever #4: pump deferred stores so this final delta isn't dropped by an
+  // early-out (mirrors the server-side WorldServer::removeEntity). The client
+  // periodic-update loop pumps too (see below); this resend path is the same
+  // master-entity delta write and was the second un-pumped client call site.
+  if (NetElementEarlyOut::active())
+    entity->netStorePump();
   ByteArray finalNetState = entity->writeNetState(fromVersion, netRules).first;
   m_outgoingPackets.append(make_shared<EntityDestroyPacket>(entity->entityId(), std::move(finalNetState), false));
   notifyEntityCreate(entity);
@@ -211,6 +217,11 @@ void WorldClient::removeEntity(EntityId entityId, bool andDie) {
 
   if (auto version = m_masterEntitiesNetVersion.maybeTake(entity->entityId())) {
     auto netRules = m_clientState.netCompatibilityRules();
+    // Lever #4: pump deferred stores so the final destroy delta isn't dropped by
+    // an early-out (mirrors WorldServer::removeEntity:2268-2271). This was the
+    // call site that produced the validate-live MISMATCH on player teardown at exit.
+    if (NetElementEarlyOut::active())
+      entity->netStorePump();
     ByteArray finalNetState = entity->writeNetState(*version, netRules).first;
     m_outgoingPackets.append(make_shared<EntityDestroyPacket>(entity->entityId(), std::move(finalNetState), andDie));
   }
@@ -1577,6 +1588,11 @@ void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
     auto netRules = m_clientState.netCompatibilityRules();
     m_entityMap->forAllEntities([&](EntityPtr const& entity) {
         if (auto version = m_masterEntitiesNetVersion.ptr(entity->entityId())) {
+          // Lever #4: pump deferred stores before the early-out — the client's
+          // master entities (e.g. the player in single-player) are gated by the
+          // same process-global flag set in WorldServer::init.
+          if (NetElementEarlyOut::active())
+            entity->netStorePump();
           auto updateAndVersion = entity->writeNetState(*version, netRules);
           if (!updateAndVersion.first.empty())
             entityUpdateSet->deltas[entity->entityId()] = std::move(updateAndVersion.first);

@@ -31,6 +31,9 @@ public:
   void jumpTo(SkyParameters SkyParameters);
 
   pair<ByteArray, uint64_t> writeUpdate(uint64_t fromVersion = 0, NetCompatibilityRules rules = {});
+  // Runs deferred NetElement stores before a writeUpdate early-out (Lever #4);
+  // Sky has a setNeedsStoreCallback, so it must be pumped once per tick.
+  void netStorePump();
   void readUpdate(ByteArray data, NetCompatibilityRules rules = {});
   
   // handles flying and warp state transitions
