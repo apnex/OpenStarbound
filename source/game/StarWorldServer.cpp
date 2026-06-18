@@ -743,6 +743,19 @@ void WorldServer::update(float dt) {
   m_netStateCache.clear();
   m_netStorePumpedThisTick.clear();
 
+  // Lever #4 measurement: while a gate is on, log the early-out coverage
+  // (hits/(hits+walks)) roughly every ~10s and reset the window. Counts are
+  // process-global (aggregate across all active server worlds); zero overhead
+  // and no log line when both gates are OFF.
+  if (NetElementEarlyOut::active() && ++m_netDeltaStatTick >= 600) {
+    m_netDeltaStatTick = 0;
+    uint64_t h = NetElementEarlyOut::hits.exchange(0, std::memory_order_relaxed);
+    uint64_t total = h + NetElementEarlyOut::walks.exchange(0, std::memory_order_relaxed);
+    if (total > 0)
+      Logger::info("netDelta early-out coverage: {}/{} entity-writes skipped ({:.1f}%) over last window",
+          h, total, 100.0 * (double)h / (double)total);
+  }
+
   for (auto& pair : m_clientInfo)
     pair.second->pendingForward = false;
 

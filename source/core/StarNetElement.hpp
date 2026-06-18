@@ -38,6 +38,13 @@ private:
 namespace NetElementEarlyOut {
   extern std::atomic<bool> enabled;   // gate the O(1) early-out
   extern std::atomic<bool> validate;  // dual-run + contract-equality check
+  // Coverage counters (Lever #4 measurement): hits = entity-writes the
+  // dirty-version check let us skip (or WOULD skip in validate mode); walks =
+  // entity-writes that still needed a real delta tree-walk. WorldServer logs
+  // hits/(hits+walks) periodically and resets the window. Only bumped when a
+  // gate is on, so the shipped default path stays byte-for-byte zero-cost.
+  extern std::atomic<uint64_t> hits;
+  extern std::atomic<uint64_t> walks;
   // True when the pump is needed this tick (either gate on). When BOTH are OFF
   // the drivers skip netStorePump() entirely, so the shipped default adds zero
   // cost (no redundant store pass on top of the unchanged writeNetDelta walk).

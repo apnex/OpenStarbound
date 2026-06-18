@@ -69,6 +69,18 @@ pair<ByteArray, uint64_t> NetElementTop<BaseNetElement>::writeNetState(uint64_t 
   // would drop a steady-state change -> silent desync.
   bool wouldEarlyOut = (enabled || validate) && m_netVersion.latestChange() < fromVersion;
 
+  // Coverage instrumentation (Lever #4): when a gate is on, tally how often the
+  // dirty-version check let us skip the walk (hit) vs needed a real walk. Counts
+  // wouldEarlyOut in BOTH modes — in validate the walk still runs to verify, but
+  // a wouldEarlyOut tick is exactly the coverage the real early-out would harvest.
+  // Relaxed atomics touched only when active() -> zero cost on the shipped default.
+  if (enabled || validate) {
+    if (wouldEarlyOut)
+      NetElementEarlyOut::hits.fetch_add(1, std::memory_order_relaxed);
+    else
+      NetElementEarlyOut::walks.fetch_add(1, std::memory_order_relaxed);
+  }
+
   // Fast path: real early-out (validation off) -> skip the buffer alloc + the
   // whole tree walk. This is the win.
   if (enabled && !validate && wouldEarlyOut)
