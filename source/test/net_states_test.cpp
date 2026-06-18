@@ -1056,3 +1056,138 @@ TEST(NetElements, NetElementSignal) {
   EXPECT_EQ(slaveSignal1.receive(), List<int>({}));
   EXPECT_EQ(slaveSignal2.receive(), List<int>({}));
 }
+
+// ---- Lever #4: net-delta dirty-version early-out (NetElementEarlyOut gates) ----
+
+namespace {
+  // A net tree shaped like a real entity's NetElementTopGroup, including a
+  // deferred-store CallbackGroup — the case the early-out would skip without a
+  // netStorePump(). Non-copyable: addNetElement stores pointers to the members.
+  struct SoakNet {
+    NetElementTop<NetElementCallbackGroup> top;
+    NetElementInt i;
+    NetElementFloat f;
+    NetElementString s;
+    NetElementSignal<int> sig;
+    NetElementHashMap<String, String> map;
+    NetElementCallbackGroup deferred;
+    NetElementInt mirror;
+    int working = 0;
+
+    explicit SoakNet(bool master) {
+      deferred.addNetElement(&mirror);
+      if (master)
+        deferred.setNeedsStoreCallback([this]() { mirror.set(working); });
+      top.addNetElement(&i);
+      top.addNetElement(&f);
+      top.addNetElement(&s);
+      top.addNetElement(&sig);
+      top.addNetElement(&map);
+      top.addNetElement(&deferred);
+    }
+
+    SoakNet(SoakNet const&) = delete;
+    SoakNet& operator=(SoakNet const&) = delete;
+  };
+}
+
+TEST(NetElements, EarlyOutDeferredStoreTrap) {
+  // Negative control + proof: a deferred-store change is invisible to the
+  // dirty-version aggregate until netStorePump() runs the store. With the
+  // early-out enabled, skipping the pump must (by design) NOT yet deliver the
+  // change; pumping must then deliver it. This is exactly why every entity with
+  // a deferred store needs a netStorePump() override.
+  NetElementEarlyOut::enabled.store(true, std::memory_order_relaxed);
+  NetElementEarlyOut::validate.store(false, std::memory_order_relaxed);
+
+  NetElementTop<NetElementCallbackGroup> master;
+  NetElementInt masterMirror;
+  int working = 0;
+  master.addNetElement(&masterMirror);
+  master.setNeedsStoreCallback([&]() { masterMirror.set(working); });
+
+  NetElementTop<NetElementCallbackGroup> slave;
+  NetElementInt slaveMirror;
+  slave.addNetElement(&slaveMirror);
+
+  uint64_t ver = 0;
+  auto sync = [&]() {
+    auto p = master.writeNetState(ver);
+    ver = p.second;
+    slave.readNetState(p.first);
+  };
+
+  sync();
+  EXPECT_EQ(slaveMirror.get(), 0);
+
+  // Change the shadow var WITHOUT pumping: the store callback never ran, the
+  // aggregate is stale, the early-out fires, so the slave does not yet see it.
+  working = 42;
+  sync();
+  EXPECT_EQ(slaveMirror.get(), 0);
+
+  // Pump: the callback stores working -> mirror, bumps the aggregate, delivered.
+  master.netStorePump();
+  sync();
+  EXPECT_EQ(slaveMirror.get(), 42);
+
+  NetElementEarlyOut::enabled.store(false, std::memory_order_relaxed);
+}
+
+TEST(NetElements, EarlyOutSoak) {
+  // Round-trip a master/slave pair over many random ticks under each gate config.
+  // Robust invariant: the slave must NEVER diverge from the master — an early-out
+  // that drops a needed delta shows up immediately as a mismatch.
+  auto runSoak = [](bool enabled, bool validate) {
+    NetElementEarlyOut::enabled.store(enabled, std::memory_order_relaxed);
+    NetElementEarlyOut::validate.store(validate, std::memory_order_relaxed);
+
+    SoakNet m(true), s(false);
+
+    uint64_t ver = 0;
+    // Initial full sync so every subsequent write is a delta.
+    {
+      m.top.netStorePump();
+      auto p = m.top.writeNetState(0);
+      ver = p.second;
+      s.top.readNetState(p.first);
+    }
+
+    uint32_t rngState = 0xBEEFu;
+    auto rnd = [&](uint32_t n) -> uint32_t {
+      rngState = rngState * 1664525u + 1013904223u;
+      return (rngState >> 8) % n;
+    };
+
+    List<int> sent, recv;
+    for (int tick = 0; tick < 2000; ++tick) {
+      if (rnd(3) == 0) m.i.set((int)rnd(1000));
+      if (rnd(3) == 0) m.f.set((float)rnd(100000) * 0.001f);
+      if (rnd(3) == 0) m.s.set(toString(rnd(50)));
+      if (rnd(4) == 0) { int v = (int)rnd(1000); m.sig.send(v); sent.append(v); }
+      if (rnd(3) == 0) m.map.set(toString(rnd(8)), toString(rnd(100)));
+      if (rnd(5) == 0) m.map.remove(toString(rnd(8)));
+      if (rnd(3) == 0) m.working = (int)rnd(100000);  // deferred-store change
+
+      m.top.netStorePump();
+      auto p = m.top.writeNetState(ver);
+      ver = p.second;
+      s.top.readNetState(p.first);
+
+      ASSERT_EQ(m.i.get(), s.i.get()) << "int diverged @" << tick;
+      ASSERT_EQ(m.f.get(), s.f.get()) << "float diverged @" << tick;
+      ASSERT_EQ(m.s.get(), s.s.get()) << "string diverged @" << tick;
+      ASSERT_EQ(m.mirror.get(), s.mirror.get()) << "deferred mirror diverged @" << tick;
+      ASSERT_EQ(m.map.size(), s.map.size()) << "map size diverged @" << tick;
+      recv.appendAll(s.sig.receive());
+    }
+    EXPECT_EQ(sent, recv) << "signals dropped: sent " << sent.size() << " received " << recv.size();
+  };
+
+  runSoak(false, false);  // baseline: today's behaviour, harness sanity
+  runSoak(false, true);   // validate-mode: the dual-run contract assert must never fire
+  runSoak(true, false);   // real early-out: the safety proof
+
+  NetElementEarlyOut::enabled.store(false, std::memory_order_relaxed);
+  NetElementEarlyOut::validate.store(false, std::memory_order_relaxed);
+}

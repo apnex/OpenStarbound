@@ -592,6 +592,10 @@ pair<ByteArray, uint64_t> Plant::writeNetState(uint64_t fromVersion, NetCompatib
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Plant::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Plant::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

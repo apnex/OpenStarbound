@@ -693,6 +693,14 @@ bool ToolUser::NetItem::writeNetDelta(DataStream& ds, uint64_t fromVersion, NetC
   return deltaWritten;
 }
 
+void ToolUser::NetItem::netStorePump() {
+  // Mirror writeNetDelta's deferred store of the item descriptor, then recurse
+  // into the composed item if it is itself a NetElement.
+  updateItemDescriptor();
+  if (auto netItem = as<NetElement>(m_item.get()))
+    netItem->netStorePump();
+}
+
 void ToolUser::NetItem::readNetDelta(DataStream& ds, float interpolationTime, NetCompatibilityRules rules) {
   if (!checkWithRules(rules)) return;
   while (true) {

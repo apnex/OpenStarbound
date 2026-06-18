@@ -19,6 +19,7 @@ public:
   bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime = 0.0f) override;
+  void netStorePump() override;
 
 protected:
   // Notifies when data needs to be pulled from NetElements, load is true if
