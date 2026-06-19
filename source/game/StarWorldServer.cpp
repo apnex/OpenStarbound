@@ -1434,6 +1434,9 @@ void WorldServer::init(bool firstTime) {
   // default OFF). Idempotent across worlds (every world loads the same asset).
   NetElementEarlyOut::enabled.store(m_serverConfig.getBool("netDeltaDirtyVersionEarlyOut", false), std::memory_order_relaxed);
   NetElementEarlyOut::validate.store(m_serverConfig.getBool("netDeltaDirtyVersionValidate", false), std::memory_order_relaxed);
+  // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default OFF).
+  EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", false), std::memory_order_relaxed);
+  EntityDormancy::validate.store(m_serverConfig.getBool("entityDormancyValidate", false), std::memory_order_relaxed);
   setFidelity(WorldServerFidelity::Medium);
 
   m_worldStorage->setFloatingDungeonWorld(isFloatingDungeonWorld());
