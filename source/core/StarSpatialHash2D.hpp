@@ -77,7 +77,16 @@ public:
 private:
   typedef Vector<IntT, 2> Sector;
   typedef Box<IntT, 2> SectorRange;
-  typedef HashSet<Entry const*, hash<Entry const*>, std::equal_to<Entry const*>> SectorEntrySet;
+  // Lever #12a: flat heap-backed container, not a hash set. Sectors are 16-unit
+  // cells holding 0-few entries (pruned the instant they empty), so a contiguous
+  // vector iterates with full cache locality in forEach (no hash bucket-skip /
+  // second-level pointer chase) and add is a hash-free O(1) append, remove a
+  // small linear scan. forEach already sorts+dedups its results, which also
+  // absorbs the rare intra-sector duplicate from an entry whose two rects map to
+  // the same sector. (List, not an inline SmallList: the SectorEntrySet is a
+  // value in the relocating FlatHashMap<Sector,...>; a vector's heap pointer
+  // survives the move, an inline buffer would not.)
+  typedef List<Entry const*> SectorEntrySet;
   typedef HashMap<Sector, SectorEntrySet> SectorMap;
 
   SectorRange getSectors(Rect const& r) const;
@@ -222,12 +231,15 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::forEach(Rec
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Coord const& pos) {
-  set(key, {Rect(pos, pos)});
+  // initializer_list<Rect>{...}, not a bare {...}: a braced-init-list can't
+  // deduce the RectCollection template param, so {...} would re-select this
+  // single-arg overload -> infinite recursion. Mirrors queryValues()/forEach().
+  set(key, initializer_list<Rect>{Rect(pos, pos)});
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Rect const& rect) {
-  set(key, {rect});
+  set(key, initializer_list<Rect>{rect});  // explicit type; bare {rect} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
@@ -238,12 +250,12 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key con
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Coord const& pos, Value value) {
-  set(key, {Rect(pos, pos)}, std::move(value));
+  set(key, initializer_list<Rect>{Rect(pos, pos)}, std::move(value));  // explicit type; bare {...} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Rect const& rect, Value value) {
-  set(key, {rect}, std::move(value));
+  set(key, initializer_list<Rect>{rect}, std::move(value));  // explicit type; bare {rect} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
@@ -296,7 +308,7 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::addSpatial(
         SectorEntrySet* p = m_sectorMap.ptr(sector);
         if (!p)
           p = &m_sectorMap.add(sector, SectorEntrySet());
-        p->add(entry);
+        p->append(entry);  // Lever #12a: flat append; forEach sort+dedup collapses any intra-sector dup
       }
     }
   }

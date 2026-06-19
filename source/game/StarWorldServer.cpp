@@ -2023,9 +2023,23 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
   }
   clientInfo->pendingLiquidUpdates.clear();
 
-  HashSet<EntityPtr> monitoredEntities;
+  // Lever #12b: collect monitored entities as raw Entity* (no shared_ptr atomic
+  // refcount churn vs the old HashSet<EntityPtr>), deduped by sort + skip-equal.
+  // Safe because nothing for the rest of this function adds or removes entities
+  // (only serialization getters + keyed-map/packet mutations below), so the raw
+  // pointers stay valid; m_entityMap owns the entities for the whole tick.
+  List<Entity*> monitoredEntities;
   for (auto const& monitoredRegion : monitoringRegions)
-    monitoredEntities.addAll(m_entityMap->entityQuery(RectF(monitoredRegion)));
+    m_entityMap->forEachEntity(RectF(monitoredRegion), [&](EntityPtr const& entity) {
+        monitoredEntities.append(entity.get());
+      });
+  monitoredEntities.sort();
+  size_t uniqueCount = 0;
+  for (size_t i = 0; i < monitoredEntities.size(); ++i) {
+    if (uniqueCount == 0 || monitoredEntities[i] != monitoredEntities[uniqueCount - 1])
+      monitoredEntities[uniqueCount++] = monitoredEntities[i];
+  }
+  monitoredEntities.resize(uniqueCount);
 
   auto entityFactory = Root::singleton().entityFactory();
   auto outOfMonitoredRegionsEntities = HashSet<EntityId>::from(clientInfo->clientSlavesNetVersion.keys());
@@ -2071,7 +2085,7 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
         auto firstUpdate = monitoredEntity->writeNetState(0, netRules);
         clientInfo->clientSlavesNetVersion.add(entityId, firstUpdate.second);
         clientInfo->outgoingPackets.append(make_shared<EntityCreatePacket>(monitoredEntity->entityType(),
-              entityFactory->netStoreEntity(monitoredEntity, netRules), std::move(firstUpdate.first), entityId));
+              entityFactory->netStoreEntity(m_entityMap->entity(entityId), netRules), std::move(firstUpdate.first), entityId));
       }
     }
   }
