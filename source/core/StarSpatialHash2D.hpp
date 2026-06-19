@@ -77,7 +77,16 @@ public:
 private:
   typedef Vector<IntT, 2> Sector;
   typedef Box<IntT, 2> SectorRange;
-  typedef HashSet<Entry const*, hash<Entry const*>, std::equal_to<Entry const*>> SectorEntrySet;
+  // Lever #12a: flat heap-backed container, not a hash set. Sectors are 16-unit
+  // cells holding 0-few entries (pruned the instant they empty), so a contiguous
+  // vector iterates with full cache locality in forEach (no hash bucket-skip /
+  // second-level pointer chase) and add is a hash-free O(1) append, remove a
+  // small linear scan. forEach already sorts+dedups its results, which also
+  // absorbs the rare intra-sector duplicate from an entry whose two rects map to
+  // the same sector. (List, not an inline SmallList: the SectorEntrySet is a
+  // value in the relocating FlatHashMap<Sector,...>; a vector's heap pointer
+  // survives the move, an inline buffer would not.)
+  typedef List<Entry const*> SectorEntrySet;
   typedef HashMap<Sector, SectorEntrySet> SectorMap;
 
   SectorRange getSectors(Rect const& r) const;
@@ -296,7 +305,7 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::addSpatial(
         SectorEntrySet* p = m_sectorMap.ptr(sector);
         if (!p)
           p = &m_sectorMap.add(sector, SectorEntrySet());
-        p->add(entry);
+        p->append(entry);  // Lever #12a: flat append; forEach sort+dedup collapses any intra-sector dup
       }
     }
   }
