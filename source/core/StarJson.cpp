@@ -1067,7 +1067,7 @@ Json const* Json::ptr(String const& key) const {
 Json jsonMerge(Json const& base, Json const& merger) {
   if (base.type() == Json::Type::Object && merger.type() == Json::Type::Object) {
     JsonObject merged = base.toObject();
-    for (auto const& p : merger.toObject()) {
+    for (auto const& p : merger.iterateObject()) {  // Lever #13: iterate the shared const map (refcount), not a by-value deep clone
       auto res = merged.insert(p);
       if (!res.second)
         res.first->second = jsonMerge(res.first->second, p.second);
@@ -1080,7 +1080,7 @@ Json jsonMerge(Json const& base, Json const& merger) {
 Json jsonMergeNulling(Json const& base, Json const& merger) {
   if (base.type() == Json::Type::Object && merger.type() == Json::Type::Object) {
     JsonObject merged = base.toObject();
-    for (auto const& p : merger.toObject()) {
+    for (auto const& p : merger.iterateObject()) {  // Lever #13: iterate the shared const map (refcount), not a by-value deep clone
       if (p.second.isNull())
         merged.erase(p.first);
       else {
