@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "StarCasting.hpp"
 #include "StarDamage.hpp"
 #include "StarLightSource.hpp"
@@ -15,6 +17,20 @@ STAR_CLASS(TileEntity);
 STAR_CLASS(WireEntity);
 
 STAR_EXCEPTION(EntityException, StarException);
+
+// Process-global gates for the entity-dormancy awake-set skip (Arc-A Rung 1),
+// set once from worldserver.config in WorldServer::init (both default OFF, so a
+// shipped binary is byte-identical to today until a key is flipped). Kept
+// process-global rather than threaded through World because the WorldServer tick
+// loop and Entity share no back-reference; mirrors the file-static atomic
+// pattern in NetElementEarlyOut (StarNetElement.hpp).
+namespace EntityDormancy {
+  extern std::atomic<bool> enabled;   // gate the awake-set skip
+  extern std::atomic<bool> validate;  // shadow-run + assert each "dormant" tick is a no-op
+  inline bool active() {
+    return enabled.load(std::memory_order_relaxed) || validate.load(std::memory_order_relaxed);
+  }
+}
 
 // Specifies how the client should treat an entity created on the client,
 // whether it should always be sent to the server and be a slave on the client,

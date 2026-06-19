@@ -17,5 +17,13 @@
   // debug/asserts-on build) before enabling earlyOut. See
   // plans/2026-06-15-netdelta-dirty-version-earlyout.md.
   "netDeltaDirtyVersionEarlyOut" : false,
-  "netDeltaDirtyVersionValidate" : false
+  "netDeltaDirtyVersionValidate" : false,
+
+  // Entity-dormancy awake-set (Arc-A Rung 1) — process-global gates, BOTH
+  // default false (shipped binary byte-identical until flipped). enabled: skip
+  // the per-tick update for entities the awake-set has marked dormant. validate:
+  // shadow-run the dormant ticks and assert each is a no-op — used to prove
+  // parity live in-game (on a debug/asserts-on build) before enabling.
+  "entityDormancyEnabled" : false,
+  "entityDormancyValidate" : false
 }

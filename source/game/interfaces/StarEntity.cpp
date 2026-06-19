@@ -4,6 +4,8 @@
 
 namespace Star {
 
+std::atomic<bool> EntityDormancy::enabled{false}, EntityDormancy::validate{false};
+
 EnumMap<ClientEntityMode> const ClientEntityModeNames{
   {ClientEntityMode::ClientSlaveOnly, "ClientSlaveOnly"},
   {ClientEntityMode::ClientMasterAllowed, "ClientMasterAllowed"},
