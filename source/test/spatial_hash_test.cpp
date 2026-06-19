@@ -123,6 +123,28 @@ TEST(SpatialHash2D, UpdateMovesSectors) {
   EXPECT_EQ(hash.size(), 1u);
 }
 
+// The single-rect / single-coord set() convenience overloads previously
+// infinite-recursed (a braced-init-list `{rect}` can't deduce the
+// RectCollection template parameter, so it re-selected the single-arg
+// overload). This exercises all four; before the initializer_list<Rect>{...}
+// fix it stack-overflowed.
+TEST(SpatialHash2D, ConvenienceOverloads) {
+  TestHash hash(16.0f);
+  hash.set(1, RectF(0, 0, 4, 4), 1);            // set(Key, Rect, Value)
+  hash.set(2, TestHash::Coord(20, 20), 2);      // set(Key, Coord, Value)
+  EXPECT_EQ(hash.size(), 2u);
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 4, 4)), List<int>{1});
+  EXPECT_EQ(hashQuery(hash, RectF(19, 19, 21, 21)), List<int>{2});
+
+  // 2-arg forms update an existing entry's rects (the key must already exist).
+  hash.set(1, RectF(50, 50, 54, 54));           // set(Key, Rect)
+  EXPECT_TRUE(hashQuery(hash, RectF(0, 0, 4, 4)).empty());
+  EXPECT_EQ(hashQuery(hash, RectF(48, 48, 56, 56)), List<int>{1});
+  hash.set(2, TestHash::Coord(60, 60));         // set(Key, Coord)
+  EXPECT_TRUE(hashQuery(hash, RectF(19, 19, 21, 21)).empty());
+  EXPECT_EQ(hashQuery(hash, RectF(59, 59, 61, 61)), List<int>{2});
+}
+
 // The strongest gate: a randomized insert/update/remove/query churn compared
 // against a brute-force oracle every step. Implementation-independent, so it
 // holds for both the HashSet and the flat-list SectorEntrySet.

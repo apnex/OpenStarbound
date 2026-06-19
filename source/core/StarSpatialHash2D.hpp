@@ -231,12 +231,15 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::forEach(Rec
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Coord const& pos) {
-  set(key, {Rect(pos, pos)});
+  // initializer_list<Rect>{...}, not a bare {...}: a braced-init-list can't
+  // deduce the RectCollection template param, so {...} would re-select this
+  // single-arg overload -> infinite recursion. Mirrors queryValues()/forEach().
+  set(key, initializer_list<Rect>{Rect(pos, pos)});
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Rect const& rect) {
-  set(key, {rect});
+  set(key, initializer_list<Rect>{rect});  // explicit type; bare {rect} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
@@ -247,12 +250,12 @@ void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key con
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Coord const& pos, Value value) {
-  set(key, {Rect(pos, pos)}, std::move(value));
+  set(key, initializer_list<Rect>{Rect(pos, pos)}, std::move(value));  // explicit type; bare {...} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
 void SpatialHash2D<KeyT, ScalarT, ValueT, IntT, AllocatorBlockSize>::set(Key const& key, Rect const& rect, Value value) {
-  set(key, {rect}, std::move(value));
+  set(key, initializer_list<Rect>{rect}, std::move(value));  // explicit type; bare {rect} would infinite-recurse
 }
 
 template <typename KeyT, typename ScalarT, typename ValueT, typename IntT, size_t AllocatorBlockSize>
