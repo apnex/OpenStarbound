@@ -84,6 +84,7 @@ SET (star_game_tests_SOURCES
       entity_map_test.cpp
       spawn_test.cpp
       stat_test.cpp
+      status_context_test.cpp
       tile_array_test.cpp
       world_geometry_test.cpp
       universe_connection_test.cpp
