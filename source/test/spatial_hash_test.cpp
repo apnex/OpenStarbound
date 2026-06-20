@@ -197,6 +197,110 @@ TEST(SpatialHash2D, RandomizedOracle) {
   ASSERT_EQ(hashQuery(hash, RectF(-10, -10, 80, 80)), oracleQuery(world, RectF(-10, -10, 80, 80)));
 }
 
+// Lever #4 (stamp dedup) stress: same randomized oracle, but with FREQUENT large
+// (>=3x3 cell) entities so most queries gather each multi-cell entity through
+// several sectors -- maximizing the cross-cell multiplicity the stamp dedup must
+// collapse to a single dispatch. (RandomizedOracle above keeps entities small;
+// this pins the dedup's main job: an entry seen via many cells/rects in one
+// query is emitted exactly once.)
+TEST(SpatialHash2D, RandomizedOracleMultiCell) {
+  TestHash hash(16.0f);
+  Map<int, List<RectF>> world;
+
+  uint64_t s = 0xD1B54A32D192ED03ull;  // distinct seed from RandomizedOracle
+  auto next = [&]() { s = s * 6364136223846793005ull + 1442695040888963407ull; return (uint32_t)(s >> 33); };
+  auto frand = [&](float lo, float hi) { return lo + (hi - lo) * (next() / 2147483648.0f); };
+  auto randRect = [&]() {
+    float x = frand(0.0f, 80.0f), y = frand(0.0f, 80.0f);
+    float w, h;
+    if (next() % 5 < 3) { w = frand(40.0f, 90.0f); h = frand(40.0f, 90.0f); }  // ~60% large, >=3x3 sectors
+    else                { w = frand(0.5f, 10.0f);  h = frand(0.5f, 10.0f); }   // small
+    return RectF(x, y, x + w, y + h);
+  };
+
+  int const KeySpace = 24;
+  for (int step = 0; step < 4000; ++step) {
+    int key = (int)(next() % KeySpace);
+    uint32_t op = next() % 10;
+    if (op < 2) {
+      if (hash.contains(key)) {
+        hash.remove(key);
+        world.remove(key);
+      }
+    } else {
+      List<RectF> rects;
+      rects.append(randRect());
+      if (next() % 3 == 0)
+        rects.append(randRect());  // multi-rect -> same entry maps into many cells
+      hash.set(key, rects, key);
+      world[key] = rects;
+    }
+    RectF q = randRect();
+    ASSERT_EQ(hashQuery(hash, q), oracleQuery(world, q)) << "mismatch at step " << step;
+  }
+  ASSERT_EQ(hashQuery(hash, RectF(-10, -10, 120, 120)), oracleQuery(world, RectF(-10, -10, 120, 120)));
+}
+
+// Lever #4 re-entrancy gate. forEach dedups via a per-instance counter stamped
+// onto each Entry. The counter is bumped per call, so a forEach issued from
+// WITHIN a callback advances it and re-stamps the very entries the outer pass is
+// dispatching -- which would corrupt the outer dedup unless forEach snapshots its
+// stamp into a LOCAL before gathering. This runs an outer forEach whose callback
+// issues a nested forEach over the same broad region; both passes must come out
+// complete and duplicate-free.
+TEST(SpatialHash2D, ReentrantForEach) {
+  TestHash hash(16.0f);
+  // Overlapping multi-sector entities: outer + nested both gather each via
+  // several cells, exercising the stamp on shared entries.
+  hash.set(1, rc(0, 0, 40, 40), 1);    // ~3x3 sectors
+  hash.set(2, rc(10, 10, 50, 50), 2);  // ~3x3 sectors, overlaps 1
+  hash.set(3, rc(20, 20, 24, 24), 3);  // small interior
+  hash.set(4, rc(30, 30, 70, 70), 4);  // multi-sector
+
+  RectF q(-10, -10, 90, 90);  // covers all four
+  List<int> const expected{1, 2, 3, 4};
+
+  List<int> outerSeen;
+  hash.forEach(q, [&](int const& v) {
+      outerSeen.append(v);
+      List<int> nestedSeen;
+      hash.forEach(q, [&](int const& nv) { nestedSeen.append(nv); });
+      sort(nestedSeen);
+      for (size_t i = 1; i < nestedSeen.size(); ++i)
+        EXPECT_NE(nestedSeen[i], nestedSeen[i - 1]) << "nested forEach duplicated " << nestedSeen[i];
+      EXPECT_EQ(nestedSeen, expected) << "nested forEach incomplete";
+    });
+
+  sort(outerSeen);
+  for (size_t i = 1; i < outerSeen.size(); ++i)
+    EXPECT_NE(outerSeen[i], outerSeen[i - 1]) << "outer forEach duplicated " << outerSeen[i] << " after nested re-entrancy";
+  EXPECT_EQ(outerSeen, expected) << "outer forEach lost entries to nested re-entrancy";
+}
+
+// Lever #4 keeps the two-phase collect-then-dispatch, so adding an entry from the
+// callback stays safe: the gather completed before dispatch, so the new entry is
+// NOT seen by the in-flight pass, while existing results stay complete/dup-free.
+// (Entry pointers are stable across inserts -- StableHashMap + BlockAllocator.)
+TEST(SpatialHash2D, AddDuringForEach) {
+  TestHash hash(16.0f);
+  hash.set(1, rc(0, 0, 40, 40), 1);
+  hash.set(2, rc(8, 8, 9, 9), 2);
+
+  List<int> seen;
+  hash.forEach(RectF(0, 0, 40, 40), [&](int const& v) {
+      seen.append(v);
+      if (v == 1)
+        hash.set(50, rc(1, 1, 5, 5), 50);  // add inside the queried region mid-dispatch
+    });
+  sort(seen);
+  for (size_t i = 1; i < seen.size(); ++i)
+    EXPECT_NE(seen[i], seen[i - 1]);
+  EXPECT_EQ(seen, (List<int>{1, 2})) << "entity added during callback must not appear in the in-flight pass";
+
+  // The added entity is visible on the NEXT query.
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 40, 40)), (List<int>{1, 2, 50}));
+}
+
 // ============================================================================
 // Deterministic micro-benchmark of SpatialHash2D::forEach -- the EntityMap
 // entity-query hot path, profiled at 22.5% self of the exploring
