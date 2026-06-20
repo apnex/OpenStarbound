@@ -1601,10 +1601,12 @@ void WorldServer::init(bool firstTime) {
   m_serverConfig = assets->json("/worldserver.config");
   // Lever #4: load the net-delta dirty-version early-out gates (process-global,
   // default OFF). Idempotent across worlds (every world loads the same asset).
-  NetElementEarlyOut::enabled.store(m_serverConfig.getBool("netDeltaDirtyVersionEarlyOut", false), std::memory_order_relaxed);
+  // Validated levers default ON (the fallback matches the canonical worldserver.config
+  // default); the validate debug-oracles stay OFF.
+  NetElementEarlyOut::enabled.store(m_serverConfig.getBool("netDeltaDirtyVersionEarlyOut", true), std::memory_order_relaxed);
   NetElementEarlyOut::validate.store(m_serverConfig.getBool("netDeltaDirtyVersionValidate", false), std::memory_order_relaxed);
-  // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default OFF).
-  EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", false), std::memory_order_relaxed);
+  // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default ON).
+  EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", true), std::memory_order_relaxed);
   EntityDormancy::validate.store(m_serverConfig.getBool("entityDormancyValidate", false), std::memory_order_relaxed);
   // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
   // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
