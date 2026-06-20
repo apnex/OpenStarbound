@@ -9,22 +9,21 @@
   "luaGcPause" : 4.0,
   "luaGcStepMultiplier" : 1.2,
 
-  // Net-delta dirty-version early-out (Lever #4) — process-global gates, BOTH
-  // default false (shipped binary byte-identical until flipped). earlyOut: skip
-  // the writeNetDelta tree-walk for entities unchanged since the last delta
-  // (O(1) latestChange check). validate: run BOTH the early-out and the full
-  // walk and assert their contract — used to prove parity live in-game (on a
-  // debug/asserts-on build) before enabling earlyOut. See
-  // plans/2026-06-15-netdelta-dirty-version-earlyout.md.
-  "netDeltaDirtyVersionEarlyOut" : false,
+  // Net-delta dirty-version early-out (Lever #4). earlyOut: skip the writeNetDelta
+  // tree-walk for entities unchanged since the last delta (O(1) latestChange check).
+  // DEFAULT-ON: validated desync-safe live (validate mode x2, zero MISMATCH) +
+  // EarlyOutSoak/Trap tests. validate stays OFF — it's the debug shadow-oracle (runs
+  // BOTH paths + asserts the contract), expensive and only for a debug/asserts build.
+  // See plans/2026-06-15-netdelta-dirty-version-earlyout.md.
+  "netDeltaDirtyVersionEarlyOut" : true,
   "netDeltaDirtyVersionValidate" : false,
 
-  // Entity-dormancy awake-set (Arc-A Rung 1) — process-global gates, BOTH
-  // default false (shipped binary byte-identical until flipped). enabled: skip
-  // the per-tick update for entities the awake-set has marked dormant. validate:
-  // shadow-run the dormant ticks and assert each is a no-op — used to prove
-  // parity live in-game (on a debug/asserts-on build) before enabling.
-  "entityDormancyEnabled" : false,
+  // Entity-dormancy awake-set (Arc-A Rung 1). enabled: skip the per-tick update for
+  // entities the awake-set has marked dormant. DEFAULT-ON: validated correct live
+  // (zero DORMANCY MISMATCH over ~49 min, 2026-06-20) + EntityDormancy oracle tests
+  // (11). validate stays OFF — it's the debug shadow-oracle (shadow-runs each dormant
+  // tick + asserts it's a no-op), for a debug/asserts build only.
+  "entityDormancyEnabled" : true,
   "entityDormancyValidate" : false,
 
   // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
