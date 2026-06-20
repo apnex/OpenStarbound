@@ -279,6 +279,12 @@ public:
 
   LuaCallbacks& merge(LuaCallbacks const& callbacks);
 
+  // Pre-size the callback map for an expected number of registerCallback calls,
+  // avoiding the incremental rehashes a builder would otherwise pay growing from
+  // MinCapacity. Behavior-equivalent: only the final map's allocation timing
+  // changes, not its contents.
+  void reserve(size_t count);
+
   StringMap<LuaDetail::LuaWrappedFunction> const& callbacks() const;
 
 private:

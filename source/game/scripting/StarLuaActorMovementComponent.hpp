@@ -70,6 +70,7 @@ void LuaActorMovementComponent<Base>::addActorMovementCallbacks(ActorMovementCon
   if (m_movementController) {
     // inherit base mcontroller callbacks so that we have some consistency and don't need to have duplicate definitions here
     LuaCallbacks callbacks = LuaBindings::makeMovementControllerCallbacks(m_movementController);
+    callbacks.reserve(84); // 42 inherited + ~42 added below; keep generous (over/under only costs a rehash)
 
     // replace callbacks that need to set a value here that probably shouldn't be done with virtual function overrides
     callbacks.removeCallback("setVelocity");

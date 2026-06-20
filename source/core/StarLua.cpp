@@ -80,6 +80,10 @@ LuaCallbacks& LuaCallbacks::merge(LuaCallbacks const& callbacks) {
   return *this;
 }
 
+void LuaCallbacks::reserve(size_t count) {
+  m_callbacks.reserve(count);
+}
+
 StringMap<LuaDetail::LuaWrappedFunction> const& LuaCallbacks::callbacks() const {
   return m_callbacks;
 }

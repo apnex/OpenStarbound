@@ -10,6 +10,7 @@ namespace Star {
 
 LuaCallbacks LuaBindings::makeEntityCallbacks(Entity const* entity) {
   LuaCallbacks callbacks;
+  callbacks.reserve(9); // keep in sync with the registrations below (over/under only costs a rehash)
 
   callbacks.registerCallbackWithSignature<EntityId>("id", bind(EntityCallbacks::id, entity));
   callbacks.registerCallbackWithSignature<LuaTable, LuaEngine&>(
