@@ -167,3 +167,68 @@ TEST(StatusEffectChurnBench, CallbackCopy) {
 
   EXPECT_GT(sink, 0u);
 }
+
+// L2: full create->load->teardown cycle, OFF (ctx.load -> luaU_undump every time)
+// vs ON (ctx.loadCached -> undump once, then a fresh per-context closure clone).
+// Isolates the per-context bytecode-deserialization cost L2 eliminates (the
+// ~6.6% loadContextScript slice). Pure LuaEngine; the chunk pcall + invoke cost
+// is paid identically by both arms, so the delta is the undump.
+TEST(StatusEffectChurnBench, ProtoLoad) {
+  char const* const SCRIPT = R"SCRIPT(
+    result = 0
+    local priv = 0
+    local label = "statuseffect.proto.bench.module.pattern.with.some.constants"
+    function bump() priv = priv + 1; result = result + 1; return priv end
+    function describe() return label end
+  )SCRIPT";
+
+  auto e = LuaEngine::create();
+  ByteArray const bc = e->compile(SCRIPT, "proto_bench");
+
+  volatile uint64_t sink = 0;
+
+  auto measure = [&](bool useCache, size_t iters) -> double {
+    auto t0 = std::chrono::steady_clock::now();
+    for (size_t it = 0; it < iters; ++it) {
+      LuaContext ctx = e->createContext();
+      if (useCache)
+        ctx.loadCached("proto_bench", bc);
+      else
+        ctx.load(bc);
+      sink += ctx.invokePath<int>("bump");  // forces the chunk to have loaded+run
+    }
+    return std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count();
+  };
+
+  // Calibrate to ~0.8s on the cached path (also warms the Proto cache).
+  double const targetNs = 0.8e9;
+  size_t calibIters = 256;
+  double calibNs = 0.0;
+  while (true) {
+    calibNs = measure(true, calibIters);
+    if (calibNs > 5.0e7)
+      break;
+    calibIters *= 2;
+  }
+  size_t iters = (size_t)std::max(1.0, calibIters * (targetNs / std::max(calibNs, 1.0)));
+
+  double offNs = measure(false, iters);  // baseline: undump every context
+  double onNs = measure(true, iters);    // lever: cached Proto + clone
+  EXPECT_EQ(e->cachedProtoCount(), 1u);
+
+  double offPer = offNs / iters;
+  double onPer = onNs / iters;
+  double deltaPer = offPer - onPer;
+  double deltaPct = 100.0 * deltaPer / offPer;
+
+  std::printf(
+    "\n=== L2 Proto-cache load micro-benchmark (deterministic, full ctx cycle) ===\n"
+    "  iterations            : %zu\n"
+    "  baseline (load/undump): %8.1f ns/ctx\n"
+    "  lever    (loadCached) : %8.1f ns/ctx\n"
+    "  saved                 : %8.1f ns/ctx  (%.1f%%)\n"
+    "==========================================================================\n\n",
+    iters, offPer, onPer, deltaPer, deltaPct);
+
+  EXPECT_GT(sink, 0u);
+}

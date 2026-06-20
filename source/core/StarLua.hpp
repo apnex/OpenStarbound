@@ -339,6 +339,12 @@ public:
   void load(String const& contents, String const& name = String());
   void load(ByteArray const& contents, String const& name = String());
 
+  // Like load(ByteArray), but shares one cached immutable Proto across all
+  // contexts loading the same `key` (the asset path), building only a fresh
+  // per-context closure + _ENV. Behavior-equivalent to load(); see LuaEngine
+  // Proto cache (L2).
+  void loadCached(String const& key, ByteArray const& contents);
+
   // Evaluate a piece of lua code in this context, similar to the lua repl.
   // Can evaluate both expressions and statements.
   template <typename T = LuaValue>
@@ -508,6 +514,14 @@ public:
   // Print a summary of the profiling data gathered since profiling was last
   // enabled.
   List<LuaProfileEntry> getProfile();
+
+  // L2 Proto cache management. clearProtoCache() releases all cached template
+  // chunks (must run on the owning thread; touches the lua_State); it must be
+  // called whenever cached scripts may have changed (e.g. asset reload).
+  // cachedProtoCount/protoCacheHits are test/telemetry introspection.
+  void clearProtoCache();
+  size_t cachedProtoCount() const;
+  size_t protoCacheHits() const;
 
   // If an instruction limit is set or profiling is neabled, this field
   // describes the resolution of instruction count measurement, and affects the
@@ -691,6 +705,7 @@ private:
   void setContextRequire(int handleIndex, LuaContext::RequireFunction requireFunction);
 
   void contextLoad(int handleIndex, char const* contents, size_t size, char const* name);
+  void contextLoadCached(int handleIndex, String const& key, char const* contents, size_t size);
 
   LuaDetail::LuaFunctionReturn contextEval(int handleIndex, String const& lua);
 
@@ -736,6 +751,13 @@ private:
   int m_wrappedFunctionMetatableRegistryId;
   int m_requireFunctionMetatableRegistryId;
   HashMap<std::type_index, int> m_registeredUserDataTypes;
+
+  // L2 Proto cache: per script-path, the registry ref of the anchored template
+  // chunk closure plus its Proto* (held as void* to keep Lua internals out of
+  // this header). Keyed by the asset path passed to loadCached.
+  struct ProtoCacheEntry { int ref; void* proto; };
+  StringMap<ProtoCacheEntry> m_protoCache;
+  size_t m_protoCacheHits = 0;
 
   lua_State* m_handleThread;
   int m_handleStackSize;
