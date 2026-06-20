@@ -79,6 +79,11 @@ WorldServer::~WorldServer() {
 
   m_scriptContexts.clear();
   m_spawner.uninit();
+  // Option A dormancy: clear the awake-set / scheduled-wakes alongside the other
+  // per-world transient state torn down here (they would auto-destruct with the
+  // members regardless; kept explicit to mirror m_scriptContexts.clear()).
+  m_awakeEntities.clear();
+  m_scheduledWakes.clear();
   writeMetadata();
   m_worldStorage->unloadAll(true);
 }
@@ -646,9 +651,71 @@ void WorldServer::update(float dt) {
     m_needsGlobalBreakCheck = false;
 
   List<EntityId> toRemove;
-  m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
-      entity->update(dt, m_currentStep);
 
+  // Entity-dormancy (option A "skip update() only"): read the gates ONCE per tick,
+  // hoisted out of the per-entity callback (M3). dormancyActive (== enabled ||
+  // validate) drives the OFF/ON fork and all membership/scheduling bookkeeping;
+  // dormancyEnabled gates the actual update() skip. Splitting them lets validate
+  // mode (active but !enabled) run EVERY entity's update() while still tracking
+  // exactly the membership enabled mode would have acted on.
+  bool const dormancyActive = EntityDormancy::active();
+  bool const dormancyEnabled = EntityDormancy::enabled.load(std::memory_order_relaxed);
+
+  // Promote scheduled wakes due this step into the awake-set. maybeTake (NOT take —
+  // take throws on a missing key, and most ticks have no bucket for the current step).
+  if (dormancyActive) {
+    if (auto due = m_scheduledWakes.maybeTake(m_currentStep))
+      for (EntityId id : *due)
+        m_awakeEntities.add(id);
+  }
+
+  // OPTION A INVARIANTS (see also queueUpdatePackets / m_wireProcessor->process):
+  //  (a) net-sync is DECOUPLED from update(): queueUpdatePackets iterates
+  //      monitoredEntities independently, so dormant entities are still
+  //      created/synced to clients regardless of the awake-set.
+  //  (b) the wire processor (m_wireProcessor->process(), below) is a SEPARATE
+  //      pass that keeps iterating ALL entities — intentionally NOT touched here
+  //      so wired devices keep evaluating even while their update() is skipped.
+  //  (c) the tile-entity break-check + shouldDestroy() reaping below run for
+  //      EVERY entity, dormant or not — this is what preserves the reaping /
+  //      break-check coupling for free, and why only update() is gated.
+  m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
+      if (!dormancyActive) {
+        entity->update(dt, m_currentStep); // OFF: byte-identical to the pre-dormancy path
+      } else {
+        EntityId id = entity->entityId();
+        // Consume the wake flag on EVERY visit (never short-circuited behind
+        // contains()), otherwise a set request would go stale and never fire.
+        bool requested = entity->takeWakeRequested();
+        bool awake = m_awakeEntities.contains(id);  // single membership lookup (M4)
+        bool run = requested || awake;
+        // validate-only (dormancyActive && !dormancyEnabled) NEVER skips: it runs
+        // every entity's update() so the shadow assert later sees the real ticks.
+        if (run || !dormancyEnabled)
+          entity->update(dt, m_currentStep);
+        // Membership/scheduling are gated on `run`, NOT on whether update() ran:
+        // a would-be-dormant entity in validate mode has run==false but still
+        // updates, and its membership must stay put so validate tracks exactly the
+        // set enabled mode would have acted on. Mutate only on transition (M4).
+        if (run) {
+          auto horizon = entity->nextEngineWakeStep(m_currentStep);
+          if (!horizon) {
+            // No self-scheduled work — sleep until an external requestWake().
+            if (awake) m_awakeEntities.remove(id);
+          } else if (*horizon > m_currentStep + 1) {
+            // Sleep until the horizon step.
+            if (awake) m_awakeEntities.remove(id);
+            m_scheduledWakes[*horizon].append(id);
+          } else {
+            // horizon <= m_currentStep + 1 -> stay awake next tick (a buggy past
+            // horizon lands here too, which is safe).
+            if (!awake) m_awakeEntities.add(id);
+          }
+        }
+      }
+
+      // OPTION A: everything below runs for EVERY entity, dormant or not — this is
+      // what preserves the reaping / break-check coupling for free. Do NOT gate it.
       if (auto* tileEntity = entity->asTileEntity()) {
         // Only do break checks on objects if all sectors the object touches
         // *and surrounding sectors* are active.  Objects that this object
@@ -808,6 +875,13 @@ void WorldServer::addEntity(EntityPtr const& entity, EntityId entityId) {
 
   entity->init(this, m_entityMap->reserveEntityId(entityId), EntityMode::Master);
   m_entityMap->addEntity(entity);
+
+  // Option A dormancy: seed the awake-set so a freshly added entity runs its first
+  // tick. Belt-and-suspenders — the load-bearing guarantee is Entity::m_wakeRequested
+  // (default true), which makes takeWakeRequested() fire on first appearance. Gated
+  // on active() so OFF builds never populate a set nothing reads (M5).
+  if (EntityDormancy::active())
+    m_awakeEntities.add(entity->entityId());
 
   if (auto* tileEntity = entity->asTileEntity())
     updateTileEntityTiles(tileEntity);
@@ -2298,6 +2372,22 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
 
   m_entityMap->removeEntity(entityId);
   entity->uninit();
+
+  // Option A dormancy: drop the id from the awake-set, and scrub any future
+  // scheduled-wake bucket so a recycled EntityId can't inherit a stale wake.
+  // (Leftover empty buckets self-clean: m_currentStep is monotonic, so every
+  // bucket key is eventually maybeTake'd and erased on its step.) Both
+  // structures are inert unless EntityDormancy is active, so this is a no-op
+  // in the default-OFF build apart from the cheap erases.
+  m_awakeEntities.remove(entityId);
+  // DEFERRED (Task 4): this scrubs EVERY bucket, so it is O(total scheduled
+  // entries) per removal. Acceptable ONLY because m_scheduledWakes stays empty
+  // until Task 4 starts populating horizons (nothing schedules yet in Task 3).
+  // Task 4 will add a reverse index (m_entityScheduledStep: id -> step) so this
+  // becomes a single-bucket targeted erase. Do NOT add the index now — the map is
+  // empty, so the scan is free and the index would be dead weight.
+  for (auto& bucket : m_scheduledWakes)
+    bucket.second.remove(entityId);
 }
 
 float WorldServer::windLevel(Vec2F const& pos) const {
