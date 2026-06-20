@@ -66,18 +66,21 @@ public:
   virtual void forAllEntities(EntityCallback entityCallback) const = 0;
 
   // Query here is a fuzzy query based on metaBoundBox
-  virtual void forEachEntity(RectF const& boundBox, EntityCallback entityCallback) const = 0;
+  // Lever #5: callbacks/filters taken by const& (was by value) to drop a
+  // per-query std::function copy at the virtual boundary the templated
+  // EntityMap path (Lever #1) cannot inline through (Lua / damage callers).
+  virtual void forEachEntity(RectF const& boundBox, EntityCallback const& entityCallback) const = 0;
   // Fuzzy metaBoundBox query for intersecting the given line.
-  virtual void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback entityCallback) const = 0;
+  virtual void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& entityCallback) const = 0;
   // Performs action for all entities that occupies the given tile position
   // (only entity types laid out in the tile grid).
-  virtual void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> entityCallback) const = 0;
+  virtual void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& entityCallback) const = 0;
 
   // Like forEachEntity, but stops scanning when entityFilter returns true, and
   // returns the EntityPtr found, otherwise returns a null pointer.
-  virtual EntityPtr findEntity(RectF const& boundBox, EntityFilter entityFilter) const = 0;
-  virtual EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const = 0;
-  virtual EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const = 0;
+  virtual EntityPtr findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const = 0;
+  virtual EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const = 0;
+  virtual EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const = 0;
 
   // Is the given tile layer and position occupied by an entity or block?
   virtual bool tileIsOccupied(Vec2I const& pos, TileLayer layer, bool includeEphemeral = false, bool checkCollision = false) const = 0;

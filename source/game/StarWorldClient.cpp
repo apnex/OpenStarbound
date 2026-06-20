@@ -260,37 +260,37 @@ void WorldClient::forAllEntities(EntityCallback callback) const {
   m_entityMap->forAllEntities(callback);
 }
 
-void WorldClient::forEachEntity(RectF const& boundBox, EntityCallback callback) const {
+void WorldClient::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntity(boundBox, callback);
 }
 
-void WorldClient::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const {
+void WorldClient::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntityLine(begin, end, callback);
 }
 
-void WorldClient::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> callback) const {
+void WorldClient::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntityAtTile(pos, callback);
 }
 
-EntityPtr WorldClient::findEntity(RectF const& boundBox, EntityFilter entityFilter) const {
+EntityPtr WorldClient::findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntity(boundBox, entityFilter);
 }
 
-EntityPtr WorldClient::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const {
+EntityPtr WorldClient::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntityLine(begin, end, entityFilter);
 }
 
-EntityPtr WorldClient::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const {
+EntityPtr WorldClient::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntityAtTile(pos, entityFilter);
