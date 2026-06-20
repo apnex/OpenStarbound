@@ -25,5 +25,13 @@
   // shadow-run the dormant ticks and assert each is a no-op — used to prove
   // parity live in-game (on a debug/asserts-on build) before enabling.
   "entityDormancyEnabled" : false,
-  "entityDormancyValidate" : false
+  "entityDormancyValidate" : false,
+
+  // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
+  // any entity may stay dormant: a {}-horizon (sleep-until-external-wake) or an
+  // over-cap horizon is clamped to a wake near this cap, staggered per-entity so the
+  // cap-wakes don't synchronize into a per-tick hitch. Bounds any UNKNOWN missed wake
+  // to <= this latency instead of a permanent freeze. Only consulted on the dormancy
+  // path, so OFF is unaffected. Converted to steps via ServerGlobalTimestep (1/60s).
+  "entityDormancyMaxSleepSeconds" : 10
 }

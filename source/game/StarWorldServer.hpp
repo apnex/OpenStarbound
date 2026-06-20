@@ -124,6 +124,10 @@ public:
 
   void update(float dt);
 
+  // Task 7: the staggered max-sleep cap in steps (config entityDormancyMaxSleepSeconds
+  // / ServerGlobalTimestep, >= 1). Exposed so tests can assert the backstop bound.
+  uint64_t dormancyMaxSleepSteps() const;
+
   ConnectionId connection() const override;
   WorldGeometry geometry() const override;
   uint64_t currentStep() const override;
@@ -390,6 +394,7 @@ private:
   // removed entities are filtered lazily at promotion (entity(id) == null -> skipped).
   HashSet<EntityId> m_awakeEntities;                  // entities whose update() runs this tick (option A seam)
   HashMap<uint64_t, List<EntityId>> m_scheduledWakes; // step -> entities to re-wake at that step
+  uint64_t m_dormancyMaxSleepSteps;                   // Task 7: staggered max-sleep cap, in steps (>= 1)
   ServerTileSectorArrayPtr m_tileArray;
   ServerTileGetter m_tileGetterFunction;
   WorldStoragePtr m_worldStorage;

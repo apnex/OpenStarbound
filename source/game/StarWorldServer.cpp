@@ -747,9 +747,18 @@ void WorldServer::update(float dt) {
         // set enabled mode would have acted on. Mutate only on transition (M4).
         if (run) {
           auto horizon = entity->nextEngineWakeStep(m_currentStep);
-          if (!horizon) {
-            // No self-scheduled work — sleep until an external requestWake().
+          // Staggered max-sleep cap (Task 7 backstop): bound any indefinite ({}) or
+          // over-cap sleep so a missed wake degrades to <= maxSleep latency, never a
+          // permanent freeze. Stagger within a small window just below the cap (keyed
+          // on entityId) so cap-wakes don't all land on one tick. cappedWake is always
+          // > m_currentStep + 1 for any sane cap, so a capped entity genuinely sleeps.
+          uint64_t const cap = m_dormancyMaxSleepSteps;
+          uint64_t const staggerWindow = min<uint64_t>(cap, 64);
+          uint64_t const cappedWake = m_currentStep + cap - ((uint64_t)id % staggerWindow); // in [cur+cap-(window-1), cur+cap]
+          if (!horizon || *horizon > cappedWake) {
+            // No self-scheduled work, or a horizon past the cap -> wake at the staggered cap.
             if (awake) m_awakeEntities.remove(id);
+            m_scheduledWakes[cappedWake].append(id);
           } else if (*horizon > m_currentStep + 1) {
             // Sleep until the horizon step.
             if (awake) m_awakeEntities.remove(id);
@@ -904,6 +913,10 @@ WorldGeometry WorldServer::geometry() const {
 
 uint64_t WorldServer::currentStep() const {
   return m_currentStep;
+}
+
+uint64_t WorldServer::dormancyMaxSleepSteps() const {
+  return m_dormancyMaxSleepSteps;
 }
 
 MaterialId WorldServer::material(Vec2I const& pos, TileLayer layer) const {
@@ -1578,6 +1591,11 @@ void WorldServer::init(bool firstTime) {
   // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default OFF).
   EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", false), std::memory_order_relaxed);
   EntityDormancy::validate.store(m_serverConfig.getBool("entityDormancyValidate", false), std::memory_order_relaxed);
+  // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
+  // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
+  // always a genuine future step. Read here (not process-global) since it's a per-world
+  // scheduler bound, not a global gate; every world loads the same asset so it's stable.
+  m_dormancyMaxSleepSteps = max<uint64_t>(1, (uint64_t)round(m_serverConfig.getDouble("entityDormancyMaxSleepSeconds", 10.0) / ServerGlobalTimestep));
   setFidelity(WorldServerFidelity::Medium);
 
   m_worldStorage->setFloatingDungeonWorld(isFloatingDungeonWorld());
