@@ -3,6 +3,18 @@
 #include "StarTime.hpp"
 #include "imgui_lua_bindings.hpp"
 
+// Vendored-Lua internals, this TU only, for the L2 Proto cache (share one
+// immutable compiled chunk Proto across contexts; build only a fresh per-context
+// closure + _ENV). The `lua/` prefix resolves via the extern/ include dir; the
+// nested quote-includes inside these headers resolve relative to extern/lua/.
+extern "C" {
+#include "lua/lobject.h"   // Proto, LClosure, getproto, setclLvalue, clLvalue
+#include "lua/lstate.h"    // lua_State layout (m_state->top)
+#include "lua/lfunc.h"     // luaF_newLclosure, luaF_initupvals
+#include "lua/ldo.h"       // luaD_inctop
+#include "lua/lgc.h"       // luaC_objbarrier
+}
+
 namespace Star {
 
 std::ostream& operator<<(std::ostream& os, LuaValue const& value) {
@@ -102,6 +114,10 @@ void LuaContext::load(String const& contents, String const& name) {
 
 void LuaContext::load(ByteArray const& contents, String const& name) {
   load(contents.ptr(), contents.size(), name.utf8Ptr());
+}
+
+void LuaContext::loadCached(String const& key, ByteArray const& contents) {
+  engine().contextLoadCached(handleIndex(), key, contents.ptr(), contents.size());
 }
 
 void LuaContext::setRequireFunction(RequireFunction requireFunction) {
@@ -396,6 +412,9 @@ LuaEnginePtr LuaEngine::create(bool safe) {
 }
 
 LuaEngine::~LuaEngine() {
+  // Release the L2 Proto-cache registry refs first (luaL_unref pushes nothing,
+  // so the stack-leak assert below stays honest).
+  clearProtoCache();
   // If we've had a stack space leak, this will not be zero
   starAssert(lua_gettop(m_state) == 0);
   lua_close(m_state);
@@ -981,6 +1000,70 @@ void LuaEngine::contextLoad(int handleIndex, char const* contents, size_t size, 
   int res = pcallWithTraceback(m_state, 0, 0);
   decrementRecursionLevel();
   handleError(m_state, res);
+}
+
+// Build a fresh per-context chunk closure from a cached immutable template Proto,
+// leaving it on the stack top. Allocation/anchor order mirrors luaU_undump
+// (lundump.c): allocate (white), anchor on the stack BEFORE luaF_initupvals
+// allocates UpVals, then point at the Proto, then init the (nil) upvalues.
+static void pushClonedChunk(lua_State* L, Proto* p) {
+  LClosure* ncl = luaF_newLclosure(L, p->sizeupvalues);
+  setclLvalue(L, L->top, ncl);
+  luaD_inctop(L);
+  ncl->p = p;
+  luaC_objbarrier(L, ncl, p);
+  luaF_initupvals(L, ncl);
+}
+
+void LuaEngine::contextLoadCached(int handleIndex, String const& key, char const* contents, size_t size) {
+  lua_checkstack(m_state, 2);
+
+  Proto* p = nullptr;
+  if (auto cached = m_protoCache.ptr(key)) {
+    p = (Proto*)cached->proto;  // cache hit: zero per-context undump
+    ++m_protoCacheHits;
+  } else {
+    // Miss: undump exactly once, then anchor the template closure in the
+    // registry. Its cl->p edge keeps the Proto (and nested Protos) GC-marked.
+    handleError(m_state, luaL_loadbuffer(m_state, contents, size, key.utf8Ptr()));
+    p = getproto(m_state->top - 1);
+    int ref = luaL_ref(m_state, LUA_REGISTRYINDEX);
+    m_protoCache.add(key, ProtoCacheEntry{ref, (void*)p});
+  }
+
+  // Fresh closure + fresh _ENV per context -> identical isolation to contextLoad;
+  // only the immutable Proto is shared. (A nested function with ZERO upvalues
+  // may be shared across contexts via Proto->cache, but it is referentially
+  // transparent -- it can't read globals without the _ENV upvalue -- so this is
+  // behaviorally inert; only its function-object identity differs from a fresh
+  // undump, which nothing keys off. See getcached() in lvm.c.)
+  pushClonedChunk(m_state, p);
+
+  if (p->sizeupvalues >= 1) {
+    pushHandle(m_state, handleIndex);
+    lua_setupvalue(m_state, -2, 1);  // _ENV; carries luaC_upvalbarrier internally
+  }
+
+  incrementRecursionLevel();
+  int res = pcallWithTraceback(m_state, 0, 0);
+  decrementRecursionLevel();
+  handleError(m_state, res);
+}
+
+void LuaEngine::clearProtoCache() {
+  // Owning-thread only (touches m_state). Release each anchored template
+  // closure; its Proto becomes collectable on the next GC cycle.
+  for (auto const& pair : m_protoCache)
+    luaL_unref(m_state, LUA_REGISTRYINDEX, pair.second.ref);
+  m_protoCache.clear();
+}
+
+size_t LuaEngine::cachedProtoCount() const {
+  return m_protoCache.size();
+}
+
+size_t LuaEngine::protoCacheHits() const {
+  return m_protoCacheHits;
 }
 
 LuaDetail::LuaFunctionReturn LuaEngine::contextEval(int handleIndex, String const& lua) {

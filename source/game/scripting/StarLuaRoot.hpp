@@ -53,10 +53,17 @@ private:
     void clear();
     void loadContextScript(LuaContext& context, String const& assetPath);
     size_t memoryUsage() const;
+    void setProtoCacheEnabled(bool enabled);
 
   private:
     mutable RecursiveMutex mutex;
     StringMap<ByteArray> scripts;
+    // L2 Proto cache gate. protoCacheEnabled selects loadCached vs load.
+    // protoCacheDirty is set (possibly from a foreign reload thread) and
+    // consumed lazily on the owning thread in loadContextScript, which is the
+    // only place it is safe to touch the engine's lua_State.
+    bool protoCacheEnabled = false;
+    bool protoCacheDirty = false;
   };
 
   LuaEnginePtr m_luaEngine;
