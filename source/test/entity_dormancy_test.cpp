@@ -569,3 +569,52 @@ TEST(EntityDormancy, ValidateModeQuietForIdleRealObject) {
   EXPECT_EQ(EntityDormancy::mismatches.load(std::memory_order_relaxed), 0u)
       << "validate mode must stay quiet for a genuinely no-op dormant real Object";
 }
+
+// MAX-SLEEP CAP BACKSTOP (Task 7): an entity with a {} horizon (no self-scheduled work)
+// that is NEVER externally woken would, without the cap, sleep forever after its single
+// initial wake (cf. HorizonStateMachine's idle case: updateCount == 1). The staggered
+// max-sleep cap bounds that indefinite sleep: the entity MUST be re-woken within
+// m_dormancyMaxSleepSteps, the cap-wake lands NEAR the cap (inside the per-entity stagger
+// window just below it), and it does NOT run every tick.
+TEST(EntityDormancy, MaxSleepCapBackstopWakesIndefiniteSleeper) {
+  auto ws = make_shared<WorldServer>(Vec2U(2048, 2048), File::ephemeralFile());
+  ws->setSpawningEnabled(false);
+  EntityDormancy::enabled.store(true, std::memory_order_relaxed);
+  EntityDormancy::validate.store(false, std::memory_order_relaxed);
+
+  // Drive the cap via the same WorldServer (its configured cap, default 10s == 600 steps).
+  uint64_t const cap = ws->dormancyMaxSleepSteps();
+  ASSERT_GE(cap, 2u) << "cap must be a genuine future step (> currentStep+1) to mean anything";
+  uint64_t const staggerWindow = std::min<uint64_t>(cap, 64);
+
+  // {} horizon, never externally woken -> would sleep forever without the cap.
+  auto sleeper = make_shared<DormancyTestEntity>(Vec2F(600.0f, 100.0f));
+  sleeper->m_horizon = [](uint64_t) -> Maybe<uint64_t> { return {}; };
+  ws->addEntity(sleeper);
+  DormancyTestGuard guard{ws.get(), {sleeper->entityId()}};
+
+  // The scheduler stamps the wake at currentStep + cap - (id % staggerWindow). The initial
+  // wake runs at step 1 (see HorizonStateMachine), so the first cap-wake lands at exactly
+  // 1 + cap - (id % staggerWindow): within the stagger window just below 1 + cap.
+  uint64_t const id = (uint64_t)sleeper->entityId();
+  uint64_t const expectedCapWake = 1 + cap - (id % staggerWindow);
+
+  // Run just past the cap so the cap-wake MUST have fired, but not far enough for a second
+  // cap-wake (the next would be ~cap steps later) — so the count cleanly distinguishes a
+  // single staggered cap-wake from an every-tick run.
+  unsigned const Ticks = (unsigned)(cap + 1);
+  for (unsigned t = 0; t < Ticks; ++t)
+    ws->update(Dt);
+
+  // Does NOT sleep forever: re-woken after its initial wake, and within the cap latency.
+  EXPECT_GE(sleeper->m_updateCount, 2u) << "indefinite sleeper must be re-woken by the cap, not freeze forever";
+  EXPECT_EQ(sleeper->m_lastUpdateStep, expectedCapWake) << "cap-wake must land at the staggered cap step";
+  EXPECT_LE(sleeper->m_lastUpdateStep - 1, cap) << "must be re-woken within m_dormancyMaxSleepSteps of the prior wake";
+
+  // Near-cap, NOT every tick: the cap-wake is inside the stagger window just below the cap
+  // (so the entity slept ~cap steps), and the total update count is tiny — an every-tick
+  // bug over (cap + 1) ticks would be ~cap updates.
+  EXPECT_GT(expectedCapWake, cap - staggerWindow) << "cap-wake must be within the stagger window below the cap";
+  EXPECT_LE(expectedCapWake, cap + 1);
+  EXPECT_LT(sleeper->m_updateCount, cap) << "cap-wake must not run every tick (slept ~cap steps between wakes)";
+}
