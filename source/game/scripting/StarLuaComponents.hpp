@@ -143,6 +143,16 @@ public:
   // method.
   bool updateReady() const;
 
+  // Advance the update cadence by n skipped Object::update() calls (dormancy),
+  // without invoking the script.  Mirrors n calls of update() that returned {}
+  // (no run).
+  void skipUpdateTicks(unsigned n);
+
+  // The absolute step at which the script's update will next run, given it has
+  // run/ticked up to `currentStep`.  {} if the script never updates
+  // (updateDelta() == 0) -> no self-wake.
+  Maybe<uint64_t> nextUpdateStep(uint64_t currentStep) const;
+
   template <typename Ret = LuaValue, typename... V>
   Maybe<Ret> update(V&&... args);
 
@@ -287,6 +297,18 @@ void LuaUpdatableComponent<Base>::setUpdateDelta(unsigned updateDelta) {
 template <typename Base>
 bool LuaUpdatableComponent<Base>::updateReady() const {
   return m_updatePeriodic.ready();
+}
+
+template <typename Base>
+void LuaUpdatableComponent<Base>::skipUpdateTicks(unsigned n) {
+  m_updatePeriodic.skip(n);
+}
+
+template <typename Base>
+Maybe<uint64_t> LuaUpdatableComponent<Base>::nextUpdateStep(uint64_t currentStep) const {
+  if (m_updatePeriodic.stepCount() == 0)
+    return {};
+  return currentStep + m_updatePeriodic.stepsUntilNext();
 }
 
 template <typename Base>
