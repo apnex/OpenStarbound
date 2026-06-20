@@ -385,8 +385,9 @@ private:
   // dormancy is OFF: m_awakeEntities is populated only when EntityDormancy::active()
   // (addEntity gates the insert; the tick loop only adds under active()), and
   // m_scheduledWakes is only ever written from the active() branch of the tick loop.
-  // So when OFF nothing reads or writes either, and removeEntity's scrub/erase just
-  // hit empty sets.
+  // So when OFF nothing reads or writes either, and removeEntity's single O(1)
+  // m_awakeEntities.remove() hits an empty set. Stale scheduled-wake entries from
+  // removed entities are filtered lazily at promotion (entity(id) == null -> skipped).
   HashSet<EntityId> m_awakeEntities;                  // entities whose update() runs this tick (option A seam)
   HashMap<uint64_t, List<EntityId>> m_scheduledWakes; // step -> entities to re-wake at that step
   ServerTileSectorArrayPtr m_tileArray;

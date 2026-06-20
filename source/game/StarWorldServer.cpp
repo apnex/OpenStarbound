@@ -666,7 +666,8 @@ void WorldServer::update(float dt) {
   if (dormancyActive) {
     if (auto due = m_scheduledWakes.maybeTake(m_currentStep))
       for (EntityId id : *due)
-        m_awakeEntities.add(id);
+        if (m_entityMap->entity(id))        // <-- skip stale ids from removed entities
+          m_awakeEntities.add(id);
   }
 
   // OPTION A INVARIANTS (see also queueUpdatePackets / m_wireProcessor->process):
@@ -2373,21 +2374,14 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
   m_entityMap->removeEntity(entityId);
   entity->uninit();
 
-  // Option A dormancy: drop the id from the awake-set, and scrub any future
-  // scheduled-wake bucket so a recycled EntityId can't inherit a stale wake.
-  // (Leftover empty buckets self-clean: m_currentStep is monotonic, so every
-  // bucket key is eventually maybeTake'd and erased on its step.) Both
-  // structures are inert unless EntityDormancy is active, so this is a no-op
-  // in the default-OFF build apart from the cheap erases.
+  // Option A dormancy: drop the id from the awake-set (O(1)). Both structures are
+  // inert unless EntityDormancy is active, so this is a no-op in the default-OFF
+  // build (m_awakeEntities stays empty, the remove is a no-op).
   m_awakeEntities.remove(entityId);
-  // DEFERRED (Task 4): this scrubs EVERY bucket, so it is O(total scheduled
-  // entries) per removal. Acceptable ONLY because m_scheduledWakes stays empty
-  // until Task 4 starts populating horizons (nothing schedules yet in Task 3).
-  // Task 4 will add a reverse index (m_entityScheduledStep: id -> step) so this
-  // becomes a single-bucket targeted erase. Do NOT add the index now — the map is
-  // empty, so the scan is free and the index would be dead weight.
-  for (auto& bucket : m_scheduledWakes)
-    bucket.second.remove(entityId);
+  // NOTE: we deliberately do NOT scrub m_scheduledWakes here (it would be O(all
+  // scheduled entries) per removal). A removed entity's stale scheduled-bucket entry
+  // is filtered out at promotion time (see the tick loop) — entity() returns null for
+  // it, so it never enters m_awakeEntities. Buckets self-clean when their step is taken.
 }
 
 float WorldServer::windLevel(Vec2F const& pos) const {
