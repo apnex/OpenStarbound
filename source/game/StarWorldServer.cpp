@@ -887,6 +887,13 @@ void WorldServer::update(float dt) {
   // and no log line when dormancy is OFF.
   if (dormancyActive && ++m_dormancyStatTick >= 600) {
     m_dormancyStatTick = 0;
+    // Prune stale ids: entities can leave via paths that bypass WorldServer::removeEntity
+    // (WorldStorage sector-unload calls m_entityMap->removeEntity directly). Harmless to the
+    // tick loop (it iterates live entities + only tests contains()), and the skipped/ran
+    // ratio is unaffected (stale ids are never iterated/counted), but it's unbounded growth
+    // and skews the awake/live telemetry count. O(awake) every ~600 ticks (only while a
+    // dormancy gate is on). Robust to every current/future removal path.
+    eraseWhere(m_awakeEntities, [this](EntityId id) { return !m_entityMap->entity(id); });
     uint64_t skipped = EntityDormancy::skipped.exchange(0, std::memory_order_relaxed);
     uint64_t total = skipped + EntityDormancy::ran.exchange(0, std::memory_order_relaxed);
     if (total > 0)
@@ -917,6 +924,14 @@ uint64_t WorldServer::currentStep() const {
 
 uint64_t WorldServer::dormancyMaxSleepSteps() const {
   return m_dormancyMaxSleepSteps;
+}
+
+size_t WorldServer::awakeEntityCount() const {
+  return m_awakeEntities.size();
+}
+
+bool WorldServer::isEntityAwake(EntityId entityId) const {
+  return m_awakeEntities.contains(entityId);
 }
 
 MaterialId WorldServer::material(Vec2I const& pos, TileLayer layer) const {
