@@ -1129,6 +1129,9 @@ TileDamageResult WorldServer::damageTiles(List<Vec2I> const& positions, TileLaye
             for (auto const& space : entity->spaces())
               entitySpacesSet.add(m_geometry.xwrap(entity->tilePosition() + space));
 
+            // Dormancy wake (audit Rule 3): caller-loop placement so the
+            // FarmableObject::damageTiles virtual override cannot dodge the wake.
+            entity->requestWake();
             bool broken = entity->damageTiles(entitySpacesSet.intersection(damagePositionSet).values(), sourcePosition, tileDamage);
             if (sourceEntity.isValid() && broken) {
               Maybe<String> name;
@@ -2271,8 +2274,12 @@ void WorldServer::updateDamagedBlocks(float dt) {
 }
 
 void WorldServer::checkEntityBreaks(RectF const& rect) {
-  for (auto tileEntity : m_entityMap->query<TileEntity>(rect))
+  for (auto tileEntity : m_entityMap->query<TileEntity>(rect)) {
+    // Dormancy wake (audit Rule 4): a neighbor tile changed; wake so an anchor
+    // invalidation (m_broken -> shouldDestroy) is seen by the reap path.
+    tileEntity->requestWake();
     tileEntity->checkBroken();
+  }
 }
 
 void WorldServer::queueTileUpdates(Vec2I const& pos) {

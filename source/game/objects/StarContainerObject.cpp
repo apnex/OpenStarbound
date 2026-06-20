@@ -252,6 +252,8 @@ ItemBagConstPtr ContainerObject::itemBag() const {
 }
 
 void ContainerObject::containerOpen() {
+  // Dormancy wake (audit Rule 2): arms the auto-close countdown ticked in update().
+  requestWake();
   m_opened.set(configValue("openFrameIndex", 2).toInt());
   m_count++;
   m_autoCloseCooldown = configValue("autoCloseCooldown").toInt();
@@ -353,6 +355,8 @@ bool ContainerObject::isCrafting() const {
 }
 
 void ContainerObject::startCrafting() {
+  // Dormancy wake (audit Rule 2): arms crafting progress ticked in update().
+  requestWake();
   if (isSlave()) {
     world()->sendEntityMessage(entityId(), "startCrafting");
   } else {
@@ -575,6 +579,9 @@ List<ItemPtr> ContainerObject::doClearContainer() {
 }
 
 void ContainerObject::itemsUpdated() {
+  // Dormancy wake (audit Rule 2): funnel for all item add/take/consume/clear/burn;
+  // arms the containerCallback and m_lostItems overflow drain in update().
+  requestWake();
   m_itemsUpdated = true;
   m_runUpdatedCallback = true;
 }
