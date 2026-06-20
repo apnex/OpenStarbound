@@ -11,6 +11,16 @@ LuaRoot::LuaRoot() {
 
   m_rootReloadListener = make_shared<CallbackListener>([cache = m_scriptCache]() {
       cache->clear();
+      // Re-read the L2 Proto-cache toggle HERE (the reload fires this listener,
+      // including after a runtime `root.setConfiguration` + reload) so the flip
+      // applies at reload-time rather than being deferred to — and dependent on —
+      // a later loadContextScript observing the dirty flag across the
+      // WorldServer/main-thread boundary. Foreign-thread-safe: only a config read
+      // (own mutex) + a bool set under the cache mutex; the lua_State touch
+      // (clearProtoCache) stays deferred to the owning thread via the dirty flag.
+      bool enabled = Root::singleton().configuration()->get("scriptProtoCacheEnabled").toBool();
+      cache->setProtoCacheEnabled(enabled);
+      Logger::info("Lua Proto cache (scriptProtoCacheEnabled): {}", enabled ? "ENABLED" : "disabled");
     });
   root.registerReloadListener(m_rootReloadListener);
 
