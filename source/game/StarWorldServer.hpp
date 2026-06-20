@@ -378,6 +378,17 @@ private:
   UniverseSettingsPtr m_universeSettings;
 
   EntityMapPtr m_entityMap;
+  // Entity-dormancy (Arc-A Rung 1, option A "skip update() only"): these structures
+  // decide ONLY whether entity->update() runs this tick — never iteration, never
+  // reaping (the tile-entity break-check + shouldDestroy() reaping run for EVERY
+  // entity to preserve their coupling). Both are inert (and stay empty) when
+  // dormancy is OFF: m_awakeEntities is populated only when EntityDormancy::active()
+  // (addEntity gates the insert; the tick loop only adds under active()), and
+  // m_scheduledWakes is only ever written from the active() branch of the tick loop.
+  // So when OFF nothing reads or writes either, and removeEntity's scrub/erase just
+  // hit empty sets.
+  HashSet<EntityId> m_awakeEntities;                  // entities whose update() runs this tick (option A seam)
+  HashMap<uint64_t, List<EntityId>> m_scheduledWakes; // step -> entities to re-wake at that step
   ServerTileSectorArrayPtr m_tileArray;
   ServerTileGetter m_tileGetterFunction;
   WorldStoragePtr m_worldStorage;
