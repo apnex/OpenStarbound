@@ -66,6 +66,13 @@ public:
 
   virtual void update(float dt, uint64_t currentStep) override;
 
+  // Dormancy idle-horizon: the earliest future step on which this object has
+  // self-scheduled engine work (script cadence, liquid poll, tile-damage
+  // recovery, orientation frame animation, networked-animator activity). {} =
+  // no self-scheduled work -> sleep until an external requestWake().  See
+  // StarObject.cpp for the per-term derivation.
+  virtual Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const override;
+
   virtual void render(RenderCallback* renderCallback) override;
 
   virtual void renderLightSources(RenderCallback* renderCallback) override;
@@ -222,6 +229,12 @@ private:
 
   void checkLiquidBroken();
   GameTimer m_liquidCheckTimer;
+
+  // Absolute server step on which this object's master update() slate last ran
+  // (0 = never).  Under dormancy update() may be skipped on steps with no
+  // scheduled work, so the per-call timers are fast-forwarded by the elapsed
+  // step gap on the next wake.  See Object::update.
+  uint64_t m_lastEngineUpdateStep = 0;
 
   ObjectConfigConstPtr m_config;
   Maybe<List<ObjectOrientationPtr>> m_orientations;

@@ -108,6 +108,31 @@ void ContainerObject::update(float dt, uint64_t currentStep) {
   }
 }
 
+Maybe<uint64_t> ContainerObject::nextEngineWakeStep(uint64_t currentStep) const {
+  // Base Object horizon (script / liquid / tile-damage / orientation / animator).
+  Maybe<uint64_t> wake = Object::nextEngineWakeStep(currentStep);
+  auto fold = [&wake](Maybe<uint64_t> const& term) {
+    if (term)
+      wake = wake ? std::min(*wake, *term) : *term;
+  };
+
+  // Crafting: keep the netted, interpolated craftingProgress advancing smoothly.
+  if (m_crafting.get())
+    fold(currentStep + 1);
+
+  // Auto-close counts down once per update().  Stay awake every step while the
+  // (short) window is open so the per-call decrement in update() always sees
+  // gap == 1 and needs no compensation.  (m_autoCloseCooldown is master-only.)
+  if (m_autoCloseCooldown > 0)
+    fold(currentStep + 1);
+
+  // m_ageItemsTimer is an EpochTimer driven by world()->epochTime(): it
+  // self-corrects across skipped ticks (accumulates wall-clock on the next wake),
+  // so it needs no horizon term and no compensation.
+
+  return wake;
+}
+
 void ContainerObject::render(RenderCallback* renderCallback) {
   auto assets = Root::singleton().assets();
 
