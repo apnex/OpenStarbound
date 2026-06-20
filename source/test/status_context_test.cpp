@@ -1,6 +1,9 @@
 #include "StarLua.hpp"
 #include "StarString.hpp"
 #include "StarList.hpp"
+#include "StarLuaRoot.hpp"
+#include "StarRoot.hpp"
+#include "StarConfiguration.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -231,4 +234,54 @@ TEST(StatusEffectChurnBench, ProtoLoad) {
     iters, offPer, onPer, deltaPer, deltaPct);
 
   EXPECT_GT(sink, 0u);
+}
+
+// ---------------------------------------------------------------------------
+// Repro for the same-session toggle bug: flipping scriptProtoCacheEnabled +
+// invalidating the cache (the /serverreload path) should make the NEXT context
+// load re-read the toggle and switch load<->loadCached. Driven via unloadScript
+// (which sets protoCacheDirty, the same flag the reload listener's clear() sets),
+// so it isolates the dirty-flush re-read from the reload-listener plumbing.
+// ---------------------------------------------------------------------------
+TEST(ProtoCacheToggle, DirtyFlushReReadsConfig) {
+  auto& root = Root::singleton();
+  auto luaRoot = make_shared<LuaRoot>();
+  String const script = "/scripts/opensb/worldserver/worldserver.lua";
+
+  // OFF: config false, mark the cache dirty, then a context load must re-read
+  // false and take the plain load() path -> proto cache stays empty.
+  root.configuration()->set("scriptProtoCacheEnabled", false);
+  luaRoot->unloadScript(script);  // sets protoCacheDirty = true
+  { auto c = luaRoot->createContext(StringList{script}); (void)c; }
+  EXPECT_EQ(luaRoot->luaEngine().cachedProtoCount(), 0u) << "OFF: proto cache must stay empty";
+
+  // ON: flip config, mark dirty again, load -> re-read true -> loadCached().
+  root.configuration()->set("scriptProtoCacheEnabled", true);
+  luaRoot->unloadScript(script);  // protoCacheDirty = true
+  { auto c = luaRoot->createContext(StringList{script}); (void)c; }
+  EXPECT_GE(luaRoot->luaEngine().cachedProtoCount(), 1u)
+      << "ON: the dirty-flush must re-read scriptProtoCacheEnabled=true and use loadCached";
+}
+
+// Tests the FULL /serverreload path: root.reload() must fire the LuaRoot's reload
+// listener -> ScriptCache::clear() -> protoCacheDirty=true, so the next context
+// load re-reads the (flipped) toggle. If this fails where DirtyFlushReReadsConfig
+// passes, the bug is the reload-listener not reaching the cache.
+TEST(ProtoCacheToggle, ReloadFiresListenerAndReReads) {
+  auto& root = Root::singleton();
+  auto luaRoot = make_shared<LuaRoot>();
+  String const script = "/scripts/opensb/worldserver/worldserver.lua";
+
+  // Force protoCacheEnabled=false deterministically (config false + dirty re-read).
+  root.configuration()->set("scriptProtoCacheEnabled", false);
+  luaRoot->unloadScript(script);
+  { auto c = luaRoot->createContext(StringList{script}); (void)c; }
+  ASSERT_EQ(luaRoot->luaEngine().cachedProtoCount(), 0u) << "precondition: OFF";
+
+  // Flip ON, then the actual /serverreload trigger.
+  root.configuration()->set("scriptProtoCacheEnabled", true);
+  root.reload();
+  { auto c = luaRoot->createContext(StringList{script}); (void)c; }
+  EXPECT_GE(luaRoot->luaEngine().cachedProtoCount(), 1u)
+      << "root.reload() must fire the listener -> clear() -> dirty -> re-read true";
 }
