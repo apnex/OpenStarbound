@@ -757,6 +757,9 @@ Vec2F Object::questIndicatorPosition() const {
 }
 
 Maybe<Json> Object::receiveMessage(ConnectionId sendingConnection, String const& message, JsonArray const& args) {
+  // Dormancy wake (audit Rule 1): an inbound message runs the Lua handler, which
+  // may set net state or arm scriptDelta follow-up work; wake so update() runs.
+  requestWake();
   return m_scriptComponent.handleMessage(message, sendingConnection == world()->connection(), args);
 }
 
@@ -893,6 +896,8 @@ Color Object::nodeColor(WireNode wireNode) const { // only output nodes determin
 }
 
 void Object::addNodeConnection(WireNode wireNode, WireConnection nodeConnection) {
+  // Dormancy wake (audit Rule 5a): wire connection topology change.
+  requestWake();
   if (wireNode.direction == WireDirection::Input) {
     if (m_inputNodes.empty()) {
       Logger::info("Tried to add wire connection to input node on object with no input nodes");
@@ -920,6 +925,8 @@ void Object::addNodeConnection(WireNode wireNode, WireConnection nodeConnection)
 }
 
 void Object::removeNodeConnection(WireNode wireNode, WireConnection nodeConnection) {
+  // Dormancy wake (audit Rule 5a): wire connection topology change.
+  requestWake();
   if (wireNode.direction == WireDirection::Input) {
     m_inputNodes.at(wireNode.nodeIndex).connections.update([&](auto& list) {
         return list.remove(nodeConnection);
@@ -933,6 +940,11 @@ void Object::removeNodeConnection(WireNode wireNode, WireConnection nodeConnecti
 }
 
 void Object::evaluate(WireCoordinator* coordinator) {
+  // Dormancy wake (audit Rule 5b): the WireProcessor drives evaluate() each
+  // stride for every wire entity (it must keep iterating dormant ones, per the
+  // §5 invariant); waking here covers downstream input-state flips and the
+  // resulting onInputNodeChange follow-up work.
+  requestWake();
   for (size_t i = 0; i < m_inputNodes.size(); ++i) {
     auto& in = m_inputNodes[i];
     bool nextState = false;
@@ -1250,6 +1262,9 @@ Maybe<PolyF> Object::hitPoly() const {
 }
 
 List<DamageNotification> Object::applyDamage(DamageRequest const& damage) {
+  // Dormancy wake (audit Rule 3): combat/explosion HP damage; wake so the
+  // health delta and any Kill->shouldDestroy reaping are processed.
+  requestWake();
   if (!m_config->smashable || !inWorld() || m_health.get() <= 0.0f)
     return {};
 
@@ -1294,6 +1309,9 @@ bool Object::isInteractive() const {
 }
 
 InteractAction Object::interact(InteractRequest const& request) {
+  // Dormancy wake (audit Rule 1): runs onInteraction Lua (params, image/anim
+  // keys, m_interactive, scriptDelta timers).
+  requestWake();
   Vec2F diff = world()->geometry().diff(request.sourcePosition, position());
   auto result = m_scriptComponent.invoke<Json>(
       "onInteraction", JsonObject{{"source", JsonArray{diff[0], diff[1]}}, {"sourceId", request.sourceId}});
@@ -1321,10 +1339,14 @@ List<Vec2I> Object::interactiveSpaces() const {
 }
 
 Maybe<LuaValue> Object::callScript(String const& func, LuaVariadic<LuaValue> const& args) {
+  // Dormancy wake (audit Rule 1): runs arbitrary object Lua synchronously.
+  requestWake();
   return m_scriptComponent.invoke(func, args);
 }
 
 Maybe<LuaValue> Object::evalScript(String const& code) {
+  // Dormancy wake (audit Rule 1): runs arbitrary object Lua synchronously.
+  requestWake();
   return m_scriptComponent.eval(code);
 }
 
