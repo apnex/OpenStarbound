@@ -244,3 +244,41 @@ TEST(EntityMap, RandomizedOracle) {
   RectF full(Base - 50, Base - 50, Base + 250, Base + 250);
   ASSERT_EQ(mapQuery(map, full), oracleQuery(world, full));
 }
+
+// Lever #4 (stamp dedup) re-entrancy gate at the EntityMap layer: a
+// forEachEntity callback that issues a NESTED forEachEntity over an overlapping
+// region advances the shared per-query stamp and re-stamps the entries the outer
+// pass is dispatching. forEach snapshots its stamp into a local, so both passes
+// must stay complete and duplicate-free. (Guards the "read counter into a local"
+// requirement; without it the nested query would corrupt the outer dedup.)
+TEST(EntityMap, ReentrantForEachEntity) {
+  EntityMap map(TestWorldSize, MinServerEntityId, MaxServerEntityId);
+  Map<EntityId, QueryTestEntityPtr> world;
+  auto add = [&](RectF r) { auto e = addEntityAt(map, r); world[e->entityId()] = e; return e; };
+
+  // Overlapping multi-sector entities so outer + nested both gather each via
+  // several cells.
+  add(RectF(512, 512, 552, 552));  // ~3x3 sectors
+  add(RectF(520, 520, 580, 580));  // ~4x4 sectors, overlaps
+  add(RectF(530, 530, 534, 534));  // small interior
+  add(RectF(540, 540, 600, 600));  // multi-sector
+
+  RectF q(500, 500, 620, 620);  // covers all
+  List<EntityId> const expected = oracleQuery(world, q);
+
+  List<EntityId> outerSeen;
+  map.forEachEntity(q, [&](EntityPtr const& e) {
+      outerSeen.append(e->entityId());
+      List<EntityId> nestedSeen;
+      map.forEachEntity(q, [&](EntityPtr const& ne) { nestedSeen.append(ne->entityId()); });
+      sort(nestedSeen);
+      for (size_t i = 1; i < nestedSeen.size(); ++i)
+        EXPECT_NE(nestedSeen[i], nestedSeen[i - 1]) << "nested forEachEntity duplicated " << nestedSeen[i];
+      EXPECT_EQ(nestedSeen, expected) << "nested forEachEntity incomplete";
+    });
+
+  sort(outerSeen);
+  for (size_t i = 1; i < outerSeen.size(); ++i)
+    EXPECT_NE(outerSeen[i], outerSeen[i - 1]) << "outer forEachEntity duplicated " << outerSeen[i] << " after nested re-entrancy";
+  EXPECT_EQ(outerSeen, expected) << "outer forEachEntity lost entries to nested re-entrancy";
+}
