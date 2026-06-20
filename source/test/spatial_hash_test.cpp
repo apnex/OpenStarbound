@@ -96,6 +96,57 @@ TEST(SpatialHash2D, CompletenessAndBoundary) {
   EXPECT_TRUE(hashQuery(hash, RectF(5, 5, 6, 6)).empty());
 }
 
+// Lever #3 (skip box-test for fully-contained interior cells) classification
+// gate. forEach skips the per-entry r.intersects test for cells STRICTLY inside
+// the query's sector span (x in [xMin+1,xMax-1), y likewise) -- every entry
+// there provably intersects -- and keeps the test on the PERIMETER ring. This
+// locks the interior/perimeter split against off-by-one: it places entries on
+// exact cell boundaries, straddling the interior/perimeter line, and
+// (critically) registered in a perimeter cell via getSectors' ceil over-reach
+// while NOT actually intersecting -- which the perimeter test MUST still reject
+// (treating that cell as interior would emit a non-intersecting entry). All
+// expectations are checked against the brute-force oracle, so they can't be
+// silently mis-hardcoded. Sector size 16 throughout.
+TEST(SpatialHash2D, InteriorCellSkip) {
+  TestHash hash(16.0f);
+  Map<int, List<RectF>> world;
+  auto add = [&](int k, RectF r) { hash.set(k, List<RectF>{r}, k); world[k] = List<RectF>{r}; };
+
+  add(1, RectF(20, 20, 28, 28));      // wholly inside cell (1,1): interior for a [0,80) query
+  add(2, RectF(30, 30, 70, 70));      // straddles interior cells (1,2,3) AND perimeter cell 4
+  add(3, RectF(2, 2, 10, 10));        // perimeter cell (0,0) only
+  add(4, RectF(40, 79.5f, 48, 80));   // y-registered in cell 4 via ceil(80/16)=5; pokes the y=79..80 band
+  add(5, RectF(96, 40, 104, 48));     // far right (cell x=6): outside a [0,80) query's visited cells
+
+  // Large query [0,80): cells 0..4 each dim, interior 1..3. Hits 1,2,3 and 4
+  // (entity 4 intersects since q.yMax==80 touches its [79.5,80] band).
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 80, 80)), oracleQuery(world, RectF(0, 0, 80, 80)));
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 80, 80)), (List<int>{1, 2, 3, 4}));
+
+  // Same span but q.yMax==79: entity 4 ([79.5,80]) is registered in perimeter
+  // cell y=4 (ceil over-reach) yet does NOT intersect -> the perimeter box test
+  // must REJECT it. If cell (2,4) were misclassified interior, 4 would leak in.
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 80, 79)), oracleQuery(world, RectF(0, 0, 80, 79)));
+  EXPECT_EQ(hashQuery(hash, RectF(0, 0, 80, 79)), (List<int>{1, 2, 3}));
+
+  // Query edges EXACTLY on cell boundaries (16 and 64). Cells 1..3 each dim,
+  // interior is cell 2 only; cells 1 and 3 are conservatively perimeter (even
+  // though here they happen to be fully contained) -> entity 1 (in cell 1,1)
+  // must still be found via the perimeter test. Entity 3 (cell 0) is outside.
+  EXPECT_EQ(hashQuery(hash, RectF(16, 16, 64, 64)), oracleQuery(world, RectF(16, 16, 64, 64)));
+  EXPECT_EQ(hashQuery(hash, RectF(16, 16, 64, 64)), (List<int>{1, 2}));
+
+  // Single-cell-span query (cell 1 only): no interior cells, all perimeter --
+  // the small-query path that must behave exactly as before.
+  EXPECT_EQ(hashQuery(hash, RectF(18, 18, 30, 30)), oracleQuery(world, RectF(18, 18, 30, 30)));
+  EXPECT_EQ(hashQuery(hash, RectF(18, 18, 30, 30)), (List<int>{1, 2}));
+
+  // Deep-interior query that excludes the perimeter entities: only entity 2
+  // (which spans into the interior) is hit, exactly once despite being gathered
+  // through several interior cells + a perimeter cell.
+  EXPECT_EQ(hashQuery(hash, RectF(33, 33, 66, 66)), oracleQuery(world, RectF(33, 33, 66, 66)));
+}
+
 TEST(SpatialHash2D, RemoveAndPrune) {
   TestHash hash(16.0f);
   hash.set(1, rc(0, 0, 40, 40), 1);  // spans multiple sectors
@@ -242,12 +293,14 @@ TEST(SpatialHash2D, RandomizedOracleMultiCell) {
 }
 
 // Lever #4 re-entrancy gate. forEach dedups via a per-instance counter stamped
-// onto each Entry. The counter is bumped per call, so a forEach issued from
-// WITHIN a callback advances it and re-stamps the very entries the outer pass is
-// dispatching -- which would corrupt the outer dedup unless forEach snapshots its
-// stamp into a LOCAL before gathering. This runs an outer forEach whose callback
-// issues a nested forEach over the same broad region; both passes must come out
-// complete and duplicate-free.
+// onto each Entry, bumped per call. A forEach issued from WITHIN a callback
+// advances that counter -- but the outer dedup stays correct because forEach is
+// two-phase: it finishes gathering (and stamping) before it dispatches ANY
+// callback, so a nested query cannot perturb the outer gather. (forEach also
+// snapshots its stamp into a local as defensive future-proofing against a
+// hypothetical single-phase refactor; the two-phase structure is the actual
+// guarantee.) This runs an outer forEach whose callback issues a nested forEach
+// over the same broad region; both passes must come out complete and dup-free.
 TEST(SpatialHash2D, ReentrantForEach) {
   TestHash hash(16.0f);
   // Overlapping multi-sector entities: outer + nested both gather each via

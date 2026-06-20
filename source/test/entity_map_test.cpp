@@ -158,6 +158,33 @@ TEST(EntityMap, AddMoveRemove) {
   ASSERT_EQ(mapQuery(map, RectF(0, 0, 2000, 2000)), oracleQuery(world, RectF(0, 0, 2000, 2000)));
 }
 
+// Lever #3 (interior-cell box-test skip) classification gate at the EntityMap
+// layer. Mirrors spatial_hash_test.cpp's InteriorCellSkip, shifted by +512 (=
+// cell boundary 32*16) into the world interior. The crux case: entity 4 is
+// registered in a perimeter cell via getSectors' ceil over-reach yet does NOT
+// intersect a query whose edge stops just short -- the perimeter test must
+// reject it (a misclassification as interior would leak it in). All checked
+// against the brute-force oracle. (16-unit sectors; coords are cell-aligned so
+// the query edges land exactly on cell boundaries.)
+TEST(EntityMap, InteriorCellSkip) {
+  EntityMap map(TestWorldSize, MinServerEntityId, MaxServerEntityId);
+  Map<EntityId, QueryTestEntityPtr> world;
+  auto add = [&](RectF r) { auto e = addEntityAt(map, r); world[e->entityId()] = e; return e; };
+
+  add(RectF(532, 532, 540, 540));        // interior cell (33,33) for a [512,592) query
+  add(RectF(542, 542, 582, 582));        // straddles interior cells AND a perimeter cell
+  add(RectF(514, 514, 522, 522));        // perimeter cell (32,32)
+  add(RectF(552, 591.5f, 560, 592));     // ceil-over-reach into perimeter cell y; 591.5..592 band
+
+  for (RectF q : {RectF(512, 512, 592, 592),   // interior 33..35; entity 4 touches yMax==592
+                  RectF(512, 512, 592, 591),   // yMax==591: entity 4's perimeter cell must REJECT it
+                  RectF(528, 528, 576, 576),   // edges exactly on cell boundaries (conservative perimeter)
+                  RectF(530, 530, 542, 542),   // single-cell span: no interior cells
+                  RectF(545, 545, 578, 578)}) { // deep interior, excludes the perimeter-only entities
+    ASSERT_EQ(mapQuery(map, q), oracleQuery(world, q)) << "interior/perimeter mismatch for query " << q;
+  }
+}
+
 // findEntity returns SOME matching entity (order is implementation-defined) or
 // null; gates the templated findEntity path.
 TEST(EntityMap, FindEntity) {
@@ -247,10 +274,11 @@ TEST(EntityMap, RandomizedOracle) {
 
 // Lever #4 (stamp dedup) re-entrancy gate at the EntityMap layer: a
 // forEachEntity callback that issues a NESTED forEachEntity over an overlapping
-// region advances the shared per-query stamp and re-stamps the entries the outer
-// pass is dispatching. forEach snapshots its stamp into a local, so both passes
-// must stay complete and duplicate-free. (Guards the "read counter into a local"
-// requirement; without it the nested query would corrupt the outer dedup.)
+// region advances the shared per-query stamp. The outer dedup stays correct
+// because forEach is two-phase -- it finishes gathering before dispatching any
+// callback, so the nested query cannot perturb the outer gather (forEach also
+// snapshots its stamp into a local as defensive future-proofing). Both passes
+// must stay complete and duplicate-free.
 TEST(EntityMap, ReentrantForEachEntity) {
   EntityMap map(TestWorldSize, MinServerEntityId, MaxServerEntityId);
   Map<EntityId, QueryTestEntityPtr> world;
