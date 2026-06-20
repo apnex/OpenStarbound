@@ -44,6 +44,7 @@ void LuaRoot::restart() {
   m_luaEngine->setInstructionLimit(root.configuration()->get("scriptInstructionLimit").toUInt());
   m_luaEngine->setProfilingEnabled(root.configuration()->get("scriptProfilingEnabled").toBool());
   m_luaEngine->setInstructionMeasureInterval(root.configuration()->get("scriptInstructionMeasureInterval").toUInt());
+  m_scriptCache->setProtoCacheEnabled(root.configuration()->get("scriptProtoCacheEnabled").toBool());
 }
 
 void LuaRoot::shutdown() {
@@ -159,6 +160,13 @@ LuaEngine& LuaRoot::luaEngine() const {
 void LuaRoot::ScriptCache::loadScript(LuaEngine& engine, String const& assetPath) {
   auto assets = Root::singleton().assets();
   RecursiveMutexLocker locker(mutex);
+  // Recompiling an ALREADY-cached path (only reachable via the public
+  // LuaRoot::loadScript) makes any Proto cached for it stale -> flush. Guarded
+  // on contains() so a fresh first load (the only way loadContextScript reaches
+  // here, under its !scriptLoaded check) does NOT thrash the Proto cache during
+  // warm-up/exploration, where new scripts stream in constantly.
+  if (scripts.contains(assetPath))
+    protoCacheDirty = true;
   scripts[assetPath] = engine.compile(*assets->bytes(assetPath), assetPath);
 }
 
@@ -170,18 +178,35 @@ bool LuaRoot::ScriptCache::scriptLoaded(String const& assetPath) const {
 void LuaRoot::ScriptCache::unloadScript(String const& assetPath) {
   RecursiveMutexLocker locker(mutex);
   scripts.remove(assetPath);
+  protoCacheDirty = true;  // conservative whole-cache flush; engine touch deferred to loadContextScript
 }
 
 void LuaRoot::ScriptCache::clear() {
   RecursiveMutexLocker locker(mutex);
   scripts.clear();
+  protoCacheDirty = true;  // may run on a foreign reload thread; do NOT touch the lua_State here
+}
+
+void LuaRoot::ScriptCache::setProtoCacheEnabled(bool enabled) {
+  RecursiveMutexLocker locker(mutex);
+  protoCacheEnabled = enabled;
 }
 
 void LuaRoot::ScriptCache::loadContextScript(LuaContext& context, String const& assetPath) {
   RecursiveMutexLocker locker(mutex);
+  if (protoCacheDirty) {
+    // Owning thread, under the mutex: now it is safe to touch the lua_State.
+    // Re-read the toggle so a runtime config change + reload flips the live A/B.
+    context.engine().clearProtoCache();
+    protoCacheEnabled = Root::singleton().configuration()->get("scriptProtoCacheEnabled").toBool();
+    protoCacheDirty = false;
+  }
   if (!scriptLoaded(assetPath))
     loadScript(context.engine(), assetPath);
-  context.load(scripts.get(assetPath));
+  if (protoCacheEnabled)
+    context.loadCached(assetPath, scripts.get(assetPath));
+  else
+    context.load(scripts.get(assetPath));  // OFF == the original code path, byte for byte
 }
 
 size_t LuaRoot::ScriptCache::memoryUsage() const {

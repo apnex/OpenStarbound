@@ -836,3 +836,115 @@ TEST(LuaTest, ProfilingTest) {
   EXPECT_TRUE(names.contains("function2"));
   EXPECT_TRUE(names.contains("function3"));
 }
+
+// ---------------------------------------------------------------------------
+// L2 Proto cache (share one immutable compiled chunk Proto across contexts;
+// build only a fresh per-context closure + _ENV). These gate turning the
+// scriptProtoCacheEnabled toggle ON. Pure LuaEngine -> core_tests, no Root.
+// ---------------------------------------------------------------------------
+
+namespace {
+  // Module-pattern script: a global (counter) AND a top-level local upvalue
+  // (priv) closed over by functions. Both must be per-context independent.
+  char const* const ProtoCacheScript = R"SCRIPT(
+    counter = 0
+    local priv = 0
+    function bump() priv = priv + 1; counter = counter + 1; return priv end
+    function readPriv() return priv end
+    function readCounter() return counter end
+  )SCRIPT";
+}
+
+TEST(LuaTest, ProtoCacheEqualsFresh) {
+  // Differential: the cached path must produce the IDENTICAL observable trace as
+  // the fresh-undump path, AND match a hand-computed golden (so a both-wrong bug
+  // can't pass).
+  auto run = [](bool useCache) {
+    auto e = LuaEngine::create();
+    auto bc = e->compile(ProtoCacheScript, "protocache_t1");
+    auto a = e->createContext();
+    auto b = e->createContext();
+    if (useCache) a.loadCached("protocache_t1", bc); else a.load(bc);
+    e->collectGarbage();  // the cached Proto must survive a full GC
+    if (useCache) b.loadCached("protocache_t1", bc); else b.load(bc);
+    if (useCache)
+      EXPECT_EQ(e->cachedProtoCount(), 1u);  // one shared Proto backs both contexts
+    List<int> t;
+    t.append(a.getPath<int>("counter"));        // 0
+    t.append(b.getPath<int>("counter"));        // 0
+    t.append(a.invokePath<int>("bump"));        // 1
+    t.append(a.invokePath<int>("bump"));        // 2
+    t.append(a.invokePath<int>("readPriv"));    // 2
+    t.append(a.invokePath<int>("readCounter")); // 2
+    t.append(b.invokePath<int>("readPriv"));    // 0  isolated upvalue
+    t.append(b.invokePath<int>("readCounter")); // 0  isolated global
+    t.append(b.invokePath<int>("bump"));        // 1
+    t.append(b.invokePath<int>("readCounter")); // 1
+    t.append(a.invokePath<int>("readPriv"));    // 2
+    t.append(a.invokePath<int>("readCounter")); // 2
+    return t;
+  };
+
+  List<int> off = run(false);
+  List<int> on = run(true);
+  EXPECT_EQ(on, off);                                       // L2 == baseline
+  EXPECT_EQ(on, (List<int>{0, 0, 1, 2, 2, 2, 0, 0, 1, 1, 2, 2}));  // golden
+}
+
+TEST(LuaTest, ProtoCacheManyContextsIsolated) {
+  // N contexts off one cached Proto, with interleaved GC: each must keep its own
+  // upvalue + global, proving no cross-context aliasing / missing barrier.
+  auto e = LuaEngine::create();
+  auto bc = e->compile(ProtoCacheScript, "protocache_many");
+  int const N = 64;
+  List<LuaContext> contexts;
+  for (int i = 0; i < N; ++i) {
+    contexts.append(e->createContext());
+    contexts[i].loadCached("protocache_many", bc);
+    if (i % 8 == 0)
+      e->collectGarbage();
+  }
+  EXPECT_EQ(e->cachedProtoCount(), 1u);
+  for (int i = 0; i < N; ++i)
+    for (int j = 0; j < i; ++j)
+      contexts[i].invokePath<int>("bump");
+  e->collectGarbage();
+  for (int i = 0; i < N; ++i) {
+    EXPECT_EQ(contexts[i].invokePath<int>("readPriv"), i) << "context " << i << " upvalue leaked";
+    EXPECT_EQ(contexts[i].invokePath<int>("readCounter"), i) << "context " << i << " global leaked";
+  }
+}
+
+TEST(LuaTest, ProtoCacheReloadInvalidation) {
+  // After clearProtoCache() (the reload deferred-flush), a changed script under
+  // the SAME key must be recompiled, never served stale.
+  auto e = LuaEngine::create();
+  auto v1 = e->compile("function f() return 10 end", "reload.lua");
+  auto a = e->createContext();
+  a.loadCached("reload.lua", v1);
+  EXPECT_EQ(a.invokePath<int>("f"), 10);
+  EXPECT_EQ(e->cachedProtoCount(), 1u);
+
+  e->clearProtoCache();
+  EXPECT_EQ(e->cachedProtoCount(), 0u);
+
+  auto v2 = e->compile("function f() return 20 end", "reload.lua");  // changed source, same key
+  auto b = e->createContext();
+  b.loadCached("reload.lua", v2);
+  EXPECT_EQ(b.invokePath<int>("f"), 20);  // recompiled, not the stale 10
+}
+
+TEST(LuaTest, ProtoCacheStaleWithoutClear) {
+  // Control proving clear is load-bearing: WITHOUT clearProtoCache(), the
+  // path-keyed cache serves the stale Proto for a changed same-key script.
+  auto e = LuaEngine::create();
+  auto v1 = e->compile("function f() return 10 end", "stale.lua");
+  auto a = e->createContext();
+  a.loadCached("stale.lua", v1);
+  EXPECT_EQ(a.invokePath<int>("f"), 10);
+
+  auto v2 = e->compile("function f() return 20 end", "stale.lua");  // changed, same key, no clear
+  auto b = e->createContext();
+  b.loadCached("stale.lua", v2);
+  EXPECT_EQ(b.invokePath<int>("f"), 10);  // intentionally stale -> documents the reload hazard
+}
