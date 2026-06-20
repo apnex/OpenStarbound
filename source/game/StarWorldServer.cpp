@@ -987,27 +987,27 @@ void WorldServer::forAllEntities(EntityCallback callback) const {
   m_entityMap->forAllEntities(callback);
 }
 
-void WorldServer::forEachEntity(RectF const& boundBox, EntityCallback callback) const {
+void WorldServer::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
   m_entityMap->forEachEntity(boundBox, callback);
 }
 
-void WorldServer::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const {
+void WorldServer::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
   m_entityMap->forEachEntityLine(begin, end, callback);
 }
 
-void WorldServer::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> callback) const {
+void WorldServer::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   m_entityMap->forEachEntityAtTile(pos, callback);
 }
 
-EntityPtr WorldServer::findEntity(RectF const& boundBox, EntityFilter entityFilter) const {
+EntityPtr WorldServer::findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const {
   return m_entityMap->findEntity(boundBox, entityFilter);
 }
 
-EntityPtr WorldServer::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const {
+EntityPtr WorldServer::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const {
   return m_entityMap->findEntityLine(begin, end, entityFilter);
 }
 
-EntityPtr WorldServer::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const {
+EntityPtr WorldServer::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const {
   return m_entityMap->findEntityAtTile(pos, entityFilter);
 }
 

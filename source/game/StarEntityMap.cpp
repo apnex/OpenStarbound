@@ -183,16 +183,7 @@ List<TileEntityPtr> EntityMap::entitiesAtTile(Vec2I const& pos, EntityFilterOf<T
   return values;
 }
 
-void EntityMap::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
-  m_spatialMap.forEach(m_geometry.splitRect(boundBox), callback);
-}
-
-void EntityMap::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
-  return m_spatialMap.forEach(m_geometry.splitRect(RectF::boundBoxOf(begin, end)), [&](EntityPtr const& entity) {
-      if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position())))
-        callback(entity);
-    });
-}
+// forEachEntity / forEachEntityLine are now header-defined templates (Lever #1).
 
 void EntityMap::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   RectF rect(Vec2F(pos[0], pos[1]), Vec2F(pos[0] + 1, pos[1] + 1));
@@ -235,26 +226,7 @@ void EntityMap::forAllEntities(EntityCallback const& callback, function<bool(Ent
   }
 }
 
-EntityPtr EntityMap::findEntity(RectF const& boundBox, EntityFilter const& filter) const {
-  EntityPtr res;
-  forEachEntity(boundBox, [&filter, &res](EntityPtr const& entity) {
-      if (res)
-        return;
-      if (filter(entity))
-        res = entity;
-    });
-  return res;
-}
-
-EntityPtr EntityMap::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& filter) const {
-  return findEntity(RectF::boundBoxOf(begin, end), [&](EntityPtr const& entity) {
-      if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position()))) {
-        if (filter(entity))
-          return true;
-      }
-      return false;
-    });
-}
+// findEntity / findEntityLine are now header-defined templates (Lever #1).
 
 EntityPtr EntityMap::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& filter) const {
   RectF rect(Vec2F(pos[0], pos[1]), Vec2F(pos[0] + 1, pos[1] + 1));
