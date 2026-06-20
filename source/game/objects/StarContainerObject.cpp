@@ -108,6 +108,31 @@ void ContainerObject::update(float dt, uint64_t currentStep) {
   }
 }
 
+Maybe<uint64_t> ContainerObject::nextEngineWakeStep(uint64_t currentStep) const {
+  // Base Object horizon (script / liquid / tile-damage / orientation / animator).
+  Maybe<uint64_t> wake = Object::nextEngineWakeStep(currentStep);
+  auto fold = [&wake](Maybe<uint64_t> const& term) {
+    if (term)
+      wake = wake ? std::min(*wake, *term) : *term;
+  };
+
+  // Crafting: keep the netted, interpolated craftingProgress advancing smoothly.
+  if (m_crafting.get())
+    fold(currentStep + 1);
+
+  // Auto-close counts down once per update().  Stay awake every step while the
+  // (short) window is open so the per-call decrement in update() always sees
+  // gap == 1 and needs no compensation.  (m_autoCloseCooldown is master-only.)
+  if (m_autoCloseCooldown > 0)
+    fold(currentStep + 1);
+
+  // m_ageItemsTimer is an EpochTimer driven by world()->epochTime(): it
+  // self-corrects across skipped ticks (accumulates wall-clock on the next wake),
+  // so it needs no horizon term and no compensation.
+
+  return wake;
+}
+
 void ContainerObject::render(RenderCallback* renderCallback) {
   auto assets = Root::singleton().assets();
 
@@ -227,6 +252,8 @@ ItemBagConstPtr ContainerObject::itemBag() const {
 }
 
 void ContainerObject::containerOpen() {
+  // Dormancy wake (audit Rule 2): arms the auto-close countdown ticked in update().
+  requestWake();
   m_opened.set(configValue("openFrameIndex", 2).toInt());
   m_count++;
   m_autoCloseCooldown = configValue("autoCloseCooldown").toInt();
@@ -328,6 +355,8 @@ bool ContainerObject::isCrafting() const {
 }
 
 void ContainerObject::startCrafting() {
+  // Dormancy wake (audit Rule 2): arms crafting progress ticked in update().
+  requestWake();
   if (isSlave()) {
     world()->sendEntityMessage(entityId(), "startCrafting");
   } else {
@@ -550,6 +579,9 @@ List<ItemPtr> ContainerObject::doClearContainer() {
 }
 
 void ContainerObject::itemsUpdated() {
+  // Dormancy wake (audit Rule 2): funnel for all item add/take/consume/clear/burn;
+  // arms the containerCallback and m_lostItems overflow drain in update().
+  requestWake();
   m_itemsUpdated = true;
   m_runUpdatedCallback = true;
 }

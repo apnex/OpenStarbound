@@ -57,6 +57,17 @@ void FarmableObject::update(float dt, uint64_t currentStep) {
   }
 }
 
+Maybe<uint64_t> FarmableObject::nextEngineWakeStep(uint64_t currentStep) const {
+  // Conservative dormancy horizon (4b follow-up): FarmableObject::update does
+  // real per-tick work that is NOT a no-op when idle -- it advances crop stages
+  // off absolute world epochTime and feeds a SlidingWindow immersion sample
+  // every tick. Staying awake every tick is the simplest behavior-safe choice;
+  // farms are a minority of objects so the cost is bounded. A precise term
+  // (wake at m_nextStageTime, folding the immersion-window cadence) is a possible
+  // later refinement once validate-live characterizes the immersion sampler.
+  return currentStep + 1;
+}
+
 bool FarmableObject::damageTiles(List<Vec2I> const& position, Vec2F const& sourcePosition, TileDamage const& tileDamage) {
   if ((tileDamage.type != TileDamageType::Beamish && tileDamage.type != TileDamageType::Blockish && tileDamage.type != TileDamageType::Plantish) || !harvest())
     return Object::damageTiles(position, sourcePosition, tileDamage);
@@ -65,6 +76,11 @@ bool FarmableObject::damageTiles(List<Vec2I> const& position, Vec2F const& sourc
 }
 
 InteractAction FarmableObject::interact(InteractRequest const&) {
+  // FarmableObject::interact does NOT call Object::interact (it harvests directly),
+  // so the Rule-1 dormancy wake in Object::interact would not fire here. Wake
+  // explicitly (cheap; future-proofs a precise FarmableObject horizon — see
+  // nextEngineWakeStep). Corrects audit row #8's "reached via R1" assumption.
+  requestWake();
   harvest();
   return {};
 }

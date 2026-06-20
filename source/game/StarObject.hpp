@@ -50,6 +50,13 @@ public:
 
   virtual pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
   virtual void netStorePump() override;
+  // Dormancy validate/shadow oracle (Task 6): surfaces the net-version aggregate
+  // from the shared m_netGroup for the WorldServer's would-be-dormant no-op
+  // assertion. Defined once here on Object: because every Object subclass shares
+  // this m_netGroup, this single override covers them ALL (ContainerObject,
+  // FarmableObject, etc.) — they override nextEngineWakeStep (the horizon) but
+  // inherit this oracle unchanged, so no subclass need re-override it.
+  virtual Maybe<uint64_t> netVersionLatestChange() const override;
   virtual void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   virtual String name() const override;
@@ -65,6 +72,13 @@ public:
   virtual void destroy(RenderCallback* renderCallback) override;
 
   virtual void update(float dt, uint64_t currentStep) override;
+
+  // Dormancy idle-horizon: the earliest future step on which this object has
+  // self-scheduled engine work (script cadence, liquid poll, tile-damage
+  // recovery, orientation frame animation, networked-animator activity). {} =
+  // no self-scheduled work -> sleep until an external requestWake().  See
+  // StarObject.cpp for the per-term derivation.
+  virtual Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const override;
 
   virtual void render(RenderCallback* renderCallback) override;
 
@@ -222,6 +236,12 @@ private:
 
   void checkLiquidBroken();
   GameTimer m_liquidCheckTimer;
+
+  // Absolute server step on which this object's master update() slate last ran
+  // (0 = never).  Under dormancy update() may be skipped on steps with no
+  // scheduled work, so the per-call timers are fast-forwarded by the elapsed
+  // step gap on the next wake.  See Object::update.
+  uint64_t m_lastEngineUpdateStep = 0;
 
   ObjectConfigConstPtr m_config;
   Maybe<List<ObjectOrientationPtr>> m_orientations;
