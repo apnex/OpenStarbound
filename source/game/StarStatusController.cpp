@@ -824,6 +824,7 @@ void StatusController::uninitUniqueEffectScript(UniqueEffectInstance& uniqueEffe
 
 LuaCallbacks StatusController::makeUniqueEffectCallbacks(UniqueEffectInstance& uniqueEffect) {
   LuaCallbacks callbacks;
+  callbacks.reserve(12); // keep in sync with the registrations below (over/under only costs a rehash)
 
   callbacks.registerCallback("name", [this, &uniqueEffect]() {
     return m_uniqueEffectMetadata.getNetElement(uniqueEffect.metadataId)->effect;
