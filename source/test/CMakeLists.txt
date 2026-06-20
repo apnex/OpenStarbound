@@ -80,6 +80,7 @@ SET (star_game_tests_SOURCES
       item_test.cpp
       root_test.cpp
       server_test.cpp
+      entity_dormancy_test.cpp
       spawn_test.cpp
       stat_test.cpp
       tile_array_test.cpp

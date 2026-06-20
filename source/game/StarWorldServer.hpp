@@ -423,6 +423,8 @@ private:
   // Lever #4 measurement: counts update() ticks so coverage (hits/walks) is
   // flushed to the log roughly every few seconds while a gate is on.
   unsigned m_netDeltaStatTick = 0;
+  // Task 6 measurement: same cadence for the entity-dormancy ratio / mismatch log.
+  unsigned m_dormancyStatTick = 0;
   OrderedHashMap<ConnectionId, shared_ptr<ClientInfo>> m_clientInfo;
 
   GameTimer m_entityUpdateTimer;

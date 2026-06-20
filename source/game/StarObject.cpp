@@ -327,6 +327,10 @@ void Object::netStorePump() {
   m_netGroup.netStorePump();
 }
 
+Maybe<uint64_t> Object::netVersionLatestChange() const {
+  return m_netGroup.netVersionLatestChange();
+}
+
 void Object::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

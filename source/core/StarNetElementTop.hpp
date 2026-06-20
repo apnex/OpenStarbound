@@ -26,6 +26,13 @@ public:
   // to not improperly extrapolate past the end of incoming deltas.
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {});
 
+  // Lever #4 aggregate read for the entity-dormancy validate/shadow oracle (Task 6):
+  // the highest version at which ANY element in this network recorded a change. This
+  // is the same NetElementVersion::latestChange() the writeNetState early-out above
+  // tests; exposing it read-only lets the WorldServer assert a would-be-dormant
+  // entity's skipped slate did not mutate any net state.
+  uint64_t netVersionLatestChange() const { return m_netVersion.latestChange(); }
+
 private:
   using BaseNetElement::initNetVersion;
   using BaseNetElement::netStore;

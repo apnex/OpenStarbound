@@ -27,6 +27,18 @@ STAR_EXCEPTION(EntityException, StarException);
 namespace EntityDormancy {
   extern std::atomic<bool> enabled;   // gate the awake-set skip
   extern std::atomic<bool> validate;  // shadow-run + assert each "dormant" tick is a no-op
+  // Telemetry counters (Task 6), mirroring NetElementEarlyOut::hits/walks. Bumped
+  // per-entity only when active(), so the shipped default-OFF path stays zero-cost.
+  //  skipped    = would-be-dormant entity-updates (!run). In enabled mode these are
+  //               actually skipped; in validate mode they still run but are the exact
+  //               set enabled mode WOULD skip -> a consistent dormancy ratio for A/B.
+  //  ran        = entity-updates that ran (run == true).
+  //  mismatches = validate-mode shadow no-op-assertion failures (cumulative; a true
+  //               no-op engine slate must not advance the net-version aggregate).
+  // WorldServer logs skipped/(skipped+ran) periodically and resets that window.
+  extern std::atomic<uint64_t> skipped;
+  extern std::atomic<uint64_t> ran;
+  extern std::atomic<uint64_t> mismatches;
   inline bool active() {
     return enabled.load(std::memory_order_relaxed) || validate.load(std::memory_order_relaxed);
   }
@@ -197,6 +209,33 @@ public:
   // An off-lock caller (e.g. a network-thread path) would need this made atomic.
   void requestWake() { m_wakeRequested = true; }
   bool takeWakeRequested() { bool w = m_wakeRequested; m_wakeRequested = false; return w; }
+
+  // Dormancy validate/shadow oracle (Task 6). The per-entity net-version aggregate
+  // (Lever #4's NetElementVersion::latestChange — the highest version at which ANY
+  // net element in this entity recorded a change). Monotonically non-decreasing; a
+  // genuine no-op engine slate does NOT advance it. In validate mode the WorldServer
+  // captures this BEFORE a would-be-dormant entity's still-run update(), then runs
+  // netStorePump() to flush deferred stores, and asserts it did not advance AFTER ->
+  // proof the skipped slate was a true no-op. {} = "this type exposes no aggregate"
+  // -> not validatable (the shadow check is skipped). The aggregate lives on the
+  // shared NetElementVersion, so a single override on the base of a type family
+  // (Object, via its m_netGroup) covers every subclass automatically — subclasses
+  // need NOT re-override this even when they adopt dormancy (ContainerObject,
+  // FarmableObject override nextEngineWakeStep but inherit this oracle unchanged).
+  // COVERAGE: because the validate loop pumps deferred stores before the after-
+  // capture, this now flags BOTH eager NetElements AND deferred-store net state
+  // written only at pump time via setNetStates() — i.e. ContainerObject item
+  // contents (m_itemsNetState) and Object orientation (m_orientationIndexNetState)
+  // ARE covered. The residual blind spot is only a genuinely NON-NETTED side effect
+  // (an outgoing entity message, a direct world-tile mutation, a spawn) from a
+  // skipped slate. These are bounded: dormancy only ever skips the ENGINE slate (the
+  // script always runs on its own cadence) and the Task-5 wake-source audit covers
+  // the external mutators. SUBTLETY: latestChange = m_version at markChanged() time,
+  // and m_version only advances when writeNetState() actually emits a delta — so an
+  // entity NOT monitored by any client may not advance latestChange on a net
+  // mutation (unmonitored => non-observable, no desync; it self-arms the moment a
+  // client attaches and writeNetState starts incrementing the version).
+  virtual Maybe<uint64_t> netVersionLatestChange() const { return {}; }
 
   virtual void render(RenderCallback* renderer);
 
