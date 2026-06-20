@@ -690,10 +690,57 @@ void WorldServer::update(float dt) {
         bool requested = entity->takeWakeRequested();
         bool awake = m_awakeEntities.contains(id);  // single membership lookup (M4)
         bool run = requested || awake;
+
+        // Telemetry (Task 6): tally would-be-dormant (!run) vs would-run updates.
+        // Counted identically in enabled AND validate mode, so the dormancy ratio
+        // logged below measures the SAME set in both -> a clean A/B (Task 8).
+        if (run)
+          EntityDormancy::ran.fetch_add(1, std::memory_order_relaxed);
+        else
+          EntityDormancy::skipped.fetch_add(1, std::memory_order_relaxed);
+
+        // Validate/shadow mode (Task 6), the primary safety net. When validating
+        // (active but !enabled) update() runs for EVERY entity, so for a would-be-
+        // dormant one (!run) we capture its net-version aggregate BEFORE the still-
+        // run update() and assert below it did NOT advance after -> the slate that
+        // enabled mode WOULD have skipped was a genuine no-op. {} = the type exposes
+        // no aggregate (not validatable) -> shadow check skipped for it. See
+        // Entity::netVersionLatestChange for the (bounded) net-only-oracle limit.
+        Maybe<uint64_t> validateBefore;
+        if (!dormancyEnabled && !run)
+          validateBefore = entity->netVersionLatestChange();
+
         // validate-only (dormancyActive && !dormancyEnabled) NEVER skips: it runs
         // every entity's update() so the shadow assert later sees the real ticks.
         if (run || !dormancyEnabled)
           entity->update(dt, m_currentStep);
+
+        // Shadow assertion: a skipped-in-enabled-mode slate that mutated net state
+        // here is a missing-wake bug (the dormancy analogue of #4's MISMATCH).
+        if (validateBefore) {
+          // Flush deferred NetElement stores BEFORE the after-capture so their
+          // markChanged() (which the real pump only fires later in
+          // queueUpdatePackets, the client phase) is visible to the oracle NOW.
+          // Without this, deferred-store net state written only at pump time via
+          // setNetStates() — ContainerObject::m_itemsNetState (item contents),
+          // Object::m_orientationIndexNetState — would mutate AFTER this capture
+          // and before next tick's before-capture, so before == after every tick
+          // and the missed-wake bug would never be flagged. Eager NetElements
+          // (markChanged in set()) are already caught without this. Validate-mode
+          // only: this branch is the !dormancyEnabled && !run path, so the OFF
+          // path and the enabled path never reach here. The extra pump is
+          // idempotent (re-stores the current values) and the real pump still
+          // runs in queueUpdatePackets — an acceptable cost for a debug mode.
+          entity->netStorePump();
+          if (auto after = entity->netVersionLatestChange()) {
+            if (*after != *validateBefore) {
+              Logger::warn("DORMANCY MISMATCH type={} id={} latestChange {}->{}",
+                  EntityTypeNames.getRight(entity->entityType()), id, *validateBefore, *after);
+              EntityDormancy::mismatches.fetch_add(1, std::memory_order_relaxed);
+            }
+          }
+        }
+
         // Membership/scheduling are gated on `run`, NOT on whether update() ran:
         // a would-be-dormant entity in validate mode has run==false but still
         // updates, and its membership must stay put so validate tracks exactly the
@@ -822,6 +869,22 @@ void WorldServer::update(float dt) {
     if (total > 0)
       Logger::info("netDelta early-out coverage: {}/{} entity-writes skipped ({:.1f}%) over last window",
           h, total, 100.0 * (double)h / (double)total);
+  }
+
+  // Entity-dormancy measurement (Task 6), mirroring the Lever #4 log above: while a
+  // dormancy gate is on, log the dormancy ratio (would-be-/actually-dormant updates
+  // over the window) plus the live awake-set / total entity counts and the cumulative
+  // validate mismatch tally, then reset the window. Process-global counts; zero cost
+  // and no log line when dormancy is OFF.
+  if (dormancyActive && ++m_dormancyStatTick >= 600) {
+    m_dormancyStatTick = 0;
+    uint64_t skipped = EntityDormancy::skipped.exchange(0, std::memory_order_relaxed);
+    uint64_t total = skipped + EntityDormancy::ran.exchange(0, std::memory_order_relaxed);
+    if (total > 0)
+      Logger::info("entity dormancy: {}/{} entity-updates {} ({:.1f}%) over last window; awake {}/{} live; validate mismatches {}",
+          skipped, total, dormancyEnabled ? "skipped" : "would-skip", 100.0 * (double)skipped / (double)total,
+          m_awakeEntities.size(), m_entityMap->size(),
+          EntityDormancy::mismatches.load(std::memory_order_relaxed));
   }
 
   for (auto& pair : m_clientInfo)
