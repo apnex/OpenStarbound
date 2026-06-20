@@ -1857,6 +1857,28 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
   }
 }
 
+bool NetworkedAnimator::hasActiveAnimationWork() const {
+  // Any active animation state still advancing keeps the master updating:
+  //  - Loop never settles; Transition auto-advances the NETTED state index once
+  //    its cycle completes (the master must run update() to drive that change);
+  //  - an End state is still animating until its timer reaches its cycle.
+  for (auto const& stateType : m_animatedParts.stateTypes()) {
+    auto const& active = m_animatedParts.activeState(stateType);
+    auto const& state = m_animatedParts.getState(stateType, active.stateName);
+    if (state.animationMode != AnimatedPartSet::End || active.timer < state.cycle)
+      return true;
+  }
+
+  // A rotation group still approaching its target (or pending the one-shot snap of
+  // a zero-angularVelocity group) advances currentAngle on the next update().
+  for (auto const& pair : m_rotationGroups) {
+    if (pair.second.currentAngle != pair.second.targetAngle.get())
+      return true;
+  }
+
+  return false;
+}
+
 void NetworkedAnimator::finishAnimations() {
   m_animatedParts.finishAnimations();
 }

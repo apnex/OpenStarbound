@@ -396,14 +396,30 @@ List<Vec2I> Object::roots() const {
   return {};
 }
 
-void Object::update(float dt, uint64_t) {
+void Object::update(float dt, uint64_t currentStep) {
   if (!inWorld())
     return;
 
   if (isMaster()) {
-    m_tileDamageStatus->recover(m_config->tileDamageParameters, dt);
+    // Dormancy per-call-timer compensation.  Under server dormancy this slate is
+    // skipped on steps where nextEngineWakeStep() scheduled no work, so the
+    // per-call timers are fast-forwarded by the elapsed step gap to fire on the
+    // same ABSOLUTE step they would have without sleeping.  When dormancy is OFF
+    // (update() runs every step) gap == 1, so gapDt == dt,
+    // gap * GlobalTimestep == GlobalTimestep (the old wrapTick() default arg) and
+    // skipUpdateTicks(0) is a no-op -> every call below is byte-identical to the
+    // pre-dormancy path.
+    uint64_t gap = (m_lastEngineUpdateStep == 0) ? 1 : (currentStep - m_lastEngineUpdateStep);
+    m_lastEngineUpdateStep = currentStep;
+    float gapDt = gap * dt;
 
-    if (m_liquidCheckTimer.wrapTick())
+    // recover() is a no-op unless damaged; the horizon keeps damaged objects awake
+    // (gap == 1, gapDt == dt), so a gap > 1 is only ever folded in while recover()
+    // does nothing.
+    m_tileDamageStatus->recover(m_config->tileDamageParameters, gapDt);
+
+    // Liquid timer ticks on GlobalTimestep (matching the old wrapTick() default).
+    if (m_liquidCheckTimer.wrapTick(gap * GlobalTimestep))
       checkLiquidBroken();
 
     if (auto orientation = currentOrientation()) {
@@ -413,12 +429,19 @@ void Object::update(float dt, uint64_t) {
         setImageKey("frame", toString(frame));
       }
 
-      m_animationTimer = std::fmod(m_animationTimer + dt, orientation->animationCycle);
+      // gap == 1 whenever the orientation is actually animated (frames > 1 keeps
+      // the object awake), so this is identical to advancing by dt every step.
+      m_animationTimer = std::fmod(m_animationTimer + gapDt, orientation->animationCycle);
     }
 
-    m_networkedAnimator->update(dt, nullptr);
+    // gap == 1 whenever the animator has active work (it keeps the object awake),
+    // so this is identical to advancing by dt every step.
+    m_networkedAnimator->update(gapDt, nullptr);
     m_networkedAnimator->setFlipped(direction() == Direction::Left, m_animationCenterLine);
 
+    // Account for the (gap - 1) skipped update() calls in the script cadence, then
+    // run the script iff it is cadence-due.  skipUpdateTicks(0) when gap == 1.
+    m_scriptComponent.skipUpdateTicks(static_cast<unsigned>(gap > 0 ? gap - 1 : 0));
     m_scriptComponent.update(m_scriptComponent.updateDt(dt));
 
   } else {
@@ -434,6 +457,51 @@ void Object::update(float dt, uint64_t) {
 
   if (world()->isClient())
     m_scriptedAnimator.update();
+}
+
+Maybe<uint64_t> Object::nextEngineWakeStep(uint64_t currentStep) const {
+  // Fold the earliest (min) of the live self-scheduled wake steps.  {} only when
+  // NO subsystem has self-scheduled work (the per-object dormancy signal).
+  Maybe<uint64_t> wake;
+  auto fold = [&wake](Maybe<uint64_t> const& term) {
+    if (term)
+      wake = wake ? std::min(*wake, *term) : *term;
+  };
+
+  // 1. Script cadence.  {} when the script never updates (updateDelta == 0) ->
+  //    contributes no wake; this is the per-object dormancy signal.
+  fold(m_scriptComponent.nextUpdateStep(currentStep));
+
+  // 2. Liquid check polls checkLiquidBroken() on its own cadence (ticked on
+  //    GlobalTimestep, matching the timer's tick dt).  Always live: the object
+  //    wakes every ~liquidCheckInterval and sleeps between.  max(1, ...) so a
+  //    ready timer schedules the NEXT step, never the current one.
+  fold(currentStep + std::max<uint64_t>(1, (uint64_t)std::ceil(m_liquidCheckTimer.timer / GlobalTimestep)));
+
+  // 3. Tile-damage recovery: stay awake every step while damaged (and not dead),
+  //    so recover() runs the damage down each step.
+  if (m_tileDamageStatus->damaged() && !m_tileDamageStatus->dead())
+    fold(currentStep + 1);
+
+  // 4. Orientation frame animation: live only when the orientation has > 1 frame
+  //    (frames == 1 settles on frame 0 and never changes).
+  if (auto orientation = currentOrientation()) {
+    if (orientation->frames > 1 && orientation->animationCycle > 0.0f)
+      fold(currentStep + 1);
+  }
+
+  // 5. NetworkedAnimator self-scheduled work (active/non-settled states or a
+  //    rotation group still approaching its target -- see
+  //    NetworkedAnimator::hasActiveAnimationWork).  Conservative: over-wake is
+  //    safe; render-only / fully-netted-and-slave-reproduced subsystems
+  //    (particle emitters, light flicker, effects, sounds) are excluded.
+  if (m_networkedAnimator->hasActiveAnimationWork())
+    fold(currentStep + 1);
+
+  // Light flicker (m_lightFlickering) and emission timers (m_emissionTimers) are
+  // render-only / discarded server-side -> no horizon term, no compensation.
+
+  return wake;
 }
 
 void Object::render(RenderCallback* renderCallback) {
