@@ -128,6 +128,12 @@ public:
   // / ServerGlobalTimestep, >= 1). Exposed so tests can assert the backstop bound.
   uint64_t dormancyMaxSleepSteps() const;
 
+  // Task 8: read-only observers of the dormancy awake-set, exposed so tests can assert
+  // the periodic stale-id prune (see update()). Pure const accessors; no runtime effect,
+  // and both are 0/false in the default-OFF build (m_awakeEntities stays empty).
+  size_t awakeEntityCount() const;
+  bool isEntityAwake(EntityId entityId) const;
+
   ConnectionId connection() const override;
   WorldGeometry geometry() const override;
   uint64_t currentStep() const override;

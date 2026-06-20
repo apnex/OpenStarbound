@@ -618,3 +618,75 @@ TEST(EntityDormancy, MaxSleepCapBackstopWakesIndefiniteSleeper) {
   EXPECT_LE(expectedCapWake, cap + 1);
   EXPECT_LT(sleeper->m_updateCount, cap) << "cap-wake must not run every tick (slept ~cap steps between wakes)";
 }
+
+// AWAKE-SET PRUNE (Task 8): stale ids must not accumulate in m_awakeEntities when entities
+// leave the world via a path that BYPASSES WorldServer::removeEntity. The real bypass is
+// WorldStorage sector-unload, which removes entities by calling m_entityMap->removeEntity
+// DIRECTLY (StarWorldStorage.cpp) — WorldServer::removeEntity (which does the O(1)
+// m_awakeEntities.remove) is never invoked, so the awake-set keeps the dead ids forever
+// (harmless to the tick loop, which iterates live entities + only tests contains(), but an
+// unbounded leak that skews the awake/live telemetry + dormancy ratio). This drives the REAL
+// public unload path (WorldServer::unloadAll -> WorldStorage::unloadAll -> unloadSectorToLevel
+// -> m_entityMap->removeEntity) on entities that genuinely went through the sector machinery,
+// reproduces the leak, then proves the periodic prune in update() clears it.
+TEST(EntityDormancy, PruneStaleAwakeIdsAfterUnloadBypass) {
+  auto ws = make_shared<WorldServer>(Vec2U(2048, 2048), File::ephemeralFile());
+  ws->setSpawningEnabled(false);
+  EntityDormancy::enabled.store(true, std::memory_order_relaxed);
+  EntityDormancy::validate.store(false, std::memory_order_relaxed);
+  DormancyTestGuard guard{ws.get(), {}}; // resets the gates on every exit path
+
+  // Load the sector our entities live in so the sector-unload machinery actually owns them
+  // (unloadAll iterates loaded sectors; an entity in an unloaded sector is never queried).
+  ws->generateRegion(RectI(690, 690, 730, 730));
+
+  // unloadAll(force=true) overrides the keepAlive guard; NON-persistent (default) routes them
+  // to the bypass-remove branch (m_entityMap->removeEntity + destructEntity) with NO
+  // serialization (a non-factory synthetic type can't be serialized). next-tick (s+1) horizon keeps each
+  // one resident in the awake-set every tick, so removing it leaves a genuine stale id.
+  TestEntityList ents;
+  List<EntityId> ids;
+  for (int i = 0; i < 3; ++i) {
+    auto e = make_shared<DormancyTestEntity>(Vec2F(700.5f + i, 700.5f));
+    e->m_horizon = [](uint64_t s) -> Maybe<uint64_t> { return s + 1; }; // stay awake every tick
+    ws->addEntity(e);
+    ents.append(e);
+    ids.append(e->entityId());
+  }
+
+  // A few ticks: the entities are alive and held in the awake-set.
+  for (unsigned t = 0; t < 5; ++t)
+    ws->update(Dt);
+  for (EntityId id : ids) {
+    ASSERT_TRUE((bool)ws->entity(id)) << "entity must be live before the unload";
+    ASSERT_TRUE(ws->isEntityAwake(id)) << "next-tick-horizon entity must be in the awake-set";
+  }
+  size_t const awakeBefore = ws->awakeEntityCount();
+  ASSERT_GE(awakeBefore, ids.size());
+
+  // REAL BYPASS: full production unload. Removes our entities via m_entityMap->removeEntity
+  // directly, never touching WorldServer::removeEntity -> the awake-set is NOT cleaned here.
+  ws->unloadAll(true);
+
+  // The leak: each id is gone from the world but STILL in the awake-set, and the awake count
+  // now exceeds the live entity count (exactly the telemetry skew the prune fixes).
+  size_t live = 0;
+  ws->forAllEntities([&live](EntityPtr const&) { ++live; });
+  for (EntityId id : ids) {
+    ASSERT_FALSE((bool)ws->entity(id)) << "unloadAll must have removed the entity via the bypass";
+    EXPECT_TRUE(ws->isEntityAwake(id)) << "stale id leaked: bypass removal left it in the awake-set";
+  }
+  EXPECT_GT(ws->awakeEntityCount(), live) << "awake-set must outgrow live entities (the leak)";
+
+  // Tick past the prune cadence (the prune runs once per ~600 ticks while a dormancy gate is
+  // on; m_dormancyStatTick is <= 5 here, so 600 more ticks guarantees at least one fire).
+  for (unsigned t = 0; t < 600; ++t)
+    ws->update(Dt);
+
+  // The fix: every stale id is gone and the awake-set tracks the live entity count again.
+  live = 0;
+  ws->forAllEntities([&live](EntityPtr const&) { ++live; });
+  for (EntityId id : ids)
+    EXPECT_FALSE(ws->isEntityAwake(id)) << "prune must drop the dead id from the awake-set";
+  EXPECT_EQ(ws->awakeEntityCount(), live) << "after the prune the awake-set must track live entities";
+}
