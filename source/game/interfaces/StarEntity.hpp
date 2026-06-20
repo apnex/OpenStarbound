@@ -180,6 +180,24 @@ public:
 
   virtual void update(float dt, uint64_t currentStep);
 
+  // Lever Rung-1 dormancy seam. Default = always-awake (next step), so a type
+  // that does not override these behaves exactly as today.
+  // nextEngineWakeStep: the earliest step at which this entity's ENGINE update
+  //   slate needs to run again, given its own timers/animations. {} means "no
+  //   self-scheduled work — sleep until an external wake". currentStep+1 = "every
+  //   tick" (the default). The script is NOT part of this — it runs on its own
+  //   scriptDelta cadence, which an adopter folds INTO this horizon.
+  virtual Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const { return currentStep + 1; }
+  // requestWake: an external mutation point calls this to force the entity awake
+  // next tick (the WorldServer consumes m_wakeRequested). Cheap, idempotent.
+  // THREADING INVARIANT: m_wakeRequested is a plain bool, safe because all server
+  // entity mutation is serialized under WorldServerThread::m_mutex (held across the
+  // whole tick). Callers MUST hold that lock — every current wake source
+  // (interaction, wiring, receiveMessage, tile damage) runs inside the locked tick.
+  // An off-lock caller (e.g. a network-thread path) would need this made atomic.
+  void requestWake() { m_wakeRequested = true; }
+  bool takeWakeRequested() { bool w = m_wakeRequested; m_wakeRequested = false; return w; }
+
   virtual void render(RenderCallback* renderer);
 
   virtual void renderLightSources(RenderCallback* renderer);
@@ -232,6 +250,7 @@ private:
   Maybe<String> m_uniqueId;
   World* m_world;
   EntityDamageTeam m_team;
+  bool m_wakeRequested = true;
 };
 
 template <typename EntityT>
