@@ -72,7 +72,7 @@ R"JSON(
       "scriptInstructionLimit" : 10000000,
       "scriptProfilingEnabled" : false,
       "scriptInstructionMeasureInterval" : 10000,
-      "scriptProtoCacheEnabled" : false,
+      "scriptProtoCacheEnabled" : true,
 
       "allowAdminCommands" : true,
       "allowAdminCommandsFromAnyone" : false,
