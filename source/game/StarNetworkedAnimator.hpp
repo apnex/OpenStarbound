@@ -233,6 +233,21 @@ public:
   // will be discarded
   void update(float dt, DynamicTarget* dynamicTarget);
 
+  // Dormancy idle-horizon helper (master/server).  Returns true iff the animator
+  // has active/non-settled per-tick work:
+  //   - an active animation state still advancing: a Loop state (animates forever)
+  //     or a Transition state (whose cycle completion auto-advances the NETTED
+  //     state index, so the master MUST keep running update() to drive it), or an
+  //     End state still short of its cycle; OR
+  //   - a rotation group whose currentAngle has not yet reached its targetAngle.
+  // Returns false only when provably idle (no active animated states, no live
+  // rotations).  Particle emitters, light flicker, effects and sounds are
+  // EXCLUDED: on the server update() runs with a null DynamicTarget so emitters
+  // produce nothing, and all of these are driven by netted state / run
+  // independently slave-side, so they need no master wake.  Conservative: when in
+  // doubt it reports work (over-wake is safe; under-wake would desync).
+  bool hasActiveAnimationWork() const;
+
   // Run through the current animations until the final frame, including any
   // transition animations.
   void finishAnimations();

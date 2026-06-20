@@ -17,6 +17,7 @@ public:
   void init(World* world, EntityId entityId, EntityMode mode) override;
 
   void update(float dt, uint64_t currentStep) override;
+  Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const override;
   void render(RenderCallback* renderCallback) override;
 
   void destroy(RenderCallback* renderCallback) override;

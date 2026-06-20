@@ -49,6 +49,23 @@ public:
       function();
   }
 
+  // Calls remaining until the next tick() that returns true (advances the
+  // action).  0 means "never" (everyXSteps == 0); otherwise m_counter + 1
+  // because the (c + 1)-th subsequent call is the one that runs.
+  unsigned stepsUntilNext() const {
+    return m_everyXSteps == 0 ? 0 : m_counter + 1;
+  }
+
+  // Account for `n` skipped calls (e.g. dormancy skipped update()) WITHOUT
+  // running the action.  Advances the phase by n.  The caller (dormancy
+  // horizon) guarantees n is strictly less than stepsUntilNext() so a run is
+  // never silently dropped; clamp defensively so we never wrap past a run.
+  void skip(unsigned n) {
+    if (m_everyXSteps == 0)
+      return;
+    m_counter -= std::min(n, m_counter);
+  }
+
 private:
   unsigned m_counter;
   unsigned m_everyXSteps;
