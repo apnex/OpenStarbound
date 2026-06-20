@@ -2,6 +2,11 @@
 #include "StarRect.hpp"
 #include "StarMap.hpp"
 
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <functional>
+
 #include "gtest/gtest.h"
 
 using namespace Star;
@@ -190,4 +195,175 @@ TEST(SpatialHash2D, RandomizedOracle) {
 
   // Final full-world sweep.
   ASSERT_EQ(hashQuery(hash, RectF(-10, -10, 80, 80)), oracleQuery(world, RectF(-10, -10, 80, 80)));
+}
+
+// ============================================================================
+// Deterministic micro-benchmark of SpatialHash2D::forEach -- the EntityMap
+// entity-query hot path, profiled at 22.5% self of the exploring
+// WorldServerThread. Design ref:
+// /root/kubebound/specs/2026-06-20-foreach-optimization.md (§6, A/B plan).
+//
+// This is a MEASUREMENT, not a correctness gate: it times + PRINTS ns/query and
+// does NOT assert any threshold. It lives in its own suite (SpatialHashBench)
+// so the normal `--gtest_filter='SpatialHash2D.*'` runs never touch it. Run it:
+//     ./core_tests --gtest_filter='SpatialHashBench.*'
+//
+// The prior live A/B was confounded by activity variance; this gives a clean,
+// reproducible ns/query number. It (a) quantifies the v1 win just landed
+// (Lever #1 de-std::function-ized the per-entity dispatch) and (b) is the
+// harness for the v2 levers (#3 contained-cell skip, #4 stamp-dedup, #7
+// granularity) -- rebuild core_tests + rerun this filter to measure their
+// effect on forEach's internals.
+//
+// Isolating Lever #1 in a single build: the SAME query mix runs over the SAME
+// data TWICE -- once with a direct lambda (the inlined, post-#1 path) and once
+// with that lambda wrapped in std::function (the pre-#1 type-erased dispatch).
+// The delta IS Lever #1's per-entity dispatch win, measured without two builds.
+// The callback accumulates into a sink escaped to a `volatile` so the optimizer
+// cannot elide the work (and thus the whole forEach loop).
+// ============================================================================
+TEST(SpatialHashBench, ForEachDispatch) {
+  // Mirror the EntityMap's real instantiation: SpatialHash2D<int, float,
+  // shared_ptr<Entity>, int, 4096>. The value is `int` here (not a shared_ptr)
+  // because the cost is in the cell sweep / sort / dedup / dispatch, not the
+  // value payload; `4096` is the BlockAllocator block size, NOT the grid
+  // granularity. The real granularity is the sector size, set below.
+  typedef SpatialHash2D<int, float, int, int, 4096> BenchHash;
+  float const SectorSize = 16.0f;  // EntityMapSpatialHashSectorSize (StarEntityMap.cpp:8)
+  BenchHash hash(SectorSize);
+
+  // Fixed LCG (same constants as RandomizedOracle above) -> reproducible
+  // population + query set, build-over-build.
+  uint64_t s = 0x9E3779B97F4A7C15ull;
+  auto next = [&]() { s = s * 6364136223846793005ull + 1442695040888963407ull; return (uint32_t)(s >> 33); };
+  auto frand = [&](float lo, float hi) { return lo + (hi - lo) * (next() / 2147483648.0f); };
+
+  // ---- Populate ~965 entities across a representative world span ----
+  // Size distribution: most small (items/projectiles/small monsters, 1-4
+  // units), some medium, a few large multi-cell (big monsters/vehicles
+  // spanning several 16-unit sectors).
+  int const EntityCount = 965;      // the profiled exploring entity count
+  float const WorldSpan = 3000.0f;  // a few thousand units square
+  List<Vec2F> centers;              // entity centers, reused to aim collision queries
+  for (int i = 0; i < EntityCount; ++i) {
+    float x = frand(0.0f, WorldSpan), y = frand(0.0f, WorldSpan);
+    uint32_t roll = next() % 100;
+    float w, h;
+    if (roll < 85)      { w = frand(1.0f, 4.0f);   h = frand(1.0f, 4.0f); }    // ~85% small
+    else if (roll < 97) { w = frand(4.0f, 16.0f);  h = frand(4.0f, 16.0f); }   // ~12% medium
+    else                { w = frand(16.0f, 64.0f); h = frand(16.0f, 64.0f); }  // ~3% large multi-cell
+    hash.set(i, rc(x, y, x + w, y + h), i);
+    centers.append(Vec2F(x + w * 0.5f, y + h * 0.5f));
+  }
+  ASSERT_EQ(hash.size(), (size_t)EntityCount);
+
+  // ---- Fixed query mix matching the real per-tick caller mix ----
+  // Many SMALL boxes (collision broad-phase / point-ish, a few units) + a few
+  // LARGE boxes (net-monitoring / lighting regions, tens-to-hundreds of units).
+  // The SMALL boxes are centered ON entity positions, because the dominant
+  // small-query caller is the per-actor collision/force broad-phase, which
+  // queries a padded box around each moving entity -- so those queries DO hit
+  // (the querying entity + neighbors), unlike uniform-random boxes over mostly
+  // empty sky. The LARGE boxes are placed anywhere (window/monitoring regions).
+  List<RectF> queries;
+  int const SmallQueries = 500;  // collision / point-ish, entity-centered
+  int const LargeQueries = 20;   // monitoring / lighting, anywhere
+  for (int i = 0; i < SmallQueries; ++i) {
+    Vec2F c = centers[next() % centers.size()];
+    float w = frand(2.0f, 8.0f), h = frand(2.0f, 8.0f);
+    queries.append(RectF(c[0] - w * 0.5f, c[1] - h * 0.5f, c[0] + w * 0.5f, c[1] + h * 0.5f));
+  }
+  for (int i = 0; i < LargeQueries; ++i) {
+    float x = frand(0.0f, WorldSpan), y = frand(0.0f, WorldSpan);
+    float w = frand(40.0f, 200.0f), h = frand(40.0f, 200.0f);
+    queries.append(RectF(x, y, x + w, y + h));
+  }
+  size_t const QPI = queries.size();  // queries per iteration
+
+  // Count unique-entity dispatches across one full pass of the mix (for the
+  // ns/callback figures below).
+  size_t callbacksPerIter = 0;
+  for (auto const& q : queries)
+    hash.forEach(q, [&callbacksPerIter](int const&) { ++callbacksPerIter; });
+
+  // Sink: the accumulated work escapes to a `volatile`, so the optimizer cannot
+  // drop the callback (and therefore the whole forEach) as dead code.
+  volatile int64_t sink = 0;
+  int64_t acc = 0;
+
+  // Time `iters` passes over the full query mix with callback `cb`; returns ns.
+  // `cb` is taken by lvalue ref so forEach deduces Function = LambdaType& (Run
+  // A, inlinable) or std::function& (Run B, type-erased) -- the ONLY difference
+  // between the two runs.
+  auto measure = [&](auto& cb, size_t iters) -> double {
+    auto t0 = std::chrono::steady_clock::now();
+    for (size_t it = 0; it < iters; ++it)
+      for (auto const& q : queries)
+        hash.forEach(q, cb);
+    auto t1 = std::chrono::steady_clock::now();
+    return std::chrono::duration<double, std::nano>(t1 - t0).count();
+  };
+
+  // The per-entity work -- identical body in both runs.
+  auto lambdaWork = [&acc](int const& v) { acc += v; };
+  std::function<void(int const&)> fnWork = [&acc](int const& v) { acc += v; };
+
+  // ---- Calibrate iteration count to ~1.5s total (warms caches too) ----
+  double const targetNs = 1.5e9;
+  size_t calibIters = 64;
+  double calibNs = 0.0;
+  while (true) {
+    acc = 0;
+    calibNs = measure(lambdaWork, calibIters);
+    if (calibNs > 5.0e7)  // >50ms -> stable estimate
+      break;
+    calibIters *= 2;
+  }
+  size_t iters = (size_t)std::max(1.0, calibIters * (targetNs / std::max(calibNs, 1.0)));
+
+  // ---- Run A: direct lambda (inlined, post-Lever-#1) ----
+  acc = 0;
+  double lambdaNs = measure(lambdaWork, iters);
+  sink += acc;
+  int64_t lambdaAcc = acc;
+
+  // ---- Run B: same lambda wrapped in std::function (type-erased, pre-#1) ----
+  acc = 0;
+  double fnNs = measure(fnWork, iters);
+  sink += acc;
+  int64_t fnAcc = acc;
+
+  // Sanity: identical data + queries -> identical callback totals, so the runs
+  // are genuinely comparable (only the callback's dispatch type differs).
+  EXPECT_EQ(lambdaAcc, fnAcc) << "callback totals diverged; runs are not comparable";
+
+  double totalQueries = (double)iters * (double)QPI;
+  double totalCallbacks = (double)iters * (double)callbacksPerIter;
+  double lambdaNsPerQ = lambdaNs / totalQueries;
+  double fnNsPerQ = fnNs / totalQueries;
+  double lambdaNsPerCb = lambdaNs / totalCallbacks;
+  double fnNsPerCb = fnNs / totalCallbacks;
+  double deltaNsPerQ = fnNsPerQ - lambdaNsPerQ;
+  double deltaNsPerCb = fnNsPerCb - lambdaNsPerCb;
+  double deltaPct = 100.0 * deltaNsPerQ / fnNsPerQ;
+
+  std::printf(
+    "\n=== SpatialHash2D::forEach micro-benchmark (deterministic) ===\n"
+    "  entities        : %d  (world span %.0f, sector size %.1f)\n"
+    "  query mix       : %d small + %d large = %zu queries/iteration\n"
+    "  callbacks/iter  : %zu  (unique entity hits across the mix)\n"
+    "  iterations      : %zu  (%.3g total queries, %.3g total callbacks)\n"
+    "  lambda  (inlined / post-#1)   : %8.2f ns/query  %7.2f ns/callback  %7.2f Mq/s\n"
+    "  std::fn (type-erased / pre-#1): %8.2f ns/query  %7.2f ns/callback  %7.2f Mq/s\n"
+    "  Lever #1 dispatch delta       : %8.2f ns/query  %7.2f ns/callback  (%.1f%% of std::function path)\n\n",
+    EntityCount, (double)WorldSpan, (double)SectorSize,
+    SmallQueries, LargeQueries, QPI,
+    callbacksPerIter,
+    iters, totalQueries, totalCallbacks,
+    lambdaNsPerQ, lambdaNsPerCb, 1.0e3 / lambdaNsPerQ,
+    fnNsPerQ, fnNsPerCb, 1.0e3 / fnNsPerQ,
+    deltaNsPerQ, deltaNsPerCb, deltaPct);
+  std::fflush(stdout);
+
+  (void)sink;
 }
