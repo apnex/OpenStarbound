@@ -2230,15 +2230,19 @@ void WorldClient::freshenCollision(RectI const& region) {
   if (!inWorld())
     return;
 
+  // Lever L4 (mirror of WorldServer::freshenCollision -- keep both identical for
+  // master/slave parity): read-only, column-amortized dirty scan via tileEachColumns,
+  // which skips invalid/unloaded/out-of-y-range positions exactly like the old
+  // per-tile modifyTile guard (so it visits the same dirty set; NOT the const tileEach,
+  // whose dirty-by-default m_default would balloon freshenRegion). Byte-identical;
+  // pass 2 below still mutates via modifyTile.
   RectI freshenRegion = RectI::null();
-  for (int x = region.xMin(); x < region.xMax(); ++x) {
-    for (int y = region.yMin(); y < region.yMax(); ++y) {
-      if (auto tile = m_tileArray->modifyTile({x, y})) {
-        if (tile->collisionCacheDirty)
-          freshenRegion.combine(RectI(x, y, x + 1, y + 1));
+  m_tileArray->tileEachColumns(region, [&freshenRegion](Vec2I const& pos, auto const* column, size_t columnSize) {
+      for (size_t i = 0; i < columnSize; ++i) {
+        if (column[i].collisionCacheDirty)
+          freshenRegion.combine(RectI(pos[0], pos[1] + (int)i, pos[0] + 1, pos[1] + (int)i + 1));
       }
-    }
-  }
+    });
 
   if (!freshenRegion.isNull()) {
     for (int x = freshenRegion.xMin(); x < freshenRegion.xMax(); ++x) {

@@ -2433,15 +2433,23 @@ void WorldServer::dirtyCollision(RectI const& region) {
 }
 
 void WorldServer::freshenCollision(RectI const& region) {
+  // Lever L4: the pass-1 dirty scan only READS collisionCacheDirty, so use the
+  // read-only, column-amortized tileEachColumns instead of a per-tile modifyTile
+  // (which does a full pmod + sector-hashmap lookup PER tile, ~2.34% of the exploring
+  // WST). tileEachColumns walks valid loaded columns over contiguous tile memory and
+  // -- exactly like modifyTile's null guard -- SKIPS invalid/unloaded/out-of-y-range
+  // positions (NOT the const tileEach, which substitutes the dirty-by-default
+  // m_default for invalid positions and would balloon freshenRegion). So it visits the
+  // SAME tile set; the dirty subset is identical and RectI::combine is order-
+  // independent, so freshenRegion is byte-identical. Pass 2 below still mutates via
+  // modifyTile.
   RectI freshenRegion = RectI::null();
-  for (int x = region.xMin(); x < region.xMax(); ++x) {
-    for (int y = region.yMin(); y < region.yMax(); ++y) {
-      if (auto tile = m_tileArray->modifyTile({x, y})) {
-        if (tile->collisionCacheDirty)
-          freshenRegion.combine(RectI(x, y, x + 1, y + 1));
+  m_tileArray->tileEachColumns(region, [&freshenRegion](Vec2I const& pos, auto const* column, size_t columnSize) {
+      for (size_t i = 0; i < columnSize; ++i) {
+        if (column[i].collisionCacheDirty)
+          freshenRegion.combine(RectI(pos[0], pos[1] + (int)i, pos[0] + 1, pos[1] + (int)i + 1));
       }
-    }
-  }
+    });
 
   if (!freshenRegion.isNull()) {
     for (int x = freshenRegion.xMin(); x < freshenRegion.xMax(); ++x) {
