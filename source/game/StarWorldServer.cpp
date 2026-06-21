@@ -1,5 +1,6 @@
 #include "StarWorldServer.hpp"
 #include "StarNetElement.hpp"
+#include "StarMovementController.hpp"
 #include "StarLogging.hpp"
 #include "StarIterator.hpp"
 #include "StarDataStreamExtra.hpp"
@@ -1608,6 +1609,10 @@ void WorldServer::init(bool firstTime) {
   // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default ON).
   EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", true), std::memory_order_relaxed);
   EntityDormancy::validate.store(m_serverConfig.getBool("entityDormancyValidate", false), std::memory_order_relaxed);
+  // Lever L2: collision-poly arena reuse (process-global, default ON; byte-identical
+  // to OFF, kill-switch only). MovementController has no config access, so set the
+  // process-global here.
+  CollisionArena::enabled.store(m_serverConfig.getBool("collisionArenaEnabled", true), std::memory_order_relaxed);
   // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
   // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
   // always a genuine future step. Read here (not process-global) since it's a per-world

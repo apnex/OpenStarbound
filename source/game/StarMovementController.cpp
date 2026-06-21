@@ -8,6 +8,10 @@
 
 namespace Star {
 
+namespace CollisionArena {
+  std::atomic<bool> enabled{true};   // Lever L2; default ON, kill-switch via worldserver.config
+}
+
 MovementParameters MovementParameters::sensibleDefaults() {
   return MovementParameters(Root::singleton().assets()->json("/default_movement.config").toObject());
 }
@@ -1075,11 +1079,25 @@ void MovementController::updatePositionInterpolators() {
 }
 
 void MovementController::queryCollisions(RectF const& region) {
-  while (!m_workingCollisions.empty()) {
-    m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+  // Lever L2: in-place "arena" reuse of m_workingCollisions instead of draining the
+  // whole list into m_collisionBuffers and refilling it every query. When enabled,
+  // overwrite the persistent slots [0,live) in place (each keeps its poly vector
+  // capacity), append only past the high-water mark, then trim any excess back into
+  // the recycle pool at the end -- leaving m_workingCollisions == the live set in the
+  // SAME fill order, so contents are byte-identical and collisionMove/collisionSeparate
+  // are untouched. The OFF path is the original drain/refill verbatim (kill-switch).
+  bool const arena = CollisionArena::enabled.load(std::memory_order_relaxed);  // read ONCE per query
+  if (!arena) {
+    while (!m_workingCollisions.empty()) {
+      m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+    }
   }
 
-  auto newCollisionPoly = [this]() -> CollisionPoly& {
+  size_t live = 0;
+  auto newCollisionPoly = [&]() -> CollisionPoly& {
+    if (arena && live < m_workingCollisions.size())
+      return m_workingCollisions[live++];   // overwrite a persistent slot in place
+    ++live;
     if (!m_collisionBuffers.empty())
       return m_workingCollisions.emplaceAppend(CollisionPoly{
           m_collisionBuffers.takeLast(), {}, {}, {}, {}, {}
@@ -1132,6 +1150,14 @@ void MovementController::queryCollisions(RectF const& region) {
     collisionPoly.collisionKind = mc.collisionKind;
     return true;
   });
+
+  if (arena) {
+    // Trim slots beyond the live set back into the recycle pool (preserving their
+    // poly vector capacity), so m_workingCollisions == [0,live) in fill order --
+    // byte-identical to what the drain/refill path leaves for collisionMove.
+    while (m_workingCollisions.size() > live)
+      m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+  }
 }
 
 float MovementController::gravity() {

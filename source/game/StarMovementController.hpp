@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "StarJson.hpp"
 #include "StarMaybe.hpp"
 #include "StarNetElementSystem.hpp"
@@ -11,6 +13,19 @@ namespace Star {
 STAR_EXCEPTION(MovementControllerException, StarException);
 
 STAR_CLASS(MovementController);
+
+// Process-global gate for the Lever-L2 collision-poly arena (in-place reuse of
+// MovementController::m_workingCollisions instead of per-query drain/refill).
+// Default ON; set from worldserver.config in WorldServer::init. Mirrors the
+// EntityDormancy / NetElementEarlyOut file-static atomic pattern -- MovementController
+// has no clean config access and runs per-entity on both client and server, so the
+// static default {true} keeps the lever ON everywhere (incl. pure remote clients) and
+// the host worldserver.config provides the launch-time kill-switch. Byte-identical to
+// OFF either way (the arena reproduces the drain/refill result exactly; verified by
+// adversarial review); the flag is the structural kill-switch + a live A/B toggle.
+namespace CollisionArena {
+  extern std::atomic<bool> enabled;
+}
 
 // List of all movement parameters that define a specific sort of movable
 // object.  Each parameter is optional so that this structure can be used to
