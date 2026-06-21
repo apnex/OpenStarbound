@@ -160,7 +160,7 @@ void Object::init(World* world, EntityId entityId, EntityMode mode) {
   // that is not loaded yet.
   if (m_orientationIndex == NPos) {
     updateOrientation();
-  } else if (auto orientation = currentOrientation()) {
+  } else if (auto const& orientation = currentOrientation()) {
     // update direction in case orientation config direction has changed
     if (orientation->directionAffinity)
       m_direction.set(*orientation->directionAffinity);
@@ -285,7 +285,7 @@ List<LightSource> Object::lightSources() const {
   List<LightSource> lights;
   lights.appendAll(m_networkedAnimator->lightSources(position() + m_animationPosition));
 
-  auto orientation = currentOrientation();
+  auto const& orientation = currentOrientation();
   if (!m_lightSourceColor.get().isClear() && orientation) {
     Color color = m_lightSourceColor.get();
     if (m_lightFlickering)
@@ -310,7 +310,7 @@ Vec2F Object::position() const {
 }
 
 RectF Object::metaBoundBox() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     // default metaboundbox extends the bounding box of the orientation's
     // spaces by one block
     return orientation->metaBoundBox.value(RectF(Vec2F(orientation->boundBox.min()) - Vec2F(1, 1), Vec2F(orientation->boundBox.max()) + Vec2F(2, 2)));
@@ -358,7 +358,7 @@ void Object::setDirection(Direction direction) {
 
 void Object::updateOrientation() {
   setOrientationIndex(m_config->findValidOrientation(world(), tilePosition(), m_direction.get()));
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (orientation->directionAffinity)
       m_direction.set(*orientation->directionAffinity);
     m_materialSpaces.set(orientation->materialSpaces);
@@ -367,7 +367,7 @@ void Object::updateOrientation() {
 }
 
 List<Vec2I> Object::anchorPositions() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     List<Vec2I> positions;
     for (auto anchor : orientation->anchors)
       positions.append(anchor.position + tilePosition());
@@ -378,19 +378,21 @@ List<Vec2I> Object::anchorPositions() const {
 }
 
 List<Vec2I> Object::spaces() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return orientation->spaces;
   else
     return {};
 }
 
-List<MaterialSpace> Object::materialSpaces() const {
+List<MaterialSpace> const& Object::materialSpaces() const {
+  // m_materialSpaces.get() already returns const&; the prior by-value return forced
+  // a full vector copy per tile-entity per tick that the sole caller discards.
   return m_materialSpaces.get();
 }
 
 List<Vec2I> Object::roots() const {
   if (m_config->rooting) {
-    if (auto orientation = currentOrientation()) {
+    if (auto const& orientation = currentOrientation()) {
       List<Vec2I> res;
       for (auto anchor : orientation->anchors)
         res.append(anchor.position);
@@ -426,7 +428,7 @@ void Object::update(float dt, uint64_t currentStep) {
     if (m_liquidCheckTimer.wrapTick(gap * GlobalTimestep))
       checkLiquidBroken();
 
-    if (auto orientation = currentOrientation()) {
+    if (auto const& orientation = currentOrientation()) {
       auto frame = clamp<int>(std::floor(m_animationTimer / orientation->animationCycle * orientation->frames), 0, orientation->frames - 1);
       if (m_currentFrame != frame) {
         m_currentFrame = frame;
@@ -489,7 +491,7 @@ Maybe<uint64_t> Object::nextEngineWakeStep(uint64_t currentStep) const {
 
   // 4. Orientation frame animation: live only when the orientation has > 1 frame
   //    (frames == 1 settles on frame 0 and never changes).
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (orientation->frames > 1 && orientation->animationCycle > 0.0f)
       fold(currentStep + 1);
   }
@@ -551,7 +553,7 @@ bool Object::canBeDamaged() const {
 
 bool Object::checkBroken() {
   if (!m_broken && !m_unbreakable) {
-    auto orientation = currentOrientation();
+    auto const& orientation = currentOrientation();
     if (orientation) {
       if (!orientation->anchorsValid(world(), tilePosition()))
         m_broken = true;
@@ -674,11 +676,14 @@ String Object::category() const {
   return m_config->category;
 }
 
-ObjectOrientationPtr Object::currentOrientation() const {
+ObjectOrientationPtr const& Object::currentOrientation() const {
+  // Reference into construction-stable storage (the orientations list is assigned
+  // once in the ctor / is the immutable Root config list), so returning by const&
+  // does not dangle and only elides the per-call atomic shared_ptr copy.
   if (m_orientationIndex != NPos)
-    return const_cast<ObjectOrientationPtr&>(getOrientations().at(m_orientationIndex));
-  else
-    return {};
+    return getOrientations().at(m_orientationIndex);
+  static ObjectOrientationPtr const empty;
+  return empty;
 }
 
 List<Drawable> Object::cursorHintDrawables() const {
@@ -744,7 +749,7 @@ StringSet Object::turnInQuests() const {
 }
 
 Vec2F Object::questIndicatorPosition() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto pos = position() + Vec2F(orientation->boundBox.center()[0], orientation->boundBox.max()[1] + 2.5);
     if (!(orientation->boundBox.size()[0] % 2))
       pos[0] += 0.5;
@@ -768,7 +773,7 @@ Maybe<Json> Object::receiveMessage(ConnectionId sendingConnection, String const&
 }
 
 Json Object::configValue(String const& name, Json const& def) const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return jsonMergeQueryDef(name, def, m_config->config, orientation->config, m_parameters.baseMap());
   else
     return jsonMergeQueryDef(name, def, m_config->config, m_parameters.baseMap());
@@ -982,7 +987,7 @@ void Object::setImageKey(String const& name, String const& value) {
 
 void Object::resetEmissionTimers() {
   m_emissionTimers.clear();
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     for (size_t i = 0; i < orientation->particleEmitters.size(); i++)
       m_emissionTimers.append(GameTimer());
 }
@@ -996,7 +1001,7 @@ void Object::setOrientationIndex(size_t orientationIndex) {
 }
 
 PolyF Object::volume() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     RectF box = RectF(orientation->boundBox);
     box.max()[0]++;
     box.max()[1]++;
@@ -1007,7 +1012,7 @@ PolyF Object::volume() const {
 }
 
 float Object::liquidFillLevel() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return spacesLiquidFillLevel(orientation->spaces);
 
   return 0;
@@ -1224,7 +1229,7 @@ LuaCallbacks Object::makeAnimatorObjectCallbacks() {
 List<DamageSource> Object::damageSources() const {
   auto damageSources = m_damageSources.get();
 
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     Json touchDamageConfig = jsonMerge(m_config->touchDamageConfig, orientation->touchDamageConfig);
     if (!touchDamageConfig.isNull()) {
       DamageSource ds(touchDamageConfig);
@@ -1242,7 +1247,7 @@ List<PersistentStatusEffect> Object::statusEffects() const {
 }
 
 PolyF Object::statusEffectArea() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (orientation->statusEffectArea)
       return orientation->statusEffectArea.get();
   }
@@ -1299,7 +1304,7 @@ List<DamageNotification> Object::applyDamage(DamageRequest const& damage) {
 }
 
 RectF Object::interactiveBoundBox() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto rect = RectF(orientation->boundBox);
     rect.setMax(Vec2F(orientation->boundBox.xMax() + 1, orientation->boundBox.yMax() + 1));
     return rect;
@@ -1335,7 +1340,7 @@ InteractAction Object::interact(InteractRequest const& request) {
 }
 
 List<Vec2I> Object::interactiveSpaces() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (auto iSpaces = orientation->interactiveSpaces)
       return *iSpaces;
   }
@@ -1355,7 +1360,7 @@ Maybe<LuaValue> Object::evalScript(String const& code) {
 }
 
 Vec2F Object::mouthPosition() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto pos = position() + Vec2F(orientation->boundBox.center()[0], orientation->boundBox.max()[1]);
     if (!(orientation->boundBox.size()[0] % 2))
       pos[0] += 0.5;
@@ -1446,7 +1451,7 @@ List<Drawable> Object::orientationDrawables(size_t orientationIndex) const {
 }
 
 EntityRenderLayer Object::renderLayer() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return orientation->renderLayer;
   else
     return RenderLayerObject;
@@ -1460,7 +1465,7 @@ void Object::renderParticles(RenderCallback* renderCallback) {
   if (!inWorld())
     return;
 
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (m_emissionTimers.size() != orientation->particleEmitters.size())
       resetEmissionTimers();
 
