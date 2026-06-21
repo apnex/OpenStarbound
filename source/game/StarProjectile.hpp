@@ -57,6 +57,7 @@ public:
   void destroy(RenderCallback* renderCallback) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: time-varying windup, no O(1) hook — never skipped
   void hitOther(EntityId targetEntityId, DamageRequest const& dr) override;
 
   void update(float dt, uint64_t currentStep) override;

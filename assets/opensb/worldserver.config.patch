@@ -40,6 +40,13 @@
   // still compute it for rendering). Kill-switch + A/B toggle.
   "plantWindServerSkip" : true,
 
+  // Lever L-DMG-SKIP-0: skip the per-tick DamageManager damageSources() query for
+  // entities that provably have none (Entity::hasDamageSources()==false: the
+  // statically-empty types ItemDrop/Plant/PlantDrop/Stagehand, which dominate FU
+  // entity counts). DEFAULT-ON; byte-equivalent (the skipped call returns {} and
+  // mutates nothing). Kill-switch + live A/B toggle.
+  "damageSourceSkipEnabled" : true,
+
   // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
   // any entity may stay dormant: a {}-horizon (sleep-until-external-wake) or an
   // over-cap horizon is clamped to a wake near this cap, staggered per-entity so the

@@ -19,6 +19,7 @@
 #include "StarItemBag.hpp"
 #include "StarPhysicsEntity.hpp"
 #include "StarProjectile.hpp"
+#include "StarDamageManager.hpp"
 #include "StarPlayer.hpp"
 #include "StarEntityFactory.hpp"
 #include "StarBiomeDatabase.hpp"
@@ -1617,6 +1618,10 @@ void WorldServer::init(bool firstTime) {
   // Lever L-WIND-A: skip the render-only plant-wind dead store on the server
   // (process-global, default ON; byte-identical, kill-switch + A/B toggle).
   PlantWind::serverSkip.store(m_serverConfig.getBool("plantWindServerSkip", true), std::memory_order_relaxed);
+  // Lever L-DMG-SKIP-0: skip the per-tick DamageManager damageSources() query for
+  // provably-empty entities (process-global, default ON; byte-equivalent, kill-switch
+  // + live A/B toggle).
+  DamageSourceSkip::enabled.store(m_serverConfig.getBool("damageSourceSkipEnabled", true), std::memory_order_relaxed);
   // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
   // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
   // always a genuine future step. Read here (not process-global) since it's a per-world

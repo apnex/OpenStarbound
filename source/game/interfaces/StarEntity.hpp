@@ -183,6 +183,12 @@ public:
   // All damage sources for this frame.
   virtual List<DamageSource> damageSources() const;
 
+  // Cheap conservative predicate (L-DMG-SKIP-0): MUST return true whenever
+  // damageSources() could be non-empty (a strict superset; false ONLY when provably
+  // empty). Lets DamageManager skip the per-tick damageSources() call for the
+  // statically-empty majority. Base = false (Entity::damageSources() == {}).
+  virtual bool hasDamageSources() const;
+
   // Return the damage that would result from being hit by the given damage
   // source.  Will be called on master and slave entities.  Culling based on
   // team damage and self damage will be done outside of this query.

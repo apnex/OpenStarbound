@@ -8,6 +8,10 @@
 
 namespace Star {
 
+namespace DamageSourceSkip {
+  std::atomic<bool> enabled{true};
+}
+
 ConnectionId RemoteHitRequest::destinationConnection() const {
   return connectionForEntity(causingEntityId);
 }
@@ -76,7 +80,14 @@ void DamageManager::update(float dt) {
       damageIt.remove();
   }
 
+  // Lever L-DMG-SKIP-0: read the kill-switch once per tick.
+  bool const skipEmptyDamageSources = DamageSourceSkip::enabled.load(std::memory_order_relaxed);
   m_world->forAllEntities([&](EntityPtr const& causingEntity) {
+    // Skip the per-entity damageSources() query when the entity provably has none
+    // (hasDamageSources() conservatively over-covers any non-empty result). The
+    // braceless if governs the entire for-statement; the selfDamageNotifications()
+    // loop below is intentionally NOT gated (self-inflicted DoT/status must run).
+    if (!skipEmptyDamageSources || causingEntity->hasDamageSources())
     for (auto& damageSource : causingEntity->damageSources()) {
       if (damageSource.trackSourceEntity)
         damageSource.translate(causingEntity->position());

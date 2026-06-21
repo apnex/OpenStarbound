@@ -85,6 +85,7 @@ public:
   List<DamageNotification> selfDamageNotifications() override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0 (exact predicate = deferred L-DMG-SKIP-2)
 
   bool shouldDie();
   void knockout();

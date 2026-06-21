@@ -89,6 +89,10 @@ List<DamageSource> Entity::damageSources() const {
   return {};
 }
 
+bool Entity::hasDamageSources() const {
+  return false;
+}
+
 void Entity::hitOther(EntityId, DamageRequest const&) {}
 
 void Entity::damagedOther(DamageNotification const&) {}
