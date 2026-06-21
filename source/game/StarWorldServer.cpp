@@ -1880,7 +1880,11 @@ void WorldServer::updateTileEntityTiles(TileEntity* entity, bool removing, bool 
 
   auto& spaces = m_tileEntitySpaces[entity->entityId()];
 
-  List<MaterialSpace> newMaterialSpaces = removing ? List<MaterialSpace>() : entity->materialSpaces();
+  // L-OBJ-2: bind by const& (both arms lvalues) so the common non-removing path is a
+  // zero-copy reference into the entity's stored material spaces. Read-only below
+  // (compared at :==, iterated into a separate passedSpaces; never mutated/moved).
+  static List<MaterialSpace> const emptyMaterialSpaces;
+  List<MaterialSpace> const& newMaterialSpaces = removing ? emptyMaterialSpaces : entity->materialSpaces();
   List<Vec2I> newRoots = removing || entity->ephemeral() ? List<Vec2I>() : entity->roots();
 
   if (!removing && spaces.materials == newMaterialSpaces && spaces.roots == newRoots)

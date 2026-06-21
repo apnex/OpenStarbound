@@ -90,7 +90,9 @@ public:
   virtual Vec2I tilePosition() const override;
 
   virtual List<Vec2I> spaces() const override;
-  virtual List<MaterialSpace> materialSpaces() const override;
+  // L-OBJ-2: const& (was by-value) — m_materialSpaces.get() already yields a const&;
+  // the by-value return forced a discarded per-tick vector copy at the sole caller.
+  virtual List<MaterialSpace> const& materialSpaces() const override;
   virtual List<Vec2I> roots() const override;
 
   Direction direction() const;
@@ -108,7 +110,11 @@ public:
   String shortDescription() const;
   String category() const;
 
-  virtual ObjectOrientationPtr currentOrientation() const;
+  // L-OBJ-1: returns the resolved orientation by const& (was by-value, costing an
+  // atomic shared_ptr refcount inc/dec on a function resolved 3-4x/object/tick).
+  // De-virtualized: declared only here, never overridden, never dispatched via a
+  // base pointer (verified) -> non-virtual lets intra-TU calls inline (LTO is off).
+  ObjectOrientationPtr const& currentOrientation() const;
 
   virtual List<PersistentStatusEffect> statusEffects() const override;
   virtual PolyF statusEffectArea() const override;
