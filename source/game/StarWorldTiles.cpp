@@ -32,10 +32,6 @@ ServerTile::ServerTile(ServerTile const& serverTile) : WorldTile() {
   *this = serverTile;
 }
 
-bool ServerTile::isColliding(CollisionSet const& collisionSet) const {
-  return Star::isColliding(getCollision(), collisionSet);
-}
-
 ServerTile& ServerTile::operator=(ServerTile const& serverTile) {
   WorldTile::operator=(serverTile);
 
@@ -121,15 +117,6 @@ bool ServerTile::updateObjectCollision(CollisionKind kind) {
     return true;
   }
   return false;
-}
-
-CollisionKind ServerTile::getCollision() const {
-  CollisionKind kind = collision;
-  if (objectCollision != CollisionKind::None
-      && (objectCollision != CollisionKind::Platform || kind == CollisionKind::None)) {
-    kind = objectCollision;
-  }
-  return kind;
 }
 
 PredictedTile::operator bool() const {

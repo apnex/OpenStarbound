@@ -860,6 +860,15 @@ MovementController::CollisionResult MovementController::collisionMove(List<Colli
   if (body.isNull())
     return {movement, Vec2F(), {}, false, false, Vec2F(1, 0), CollisionKind::None};
 
+  // Lever L5: the per-poly sort key (squared distance to sortCenter) is a pure
+  // function of sortPosition (set in queryCollisions, never mutated here) and the
+  // constant sortCenter, so compute it ONCE here instead of redundantly in each of
+  // the up-to-7 collisionSeparate calls below. The per-call sort is kept verbatim
+  // (its unstable re-sort sequence is load-bearing) and now sees byte-identical
+  // sortDistance values -> byte-identical result.
+  for (auto& cp : collisionPolys)
+    cp.sortDistance = vmagSquared(cp.sortPosition - sortCenter);
+
   PolyF translatedBody = body;
   translatedBody.translate(movement);
   PolyF checkBody = translatedBody;
@@ -989,15 +998,14 @@ MovementController::CollisionResult MovementController::collisionMove(List<Colli
 }
 
 MovementController::CollisionSeparation MovementController::collisionSeparate(List<CollisionPoly>& collisionPolys, PolyF const& poly,
-    bool ignorePlatforms, float maximumPlatformCorrection, Vec2F const& sortCenter, bool upward, float separationTolerance) {
+    bool ignorePlatforms, float maximumPlatformCorrection, Vec2F const& /*sortCenter: precomputed in collisionMove (L5)*/, bool upward, float separationTolerance) {
 
   CollisionSeparation separation = {};
   separation.collisionKind = CollisionKind::None;
   bool intersects = false;
 
-  for (auto& cp : collisionPolys)
-    cp.sortDistance = vmagSquared(cp.sortPosition - sortCenter);
-
+  // sortDistance is precomputed once per move in collisionMove (Lever L5); the
+  // sort below still runs every call (its unstable re-sort order is load-bearing).
   sort(collisionPolys, [](auto const& a, auto const& b) {
       return a.sortDistance < b.sortDistance;
     });
