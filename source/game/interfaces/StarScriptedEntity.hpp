@@ -10,6 +10,8 @@ STAR_CLASS(ScriptedEntity);
 // All ScriptedEntity methods should only be called on master entities
 class ScriptedEntity : public virtual Entity {
 public:
+  ScriptedEntity* asScriptedEntity() override { return this; }
+
   // Call a script function directly with the given arguments, should return
   // nothing only on failure.
   virtual Maybe<LuaValue> callScript(String const& func, LuaVariadic<LuaValue> const& args) = 0;

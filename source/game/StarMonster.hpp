@@ -47,6 +47,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {});
 
   EntityType entityType() const override;
+  Monster* asMonster() override { return this; }
   ClientEntityMode clientEntityMode() const override;
 
   void init(World* world, EntityId entityId, EntityMode mode) override;

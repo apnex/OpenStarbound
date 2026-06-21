@@ -35,6 +35,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {}) const;
 
   EntityType entityType() const override;
+  ItemDrop* asItemDrop() override { return this; }
 
   void init(World* world, EntityId entityId, EntityMode mode) override;
   void uninit() override;
