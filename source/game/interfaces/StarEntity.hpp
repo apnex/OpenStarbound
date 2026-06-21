@@ -30,6 +30,7 @@ STAR_CLASS(PhysicsEntity);
 STAR_CLASS(ScriptedEntity);
 STAR_CLASS(InspectableEntity);
 STAR_CLASS(ChattyEntity);
+STAR_CLASS(InteractiveEntity);
 
 STAR_EXCEPTION(EntityException, StarException);
 
@@ -104,6 +105,11 @@ public:
   // identical to as<T>() but without the RTTI traversal; the entity-query
   // templates dispatch to these via entityCast<T>() (below). Any type WITHOUT an
   // override here stays byte-identical to as<T>() (entityCast falls back to it).
+  // INVARIANT: equivalence with dynamic_cast holds only because every accessor
+  // target is reached by *public virtual* inheritance with a single subobject of
+  // that type. A future class reaching one of these via a private/protected base,
+  // or via two non-virtual subobjects, would make asX() and dynamic_cast disagree
+  // (the latter case fails loud at compile time as an ambiguous final overrider).
   virtual TileEntity* asTileEntity() { return nullptr; }
   virtual WireEntity* asWireEntity() { return nullptr; }
   virtual Object* asObject() { return nullptr; }
@@ -117,6 +123,7 @@ public:
   virtual ScriptedEntity* asScriptedEntity() { return nullptr; }
   virtual InspectableEntity* asInspectableEntity() { return nullptr; }
   virtual ChattyEntity* asChattyEntity() { return nullptr; }
+  virtual InteractiveEntity* asInteractiveEntity() { return nullptr; }
 
   // Called when an entity is first inserted into a World.  Calling base class
   // init sets the world pointer, entityId, and entityMode.
@@ -363,6 +370,7 @@ STAR_ENTITY_DOWNCAST(PhysicsEntity, asPhysicsEntity)
 STAR_ENTITY_DOWNCAST(ScriptedEntity, asScriptedEntity)
 STAR_ENTITY_DOWNCAST(InspectableEntity, asInspectableEntity)
 STAR_ENTITY_DOWNCAST(ChattyEntity, asChattyEntity)
+STAR_ENTITY_DOWNCAST(InteractiveEntity, asInteractiveEntity)
 #undef STAR_ENTITY_DOWNCAST
 
 // Drop-in replacement for as<T>(EntityPtr) on the query hot paths. Templated on

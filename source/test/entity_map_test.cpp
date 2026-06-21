@@ -6,6 +6,8 @@
 #include "StarInspectableEntity.hpp"
 #include "StarScriptedEntity.hpp"
 #include "StarPhysicsEntity.hpp"
+#include "StarInteractiveEntity.hpp"
+#include "StarTileEntity.hpp"
 
 #include "gtest/gtest.h"
 
@@ -109,7 +111,8 @@ class QueryMixinEntity
   : public virtual Entity,
     public virtual InspectableEntity,
     public virtual ScriptedEntity,
-    public virtual PhysicsEntity {
+    public virtual PhysicsEntity,
+    public virtual InteractiveEntity {
 public:
   QueryMixinEntity(EntityId id, RectF const& worldRect) {
     m_position = worldRect.min();
@@ -121,15 +124,39 @@ public:
   Vec2F position() const override { return m_position; }
   RectF metaBoundBox() const override { return m_relBox; }
 
-  // ScriptedEntity's only pure virtuals; never called by the query path.
+  // ScriptedEntity / InteractiveEntity pure virtuals; never called by the query path.
   Maybe<LuaValue> callScript(String const&, LuaVariadic<LuaValue> const&) override { return {}; }
   Maybe<LuaValue> evalScript(String const&) override { return {}; }
+  InteractAction interact(InteractRequest const&) override { return {}; }
 
   Vec2F m_position;
   RectF m_relBox;
 };
 
 typedef shared_ptr<QueryMixinEntity> QueryMixinEntityPtr;
+
+// Synthetic TileEntity: exercises asTileEntity / asInteractiveEntity on the
+// deeper TileEntity -> InteractiveEntity -> Entity virtual diamond (a TileEntity
+// is also an InteractiveEntity), the case the StarEntityMap atTile/tileIsOccupied
+// de-RTTI relies on. tilePosition/setTilePosition/checkBroken are TileEntity's
+// only pure virtuals; entityType/metaBoundBox are Entity's.
+class QueryTileTestEntity : public virtual TileEntity {
+public:
+  QueryTileTestEntity(EntityId id, RectF const& worldRect) {
+    m_relBox = RectF(Vec2F(), worldRect.size());
+    m_tilePos = Vec2I(worldRect.min().floor());
+    init(reinterpret_cast<World*>(0x1), id, EntityMode::Master);
+  }
+
+  EntityType entityType() const override { return EntityType::Object; }
+  RectF metaBoundBox() const override { return m_relBox; }
+  Vec2I tilePosition() const override { return m_tilePos; }
+  void setTilePosition(Vec2I const& pos) override { m_tilePos = pos; }
+  bool checkBroken() override { return false; }
+
+  RectF m_relBox;
+  Vec2I m_tilePos;
+};
 
 }  // namespace
 
@@ -351,12 +378,15 @@ TEST(EntityMap, ReentrantForEachEntity) {
 // objects (including nulls) dynamic_pointer_cast does, and that EntityMap::query<T>
 // (which now uses entityCast internally) returns the identical result.
 //
-// QueryMixinEntity derives the real interface mixins so dynamic_cast<T> genuinely
-// succeeds and the accessor override returns `this`; plain QueryTestEntity derives
-// none of them, exercising the null path. The concrete-leaf accessors (asObject/
-// asMonster/...) are one-line `return this` overrides validated structurally and by
-// the compiler's return-type check on the EntityDowncast wiring -- instantiating
-// real Objects/Monsters needs a full Root + databases and is out of scope here.
+// QueryMixinEntity derives the real interface mixins (Inspectable/Scripted/
+// Physics/Interactive) and QueryTileTestEntity derives TileEntity (which also
+// makes it Interactive, via the TileEntity->InteractiveEntity diamond), so
+// dynamic_cast<T> genuinely succeeds and the accessor override returns `this`;
+// plain QueryTestEntity derives none of them, exercising the null path. The
+// concrete-leaf accessors (asObject/asMonster/...) are one-line `return this`
+// overrides validated structurally and by the compiler's return-type check on the
+// EntityDowncast wiring -- instantiating real Objects/Monsters needs a full Root +
+// databases and is out of scope here.
 TEST(EntityMap, VirtualAccessorEquivalence) {
   EntityMap map(TestWorldSize, MinServerEntityId, MaxServerEntityId);
   Map<EntityId, EntityPtr> world;
@@ -369,38 +399,61 @@ TEST(EntityMap, VirtualAccessorEquivalence) {
     world[id] = e;
     return e;
   };
+  auto addTile = [&](RectF r) {
+    EntityId id = map.reserveEntityId();
+    auto e = make_shared<QueryTileTestEntity>(id, r);
+    map.addEntity(e);
+    world[id] = e;
+    return e;
+  };
   auto addPlain = [&](RectF r) {
     auto e = addEntityAt(map, r);
     world[e->entityId()] = e;
     return e;
   };
 
-  // Interleave the two kinds across an interior window.
+  // Interleave the three kinds across an interior window. Mixin entities are
+  // Inspectable/Scripted/Physics/Interactive; tile entities are TileEntity (and
+  // thus Interactive, via the diamond); plain entities are none of them.
   int const MixinCount = 10;
+  int const TileCount = 6;
   for (int i = 0; i < MixinCount; ++i) {
     addMixin(RectF(Base + i * 5.0f, Base + i * 3.0f, Base + i * 5.0f + 4, Base + i * 3.0f + 4));
     addPlain(RectF(Base + i * 4.0f + 2, Base + i * 6.0f, Base + i * 4.0f + 6, Base + i * 6.0f + 5));
   }
+  for (int i = 0; i < TileCount; ++i)
+    addTile(RectF(Base + i * 7.0f + 1, Base + i * 2.0f + 3, Base + i * 7.0f + 5, Base + i * 2.0f + 7));
 
   // (A) Decisive: entityCast<T> picks the EXACT same object (incl. null) as
   // as<T> = dynamic_pointer_cast<T>, for every entity and every accessored T.
-  size_t mixinHits = 0;
+  size_t inspHits = 0, tileHits = 0, interactiveHits = 0;
   for (auto const& p : world) {
     EntityPtr const& e = p.second;
     EXPECT_EQ(entityCast<InspectableEntity>(e).get(), as<InspectableEntity>(e).get());
     EXPECT_EQ(entityCast<ScriptedEntity>(e).get(), as<ScriptedEntity>(e).get());
     EXPECT_EQ(entityCast<PhysicsEntity>(e).get(), as<PhysicsEntity>(e).get());
+    EXPECT_EQ(entityCast<InteractiveEntity>(e).get(), as<InteractiveEntity>(e).get());
+    EXPECT_EQ(entityCast<TileEntity>(e).get(), as<TileEntity>(e).get());
     EXPECT_EQ((bool)entityCast<InspectableEntity>(e), (bool)as<InspectableEntity>(e));
+    EXPECT_EQ((bool)entityCast<InteractiveEntity>(e), (bool)as<InteractiveEntity>(e));
+    EXPECT_EQ((bool)entityCast<TileEntity>(e), (bool)as<TileEntity>(e));
     // Identity/upcast fast-path: entityCast<Entity> is exactly the same pointer.
     EXPECT_EQ(entityCast<Entity>(e).get(), e.get());
-    if (as<InspectableEntity>(e))
-      ++mixinHits;
+    if (as<InspectableEntity>(e)) ++inspHits;
+    if (as<TileEntity>(e)) ++tileHits;
+    if (as<InteractiveEntity>(e)) ++interactiveHits;
   }
-  EXPECT_EQ(mixinHits, (size_t)MixinCount) << "expected the mixin entities to dynamic_cast to InspectableEntity";
+  // Confirms the positive paths actually run (not a vacuous all-null test):
+  // mixins are Inspectable; tiles are TileEntity; both are Interactive.
+  EXPECT_EQ(inspHits, (size_t)MixinCount);
+  EXPECT_EQ(tileHits, (size_t)TileCount);
+  EXPECT_EQ(interactiveHits, (size_t)(MixinCount + TileCount));
 
   // (D) null in -> empty out (matches as<>(null)).
   EXPECT_FALSE((bool)entityCast<InspectableEntity>(EntityPtr{}));
   EXPECT_FALSE((bool)entityCast<ScriptedEntity>(EntityPtr{}));
+  EXPECT_FALSE((bool)entityCast<TileEntity>(EntityPtr{}));
+  EXPECT_FALSE((bool)entityCast<InteractiveEntity>(EntityPtr{}));
   EXPECT_FALSE((bool)entityCast<Entity>(EntityPtr{}));
 
   // (B) End-to-end: EntityMap::query<T> (now internally entityCast) returns the
@@ -410,18 +463,23 @@ TEST(EntityMap, VirtualAccessorEquivalence) {
   for (RectF q : {RectF(Base - 20, Base - 20, Base + 90, Base + 90),  // mixed
                   RectF(Base, Base, Base + 20, Base + 20),            // partial
                   RectF(Base + 300, Base + 300, Base + 360, Base + 360)}) {  // empty
-    List<EntityId> inspTemplate, inspDynamic, scriptTemplate, scriptDynamic;
+    List<EntityId> inspTemplate, inspDynamic, tileTemplate, tileDynamic, interTemplate, interDynamic;
     for (auto const& x : map.query<InspectableEntity>(q))
       inspTemplate.append(x->entityId());
-    for (auto const& x : map.query<ScriptedEntity>(q))
-      scriptTemplate.append(x->entityId());
+    for (auto const& x : map.query<TileEntity>(q))
+      tileTemplate.append(x->entityId());
+    for (auto const& x : map.query<InteractiveEntity>(q))
+      interTemplate.append(x->entityId());
     for (auto const& e : map.entityQuery(q)) {
       if (as<InspectableEntity>(e))
         inspDynamic.append(e->entityId());
-      if (as<ScriptedEntity>(e))
-        scriptDynamic.append(e->entityId());
+      if (as<TileEntity>(e))
+        tileDynamic.append(e->entityId());
+      if (as<InteractiveEntity>(e))
+        interDynamic.append(e->entityId());
     }
     EXPECT_EQ(inspTemplate, inspDynamic) << "query<InspectableEntity> diverged from dynamic_cast for " << q;
-    EXPECT_EQ(scriptTemplate, scriptDynamic) << "query<ScriptedEntity> diverged from dynamic_cast for " << q;
+    EXPECT_EQ(tileTemplate, tileDynamic) << "query<TileEntity> diverged from dynamic_cast for " << q;
+    EXPECT_EQ(interTemplate, interDynamic) << "query<InteractiveEntity> diverged from dynamic_cast for " << q;
   }
 }
