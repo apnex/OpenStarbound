@@ -33,6 +33,13 @@
   // This flag is the kill-switch + a live A/B toggle (flip OFF vs ON in dev to compare).
   "collisionArenaEnabled" : true,
 
+  // Lever L-WIND-A: skip the render-only plant wind computation on the SERVER. The
+  // per-plant m_windTime/m_windLevel (a tile lookup + fmod, ~1.85% of the exploring
+  // WST) feed ONLY Plant render sway and are never networked, so on the server
+  // (which never renders) they are a dead store. DEFAULT-ON; byte-identical (clients
+  // still compute it for rendering). Kill-switch + A/B toggle.
+  "plantWindServerSkip" : true,
+
   // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
   // any entity may stay dormant: a {}-horizon (sleep-until-external-wake) or an
   // over-cap horizon is clamped to a wake near this cap, staggered per-entity so the

@@ -1,6 +1,7 @@
 #include "StarWorldServer.hpp"
 #include "StarNetElement.hpp"
 #include "StarMovementController.hpp"
+#include "StarPlant.hpp"
 #include "StarLogging.hpp"
 #include "StarIterator.hpp"
 #include "StarDataStreamExtra.hpp"
@@ -1613,6 +1614,9 @@ void WorldServer::init(bool firstTime) {
   // to OFF, kill-switch only). MovementController has no config access, so set the
   // process-global here.
   CollisionArena::enabled.store(m_serverConfig.getBool("collisionArenaEnabled", true), std::memory_order_relaxed);
+  // Lever L-WIND-A: skip the render-only plant-wind dead store on the server
+  // (process-global, default ON; byte-identical, kill-switch + A/B toggle).
+  PlantWind::serverSkip.store(m_serverConfig.getBool("plantWindServerSkip", true), std::memory_order_relaxed);
   // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
   // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
   // always a genuine future step. Read here (not process-global) since it's a per-world
