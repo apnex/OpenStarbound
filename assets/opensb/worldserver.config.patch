@@ -26,6 +26,13 @@
   "entityDormancyEnabled" : true,
   "entityDormancyValidate" : false,
 
+  // Lever L2: collision-poly arena — in-place reuse of MovementController's working
+  // collision list instead of draining/refilling it every query. DEFAULT-ON and
+  // byte-identical to OFF (the arena reproduces the drain/refill contents+order
+  // exactly; verified by perspective-diverse adversarial review = BYTE_IDENTICAL).
+  // This flag is the kill-switch + a live A/B toggle (flip OFF vs ON in dev to compare).
+  "collisionArenaEnabled" : true,
+
   // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
   // any entity may stay dormant: a {}-horizon (sleep-until-external-wake) or an
   // over-cap horizon is clamped to a wake near this cap, staggered per-entity so the
