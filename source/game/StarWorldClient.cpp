@@ -615,14 +615,14 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       }
 
       if (m_interactiveHighlightMode || (!inspecting && entity->entityId() == playerAimInteractive)) {
-        if (auto interactive = as<InteractiveEntity>(entity)) {
+        if (auto interactive = entityCast<InteractiveEntity>(entity)) {
           if (interactive->isInteractive()) {
             ed.highlightEffect.type = EntityHighlightEffectType::Interactive;
             ed.highlightEffect.level = pulseLevel;
           }
         }
       } else if (inspecting) {
-        if (auto inspectable = as<InspectableEntity>(entity)) {
+        if (auto inspectable = entityCast<InspectableEntity>(entity)) {
           ed.highlightEffect = m_mainPlayer->inspectionHighlight(inspectable);
           ed.highlightEffect.level *= inspectionFlickerMultiplier;
         }

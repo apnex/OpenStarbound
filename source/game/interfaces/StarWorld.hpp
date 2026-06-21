@@ -251,7 +251,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> World::lineQuery(
     Vec2F const& begin, Vec2F const& end, EntityFilterOf<EntityT> selector) const {
   List<shared_ptr<EntityT>> list;
-  forEachEntityLine(begin, end, [&](EntityPtr entity) {
+  forEachEntityLine(begin, end, [&](EntityPtr const& entity) {
       if (auto e = entityCast<EntityT>(entity)) {
         if (!selector || selector(e))
           list.append(std::move(e));

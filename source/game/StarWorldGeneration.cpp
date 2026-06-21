@@ -560,7 +560,7 @@ void DungeonGeneratorWorld::clearTileEntities(RectI const& bounds, Set<Vec2I> co
           if (positions.contains(geometry.xwrap(pos + tileEntity->tilePosition())))
             return true;
         }
-        if (auto object = as<Object>(entity)) {
+        if (auto object = entityCast<Object>(entity)) {
           for (auto pos : object->anchorPositions()) {
             if (positions.contains(geometry.xwrap(pos)))
               return true;
@@ -1191,11 +1191,11 @@ void WorldGenerator::reapplyBiome(WorldStorage* worldStorage, ServerTileSectorAr
   auto entities = m_worldServer->entityQuery(RectF(sectorTiles.padded(1)));
   List<TileEntityPtr> biomeTileEntities;
   for (auto entity : entities) {
-    if (auto plant = as<Plant>(entity)) {
-      biomeTileEntities.append(as<TileEntity>(entity));
-    } else if (auto object = as<Object>(entity)) {
+    if (auto plant = entityCast<Plant>(entity)) {
+      biomeTileEntities.append(entityCast<TileEntity>(entity));
+    } else if (auto object = entityCast<Object>(entity)) {
       if (object->biomePlaced())
-        biomeTileEntities.append(as<TileEntity>(entity));
+        biomeTileEntities.append(entityCast<TileEntity>(entity));
     }
   }
 
