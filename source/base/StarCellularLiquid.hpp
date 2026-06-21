@@ -529,7 +529,14 @@ template <typename LiquidId>
 typename LiquidCellEngine<LiquidId>::WorkingCell* LiquidCellEngine<LiquidId>::workingCell(Vec2I p) {
   p = m_cellWorld->uniqueLocation(p);
 
-  auto res = m_workingCells.insert(make_pair(p, Maybe<WorkingCell>()));
+  // L-LIQ-A: try_emplace default-constructs the empty Maybe<WorkingCell> sentinel
+  // in place on a miss and skips constructing/moving a throwaway pair on the common
+  // cache-hit path (each tile is touched ~5x: self + 4 neighbour pulls). Byte-identical
+  // to insert(make_pair(p, Maybe<WorkingCell>())): same libstdc++ _Hashtable insertion
+  // path -> identical bucket trajectory + node linking + iteration order; only the
+  // mapped-value construction differs, which is order-irrelevant. (Does NOT touch the
+  // determinism-locked per-tick rehash cost; see plans liquid investigation, task #86.)
+  auto res = m_workingCells.try_emplace(p);
   if (res.second) {
     auto cellData = m_cellWorld->cell(p);
     if (auto flowCell = cellData.template ptr<CellularLiquidFlowCell<LiquidId>>())

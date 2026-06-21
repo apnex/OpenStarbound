@@ -1690,8 +1690,11 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
       return mat;
     };
     for (auto& pair : m_transformationGroups) {
-      for (auto& stateTypeName : m_animatedParts.stateTypes()) {
-        auto& activeState = m_animatedParts.activeState(stateTypeName);
+      // L-ANIM-ITER: direct-iterate state types (priority order) instead of a
+      // per-group stateTypes() keys() alloc + per-iteration activeState(name) hash
+      // lookup. Byte-identical: same freshen set/order, same first-match break.
+      m_animatedParts.forEachStateTypeUntil([&](String const&, AnimatedPartSet::StateType const& stateType) -> bool {
+        auto const& activeState = stateType.activeState;
         if (auto transforms = activeState.properties.ptr(pair.first)) {
           auto mat = processTransforms(pair.second.animationAffineTransform(), transforms->toArray(), activeState.properties);
           if (pair.second.interpolated) {
@@ -1704,9 +1707,10 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
           } else {
             pair.second.setAnimationAffineTransform(mat);
           }
-          break;//we got one with the highest priority so break the loop
+          return true;//we got one with the highest priority so stop the scan
         }
-      }
+        return false;
+      });
     }
   }
 
@@ -1862,12 +1866,24 @@ bool NetworkedAnimator::hasActiveAnimationWork() const {
   //  - Loop never settles; Transition auto-advances the NETTED state index once
   //    its cycle completes (the master must run update() to drive that change);
   //  - an End state is still animating until its timer reaches its cycle.
-  for (auto const& stateType : m_animatedParts.stateTypes()) {
-    auto const& active = m_animatedParts.activeState(stateType);
-    auto const& state = m_animatedParts.getState(stateType, active.stateName);
-    if (state.animationMode != AnimatedPartSet::End || active.timer < state.cycle)
+  // L-ANIM-WAKE: direct-iterate state types instead of a per-call stateTypes()
+  // keys() alloc + activeState(name) (outer hash get) + getState(name,...) (outer
+  // hash get again). Conservative variant -- still resolves the State via the same
+  // states.get(active.stateName) as getState(), so it is byte-identical; only the
+  // redundant outer m_stateTypes lookups and the keys() allocation are removed.
+  // Run once per awake animated object every step (Object::nextEngineWakeStep).
+  bool stillAnimating = false;
+  m_animatedParts.forEachStateTypeUntil([&](String const&, AnimatedPartSet::StateType const& stateType) -> bool {
+    auto const& active = stateType.activeState;
+    auto const& state = *stateType.states.get(active.stateName);
+    if (state.animationMode != AnimatedPartSet::End || active.timer < state.cycle) {
+      stillAnimating = true;
       return true;
-  }
+    }
+    return false;
+  });
+  if (stillAnimating)
+    return true;
 
   // A rotation group still approaching its target (or pending the one-shot snap of
   // a zero-angularVelocity group) advances currentAngle on the next update().
