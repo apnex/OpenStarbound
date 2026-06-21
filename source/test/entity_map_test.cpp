@@ -3,6 +3,9 @@
 #include "StarGameTypes.hpp"
 #include "StarRect.hpp"
 #include "StarMap.hpp"
+#include "StarInspectableEntity.hpp"
+#include "StarScriptedEntity.hpp"
+#include "StarPhysicsEntity.hpp"
 
 #include "gtest/gtest.h"
 
@@ -96,6 +99,37 @@ QueryTestEntityPtr addEntityAt(EntityMap& map, RectF const& worldRect) {
   map.addEntity(e);
   return e;
 }
+
+// Synthetic master entity that derives the real interface mixins, so that a
+// dynamic_cast<InterfaceT> genuinely succeeds and the asX() override returns
+// `this` -- the positive case the de-RTTI equivalence test needs. Plain
+// QueryTestEntity (derives only Entity) is the negative case. Entity is a
+// virtual base here (as in production), shared with each mixin's virtual Entity.
+class QueryMixinEntity
+  : public virtual Entity,
+    public virtual InspectableEntity,
+    public virtual ScriptedEntity,
+    public virtual PhysicsEntity {
+public:
+  QueryMixinEntity(EntityId id, RectF const& worldRect) {
+    m_position = worldRect.min();
+    m_relBox = RectF(Vec2F(), worldRect.size());
+    init(reinterpret_cast<World*>(0x1), id, EntityMode::Master);
+  }
+
+  EntityType entityType() const override { return EntityType::Object; }
+  Vec2F position() const override { return m_position; }
+  RectF metaBoundBox() const override { return m_relBox; }
+
+  // ScriptedEntity's only pure virtuals; never called by the query path.
+  Maybe<LuaValue> callScript(String const&, LuaVariadic<LuaValue> const&) override { return {}; }
+  Maybe<LuaValue> evalScript(String const&) override { return {}; }
+
+  Vec2F m_position;
+  RectF m_relBox;
+};
+
+typedef shared_ptr<QueryMixinEntity> QueryMixinEntityPtr;
 
 }  // namespace
 
@@ -309,4 +343,85 @@ TEST(EntityMap, ReentrantForEachEntity) {
   for (size_t i = 1; i < outerSeen.size(); ++i)
     EXPECT_NE(outerSeen[i], outerSeen[i - 1]) << "outer forEachEntity duplicated " << outerSeen[i] << " after nested re-entrancy";
   EXPECT_EQ(outerSeen, expected) << "outer forEachEntity lost entries to nested re-entrancy";
+}
+
+// Behavior-equivalence gate for the entity-query de-RTTI (entityCast<T>): the
+// per-candidate downcast was switched from dynamic_pointer_cast (as<T>) to the
+// asX() virtual accessors. This pins entityCast<T> as selecting the EXACT same
+// objects (including nulls) dynamic_pointer_cast does, and that EntityMap::query<T>
+// (which now uses entityCast internally) returns the identical result.
+//
+// QueryMixinEntity derives the real interface mixins so dynamic_cast<T> genuinely
+// succeeds and the accessor override returns `this`; plain QueryTestEntity derives
+// none of them, exercising the null path. The concrete-leaf accessors (asObject/
+// asMonster/...) are one-line `return this` overrides validated structurally and by
+// the compiler's return-type check on the EntityDowncast wiring -- instantiating
+// real Objects/Monsters needs a full Root + databases and is out of scope here.
+TEST(EntityMap, VirtualAccessorEquivalence) {
+  EntityMap map(TestWorldSize, MinServerEntityId, MaxServerEntityId);
+  Map<EntityId, EntityPtr> world;
+  float const Base = 500.0f;
+
+  auto addMixin = [&](RectF r) {
+    EntityId id = map.reserveEntityId();
+    auto e = make_shared<QueryMixinEntity>(id, r);
+    map.addEntity(e);
+    world[id] = e;
+    return e;
+  };
+  auto addPlain = [&](RectF r) {
+    auto e = addEntityAt(map, r);
+    world[e->entityId()] = e;
+    return e;
+  };
+
+  // Interleave the two kinds across an interior window.
+  int const MixinCount = 10;
+  for (int i = 0; i < MixinCount; ++i) {
+    addMixin(RectF(Base + i * 5.0f, Base + i * 3.0f, Base + i * 5.0f + 4, Base + i * 3.0f + 4));
+    addPlain(RectF(Base + i * 4.0f + 2, Base + i * 6.0f, Base + i * 4.0f + 6, Base + i * 6.0f + 5));
+  }
+
+  // (A) Decisive: entityCast<T> picks the EXACT same object (incl. null) as
+  // as<T> = dynamic_pointer_cast<T>, for every entity and every accessored T.
+  size_t mixinHits = 0;
+  for (auto const& p : world) {
+    EntityPtr const& e = p.second;
+    EXPECT_EQ(entityCast<InspectableEntity>(e).get(), as<InspectableEntity>(e).get());
+    EXPECT_EQ(entityCast<ScriptedEntity>(e).get(), as<ScriptedEntity>(e).get());
+    EXPECT_EQ(entityCast<PhysicsEntity>(e).get(), as<PhysicsEntity>(e).get());
+    EXPECT_EQ((bool)entityCast<InspectableEntity>(e), (bool)as<InspectableEntity>(e));
+    // Identity/upcast fast-path: entityCast<Entity> is exactly the same pointer.
+    EXPECT_EQ(entityCast<Entity>(e).get(), e.get());
+    if (as<InspectableEntity>(e))
+      ++mixinHits;
+  }
+  EXPECT_EQ(mixinHits, (size_t)MixinCount) << "expected the mixin entities to dynamic_cast to InspectableEntity";
+
+  // (D) null in -> empty out (matches as<>(null)).
+  EXPECT_FALSE((bool)entityCast<InspectableEntity>(EntityPtr{}));
+  EXPECT_FALSE((bool)entityCast<ScriptedEntity>(EntityPtr{}));
+  EXPECT_FALSE((bool)entityCast<Entity>(EntityPtr{}));
+
+  // (B) End-to-end: EntityMap::query<T> (now internally entityCast) returns the
+  // IDENTICAL id list AND order as a hand-rolled as<T> filter over the same
+  // entityQuery traversal. No sort -- both walk identical order, so raw equality
+  // pins membership and ordering.
+  for (RectF q : {RectF(Base - 20, Base - 20, Base + 90, Base + 90),  // mixed
+                  RectF(Base, Base, Base + 20, Base + 20),            // partial
+                  RectF(Base + 300, Base + 300, Base + 360, Base + 360)}) {  // empty
+    List<EntityId> inspTemplate, inspDynamic, scriptTemplate, scriptDynamic;
+    for (auto const& x : map.query<InspectableEntity>(q))
+      inspTemplate.append(x->entityId());
+    for (auto const& x : map.query<ScriptedEntity>(q))
+      scriptTemplate.append(x->entityId());
+    for (auto const& e : map.entityQuery(q)) {
+      if (as<InspectableEntity>(e))
+        inspDynamic.append(e->entityId());
+      if (as<ScriptedEntity>(e))
+        scriptDynamic.append(e->entityId());
+    }
+    EXPECT_EQ(inspTemplate, inspDynamic) << "query<InspectableEntity> diverged from dynamic_cast for " << q;
+    EXPECT_EQ(scriptTemplate, scriptDynamic) << "query<ScriptedEntity> diverged from dynamic_cast for " << q;
+  }
 }

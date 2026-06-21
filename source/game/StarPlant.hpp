@@ -63,6 +63,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {}) const;
 
   EntityType entityType() const override;
+  Plant* asPlant() override { return this; }
 
   void init(World* world, EntityId entityId, EntityMode mode) override;
 

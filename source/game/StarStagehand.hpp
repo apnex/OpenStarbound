@@ -24,6 +24,7 @@ public:
   void uninit() override;
 
   EntityType entityType() const override;
+  Stagehand* asStagehand() override { return this; }
 
   void setPosition(Vec2F const& position);
 

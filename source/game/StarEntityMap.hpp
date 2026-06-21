@@ -189,7 +189,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::query(RectF const& boundBox, EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   for (auto const& entity : entityQuery(boundBox, entityTypeFilter(filter)))
-    entities.append(as<EntityT>(entity));
+    entities.append(entityCast<EntityT>(entity));
 
   return entities;
 }
@@ -198,7 +198,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::all(EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   forAllEntities([&](EntityPtr const& entity) {
-    if (auto e = as<EntityT>(entity)) {
+    if (auto e = entityCast<EntityT>(entity)) {
       if (!filter || filter(e))
         entities.append(e);
     }
@@ -211,7 +211,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::lineQuery(Vec2F const& begin, Vec2F const& end, EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   for (auto const& entity : entityLineQuery(begin, end, entityTypeFilter(filter)))
-    entities.append(as<EntityT>(entity));
+    entities.append(entityCast<EntityT>(entity));
 
   return entities;
 }
@@ -225,7 +225,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::atTile(Vec2I const& pos) const {
   List<shared_ptr<EntityT>> list;
   forEachEntityAtTile(pos, [&](TileEntityPtr const& entity) {
-      if (auto e = as<EntityT>(entity))
+      if (auto e = entityCast<EntityT>(entity))
         list.append(std::move(e));
       return false;
     });

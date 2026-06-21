@@ -49,6 +49,8 @@ DataStream& operator<<(DataStream& ds, MovingCollisionId const& mci);
 
 class PhysicsEntity : public virtual Entity {
 public:
+  PhysicsEntity* asPhysicsEntity() override { return this; }
+
   virtual List<PhysicsForceRegion> forceRegions() const;
 
   virtual size_t movingCollisionCount() const;
