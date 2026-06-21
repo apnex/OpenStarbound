@@ -176,6 +176,7 @@ public:
   void playEmote(HumanoidEmote emote) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: Lua/tool-mutable sources, not O(1) — never skipped
 
   List<PhysicsForceRegion> forceRegions() const override;
 

@@ -138,6 +138,7 @@ public:
   void damagedOther(DamageNotification const& damage) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: population ~1, Lua/tool-mutable — never skipped
 
   bool shouldDestroy() const override;
   void destroy(RenderCallback* renderCallback) override;

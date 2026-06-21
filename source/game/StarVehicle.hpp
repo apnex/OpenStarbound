@@ -30,6 +30,7 @@ public:
   ClientEntityMode clientEntityMode() const override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: per-source enabled flags, rare population — never skipped
   Maybe<HitType> queryHit(DamageSource const& source) const override;
   Maybe<PolyF> hitPoly() const override;
 

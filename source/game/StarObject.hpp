@@ -120,6 +120,9 @@ public:
   virtual PolyF statusEffectArea() const override;
 
   virtual List<DamageSource> damageSources() const override;
+  // L-DMG-SKIP-0: conservatively true (objects may carry net/touch damage). A cheaper
+  // exact predicate is the deferred L-DMG-SKIP-1 (needs a per-instance touch precompute).
+  bool hasDamageSources() const override { return true; }
 
   virtual Maybe<HitType> queryHit(DamageSource const& source) const override;
   Maybe<PolyF> hitPoly() const override;

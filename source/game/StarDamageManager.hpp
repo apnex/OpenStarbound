@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "StarDamage.hpp"
 #include "StarDamageTypes.hpp"
 
@@ -8,6 +10,17 @@ namespace Star {
 STAR_CLASS(World);
 STAR_CLASS(Entity);
 STAR_CLASS(DamageManager);
+
+// Lever L-DMG-SKIP-0: skip the per-tick damageSources() query in DamageManager::update
+// for entities that provably have no damage sources (Entity::hasDamageSources()==false:
+// the statically-empty types — ItemDrop/Plant/PlantDrop/Stagehand, which dominate FU
+// entity counts). Process-global, default ON; byte-equivalent (the skipped call returns
+// {} and mutates nothing — verified vs the conservative predicate). Kill-switch + live
+// A/B toggle. Set from worldserver.config in WorldServer::init. Mirrors the
+// EntityDormancy/CollisionArena/PlantWind file-static atomic pattern.
+namespace DamageSourceSkip {
+  extern std::atomic<bool> enabled;
+}
 
 struct RemoteHitRequest {
   ConnectionId destinationConnection() const;
