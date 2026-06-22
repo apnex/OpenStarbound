@@ -1811,9 +1811,13 @@ void WorldClient::lightingCalc() {
   // in confirmed GPU mode the CPU calculate() below is skipped, so this feeds the GPU point pass
   // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
   // are untouched -- no double-promote.
-  float promoteFraction = configuration->get("lightingGpu").optBool().value(false)
-      ? configuration->get("lightingPromoteDynamic").optFloat().value(0.0f)
-      : 0.0f;
+  float promoteFraction = 0.0f;
+  if (configuration->get("lightingGpu").optBool().value(false)) {
+    // Read defensively: an interim build persisted this key as a bool, so coerce bool->fraction
+    // (true=>0.5, false=>0) rather than throwing toFloat() on a type-mismatched persisted value.
+    Json pd = configuration->get("lightingPromoteDynamic");
+    promoteFraction = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
+  }
   promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
 
   for (auto const& light : lights) {

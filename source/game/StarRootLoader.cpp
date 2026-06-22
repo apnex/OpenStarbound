@@ -103,8 +103,8 @@ R"JSON(
       "lightingGpuBrightness" : 1.0,
       "lightingGpuShadowCompare" : false,
 
-      "lightingPromoteDynamic" : 0.0,
-      "lightingTonemap" : false,
+      "lightingPromoteDynamic" : 0.5,
+      "lightingTonemap" : true,
 
       "safe" : {
         "alwaysAllowClipboard" : false,
