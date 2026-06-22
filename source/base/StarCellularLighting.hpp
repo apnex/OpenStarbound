@@ -13,6 +13,12 @@ namespace Star {
 
 STAR_EXCEPTION(LightmapException, StarException);
 
+// CDL highlight tonemap: identity for max-channel <= 1 (normal scenes untouched),
+// smooth rolloff of the excess above 1 toward the white-point (asymptote at `white`),
+// hue-preserving (uniform RGB scale). Replaces the proportional brightnessLimit clamp
+// when lightingTonemap is enabled. Mirrored byte-for-byte in lightingPassthrough.frag.
+Vec3F tonemapHighlights(Vec3F color, float white);
+
 class Lightmap {
 public:
   Lightmap();

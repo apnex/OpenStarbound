@@ -190,6 +190,19 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
   }
 }
 
+Vec3F tonemapHighlights(Vec3F color, float white) {
+  float i = color[0];
+  if (color[1] > i) i = color[1];
+  if (color[2] > i) i = color[2];
+  if (i <= 1.0f || i <= 0.0f)
+    return color;                 // normal range untouched
+  float e = i - 1.0f;             // excess above 1
+  float k = white - 1.0f;         // headroom toward the white-point
+  if (k < 1.0e-4f) k = 1.0e-4f;   // guard white <= 1
+  float iOut = 1.0f + k * e / (k + e);  // (1,inf) -> (1, 1+k=white), monotonic
+  return color * (iOut / i);
+}
+
 SpreadParameters CellularLightingCalculator::spreadParameters() const {
   return SpreadParameters{
       m_config.getFloat("spreadMaxAir"),
