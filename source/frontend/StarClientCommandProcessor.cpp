@@ -696,14 +696,14 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [on|off] | tonemap [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off]";
   auto status = [&]() {
     return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} tonemap={}",
       cfg->get("lightingGpu", false).toBool(),
       cfg->get("lightingGpuShadowCompare", false).toBool(),
       cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
       cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
-      cfg->get("lightingPromoteDynamic", false).toBool(),
+      cfg->get("lightingPromoteDynamic", 0.0f).toFloat(),
       cfg->get("lightingTonemap", false).toBool());
   };
 
@@ -714,9 +714,16 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
   // PointAsSpread (consumed at dispatch, T4), and tonemap the additive HDR compose
   // instead of hard-clamping (consumed at the GPU compose + CPU mirror, T3).
   if (args.at(0) == "promotedynamic") {
-    bool v = args.size() < 2 || args.at(1) != "off";
-    cfg->set("lightingPromoteDynamic", v);
-    return strf("lighting promoteDynamic={}", v);
+    // fraction in [0,1]: 0 = off (Spread unchanged), ~0.15 = old hybrid, 1.0 = full Point.
+    float p = 0.0f;
+    if (args.size() >= 2 && args.at(1) != "off") {
+      auto f = maybeLexicalCast<float>(args.at(1));
+      if (!f)
+        return "usage: /lighting promotedynamic <0..1 | off>";
+      p = *f < 0.0f ? 0.0f : (*f > 1.0f ? 1.0f : *f);
+    }
+    cfg->set("lightingPromoteDynamic", p);
+    return strf("lighting promoteDynamic={}", p);
   }
   if (args.at(0) == "tonemap") {
     bool v = args.size() < 2 || args.at(1) != "off";

@@ -1824,19 +1824,27 @@ void WorldClient::lightingCalc() {
 
   prepLocker.unlock();
 
-  // CDL (lightingPromoteDynamic): promote static fill lights to the PointAsSpread hybrid so all
-  // lights become dynamic. Gated on lightingGpu -- in confirmed GPU mode the CPU calculate() below
-  // is skipped, so this feeds the GPU point pass without flooding the CPU point raycast.
-  bool promoteDynamic = configuration->get("lightingPromoteDynamic").optBool().value(false)
-      && configuration->get("lightingGpu").optBool().value(false);
+  // CDL (lightingPromoteDynamic): promote static fill (Spread) lights to dynamic by a fraction
+  // p in [0,1] -- (1-p) soft spread + p full directional point. p=0 off (Spread unchanged,
+  // byte-identical); p~0.15 ~= the old hybrid; p=1 full Point (the mod's look). Gated on lightingGpu:
+  // in confirmed GPU mode the CPU calculate() below is skipped, so this feeds the GPU point pass
+  // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
+  // are untouched -- no double-promote.
+  float promoteFraction = configuration->get("lightingGpu").optBool().value(false)
+      ? configuration->get("lightingPromoteDynamic").optFloat().value(0.0f)
+      : 0.0f;
+  promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
 
   for (auto const& light : lights) {
     Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
-    LightType type = (promoteDynamic && light.type == LightType::Spread) ? LightType::PointAsSpread : light.type;
-    if (type == LightType::Spread)
+    if (light.type == LightType::Spread && promoteFraction > 0.0f) {
+      if (promoteFraction < 1.0f)
+        m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
+      m_lightingCalculator.addPointLight(position, light.color * promoteFraction, light.pointBeam, light.beamAngle, light.beamAmbience);
+    } else if (light.type == LightType::Spread) {
       m_lightingCalculator.addSpreadLight(position, light.color);
-    else {
-      if (type == LightType::PointAsSpread) {
+    } else {
+      if (light.type == LightType::PointAsSpread) {
         if (!newLighting)
           m_lightingCalculator.addSpreadLight(position, light.color);
         else { // hybrid (used for auto-converted object lights) - 85% spread, 15% point (* .15 is applied in the calculation code)
