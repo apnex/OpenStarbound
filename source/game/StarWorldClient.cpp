@@ -1824,12 +1824,19 @@ void WorldClient::lightingCalc() {
 
   prepLocker.unlock();
 
+  // CDL (lightingPromoteDynamic): promote static fill lights to the PointAsSpread hybrid so all
+  // lights become dynamic. Gated on lightingGpu -- in confirmed GPU mode the CPU calculate() below
+  // is skipped, so this feeds the GPU point pass without flooding the CPU point raycast.
+  bool promoteDynamic = configuration->get("lightingPromoteDynamic").optBool().value(false)
+      && configuration->get("lightingGpu").optBool().value(false);
+
   for (auto const& light : lights) {
     Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
-    if (light.type == LightType::Spread)
+    LightType type = (promoteDynamic && light.type == LightType::Spread) ? LightType::PointAsSpread : light.type;
+    if (type == LightType::Spread)
       m_lightingCalculator.addSpreadLight(position, light.color);
     else {
-      if (light.type == LightType::PointAsSpread) {
+      if (type == LightType::PointAsSpread) {
         if (!newLighting)
           m_lightingCalculator.addSpreadLight(position, light.color);
         else { // hybrid (used for auto-converted object lights) - 85% spread, 15% point (* .15 is applied in the calculation code)
