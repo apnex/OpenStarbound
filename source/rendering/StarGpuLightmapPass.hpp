@@ -41,7 +41,7 @@ public:
   bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
       ImageView const& obstacle, List<uint8_t> const& obstacleR8,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-      PointParameters const& params, float brightnessScale = 1.0f,
+      PointParameters const& params, float brightnessScale = 1.0f, bool tonemap = false,
       bool shadowCompare = false, Image* gpuResult = nullptr);
 
 private:
