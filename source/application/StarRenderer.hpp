@@ -196,6 +196,14 @@ public:
   virtual void renderBuffer(RenderBufferPtr const& renderBuffer, Mat3F const& transformation = Mat3F::identity()) = 0;
 
   virtual void flush(Mat3F const& transformation = Mat3F::identity()) = 0;
+
+  // GPU-side timer queries. Bracket GPU work to measure its on-GPU execution time
+  // (e.g. GL_TIME_ELAPSED). begin/end flush pending primitives so the query spans exactly
+  // the enclosed draws; results are read back asynchronously and recorded to the named
+  // Telemetry timer. Default no-op; backends gate issuance on Telemetry::deepEnabled().
+  // Calls must be paired and non-nested.
+  virtual void beginGpuTimer(String const& name) { (void)name; }
+  virtual void endGpuTimer(String const& name) { (void)name; }
 };
 
 }

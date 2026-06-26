@@ -66,6 +66,9 @@ public:
 
   void flush(Mat3F const& transformation) override;
 
+  void beginGpuTimer(String const& name) override;
+  void endGpuTimer(String const& name) override;
+
   void setScreenSize(Vec2U screenSize);
 
   void startFrame();
@@ -269,6 +272,18 @@ private:
   RefPtr<GlTexture> m_whiteTexture;
 
   Maybe<RectI> m_scissorRect;
+
+  // GPU timer queries (GL_TIME_ELAPSED), one triple-buffered ring per named scope so results
+  // are read back ~3 frames later without stalling the pipeline. Only used when deepEnabled.
+  struct GpuTimerRing {
+    GLuint queries[3] = {0, 0, 0};
+    bool issued[3] = {false, false, false};
+    unsigned writeIdx = 0;
+  };
+  StringMap<GpuTimerRing> m_gpuTimers;
+  bool m_gpuTimerActive = false;
+  GpuTimerRing* m_gpuTimerCurrent = nullptr;
+  unsigned m_gpuTimerSlot = 0;
 
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;

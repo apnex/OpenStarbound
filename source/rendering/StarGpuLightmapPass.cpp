@@ -38,6 +38,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
   // Upload emission as RGB16F from the lighting-thread-converted half buffer (half the per-frame
   // transfer); fall back to the RGB_F upload if the half buffer is absent/mismatched.
+  m_renderer->beginGpuTimer("lighting.gpu.spread.gpu_us");
   if (emissionHalf.size() == (size_t)size[0] * size[1] * 3)
     m_renderer->setEffectTextureHalfRGB("emission", size, emissionHalf.ptr());
   else
@@ -61,10 +62,12 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     lastTarget = target;
   }
   spreadPasses.inc(spreadIterations);
+  m_renderer->endGpuTimer("lighting.gpu.spread.gpu_us");
 
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
+    m_renderer->beginGpuTimer("lighting.gpu.point.gpu_us");
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointMaxAir", params.pointMaxAir);
     m_renderer->setEffectParameter("pointMaxObstacle", params.pointMaxObstacle);
@@ -96,6 +99,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
       ++drawn;
     }
+    m_renderer->endGpuTimer("lighting.gpu.point.gpu_us");
     m_renderer->setBlendMode(BlendMode::Alpha);   // restore before the compose + world draw
     pointLightsDrawn.inc(drawn);
   }
@@ -103,6 +107,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
   m_renderer->switchEffectConfig("lightingPassthrough");        // flushes the final point quad
+  m_renderer->beginGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->setEffectParameter("applyCap", true);
   m_renderer->setEffectParameter("brightnessLimit", params.brightnessLimit);
   m_renderer->setEffectParameter("brightnessScale", brightnessScale);
@@ -110,6 +115,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   m_renderer->setEffectTextureFromTarget("inputTexture", lastTarget);
   m_renderer->setRenderTarget(String(composeTarget), size);
   m_renderer->render(fullQuad);
+  m_renderer->endGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->flush();
 
   if (shadowCompare && gpuResult)
