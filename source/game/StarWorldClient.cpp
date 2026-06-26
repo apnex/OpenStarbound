@@ -1831,6 +1831,7 @@ void WorldClient::lightingCalc() {
       fp.tonemap = dgCfg.get("lightingTonemap").optBool().value(false);
       Json pd = dgCfg.get("lightingPromoteDynamic");
       fp.promoteFraction = fp.lightingGpu ? (pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f)) : 0.0f;
+      fp.promoteMinIntensity = fp.lightingGpu ? dgCfg.get("lightingPromoteMinIntensity", 0.1f).toFloat() : 0.0f;
       fp.gpuBrightness = dgCfg.get("lightingGpuBrightness", 1.0f).toFloat();
       fp.spreadIterations = dgCfg.get("lightingGpuSpreadIterations", 32).toUInt();
       fp.lights = lights;
@@ -1880,17 +1881,25 @@ void WorldClient::lightingCalc() {
   // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
   // are untouched -- no double-promote.
   float promoteFraction = 0.0f;
+  float promoteMinIntensity = 0.0f;
   if (configuration->get("lightingGpu").optBool().value(false)) {
     // Read defensively: an interim build persisted this key as a bool, so coerce bool->fraction
     // (true=>0.5, false=>0) rather than throwing toFloat() on a type-mismatched persisted value.
     Json pd = configuration->get("lightingPromoteDynamic");
     promoteFraction = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
+    // Floor below which a Spread light is NOT promoted to a dynamic point: ultra-dim fill lights
+    // (e.g. item drops at 20/255 ~= 0.078) gain nothing visible from sharp point rendering, and the
+    // point pass's per-cell obstacle raycast flickers on a jittery sub-pixel emitter position. They
+    // stay soft, stable spreads. 0 disables the floor (promote everything, the pre-fix behaviour).
+    promoteMinIntensity = configuration->get("lightingPromoteMinIntensity", 0.1f).toFloat();
   }
   promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
 
   for (auto const& light : lights) {
     Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
-    if (light.type == LightType::Spread && promoteFraction > 0.0f) {
+    // Promote only "feature" Spread lights: skip the floor (item-drop-class fill) -> pure spread.
+    bool promote = promoteFraction > 0.0f && light.color.max() >= promoteMinIntensity;
+    if (light.type == LightType::Spread && promote) {
       if (promoteFraction < 1.0f)
         m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
       m_lightingCalculator.addPointLight(position, light.color * promoteFraction, light.pointBeam, light.beamAngle, light.beamAmbience);

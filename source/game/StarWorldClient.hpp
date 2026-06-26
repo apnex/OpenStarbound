@@ -341,7 +341,7 @@ private:
     Vec3F environmentLight;
     float undergroundLevel = 0.0f;
     bool newLighting = false, monochrome = false, lightingGpu = false, shadowCompare = false, tonemap = false;
-    float promoteFraction = 0.0f, gpuBrightness = 1.0f;
+    float promoteFraction = 0.0f, gpuBrightness = 1.0f, promoteMinIntensity = 0.0f;
     unsigned spreadIterations = 0;
     List<LightSource> lights;
     List<std::pair<Vec2F, Vec3F>> particleLights;
@@ -350,6 +350,7 @@ private:
           && undergroundLevel == o.undergroundLevel && newLighting == o.newLighting && monochrome == o.monochrome
           && lightingGpu == o.lightingGpu && shadowCompare == o.shadowCompare && tonemap == o.tonemap
           && promoteFraction == o.promoteFraction && gpuBrightness == o.gpuBrightness
+          && promoteMinIntensity == o.promoteMinIntensity
           && spreadIterations == o.spreadIterations && lights == o.lights && particleLights == o.particleLights;
     }
     bool operator!=(LightFingerprint const& o) const { return !(*this == o); }

@@ -104,6 +104,7 @@ R"JSON(
       "lightingGpuShadowCompare" : false,
 
       "lightingPromoteDynamic" : 0.5,
+      "lightingPromoteMinIntensity" : 0.1,
       "lightingTonemap" : true,
       "lightingDirtyGate" : false,
       "lightingDirtyGateValidate" : false,
