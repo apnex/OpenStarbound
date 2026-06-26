@@ -985,7 +985,7 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
       m_predictedTiles.remove(liquidUpdate->position);
       if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
-        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // dirty-gate: liquid radiance changed
+        markLightDirtyTile(liquidUpdate->position); // dirty-gate epoch + dirty-region rect (atomic, liquid radiance changed)
       }
 
     } else if (auto giveItem = as<GiveItemPacket>(packet)) {
@@ -1779,6 +1779,17 @@ void WorldClient::lightingTileGather() {
   LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
 }
 
+void WorldClient::markLightDirtyTile(Vec2I const& pos) {
+  // Dirty-REGION (Stage 0): coalesce this tile write into the dirty bbox AND bump the change epoch,
+  // BOTH under m_lightDirtyMutex so the (epoch, rect) pair is atomic w.r.t. the lightingCalc consume
+  // snapshot. This is load-bearing for the oracle: any write the consumed epoch counts is then
+  // guaranteed already in the consumed rect (or, if it landed after the snapshot, epochNow advances
+  // past epochAtConsume and that frame is skipped). Minimal lock -> no contention with the gather.
+  MutexLocker locker(m_lightDirtyMutex);
+  m_lightDirtyRect.combine(pos);
+  m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
+}
+
 void WorldClient::lightingCalc() {
   // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
   // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
@@ -1830,6 +1841,22 @@ void WorldClient::lightingCalc() {
         return; // reuse the previously-published lightmap; nothing republished -> painter skips
       }
     }
+  }
+
+  // --- Dirty-REGION tracker (Stage 0): snapshot + clear the coalesced tile-dirty bbox under its own
+  // lock. Placed AFTER the dirty-gate skip-return so the rect is consumed only on frames that
+  // actually recompute the lightmap -- otherwise a skipped frame would clear the rect without
+  // recomputing and the next recompute would see a buffer diff wider than the (lost) rect. The bbox
+  // combine + epoch bump are atomic in markLightDirtyTile, so epochAtConsume read here pairs with the
+  // snapshot: a write the epoch counts is in the rect, or (if it raced after) epochNow advances past
+  // epochAtConsume and the oracle skips that frame.
+  RectI lightDirtyRect;
+  uint64_t epochAtConsume;
+  {
+    MutexLocker dirtyLocker(m_lightDirtyMutex);
+    lightDirtyRect = m_lightDirtyRect;
+    m_lightDirtyRect = RectI::null();
+    epochAtConsume = m_lightingTileEpoch.load(std::memory_order_relaxed);
   }
 
   auto& root = Root::singleton();
@@ -1938,6 +1965,71 @@ void WorldClient::lightingCalc() {
       m_validateRefEmissionHalf = m_pendingLightingEmissionHalf;
       m_validateRefObstacleR8 = m_pendingLightingObstacleR8;
       m_validateRefValid = true;
+    }
+
+    // Dirty-REGION validate oracle (Stage 0, lightingDirtyRegionValidate, default off): the obstacle
+    // buffer is PURELY tile-derived (obstacle[cell] = that cell's own foreground light-blocking), so
+    // every obstacle cell that differs from the reference (prior recompute, SAME window) MUST lie
+    // inside the consumed dirty bbox -- else the tile tracker under-reported (stale-region risk).
+    // Skip when the window scrolled (different coord frame -> Option B force-full) or a tile write
+    // raced the gather (epoch advanced past the consume snapshot) -> conservative, no false positive.
+    static auto regionUnderReport = Telemetry::counter("lighting.dirtyregion.validate.underreport");
+    static auto regionEpochNoRect = Telemetry::counter("lighting.dirtyregion.validate.epoch_no_rect");
+    if (configuration->get("lightingDirtyRegionValidate").optBool().value(false)) {
+      uint64_t epochNow = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      // We can validate this transition only when: we hold a reference, the window is byte-stable
+      // (same lightRange + buffer size -> same coordinate frame, Option B), and no tile write raced
+      // the gather (epochNow == epochAtConsume -> the consumed rect covers every change in the buffer).
+      bool windowStable = m_validateRegionRefLightRange == lightRange
+          && m_validateRegionRefObstacleR8.size() == m_pendingLightingObstacleR8.size();
+      bool canCheck = m_validateRegionRefValid && windowStable && (epochNow == epochAtConsume);
+      if (canCheck) {
+        ++m_validateRegionChecks;
+        // Cross-check: the epoch advanced since the last consume but no dirty cell was recorded ->
+        // an un-instrumented tile writer (the bbox would silently under-report).
+        if (epochAtConsume != m_lightDirtyLastEpoch && lightDirtyRect.isNull())
+          regionEpochNoRect.inc(1);
+        // Containment: obstacle is purely own-cell-derived, so every obstacle cell that changed since
+        // the reference MUST lie inside the consumed dirty rect, else the tracker under-reported.
+        Vec2I origin = m_lightingCalculator.calculationRegion().min();
+        int w = (int)m_pendingLightingObstacle.size()[0];
+        size_t cells = m_pendingLightingObstacleR8.size();
+        size_t outside = 0;
+        for (size_t i = 0; i < cells; ++i) {
+          if (m_pendingLightingObstacleR8[i] == m_validateRegionRefObstacleR8[i])
+            continue;
+          Vec2I cell(origin[0] + (int)(i % (size_t)w), origin[1] + (int)(i / (size_t)w));
+          if (lightDirtyRect.isNull() || !lightDirtyRect.contains(cell))
+            ++outside;
+        }
+        bool hadEdit = !lightDirtyRect.isNull();
+        if (hadEdit)
+          ++m_validateRegionEdits;
+        if (outside > 0) {
+          regionUnderReport.inc(outside);
+          m_validateRegionUnderReports += outside;
+          Logger::warn("lighting dirty-REGION VALIDATE: {} obstacle cell(s) changed OUTSIDE the dirty rect (tracker UNDER-REPORT); totals: {} checks, {} edit-frames, {} bad cells",
+              outside, m_validateRegionChecks, m_validateRegionEdits, m_validateRegionUnderReports);
+        } else if (hadEdit && (m_validateRegionEdits == 1 || m_validateRegionEdits - m_validateRegionLastLogEdits >= 25)) {
+          // Positive heartbeat: proves the containment check actually exercised real tile edits and
+          // found every changed cell inside the dirty rect. Rate-limited (1st edit, then every 25).
+          Logger::info("lighting dirty-REGION VALIDATE OK: {} edit-frame(s) validated, 0 under-reports ({} checks total)",
+              m_validateRegionEdits, m_validateRegionChecks);
+          m_validateRegionLastLogEdits = m_validateRegionEdits;
+        }
+      }
+      // Reference lifecycle: advance the ref to this frame's buffer ONLY when we just validated this
+      // transition (canCheck) OR are (re)establishing a baseline (no valid ref). On a skipped frame
+      // (window scroll / size change / gather-raced epoch) DROP the ref so the next frame re-baselines
+      // rather than comparing across an un-validated transition -- which would mask a real gap.
+      if (canCheck || !m_validateRegionRefValid) {
+        m_lightDirtyLastEpoch = epochAtConsume;
+        m_validateRegionRefObstacleR8 = m_pendingLightingObstacleR8;
+        m_validateRegionRefLightRange = lightRange;
+        m_validateRegionRefValid = true;
+      } else {
+        m_validateRegionRefValid = false;
+      }
     }
   }
 
@@ -2272,9 +2364,10 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
   tile->backgroundLightTransparent = materialDatabase->backgroundLightTransparent(tile->background);
   tile->foregroundLightTransparent =
       materialDatabase->foregroundLightTransparent(tile->foreground) && tile->collision != CollisionKind::Dynamic;
-  // Dirty-gate: a tile's emission/obstacle inputs changed (block/mod/liquid write). Global epoch =
-  // conservative (over-invalidates off-screen writes; never under-invalidates).
-  m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
+  // Dirty-gate + dirty-REGION: a tile's emission/obstacle inputs changed (block/mod/liquid write).
+  // markLightDirtyTile bumps the global change epoch (conservative; over-invalidates off-screen
+  // writes, never under) AND records the cell into the coalesced dirty rect, atomically.
+  markLightDirtyTile(pos);
 
   if (updateCollision)
     dirtyCollision(RectI::withSize(pos, {1, 1}));

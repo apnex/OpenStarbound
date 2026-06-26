@@ -227,6 +227,8 @@ private:
   void lightingTileGather();
   void lightingCalc();
   void lightingMain();
+  // Dirty-REGION (Stage 0): record a lighting-relevant tile write into the coalesced dirty bbox.
+  void markLightDirtyTile(Vec2I const& pos);
 
   void initWorld(WorldStartPacket const& packet);
   void clearWorld();
@@ -362,6 +364,32 @@ private:
   List<uint16_t> m_validateRefEmissionHalf;
   List<uint8_t> m_validateRefObstacleR8;
   bool m_validateRefValid = false;
+
+  // --- Dirty-REGION tracker (Stage 0, flag lightingDirtyRegionValidate, default off) ---
+  // A coalesced bounding rect (WORLD-tile coords) of all lighting-relevant tile writes since the
+  // last lightmap recompute. Generalizes the coarse m_lightingTileEpoch (kept as a redundant
+  // cross-check). Written by the packet/update thread at the tile writers (markLightDirtyTile),
+  // snapshotted + cleared by the lighting thread at the start of lightingCalc -- via its OWN minimal
+  // critical-section mutex, NOT m_lightMapPrepMutex (which is held across the whole gather). Stage 0
+  // does not yet consume the rect for partial recompute; it only validates the tracker.
+  Mutex m_lightDirtyMutex;
+  RectI m_lightDirtyRect = RectI::null();
+  // Validate oracle: the obstacle buffer is PURELY tile-derived, so every obstacle cell that differs
+  // from the reference (prior recompute, SAME window) must lie inside the consumed dirty rect -- else
+  // the tracker under-reported. Refs + the window/epoch they were captured at gate the comparison
+  // (skip on window-scroll or a gather-racing tile write -> conservative, never a false positive).
+  List<uint8_t> m_validateRegionRefObstacleR8;
+  RectI m_validateRegionRefLightRange = RectI::null();
+  bool m_validateRegionRefValid = false;
+  uint64_t m_lightDirtyLastEpoch = 0;
+  // Validate heartbeat: POSITIVE evidence the oracle actually exercised real edits (not merely that
+  // no failure fired). checks = frames the containment check ran; edits = check-frames with a
+  // non-empty dirty rect (a real tile change validated as contained); underReports = cells found
+  // outside the rect. A periodic "VALIDATE OK" log proves the tracker contained real edits.
+  uint64_t m_validateRegionChecks = 0;
+  uint64_t m_validateRegionEdits = 0;
+  uint64_t m_validateRegionUnderReports = 0;
+  uint64_t m_validateRegionLastLogEdits = 0;
 
   SkyPtr m_sky;
 

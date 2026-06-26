@@ -651,7 +651,7 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off] | dirtygate [on|off|validate on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off] | dirtygate [on|off|validate on|off] | dirtyregion validate [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -664,7 +664,8 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingTonemap", false).toBool(),
       cfg->get("lightingDirtyGate", false).toBool(),
-      cfg->get("lightingDirtyGateValidate", false).toBool());
+      cfg->get("lightingDirtyGateValidate", false).toBool())
+      + strf(" dirtyRegionValidate={}", cfg->get("lightingDirtyRegionValidate", false).toBool());
   };
 
   if (args.empty())
@@ -701,6 +702,16 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     bool v = args.size() < 2 || args.at(1) != "off";
     cfg->set("lightingDirtyGate", v);
     return strf("lighting dirtyGate={}", v);
+  }
+  if (args.at(0) == "dirtyregion") {
+    // Stage 0: validate the dirty-REGION tile tracker (obstacle-diff containment). No skip behavior
+    // yet (the rect is not consumed for partial recompute); validate-only (lighting.dirtyregion.*).
+    if (args.size() >= 2 && args.at(1) == "validate") {
+      bool v = args.size() < 3 || args.at(2) != "off";
+      cfg->set("lightingDirtyRegionValidate", v);
+      return strf("lighting dirtyRegionValidate={}", v);
+    }
+    return "usage: /lighting dirtyregion validate [on|off]";
   }
 
   if (args.at(0) != "gpu")
