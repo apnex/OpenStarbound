@@ -2,6 +2,7 @@
 #include "StarJsonExtra.hpp"
 #include "StarCasting.hpp"
 #include "StarLogging.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -813,6 +814,44 @@ void OpenGlRenderer::renderBuffer(RenderBufferPtr const& renderBuffer, Mat3F con
 
 void OpenGlRenderer::flush(Mat3F const& transformation) {
   flushImmediatePrimitives(transformation);
+}
+
+void OpenGlRenderer::beginGpuTimer(String const& name) {
+  if (!Telemetry::deepEnabled())
+    return;
+  // Submit any pending primitives first so the query measures only the work that follows.
+  flushImmediatePrimitives();
+  auto& ring = m_gpuTimers[name];
+  unsigned slot = ring.writeIdx;
+  if (ring.queries[slot] == 0)
+    glGenQueries(1, &ring.queries[slot]);
+  else if (ring.issued[slot]) {
+    // This slot last ran 3 frames ago; its result should be ready. Read it without stalling.
+    GLuint available = 0;
+    glGetQueryObjectuiv(ring.queries[slot], GL_QUERY_RESULT_AVAILABLE, &available);
+    if (available) {
+      GLuint64 elapsedNs = 0;
+      glGetQueryObjectui64v(ring.queries[slot], GL_QUERY_RESULT, &elapsedNs);
+      Telemetry::timer(name).record((int64_t)(elapsedNs / 1000));
+    }
+    ring.issued[slot] = false; // reuse the query object regardless (drops a rare not-ready sample)
+  }
+  glBeginQuery(GL_TIME_ELAPSED, ring.queries[slot]);
+  m_gpuTimerActive = true;
+  m_gpuTimerCurrent = &ring;
+  m_gpuTimerSlot = slot;
+}
+
+void OpenGlRenderer::endGpuTimer(String const&) {
+  if (!m_gpuTimerActive)
+    return;
+  // Submit this scope's primitives so they fall inside the query, then close it.
+  flushImmediatePrimitives();
+  glEndQuery(GL_TIME_ELAPSED);
+  m_gpuTimerCurrent->issued[m_gpuTimerSlot] = true;
+  m_gpuTimerCurrent->writeIdx = (m_gpuTimerSlot + 1) % 3;
+  m_gpuTimerActive = false;
+  m_gpuTimerCurrent = nullptr;
 }
 
 void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
