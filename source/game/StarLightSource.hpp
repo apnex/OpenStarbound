@@ -29,6 +29,14 @@ struct LightSource {
   float beamAmbience;
 
   void translate(Vec2F const& pos);
+
+  // Field-wise equality (used by the lighting dirty-gate fingerprint). Explicit, not memcmp:
+  // the struct has padding after the uint8 `type`, which a raw compare would fold in.
+  bool operator==(LightSource const& o) const {
+    return position == o.position && color == o.color && type == o.type
+        && pointBeam == o.pointBeam && beamAngle == o.beamAngle && beamAmbience == o.beamAmbience;
+  }
+  bool operator!=(LightSource const& o) const { return !(*this == o); }
 };
 
 DataStream& operator<<(DataStream& ds, LightSource const& lightSource);
