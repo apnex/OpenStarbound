@@ -11,14 +11,14 @@ uniform vec2 lightStateSize;    // grid dims (w,h)
 uniform vec2 lightPosition;     // array-relative grid coords
 uniform vec3 lightValue;
 uniform float lightBeam;
-uniform float lightBeamAngle;
-uniform float lightBeamAmbience;
 uniform bool lightAsSpread;
-uniform float pointMaxAir;
-uniform float pointMaxObstacle;
-uniform float spreadMaxAir;
-uniform float spreadMaxObstacle;
 uniform float pointObstacleBoost;
+// 1A hoist: values constant across a light's draw, precomputed CPU-side (were per-fragment).
+uniform float lightMaxIntensity;     // = max(lightValue.*)
+uniform vec2 beamDirection;          // = vec2(cos(beamAngle), sin(beamAngle))
+uniform float oneMinusBeamAmbience;  // = 1.0 - beamAmbience
+uniform float perBlockObstacleAtten; // = 1/(spread|point)MaxObstacle
+uniform float perBlockAirAtten;      // = 1/(spread|point)MaxAir
 
 out vec4 fragColor;
 
@@ -78,18 +78,13 @@ float obstacleRaycastDDA(vec2 start, vec2 end, float perObstacleAttenuation, flo
 }
 
 // ColoredLightTraits::subtract — hue-preserving proportional drop.
-vec3 coloredSubtract(vec3 c, float drop) {
-  float m = max(c.r, max(c.g, c.b));
+vec3 coloredSubtract(vec3 c, float m, float drop) {
   if (m <= 0.0) return c;
   return max(c - drop * c / m, vec3(0.0));
 }
 
 void main() {
   vec2 blockPos = gl_FragCoord.xy;   // FBO pixel center = cell (x,y) center = (x+0.5, y+0.5)
-  float maxIntensity = max(lightValue.r, max(lightValue.g, lightValue.b));
-  vec2 beamDirection = vec2(cos(lightBeamAngle), sin(lightBeamAngle));
-  float perBlockObstacleAtten = lightAsSpread ? 1.0 / spreadMaxObstacle : 1.0 / pointMaxObstacle;
-  float perBlockAirAtten = lightAsSpread ? 1.0 / spreadMaxAir : 1.0 / pointMaxAir;
 
   vec2 relative = blockPos - lightPosition;
   float distance = length(relative);
@@ -100,11 +95,11 @@ void main() {
 
   vec2 direction = relative / distance;
   if (lightBeam > 0.0) {
-    attenuation += (1.0 - lightBeamAmbience) * clamp(lightBeam * (1.0 - dot(direction, beamDirection)), 0.0, 1.0);
+    attenuation += oneMinusBeamAmbience * clamp(lightBeam * (1.0 - dot(direction, beamDirection)), 0.0, 1.0);
     if (attenuation >= 1.0) { fragColor = vec4(0.0); return; }
   }
 
-  float remainingAttenuation = maxIntensity - attenuation;
+  float remainingAttenuation = lightMaxIntensity - attenuation;
   if (remainingAttenuation <= 0.0) { fragColor = vec4(0.0); return; }
 
   float circObsAtten = perBlockObstacleAtten / max(abs(direction.x), abs(direction.y));
@@ -115,7 +110,7 @@ void main() {
 
   if (attenuation >= 1.0) { fragColor = vec4(0.0); return; }
 
-  vec3 newLight = coloredSubtract(lightValue, attenuation);
+  vec3 newLight = coloredSubtract(lightValue, lightMaxIntensity, attenuation);
   if (lightAsSpread) newLight *= 0.15;
   // Additive path gates on maxIntensity(newLight) > 0.0001; for max-blend the same near-zero
   // output is a harmless no-op, so a single guard suffices.
