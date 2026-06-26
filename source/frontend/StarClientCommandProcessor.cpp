@@ -651,18 +651,20 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off] | dirtygate [on|off|validate on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
     float pdf = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
-    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} tonemap={}",
+    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} tonemap={} | dirtyGate={} validate={}",
       cfg->get("lightingGpu", false).toBool(),
       cfg->get("lightingGpuShadowCompare", false).toBool(),
       cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
       cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
       pdf,
-      cfg->get("lightingTonemap", false).toBool());
+      cfg->get("lightingTonemap", false).toBool(),
+      cfg->get("lightingDirtyGate", false).toBool(),
+      cfg->get("lightingDirtyGateValidate", false).toBool());
   };
 
   if (args.empty())
@@ -687,6 +689,18 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     bool v = args.size() < 2 || args.at(1) != "off";
     cfg->set("lightingTonemap", v);
     return strf("lighting tonemap={}", v);
+  }
+  if (args.at(0) == "dirtygate") {
+    // Skip the per-frame lightmap recompute when no input changed (default off; idle/enclosed win).
+    // `validate` never skips but recomputes + logs any missed invalidation (lighting.dirtygate.*).
+    if (args.size() >= 2 && args.at(1) == "validate") {
+      bool v = args.size() < 3 || args.at(2) != "off";
+      cfg->set("lightingDirtyGateValidate", v);
+      return strf("lighting dirtyGateValidate={}", v);
+    }
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingDirtyGate", v);
+    return strf("lighting dirtyGate={}", v);
   }
 
   if (args.at(0) != "gpu")

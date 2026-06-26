@@ -105,6 +105,8 @@ R"JSON(
 
       "lightingPromoteDynamic" : 0.5,
       "lightingTonemap" : true,
+      "lightingDirtyGate" : false,
+      "lightingDirtyGateValidate" : false,
 
       "safe" : {
         "alwaysAllowClipboard" : false,

@@ -983,8 +983,10 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
 
     } else if (auto liquidUpdate = as<TileLiquidUpdatePacket>(packet)) {
       m_predictedTiles.remove(liquidUpdate->position);
-      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position))
+      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
+        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // dirty-gate: liquid radiance changed
+      }
 
     } else if (auto giveItem = as<GiveItemPacket>(packet)) {
       tryGiveMainPlayerItem(itemDatabase->item(giveItem->item));
@@ -1791,6 +1793,45 @@ void WorldClient::lightingCalc() {
   RectI lightRange = m_pendingLightRange;
   List<LightSource> lights = std::move(m_pendingLights);
   List<std::pair<Vec2F, Vec3F>> particleLights = std::move(m_pendingParticleLights);
+
+  // --- Dirty-gated lighting (spike): build a fingerprint of every lightmap input; if it matches
+  // the last computed frame, skip the whole gather+dispatch+export+GPU recompute and let the
+  // existing consume-once path reuse the prior lightmap. Derived/presentation state -> cannot
+  // desync. Flag default-off -> byte-identical to before. Validate mode never skips and proves
+  // (below) the recomputed buffers match, so a missed invalidation is logged before default-on. ---
+  static auto gateSkipped = Telemetry::counter("lighting.dirtygate.skipped");
+  static auto gateRecomputed = Telemetry::counter("lighting.dirtygate.recomputed");
+  static auto gateMismatch = Telemetry::counter("lighting.dirtygate.validate.mismatch");
+  bool dirtyGate = false, dirtyGateValidate = false, clean = false;
+  LightFingerprint fp;
+  {
+    auto& dgCfg = *Root::singleton().configuration();
+    dirtyGate = dgCfg.get("lightingDirtyGate").optBool().value(false);
+    dirtyGateValidate = dgCfg.get("lightingDirtyGateValidate").optBool().value(false);
+    if (dirtyGate || dirtyGateValidate) {
+      fp.lightRange = lightRange;
+      fp.tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      fp.environmentLight = m_sky->environmentLight().toRgbF();
+      fp.undergroundLevel = m_worldTemplate->undergroundLevel();
+      fp.newLighting = dgCfg.get("newLighting").optBool().value(true);
+      fp.monochrome = dgCfg.get("monochromeLighting").toBool();
+      fp.lightingGpu = dgCfg.get("lightingGpu").optBool().value(false);
+      fp.shadowCompare = dgCfg.get("lightingGpuShadowCompare").optBool().value(false);
+      fp.tonemap = dgCfg.get("lightingTonemap").optBool().value(false);
+      Json pd = dgCfg.get("lightingPromoteDynamic");
+      fp.promoteFraction = fp.lightingGpu ? (pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f)) : 0.0f;
+      fp.gpuBrightness = dgCfg.get("lightingGpuBrightness", 1.0f).toFloat();
+      fp.spreadIterations = dgCfg.get("lightingGpuSpreadIterations", 32).toUInt();
+      fp.lights = lights;
+      fp.particleLights = particleLights;
+      clean = m_lightingFingerprintValid && (fp == m_lightingFingerprint);
+      if (clean && dirtyGate && !dirtyGateValidate) {
+        gateSkipped.inc(1);
+        return; // reuse the previously-published lightmap; nothing republished -> painter skips
+      }
+    }
+  }
+
   auto& root = Root::singleton();
   auto configuration = root.configuration();
   bool newLighting = configuration->get("newLighting").optBool().value(true);
@@ -1883,6 +1924,21 @@ void WorldClient::lightingCalc() {
       for (size_t i = 0; i < cells; ++i)
         r8[i] = ob[i * 3];   // R channel of each RGB24 texel
     }
+
+    // Dirty-gate validate oracle: on a frame the gate WOULD have skipped (clean), prove the freshly
+    // recomputed tile-derived GPU buffers are byte-identical to the reference. A diff == a missed
+    // tile-epoch bump (stale-lightmap risk R1). Pending buffers are lighting-thread-private here.
+    if (dirtyGateValidate) {
+      if (clean && m_validateRefValid
+          && (m_pendingLightingEmissionHalf != m_validateRefEmissionHalf
+              || m_pendingLightingObstacleR8 != m_validateRefObstacleR8)) {
+        gateMismatch.inc(1);
+        Logger::warn("lighting dirty-gate VALIDATE MISMATCH: tile-derived buffers changed but fingerprint clean (missed invalidation)");
+      }
+      m_validateRefEmissionHalf = m_pendingLightingEmissionHalf;
+      m_validateRefObstacleR8 = m_pendingLightingObstacleR8;
+      m_validateRefValid = true;
+    }
   }
 
   // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
@@ -1915,6 +1971,16 @@ void WorldClient::lightingCalc() {
       m_lightingObstacleR8 = std::move(m_pendingLightingObstacleR8);
       m_lightingBorder = lightMapBorder;
     }
+  }
+
+  // We reached here because the gate did NOT skip -> a real recompute. Record this frame's
+  // fingerprint for the next gate decision.
+  gateRecomputed.inc(1);
+  if (dirtyGate || dirtyGateValidate) {
+    m_lightingFingerprint = std::move(fp);
+    m_lightingFingerprintValid = true;
+  } else {
+    m_lightingFingerprintValid = false; // gate off -> drop any stale fingerprint
   }
 }
 
@@ -2206,6 +2272,9 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
   tile->backgroundLightTransparent = materialDatabase->backgroundLightTransparent(tile->background);
   tile->foregroundLightTransparent =
       materialDatabase->foregroundLightTransparent(tile->foreground) && tile->collision != CollisionKind::Dynamic;
+  // Dirty-gate: a tile's emission/obstacle inputs changed (block/mod/liquid write). Global epoch =
+  // conservative (over-invalidates off-screen writes; never under-invalidates).
+  m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
 
   if (updateCollision)
     dirtyCollision(RectI::withSize(pos, {1, 1}));

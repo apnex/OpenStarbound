@@ -329,6 +329,40 @@ private:
   Vec2I m_lightMinPosition;
   List<PreviewTile> m_previewTiles;
 
+  // --- Dirty-gated lighting (spike, flag lightingDirtyGate, default off) ---
+  // A fingerprint of every input to the computed lightmap. If unchanged since the last
+  // computed frame, lightingCalc skips the gather+dispatch+export+GPU recompute and the
+  // existing consume-once path reuses the prior lightmap. Derived state -> cannot desync.
+  struct LightFingerprint {
+    RectI lightRange;
+    uint64_t tileEpoch = 0;
+    Vec3F environmentLight;
+    float undergroundLevel = 0.0f;
+    bool newLighting = false, monochrome = false, lightingGpu = false, shadowCompare = false, tonemap = false;
+    float promoteFraction = 0.0f, gpuBrightness = 1.0f;
+    unsigned spreadIterations = 0;
+    List<LightSource> lights;
+    List<std::pair<Vec2F, Vec3F>> particleLights;
+    bool operator==(LightFingerprint const& o) const {
+      return lightRange == o.lightRange && tileEpoch == o.tileEpoch && environmentLight == o.environmentLight
+          && undergroundLevel == o.undergroundLevel && newLighting == o.newLighting && monochrome == o.monochrome
+          && lightingGpu == o.lightingGpu && shadowCompare == o.shadowCompare && tonemap == o.tonemap
+          && promoteFraction == o.promoteFraction && gpuBrightness == o.gpuBrightness
+          && spreadIterations == o.spreadIterations && lights == o.lights && particleLights == o.particleLights;
+    }
+    bool operator!=(LightFingerprint const& o) const { return !(*this == o); }
+  };
+  // Bumped at every writer of lighting-relevant ClientTile fields (emission/obstacle); the
+  // fingerprint compares it to detect any tile change without a per-tile dirty-rect intersect.
+  atomic<uint64_t> m_lightingTileEpoch{0};
+  LightFingerprint m_lightingFingerprint;
+  bool m_lightingFingerprintValid = false;
+  // Validate oracle (lightingDirtyGateValidate): reference copies of the tile-derived GPU
+  // buffers; on a would-skip frame a diff vs these proves a missed invalidation.
+  List<uint16_t> m_validateRefEmissionHalf;
+  List<uint8_t> m_validateRefObstacleR8;
+  bool m_validateRefValid = false;
+
   SkyPtr m_sky;
 
   CollisionGenerator m_collisionGenerator;
