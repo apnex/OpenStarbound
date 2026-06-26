@@ -69,10 +69,6 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
     m_renderer->beginGpuTimer("lighting.gpu.point.gpu_us");
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
-    m_renderer->setEffectParameter("pointMaxAir", params.pointMaxAir);
-    m_renderer->setEffectParameter("pointMaxObstacle", params.pointMaxObstacle);
-    m_renderer->setEffectParameter("spreadMaxAir", params.spreadMaxAir);
-    m_renderer->setEffectParameter("spreadMaxObstacle", params.spreadMaxObstacle);
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
     m_renderer->setBlendMode(params.pointAdditive ? BlendMode::Additive : BlendMode::Max);
@@ -83,7 +79,12 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       if (light.position[0] < 0 || light.position[0] > w - 1 || light.position[1] < 0 || light.position[1] > h - 1)
         continue;
       float maxIntensity = max(light.value[0], max(light.value[1], light.value[2]));
-      float maxRange = maxIntensity * (light.asSpread ? params.spreadMaxAir : params.pointMaxAir);
+      float airReach = light.asSpread ? params.spreadMaxAir : params.pointMaxAir;
+      float obstacleReach = light.asSpread ? params.spreadMaxObstacle : params.pointMaxObstacle;
+      // 1B: the shader's air cull hard-caps reach at airReach regardless of intensity, so for
+      // maxIntensity>1 the old bbox (maxIntensity*airReach) drew a wide ring of always-output-0
+      // cells. Cap the rect to the cull radius -> byte-identical, fill drops ~maxIntensity^2.
+      float maxRange = std::min(maxIntensity, 1.0f) * airReach;
       float lxmin = floor(std::max(0.0f, light.position[0] - maxRange));
       float lymin = floor(std::max(0.0f, light.position[1] - maxRange));
       float lxmax = ceil(std::min(w, light.position[0] + maxRange));
@@ -93,9 +94,13 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       m_renderer->setEffectParameter("lightPosition", Vec2F(light.position));
       m_renderer->setEffectParameter("lightValue", Vec3F(light.value));
       m_renderer->setEffectParameter("lightBeam", light.beam);
-      m_renderer->setEffectParameter("lightBeamAngle", light.beamAngle);
-      m_renderer->setEffectParameter("lightBeamAmbience", light.beamAmbience);
       m_renderer->setEffectParameter("lightAsSpread", light.asSpread);
+      // 1A hoist: per-light constants the shader used to recompute per-fragment (cos/sin etc.).
+      m_renderer->setEffectParameter("lightMaxIntensity", maxIntensity);
+      m_renderer->setEffectParameter("beamDirection", Vec2F(std::cos(light.beamAngle), std::sin(light.beamAngle)));
+      m_renderer->setEffectParameter("oneMinusBeamAmbience", 1.0f - light.beamAmbience);
+      m_renderer->setEffectParameter("perBlockObstacleAtten", 1.0f / obstacleReach);
+      m_renderer->setEffectParameter("perBlockAirAtten", 1.0f / airReach);
       m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
       ++drawn;
     }
