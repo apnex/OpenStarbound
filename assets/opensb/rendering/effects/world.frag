@@ -9,6 +9,7 @@ uniform vec2 lightMapSize;
 uniform sampler2D lightMap;
 uniform float lightMapMultiplier;
 uniform bool lightmapBilinear;
+uniform float lightmapUpscale; // 1 = off (bicubic on tile-res map); >=2 = bilinear of the N-upscaled map
 
 in vec2 fragmentTextureCoordinate;
 flat in int fragmentTextureIndex;
@@ -59,9 +60,11 @@ vec4 bicubicSample(sampler2D tex, vec2 texcoord, vec2 texscale) {
 vec3 sampleLight(vec2 coord, vec2 scale) {
   //soften super bright lights a little
   const float threshold = 1.0;
-  vec3 rgb = lightmapBilinear
-    ? texture(lightMap, coord * scale).rgb       // R-A: 1 hardware-bilinear tap (lightMap is linear-filtered)
-    : bicubicSample(lightMap, coord, scale).rgb; // current: 4 taps (bicubic reconstruction)
+  vec3 rgb = lightmapUpscale >= 1.5
+    ? texture(lightMap, coord * scale * lightmapUpscale).rgb // Form 2: 1 tap of the bicubic-upscaled NxlightMap (coord*N renormalises)
+    : (lightmapBilinear
+        ? texture(lightMap, coord * scale).rgb              // Form 1: 1 bilinear tap of the tile-res map (blocky)
+        : bicubicSample(lightMap, coord, scale).rgb);       // baseline: 4-tap bicubic
   vec3 lower = min(rgb, threshold);
   vec3 upper = max(rgb, threshold) - threshold;
   return lower + (upper / (vec3(1.) + upper));

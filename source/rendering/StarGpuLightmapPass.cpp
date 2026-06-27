@@ -9,7 +9,7 @@ GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
     ImageView const& obstacle, List<uint8_t> const& obstacleR8,
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-    PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, Image* gpuResult) {
+    PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
   static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights");
@@ -126,9 +126,26 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   if (shadowCompare && gpuResult)
     *gpuResult = m_renderer->readFrameBuffer(composeTarget);
 
-  m_renderer->setRenderTarget({});
-  m_renderer->switchEffectConfig("world");
-  m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
+  if (worldUpscale >= 1.5f) {
+    // R-A Form 2: bicubic-upscale the composed lightmap once (<=30Hz) into a higher-res linear FBO;
+    // the world pass then does a single bilinear tap of it (smooth, cheap).
+    unsigned n = (unsigned)(worldUpscale + 0.5f);
+    Vec2U upSize = size * n;
+    m_renderer->switchEffectConfig("lightingUpscale");
+    m_renderer->beginGpuTimer("lighting.gpu.upscale.gpu_us");
+    m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
+    m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
+    m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));
+    m_renderer->endGpuTimer("lighting.gpu.upscale.gpu_us");
+    m_renderer->flush();
+    m_renderer->setRenderTarget({});
+    m_renderer->switchEffectConfig("world");
+    m_renderer->setEffectTextureFromTarget("lightMap", "lightingGpuUpscaled");
+  } else {
+    m_renderer->setRenderTarget({});
+    m_renderer->switchEffectConfig("world");
+    m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
+  }
   return true;
 }
 

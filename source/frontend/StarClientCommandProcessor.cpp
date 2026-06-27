@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n>";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -709,10 +709,11 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool())
-      + strf(" | temporal={} floorMs={} | worldSampleBilinear={}",
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={}",
         cfg->get("lightingTemporalDecouple", true).toBool(),
         cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
-        cfg->get("lightingWorldSampleBilinear", false).toBool());
+        cfg->get("lightingWorldSampleBilinear", false).toBool(),
+        cfg->get("lightingWorldUpscale", 1.0f).toFloat());
   };
 
   if (args.empty())
@@ -768,6 +769,16 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     bool v = args.size() < 2 || args.at(1) != "off";
     cfg->set("lightingWorldSampleBilinear", v);
     return strf("lighting worldSampleBilinear={}", v);
+  }
+  if (args.at(0) == "upscale") {
+    // R-A Form 2: bicubic-upscale factor (1 = off/bicubic; 2..4 = bilinear of the N-upscaled map).
+    if (args.size() < 2)
+      return "usage: /lighting upscale <n>  (1 = off; 2-4 typical)";
+    auto f = maybeLexicalCast<float>(args.at(1));
+    if (!f || *f < 1.0f)
+      return "usage: /lighting upscale <n>=1";
+    cfg->set("lightingWorldUpscale", *f);
+    return strf("lighting worldUpscale={}", *f);
   }
 
   if (args.at(0) != "gpu")
