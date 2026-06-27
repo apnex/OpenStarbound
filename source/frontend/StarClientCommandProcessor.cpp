@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n>";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | parallaxminalpha <f>";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -709,11 +709,12 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool())
-      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={}",
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={} parallaxMinAlpha={}",
         cfg->get("lightingTemporalDecouple", true).toBool(),
         cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
         cfg->get("lightingWorldSampleBilinear", false).toBool(),
-        cfg->get("lightingWorldUpscale", 1.0f).toFloat());
+        cfg->get("lightingWorldUpscale", 1.0f).toFloat(),
+        cfg->get("renderParallaxMinAlpha", 0.0f).toFloat());
   };
 
   if (args.empty())
@@ -779,6 +780,16 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       return "usage: /lighting upscale <n>=1";
     cfg->set("lightingWorldUpscale", *f);
     return strf("lighting worldUpscale={}", *f);
+  }
+  if (args.at(0) == "parallaxminalpha") {
+    // R-D: skip parallax layers with alpha below this (0 = only the byte-identical invisible-layer skip).
+    if (args.size() < 2)
+      return "usage: /lighting parallaxminalpha <f>  (0..1; 0 = off)";
+    auto f = maybeLexicalCast<float>(args.at(1));
+    if (!f || *f < 0.0f)
+      return "usage: /lighting parallaxminalpha <f>=0";
+    cfg->set("renderParallaxMinAlpha", *f);
+    return strf("lighting parallaxMinAlpha={}", *f);
   }
 
   if (args.at(0) != "gpu")
