@@ -230,6 +230,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // m_lightMapBorder persists across non-update frames to match the persistent lightMap binding.
     m_renderer->setEffectParameter("lightMapOffset",
         m_camera.worldToScreen(Vec2F(renderData.lightMinPosition) - Vec2F((float)m_lightMapBorder, (float)m_lightMapBorder)));
+    m_renderer->setEffectParameter("lightmapBilinear",
+        Root::singleton().configuration()->get("lightingWorldSampleBilinear").optBool().value(false));
   }
 
   // Parallax layers
