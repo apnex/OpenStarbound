@@ -1824,6 +1824,85 @@ void WorldClient::lightingTileGather() {
   LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
 }
 
+void WorldClient::lightingStableGather() {
+  float undergroundLevel = m_worldTemplate->undergroundLevel();
+  auto liquidsDatabase = Root::singleton().liquidsDatabase();
+  auto materialDatabase = Root::singleton().materialDatabase();
+
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int height = calcRegion.height();
+  Vec2I calcMin = calcRegion.min();
+  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
+  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
+  // the direct gather. Then the parallel fill overwrites the loaded columns.
+  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)height, GatherCell{});
+
+  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size.
+  m_tileArray->tileEvalColumnsParallel(calcRegion, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
+    size_t baseIndex = (size_t)(pos[0] - calcMin[0]) * (size_t)height + (size_t)(pos[1] - calcMin[1]);
+    // Same per-tile compute + material-run memo as lightingTileGather, but the per-frame
+    // environmentLight is EXCLUDED from stableLight and recorded as the skyExposed bit instead, so
+    // the grid is reusable across frames (env-light re-applied each frame in applyStableToCells).
+    MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
+    MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
+    for (size_t y = 0; y < ySize; ++y) {
+      auto& tile = column[y];
+      Vec3F light;
+      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId) {
+        if (tile.foreground != fgMat || tile.foregroundMod != fgMod) {
+          fgMat = tile.foreground; fgMod = tile.foregroundMod;
+          fgLight = materialDatabase->radiantLight(fgMat, fgMod);
+        }
+        light += fgLight;
+      }
+
+      if (tile.liquid.liquid != EmptyLiquidId && tile.liquid.level != 0.0f)
+        light += liquidsDatabase->radiantLight(tile.liquid);
+      bool skyExposed = false;
+      if (tile.foregroundLightTransparent) {
+        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId) {
+          if (tile.background != bgMat || tile.backgroundMod != bgMod) {
+            bgMat = tile.background; bgMod = tile.backgroundMod;
+            bgLight = materialDatabase->radiantLight(bgMat, bgMod);
+          }
+          light += bgLight;
+        }
+        if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
+          skyExposed = true;
+      }
+      GatherCell& gc = m_gatherGrid[baseIndex + y];
+      gc.stableLight = light;
+      gc.obstacle = tile.foregroundLightTransparent ? 0 : 1;
+      gc.skyExposed = skyExposed ? 1 : 0;
+    }
+  });
+}
+
+void WorldClient::applyStableToCells() {
+  Vec3F environmentLight = m_sky->environmentLight().toRgbF();
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int width = calcRegion.width();
+  int height = calcRegion.height();
+  // Write the calc cells from the stable grid, re-applying the current-frame environmentLight to
+  // sky-exposed cells. Reconstructs exactly the light the direct gather would have produced this
+  // frame. Process WorldSectorSize-tall chunks so setCellColumn resolves the monochrome/Either
+  // branch once per chunk (a grid column may exceed the sector size).
+  Vec3F colLight[WorldSectorSize];
+  bool colObstacle[WorldSectorSize];
+  for (int x = 0; x < width; ++x) {
+    size_t colBase = (size_t)x * (size_t)height;
+    for (int y0 = 0; y0 < height; y0 += (int)WorldSectorSize) {
+      int n = height - y0 < (int)WorldSectorSize ? height - y0 : (int)WorldSectorSize;
+      for (int k = 0; k < n; ++k) {
+        GatherCell const& gc = m_gatherGrid[colBase + (size_t)(y0 + k)];
+        colLight[k] = gc.skyExposed ? gc.stableLight + environmentLight : gc.stableLight;
+        colObstacle[k] = gc.obstacle != 0;
+      }
+      m_lightingCalculator.setCellColumn(colBase + (size_t)y0, colLight, colObstacle, (size_t)n);
+    }
+  }
+}
+
 void WorldClient::lightingCalc() {
   // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
   // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
@@ -1869,7 +1948,29 @@ void WorldClient::lightingCalc() {
   m_lightingCalculator.begin(lightRange);
   {
     TelemetryScope gatherScope(gatherTimer);
-    lightingTileGather();
+    // A1: when lightingGatherCache is on, reuse the per-frame-invariant stable grid across frames --
+    // a cache HIT (tile epoch + calc anchor/dims unchanged) skips the tile gather entirely and only
+    // re-applies the current-frame environmentLight. On a MISS we re-gather the stable grid. The
+    // entity-light add-loop + exportSpreadInputs below run every frame regardless, so moving/flickering
+    // lights are never cached. Flag OFF = the original direct gather (B1+B2) -- the clean A/B baseline.
+    if (configuration->get("lightingGatherCache").optBool().value(true)) {
+      RectI calcRegion = m_lightingCalculator.calculationRegion();
+      Vec2I calcMin = calcRegion.min();
+      Vec2I calcDims = Vec2I(calcRegion.width(), calcRegion.height());
+      uint64_t tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      bool hit = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch && m_gatherAnchor == calcMin;
+      if (!hit) {
+        lightingStableGather();
+        m_gatherAnchor = calcMin;
+        m_gatherDims = calcDims;
+        m_gatherEpoch = tileEpoch;
+        m_gatherValid = true;
+      }
+      applyStableToCells();
+    } else {
+      lightingTileGather();
+      m_gatherValid = false; // re-enabling the cache later must force a fresh gather
+    }
   }
 
   prepLocker.unlock();

@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n>";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -709,11 +709,12 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool())
-      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={}",
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={} gatherCache={}",
         cfg->get("lightingTemporalDecouple", true).toBool(),
         cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
         cfg->get("lightingWorldSampleBilinear", false).toBool(),
-        cfg->get("lightingWorldUpscale", 1.0f).toFloat());
+        cfg->get("lightingWorldUpscale", 1.0f).toFloat(),
+        cfg->get("lightingGatherCache", true).toBool());
   };
 
   if (args.empty())
@@ -779,6 +780,14 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       return "usage: /lighting upscale <n>=1";
     cfg->set("lightingWorldUpscale", *f);
     return strf("lighting worldUpscale={}", *f);
+  }
+  if (args.at(0) == "gathercache") {
+    // A1/A2: reuse the per-frame-invariant tile gather across frames (cache hit on a still camera /
+    // shift on scroll), re-applying environmentLight via the sky-exposed bit. off = re-gather every
+    // frame (the A/B baseline). Visual-only; default on (kill-switch).
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingGatherCache", v);
+    return strf("lighting gatherCache={}", v);
   }
 
   if (args.at(0) != "gpu")
