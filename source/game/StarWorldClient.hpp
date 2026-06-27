@@ -330,6 +330,11 @@ private:
   Vec2I m_lightMinPosition;
   List<PreviewTile> m_previewTiles;
 
+  // Bumped at every writer of lighting-relevant ClientTile fields (block/mod/liquid); a monotonic
+  // change-detector for the temporal lighting gate (StarTemporalLightingGate). Atomic: written on the
+  // packet/update thread, read on the lighting thread.
+  atomic<uint64_t> m_lightingTileEpoch{0};
+
   SkyPtr m_sky;
 
   CollisionGenerator m_collisionGenerator;

@@ -997,8 +997,10 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
 
     } else if (auto liquidUpdate = as<TileLiquidUpdatePacket>(packet)) {
       m_predictedTiles.remove(liquidUpdate->position);
-      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position))
+      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
+        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: liquid radiance changed
+      }
 
     } else if (auto giveItem = as<GiveItemPacket>(packet)) {
       tryGiveMainPlayerItem(itemDatabase->item(giveItem->item));
@@ -2225,6 +2227,7 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
   tile->backgroundLightTransparent = materialDatabase->backgroundLightTransparent(tile->background);
   tile->foregroundLightTransparent =
       materialDatabase->foregroundLightTransparent(tile->foreground) && tile->collision != CollisionKind::Dynamic;
+  m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: tile light input changed
 
   if (updateCollision)
     dirtyCollision(RectI::withSize(pos, {1, 1}));
