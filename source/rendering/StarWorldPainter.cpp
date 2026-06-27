@@ -249,8 +249,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
   if (!renderData.parallaxLayers.empty())
-    m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData,
-        Root::singleton().configuration()->get("renderParallaxMinAlpha").optFloat().value(0.0f));
+    m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
   m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
 
   // Main world layers
