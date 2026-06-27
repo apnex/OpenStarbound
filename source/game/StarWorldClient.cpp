@@ -1814,6 +1814,28 @@ void WorldClient::lightingCalc() {
   List<std::pair<Vec2F, Vec3F>> particleLights = std::move(m_pendingParticleLights);
   auto& root = Root::singleton();
   auto configuration = root.configuration();
+
+  // --- Temporal lighting decoupling: skip this recompute when the scene is calm (only flicker /
+  // particle-motion / ambient changed) and we are between the floor cadence; nothing is republished, so
+  // the render thread reuses the previously-published lightmap. Off (flag off / floorMs<=0) => recompute
+  // every frame (byte-identical). Flicker-tolerant: the activity signature ignores light colour. ---
+  static auto temporalRecomputed = Telemetry::counter("lighting.temporal.recomputed");
+  static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped");
+  {
+    bool temporalEnabled = configuration->get("lightingTemporalDecouple").optBool().value(true);
+    double temporalFloorMs = configuration->get("lightingTemporalFloorMs", 33.0).toDouble();
+    int64_t nowMs = Time::monotonicMilliseconds();
+    uint64_t epoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+    auto sig = TemporalLightingGate::signatureOf(lights);
+    if (!TemporalLightingGate::shouldRecompute(
+            m_temporalBaseline, temporalEnabled, temporalFloorMs, epoch, lightRange, sig, nowMs)) {
+      temporalSkipped.inc(1);
+      return; // calm -> reuse the previously-published lightmap (prepLocker releases on return)
+    }
+    temporalRecomputed.inc(1);
+    m_temporalBaseline = {true, epoch, lightRange, std::move(sig), nowMs};
+  }
+
   bool newLighting = configuration->get("newLighting").optBool().value(true);
   bool monochrome = configuration->get("monochromeLighting").toBool();
   m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
