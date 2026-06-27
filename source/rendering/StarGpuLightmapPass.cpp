@@ -109,8 +109,13 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     pointLightsDrawn.inc(drawn);
   }
 
-  // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
-  char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
+  // --- Compose: cap (brightnessLimit) the spread+point accumulation into the PERSISTENT lightmap. ---
+  // dirty-REGION Stage 1: compose into a fixed, parity-independent clear:false target instead of the
+  // spreadIterations%2 ping-pong buffer (which alternates frame-to-frame as the auto-scaled iteration
+  // count changes its parity). A stable persistent lightmap is the prerequisite for later stages to
+  // scissor partial recompute onto the prior frame and reuse it outside the dirty rect. Full recompute
+  // overwrites it entirely via the full quad below, so this is byte-identical to the prior behaviour.
+  char const* composeTarget = "lightingMapPersist";   // persistL; a distinct buffer from lastTarget
   m_renderer->switchEffectConfig("lightingPassthrough");        // flushes the final point quad
   m_renderer->beginGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->setEffectParameter("applyCap", true);
