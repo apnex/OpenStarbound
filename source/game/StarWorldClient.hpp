@@ -227,6 +227,12 @@ private:
   typedef function<ClientTile const& (Vec2I)> ClientTileGetter;
 
   void lightingTileGather();
+  // A1: gather the per-frame-INVARIANT tile lighting (block+liquid+background emission + obstacle +
+  // sky-exposed bit, EXCLUDING the per-frame environmentLight) into the reusable stable grid.
+  void lightingStableGather();
+  // A1: write the calculator cells from the stable grid, re-applying the current-frame
+  // environmentLight to sky-exposed cells. Cheap (no material DB lookups / tile traversal).
+  void applyStableToCells();
   void lightingCalc();
   void lightingMain();
 
@@ -339,6 +345,24 @@ private:
   // activity baseline. lightingCalc skips the recompute (render reuses the prior lightmap) on calm
   // frames between the floor cadence. Lighting-thread private.
   TemporalLightingGate::Baseline m_temporalBaseline;
+
+  // A1/A2: scroll-incremental cached tile-gather (flag lightingGatherCache, default on; kill-switch).
+  // The "stable" grid holds the per-frame-INVARIANT part of the tile gather (block+liquid+background
+  // emission + obstacle + sky-exposed bit), EXCLUDING the per-frame environmentLight (re-applied each
+  // frame via the skyExposed bit in applyStableToCells). Reused across frames when the tile epoch +
+  // calc anchor/dims are unchanged (cache hit); shifted + margin-gathered on camera scroll (A2).
+  // Column-major (x*height+y), matching CellularLightingCalculator::baseIndexFor. Lighting-thread
+  // private (touched only in lightingCalc / lightingStableGather / applyStableToCells).
+  struct GatherCell {
+    Vec3F stableLight;
+    uint8_t obstacle;
+    uint8_t skyExposed;
+  };
+  List<GatherCell> m_gatherGrid;
+  Vec2I m_gatherAnchor;
+  Vec2I m_gatherDims;
+  uint64_t m_gatherEpoch = 0;
+  bool m_gatherValid = false;
 
   SkyPtr m_sky;
 
