@@ -228,8 +228,15 @@ private:
 
   void lightingTileGather();
   // A1: gather the per-frame-INVARIANT tile lighting (block+liquid+background emission + obstacle +
-  // sky-exposed bit, EXCLUDING the per-frame environmentLight) into the reusable stable grid.
+  // sky-exposed bit, EXCLUDING the per-frame environmentLight) into the reusable stable grid (full
+  // calc region; zeroes first so unloaded-margin cells read as begin()'s {0, not-obstacle}).
   void lightingStableGather();
+  // A1/A2: gather the stable tile lighting for the given world-tile sub-rect into m_gatherGrid
+  // (indexed relative to the current calc region). Shared by the full gather and the A2 margin.
+  void gatherStableColumns(RectI const& region);
+  // A2: shift the stable grid by the integer-tile camera delta (dx, dy) via the scratch buffer, then
+  // gather only the newly-exposed L-shaped margin. Caller guarantees same dims+epoch and |d| < dims.
+  void shiftAndGatherMargin(int dx, int dy);
   // A1: write the calculator cells from the stable grid, re-applying the current-frame
   // environmentLight to sky-exposed cells. Cheap (no material DB lookups / tile traversal).
   void applyStableToCells();
@@ -359,8 +366,9 @@ private:
     uint8_t skyExposed;
   };
   List<GatherCell> m_gatherGrid;
-  Vec2I m_gatherAnchor;
-  Vec2I m_gatherDims;
+  List<GatherCell> m_gatherScratch; // A2 double-buffer: shift destination, swapped into m_gatherGrid
+  Vec2I m_gatherAnchor = Vec2I();
+  Vec2I m_gatherDims = Vec2I();
   uint64_t m_gatherEpoch = 0;
   bool m_gatherValid = false;
 

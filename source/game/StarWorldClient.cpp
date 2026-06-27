@@ -1825,6 +1825,15 @@ void WorldClient::lightingTileGather() {
 }
 
 void WorldClient::lightingStableGather() {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
+  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
+  // the direct gather. Then gather the full calc region over the top.
+  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)calcRegion.height(), GatherCell{});
+  gatherStableColumns(calcRegion);
+}
+
+void WorldClient::gatherStableColumns(RectI const& region) {
   float undergroundLevel = m_worldTemplate->undergroundLevel();
   auto liquidsDatabase = Root::singleton().liquidsDatabase();
   auto materialDatabase = Root::singleton().materialDatabase();
@@ -1832,13 +1841,10 @@ void WorldClient::lightingStableGather() {
   RectI calcRegion = m_lightingCalculator.calculationRegion();
   int height = calcRegion.height();
   Vec2I calcMin = calcRegion.min();
-  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
-  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
-  // the direct gather. Then the parallel fill overwrites the loaded columns.
-  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)height, GatherCell{});
-
-  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size.
-  m_tileArray->tileEvalColumnsParallel(calcRegion, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
+  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size. Indexing is
+  // relative to the current calc region (calcMin/height), matching baseIndexFor, so the same routine
+  // serves both the full gather and the A2 margin (the grid is always aligned to calcMin).
+  m_tileArray->tileEvalColumnsParallel(region, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
     size_t baseIndex = (size_t)(pos[0] - calcMin[0]) * (size_t)height + (size_t)(pos[1] - calcMin[1]);
     // Same per-tile compute + material-run memo as lightingTileGather, but the per-frame
     // environmentLight is EXCLUDED from stableLight and recorded as the skyExposed bit instead, so
@@ -1876,6 +1882,47 @@ void WorldClient::lightingStableGather() {
       gc.skyExposed = skyExposed ? 1 : 0;
     }
   });
+}
+
+void WorldClient::shiftAndGatherMargin(int dx, int dy) {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int width = calcRegion.width();
+  int height = calcRegion.height();
+  Vec2I calcMin = calcRegion.min();
+  int adx = dx < 0 ? -dx : dx;
+  int ady = dy < 0 ? -dy : dy;
+  // Double-buffer shift: copy the overlap (cells present in BOTH the old and new grid) from
+  // m_gatherGrid into the zeroed scratch at the shifted position, then swap. Disjoint buffers, so
+  // any column order is safe (no in-place memmove ordering hazard, and the dy intra-column move is a
+  // plain slice copy). World tile at new index (nx, ny) was at old index (nx + dx, ny + dy).
+  m_gatherScratch.assign((size_t)width * (size_t)height, GatherCell{});
+  int nxStart = dx > 0 ? 0 : adx;
+  int nxEnd = dx > 0 ? width - dx : width;
+  int nyStart = dy > 0 ? 0 : ady;
+  int nyEnd = dy > 0 ? height - dy : height;
+  int copyLen = nyEnd - nyStart;
+  GatherCell const* gridPtr = m_gatherGrid.ptr();
+  GatherCell* scratchPtr = m_gatherScratch.ptr();
+  for (int nx = nxStart; nx < nxEnd; ++nx) {
+    GatherCell const* src = gridPtr + (size_t)(nx + dx) * (size_t)height + (size_t)(nyStart + dy);
+    GatherCell* dst = scratchPtr + (size_t)nx * (size_t)height + (size_t)nyStart;
+    for (int k = 0; k < copyLen; ++k)
+      dst[k] = src[k]; // trivially-copyable GatherCell -> the compiler lowers this to a memcpy
+  }
+  std::swap(m_gatherGrid, m_gatherScratch); // O(1) buffer-pointer swap (List::swap is element-swap)
+
+  // Gather the L-shaped margin (cells new in x OR new in y) into the shifted grid. Rect A = the |dx|
+  // newly-exposed columns (full height); Rect B = the |dy| newly-exposed rows (full width). Their
+  // union is exactly the margin; they overlap only in the corner (gathered twice, identical value).
+  // Neither rect touches the shifted overlap, so no retained cell is clobbered.
+  if (dx != 0) {
+    int ax = dx > 0 ? calcMin[0] + width - dx : calcMin[0];
+    gatherStableColumns(RectI::withSize(Vec2I(ax, calcMin[1]), Vec2I(adx, height)));
+  }
+  if (dy != 0) {
+    int by = dy > 0 ? calcMin[1] + height - dy : calcMin[1];
+    gatherStableColumns(RectI::withSize(Vec2I(calcMin[0], by), Vec2I(width, ady)));
+  }
 }
 
 void WorldClient::applyStableToCells() {
@@ -1954,19 +2001,41 @@ void WorldClient::lightingCalc() {
     // entity-light add-loop + exportSpreadInputs below run every frame regardless, so moving/flickering
     // lights are never cached. Flag OFF = the original direct gather (B1+B2) -- the clean A/B baseline.
     if (configuration->get("lightingGatherCache").optBool().value(true)) {
+      int64_t gatherStart = Time::monotonicMicroseconds();
       RectI calcRegion = m_lightingCalculator.calculationRegion();
       Vec2I calcMin = calcRegion.min();
       Vec2I calcDims = Vec2I(calcRegion.width(), calcRegion.height());
+      // The cache key is (tile epoch, anchor, dims). It deliberately does NOT track sector load/unload,
+      // which is safe ONLY because the calc region (the query window padded by the light-spread border)
+      // is strictly inside the loaded-sector region (sectors load for the monitored window padded by a
+      // full sector), so no unloaded sector is ever gathered. Preserve that padding invariant.
       uint64_t tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
-      bool hit = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch && m_gatherAnchor == calcMin;
-      if (!hit) {
-        lightingStableGather();
-        m_gatherAnchor = calcMin;
-        m_gatherDims = calcDims;
-        m_gatherEpoch = tileEpoch;
-        m_gatherValid = true;
+      // Same grid layout (size + tile epoch) as last frame? Then we can reuse it: a HIT (same anchor)
+      // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the
+      // newly-exposed margin. Anything else (first frame, zoom/resize/size-breathe, tile edit, or a
+      // jump >= the grid size) falls back to a full stable gather.
+      bool sameGrid = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch;
+      if (sameGrid && m_gatherAnchor == calcMin) {
+        // cache hit: nothing to gather; applyStableToCells re-applies the current env-light below.
+      } else if (sameGrid) {
+        int dx = calcMin[0] - m_gatherAnchor[0];
+        int dy = calcMin[1] - m_gatherAnchor[1];
+        int adx = dx < 0 ? -dx : dx;
+        int ady = dy < 0 ? -dy : dy;
+        if (adx < calcDims[0] && ady < calcDims[1])
+          shiftAndGatherMargin(dx, dy); // A2: scroll -- shift the overlap + gather only the margin
+        else
+          lightingStableGather();       // jump >= grid size: no overlap, full gather
+      } else {
+        lightingStableGather();         // first frame / zoom / resize / size-breathe / tile edit
       }
+      m_gatherAnchor = calcMin;
+      m_gatherDims = calcDims;
+      m_gatherEpoch = tileEpoch;
+      m_gatherValid = true;
       applyStableToCells();
+      // Mirror lightingTileGather's HUD timer so the gather cost shows in /debug whether the cache is on or off.
+      LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}µs", Time::monotonicMicroseconds() - gatherStart));
     } else {
       lightingTileGather();
       m_gatherValid = false; // re-enabling the cache later must force a fresh gather
@@ -2215,6 +2284,7 @@ void WorldClient::clearWorld() {
   m_worldProperties.clear();
 
   m_tileArray.reset();
+  m_gatherValid = false; // A1/A2: drop the stable tile-gather cache so a reused WorldClient (world hop) can't reapply the previous world's lighting for a frame
 
   m_damageManager.reset();
 
