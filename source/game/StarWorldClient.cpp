@@ -1781,6 +1781,11 @@ void WorldClient::lightingTileGather() {
 
   m_tileArray->tileEvalColumnsParallel(m_lightingCalculator.calculationRegion(), [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
     size_t baseIndex = m_lightingCalculator.baseIndexFor(pos);
+    // Stage the column, then write it with a single setCellColumn so the monochrome/Either
+    // branch is resolved once per column instead of once per tile. Byte-identical to the
+    // per-tile setCellIndex. ySize is guaranteed <= the sector size (comment above).
+    Vec3F colLight[WorldSectorSize];
+    bool colObstacle[WorldSectorSize];
     for (size_t y = 0; y < ySize; ++y) {
       auto& tile = column[y];
       Vec3F light;
@@ -1795,8 +1800,10 @@ void WorldClient::lightingTileGather() {
         if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
           light += environmentLight;
       }
-      m_lightingCalculator.setCellIndex(baseIndex + y, light, !tile.foregroundLightTransparent);
+      colLight[y] = light;
+      colObstacle[y] = !tile.foregroundLightTransparent;
     }
+    m_lightingCalculator.setCellColumn(baseIndex, colLight, colObstacle, ySize);
   });
   LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
 }

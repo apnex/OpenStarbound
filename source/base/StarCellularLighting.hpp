@@ -141,6 +141,11 @@ public:
 
   void setCellIndex(size_t cellIndex, Vec3F const& light, bool obstacle);
 
+  // Bulk column write: resolve the monochrome/Either branch ONCE, then write `count`
+  // contiguous cells starting at cellIndex (column-major, so a column is contiguous).
+  // Byte-identical to calling setCellIndex per cell.
+  void setCellColumn(size_t cellIndex, Vec3F const* lights, bool const* obstacles, size_t count);
+
   void addSpreadLight(Vec2F const& position, Vec3F const& light);
   void addPointLight(Vec2F const& position, Vec3F const& light, float beam, float beamAngle, float beamAmbience, bool asSpread = false);
 
@@ -230,6 +235,18 @@ inline void CellularLightingCalculator::setCellIndex(size_t cellIndex, Vec3F con
     m_lightArray.right().cellAtIndex(cellIndex) = ScalarCellularLightArray::Cell{light.sum() / 3, obstacle};
   else
     m_lightArray.left().cellAtIndex(cellIndex) = ColoredCellularLightArray::Cell{light, obstacle};
+}
+
+inline void CellularLightingCalculator::setCellColumn(size_t cellIndex, Vec3F const* lights, bool const* obstacles, size_t count) {
+  if (m_monochrome) {
+    auto& arr = m_lightArray.right();
+    for (size_t i = 0; i < count; ++i)
+      arr.cellAtIndex(cellIndex + i) = ScalarCellularLightArray::Cell{lights[i].sum() / 3, obstacles[i]};
+  } else {
+    auto& arr = m_lightArray.left();
+    for (size_t i = 0; i < count; ++i)
+      arr.cellAtIndex(cellIndex + i) = ColoredCellularLightArray::Cell{lights[i], obstacles[i]};
+  }
 }
 
 }
