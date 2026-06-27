@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -709,9 +709,10 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool())
-      + strf(" | temporal={} floorMs={}",
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={}",
         cfg->get("lightingTemporalDecouple", true).toBool(),
-        cfg->get("lightingTemporalFloorMs", 33.0f).toFloat());
+        cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
+        cfg->get("lightingWorldSampleBilinear", false).toBool());
   };
 
   if (args.empty())
@@ -761,6 +762,12 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     bool v = args.size() < 2 || args.at(1) != "off";
     cfg->set("lightingTonemap", v);
     return strf("lighting tonemap={}", v);
+  }
+  if (args.at(0) == "bilinear") {
+    // R-A: sample the lightMap with a single bilinear tap in world.frag instead of the 4-tap bicubic.
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingWorldSampleBilinear", v);
+    return strf("lighting worldSampleBilinear={}", v);
   }
 
   if (args.at(0) != "gpu")
