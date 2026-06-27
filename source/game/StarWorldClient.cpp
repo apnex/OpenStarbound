@@ -1786,17 +1786,33 @@ void WorldClient::lightingTileGather() {
     // per-tile setCellIndex. ySize is guaranteed <= the sector size (comment above).
     Vec3F colLight[WorldSectorSize];
     bool colObstacle[WorldSectorSize];
+    // Memoize radiantLight across vertical runs of identical material/mod (stone columns, open
+    // sky). radiantLight is a pure function of (id, mod) -> reusing the cached value is byte-
+    // identical. Sentinel = the "no material" state (EmptyMaterialId, NoModId), which never passes
+    // the emission guard, so the first emitting tile always recomputes.
+    MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
+    MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
     for (size_t y = 0; y < ySize; ++y) {
       auto& tile = column[y];
       Vec3F light;
-      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId)
-        light += materialDatabase->radiantLight(tile.foreground, tile.foregroundMod);
+      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId) {
+        if (tile.foreground != fgMat || tile.foregroundMod != fgMod) {
+          fgMat = tile.foreground; fgMod = tile.foregroundMod;
+          fgLight = materialDatabase->radiantLight(fgMat, fgMod);
+        }
+        light += fgLight;
+      }
 
       if (tile.liquid.liquid != EmptyLiquidId && tile.liquid.level != 0.0f)
         light += liquidsDatabase->radiantLight(tile.liquid);
       if (tile.foregroundLightTransparent) {
-        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId)
-          light += materialDatabase->radiantLight(tile.background, tile.backgroundMod);
+        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId) {
+          if (tile.background != bgMat || tile.backgroundMod != bgMod) {
+            bgMat = tile.background; bgMod = tile.backgroundMod;
+            bgLight = materialDatabase->radiantLight(bgMat, bgMod);
+          }
+          light += bgLight;
+        }
         if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
           light += environmentLight;
       }
