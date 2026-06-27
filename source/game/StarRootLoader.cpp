@@ -114,6 +114,7 @@ R"JSON(
       "lightingTemporalDecouple" : true,
       "lightingTemporalFloorMs" : 33.0,
       "lightingWorldSampleBilinear" : false,
+      "lightingWorldUpscale" : 1.0,
 
       "safe" : {
         "alwaysAllowClipboard" : false,

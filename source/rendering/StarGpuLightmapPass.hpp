@@ -42,7 +42,7 @@ public:
       ImageView const& obstacle, List<uint8_t> const& obstacleR8,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
       PointParameters const& params, float brightnessScale = 1.0f, bool tonemap = false,
-      bool shadowCompare = false, Image* gpuResult = nullptr);
+      bool shadowCompare = false, float worldUpscale = 1.0f, Image* gpuResult = nullptr);
 
 private:
   Renderer* m_renderer;
