@@ -25,7 +25,7 @@ public:
   void renderFrontOrbiters(float pixelRatio, Vec2F const& screenSize, SkyRenderData const& sky);
   void renderSky(Vec2F const& screenSize, SkyRenderData const& sky);
 
-  void renderParallaxLayers(Vec2F parallaxWorldPosition, WorldCamera const& camera, ParallaxLayers const& layers, SkyRenderData const& sky, float minAlpha = 0.0f);
+  void renderParallaxLayers(Vec2F parallaxWorldPosition, WorldCamera const& camera, ParallaxLayers const& layers, SkyRenderData const& sky);
 
   void cleanup(int64_t textureTimeout);
 
