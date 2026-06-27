@@ -833,6 +833,7 @@ void OpenGlRenderer::beginGpuTimer(String const& name) {
       GLuint64 elapsedNs = 0;
       glGetQueryObjectui64v(ring.queries[slot], GL_QUERY_RESULT, &elapsedNs);
       Telemetry::timer(name).record((int64_t)(elapsedNs / 1000));
+      m_gpuTimerLastMicros[name] = (int64_t)(elapsedNs / 1000);
     }
     ring.issued[slot] = false; // reuse the query object regardless (drops a rare not-ready sample)
   }
@@ -852,6 +853,12 @@ void OpenGlRenderer::endGpuTimer(String const&) {
   m_gpuTimerCurrent->writeIdx = (m_gpuTimerSlot + 1) % 3;
   m_gpuTimerActive = false;
   m_gpuTimerCurrent = nullptr;
+}
+
+Maybe<int64_t> OpenGlRenderer::gpuTimerLastMicros(String const& name) const {
+  if (auto p = m_gpuTimerLastMicros.ptr(name))
+    return *p;
+  return {};
 }
 
 void OpenGlRenderer::setScreenSize(Vec2U screenSize) {

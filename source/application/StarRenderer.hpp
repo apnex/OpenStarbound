@@ -204,6 +204,10 @@ public:
   // Calls must be paired and non-nested.
   virtual void beginGpuTimer(String const& name) { (void)name; }
   virtual void endGpuTimer(String const& name) { (void)name; }
+
+  // Last GPU-timer result (microseconds) for a named scope, if one has been read back.
+  // Default none; backends that implement GPU timers return the most recent sample.
+  virtual Maybe<int64_t> gpuTimerLastMicros(String const& name) const { (void)name; return {}; }
 };
 
 }

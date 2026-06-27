@@ -68,6 +68,7 @@ public:
 
   void beginGpuTimer(String const& name) override;
   void endGpuTimer(String const& name) override;
+  Maybe<int64_t> gpuTimerLastMicros(String const& name) const override;
 
   void setScreenSize(Vec2U screenSize);
 
@@ -284,6 +285,7 @@ private:
   bool m_gpuTimerActive = false;
   GpuTimerRing* m_gpuTimerCurrent = nullptr;
   unsigned m_gpuTimerSlot = 0;
+  StringMap<int64_t> m_gpuTimerLastMicros; // last read-back µs per scope (for the /debug HUD)
 
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;
