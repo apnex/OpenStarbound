@@ -717,6 +717,9 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
 
   renderData.particles = &m_particles->particles();
   LogMap::set("client_render_particle_count", renderData.particles->size());
+  // Durable telemetry mirror (R-F gate): particle count in the snapshot, not just the /debug HUD.
+  static auto particleCountGauge = Telemetry::gauge("render.particle.count");
+  particleCountGauge.set((int64_t)renderData.particles->size());
 
   renderData.skyRenderData = m_sky->renderData();
 
