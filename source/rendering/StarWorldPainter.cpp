@@ -5,6 +5,7 @@
 #include "StarAssets.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarTelemetry.hpp"
+#include "StarLogging.hpp"  // LogMap (/debug HUD per-pass GPU timings, Rung 0)
 #include "StarCellularLightArray.hpp"  // spreadJacobiReference (CPU spread oracle for parity)
 
 namespace Star {
@@ -132,6 +133,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   float starAndDebrisRatio = lerp(0.0625f, pixelRatioBasis * 2.0f, m_camera.pixelRatio());
   float orbiterAndPlanetRatio = lerp(0.125f, pixelRatioBasis * 3.0f, m_camera.pixelRatio());
 
+  m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
   m_environmentPainter->renderStars(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
   m_environmentPainter->renderDebrisFields(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
   if (renderData.skyRenderData.type != SkyType::Atmosphereless)
@@ -141,6 +143,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   m_environmentPainter->renderFrontOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
   if (renderData.skyRenderData.type == SkyType::Atmosphereless)
     m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+  m_renderer->endGpuTimer("render.pass.environment.gpu_us");
 
   m_renderer->flush();
 
@@ -239,11 +242,14 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   m_previousCameraCenter = m_camera.centerWorldPosition();
   m_parallaxWorldPosition[1] = m_camera.centerWorldPosition()[1];
 
+  m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
   if (!renderData.parallaxLayers.empty())
     m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
+  m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
 
   // Main world layers
 
+  m_renderer->beginGpuTimer("render.pass.world.gpu_us");
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : renderData.entityDrawables) {
     for (auto& p : ed.layers)
@@ -287,10 +293,20 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   drawDrawableSet(renderData.nametags);
   renderBars(renderData);
   renderEntitiesUntil({});
+  m_renderer->endGpuTimer("render.pass.world.gpu_us");
 
+  m_renderer->beginGpuTimer("render.pass.compose.gpu_us");
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0)
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
+  m_renderer->endGpuTimer("render.pass.compose.gpu_us");
+
+  // Rung 0: surface the per-pass GPU timings (populated only under deep telemetry) on the /debug HUD.
+  for (auto const& key : {"render.pass.environment.gpu_us", "render.pass.parallax.gpu_us",
+                          "render.pass.world.gpu_us", "render.pass.compose.gpu_us"}) {
+    if (auto us = m_renderer->gpuTimerLastMicros(key))
+      LogMap::set(String(key), strf("{:05d}us", *us));
+  }
 
   int64_t textureTimeout = m_assets->json("/rendering.config:textureTimeout").toInt();
   m_textPainter->cleanup(textureTimeout);
