@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -708,7 +708,10 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
-      cfg->get("lightingTonemap", false).toBool());
+      cfg->get("lightingTonemap", false).toBool())
+      + strf(" | temporal={} floorMs={}",
+        cfg->get("lightingTemporalDecouple", true).toBool(),
+        cfg->get("lightingTemporalFloorMs", 33.0f).toFloat());
   };
 
   if (args.empty())
@@ -739,6 +742,20 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       return "usage: /lighting promoteminintensity <f>=0";
     cfg->set("lightingPromoteMinIntensity", *f);
     return strf("lighting promoteMinIntensity={}", *f);
+  }
+  if (args.at(0) == "temporal") {
+    // Recompute the lightmap at a floor cadence when calm (only flicker/particles/ambient), 60Hz on
+    // real activity. floor <ms> sets the calm cadence (0 = recompute every frame = off).
+    if (args.size() >= 2 && args.at(1) == "floor") {
+      if (args.size() < 3) return "usage: /lighting temporal floor <ms>  (0 = recompute every frame)";
+      auto f = maybeLexicalCast<float>(args.at(2));
+      if (!f || *f < 0.0f) return "usage: /lighting temporal floor <ms>=0";
+      cfg->set("lightingTemporalFloorMs", *f);
+      return strf("lighting temporalFloorMs={}", *f);
+    }
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingTemporalDecouple", v);
+    return strf("lighting temporalDecouple={}", v);
   }
   if (args.at(0) == "tonemap") {
     bool v = args.size() < 2 || args.at(1) != "off";

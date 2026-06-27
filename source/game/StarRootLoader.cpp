@@ -111,6 +111,8 @@ R"JSON(
       "lightingPromoteDynamic" : 0.5,
       "lightingPromoteMinIntensity" : 0.1,
       "lightingTonemap" : true,
+      "lightingTemporalDecouple" : true,
+      "lightingTemporalFloorMs" : 33.0,
 
       "safe" : {
         "alwaysAllowClipboard" : false,
