@@ -5,6 +5,7 @@
 #include "StarWorldRenderData.hpp"
 #include "StarAmbient.hpp"
 #include "StarCellularLighting.hpp"
+#include "StarTemporalLightingGate.hpp"
 #include "StarWeather.hpp"
 #include "StarInterpolationTracker.hpp"
 #include "StarWorldStructure.hpp"
@@ -334,6 +335,10 @@ private:
   // change-detector for the temporal lighting gate (StarTemporalLightingGate). Atomic: written on the
   // packet/update thread, read on the lighting thread.
   atomic<uint64_t> m_lightingTileEpoch{0};
+  // Temporal lighting decoupling (flag lightingTemporalDecouple, default on): the last computed frame's
+  // activity baseline. lightingCalc skips the recompute (render reuses the prior lightmap) on calm
+  // frames between the floor cadence. Lighting-thread private.
+  TemporalLightingGate::Baseline m_temporalBaseline;
 
   SkyPtr m_sky;
 
