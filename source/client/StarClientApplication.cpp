@@ -479,7 +479,11 @@ void ClientApplication::render() {
       // Slice 4: report the GPU lightmap outcome to the lighting thread so it can drop the
       // redundant CPU calculate() once GPU lighting is confirmed (and re-arm it if GPU fails).
       worldClient->setGpuLightingActive(m_worldPainter->gpuLightingActive());
-      LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - paintStart));
+      auto painterUs = Time::monotonicMicroseconds() - paintStart;
+      LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", painterUs));
+      // Durable telemetry mirror (R-F gate): render-thread paint cost in the snapshot, not just the /debug HUD.
+      static auto painterTimer = Telemetry::timer("render.world.painter.us");
+      painterTimer.record(painterUs);
       auto worldRenderUs = Time::monotonicMicroseconds() - totalStart;
       LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", worldRenderUs));
       // Telemetry: route the already-computed render delta through a timer (no extra clock read).
