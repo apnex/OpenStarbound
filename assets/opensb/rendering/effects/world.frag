@@ -8,6 +8,7 @@ uniform bool lightMapEnabled;
 uniform vec2 lightMapSize;
 uniform sampler2D lightMap;
 uniform float lightMapMultiplier;
+uniform bool lightmapBilinear;
 
 in vec2 fragmentTextureCoordinate;
 flat in int fragmentTextureIndex;
@@ -58,7 +59,9 @@ vec4 bicubicSample(sampler2D tex, vec2 texcoord, vec2 texscale) {
 vec3 sampleLight(vec2 coord, vec2 scale) {
   //soften super bright lights a little
   const float threshold = 1.0;
-  vec3 rgb = bicubicSample(lightMap, coord, scale).rgb;
+  vec3 rgb = lightmapBilinear
+    ? texture(lightMap, coord * scale).rgb       // R-A: 1 hardware-bilinear tap (lightMap is linear-filtered)
+    : bicubicSample(lightMap, coord, scale).rgb; // current: 4 taps (bicubic reconstruction)
   vec3 lower = min(rgb, threshold);
   vec3 upper = max(rgb, threshold) - threshold;
   return lower + (upper / (vec3(1.) + upper));
