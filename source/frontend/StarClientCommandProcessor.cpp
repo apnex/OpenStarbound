@@ -696,17 +696,18 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | tonemap [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
     float pdf = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
-    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} tonemap={}",
+    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} promoteMinIntensity={} tonemap={}",
       cfg->get("lightingGpu", false).toBool(),
       cfg->get("lightingGpuShadowCompare", false).toBool(),
       cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
       cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
       pdf,
+      cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool());
   };
 
@@ -727,6 +728,17 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     }
     cfg->set("lightingPromoteDynamic", p);
     return strf("lighting promoteDynamic={}", p);
+  }
+  if (args.at(0) == "promoteminintensity") {
+    // Spread lights with max colour channel below this are NOT promoted to dynamic points (they stay
+    // soft spreads) -- excludes ultra-dim fill lights like item drops (~0.078) that flicker. 0 = off.
+    if (args.size() < 2)
+      return "usage: /lighting promoteminintensity <f>  (e.g. 0.1; 0 = promote everything)";
+    auto f = maybeLexicalCast<float>(args.at(1));
+    if (!f || *f < 0.0f)
+      return "usage: /lighting promoteminintensity <f>=0";
+    cfg->set("lightingPromoteMinIntensity", *f);
+    return strf("lighting promoteMinIntensity={}", *f);
   }
   if (args.at(0) == "tonemap") {
     bool v = args.size() < 2 || args.at(1) != "off";
