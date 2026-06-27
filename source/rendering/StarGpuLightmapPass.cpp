@@ -126,12 +126,14 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   if (shadowCompare && gpuResult)
     *gpuResult = m_renderer->readFrameBuffer(composeTarget);
 
-  if (worldUpscale >= 1.5f) {
+  if (worldUpscale >= 1.5f && m_renderer->switchEffectConfig("lightingUpscale")) {
     // R-A Form 2: bicubic-upscale the composed lightmap once (<=30Hz) into a higher-res linear FBO;
-    // the world pass then does a single bilinear tap of it (smooth, cheap).
+    // the world pass then does a single bilinear tap of it (smooth, cheap). switchEffectConfig is
+    // guarded in the condition: if the lightingUpscale effect is missing it returns false and we fall
+    // through to the plain composeTarget bind below, instead of silently running the previously-bound
+    // effect as a (bilinear) upscale -- the bug that made Form 2's first build show stepped shadow edges.
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
-    m_renderer->switchEffectConfig("lightingUpscale");
     m_renderer->beginGpuTimer("lighting.gpu.upscale.gpu_us");
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
