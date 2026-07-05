@@ -629,6 +629,7 @@ void OpenGlRenderer::setEffectTextureHalfRGB(String const& textureName, Vec2U si
   flushImmediatePrimitives();
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  bool fresh = false;
   if (!ptr->textureValue || ptr->textureValue->textureId == 0) {
     auto tex = make_ref<GlLoneTexture>();
     tex->textureFiltering = ptr->textureFiltering;
@@ -643,12 +644,20 @@ void OpenGlRenderer::setEffectTextureHalfRGB(String const& textureName, Vec2U si
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
     ptr->textureValue = tex;
+    fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
-    ptr->textureValue->textureSize = size;
   }
   // RGB16F storage + GL_HALF_FLOAT source: half the bytes of RGB_F, no precision loss (FBOs are 16F).
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, size[0], size[1], 0, GL_RGB, GL_HALF_FLOAT, halfData);
+  // Same-size re-upload goes through TexSubImage into the EXISTING storage: the old unconditional
+  // glTexImage2D re-spec allocated a fresh driver buffer object per upload at the lighting cadence
+  // (measured ~30% of the kernel texture cluster, #127). Size changes (zoom/resolution) still re-spec.
+  if (!fresh && ptr->textureValue->textureSize == size) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], GL_RGB, GL_HALF_FLOAT, halfData);
+  } else {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, size[0], size[1], 0, GL_RGB, GL_HALF_FLOAT, halfData);
+    ptr->textureValue->textureSize = size;
+  }
 
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
@@ -664,6 +673,7 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
   flushImmediatePrimitives();
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  bool fresh = false;
   if (!ptr->textureValue || ptr->textureValue->textureId == 0) {
     auto tex = make_ref<GlLoneTexture>();
     tex->textureFiltering = ptr->textureFiltering;
@@ -678,12 +688,20 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
     ptr->textureValue = tex;
+    fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
-    ptr->textureValue->textureSize = size;
   }
   // R8 storage + GL_RED source: a third the bytes of RGB24 for the binary obstacle mask (read as .r).
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, size[0], size[1], 0, GL_RED, GL_UNSIGNED_BYTE, data);
+  // Same-size re-upload goes through TexSubImage (see setEffectTextureHalfRGB above) -- this runs twice
+  // per recompute (the spread and point effects each own an "obstacle" sampler), so both duplicate
+  // uploads become SubImages into persistent storage instead of fresh-BO re-specs.
+  if (!fresh && ptr->textureValue->textureSize == size) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], GL_RED, GL_UNSIGNED_BYTE, data);
+  } else {
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, size[0], size[1], 0, GL_RED, GL_UNSIGNED_BYTE, data);
+    ptr->textureValue->textureSize = size;
+  }
 
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
