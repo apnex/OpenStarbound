@@ -116,6 +116,7 @@ R"JSON(
       "lightingWorldSampleBilinear" : false,
       "lightingWorldUpscale" : 2.0,
       "lightingGatherCache" : true,
+      "lightingGridSizeBucket" : 8,
 
       "safe" : {
         "alwaysAllowClipboard" : false,
