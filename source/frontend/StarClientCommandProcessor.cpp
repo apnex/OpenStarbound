@@ -696,7 +696,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off] | gridbucket <n>";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -709,12 +709,13 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
       cfg->get("lightingTonemap", false).toBool())
-      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={} gatherCache={}",
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={} gatherCache={} gridBucket={}",
         cfg->get("lightingTemporalDecouple", true).toBool(),
         cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
         cfg->get("lightingWorldSampleBilinear", false).toBool(),
         cfg->get("lightingWorldUpscale", 1.0f).toFloat(),
-        cfg->get("lightingGatherCache", true).toBool());
+        cfg->get("lightingGatherCache", true).toBool(),
+        cfg->get("lightingGridSizeBucket", 8).toUInt());
   };
 
   if (args.empty())
@@ -788,6 +789,16 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     bool v = args.size() < 2 || args.at(1) != "off";
     cfg->set("lightingGatherCache", v);
     return strf("lighting gatherCache={}", v);
+  }
+  if (args.at(0) == "gridbucket") {
+    // Stable lighting grid (#127): light-query size rounded up to this bucket (1 = exact size / off).
+    if (args.size() < 2)
+      return "usage: /lighting gridbucket <n>=1  (default 8; 1 = exact size)";
+    auto n = maybeLexicalCast<unsigned>(args.at(1));
+    if (!n || *n < 1)
+      return "usage: /lighting gridbucket <n>=1";
+    cfg->set("lightingGridSizeBucket", *n);
+    return strf("lighting gridSizeBucket={}", *n);
   }
 
   if (args.at(0) != "gpu")

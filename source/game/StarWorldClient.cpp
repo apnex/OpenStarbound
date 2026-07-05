@@ -544,7 +544,21 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       MutexLocker m_prepLocker(m_lightMapPrepMutex);
       m_pendingLights = std::move(renderLightSources);
       m_pendingParticleLights = m_particles->lightSources();
-      m_pendingLightRange = window.padded(1);
+      // Stable lighting grid (#127): round the light-query size up to a bucket so the calc region --
+      // and everything slaved to it (emission/obstacle grids, the lighting ping-pong FBOs, the upscale
+      // FBO) -- holds a constant size across camera scroll instead of breathing +-1 tile. The breathe
+      // made setRenderTarget re-spec the FBO textures (a fresh driver buffer object each time) at the
+      // lighting cadence -- measured ~60% of the kernel texture-upload cluster. Bucket 1 = exact size
+      // (kill-switch). Min corner is untouched: it scrolls with the camera, which the lighting gather
+      // (and its A2 scroll-shift cache) already handles.
+      RectI lightWindow = window.padded(1);
+      unsigned gridBucket = (unsigned)Root::singleton().configuration()->get("lightingGridSizeBucket", 8).toUInt();
+      if (gridBucket > 1) {
+        Vec2I bucketed((lightWindow.width() + gridBucket - 1) / gridBucket * gridBucket,
+            (lightWindow.height() + gridBucket - 1) / gridBucket * gridBucket);
+        lightWindow = RectI::withSize(lightWindow.min(), bucketed);
+      }
+      m_pendingLightRange = lightWindow;
       m_pendingLightReady = true;
     } //Kae: Padded by one to fix light spread issues at the edges of the frame.
 
