@@ -550,9 +550,11 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       // made setRenderTarget re-spec the FBO textures (a fresh driver buffer object each time) at the
       // lighting cadence -- measured ~60% of the kernel texture-upload cluster. Bucket 1 = exact size
       // (kill-switch). Min corner is untouched: it scrolls with the camera, which the lighting gather
-      // (and its A2 scroll-shift cache) already handles.
+      // (and its A2 scroll-shift cache) already handles. Default 32, NOT 8: the window's real variance
+      // is +-2+ tiles, which crossed the 112 boundary at bucket 8 (bucketed size flipped 112<->120,
+      // re-spec churn persisted); 32 was measured to fully absorb the swing (zero re-specs in combat).
       RectI lightWindow = window.padded(1);
-      unsigned gridBucket = (unsigned)Root::singleton().configuration()->get("lightingGridSizeBucket", 8).toUInt();
+      unsigned gridBucket = (unsigned)Root::singleton().configuration()->get("lightingGridSizeBucket", 32).toUInt();
       if (gridBucket > 1) {
         Vec2I bucketed((lightWindow.width() + gridBucket - 1) / gridBucket * gridBucket,
             (lightWindow.height() + gridBucket - 1) / gridBucket * gridBucket);
