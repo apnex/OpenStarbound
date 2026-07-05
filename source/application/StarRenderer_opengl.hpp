@@ -167,6 +167,10 @@ private:
       List<GlVertexBufferTexture> textures;
       GLuint vertexBuffer = 0;
       size_t vertexCount = 0;
+      // True allocated storage size (bytes). Distinct from vertexCount (the draw count): tracking
+      // the high-water capacity means a grow->shrink->grow size sequence reuses existing storage
+      // via glBufferSubData instead of re-specifying it with glBufferData every time it re-grows.
+      size_t byteCapacity = 0;
     };
 
     GlRenderBuffer();

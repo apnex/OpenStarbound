@@ -1115,15 +1115,19 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
       if (!oldVertexBuffers.empty()) {
         auto oldVb = oldVertexBuffers.takeLast();
         vb.vertexBuffer = oldVb.vertexBuffer;
+        vb.byteCapacity = oldVb.byteCapacity;
         glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
-        if (oldVb.vertexCount >= vb.vertexCount)
+        if (vb.byteCapacity >= accumulationBuffer.size())
           glBufferSubData(GL_ARRAY_BUFFER, 0, accumulationBuffer.size(), accumulationBuffer.ptr());
-        else
+        else {
           glBufferData(GL_ARRAY_BUFFER, accumulationBuffer.size(), accumulationBuffer.ptr(), GL_STREAM_DRAW);
+          vb.byteCapacity = accumulationBuffer.size();
+        }
       } else {
         glGenBuffers(1, &vb.vertexBuffer);
         glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, accumulationBuffer.size(), accumulationBuffer.ptr(), GL_STREAM_DRAW);
+        vb.byteCapacity = accumulationBuffer.size();
       }
 
       vertexBuffers.emplace_back(std::move(vb));
