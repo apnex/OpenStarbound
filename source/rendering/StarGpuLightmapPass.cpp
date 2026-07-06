@@ -22,7 +22,15 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   if (!m_renderer->switchEffectConfig("lightingSpread"))
     return false;   // assets missing -> caller falls back to CPU
 
-  auto fullQuad = renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f);
+  // L3: (re)build the persistent full-quad buffer only when the lightmap size changes.
+  if (!m_fullQuadBuffer)
+    m_fullQuadBuffer = m_renderer->createRenderBuffer();
+  if (m_fullQuadSize != size) {
+    List<RenderPrimitive> fullQuadPrims;
+    fullQuadPrims.append(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f));
+    m_fullQuadBuffer->set(fullQuadPrims);
+    m_fullQuadSize = size;
+  }
   char const* targets[2] = {"lightingGpu", "lightingGpuB"};
 
   // Upload the obstacle mask to the current effect's "obstacle" sampler as R8 (a third the bytes of
@@ -58,7 +66,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       m_renderer->setEffectTextureAlias("lightState", "emission");
     else
       m_renderer->setEffectTextureFromTarget("lightState", lastTarget);
-    m_renderer->render(fullQuad);
+    m_renderer->renderBuffer(m_fullQuadBuffer);
     lastTarget = target;
   }
   spreadPasses.inc(spreadIterations);
@@ -119,7 +127,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   m_renderer->setEffectParameter("tonemap", tonemap);
   m_renderer->setEffectTextureFromTarget("inputTexture", lastTarget);
   m_renderer->setRenderTarget(String(composeTarget), size);
-  m_renderer->render(fullQuad);
+  m_renderer->renderBuffer(m_fullQuadBuffer);
   m_renderer->endGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->flush();
 
