@@ -196,6 +196,9 @@ public:
   virtual void setSizeLimitEnabled(bool enabled) = 0;
   virtual void setMultiTexturingEnabled(bool enabled) = 0;
   virtual void setMultiSampling(unsigned multiSampling) = 0;
+  // L2 VAO-format bake toggle (default off). When on, GlRenderBuffers bake the vertex format into a per-VBO
+  // VAO and draws bind it instead of re-specifying the format each draw. Live-toggleable.
+  virtual void setVaoBake(bool enabled) { (void)enabled; }
   virtual void setMainHDR(bool enabled) = 0;
   virtual TextureGroupPtr createTextureGroup(TextureGroupSize size = TextureGroupSize::Medium, TextureFiltering filtering = TextureFiltering::Nearest) = 0;
   virtual RenderBufferPtr createRenderBuffer() = 0;

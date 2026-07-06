@@ -124,6 +124,11 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   m_assets = Root::singleton().assets();
 
+  // L2: relay the vaoBake flag to the renderer every frame, UNCONDITIONALLY (before any fullbright/lightmap
+  // branching), so the live /lighting vaobake toggle reaches ALL draws — world, entities, particles, UI —
+  // and the same-scene A/B is valid on fullbright frames too. Persists on the renderer for the whole frame.
+  m_renderer->setVaoBake(Root::singleton().configuration()->get("vaoBake").optBool().value(false));
+
   m_tilePainter->setup(m_camera, renderData);
 
   // Stars, Debris Fields, Sky, and Orbiters
