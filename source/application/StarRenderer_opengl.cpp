@@ -1150,8 +1150,11 @@ OpenGlRenderer::GlRenderBuffer::~GlRenderBuffer() {
     if (auto gt = as<GlGroupedTexture>(texture.get()))
       gt->decrementBufferUseCount();
   }
-  for (auto const& vb : vertexBuffers)
+  for (auto const& vb : vertexBuffers) {
+    if (vb.vertexArray)
+      glDeleteVertexArrays(1, &vb.vertexArray);
     glDeleteBuffers(1, &vb.vertexBuffer);
+  }
   glDeleteVertexArrays(1, &vertexArray);
 }
 
@@ -1179,6 +1182,7 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
         auto oldVb = oldVertexBuffers.takeLast();
         vb.vertexBuffer = oldVb.vertexBuffer;
         vb.byteCapacity = oldVb.byteCapacity;
+        vb.vertexArray = oldVb.vertexArray;   // L2: keep the baked VAO with its recycled VBO
         glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
         if (vb.byteCapacity >= accumulationBuffer.size())
           glBufferSubData(GL_ARRAY_BUFFER, 0, accumulationBuffer.size(), accumulationBuffer.ptr());
@@ -1191,6 +1195,23 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
         glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
         glBufferData(GL_ARRAY_BUFFER, accumulationBuffer.size(), accumulationBuffer.ptr(), GL_STREAM_DRAW);
         vb.byteCapacity = accumulationBuffer.size();
+      }
+
+      // L2: bake the fixed vertex format into a per-VBO VAO once, so renderGlBuffer binds-and-draws instead
+      // of re-specifying 8 attrib calls per draw. Format MUST match the per-draw spec exactly.
+      if (vaoBakeEnabled && *vaoBakeEnabled && vb.vertexArray == 0) {
+        glGenVertexArrays(1, &vb.vertexArray);
+        glBindVertexArray(vb.vertexArray);
+        glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
+        glEnableVertexAttribArray(AttribPositionLoc);
+        glEnableVertexAttribArray(AttribColorLoc);
+        glEnableVertexAttribArray(AttribTexCoordLoc);
+        glEnableVertexAttribArray(AttribDataLoc);
+        glVertexAttribPointer(AttribPositionLoc, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
+        glVertexAttribPointer(AttribTexCoordLoc, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
+        glVertexAttribPointer(AttribColorLoc, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
+        glVertexAttribIPointer(AttribDataLoc, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+        glBindVertexArray(vertexArray);   // restore the buffer-level scratch VAO bound at set() start (:1141)
       }
 
       vertexBuffers.emplace_back(std::move(vb));
@@ -1287,8 +1308,11 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
   vertexBuffers.reserve(primitives.size() * 6);
   finishCurrentBuffer();
 
-  for (auto const& vb : oldVertexBuffers)
+  for (auto const& vb : oldVertexBuffers) {
+    if (vb.vertexArray)
+      glDeleteVertexArrays(1, &vb.vertexArray);   // L2: free the baked VAO of a shrunk-away buffer (no leak)
     glDeleteBuffers(1, &vb.vertexBuffer);
+  }
 }
 
 bool OpenGlRenderer::logGlErrorSummary(String prefix) {
