@@ -46,6 +46,13 @@ public:
 
 private:
   Renderer* m_renderer;
+
+  // Persistent full-quad geometry: the size-covering rect drawn by every spread iteration and the
+  // compose pass. Built once via set() when `size` changes, then replayed with renderBuffer() —
+  // instead of rebuilding the identical 144-byte VBO through the immediate buffer on each of the
+  // ~spreadIterations+1 draws. Byte-identical: same VBO contents, same draw order/target/effect.
+  RenderBufferPtr m_fullQuadBuffer;
+  Vec2U m_fullQuadSize;
 };
 
 }
