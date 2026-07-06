@@ -146,6 +146,15 @@ public:
   // The effect config will specify named parameters and textures which can be
   // set here.
   virtual void setEffectParameter(String const& parameterName, RenderEffectParameter const& parameter) = 0;
+  // Handle-based fast path for the same-uniform hot loops (e.g. GPU point lighting): resolve the name
+  // ONCE against the current effect via getEffectParameterHandle, then set by handle each iteration,
+  // skipping the per-call name String-construct + hash + HashMap lookup. The handle is valid only while
+  // the resolving effect stays current (switchEffectConfig invalidates it) and no parameters are added.
+  // A null handle is a no-op on set (mirrors the string path's unknown-name early-out). Values pushed
+  // and the dedup early-out are identical to the string path.
+  typedef void* EffectParameterHandle;
+  virtual EffectParameterHandle getEffectParameterHandle(String const& parameterName) = 0;
+  virtual void setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& parameter) = 0;
   virtual void setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& parameter) = 0;
   virtual Maybe<RenderEffectParameter> getEffectScriptableParameter(String const& effectName, String const& parameterName) = 0;
   virtual Maybe<VariantTypeIndex> getEffectScriptableParameterType(String const& effectName, String const& parameterName) = 0;

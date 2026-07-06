@@ -81,6 +81,18 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
     m_renderer->setBlendMode(params.pointAdditive ? BlendMode::Additive : BlendMode::Max);
 
+    // L5: resolve the 9 per-light uniform handles ONCE (current effect = lightingPoint), set by handle
+    // in the loop below instead of re-hashing each name 162x/recompute.
+    auto hLightPosition         = m_renderer->getEffectParameterHandle("lightPosition");
+    auto hLightValue            = m_renderer->getEffectParameterHandle("lightValue");
+    auto hLightBeam             = m_renderer->getEffectParameterHandle("lightBeam");
+    auto hLightAsSpread         = m_renderer->getEffectParameterHandle("lightAsSpread");
+    auto hLightMaxIntensity     = m_renderer->getEffectParameterHandle("lightMaxIntensity");
+    auto hBeamDirection         = m_renderer->getEffectParameterHandle("beamDirection");
+    auto hOneMinusBeamAmbience  = m_renderer->getEffectParameterHandle("oneMinusBeamAmbience");
+    auto hPerBlockObstacleAtten = m_renderer->getEffectParameterHandle("perBlockObstacleAtten");
+    auto hPerBlockAirAtten      = m_renderer->getEffectParameterHandle("perBlockAirAtten");
+
     unsigned drawn = 0;
     for (auto const& light : lights) {
       // Match production: skip lights whose center is outside the grid.
@@ -99,16 +111,16 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       float lymax = ceil(std::min(h, light.position[1] + maxRange));
       if (lxmax <= lxmin || lymax <= lymin)
         continue;
-      m_renderer->setEffectParameter("lightPosition", Vec2F(light.position));
-      m_renderer->setEffectParameter("lightValue", Vec3F(light.value));
-      m_renderer->setEffectParameter("lightBeam", light.beam);
-      m_renderer->setEffectParameter("lightAsSpread", light.asSpread);
+      m_renderer->setEffectParameter(hLightPosition, Vec2F(light.position));
+      m_renderer->setEffectParameter(hLightValue, Vec3F(light.value));
+      m_renderer->setEffectParameter(hLightBeam, light.beam);
+      m_renderer->setEffectParameter(hLightAsSpread, light.asSpread);
       // 1A hoist: per-light constants the shader used to recompute per-fragment (cos/sin etc.).
-      m_renderer->setEffectParameter("lightMaxIntensity", maxIntensity);
-      m_renderer->setEffectParameter("beamDirection", Vec2F(std::cos(light.beamAngle), std::sin(light.beamAngle)));
-      m_renderer->setEffectParameter("oneMinusBeamAmbience", 1.0f - light.beamAmbience);
-      m_renderer->setEffectParameter("perBlockObstacleAtten", 1.0f / obstacleReach);
-      m_renderer->setEffectParameter("perBlockAirAtten", 1.0f / airReach);
+      m_renderer->setEffectParameter(hLightMaxIntensity, maxIntensity);
+      m_renderer->setEffectParameter(hBeamDirection, Vec2F(std::cos(light.beamAngle), std::sin(light.beamAngle)));
+      m_renderer->setEffectParameter(hOneMinusBeamAmbience, 1.0f - light.beamAmbience);
+      m_renderer->setEffectParameter(hPerBlockObstacleAtten, 1.0f / obstacleReach);
+      m_renderer->setEffectParameter(hPerBlockAirAtten, 1.0f / airReach);
       m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
       ++drawn;
     }

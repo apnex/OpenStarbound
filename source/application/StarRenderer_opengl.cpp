@@ -407,9 +407,8 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     logGlErrorSummary("OpenGL errors setting effect config");
 }
 
-void OpenGlRenderer::setEffectParameter(String const& parameterName, RenderEffectParameter const& value) {
-  auto ptr = m_currentEffect->parameters.ptr(parameterName);
-  if (!ptr || (ptr->parameterValue && *ptr->parameterValue == value))
+void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectParameter const& value, String const& parameterName) {
+  if (ptr->parameterValue && *ptr->parameterValue == value)
     return;
 
   if (ptr->parameterType != value.typeIndex())
@@ -431,6 +430,23 @@ void OpenGlRenderer::setEffectParameter(String const& parameterName, RenderEffec
     glUniform4f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
 
   ptr->parameterValue = value;
+}
+
+void OpenGlRenderer::setEffectParameter(String const& parameterName, RenderEffectParameter const& value) {
+  auto ptr = m_currentEffect->parameters.ptr(parameterName);
+  if (!ptr)
+    return;
+  applyEffectParameter(ptr, value, parameterName);
+}
+
+OpenGlRenderer::EffectParameterHandle OpenGlRenderer::getEffectParameterHandle(String const& parameterName) {
+  return (EffectParameterHandle)m_currentEffect->parameters.ptr(parameterName);
+}
+
+void OpenGlRenderer::setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& value) {
+  if (!handle)
+    return;
+  applyEffectParameter((EffectParameter*)handle, value, "<handle>");
 }
 
 void OpenGlRenderer::setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& value) {
