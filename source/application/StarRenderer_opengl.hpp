@@ -58,6 +58,7 @@ public:
   void setSizeLimitEnabled(bool enabled) override;
   void setMultiTexturingEnabled(bool enabled) override;
   void setMultiSampling(unsigned multiSampling) override;
+  void setVaoBake(bool enabled) override;
   void setMainHDR(bool enabled) override;
   TextureGroupPtr createTextureGroup(TextureGroupSize size, TextureFiltering filtering) override;
   RenderBufferPtr createRenderBuffer() override;
@@ -168,6 +169,7 @@ private:
     struct GlVertexBuffer {
       List<GlVertexBufferTexture> textures;
       GLuint vertexBuffer = 0;
+      GLuint vertexArray = 0;   // L2: baked-format VAO (0 = not baked; created in set() when vaoBake on)
       size_t vertexCount = 0;
       // True allocated storage size (bytes). Distinct from vertexCount (the draw count): tracking
       // the high-water capacity means a grow->shrink->grow size sequence reuses existing storage
@@ -188,6 +190,7 @@ private:
     GLuint vertexArray = 0;
 
     bool useMultiTexturing{true};
+    bool const* vaoBakeEnabled = nullptr;   // L2: -> OpenGlRenderer::m_vaoBake (renderer outlives its buffers)
   };
 
   struct EffectParameter {
@@ -297,6 +300,7 @@ private:
 
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;
+  bool m_vaoBake = false;   // L2 VAO-bake flag (default off; driven live by the WorldPainter relay)
   unsigned m_multiSampling; // if non-zero, is enabled and acts as sample count
   bool m_hdrSetting;
   List<shared_ptr<GlTextureGroup>> m_liveTextureGroups;

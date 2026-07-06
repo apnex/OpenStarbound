@@ -799,6 +799,16 @@ void OpenGlRenderer::setMultiTexturingEnabled(bool enabled) {
   m_useMultiTexturing = enabled;
 }
 
+void OpenGlRenderer::setVaoBake(bool enabled) {
+  // On the true->false edge, drop any baked per-VBO VAO that may still be the bound VAO — otherwise the
+  // unguarded OFF-mode re-spec in renderGlBuffer would overwrite that persistent baked VAO's bindings
+  // (e.g. GpuLightmapPass's one-shot full-quad buffer), permanently corrupting it. Bind the immediate
+  // buffer's scratch VAO (valid, always re-spec'd before use). Edge-only => steady-OFF adds no GL call.
+  if (m_vaoBake && !enabled && m_immediateRenderBuffer)
+    glBindVertexArray(m_immediateRenderBuffer->vertexArray);
+  m_vaoBake = enabled;
+}
+
 void OpenGlRenderer::setMultiSampling(unsigned multiSampling) {
   if (m_multiSampling == multiSampling)
     return;
@@ -1386,6 +1396,7 @@ auto OpenGlRenderer::createGlRenderBuffer() -> shared_ptr<GlRenderBuffer> {
   auto glrb = make_shared<GlRenderBuffer>();
   glrb->whiteTexture = m_whiteTexture;
   glrb->useMultiTexturing = m_useMultiTexturing;
+  glrb->vaoBakeEnabled = &m_vaoBake;   // L2 live flag handle
   return glrb;
 }
 
