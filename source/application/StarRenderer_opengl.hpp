@@ -35,6 +35,8 @@ public:
   void loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) override;
 
   void setEffectParameter(String const& parameterName, RenderEffectParameter const& parameter) override;
+  EffectParameterHandle getEffectParameterHandle(String const& parameterName) override;
+  void setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& parameter) override;
   void setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& parameter) override;
   Maybe<RenderEffectParameter> getEffectScriptableParameter(String const& effectName, String const& parameterName) override;
   Maybe<VariantTypeIndex> getEffectScriptableParameterType(String const& effectName, String const& parameterName) override;
@@ -248,6 +250,8 @@ private:
   void renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation);
 
   void setupGlUniforms(Effect& effect, Vec2U screenSize);
+
+  void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
   RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
   void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer);
