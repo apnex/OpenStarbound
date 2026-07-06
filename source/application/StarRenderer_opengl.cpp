@@ -1443,18 +1443,28 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
       }
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
+    if (m_vaoBake && vb.vertexArray) {
+      glBindVertexArray(vb.vertexArray);
+    } else {
+      if (m_vaoBake)
+        glBindVertexArray(renderBuffer.vertexArray);   // ON but this VBO not yet baked (toggle transient):
+                                                        // isolate the re-spec to this buffer's scratch VAO so
+                                                        // no other buffer's baked VAO is corrupted
+      glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
 
-    glEnableVertexAttribArray(m_positionAttribute);
-    glEnableVertexAttribArray(m_texCoordAttribute);
-    glEnableVertexAttribArray(m_colorAttribute);
-    glEnableVertexAttribArray(m_dataAttribute);
+      glEnableVertexAttribArray(m_positionAttribute);
+      glEnableVertexAttribArray(m_texCoordAttribute);
+      glEnableVertexAttribArray(m_colorAttribute);
+      glEnableVertexAttribArray(m_dataAttribute);
 
-    glVertexAttribPointer(m_positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
-    glVertexAttribPointer(m_texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
-    glVertexAttribPointer(m_colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
-    glVertexAttribIPointer(m_dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+      glVertexAttribPointer(m_positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
+      glVertexAttribPointer(m_texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
+      glVertexAttribPointer(m_colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
+      glVertexAttribIPointer(m_dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+    }
 
+    static auto drawCounter = Telemetry::counter("render.draws");
+    drawCounter.inc(1);
     glDrawArrays(GL_TRIANGLES, 0, vb.vertexCount);
   }
 }
