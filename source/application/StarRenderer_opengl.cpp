@@ -8,6 +8,16 @@ namespace Star {
 
 size_t const MultiTextureCount = 4;
 
+// L2: forced vertex-attribute locations (glBindAttribLocation before link) so ONE baked VAO format is valid
+// across every effect. Must stay in lockstep with the GlRenderVertex layout used by renderGlBuffer's per-draw
+// spec and the bake in GlRenderBuffer::set().
+namespace {
+  constexpr GLuint AttribPositionLoc = 0;
+  constexpr GLuint AttribColorLoc    = 1;
+  constexpr GLuint AttribTexCoordLoc = 2;
+  constexpr GLuint AttribDataLoc     = 3;
+}
+
 char const* DefaultVertexShader = R"SHADER(
 #version 140
 
@@ -292,6 +302,15 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     glAttachShader(program, vertexShader);
   if (fragmentShader)
     glAttachShader(program, fragmentShader);
+
+  // L2: pin attribute locations so a single baked VAO format works across all effects (output-neutral:
+  // shaders declare these names, none use explicit layout(location); renderGlBuffer maps each attribute
+  // through its own handle so the slot permutation is invisible to the shader).
+  glBindAttribLocation(program, AttribPositionLoc, "vertexPosition");
+  glBindAttribLocation(program, AttribColorLoc,    "vertexColor");
+  glBindAttribLocation(program, AttribTexCoordLoc, "vertexTextureCoordinate");
+  glBindAttribLocation(program, AttribDataLoc,     "vertexData");
+
   glLinkProgram(program);
 
   if (vertexShader)
