@@ -1544,11 +1544,20 @@ Maybe<Json> LuaDetail::tableToJsonContainer(LuaTable const& table) {
     return {};
 
   bool interpretAsList = stringEntries.empty()
-      && (typeHint == 1 || (typeHint != 2 && !intEntries.empty() && prev(intEntries.end())->first == intEntries.size()));
+      && (typeHint == 1 || (typeHint != 2 && !intEntries.empty()
+          && intEntries.begin()->first == 1
+          && prev(intEntries.end())->first == intEntries.size()));
   if (interpretAsList) {
     JsonArray list;
-    for (auto& p : intEntries)
+    for (auto& p : intEntries) {
+      // A JSON array is 1-based. Guard a non-positive key: intEntries stores keys as unsigned, so key 0 makes
+      // p.first - 1 wrap to ~4.29e9 and resizes the array to billions of Json elements, OOMing the process.
+      // The 1-based check above already routes sparse/zero-based tables to the object branch; this only fires
+      // on an explicit __typehint array whose data is malformed, where dropping the bad index beats crashing.
+      if (p.first < 1)
+        continue;
       list.set(p.first - 1, std::move(p.second));
+    }
     return Json(std::move(list));
   } else {
     for (auto& p : intEntries)
