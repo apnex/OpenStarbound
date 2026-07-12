@@ -835,6 +835,22 @@ void OpenGlRenderer::setGatedFrameBufferClears(bool active) {
   m_gatedClearsActive = active;
 }
 
+bool OpenGlRenderer::composite(String const& effect, String const& dstFbo, Vec2U dstSize,
+    String const& srcSampler, String const& srcFbo, List<pair<String, RenderEffectParameter>> const& params) {
+  // Collapses the hand-rolled "sample one FBO into another via a passthrough effect + full-screen quad"
+  // pattern. Sets `params` explicitly each call, so a shared passthrough effect (lightingPassthrough) is
+  // safe across consumers with different needs -- no cross-consumer param bleed (the == cache still elides
+  // unchanged uniforms, so this is ~free). Caller restores its own prior effect/target afterward.
+  if (!switchEffectConfig(effect))
+    return false;
+  for (auto const& p : params)
+    setEffectParameter(p.first, p.second);
+  setEffectTextureFromTarget(srcSampler, srcFbo);
+  setRenderTarget(String(dstFbo), dstSize);   // explicit target overrides the effect's frameBuffer config
+  render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(dstSize)), Vec4B::filled(255), 0.0f));
+  return true;
+}
+
 void OpenGlRenderer::setBlendMode(BlendMode mode) {
   flushImmediatePrimitives();
   switch (mode) {

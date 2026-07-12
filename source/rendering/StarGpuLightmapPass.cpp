@@ -131,15 +131,10 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
-  m_renderer->switchEffectConfig("lightingPassthrough");        // flushes the final point quad
   m_renderer->beginGpuTimer("lighting.gpu.compose.gpu_us");
-  m_renderer->setEffectParameter("applyCap", true);
-  m_renderer->setEffectParameter("brightnessLimit", params.brightnessLimit);
-  m_renderer->setEffectParameter("brightnessScale", brightnessScale);
-  m_renderer->setEffectParameter("tonemap", tonemap);
-  m_renderer->setEffectTextureFromTarget("inputTexture", lastTarget);
-  m_renderer->setRenderTarget(String(composeTarget), size);
-  m_renderer->renderBuffer(m_fullQuadBuffer);
+  m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
+    {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
+     {"brightnessScale", brightnessScale}, {"tonemap", tonemap}});
   m_renderer->endGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->flush();
 

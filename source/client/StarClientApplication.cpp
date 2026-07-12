@@ -574,7 +574,6 @@ void ClientApplication::renderReload() {
   loadEffectConfig("lightingSpread");
   loadEffectConfig("lightingPoint");
   loadEffectConfig("lightingUpscale");   // R-A Form 2: bicubic upscale pass (must be registered; switchEffectConfig silently no-ops on an unregistered effect)
-  loadEffectConfig("environmentCompose");   // env-cache probe (kubebound floor): passthrough of the persistent env FBO into "main" (must be registered like the above)
 
   // define post process groups and set them to be enabled/disabled based on config
   

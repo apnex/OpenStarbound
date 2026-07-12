@@ -183,6 +183,13 @@ public:
   // env-cache oracle's envRef reference) are startFrame-cleared like any clear:true target only while their
   // debug/optional consumer has armed them, so they cost nothing (no per-frame clear) when that consumer is off.
   virtual void setGatedFrameBufferClears(bool active) = 0;
+  // Sample srcFbo's color (bound to `effect`'s `srcSampler`) through `effect` into `dstFbo`, drawn as a
+  // full-screen quad sized to dstSize, after applying `params`. Returns false if `effect` is unregistered
+  // (caller falls back). Sets `params` explicitly so a shared passthrough effect is bleed-safe across
+  // consumers with different needs. Does NOT restore the prior effect/target (caller-specific).
+  virtual bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
+                         String const& srcSampler, String const& srcFbo,
+                         List<pair<String, RenderEffectParameter>> const& params = {}) = 0;
   virtual void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) = 0;
   // Alias one effect sampler to another's already-uploaded texture (no CPU re-upload). Used to feed
   // a grid that was uploaded once (e.g. GPU lighting's emission) to a second sampler that needs the

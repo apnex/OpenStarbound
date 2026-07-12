@@ -51,6 +51,9 @@ public:
   pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b) override;
   bool hasFrameBuffer(String const& id) const override;
   void setGatedFrameBufferClears(bool active) override;
+  bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
+                 String const& srcSampler, String const& srcFbo,
+                 List<pair<String, RenderEffectParameter>> const& params) override;
   void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
   void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
   void setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) override;

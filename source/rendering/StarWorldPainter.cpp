@@ -198,13 +198,13 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     }
     m_renderer->endGpuTimer("render.pass.environment.gpu_us");
 
-    // Composite the cached env into "main" every frame (full-screen passthrough quad; environmentCompose
-    // has frameBuffer:"main", nearest sampling, applyCap=false, and forces alpha=1.0 => a clean rgb
-    // replace of the freshly-cleared main).
+    // Composite the cached env into "main" every frame: a full-screen passthrough quad reusing
+    // lightingPassthrough (nearest sampling; applyCap=false forces alpha=1.0 => a clean rgb replace of the
+    // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
+    // mutations of the shared effect can't bleed in -- no forked config needed.
     m_renderer->beginGpuTimer("render.pass.environment.compose.gpu_us");
-    m_renderer->switchEffectConfig("environmentCompose");
-    m_renderer->setEffectTextureFromTarget("inputTexture", "envCache");
-    m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(envScreenSize)), Vec4B::filled(255), 0.0f));
+    m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", "envCache",
+      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}});
     m_renderer->endGpuTimer("render.pass.environment.compose.gpu_us");
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
 
