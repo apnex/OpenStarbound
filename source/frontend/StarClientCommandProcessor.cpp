@@ -656,13 +656,41 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::renderCache(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status]";
+  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off";
   auto status = [&]() {
-    return strf("render cache: enabled={} perPart={} shadowCompare={}",
+    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={}",
       cfg->get("renderDrawableCache", false).toBool(),
       cfg->get("renderDrawableCachePerPart", false).toBool(),
-      cfg->get("renderDrawableCacheShadowCompare", false).toBool());
+      cfg->get("renderDrawableCacheShadowCompare", false).toBool(),
+      cfg->get("envRefreshInterval", 1).toUInt(),
+      cfg->get("envOracle", false).toBool());
   };
+
+  if (!args.empty() && args.at(0) == "envrefresh") {
+    // Environment-cache probe: refresh the cached env FBO every N frames (1 = current behavior,
+    // bit-identical). It is composited into "main" every frame regardless of N. (AA-off only; the
+    // renderer runs the direct env path when antiAliasing is on.)
+    if (args.size() >= 2) {
+      auto n = maybeLexicalCast<unsigned>(args.at(1));
+      if (!n || *n < 1)
+        return "usage: /rendercache envrefresh <N>  (N >= 1; 1 = every frame = current behavior)";
+      cfg->set("envRefreshInterval", *n);
+    }
+    return strf("render cache envRefreshInterval={}", cfg->get("envRefreshInterval", 1).toUInt());
+  }
+
+  if (!args.empty() && args.at(0) == "envoracle") {
+    // Env-cache bit-identity oracle (default off). When on, each AA-off frame ALSO renders the env pass
+    // into the "envRef" reference FBO (direct clear:true black -- NOT the cache) and pixel-compares it
+    // against the composited "main", logging [envoracle] DIFF/MATCH. Offline validate gate only
+    // (glReadPixels stalls). At N=1 a MATCH proves the cache path is bit-identical to the direct path.
+    if (args.size() >= 2)
+      cfg->set("envOracle", args.at(1) == "on");
+    bool on = cfg->get("envOracle", false).toBool();
+    if (on && cfg->get("antiAliasing").optBool().value(false))
+      return "render cache envOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off (disable AA in graphics settings), otherwise no [envoracle] lines are emitted";
+    return strf("render cache envOracle={}", on);
+  }
 
   if (args.empty() || args.at(0) != "cache")
     return usage;

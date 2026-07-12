@@ -167,6 +167,22 @@ public:
   // setEffectTextureFromTarget binds a config framebuffer's color texture to the current effect's
   // named sampler, consuming a prior pass's output with no CPU round-trip.
   virtual void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) = 0;
+  // Clear the currently-bound render target (see setRenderTarget) to the renderer's clear color. Used by
+  // persistent clear:false FBOs (e.g. the environment cache) to reset to the once-per-frame clear state
+  // that clear:true targets like "main" receive in startFrame.
+  virtual void clearRenderTarget() = 0;
+  // Debug/validate oracle: read back two config framebuffers' color and count per-pixel differences.
+  // Returns {differing pixel count, first differing pixel {x,y}}; {NPos, {}} if a buffer is absent or the
+  // two sizes differ. Offline only (glReadPixels stalls the pipeline). Backs the env-cache bit-identity
+  // oracle and future retained-surface caches (#133).
+  virtual pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b) = 0;
+  // True if a config framebuffer with this id is loaded. Lets a consumer guard a setRenderTarget redirect
+  // (which silently no-ops on an absent id) so it never accidentally draws into the previously-bound target.
+  virtual bool hasFrameBuffer(String const& id) const = 0;
+  // Arm/disarm this frame's clears of framebuffers marked "clearGated" in config. Such FBOs (e.g. the
+  // env-cache oracle's envRef reference) are startFrame-cleared like any clear:true target only while their
+  // debug/optional consumer has armed them, so they cost nothing (no per-frame clear) when that consumer is off.
+  virtual void setGatedFrameBufferClears(bool active) = 0;
   virtual void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) = 0;
   // Alias one effect sampler to another's already-uploaded texture (no CPU re-upload). Used to feed
   // a grid that was uploaded once (e.g. GPU lighting's emission) to a second sampler that needs the

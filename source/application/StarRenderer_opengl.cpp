@@ -4,6 +4,8 @@
 #include "StarLogging.hpp"
 #include "StarTelemetry.hpp"
 
+#include <cstring>  // memcmp (compareFrameBuffers bit-identity)
+
 namespace Star {
 
 size_t const MultiTextureCount = 4;
@@ -167,7 +169,8 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbCo
     throw RendererException("Could not generate OpenGL texture for framebuffer");
 
   clear = config.getBool("clear",true);
-  
+  clearGated = config.getBool("clearGated", false);
+
   multisample = GLEW_VERSION_4_0 ? config.getUInt("multisample", 0) : 0;
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
   glBindTexture(target, texture->glTextureId());
@@ -604,6 +607,20 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
     glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
+void OpenGlRenderer::clearRenderTarget() {
+  // Flush pending immediate primitives first so they aren't wiped by the clear. Clears the currently
+  // bound GL_DRAW_FRAMEBUFFER (set by setRenderTarget -> switchGlFrameBuffer) to the constant clear color
+  // glClearColor(0,0,0,1) set once at construction (never changed) -- byte-identical to the startFrame
+  // clear that clear:true targets like "main" receive. Disable scissor around the clear (mirrors
+  // startFrame) so a stray interface scissor can't clip it.
+  flushImmediatePrimitives();
+  if (m_scissorRect)
+    glDisable(GL_SCISSOR_TEST);
+  glClear(GL_COLOR_BUFFER_BIT);
+  if (m_scissorRect)
+    glEnable(GL_SCISSOR_TEST);
+}
+
 void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) {
   auto ptr = m_currentEffect->textures.ptr(textureName);
   if (!ptr)
@@ -742,6 +759,80 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   // Restore the read binding to whatever draw target is current (screen if none).
   glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
   return result;
+}
+
+pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String const& b) {
+  // Offline bit-identity oracle. Flush pending draws, then GL-read both framebuffers' color to CPU and
+  // count per-pixel BIT differences (memcmp of the raw float triples). Reads GL_RGB/GL_FLOAT like
+  // readFrameBuffer: GL converts from RGB8 or RGB16F storage, so this is format-agnostic across the hdr
+  // FromSetting modes. A raw bit compare is the correct test -- both buffers are the same-format render of
+  // the same inputs, so a bit-identical cache path MUST produce identical pixels -- and it is NaN-safe
+  // (identical NaN bit patterns compare equal, unlike float !=). glReadPixels stalls; debug/validate only.
+  // Returns {NPos, {}} (not-comparable) on absent/multisample/mismatched-size targets or a readback error,
+  // so a failed read can never be scored as a false MATCH.
+  flushImmediatePrimitives();
+
+  auto aPtr = m_frameBuffers.ptr(a);
+  auto bPtr = m_frameBuffers.ptr(b);
+  if (!aPtr || !bPtr) {
+    Logger::warn("compareFrameBuffers: frame buffer '{}' or '{}' does not exist", a, b);
+    return {NPos, Vec2U()};
+  }
+  // Multisample color attachments cannot be glReadPixels'd (GL_INVALID_OPERATION); the oracle is an AA-off
+  // instrument, so treat a multisample target as not-comparable rather than reading garbage.
+  if ((*aPtr)->multisample || (*bPtr)->multisample) {
+    Logger::warn("compareFrameBuffers: '{}' or '{}' is multisample -- not comparable", a, b);
+    return {NPos, Vec2U()};
+  }
+  Vec2U sizeA = (*aPtr)->texture->textureSize;
+  Vec2U sizeB = (*bPtr)->texture->textureSize;
+  if (sizeA != sizeB || sizeA[0] == 0 || sizeA[1] == 0) {
+    Logger::warn("compareFrameBuffers: size mismatch/empty ('{}'={},{} vs '{}'={},{})",
+      a, sizeA[0], sizeA[1], b, sizeB[0], sizeB[1]);
+    return {NPos, Vec2U()};
+  }
+
+  size_t pixels = (size_t)sizeA[0] * sizeA[1];
+  List<float> bufA, bufB;
+  bufA.resize(pixels * 3);
+  bufB.resize(pixels * 3);
+
+  while (glGetError() != GL_NO_ERROR) {}  // drain pre-existing errors so the post-read check is isolated
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, (*aPtr)->id);
+  glReadPixels(0, 0, sizeA[0], sizeA[1], GL_RGB, GL_FLOAT, bufA.ptr());
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, (*bPtr)->id);
+  glReadPixels(0, 0, sizeB[0], sizeB[1], GL_RGB, GL_FLOAT, bufB.ptr());
+  GLenum readErr = glGetError();
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
+  if (readErr != GL_NO_ERROR) {
+    // A failed readback leaves the zero-filled buffers untouched -> would score as a false MATCH. Bail.
+    Logger::warn("compareFrameBuffers: glReadPixels error 0x{:x} on '{}'/'{}' -- not comparable", (unsigned)readErr, a, b);
+    return {NPos, Vec2U()};
+  }
+
+  size_t diffPixels = 0;
+  size_t firstDiff = NPos;
+  for (size_t px = 0; px < pixels; ++px) {
+    if (memcmp(&bufA[px * 3], &bufB[px * 3], 3 * sizeof(float)) != 0) {
+      ++diffPixels;
+      if (firstDiff == NPos)
+        firstDiff = px;
+    }
+  }
+  // glReadPixels uses a lower-left origin (buffer row 0 = screen bottom), so flip Y to report a top-left
+  // screen coordinate that actually locates the divergence.
+  Vec2U firstXY;
+  if (firstDiff != NPos)
+    firstXY = Vec2U((unsigned)(firstDiff % sizeA[0]), sizeA[1] - 1 - (unsigned)(firstDiff / sizeA[0]));
+  return {diffPixels, firstXY};
+}
+
+bool OpenGlRenderer::hasFrameBuffer(String const& id) const {
+  return m_frameBuffers.contains(id);
+}
+
+void OpenGlRenderer::setGatedFrameBufferClears(bool active) {
+  m_gatedClearsActive = active;
 }
 
 void OpenGlRenderer::setBlendMode(BlendMode mode) {
@@ -918,6 +1009,12 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
       glBindTexture(GL_TEXTURE_2D, frameBuffer.second->texture->glTextureId());
       glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, 0, format, type, NULL);
     }
+    // Record the size we just (re)allocated. Screen-sized FBOs otherwise keep their construction-time
+    // textureSize {0,0} forever (this loop reallocs the GL texture but never wrote the size back), which
+    // (a) makes readFrameBuffer / compareFrameBuffers read a 0-sized buffer and (b) makes a later
+    // setRenderTarget(id, size) see {0,0} != size and realloc the texture mid-frame -- silently discarding
+    // the startFrame clear:true black. Recording it here fixes both for every screen-sized FBO consumer (#133).
+    frameBuffer.second->texture->textureSize = Vec2U(m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv);
   }
 }
 
@@ -927,7 +1024,9 @@ void OpenGlRenderer::startFrame() {
   
   for (auto& frameBuffer : m_frameBuffers) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->id);
-    if (frameBuffer.second->clear)
+    // clearGated FBOs (e.g. the oracle's envRef) are only cleared while their consumer is armed, so a
+    // dormant debug surface costs no per-frame clear.
+    if (frameBuffer.second->clear && (!frameBuffer.second->clearGated || m_gatedClearsActive))
       glClear(GL_COLOR_BUFFER_BIT);
     frameBuffer.second->blitted = false;
   }

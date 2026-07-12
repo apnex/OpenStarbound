@@ -133,17 +133,106 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   float starAndDebrisRatio = lerp(0.0625f, pixelRatioBasis * 2.0f, m_camera.pixelRatio());
   float orbiterAndPlanetRatio = lerp(0.125f, pixelRatioBasis * 3.0f, m_camera.pixelRatio());
 
-  m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
-  m_environmentPainter->renderStars(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  m_environmentPainter->renderDebrisFields(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  if (renderData.skyRenderData.type != SkyType::Atmosphereless)
-    m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  m_environmentPainter->renderPlanetHorizon(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  m_environmentPainter->renderSky(Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  m_environmentPainter->renderFrontOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  if (renderData.skyRenderData.type == SkyType::Atmosphereless)
-    m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
-  m_renderer->endGpuTimer("render.pass.environment.gpu_us");
+  // Environment-cache probe (kubebound GPU-floor campaign). The env pass changes only slowly (star
+  // twinkle + orbital drift) yet re-renders every frame at 1.6-7.6ms. Render it into its OWN persistent
+  // screen-sized HDR FBO "envCache" (a clear:false mirror of "main") only every N frames, and composite
+  // that cache into "main" every frame. envRefreshInterval N==1 (default) refreshes every frame and is
+  // bit-identical to the direct-into-main path it replaces. Live: /rendercache envrefresh <N>.
+  Vec2U envScreenSize = m_renderer->screenSize();
+  bool envAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
+  unsigned envRefreshInterval = Root::singleton().configuration()->get("envRefreshInterval", 1).optUInt().value(1);
+  if (envRefreshInterval < 1)
+    envRefreshInterval = 1;
+  bool envOracle = Root::singleton().configuration()->get("envOracle", false).optBool().value(false);
+  // Arm/disarm the gated startFrame clear of the oracle's envRef reference FBO so it costs nothing (no
+  // per-frame clear) when the oracle is off. Takes effect from the next startFrame; a 1-frame warmup at
+  // enable-time (one transient DIFF before envRef's first gated clear lands) is harmless -- the gate is
+  // read over a multi-second validation window and steady state is what matters.
+  m_renderer->setGatedFrameBufferClears(envOracle);
+
+  // The env draw sequence, shared by every path (AA-direct, cache-refresh, oracle reference) so the cache
+  // and its bit-identity reference can never silently diverge -- a hand-duplicated copy that drifted would
+  // make the oracle lie. Draws into whatever render target / effect is currently bound.
+  auto drawEnv = [&]() {
+    m_environmentPainter->renderStars(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    m_environmentPainter->renderDebrisFields(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    if (renderData.skyRenderData.type != SkyType::Atmosphereless)
+      m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    m_environmentPainter->renderPlanetHorizon(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    m_environmentPainter->renderSky(Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    m_environmentPainter->renderFrontOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+    if (renderData.skyRenderData.type == SkyType::Atmosphereless)
+      m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
+  };
+
+  // Direct path (byte-identical stock env->main) when the cache is inactive: AA on ("main"/"envCache"
+  // are multisample -> render-to-cache + a sampler composite is invalid under MSAA), OR the cache is
+  // effectively off (envRefreshInterval<=1 with the oracle disarmed -- N=1 is a true zero-overhead "off",
+  // no per-frame compose). N=1 with the oracle ARMED still takes the cache path so the bit-identity gate
+  // can run. Invalidate the cache so re-entering it force-refreshes instead of compositing stale content.
+  bool envCacheActive = !envAntiAliasing && (envRefreshInterval > 1 || envOracle);
+  if (!envCacheActive) {
+    m_envCacheSize = {0, 0};
+    m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
+    drawEnv();
+    m_renderer->endGpuTimer("render.pass.environment.gpu_us");
+  } else {
+    // Cache path (AA off). Force a refresh on the first frame + after any resize (envCache is realloc'd
+    // to undefined content) so a skip frame never composites garbage.
+    bool refreshEnv = (envScreenSize != m_envCacheSize) || (m_envRefreshCounter % envRefreshInterval == 0);
+    ++m_envRefreshCounter;
+
+    m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
+    if (refreshEnv) {
+      // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
+      // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
+      // size still drives the first-frame / post-resize (re)alloc + the viewport.
+      m_renderer->setRenderTarget(String("envCache"), envScreenSize);
+      // clear:false FBO -> clear manually to main's clear color (0,0,0,1), matching the direct path's
+      // once-per-frame startFrame clear (also stops alpha<1 sky/star draws ghost-accumulating).
+      m_renderer->clearRenderTarget();
+      // The env painters do NOT switchEffectConfig -- they inherit the bound "world" effect; only the
+      // render target moved, so the draws are otherwise identical to the direct path.
+      drawEnv();
+      m_envCacheSize = envScreenSize;
+    }
+    m_renderer->endGpuTimer("render.pass.environment.gpu_us");
+
+    // Composite the cached env into "main" every frame (full-screen passthrough quad; environmentCompose
+    // has frameBuffer:"main", nearest sampling, applyCap=false, and forces alpha=1.0 => a clean rgb
+    // replace of the freshly-cleared main).
+    m_renderer->beginGpuTimer("render.pass.environment.compose.gpu_us");
+    m_renderer->switchEffectConfig("environmentCompose");
+    m_renderer->setEffectTextureFromTarget("inputTexture", "envCache");
+    m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(envScreenSize)), Vec4B::filled(255), 0.0f));
+    m_renderer->endGpuTimer("render.pass.environment.compose.gpu_us");
+    m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
+
+    // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). At N=1 the cache
+    // path MUST be pixel-identical to a direct env render. Render the SAME env sequence into "envRef" -- a
+    // clear:true FBO that startFrame blacks every frame with main's exact clear (NOT the manual
+    // clearRenderTarget under test) -- then pixel-compare against the just-composited "main". Any diff
+    // localizes the divergence to surface lifecycle / global GL state (the class per-pass review is blind
+    // to), NOT the provably-identity compose. envRef takes no explicit size, so it is never reallocated
+    // here: it relies purely on setScreenSize's allocation + the startFrame clear. (At N>1 a non-zero diff
+    // is EXPECTED on skip frames -- it measures inter-refresh sky motion, not a correctness fault; run the
+    // gate at N=1.)
+    if (envOracle && m_renderer->hasFrameBuffer("envRef")) {
+      m_renderer->setRenderTarget(String("envRef"));
+      drawEnv();
+      // Restore the draw target to "main"; the effect is already "world", so switchEffectConfig("world")
+      // would early-out without rebinding and strand the target on envRef.
+      m_renderer->setRenderTarget(String("main"));
+      auto d = m_renderer->compareFrameBuffers("envRef", "main");
+      bool atmosphereless = renderData.skyRenderData.type == SkyType::Atmosphereless;
+      if (d.first == NPos)
+        Logger::info("[envoracle] SKIPPED (absent fbo or size mismatch) N={} atmosphereless={}", envRefreshInterval, atmosphereless);
+      else if (d.first == 0)
+        Logger::info("[envoracle] MATCH (0 diff) N={} atmosphereless={}", envRefreshInterval, atmosphereless);
+      else
+        Logger::info("[envoracle] DIFF={} first=({},{}) N={} atmosphereless={}", d.first, d.second[0], d.second[1], envRefreshInterval, atmosphereless);
+    }
+  }
 
   m_renderer->flush();
 

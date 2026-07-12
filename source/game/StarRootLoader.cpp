@@ -103,6 +103,9 @@ R"JSON(
       "renderDrawableCacheShadowCompare" : false,
       "renderDrawableCachePerPart" : true,
 
+      "envRefreshInterval" : 4,
+      "envOracle" : false,
+
       "lightingGpu" : true,
       "lightingGpuSpreadIterations" : 32,
       "lightingGpuBrightness" : 1.0,

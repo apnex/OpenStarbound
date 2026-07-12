@@ -57,6 +57,12 @@ private:
   // Slice 4: latest GPU-lightmap-pass outcome, reported back to WorldClient each frame.
   bool m_gpuLightingActive = false;
 
+  // Environment-cache probe (envRefreshInterval): frame counter gating the env->cache refresh, and the
+  // screen size the cache currently holds (a mismatch forces a refresh on the first frame + after resize;
+  // {0,0} also forces one on the first AA-off frame after MSAA was on).
+  uint64_t m_envRefreshCounter = 0;
+  Vec2U m_envCacheSize = {0, 0};
+
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
 

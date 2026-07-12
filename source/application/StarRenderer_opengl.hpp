@@ -47,6 +47,10 @@ public:
   bool switchEffectConfig(String const& name) override;
 
   void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
+  void clearRenderTarget() override;
+  pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b) override;
+  bool hasFrameBuffer(String const& id) const override;
+  void setGatedFrameBufferClears(bool active) override;
   void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
   void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
   void setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) override;
@@ -214,6 +218,9 @@ private:
     BoolSettingMode hdrMode = BoolSettingMode::Disabled;
     bool alpha = false;
     bool clear = true;
+    // When true, this clear:true FBO is only startFrame-cleared while gated clears are armed
+    // (setGatedFrameBufferClears) -- zero per-frame cost when its debug/optional consumer is off.
+    bool clearGated = false;
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
@@ -281,6 +288,9 @@ private:
   RefPtr<GlTexture> m_whiteTexture;
 
   Maybe<RectI> m_scissorRect;
+
+  // Armed by setGatedFrameBufferClears; when false, startFrame skips clearing any FBO marked clearGated.
+  bool m_gatedClearsActive = false;
 
   // GPU timer queries (GL_TIME_ELAPSED), one triple-buffered ring per named scope so results
   // are read back ~3 frames later without stalling the pipeline. Only used when deepEnabled.
