@@ -47,8 +47,8 @@ public:
   bool switchEffectConfig(String const& name) override;
 
   void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
-  void clearRenderTarget() override;
-  pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b) override;
+  void clearRenderTarget(Vec4F clearColor) override;
+  pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) override;
   bool hasFrameBuffer(String const& id) const override;
   void setGatedFrameBufferClears(bool active) override;
   bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,

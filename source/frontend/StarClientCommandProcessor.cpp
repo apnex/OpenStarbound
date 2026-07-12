@@ -656,14 +656,16 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::renderCache(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off";
+  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off | parallaxrefresh <N> | paralloracle on|off";
   auto status = [&]() {
-    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={}",
+    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={} parallaxRefreshInterval={} parallaxOracle={}",
       cfg->get("renderDrawableCache", false).toBool(),
       cfg->get("renderDrawableCachePerPart", false).toBool(),
       cfg->get("renderDrawableCacheShadowCompare", false).toBool(),
       cfg->get("envRefreshInterval", 1).toUInt(),
-      cfg->get("envOracle", false).toBool());
+      cfg->get("envOracle", false).toBool(),
+      cfg->get("parallaxRefreshInterval", 1).toUInt(),
+      cfg->get("parallaxOracle", false).toBool());
   };
 
   if (!args.empty() && args.at(0) == "envrefresh") {
@@ -690,6 +692,31 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
     if (on && cfg->get("antiAliasing").optBool().value(false))
       return "render cache envOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off (disable AA in graphics settings), otherwise no [envoracle] lines are emitted";
     return strf("render cache envOracle={}", on);
+  }
+
+  if (!args.empty() && args.at(0) == "parallaxrefresh") {
+    // Parallax retained-cache (SP-2): refresh the cached parallax FBO every N frames (1 = direct/stock).
+    // Composited (premultiplied-over) into "main" every frame at N>1; also force-refreshes on camera move /
+    // zoom (Option B). AA-off only.
+    if (args.size() >= 2) {
+      auto n = maybeLexicalCast<unsigned>(args.at(1));
+      if (!n || *n < 1)
+        return "usage: /rendercache parallaxrefresh <N>  (N >= 1; 1 = every frame = current behavior)";
+      cfg->set("parallaxRefreshInterval", *n);
+    }
+    return strf("render cache parallaxRefreshInterval={}", cfg->get("parallaxRefreshInterval", 1).toUInt());
+  }
+
+  if (!args.empty() && args.at(0) == "paralloracle") {
+    // Parallax bit-identity oracle (default off). When on, builds parallaxRef = env_bg + parallax DIRECT and
+    // pixel-compares it against the composited main (env_bg + premultiplied cache); logs [paralloracle]
+    // DIFF/MATCH. At N=1 a MATCH proves the premultiplied cache path is bit-identical. AA-off only.
+    if (args.size() >= 2)
+      cfg->set("parallaxOracle", args.at(1) == "on");
+    bool on = cfg->get("parallaxOracle", false).toBool();
+    if (on && cfg->get("antiAliasing").optBool().value(false))
+      return "render cache parallaxOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off";
+    return strf("render cache parallaxOracle={}", on);
   }
 
   if (args.empty() || args.at(0) != "cache")

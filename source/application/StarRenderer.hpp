@@ -125,7 +125,12 @@ typedef Variant<float, int, Vec4F, Vec3F, Vec2F, bool> RenderEffectParameter;
 // Blend mode for the current draw target. Alpha is the engine default; Additive (dest += src)
 // and Max (dest = max(src,dest)) drive the GPU point-lighting accumulation (both order-independent
 // so they match the CPU's per-light additive / max blend).
-enum class BlendMode { Alpha, Additive, Max };
+// PremultiplyInto: render straight-alpha source draws INTO an intermediate as premultiplied
+// (rgb = a*src + (1-a)*dst, alpha = a + (1-a)*dst_a) -- glBlendFuncSeparate. PremultipliedOver:
+// composite a premultiplied intermediate over a destination (rgb + (1-a)*dst). Together they cache an
+// alpha-blended layer (e.g. parallax) for later compositing byte-identically (premultiplied "over" is
+// associative, unlike straight "over").
+enum class BlendMode { Alpha, Additive, Max, PremultiplyInto, PremultipliedOver };
 
 class Renderer {
 public:
@@ -170,12 +175,15 @@ public:
   // Clear the currently-bound render target (see setRenderTarget) to the renderer's clear color. Used by
   // persistent clear:false FBOs (e.g. the environment cache) to reset to the once-per-frame clear state
   // that clear:true targets like "main" receive in startFrame.
-  virtual void clearRenderTarget() = 0;
+  virtual void clearRenderTarget(Vec4F clearColor = Vec4F(0.0f, 0.0f, 0.0f, 1.0f)) = 0;
   // Debug/validate oracle: read back two config framebuffers' color and count per-pixel differences.
   // Returns {differing pixel count, first differing pixel {x,y}}; {NPos, {}} if a buffer is absent or the
   // two sizes differ. Offline only (glReadPixels stalls the pipeline). Backs the env-cache bit-identity
   // oracle and future retained-surface caches (#133).
-  virtual pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b) = 0;
+  // maxAbsDiff (optional out): the largest per-channel |a-b| over all differing pixels. Lets a caller
+  // distinguish an exact match / sub-LSB double-rounding (e.g. the parallax cache, ~1 ULP) from a real
+  // divergence. 0 when the buffers match.
+  virtual pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff = nullptr) = 0;
   // True if a config framebuffer with this id is loaded. Lets a consumer guard a setRenderTarget redirect
   // (which silently no-ops on an absent id) so it never accidentally draws into the previously-bound target.
   virtual bool hasFrameBuffer(String const& id) const = 0;

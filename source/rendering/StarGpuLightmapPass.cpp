@@ -134,7 +134,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   m_renderer->beginGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
-     {"brightnessScale", brightnessScale}, {"tonemap", tonemap}});
+     {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
   m_renderer->endGpuTimer("lighting.gpu.compose.gpu_us");
   m_renderer->flush();
 

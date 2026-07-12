@@ -204,7 +204,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // mutations of the shared effect can't bleed in -- no forked config needed.
     m_renderer->beginGpuTimer("render.pass.environment.compose.gpu_us");
     m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", "envCache",
-      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}});
+      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
     m_renderer->endGpuTimer("render.pass.environment.compose.gpu_us");
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
 
@@ -336,10 +336,97 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   m_previousCameraCenter = m_camera.centerWorldPosition();
   m_parallaxWorldPosition[1] = m_camera.centerWorldPosition()[1];
 
-  m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
-  if (!renderData.parallaxLayers.empty())
-    m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
-  m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
+  // Parallax retained-cache (kubebound GPU-floor SP-2). Like the env cache but for the scrolling parallax
+  // pass: render into a persistent RGBA FBO only every N frames / on camera move / zoom / resize (Option B,
+  // static-camera) and composite the cache into "main" each frame. Parallax ALPHA-BLENDS over the env
+  // background (not an opaque replace), so the cache is PREMULTIPLIED: cleared transparent, drawn with
+  // PremultiplyInto, composited PremultipliedOver. NOTE: unlike the opaque env cache this is NOT bit-exact --
+  // quantizing the premultiplied intermediate before the composite double-rounds the a*c term vs a single-pass
+  // direct blend, so partial-alpha (soft-edge) texels differ by <=1 ULP (fp16) / <=1/255 (RGB8): sub-perceptual,
+  // visually identical. N<=1 with the oracle off takes the direct (bit-exact) path. Live: /rendercache parallaxrefresh <N>.
+  bool parallaxHasLayers = !renderData.parallaxLayers.empty();
+  Vec2U parallaxScreenSize = m_renderer->screenSize();
+  bool parallaxAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
+  unsigned parallaxRefreshInterval = Root::singleton().configuration()->get("parallaxRefreshInterval", 1).optUInt().value(1);
+  if (parallaxRefreshInterval < 1)
+    parallaxRefreshInterval = 1;
+  bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
+  float parallaxPixelRatio = m_camera.pixelRatio();
+
+  // Shared draw sequence (single lambda -> cache and its oracle reference can't diverge).
+  auto drawParallax = [&]() {
+    if (parallaxHasLayers)
+      m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
+  };
+
+  bool parallaxCacheActive = parallaxHasLayers && !parallaxAntiAliasing && (parallaxRefreshInterval > 1 || parallaxOracle);
+  if (!parallaxCacheActive) {
+    // Direct path (byte-identical stock parallax->main): AA on, N<=1 oracle-off, or no layers. Invalidate
+    // the cache so re-entry force-refreshes.
+    m_parallaxCacheSize = {0, 0};
+    m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
+    drawParallax();
+    m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
+  } else {
+    // Cache path. Refresh on: resize/first-frame, camera move (Option B), zoom, or the N-frame time gate
+    // (phase-STAGGERED from env's %N==0 by N/2 so their heavy refreshes don't collide -> flat frame-times).
+    // Parked camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires standing still.
+    bool refreshParallax = (parallaxScreenSize != m_parallaxCacheSize)
+        || (m_parallaxWorldPosition != m_parallaxCachePosition)
+        || (parallaxPixelRatio != m_parallaxCachePixelRatio)
+        || ((m_parallaxRefreshCounter + parallaxRefreshInterval / 2) % parallaxRefreshInterval == 0);
+    ++m_parallaxRefreshCounter;
+
+    m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
+    if (refreshParallax) {
+      m_renderer->setRenderTarget(String("parallaxCache"), parallaxScreenSize);
+      m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
+      m_renderer->setBlendMode(BlendMode::PremultiplyInto);
+      drawParallax();
+      m_renderer->flush();                          // render the parallax quads into the cache under PremultiplyInto
+      m_renderer->setBlendMode(BlendMode::Alpha);   // restore the default blend
+      m_parallaxCacheSize = parallaxScreenSize;
+      m_parallaxCachePosition = m_parallaxWorldPosition;
+      m_parallaxCachePixelRatio = parallaxPixelRatio;
+    }
+    m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
+
+    // Oracle reference (before the cache composite modifies main): parallaxRef = env_bg (a copy of main) +
+    // parallax DIRECT. Built here because the composite below overwrites main with the cache result.
+    if (parallaxOracle && m_renderer->hasFrameBuffer("parallaxRef")) {
+      m_renderer->composite("lightingPassthrough", "parallaxRef", parallaxScreenSize, "inputTexture", "main",
+        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+      m_renderer->switchEffectConfig("world");                        // world effect (binds main)
+      m_renderer->setRenderTarget(String("parallaxRef"), parallaxScreenSize);   // -> parallaxRef, effect stays "world"
+      m_renderer->setBlendMode(BlendMode::Alpha);
+      drawParallax();
+      m_renderer->flush();
+    }
+
+    // Composite the premultiplied cache over main (env bg) every frame.
+    m_renderer->beginGpuTimer("render.pass.parallax.compose.gpu_us");
+    m_renderer->setBlendMode(BlendMode::PremultipliedOver);
+    m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", "parallaxCache",
+      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
+    m_renderer->setBlendMode(BlendMode::Alpha);
+    m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
+    m_renderer->endGpuTimer("render.pass.parallax.compose.gpu_us");
+
+    if (parallaxOracle && m_renderer->hasFrameBuffer("parallaxRef")) {
+      // Bounded-diff gate (NOT a 0-diff gate): the premultiplied cache double-rounds partial-alpha texels, so a
+      // small count on semi-transparent fringes with maxAbs ~<=1 LSB is EXPECTED + sub-perceptual. A large maxAbs
+      // would flag a real blend/compose bug rather than the rounding.
+      float pmax = 0.0f;
+      auto d = m_renderer->compareFrameBuffers("parallaxRef", "main", &pmax);
+      if (d.first == NPos)
+        Logger::info("[paralloracle] SKIPPED (absent fbo or size mismatch) N={}", parallaxRefreshInterval);
+      else if (d.first == 0)
+        Logger::info("[paralloracle] EXACT (0 diff) N={}", parallaxRefreshInterval);
+      else
+        Logger::info("[paralloracle] diff={} maxAbs={:.5f} first=({},{}) N={} (<=~1 LSB expected: premult double-rounding)",
+          d.first, pmax, d.second[0], d.second[1], parallaxRefreshInterval);
+    }
+  }
 
   // Main world layers
 

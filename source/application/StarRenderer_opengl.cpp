@@ -607,16 +607,21 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
     glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
-void OpenGlRenderer::clearRenderTarget() {
+void OpenGlRenderer::clearRenderTarget(Vec4F clearColor) {
   // Flush pending immediate primitives first so they aren't wiped by the clear. Clears the currently
-  // bound GL_DRAW_FRAMEBUFFER (set by setRenderTarget -> switchGlFrameBuffer) to the constant clear color
-  // glClearColor(0,0,0,1) set once at construction (never changed) -- byte-identical to the startFrame
-  // clear that clear:true targets like "main" receive. Disable scissor around the clear (mirrors
-  // startFrame) so a stray interface scissor can't clip it.
+  // bound GL_DRAW_FRAMEBUFFER (set by setRenderTarget -> switchGlFrameBuffer). Default clearColor
+  // (0,0,0,1) == the constant startFrame clear (byte-identical to the env-cache path). A non-default
+  // color (e.g. transparent (0,0,0,0) for the premultiplied parallax cache) is set then restored, since
+  // glClearColor is otherwise a constant. Disable scissor around the clear (mirrors startFrame).
   flushImmediatePrimitives();
   if (m_scissorRect)
     glDisable(GL_SCISSOR_TEST);
+  bool custom = clearColor != Vec4F(0.0f, 0.0f, 0.0f, 1.0f);
+  if (custom)
+    glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
   glClear(GL_COLOR_BUFFER_BIT);
+  if (custom)
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   if (m_scissorRect)
     glEnable(GL_SCISSOR_TEST);
 }
@@ -761,7 +766,7 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   return result;
 }
 
-pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String const& b) {
+pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) {
   // Offline bit-identity oracle. Flush pending draws, then GL-read both framebuffers' color to CPU and
   // count per-pixel BIT differences (memcmp of the raw float triples). Reads GL_RGB/GL_FLOAT like
   // readFrameBuffer: GL converts from RGB8 or RGB16F storage, so this is format-agnostic across the hdr
@@ -812,13 +817,22 @@ pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String 
 
   size_t diffPixels = 0;
   size_t firstDiff = NPos;
+  float maxDiff = 0.0f;
   for (size_t px = 0; px < pixels; ++px) {
-    if (memcmp(&bufA[px * 3], &bufB[px * 3], 3 * sizeof(float)) != 0) {
+    size_t i = px * 3;
+    if (memcmp(&bufA[i], &bufB[i], 3 * sizeof(float)) != 0) {
       ++diffPixels;
       if (firstDiff == NPos)
         firstDiff = px;
+      for (int k = 0; k < 3; ++k) {
+        float d = bufA[i + k] - bufB[i + k];
+        if (d < 0.0f) d = -d;
+        if (d > maxDiff) maxDiff = d;
+      }
     }
   }
+  if (maxAbsDiff)
+    *maxAbsDiff = maxDiff;
   // glReadPixels uses a lower-left origin (buffer row 0 = screen bottom), so flip Y to report a top-left
   // screen coordinate that actually locates the divergence.
   Vec2U firstXY;
@@ -857,6 +871,11 @@ void OpenGlRenderer::setBlendMode(BlendMode mode) {
     case BlendMode::Alpha:    glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
     case BlendMode::Additive: glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_ONE, GL_ONE); break;
     case BlendMode::Max:      glBlendEquation(GL_MAX); glBlendFunc(GL_ONE, GL_ONE); break;
+    // Build a premultiplied intermediate from straight-alpha source draws: rgb over-blends normally,
+    // alpha = src_a + (1-src_a)*dst_a (correct coverage).
+    case BlendMode::PremultiplyInto:   glBlendEquation(GL_FUNC_ADD); glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA); break;
+    // Composite a premultiplied source over the destination: rgb + (1-src_a)*dst.
+    case BlendMode::PremultipliedOver: glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA); break;
   }
 }
 

@@ -10,6 +10,8 @@ uniform bool applyCap;
 uniform float brightnessLimit;
 uniform float brightnessScale;   // GPU-only final tone (1.0 = no change); tune to match a reference build
 uniform bool tonemap;            // CDL: value-preserving highlight rolloff instead of the hard cap
+uniform bool preserveAlpha;      // false (default): force alpha=1 (opaque replace: lighting + env compose).
+                                 // true: pass the source alpha through (premultiplied-over: parallax-cache composite).
 
 in vec2 fragTexCoord;
 
@@ -32,9 +34,9 @@ void main() {
     }
   }
   c.rgb *= brightnessScale;   // applied after the cap: uniform final tone-down/up
-  // Force alpha = 1.0: the point pass accumulates alpha additively (1.0 per light), so the input
-  // alpha can be >> 1. The engine's alpha-blend compose (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-  // would then amplify src by that alpha (and, with clear:false, feed back on the prior frame) ->
-  // runaway over-brightness. Writing alpha 1.0 makes the compose a clean replace.
-  fragColor = vec4(c.rgb, 1.0);
+  // Alpha: force 1.0 for the opaque-replace consumers (lighting compose accumulates alpha additively
+  // -- 1.0 per light -- so the input alpha can be >> 1; env compose replaces main). preserveAlpha=true
+  // instead passes the source alpha through, for the parallax cache whose premultiplied coverage alpha
+  // drives a premultiplied-over composite (GL_ONE, GL_ONE_MINUS_SRC_ALPHA).
+  fragColor = vec4(c.rgb, preserveAlpha ? c.a : 1.0);
 }

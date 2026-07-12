@@ -63,6 +63,14 @@ private:
   uint64_t m_envRefreshCounter = 0;
   Vec2U m_envCacheSize = {0, 0};
 
+  // Parallax retained-cache (SP-2): like the env cache, but the source scrolls with the camera, so the
+  // refresh gate adds camera-position + pixelRatio(zoom) terms (Option B: force-full on any move). Parked
+  // camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires spuriously.
+  uint64_t m_parallaxRefreshCounter = 0;
+  Vec2U m_parallaxCacheSize = {0, 0};
+  Vec2F m_parallaxCachePosition = {0.0f, 0.0f};
+  float m_parallaxCachePixelRatio = 0.0f;
+
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
 
