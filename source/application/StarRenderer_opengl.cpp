@@ -243,7 +243,18 @@ void OpenGlRenderer::loadConfig(Json const& config) {
 
   for (auto& pair : config.getObject("frameBuffers", {})) {
     Json config = pair.second;
-    config = config.set("multisample", m_multiSampling);
+    // Multisampling is OPT-IN per framebuffer, and only the target that is MSAA-RESOLVED to the screen
+    // (glBlitFramebuffer, i.e. "main") may opt in. Any framebuffer that is SAMPLED AS A TEXTURE must stay
+    // single-sample: a GL_TEXTURE_2D_MULTISAMPLE bound to a plain sampler2D reads as ZERO.
+    //
+    // This was forced onto EVERY framebuffer unconditionally, which meant that with antiAliasing on, the
+    // GPU lightmap targets (lightingGpu / lightingGpuB / lightingGpuUpscaled) became multisample textures --
+    // so the world shader's lightMap sampler read zero and THE ENTIRE WORLD RENDERED BLACK. Only the sky and
+    // parallax survived, because they are not lightmapped. Vanilla never hit this: it had only "main", which
+    // is resolved to the screen and never sampled. The bug arrived with the GPU-lighting feature, which was
+    // the first thing to sample an FBO as a texture -- and it is also why the env/parallax caches were gated
+    // on !antiAliasing, a workaround for the symptom rather than a fix for the cause.
+    config = config.set("multisample", config.getBool("multisampled", false) ? m_multiSampling : 0);
     config = config.set("hdrSetting", m_hdrSetting);
     Logger::info("Creating framebuffer {}", pair.first);
     m_frameBuffers[pair.first] = make_ref<GlFrameBuffer>(config);
