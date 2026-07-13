@@ -242,6 +242,11 @@ SkyConstPtr WorldClient::currentSky() const {
   return m_sky;
 }
 
+void WorldClient::pinSkyEpochTime(double epochTime) {
+  if (m_sky)
+    m_sky->setEpochTime(epochTime);
+}
+
 void WorldClient::timer(float delay, WorldAction worldAction) {
   if (!inWorld())
     return;

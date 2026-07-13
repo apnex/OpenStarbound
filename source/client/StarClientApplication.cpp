@@ -3,6 +3,7 @@
 #include "StarJsonExtra.hpp"
 #include "StarFile.hpp"
 #include "StarEncode.hpp"
+#include "StarXXHash.hpp"   // [rendertest] golden-frame hash
 #include "StarLogging.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarRoot.hpp"
@@ -157,11 +158,30 @@ Json const AdditionalDefaultConfiguration = Json::parseJson(R"JSON(
     }
   )JSON");
 
+// Fixed sky clock for the render harness (P-0). Any constant works; it only has to be the SAME constant in
+// every run, so two binaries render the same sky. The universe clock is wall-clock derived, so without this
+// two runs of the same save land on a different epochTime -- which moves stars, orbiters, day/night colour and
+// parallax drift, and was the SOLE source of cross-run hash drift once the world was paused.
+static double const RenderTestEpochTime = 36714000.0;
+
 void ClientApplication::startup(StringList const& cmdLineArgs) {
   RootLoader rootLoader({AdditionalAssetsSettings, AdditionalDefaultConfiguration, String("starbound.log"), LogLevel::Info, false, String("starbound.config")});
   m_root = rootLoader.initOrDie(cmdLineArgs).first;
 
   Logger::info("OpenStarbound Client v{} for v{} ({}) Source ID: {} Protocol: {}", OpenStarVersionString, StarVersionString, StarArchitectureString, StarSourceIdentifierString, StarProtocolVersion);
+
+  // Headless render harness (P-0). Environment-driven so the shipped CLI surface is untouched and the harness
+  // costs exactly nothing when unset. See the block comment in StarClientApplication.hpp.
+  if (char const* frames = getenv("STAR_RENDERTEST_FRAMES")) {
+    m_renderTestFrames = (unsigned)strtoul(frames, nullptr, 10);
+    if (char const* warmup = getenv("STAR_RENDERTEST_WARMUP"))
+      m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
+    if (char const* out = getenv("STAR_RENDERTEST_OUT"))
+      m_renderTestOut = String(out);
+    if (m_renderTestFrames)
+      Logger::info("[rendertest] ARMED frames={} warmup={} out='{}'",
+        m_renderTestFrames, m_renderTestWarmup, m_renderTestOut);
+  }
 }
 
 void ClientApplication::shutdown() {
@@ -469,6 +489,11 @@ void ClientApplication::render() {
       auto totalStart = Time::monotonicMicroseconds();
       renderer->switchEffectConfig("world");
       auto clientStart = totalStart;
+      // Render harness: pin the sky clock BEFORE the sky bakes its render data (star offsets, orbit angle,
+      // day/night colour are all derived from epochTime, so overriding the field afterwards would be too late).
+      // With the world paused this was the sole remaining source of cross-run hash drift.
+      if (m_renderTestFrames)
+        worldClient->pinSkyEpochTime(RenderTestEpochTime);
       worldClient->render(m_renderData, TilePainter::BorderTileSize);
       LogMap::set("client_render_world_client", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - clientStart));
 
@@ -490,7 +515,12 @@ void ClientApplication::render() {
       // Cache the handle in a static so the per-frame path stays lock-free (registration once).
       static auto renderFrameTimer = Telemetry::timer("render.frame.us");
       renderFrameTimer.record(worldRenderUs);
-      
+
+      // Golden-frame capture (P-0). HERE, and not later: "main" now holds the composed WORLD frame, before
+      // post-process and before the GUI -- so chat, the FPS counter and the clock cannot poison the hash.
+      if (m_renderTestFrames)
+        renderTestCapture();
+
       auto size = Vec2F(renderer->screenSize());
       auto quad = renderFlatRect(RectF::withSize(size / -2, size), Vec4B::filled(0), 0.0f);
       for (auto& layer : m_postProcessLayers) {
@@ -1002,7 +1032,98 @@ void ClientApplication::updateError(float) {
     changeState(MainAppState::Title);
 }
 
+void ClientApplication::renderTestCapture() {
+  auto& renderer = Application::renderer();
+
+  // Warm up first: world chunks stream in, texture atlases fill, the lighting pipeline settles. Capturing
+  // before that steadies just records the loading screen and would make the gate meaningless.
+  if (m_renderTestSeen < m_renderTestWarmup) {
+    ++m_renderTestSeen;
+    if (m_renderTestSeen == m_renderTestWarmup)
+      Logger::info("[rendertest] warmup complete ({} frames), capturing {} frames", m_renderTestWarmup, m_renderTestFrames);
+    return;
+  }
+
+  unsigned index = m_renderTestSeen - m_renderTestWarmup;
+  ++m_renderTestSeen;
+
+  Image frame = renderer->readFrameBuffer("main");
+  if (frame.empty()) {
+    // readFrameBuffer returns EMPTY (never zero-filled) on every unreadable condition, precisely so this
+    // cannot silently pass. A zero-filled frame would hash consistently and report a stable false green.
+    Logger::error("[rendertest] FAIL frame={} readFrameBuffer('main') returned nothing (multisample? unsized? GL error?)", index);
+    appController()->quit();
+    return;
+  }
+
+  XXHash64 hasher;
+  hasher.push((char const*)frame.data(), frame.width() * frame.height() * frame.bytesPerPixel());
+  uint64_t hash = hasher.digest();
+
+  // A frame that is uniformly black hashes perfectly stably -- and is exactly what the AA bug produced. Report
+  // luminance so a "stable hash" can never be mistaken for a correct one.
+  double lum = 0.0;
+  auto const* px = (float const*)frame.data();
+  size_t n = (size_t)frame.width() * frame.height() * 3;
+  for (size_t i = 0; i < n; ++i)
+    lum += px[i];
+  lum /= (double)n;
+
+  // State fingerprint alongside the pixel hash. If two runs disagree on the HASH, this says WHICH input
+  // drifted -- pixels alone cannot tell you whether the renderer changed or the world did.
+  auto const& sky = m_renderData.skyRenderData;
+  Logger::info("[rendertest] frame={} hash={:016x} size={}x{} meanLuminance={:.6f}"
+               " | epochTime={:.4f} dayLength={:.2f} camera=({:.4f},{:.4f}) parallaxLayers={} entities={}",
+    index, hash, frame.width(), frame.height(), lum,
+    sky.epochTime, sky.dayLength,
+    m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
+    m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
+
+  if (!m_renderTestOut.empty()) {
+    String path = strf("{}/frame_{:04d}.png", m_renderTestOut, index);
+    try {
+      // Convert the HDR float frame to 8-bit for human inspection. Read the float buffer DIRECTLY -- Image::get
+      // returns Vec4B and would misread an RGB_F image. glReadPixels fills bottom-up, so flip Y.
+      // The HASH above is taken on the raw float data; this PNG is a viewing aid and is NOT what the gate
+      // compares, so a lossy conversion here is harmless.
+      Image out(frame.size(), PixelFormat::RGB24);
+      unsigned w = frame.width(), h = frame.height();
+      for (unsigned y = 0; y < h; ++y) {
+        for (unsigned x = 0; x < w; ++x) {
+          float const* p = px + ((size_t)y * w + x) * 3;
+          auto enc = [](float v) -> uint8_t {
+            v = v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : v);
+            return (uint8_t)(v * 255.0f + 0.5f);
+          };
+          out.set(x, h - 1 - y, Vec3B(enc(p[0]), enc(p[1]), enc(p[2])));
+        }
+      }
+      out.writePng(File::open(path, IOMode::Write));
+    } catch (std::exception const& e) {
+      Logger::warn("[rendertest] could not write '{}': {}", path, outputException(e, false));
+    }
+  }
+
+  if (index + 1 >= m_renderTestFrames) {
+    Logger::info("[rendertest] DONE captured={} frames", m_renderTestFrames);
+    appController()->quit();
+  }
+}
+
 void ClientApplication::updateTitle(float dt) {
+  // Render harness: skip the menus and drop straight into the world, exactly as TitleState::StartSinglePlayer
+  // does. changeState(SinglePlayer) is what LOADS the player -- with no title-screen selection it falls back to
+  // playerUuidAt(0) and calls setError() if the storage is empty -- so it must be called unconditionally rather
+  // than gated on m_player, which is still null at this point.
+  if (m_renderTestFrames && !m_renderTestEntered) {
+    m_renderTestEntered = true;
+    Logger::info("[rendertest] entering SinglePlayer");
+    changeState(MainAppState::SinglePlayer);
+    if (m_player)
+      Logger::info("[rendertest] player '{}' loaded", m_player->name());
+    return;
+  }
+
   m_cinematicOverlay->update(dt);
 
   m_titleScreen->update(dt);
@@ -1341,7 +1462,14 @@ void ClientApplication::updateRunning(float dt) {
           m_universeServer->addClient(UniverseConnection(P2PPacketSocket::open(std::move(p2pClient))));
       }
 
-      m_universeServer->setPause(m_mainInterface->escapeDialogOpen());
+      // Render harness: FREEZE THE SIMULATION for the whole run. The world sim advances on wall-clock, so two
+      // runs reach a capture frame having ticked a different number of times -- entities, particles, animations
+      // and the sky's epochTime all differ, and the golden hash is worthless as a gate. Paused, the world stays
+      // exactly as it was loaded from the save, so the same save + the same binary must produce the same bytes,
+      // and any hash difference between two BINARIES is attributable to the code, not to time. Chunk streaming
+      // still runs (setPause gates world->update(), not the WorldServerThread's servicing of client requests),
+      // so the world still finishes loading during warmup.
+      m_universeServer->setPause(m_renderTestFrames ? true : m_mainInterface->escapeDialogOpen());
     }
 
     Vec2F aimPosition = m_player->aimPosition();

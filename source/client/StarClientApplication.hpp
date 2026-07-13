@@ -127,6 +127,36 @@ private:
   // Valid if main app state == SinglePlayer
   UniverseServerPtr m_universeServer;
 
+  // --- HEADLESS RENDER HARNESS (P-0) -------------------------------------------------------------
+  // A golden-frame regression gate. Boots straight into single-player, renders N frames offscreen, hashes
+  // the composed world frame ("main", captured BEFORE post-process and the GUI so chat/FPS/clock churn
+  // cannot poison the hash), optionally dumps PNGs, and exits.
+  //
+  // WHY IT EXISTS: the two retained-cache oracles are DIFFERENTIAL -- they build their reference by invoking
+  // the SAME draw lambda at the SAME point in the frame under the SAME ambient GL state, so they certify only
+  // "path A == path B GIVEN identical ordering and state". Every reordering, blend/target/viewport change and
+  // FBO-lifecycle event applies to BOTH sides and CANCELS EXACTLY. Dismantling the painter's algorithm (#139)
+  // IS a reordering, so it lives entirely in their null space. This hash is ABSOLUTE, not differential: it is
+  // the only gate that can see that class of failure. All five render bugs shipped on 2026-07-13 were found by
+  // human eyes or adversarial reading -- none by an automated gate. This is that gate.
+  //
+  // Driven by environment variables (deliberately NOT command-line flags: the shipped option parser dies on
+  // unknown args, and a test harness has no business widening the game's public CLI surface):
+  //   STAR_RENDERTEST_FRAMES  -- capture this many frames, then quit. Unset/0 = harness off (zero cost).
+  //   STAR_RENDERTEST_WARMUP  -- render (but do not capture) this many frames first, so world chunks, texture
+  //                              atlases and the lighting pipeline have settled. Default 120.
+  //   STAR_RENDERTEST_OUT     -- directory for PNG dumps. Unset = hash only, no images.
+  // Run offscreen with SDL_VIDEO_DRIVER=offscreen (verified: yields a real GL 4.6 core context on the actual
+  // Intel Arc GPU via Mesa/EGL, NOT a software rasterizer -- so hashes and GPU timings are both meaningful).
+  unsigned m_renderTestFrames = 0;
+  unsigned m_renderTestWarmup = 120;
+  String m_renderTestOut;
+  unsigned m_renderTestSeen = 0;
+  bool m_renderTestEntered = false;
+
+  void renderTestCapture();
+  // -----------------------------------------------------------------------------------------------
+
   float m_cameraXOffset = 0.0f;
   float m_cameraYOffset = 0.0f;
   bool m_snapBackCameraOffset = false;

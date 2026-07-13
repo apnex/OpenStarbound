@@ -123,6 +123,14 @@ public:
   void setTemplate(Json newTemplate);
   SkyConstPtr currentSky() const;
 
+  // Render harness (P-0): pin the sky's clock so a golden-frame hash reproduces across runs. The universe
+  // clock is WALL-CLOCK derived, so two runs load the same save at different real times and land on a
+  // different epochTime -- which moves the stars, the orbiters, the day/night colour and the parallax drift.
+  // Measured: with the world paused, camera / entity count / parallax-layer count were already bit-identical
+  // across runs and epochTime was the SOLE remaining source of hash drift. Called every frame by the harness;
+  // never called in normal play.
+  void pinSkyEpochTime(double epochTime);
+
   void dimWorld();
   bool interactiveHighlightMode() const;
   void setInteractiveHighlightMode(bool enabled);

@@ -772,13 +772,34 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
     return Image();
   }
   auto buf = *bufPtr;
-  Vec2U size = buf->texture->textureSize;
-  Image result(size, PixelFormat::RGB_F);
 
+  // EVERY not-readable condition MUST return an EMPTY image, never a zero-FILLED one. A caller that hashes
+  // or compares the result cannot distinguish "the frame really is black" from "the read silently failed" --
+  // and a silently-zeroed frame hashes CONSISTENTLY, so a golden-hash gate built on it would report a stable
+  // PASS forever while seeing nothing at all. Empty is loud; zero-filled is a false green.
+  if (buf->multisample) {
+    // glReadPixels is invalid on a multisample framebuffer (it needs a blit-resolve first).
+    Logger::warn("readFrameBuffer: frame buffer '{}' is multisample and cannot be read back", frameBufferId);
+    return Image();
+  }
+  Vec2U size = buf->texture->textureSize;
+  if (size[0] == 0 || size[1] == 0) {
+    Logger::warn("readFrameBuffer: frame buffer '{}' has no recorded size", frameBufferId);
+    return Image();
+  }
+
+  while (glGetError() != GL_NO_ERROR) {}   // drain pre-existing errors so ours is attributable
+
+  Image result(size, PixelFormat::RGB_F);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, buf->id);
   glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
   // Restore the read binding to whatever draw target is current (screen if none).
   glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
+
+  if (GLenum err = glGetError(); err != GL_NO_ERROR) {
+    Logger::warn("readFrameBuffer: glReadPixels of '{}' failed (GL error {:#x})", frameBufferId, (unsigned)err);
+    return Image();
+  }
   return result;
 }
 
