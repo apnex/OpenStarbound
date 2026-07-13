@@ -134,15 +134,28 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // it and re-measure the whole frame. This mask does that, in a LIVE world (a frozen world is required for the
   // byte-identity gate but measures a floor, not real play -- and worse, a frozen+unthrottled world saturates
   // the GPU and manufactures pipeline stalls that do not exist in real play).
-  //   bit0 env/sky   bit1 parallax   bit2 world tiles+entities   bit3 lighting
+  // A SET bit RENDERS its pass; a clear bit ABLATES it. Only the passes listed here exist -- do not document a
+  // bit that nothing reads, or setting it measures an un-ablated frame and reports the pass as free, which is
+  // precisely the measurement lie this tool was built to prevent.
+  //   bit0 env/sky   bit1 parallax
+  // Base 0 (NOT 10): the mask is written in hex, and strtol(...,10) parses "0xF" as 0 -- silently ablating every
+  // pass, the exact inverse of what was asked for.
+  static int const PassAll = 0x3;
   static int const passMask = []() {
     char const* e = getenv("STAR_RENDERTEST_PASS_MASK");
-    return e && *e ? (int)strtol(e, nullptr, 10) : 0xF;
+    return e && *e ? (int)strtol(e, nullptr, 0) : PassAll;
   }();
   bool const ablateEnv      = !(passMask & 1);
   bool const ablateParallax = !(passMask & 2);
-  bool const ablateWorld    = !(passMask & 4);
-  (void)ablateWorld;
+  // An ablated run must never be mistaken for a normal one -- say so, once.
+  if (passMask != PassAll) {
+    static bool logged = false;
+    if (!logged) {
+      logged = true;
+      Logger::warn("[rendertest] PASS ABLATION ACTIVE mask={:#x}: env={} parallax={}",
+          passMask, ablateEnv ? "ABLATED" : "on", ablateParallax ? "ABLATED" : "on");
+    }
+  }
 
   // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
   // antiAliasing client options EVERY frame) destroys and re-creates every framebuffer with UNDEFINED
