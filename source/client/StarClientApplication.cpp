@@ -10,6 +10,8 @@
 #include "StarVersion.hpp"
 #include "StarPlayer.hpp"
 #include "StarPlayerStorage.hpp"
+#include "StarWarping.hpp"           // [rendertest] warp to a bookmark
+#include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
@@ -180,6 +182,8 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
       m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
     if (char const* out = getenv("STAR_RENDERTEST_OUT"))
       m_renderTestOut = String(out);
+    if (char const* warp = getenv("STAR_RENDERTEST_WARP"))
+      m_renderTestWarp = String(warp);
     // "<configKey>=<jsonA>|<jsonB>", e.g. envRefreshInterval=1|4  or  lightingGpu=true|false
     if (char const* ab = getenv("STAR_RENDERTEST_AB")) {
       String spec(ab);
@@ -201,8 +205,8 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
         Logger::error("[rendertest] STAR_RENDERTEST_AB must look like 'key=jsonA|jsonB' -- got '{}'", spec);
     }
     if (m_renderTestFrames)
-      Logger::info("[rendertest] ARMED load={} warmup={} frames={} ab='{}' out='{}'",
-        m_renderTestLoad, m_renderTestWarmup, m_renderTestFrames, m_renderTestAbKey, m_renderTestOut);
+      Logger::info("[rendertest] ARMED load={} warmup={} frames={} warp='{}' ab='{}' out='{}'",
+        m_renderTestLoad, m_renderTestWarmup, m_renderTestFrames, m_renderTestWarp, m_renderTestAbKey, m_renderTestOut);
   }
 }
 
@@ -558,10 +562,38 @@ void ClientApplication::render() {
     }
     renderer->switchEffectConfig("interface");
     auto start = Time::monotonicMicroseconds();
-    m_mainInterface->renderInWorldElements();
-    m_mainInterface->render();
-    m_cinematicOverlay->render();
-    LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
+    // GPU timer on the interface (task #141). This pass had a CPU timer but NO GPU timer, and it is a large
+    // part of the 1.8-3.5ms/frame that the whole-frame span showed was unaccounted for -- at the Lava Refinery
+    // the unattributed block is BIGGER THAN ALL THE LIGHTING COMBINED. On a static scene the entire GUI is
+    // rebuilt and re-rasterised every single frame.
+    // ABLATION HOOK (task #141). The per-pass GL_TIME_ELAPSED timers are NOT ADDITIVE -- with 12 of them their
+    // sum overshot the real frame by 5ms, because each bracket serialises the pipeline and measures its own
+    // stall. They rank passes; they do not budget them. The only trustworthy figure is the whole-frame span.
+    // So to get a pass's TRUE cost, ABLATE it and measure the frame: (span_with - span_without).
+    static bool const skipInterface = []() {
+      char const* e = getenv("STAR_RENDERTEST_NO_INTERFACE");
+      return e && *e && *e != '0';
+    }();
+    // Finer ablation, because "the GUI costs 75% of the frame" is too big a claim to leave unlocalised.
+    static int const uiMask = []() {
+      char const* e = getenv("STAR_RENDERTEST_UI_MASK");   // bit0 inWorld, bit1 mainInterface, bit2 cinematic
+      return e && *e ? (int)strtol(e, nullptr, 10) : 7;
+    }();
+    if (!skipInterface) {
+      renderer->beginGpuTimer("render.pass.interface.gpu_us");
+      if (uiMask & 1) m_mainInterface->renderInWorldElements();
+      if (uiMask & 2) m_mainInterface->render();
+      if (uiMask & 4) m_cinematicOverlay->render();
+      renderer->endGpuTimer("render.pass.interface.gpu_us");
+    }
+    // Task #141: the GUI had a debug-HUD string but NO telemetry timer, so its CPU cost was invisible -- and
+    // that is load-bearing right now. The whole-frame "GPU span" is a GL_TIMESTAMP delta, which includes GPU
+    // IDLE. If the HUD is CPU-bound, the GPU sits waiting and the span measures LATENCY, not GPU WORK -- which
+    // would make "the HUD costs 8.3ms of GPU" an artifact of the instrument rather than a fact about the game.
+    auto interfaceUs = Time::monotonicMicroseconds() - start;
+    static auto interfaceTimer = Telemetry::timer("render.interface.us");
+    interfaceTimer.record(interfaceUs);
+    LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", interfaceUs));
   }
 
   // Telemetry HUD face: curated headline skip-rates (gated; reuses the /debug LogMap, cheap counter reads).
@@ -1237,8 +1269,14 @@ void ClientApplication::updateTitle(float dt) {
     m_renderTestEntered = true;
     Logger::info("[rendertest] entering SinglePlayer");
     changeState(MainAppState::SinglePlayer);
-    if (m_player)
+    if (m_player) {
       Logger::info("[rendertest] player '{}' loaded", m_player->name());
+      // Enumerate the player's teleport bookmarks so a measurement can be aimed at a REAL location (a base,
+      // a planet surface) rather than only wherever the character happens to be parked. Without this the
+      // harness can only ever measure the ship -- where, as it turns out, the parallax pass costs ZERO.
+      for (auto const& b : m_player->universeMap()->teleportBookmarks())
+        Logger::info("[rendertest] bookmark: '{}'  (world={})", b.bookmarkName, printWorldId(b.target.first));
+    }
     return;
   }
 
@@ -1330,6 +1368,30 @@ void ClientApplication::updateTitle(float dt) {
 }
 
 void ClientApplication::updateRunning(float dt) {
+  // Render harness: warp to a named teleport bookmark before measuring. Without this the harness can only ever
+  // measure wherever the character is parked -- which was the SHIP, where the parallax pass costs exactly ZERO.
+  // A whole day of parallax optimization was aimed at a pass that is not in the scene being complained about.
+  if (m_renderTestFrames && !m_renderTestWarp.empty() && !m_renderTestWarped && m_player
+      && m_universeClient && m_universeClient->worldClient() && m_universeClient->worldClient()->inWorld()) {
+    String want = m_renderTestWarp.toLower();
+    for (auto const& b : m_player->universeMap()->teleportBookmarks()) {
+      if (b.bookmarkName.toLower().contains(want)) {
+        Logger::info("[rendertest] WARPING to bookmark '{}' (world={})", b.bookmarkName, printWorldId(b.target.first));
+        m_universeClient->warpPlayer(WarpToWorld(b.target.first, b.target.second), false);
+        m_renderTestWarped = true;
+        // The destination world has to stream in from scratch, so restart the LOAD phase from here. Otherwise
+        // the freeze would land mid-load and we would measure a half-built world.
+        m_renderTestFrame = 0;
+        break;
+      }
+    }
+    if (!m_renderTestWarped) {
+      Logger::error("[rendertest] FAIL: no teleport bookmark matching '{}'", m_renderTestWarp);
+      appController()->quit();
+      return;
+    }
+  }
+
   try {
     auto& app = appController();
     auto worldClient = m_universeClient->worldClient();

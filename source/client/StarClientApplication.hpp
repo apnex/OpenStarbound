@@ -173,6 +173,8 @@ private:
   unsigned m_renderTestSeen = 0;     // frames since the freeze
   bool m_renderTestEntered = false;
   bool m_renderTestFrozen = false;
+  String m_renderTestWarp;      // STAR_RENDERTEST_WARP=<substring of a teleport bookmark name>
+  bool m_renderTestWarped = false;
   String m_renderTestAbKey;
   Json m_renderTestAbA;
   Json m_renderTestAbB;

@@ -1055,6 +1055,14 @@ void OpenGlRenderer::beginGpuTimer(String const& name) {
   }();
   if (!perPassEnabled)
     return;
+  // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
+  // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
+  // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlFrameBuffer is
+  // reached during the interface render), and the resulting numbers were nonsense.
+  if (m_gpuTimerActive) {
+    Logger::warn("beginGpuTimer('{}') nested inside an active timer -- ignored (GL_TIME_ELAPSED cannot nest)", name);
+    return;
+  }
   // Submit any pending primitives first so the query measures only the work that follows.
   flushImmediatePrimitives();
   auto& ring = m_gpuTimers[name];
@@ -1169,6 +1177,10 @@ void OpenGlRenderer::startFrame() {
   if (m_scissorRect)
     glDisable(GL_SCISSOR_TEST);
 
+  // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
+  // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
+  beginGpuTimer("render.frame.clear.gpu_us");
+
   for (auto& frameBuffer : m_frameBuffers) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->id);
     // clearGated FBOs (e.g. the oracle's envRef) are only cleared while their consumer is armed, so a
@@ -1181,6 +1193,8 @@ void OpenGlRenderer::startFrame() {
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
   glClear(GL_COLOR_BUFFER_BIT);
+
+  endGpuTimer("render.frame.clear.gpu_us");
 
   if (m_scissorRect)
     glEnable(GL_SCISSOR_TEST);
@@ -1720,6 +1734,11 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer)
   if (frameBuffer->blitted)
     return;
 
+  // Task #141: the final resolve of "main" to the screen was never timed. At 2560x1440 RGBA16F, and MSAA-
+  // resolving when antiAliasing is on, this is not free -- and it is part of the 1.8-3.5ms/frame that the
+  // whole-frame span proved was unaccounted for.
+  beginGpuTimer("render.frame.blit.gpu_us");
+
   auto& size = m_screenSize;
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
   glBindFramebuffer(GL_READ_FRAMEBUFFER, frameBuffer->id);
@@ -1729,6 +1748,7 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer)
     GL_COLOR_BUFFER_BIT, GL_NEAREST
   );
 
+  endGpuTimer("render.frame.blit.gpu_us");
   frameBuffer->blitted = true;
 }
 

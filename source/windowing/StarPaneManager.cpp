@@ -1,4 +1,6 @@
 #include "StarPaneManager.hpp"
+#include <typeinfo>   // [rendertest] pane-type dump (task #141)
+#include <functional>
 #include "StarGameTypes.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarAssets.hpp"
@@ -268,6 +270,31 @@ bool PaneManager::sendInputEvent(InputEvent const& event) {
 }
 
 void PaneManager::render() {
+  // Task #141 diagnostic: renderWindows() -> PaneManager::render() was measured by whole-frame ablation at
+  // 8,271us of an 11,794us GPU frame -- 70% of the ENTIRE frame, at a base, standing still, with nothing open.
+  // Dump exactly what is being drawn, once, so the culprit pane can be named rather than guessed at.
+  static bool dumped = false;
+  if (!dumped && getenv("STAR_RENDERTEST_DUMP_PANES")) {
+    dumped = true;
+    Logger::info("[panes] backgroundWidget={}", m_backgroundWidget ? "YES" : "no");
+    std::function<void(Widget const*, int)> dump = [&](Widget const* w, int depth) {
+      String pad;
+      for (int i = 0; i < depth; ++i) pad += "  ";
+      Logger::info("[panes] {}{} visible={} size={}x{} pos=({},{}) children={}",
+        pad, typeid(*w).name(), w->visibility(),
+        w->size()[0], w->size()[1], w->position()[0], w->position()[1], w->members().size());
+      if (depth < 4)
+        for (auto const& c : w->members())
+          dump(c.get(), depth + 1);
+    };
+    for (auto const& layerPair : reverseIterate(m_displayedPanes)) {
+      for (auto const& panePair : reverseIterate(layerPair.second)) {
+        Logger::info("[panes] --- layer={} ---", (int)layerPair.first);
+        dump(panePair.first.get(), 0);
+      }
+    }
+  }
+
   if (m_backgroundWidget) {
     auto size = m_backgroundWidget->size();
     m_backgroundWidget->setPosition(Vec2I((windowSize()[0] - size[0]) / 2, (windowSize()[1] - size[1]) / 2));
