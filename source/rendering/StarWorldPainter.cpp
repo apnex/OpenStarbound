@@ -347,11 +347,61 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   bool parallaxHasLayers = !renderData.parallaxLayers.empty();
   Vec2U parallaxScreenSize = m_renderer->screenSize();
   bool parallaxAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
-  unsigned parallaxRefreshInterval = Root::singleton().configuration()->get("parallaxRefreshInterval", 1).optUInt().value(1);
-  if (parallaxRefreshInterval < 1)
-    parallaxRefreshInterval = 1;
   bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
   float parallaxPixelRatio = m_camera.pixelRatio();
+
+  // CONTENT-ADAPTIVE refresh interval. What the eye catches in a cached parallax is the per-refresh
+  // positional STEP of its FASTEST-drifting layer: renderParallaxLayers scrolls each layer by
+  // speed * (epochTime / dayLength), scaled by pixelRatio. Hold that step under a perceptual threshold and
+  // the cache is imperceptible on ANY world -- static biomes (most of them) take a large N, fast-drifting
+  // ones a small N -- instead of forcing the worst world's limit on every world. Snap DOWN to a validated
+  // rung {1,2,4,8,16} (conservative). Config parallaxRefreshInterval: 0 = ADAPTIVE (default), 1 = off/direct,
+  // >1 = manual fixed N. Threshold tunable via parallaxMaxDriftStepPx.
+  unsigned parallaxRefreshCfg = Root::singleton().configuration()->get("parallaxRefreshInterval", 0).optUInt().value(0);
+  float parallaxMaxStepPx = Root::singleton().configuration()->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f);
+
+  double parallaxEpoch = renderData.skyRenderData.epochTime;
+  double parallaxDayLength = (double)renderData.skyRenderData.dayLength;
+  double parallaxEpochDelta = (m_lastParallaxEpochTime > 0.0) ? (parallaxEpoch - m_lastParallaxEpochTime) : 0.0;
+  m_lastParallaxEpochTime = parallaxEpoch;
+
+  unsigned parallaxAutoN = 16;       // static content: only the very slow day/night tint needs refreshing
+  float parallaxMaxDriftPx = 0.0f;   // fastest layer's screen-pixel drift this frame
+  bool parallaxAnimated = false;
+  if (parallaxEpochDelta > 0.0 && parallaxDayLength > 0.0) {
+    for (auto const& layer : renderData.parallaxLayers) {
+      float sx = layer.speed[0] < 0.0f ? -layer.speed[0] : layer.speed[0];
+      float sy = layer.speed[1] < 0.0f ? -layer.speed[1] : layer.speed[1];
+      float s = sx > sy ? sx : sy;
+      float px = (float)((double)s * (parallaxEpochDelta / parallaxDayLength)) * parallaxPixelRatio;
+      if (px > parallaxMaxDriftPx)
+        parallaxMaxDriftPx = px;
+      if (layer.frameNumber > 1)
+        parallaxAnimated = true;
+    }
+    if (parallaxMaxDriftPx > 0.0f) {
+      int n = (int)(parallaxMaxStepPx / parallaxMaxDriftPx);
+      if (n < 1) n = 1;
+      if (n > 16) n = 16;
+      parallaxAutoN = (unsigned)n;
+    }
+  }
+  static const unsigned parallaxRungs[] = {16u, 8u, 4u, 2u, 1u};
+  for (unsigned rung : parallaxRungs) {
+    if (parallaxAutoN >= rung) { parallaxAutoN = rung; break; }
+  }
+  if (parallaxAnimated && parallaxAutoN > 4)
+    parallaxAutoN = 4;   // don't delay an animation frame-flip by more than ~4 frames
+
+  unsigned parallaxRefreshInterval = (parallaxRefreshCfg == 0) ? parallaxAutoN : parallaxRefreshCfg;
+  if (parallaxRefreshInterval < 1)
+    parallaxRefreshInterval = 1;
+  if (parallaxRefreshInterval != m_lastLoggedParallaxN) {
+    Logger::info("[parallaxauto] N={} (cfg={}) driftPx/frame={:.5f} stepThresh={:.2f} layers={} animated={}",
+      parallaxRefreshInterval, parallaxRefreshCfg, parallaxMaxDriftPx, parallaxMaxStepPx,
+      renderData.parallaxLayers.size(), parallaxAnimated);
+    m_lastLoggedParallaxN = parallaxRefreshInterval;
+  }
 
   // Shared draw sequence (single lambda -> cache and its oracle reference can't diverge).
   auto drawParallax = [&]() {

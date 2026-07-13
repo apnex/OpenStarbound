@@ -700,11 +700,12 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
     // zoom (Option B). AA-off only.
     if (args.size() >= 2) {
       auto n = maybeLexicalCast<unsigned>(args.at(1));
-      if (!n || *n < 1)
-        return "usage: /rendercache parallaxrefresh <N>  (N >= 1; 1 = every frame = current behavior)";
+      if (!n)
+        return "usage: /rendercache parallaxrefresh <N>  (0 = ADAPTIVE, auto-derived per world [default]; 1 = off/direct; >1 = manual fixed N)";
       cfg->set("parallaxRefreshInterval", *n);
     }
-    return strf("render cache parallaxRefreshInterval={}", cfg->get("parallaxRefreshInterval", 1).toUInt());
+    unsigned pn = cfg->get("parallaxRefreshInterval", 0).toUInt();
+    return strf("render cache parallaxRefreshInterval={}{}", pn, pn == 0 ? " (ADAPTIVE -- auto per world; see [parallaxauto] in the log)" : (pn == 1 ? " (off/direct)" : " (manual)"));
   }
 
   if (!args.empty() && args.at(0) == "paralloracle") {
