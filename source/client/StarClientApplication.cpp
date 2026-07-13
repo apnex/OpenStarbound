@@ -493,6 +493,7 @@ void ClientApplication::render() {
 
   renderer->setMultiSampling(config->get("antiAliasing").optBool().value(false) ? 4 : 0);
   renderer->setMainHDR(config->get("hdr").optBool().value(true));
+  renderer->setVboOrphan(config->get("renderVboOrphan").optBool().value(true));
   renderer->switchEffectConfig("interface");
 
   if (auto interfaceScale = config->get("interfaceScale").optFloat().value(); interfaceScale != 0)

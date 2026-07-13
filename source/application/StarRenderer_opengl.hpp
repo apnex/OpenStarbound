@@ -67,6 +67,7 @@ public:
   void setMultiTexturingEnabled(bool enabled) override;
   void setMultiSampling(unsigned multiSampling) override;
   void setMainHDR(bool enabled) override;
+  void setVboOrphan(bool enabled) override;
   TextureGroupPtr createTextureGroup(TextureGroupSize size, TextureFiltering filtering) override;
   RenderBufferPtr createRenderBuffer() override;
 
@@ -327,6 +328,7 @@ private:
   FrameSpanRing m_frameSpan;
   unsigned m_frameSpanSlot = 0;
   bool m_frameSpanOpen = false;
+
 
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;

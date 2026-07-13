@@ -99,6 +99,7 @@ R"JSON(
       "telemetryReportInterval" : 0,
       "telemetryHud" : false,
 
+      "renderVboOrphan" : true,
       "renderDrawableCache" : false,
       "renderDrawableCacheShadowCompare" : false,
       "renderDrawableCachePerPart" : true,
