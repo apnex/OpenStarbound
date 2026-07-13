@@ -388,10 +388,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       parallaxAutoN = (unsigned)n;
     }
   }
-  static const unsigned parallaxRungs[] = {16u, 8u, 4u, 2u, 1u};
-  for (unsigned rung : parallaxRungs) {
-    if (parallaxAutoN >= rung) { parallaxAutoN = rung; break; }
-  }
+  // (No rung-snapping: any integer N is fine -- the step threshold above is what bounds perceptibility, and
+  // snapping to powers of two just throws away saving, e.g. an ideal 3.9 collapsing to 2.)
   if (parallaxAnimated && parallaxAutoN > 4)
     parallaxAutoN = 4;   // don't delay an animation frame-flip by more than ~4 frames
 

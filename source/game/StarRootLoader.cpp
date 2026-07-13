@@ -106,7 +106,7 @@ R"JSON(
       "envRefreshInterval" : 4,
       "envOracle" : false,
       "parallaxRefreshInterval" : 0,
-      "parallaxMaxDriftStepPx" : 1.5,
+      "parallaxMaxDriftStepPx" : 0.75,
       "parallaxOracle" : false,
 
       "lightingGpu" : true,
