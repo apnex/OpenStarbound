@@ -360,20 +360,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   unsigned parallaxRefreshCfg = Root::singleton().configuration()->get("parallaxRefreshInterval", 0).optUInt().value(0);
   float parallaxMaxStepPx = Root::singleton().configuration()->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f);
 
-  double parallaxEpoch = renderData.skyRenderData.epochTime;
+  // The drift rate is a property of the CONTENT, not of frame-to-frame tick jitter. A layer's screen offset
+  // is speed * (epochTime / dayLength) * pixelRatio and epochTime advances ~1s per real second, so
+  //     px/frame (nominal 60fps) = speed / (dayLength * 60) * pixelRatio.
+  // (Do NOT derive this from a per-frame epochTime DELTA: skyRenderData only refreshes on WORLD TICKS, so
+  //  that delta is exactly 0 on many render frames -- which made N flap between the static default and the
+  //  real value every frame.)
   double parallaxDayLength = (double)renderData.skyRenderData.dayLength;
-  double parallaxEpochDelta = (m_lastParallaxEpochTime > 0.0) ? (parallaxEpoch - m_lastParallaxEpochTime) : 0.0;
-  m_lastParallaxEpochTime = parallaxEpoch;
-
   unsigned parallaxAutoN = 16;       // static content: only the very slow day/night tint needs refreshing
-  float parallaxMaxDriftPx = 0.0f;   // fastest layer's screen-pixel drift this frame
+  float parallaxMaxDriftPx = 0.0f;   // fastest layer's screen-pixel drift per frame
   bool parallaxAnimated = false;
-  if (parallaxEpochDelta > 0.0 && parallaxDayLength > 0.0) {
+  if (parallaxDayLength > 0.0) {
     for (auto const& layer : renderData.parallaxLayers) {
       float sx = layer.speed[0] < 0.0f ? -layer.speed[0] : layer.speed[0];
       float sy = layer.speed[1] < 0.0f ? -layer.speed[1] : layer.speed[1];
       float s = sx > sy ? sx : sy;
-      float px = (float)((double)s * (parallaxEpochDelta / parallaxDayLength)) * parallaxPixelRatio;
+      float px = (float)((double)s / (parallaxDayLength * 60.0)) * parallaxPixelRatio;
       if (px > parallaxMaxDriftPx)
         parallaxMaxDriftPx = px;
       if (layer.frameNumber > 1)

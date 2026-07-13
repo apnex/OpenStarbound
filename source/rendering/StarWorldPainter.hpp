@@ -70,9 +70,7 @@ private:
   Vec2U m_parallaxCacheSize = {0, 0};
   Vec2F m_parallaxCachePosition = {0.0f, 0.0f};
   float m_parallaxCachePixelRatio = 0.0f;
-  // Content-adaptive N: previous frame's sky epoch (to measure this frame's drift) + the last N we logged
-  // (so the [parallaxauto] line fires on change, not every frame).
-  double m_lastParallaxEpochTime = 0.0;
+  // Content-adaptive N: the last N we logged, so the [parallaxauto] line fires on change, not every frame.
   unsigned m_lastLoggedParallaxN = 0;
 
   Json m_highlightConfig;
