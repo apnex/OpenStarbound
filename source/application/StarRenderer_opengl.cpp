@@ -777,11 +777,6 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   // or compares the result cannot distinguish "the frame really is black" from "the read silently failed" --
   // and a silently-zeroed frame hashes CONSISTENTLY, so a golden-hash gate built on it would report a stable
   // PASS forever while seeing nothing at all. Empty is loud; zero-filled is a false green.
-  if (buf->multisample) {
-    // glReadPixels is invalid on a multisample framebuffer (it needs a blit-resolve first).
-    Logger::warn("readFrameBuffer: frame buffer '{}' is multisample and cannot be read back", frameBufferId);
-    return Image();
-  }
   Vec2U size = buf->texture->textureSize;
   if (size[0] == 0 || size[1] == 0) {
     Logger::warn("readFrameBuffer: frame buffer '{}' has no recorded size", frameBufferId);
@@ -791,13 +786,41 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   while (glGetError() != GL_NO_ERROR) {}   // drain pre-existing errors so ours is attributable
 
   Image result(size, PixelFormat::RGB_F);
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, buf->id);
+
+  // glReadPixels is INVALID on a multisample framebuffer -- it must be blit-RESOLVED to a single-sample target
+  // first. "main" is multisample whenever antiAliasing is on, so without this the whole AA path would be
+  // unreadable and therefore unverifiable. Resolve into a scratch single-sample FBO and read that.
+  GLuint resolveFbo = 0, resolveTex = 0;
+  GLuint readFrom = buf->id;
+  if (buf->multisample) {
+    glGenTextures(1, &resolveTex);
+    glBindTexture(GL_TEXTURE_2D, resolveTex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, size[0], size[1], 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glGenFramebuffers(1, &resolveFbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, resolveFbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, resolveTex, 0);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, buf->id);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, resolveFbo);
+    glBlitFramebuffer(0, 0, size[0], size[1], 0, 0, size[0], size[1], GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    readFrom = resolveFbo;
+  }
+
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, readFrom);
   glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
   // Restore the read binding to whatever draw target is current (screen if none).
   glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->id : 0);
+
+  if (resolveFbo) {
+    glDeleteFramebuffers(1, &resolveFbo);
+    glDeleteTextures(1, &resolveTex);
+  }
 
   if (GLenum err = glGetError(); err != GL_NO_ERROR) {
-    Logger::warn("readFrameBuffer: glReadPixels of '{}' failed (GL error {:#x})", frameBufferId, (unsigned)err);
+    Logger::warn("readFrameBuffer: read of '{}' failed (GL error {:#x})", frameBufferId, (unsigned)err);
     return Image();
   }
   return result;

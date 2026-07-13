@@ -148,13 +148,40 @@ private:
   //   STAR_RENDERTEST_OUT     -- directory for PNG dumps. Unset = hash only, no images.
   // Run offscreen with SDL_VIDEO_DRIVER=offscreen (verified: yields a real GL 4.6 core context on the actual
   // Intel Arc GPU via Mesa/EGL, NOT a software rasterizer -- so hashes and GPU timings are both meaningful).
+  //   STAR_RENDERTEST_LOAD    -- frames rendered UNPAUSED first, so the world actually streams in. Pausing
+  //                              from frame 0 does NOT let chunks load (verified: the capture showed the player
+  //                              alone in empty space, with the whole ship missing) -- setPause stops the world
+  //                              from populating, not merely from ticking. Default 240.
+  //   STAR_RENDERTEST_WARMUP  -- frames rendered AFTER the freeze, to let caches/atlases settle. Default 60.
   unsigned m_renderTestFrames = 0;
-  unsigned m_renderTestWarmup = 120;
+  unsigned m_renderTestLoad = 240;
+  unsigned m_renderTestWarmup = 60;
   String m_renderTestOut;
-  unsigned m_renderTestSeen = 0;
+  //   STAR_RENDERTEST_AB      -- "<configKey>=<jsonA>|<jsonB>". THE GATE. Against a FROZEN world, render with
+  //                              the key set to A, then to B, and compare the two frames byte-for-byte. Both
+  //                              renders see bit-identical world input, so any difference is attributable to
+  //                              the CODE PATH and nothing else.
+  //
+  //                              This is why it beats a cross-run golden hash: the world must be loaded
+  //                              UNPAUSED (a paused world never populates), and the number of sim ticks that
+  //                              takes depends on wall-clock -- so two RUNS freeze in slightly different
+  //                              animation states and their hashes legitimately differ. Within ONE run, frozen,
+  //                              frames are bit-identical (verified). So the comparison must live inside one
+  //                              process. Example, proving the env cache is byte-identical to the direct path:
+  //                                STAR_RENDERTEST_AB='envRefreshInterval=1|4'
+  unsigned m_renderTestFrame = 0;    // total frames since entering SinglePlayer
+  unsigned m_renderTestSeen = 0;     // frames since the freeze
   bool m_renderTestEntered = false;
+  bool m_renderTestFrozen = false;
+  String m_renderTestAbKey;
+  Json m_renderTestAbA;
+  Json m_renderTestAbB;
+  int m_renderTestAbPhase = -1;      // -1 = no A/B; 0 = leg A settling; 1 = leg B settling
+  uint64_t m_renderTestAbHashA = 0;
+  Image m_renderTestAbFrameA;
 
   void renderTestCapture();
+  uint64_t renderTestHash(Image const& frame, double* meanLuminance) const;
   // -----------------------------------------------------------------------------------------------
 
   float m_cameraXOffset = 0.0f;

@@ -174,13 +174,35 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
   // costs exactly nothing when unset. See the block comment in StarClientApplication.hpp.
   if (char const* frames = getenv("STAR_RENDERTEST_FRAMES")) {
     m_renderTestFrames = (unsigned)strtoul(frames, nullptr, 10);
+    if (char const* load = getenv("STAR_RENDERTEST_LOAD"))
+      m_renderTestLoad = (unsigned)strtoul(load, nullptr, 10);
     if (char const* warmup = getenv("STAR_RENDERTEST_WARMUP"))
       m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
     if (char const* out = getenv("STAR_RENDERTEST_OUT"))
       m_renderTestOut = String(out);
+    // "<configKey>=<jsonA>|<jsonB>", e.g. envRefreshInterval=1|4  or  lightingGpu=true|false
+    if (char const* ab = getenv("STAR_RENDERTEST_AB")) {
+      String spec(ab);
+      if (auto eq = spec.find('='); eq != NPos) {
+        String key = spec.substr(0, eq);
+        String vals = spec.substr(eq + 1);
+        if (auto bar = vals.find('|'); bar != NPos) {
+          try {
+            m_renderTestAbKey = key;
+            m_renderTestAbA = Json::parse(vals.substr(0, bar));
+            m_renderTestAbB = Json::parse(vals.substr(bar + 1));
+          } catch (std::exception const& e) {
+            Logger::error("[rendertest] bad STAR_RENDERTEST_AB '{}': {}", spec, outputException(e, false));
+            m_renderTestAbKey = "";
+          }
+        }
+      }
+      if (m_renderTestAbKey.empty())
+        Logger::error("[rendertest] STAR_RENDERTEST_AB must look like 'key=jsonA|jsonB' -- got '{}'", spec);
+    }
     if (m_renderTestFrames)
-      Logger::info("[rendertest] ARMED frames={} warmup={} out='{}'",
-        m_renderTestFrames, m_renderTestWarmup, m_renderTestOut);
+      Logger::info("[rendertest] ARMED load={} warmup={} frames={} ab='{}' out='{}'",
+        m_renderTestLoad, m_renderTestWarmup, m_renderTestFrames, m_renderTestAbKey, m_renderTestOut);
   }
 }
 
@@ -1032,18 +1054,115 @@ void ClientApplication::updateError(float) {
     changeState(MainAppState::Title);
 }
 
+uint64_t ClientApplication::renderTestHash(Image const& frame, double* meanLuminance) const {
+  XXHash64 hasher;
+  hasher.push((char const*)frame.data(), (size_t)frame.width() * frame.height() * frame.bytesPerPixel());
+  if (meanLuminance) {
+    // A uniformly-black frame hashes perfectly stably -- and is exactly what the AA bug produced. Report
+    // luminance too, so a STABLE hash can never be mistaken for a CORRECT one.
+    double lum = 0.0;
+    auto const* px = (float const*)frame.data();
+    size_t n = (size_t)frame.width() * frame.height() * 3;
+    for (size_t i = 0; i < n; ++i)
+      lum += px[i];
+    *meanLuminance = lum / (double)n;
+  }
+  return hasher.digest();
+}
+
 void ClientApplication::renderTestCapture() {
   auto& renderer = Application::renderer();
 
-  // Warm up first: world chunks stream in, texture atlases fill, the lighting pipeline settles. Capturing
-  // before that steadies just records the loading screen and would make the gate meaningless.
-  if (m_renderTestSeen < m_renderTestWarmup) {
-    ++m_renderTestSeen;
-    if (m_renderTestSeen == m_renderTestWarmup)
-      Logger::info("[rendertest] warmup complete ({} frames), capturing {} frames", m_renderTestWarmup, m_renderTestFrames);
+  // PHASE 1 -- LOAD, unpaused. The world must actually stream in; a paused world never populates.
+  if (m_renderTestFrame < m_renderTestLoad) {
+    ++m_renderTestFrame;
+    if (m_renderTestFrame == m_renderTestLoad) {
+      m_renderTestFrozen = true;   // takes effect in update(): setPause(true) from here on
+      Logger::info("[rendertest] world loaded ({} frames) -- FREEZING sim", m_renderTestLoad);
+    }
     return;
   }
 
+  // PHASE 2 -- SETTLE, frozen. Caches, atlases and the lighting pipeline quiesce against a static world.
+  if (m_renderTestSeen < m_renderTestWarmup) {
+    ++m_renderTestSeen;
+    if (m_renderTestSeen == m_renderTestWarmup) {
+      Logger::info("[rendertest] settled ({} frozen frames)", m_renderTestWarmup);
+      if (!m_renderTestAbKey.empty()) {
+        m_renderTestAbPhase = 0;
+        m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbA);
+        Logger::info("[rendertest] A/B leg A: {} = {}", m_renderTestAbKey, m_renderTestAbA.repr());
+      }
+    }
+    return;
+  }
+
+  // PHASE 3a -- A/B GATE. Against the frozen world, render leg A, then leg B, and compare byte-for-byte.
+  // Each leg gets m_renderTestWarmup frames to settle so retained caches actually refresh under the new
+  // setting (otherwise leg B would be scored on leg A's stale cache contents).
+  if (m_renderTestAbPhase >= 0) {
+    unsigned legFrame = (m_renderTestSeen - m_renderTestWarmup) % (m_renderTestWarmup + 1);
+    ++m_renderTestSeen;
+    if (legFrame < m_renderTestWarmup)
+      return;   // still settling this leg
+
+    Image frame = renderer->readFrameBuffer("main");
+    if (frame.empty()) {
+      Logger::error("[rendertest] FAIL: readFrameBuffer('main') returned nothing (unsized? GL error?)");
+      appController()->quit();
+      return;
+    }
+    double lum = 0.0;
+    uint64_t hash = renderTestHash(frame, &lum);
+
+    if (m_renderTestAbPhase == 0) {
+      m_renderTestAbHashA = hash;
+      m_renderTestAbFrameA = frame;
+      Logger::info("[rendertest] legA {} = {} -> hash={:016x} meanLuminance={:.6f}",
+        m_renderTestAbKey, m_renderTestAbA.repr(), hash, lum);
+      m_renderTestAbPhase = 1;
+      m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbB);
+      Logger::info("[rendertest] A/B leg B: {} = {}", m_renderTestAbKey, m_renderTestAbB.repr());
+      return;
+    }
+
+    Logger::info("[rendertest] legB {} = {} -> hash={:016x} meanLuminance={:.6f}",
+      m_renderTestAbKey, m_renderTestAbB.repr(), hash, lum);
+
+    if (hash == m_renderTestAbHashA) {
+      Logger::info("[rendertest] ===== A/B MATCH: byte-identical ({} : {} vs {}) =====",
+        m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
+    } else {
+      // Quantify the divergence. A hash mismatch alone cannot distinguish a 1-LSB rounding difference on a
+      // few soft-edge texels (expected for e.g. the premultiplied parallax cache) from a real corruption.
+      size_t differing = 0;
+      float maxAbs = 0.0f;
+      auto const* a = (float const*)m_renderTestAbFrameA.data();
+      auto const* b = (float const*)frame.data();
+      size_t px = (size_t)frame.width() * frame.height();
+      for (size_t i = 0; i < px; ++i) {
+        bool diff = false;
+        for (int c = 0; c < 3; ++c) {
+          float d = a[i * 3 + c] - b[i * 3 + c];
+          if (d != 0.0f) {
+            diff = true;
+            float ad = d < 0.0f ? -d : d;
+            if (ad > maxAbs)
+              maxAbs = ad;
+          }
+        }
+        if (diff)
+          ++differing;
+      }
+      Logger::error("[rendertest] ===== A/B DIFF: {} px ({:.4f}%) maxAbs={:.6f} ({} : {} vs {}) =====",
+        differing, 100.0 * (double)differing / (double)px, maxAbs,
+        m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
+    }
+    appController()->quit();
+    return;
+  }
+
+  // PHASE 3b -- plain golden capture (no A/B configured).
   unsigned index = m_renderTestSeen - m_renderTestWarmup;
   ++m_renderTestSeen;
 
@@ -1056,18 +1175,9 @@ void ClientApplication::renderTestCapture() {
     return;
   }
 
-  XXHash64 hasher;
-  hasher.push((char const*)frame.data(), frame.width() * frame.height() * frame.bytesPerPixel());
-  uint64_t hash = hasher.digest();
-
-  // A frame that is uniformly black hashes perfectly stably -- and is exactly what the AA bug produced. Report
-  // luminance so a "stable hash" can never be mistaken for a correct one.
   double lum = 0.0;
+  uint64_t hash = renderTestHash(frame, &lum);
   auto const* px = (float const*)frame.data();
-  size_t n = (size_t)frame.width() * frame.height() * 3;
-  for (size_t i = 0; i < n; ++i)
-    lum += px[i];
-  lum /= (double)n;
 
   // State fingerprint alongside the pixel hash. If two runs disagree on the HASH, this says WHICH input
   // drifted -- pixels alone cannot tell you whether the renderer changed or the world did.
@@ -1462,14 +1572,12 @@ void ClientApplication::updateRunning(float dt) {
           m_universeServer->addClient(UniverseConnection(P2PPacketSocket::open(std::move(p2pClient))));
       }
 
-      // Render harness: FREEZE THE SIMULATION for the whole run. The world sim advances on wall-clock, so two
-      // runs reach a capture frame having ticked a different number of times -- entities, particles, animations
-      // and the sky's epochTime all differ, and the golden hash is worthless as a gate. Paused, the world stays
-      // exactly as it was loaded from the save, so the same save + the same binary must produce the same bytes,
-      // and any hash difference between two BINARIES is attributable to the code, not to time. Chunk streaming
-      // still runs (setPause gates world->update(), not the WorldServerThread's servicing of client requests),
-      // so the world still finishes loading during warmup.
-      m_universeServer->setPause(m_renderTestFrames ? true : m_mainInterface->escapeDialogOpen());
+      // Render harness: LOAD FIRST, THEN FREEZE. The world sim advances on wall-clock, so without a freeze two
+      // runs reach a capture frame having ticked a different number of times and the golden hash is worthless.
+      // But pausing from frame 0 does NOT work: the world never streams in, and the capture is the player alone
+      // in empty space with the entire ship missing (observed). setPause stops the world POPULATING, not just
+      // ticking. So run LOAD frames unpaused to let the world arrive, then freeze it for the rest of the run.
+      m_universeServer->setPause(m_renderTestFrames ? m_renderTestFrozen : m_mainInterface->escapeDialogOpen());
     }
 
     Vec2F aimPosition = m_player->aimPosition();
