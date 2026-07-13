@@ -181,14 +181,15 @@ Vec2U OpenGlRenderer::screenSize() const {
   return m_screenSize;
 }
 
-OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbConfig) {
+OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig)
+  : config(fbConfig), name(fbName) {
   texture = make_ref<GlLoneTexture>();
   texture->textureFiltering = TextureFiltering::Nearest;
   texture->textureAddressing = TextureAddressing::Clamp;
   texture->textureSize = {0, 0};
   glGenTextures(1, &texture->textureId);
   if (texture->textureId == 0)
-    throw RendererException("Could not generate OpenGL texture for framebuffer");
+    throw RendererException::format("Could not generate OpenGL texture for framebuffer '{}'", name);
 
   clear = config.getBool("clear",true);
   clearGated = config.getBool("clearGated", false);
@@ -196,27 +197,59 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbCo
   multisample = GLEW_VERSION_4_0 ? config.getUInt("multisample", 0) : 0;
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
   glBindTexture(target, texture->glTextureId());
-  
+
   hdrMode = BoolSettingModeNames.getLeft(config.getString("hdr","Disabled"));
   bool hdr = settingModeValue(hdrMode,config.getBool("hdrSetting",false));
   alpha = config.getBool("alpha",false) || multisample;
 
   sizeDiv = config.getUInt("sizeDiv", 1);
-  Vec2U size = jsonToVec2U(config.getArray("size", { 256, 256 })) / sizeDiv;
+  // An explicit "size" means this framebuffer is NOT screen-sized. Record it so setScreenSize skips it;
+  // without this the declared size was read into a local and discarded, and every framebuffer -- including
+  // the 512x512 lightmap targets -- was reallocated to the full screen resolution on load.
+  if (config.contains("size"))
+    fixedSize = jsonToVec2U(config.get("size")) / sizeDiv;
+  Vec2U size = fixedSize.value(Vec2U(256, 256) / sizeDiv);
+
+  // GL errors are STICKY: glGetError pops one error off a queue that accumulates until drained. Renderer init
+  // is known to leave stray errors behind (hence logGlErrorSummary in the OpenGlRenderer ctor), so the alloc
+  // check below would happily attribute someone else's error to this framebuffer and turn a benign stale
+  // error into a fatal startup crash. Drain the queue first so what we check afterwards is provably OURS.
+  {
+    unsigned drained = 0;
+    while (glGetError() != GL_NO_ERROR && drained < 64)
+      ++drained;
+    if (drained)
+      Logger::warn("Drained {} pre-existing OpenGL error(s) before allocating framebuffer '{}'", drained, name);
+  }
+
+  // Texture setup can fail silently -- glTexImage2D reports GL_OUT_OF_MEMORY, and a bad enum reports
+  // GL_INVALID_ENUM, both only through glGetError. Left unchecked they surface much further down as the
+  // far less informative "framebuffer is not complete". Probe after each call so a failure names the exact
+  // call that produced it, not just the framebuffer it eventually broke.
+  GLenum firstError = GL_NO_ERROR;
+  char const* firstErrorCall = nullptr;
+  auto probe = [&](char const* call) {
+    if (GLenum e = glGetError(); e != GL_NO_ERROR && firstError == GL_NO_ERROR) {
+      firstError = e;
+      firstErrorCall = call;
+    }
+  };
 
   if (multisample) {
     auto internalFormat =  hdr ? GL_RGBA16F : GL_RGBA8;
-    
+
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, size[0], size[1], GL_TRUE);
+    probe("glTexImage2DMultisample");
   } else {
     auto format = alpha ? GL_RGBA : GL_RGB;
-    auto internalFormat =  hdr ? 
+    auto internalFormat =  hdr ?
         (alpha ? GL_RGBA16F : GL_RGB16F) :
         (alpha ? GL_RGBA8 : GL_RGB8);
     auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-    
+
     glTexImage2D(
       GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
+    probe("glTexImage2D");
   }
   auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
   auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
@@ -228,6 +261,7 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbCo
       glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
       glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
     }
+    probe("glTexParameteri(wrap)");
     if (filtering == TextureFiltering::Nearest) {
       glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
       glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -235,18 +269,28 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbCo
       glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
       glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     }
+    probe("glTexParameterf(filter)");
   }
+
+  if (firstError != GL_NO_ERROR)
+    throw RendererException::format(
+        "Framebuffer '{}': {} failed with OpenGL error {:#06x} ({}x{}, {}, alpha={}, {} samples, target {:#06x})",
+        name, firstErrorCall, (unsigned)firstError, size[0], size[1], hdr ? "16F" : "8-bit", alpha, multisample,
+        (unsigned)target);
+
+  texture->textureSize = size;
 
   glGenFramebuffers(1, &id);
   if (!id)
-    throw RendererException("Failed to create OpenGL framebuffer");
+    throw RendererException::format("Failed to create OpenGL framebuffer '{}'", name);
 
   glBindFramebuffer(GL_FRAMEBUFFER, id);
   glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture->glTextureId(), 0);
 
   auto framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
   if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
-    throw RendererException("OpenGL framebuffer is not complete!");
+    throw RendererException::format("OpenGL framebuffer '{}' is not complete: status {:#06x} ({}x{}, {}, {} samples)",
+        name, (unsigned)framebufferStatus, size[0], size[1], hdr ? "HDR (16F)" : "8-bit", multisample);
 }
 
 
@@ -278,12 +322,26 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     // on !antiAliasing, a workaround for the symptom rather than a fix for the cause.
     config = config.set("multisample", config.getBool("multisampled", false) ? m_multiSampling : 0);
     config = config.set("hdrSetting", m_hdrSetting);
-    Logger::info("Creating framebuffer {}", pair.first);
-    m_frameBuffers[pair.first] = make_ref<GlFrameBuffer>(config);
 
+    // A "devOnly" framebuffer exists solely to serve a validation oracle, which is off in normal play. These
+    // are screen-sized HDR surfaces (~22MB each at 1440p), so allocating them unconditionally spent real VRAM
+    // on a surface nothing ever read. Create them only while an oracle is actually armed.
+    if (config.getBool("devOnly", false) && !m_oracleSurfaces)
+      continue;
+
+    Logger::info("Creating framebuffer {}", pair.first);
+    m_frameBuffers[pair.first] = make_ref<GlFrameBuffer>(pair.first, config);
   }
   setScreenSize(m_screenSize);
   m_config = config;
+}
+
+void OpenGlRenderer::setOracleSurfaces(bool enabled) {
+  if (m_oracleSurfaces == enabled)
+    return;
+
+  m_oracleSurfaces = enabled;
+  loadConfig(m_config);
 }
 
 void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
@@ -1133,6 +1191,14 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
   glUniform2f(m_screenSizeUniform, m_screenSize[0], m_screenSize[1]);
 
   for (auto& frameBuffer : m_frameBuffers) {
+    // A framebuffer that declares an explicit "size" is not screen-sized -- it is sized by its purpose (the
+    // lightmap targets are 512x512, the upscale target 2048x2048). This loop used to resize EVERY framebuffer
+    // to the screen resolution regardless, so on a 2560x1440 display the three lightmap targets were each
+    // allocated at ~30MB instead of 2-32MB, and were then silently reallocated back down to their real size by
+    // the first setRenderTarget of the frame. Vanilla never noticed: it had only "main", which IS screen-sized.
+    if (frameBuffer.second->fixedSize)
+      continue;
+
     unsigned sizeDiv = frameBuffer.second->sizeDiv;
     bool hdr = settingModeValue(frameBuffer.second->hdrMode,m_hdrSetting);
     if (unsigned multisample = frameBuffer.second->multisample) {

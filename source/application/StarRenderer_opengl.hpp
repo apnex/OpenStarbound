@@ -52,6 +52,7 @@ public:
   bool hasFrameBuffer(String const& id) const override;
   uint64_t frameBufferGeneration() const override;
   void setGatedFrameBufferClears(bool active) override;
+  void setOracleSurfaces(bool enabled) override;
   bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
                  String const& srcSampler, String const& srcFbo,
                  List<pair<String, RenderEffectParameter>> const& params) override;
@@ -219,6 +220,7 @@ private:
     RefPtr<GlLoneTexture> texture;
 
     Json config;
+    String name;
     bool blitted = false;
     BoolSettingMode hdrMode = BoolSettingMode::Disabled;
     bool alpha = false;
@@ -228,8 +230,11 @@ private:
     bool clearGated = false;
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
+    // Set when the config declares an explicit "size". Such a framebuffer is NOT screen-sized and must be
+    // left alone by setScreenSize -- see the comment there.
+    Maybe<Vec2U> fixedSize;
 
-    GlFrameBuffer(Json const& config);
+    GlFrameBuffer(String const& name, Json const& config);
     ~GlFrameBuffer();
   };
 
@@ -298,6 +303,8 @@ private:
 
   // Armed by setGatedFrameBufferClears; when false, startFrame skips clearing any FBO marked clearGated.
   bool m_gatedClearsActive = false;
+  // Armed by setOracleSurfaces; when false, loadConfig does not allocate framebuffers marked devOnly.
+  bool m_oracleSurfaces = false;
 
   // GPU timer queries (GL_TIME_ELAPSED), one triple-buffered ring per named scope so results
   // are read back ~3 frames later without stalling the pipeline. Only used when deepEnabled.
@@ -332,8 +339,15 @@ private:
 
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;
-  unsigned m_multiSampling; // if non-zero, is enabled and acts as sample count
-  bool m_hdrSetting;
+  unsigned m_multiSampling = 0; // if non-zero, is enabled and acts as sample count
+  // MUST be initialized. loadConfig injects this into every framebuffer's config as "hdrSetting", and it runs
+  // for the first time from renderInit -- BEFORE setMainHDR (its only writer) is ever called. Left
+  // indeterminate, every framebuffer declaring "hdr":"FromSetting" received a bool holding neither 0 nor 1;
+  // settingModeValue passes that byte through verbatim, and the compiler lowers `hdr ? GL_FLOAT :
+  // GL_UNSIGNED_BYTE` to `GL_UNSIGNED_BYTE + 5*hdr`, so a garbage byte of e.g. 116 yields 0x1645 -- not a GL
+  // type enum. glTexImage2D then fails GL_INVALID_ENUM, allocates nothing, and the framebuffer surfaces as
+  // "OpenGL framebuffer is not complete!". Intermittent, because the garbage varied from run to run.
+  bool m_hdrSetting = false;
   List<shared_ptr<GlTextureGroup>> m_liveTextureGroups;
 
   List<RenderPrimitive> m_immediatePrimitives;

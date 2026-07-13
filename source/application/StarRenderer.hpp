@@ -198,6 +198,11 @@ public:
   // env-cache oracle's envRef reference) are startFrame-cleared like any clear:true target only while their
   // debug/optional consumer has armed them, so they cost nothing (no per-frame clear) when that consumer is off.
   virtual void setGatedFrameBufferClears(bool active) = 0;
+  // Arm/disarm allocation of framebuffers marked "devOnly" in config -- surfaces that exist only to serve a
+  // validation oracle. They are screen-sized, so when no oracle is armed (the normal case) they are pure
+  // wasted VRAM; keeping them unallocated is the difference between a surface that is earned and one that is
+  // merely speculative. Flipping this reloads the framebuffer set, so call it only when the arming changes.
+  virtual void setOracleSurfaces(bool enabled) = 0;
   // Sample srcFbo's color (bound to `effect`'s `srcSampler`) through `effect` into `dstFbo`, drawn as a
   // full-screen quad sized to dstSize, after applying `params`. Returns false if `effect` is unregistered
   // (caller falls back). Sets `params` explicitly so a shared passthrough effect is bleed-safe across

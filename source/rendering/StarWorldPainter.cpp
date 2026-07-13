@@ -128,6 +128,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   // Stars, Debris Fields, Sky, and Orbiters
 
+  // RENDER-PASS ABLATION MASK (task #141). The per-pass GL_TIME_ELAPSED timers are NOT ADDITIVE -- with 12 of
+  // them their sum overshot the real frame by 5ms, because each bracket serialises the pipeline and measures
+  // its own stall. They RANK passes; they cannot BUDGET them. The only honest way to cost a pass is to REMOVE
+  // it and re-measure the whole frame. This mask does that, in a LIVE world (a frozen world is required for the
+  // byte-identity gate but measures a floor, not real play -- and worse, a frozen+unthrottled world saturates
+  // the GPU and manufactures pipeline stalls that do not exist in real play).
+  //   bit0 env/sky   bit1 parallax   bit2 world tiles+entities   bit3 lighting
+  static int const passMask = []() {
+    char const* e = getenv("STAR_RENDERTEST_PASS_MASK");
+    return e && *e ? (int)strtol(e, nullptr, 10) : 0xF;
+  }();
+  bool const ablateEnv      = !(passMask & 1);
+  bool const ablateParallax = !(passMask & 2);
+  bool const ablateWorld    = !(passMask & 4);
+  (void)ablateWorld;
+
   // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
   // antiAliasing client options EVERY frame) destroys and re-creates every framebuffer with UNDEFINED
   // content. Our retained clear:false caches cannot see that: their keys (size, camera, counter) are all
@@ -161,16 +177,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   if (envRefreshInterval < 1)
     envRefreshInterval = 1;
   bool envOracle = Root::singleton().configuration()->get("envOracle", false).optBool().value(false);
+  bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
   // Arm/disarm the gated startFrame clear of the oracle's envRef reference FBO so it costs nothing (no
   // per-frame clear) when the oracle is off. Takes effect from the next startFrame; a 1-frame warmup at
   // enable-time (one transient DIFF before envRef's first gated clear lands) is harmless -- the gate is
   // read over a multi-second validation window and steady state is what matters.
   m_renderer->setGatedFrameBufferClears(envOracle);
+  // NB: the oracles' reference surfaces (envRef, parallaxRef) are marked devOnly and are only ALLOCATED while
+  // an oracle is armed -- ClientApplication::render does that before the frame starts, because it reloads the
+  // framebuffer set and must not run mid-frame. Both oracle paths below are already guarded by hasFrameBuffer,
+  // so they correctly no-op on the frame where the surfaces have not appeared yet.
 
   // The env draw sequence, shared by every path (AA-direct, cache-refresh, oracle reference) so the cache
   // and its bit-identity reference can never silently diverge -- a hand-duplicated copy that drifted would
   // make the oracle lie. Draws into whatever render target / effect is currently bound.
   auto drawEnv = [&]() {
+    if (ablateEnv) return;
     m_environmentPainter->renderStars(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
     m_environmentPainter->renderDebrisFields(starAndDebrisRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
     if (renderData.skyRenderData.type != SkyType::Atmosphereless)
@@ -373,7 +395,6 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   bool parallaxHasLayers = !renderData.parallaxLayers.empty();
   Vec2U parallaxScreenSize = m_renderer->screenSize();
   bool parallaxAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
-  bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
   float parallaxPixelRatio = m_camera.pixelRatio();
 
   // CONTENT-ADAPTIVE refresh interval. What the eye catches in a cached parallax is the per-refresh
@@ -431,6 +452,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   // Shared draw sequence (single lambda -> cache and its oracle reference can't diverge).
   auto drawParallax = [&]() {
+    if (ablateParallax) return;
     if (parallaxHasLayers)
       m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
   };

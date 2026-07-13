@@ -494,6 +494,11 @@ void ClientApplication::render() {
   renderer->setMultiSampling(config->get("antiAliasing").optBool().value(false) ? 4 : 0);
   renderer->setMainHDR(config->get("hdr").optBool().value(true));
   renderer->setVboOrphan(config->get("renderVboOrphan").optBool().value(true));
+  // Like setMainHDR/setMultiSampling above, this reloads the whole framebuffer set when it changes, so it
+  // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
+  // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.
+  renderer->setOracleSurfaces(config->get("envOracle", false).optBool().value(false)
+      || config->get("parallaxOracle", false).optBool().value(false));
   renderer->switchEffectConfig("interface");
 
   if (auto interfaceScale = config->get("interfaceScale").optFloat().value(); interfaceScale != 0)
@@ -1110,8 +1115,17 @@ void ClientApplication::renderTestCapture() {
   if (m_renderTestFrame < m_renderTestLoad) {
     ++m_renderTestFrame;
     if (m_renderTestFrame == m_renderTestLoad) {
-      m_renderTestFrozen = true;   // takes effect in update(): setPause(true) from here on
-      Logger::info("[rendertest] world loaded ({} frames) -- FREEZING sim", m_renderTestLoad);
+      // STAR_RENDERTEST_NOFREEZE=1: leave the sim RUNNING. The frozen scene is required for the byte-identity
+      // A/B gate (it needs deterministic input), but it measures a FLOOR, not real play -- no entity animation,
+      // no particles, no liquid motion, no lighting recomputes. For TIMING we do not need determinism, only
+      // averages, so an unfrozen run is the honest number to compare against the Director's live HUD reading.
+      static bool const noFreeze = []() {
+        char const* e = getenv("STAR_RENDERTEST_NOFREEZE");
+        return e && *e && *e != '0';
+      }();
+      m_renderTestFrozen = !noFreeze;
+      Logger::info("[rendertest] world loaded ({} frames) -- sim {}", m_renderTestLoad,
+        m_renderTestFrozen ? "FROZEN" : "RUNNING (nofreeze)");
     }
     return;
   }
