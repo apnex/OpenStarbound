@@ -128,6 +128,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   // Stars, Debris Fields, Sky, and Orbiters
 
+  // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
+  // antiAliasing client options EVERY frame) destroys and re-creates every framebuffer with UNDEFINED
+  // content. Our retained clear:false caches cannot see that: their keys (size, camera, counter) are all
+  // unchanged across it, so they would happily composite undefined GPU memory for up to N frames. Drop both
+  // caches on a generation bump. Costs one integer compare per frame.
+  uint64_t fbGeneration = m_renderer->frameBufferGeneration();
+  if (fbGeneration != m_cacheFrameBufferGeneration) {
+    m_cacheFrameBufferGeneration = fbGeneration;
+    m_envCacheSize = {0, 0};
+    m_parallaxCacheSize = {0, 0};
+  }
+
+  // Did the env cache do its heavy redraw this frame? Read by the parallax refresh arbiter below, which
+  // defers a purely time-gated parallax refresh off any frame env is already redrawing on.
+  bool envRefreshedThisFrame = false;
+
   // Use a fixed pixel ratio for certain things.
   float pixelRatioBasis = m_camera.screenSize()[1] / 1080.0f;
   float starAndDebrisRatio = lerp(0.0625f, pixelRatioBasis * 2.0f, m_camera.pixelRatio());
@@ -139,6 +155,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // that cache into "main" every frame. envRefreshInterval N==1 (default) refreshes every frame and is
   // bit-identical to the direct-into-main path it replaces. Live: /rendercache envrefresh <N>.
   Vec2U envScreenSize = m_renderer->screenSize();
+  float envPixelRatio = m_camera.pixelRatio();
   bool envAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
   unsigned envRefreshInterval = Root::singleton().configuration()->get("envRefreshInterval", 1).optUInt().value(1);
   if (envRefreshInterval < 1)
@@ -178,9 +195,17 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_renderer->endGpuTimer("render.pass.environment.gpu_us");
   } else {
     // Cache path (AA off). Force a refresh on the first frame + after any resize (envCache is realloc'd
-    // to undefined content) so a skip frame never composites garbage.
-    bool refreshEnv = (envScreenSize != m_envCacheSize) || (m_envRefreshCounter % envRefreshInterval == 0);
+    // to undefined content) so a skip frame never composites garbage. The pixelRatio term is NOT redundant
+    // with the size term: drawEnv scales stars/debris/orbiters by camera pixelRatio (starAndDebrisRatio /
+    // orbiterAndPlanetRatio above), so a ZOOM change alters the cached image at an unchanged screen size --
+    // without it, zooming left the sky stale until the counter next came round.
+    static auto envRefreshed = Telemetry::counter("render.cache.env.refreshed");
+    static auto envSkipped = Telemetry::counter("render.cache.env.skipped");
+    bool envInvalidated = (envScreenSize != m_envCacheSize) || (envPixelRatio != m_envCachePixelRatio);
+    bool refreshEnv = envInvalidated || (m_envRefreshCounter % envRefreshInterval == 0);
     ++m_envRefreshCounter;
+    (refreshEnv ? envRefreshed : envSkipped).inc(1);
+    envRefreshedThisFrame = refreshEnv;
 
     m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
     if (refreshEnv) {
@@ -195,6 +220,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       // render target moved, so the draws are otherwise identical to the direct path.
       drawEnv();
       m_envCacheSize = envScreenSize;
+      m_envCachePixelRatio = envPixelRatio;
     }
     m_renderer->endGpuTimer("render.pass.environment.gpu_us");
 
@@ -409,23 +435,84 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       m_environmentPainter->renderParallaxLayers(m_parallaxWorldPosition, m_camera, renderData.parallaxLayers, renderData.skyRenderData);
   };
 
-  bool parallaxCacheActive = parallaxHasLayers && !parallaxAntiAliasing && (parallaxRefreshInterval > 1 || parallaxOracle);
+  // CONTENT KEY -- everything OTHER than camera/zoom/size that changes the drawn image, and none of which was
+  // in the old refresh key. renderParallaxLayers tints every non-unlit/non-lightMapped layer with
+  // sky.environmentLight and fades it by floor(255*layer.alpha) (StarEnvironmentPainter.cpp:251-255) -- and
+  // layer.alpha is exactly what the biome CROSSFADE and timeOfDayCorrelation animate. So a cached parallax
+  // froze its day/night tint and stalled biome crossfades for up to N frames. Hash the same QUANTIZED values
+  // the draw itself consumes, so the key moves iff the rendered image would.
+  // (epochTime drift is deliberately absent: amortizing it over N frames is the whole point of the cache, and
+  //  N is derived from it.)
+  uint64_t parallaxContentKey = 1469598103934665603ull;
+  {
+    auto mix = [&parallaxContentKey](uint64_t v) {
+      parallaxContentKey = (parallaxContentKey ^ v) * 1099511628211ull;
+    };
+    Vec3B envLight = renderData.skyRenderData.environmentLight.toRgb();
+    mix(envLight[0]); mix(envLight[1]); mix(envLight[2]);
+    mix(renderData.parallaxLayers.size());
+    for (auto const& layer : renderData.parallaxLayers)
+      mix((uint64_t)(unsigned)floor(255.0f * layer.alpha));
+  }
+
+  // IS THE CAMERA MOVING RIGHT NOW? (vs. "does the cache hold a different position", which is a staleness
+  // question and stays true on the first parked frame.)
+  bool parallaxCameraMoving = (m_parallaxWorldPosition != m_parallaxPrevPosition)
+      || (parallaxPixelRatio != m_parallaxPrevPixelRatio);
+  m_parallaxPrevPosition = m_parallaxWorldPosition;
+  m_parallaxPrevPixelRatio = parallaxPixelRatio;
+  m_parallaxStillFrames = parallaxCameraMoving ? 0 : (m_parallaxStillFrames + 1);
+
+  // MOVING-CAMERA BYPASS. Each layer scrolls by cameraDelta / parallaxValue_i (StarEnvironmentPainter.cpp:282),
+  // so every layer shifts by a DIFFERENT amount: a flattened composite is not a rigid translation and cannot be
+  // scroll-shifted. The cache therefore can never win on a moving frame -- it force-refreshes, redrawing the
+  // full stack exactly as the direct path would, and then pays a full-screen composite ON TOP. That is a strict
+  // REGRESSION vs vanilla on every moving frame (exploring, combat -- most of actual play), and it shipped.
+  // So while the camera moves, bypass the cache entirely and draw direct, exactly like vanilla. The cache
+  // engages only once parked, which is the only regime in which it ever won. ParkFrames of hysteresis keeps a
+  // jittering camera from thrashing refresh/bypass (each thrash would cost a refresh + a composite).
+  static constexpr unsigned ParallaxParkFrames = 2;
+  bool parallaxParked = m_parallaxStillFrames >= ParallaxParkFrames;
+  bool parallaxCacheActive = parallaxHasLayers && !parallaxAntiAliasing
+      && (parallaxRefreshInterval > 1 || parallaxOracle)
+      && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
+
+  static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed");
+  static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped");
+  static auto parallaxBypassedCtr = Telemetry::counter("render.cache.parallax.bypassed_moving");
+
   if (!parallaxCacheActive) {
-    // Direct path (byte-identical stock parallax->main): AA on, N<=1 oracle-off, or no layers. Invalidate
-    // the cache so re-entry force-refreshes.
+    // Direct path (byte-identical stock parallax->main): camera moving, AA on, N<=1 oracle-off, or no layers.
+    // Invalidate the cache so re-entry force-refreshes.
     m_parallaxCacheSize = {0, 0};
+    if (parallaxHasLayers && !parallaxParked)
+      parallaxBypassedCtr.inc(1);
     m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
     drawParallax();
     m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
   } else {
-    // Cache path. Refresh on: resize/first-frame, camera move (Option B), zoom, or the N-frame time gate
-    // (phase-STAGGERED from env's %N==0 by N/2 so their heavy refreshes don't collide -> flat frame-times).
-    // Parked camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires standing still.
-    bool refreshParallax = (parallaxScreenSize != m_parallaxCacheSize)
+    // Cache path (camera parked). INVALIDATION terms force a redraw regardless; the TIME gate is the ordinary
+    // N-frame cadence and is the only one the arbiter may defer.
+    bool parallaxInvalidated = (parallaxScreenSize != m_parallaxCacheSize)
         || (m_parallaxWorldPosition != m_parallaxCachePosition)
         || (parallaxPixelRatio != m_parallaxCachePixelRatio)
-        || ((m_parallaxRefreshCounter + parallaxRefreshInterval / 2) % parallaxRefreshInterval == 0);
+        || (parallaxContentKey != m_parallaxCacheContentKey);
+    bool parallaxTimeGate = (m_parallaxRefreshCounter % parallaxRefreshInterval == 0) || m_parallaxRefreshDeferred;
     ++m_parallaxRefreshCounter;
+
+    // CROSS-SURFACE ARBITER. Stacking the env redraw and the parallax redraw into one frame spikes that frame's
+    // GPU time. The old mechanism -- offsetting parallax's gate by +N/2 -- could not prevent it: env fires on
+    // counter % 4 == 0, so for any N whose half is a multiple of 4 (notably the static-content default N=16, and
+    // N=8) EVERY parallax refresh landed on an env refresh frame. Defer the time-gated refresh by one frame
+    // instead; invalidation refreshes are never deferred (they would show a stale image).
+    bool refreshParallax = parallaxInvalidated || parallaxTimeGate;
+    if (refreshParallax && !parallaxInvalidated && envRefreshedThisFrame) {
+      refreshParallax = false;
+      m_parallaxRefreshDeferred = true;   // fire next frame regardless of the counter
+    } else if (refreshParallax) {
+      m_parallaxRefreshDeferred = false;
+    }
+    (refreshParallax ? parallaxRefreshedCtr : parallaxSkippedCtr).inc(1);
 
     m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
     if (refreshParallax) {
@@ -438,6 +525,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       m_parallaxCacheSize = parallaxScreenSize;
       m_parallaxCachePosition = m_parallaxWorldPosition;
       m_parallaxCachePixelRatio = parallaxPixelRatio;
+      m_parallaxCacheContentKey = parallaxContentKey;
     }
     m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
 

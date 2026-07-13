@@ -50,6 +50,7 @@ public:
   void clearRenderTarget(Vec4F clearColor) override;
   pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) override;
   bool hasFrameBuffer(String const& id) const override;
+  uint64_t frameBufferGeneration() const override;
   void setGatedFrameBufferClears(bool active) override;
   bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
                  String const& srcSampler, String const& srcFbo,
@@ -286,6 +287,8 @@ private:
   Effect* m_currentEffect;
 
   StringMap<RefPtr<GlFrameBuffer>> m_frameBuffers;
+  // Bumped by loadConfig() each time m_frameBuffers is cleared + rebuilt (all content becomes undefined).
+  uint64_t m_frameBufferGeneration = 0;
   RefPtr<GlFrameBuffer> m_currentFrameBuffer;
 
   RefPtr<GlTexture> m_whiteTexture;

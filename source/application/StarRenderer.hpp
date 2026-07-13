@@ -187,6 +187,13 @@ public:
   // True if a config framebuffer with this id is loaded. Lets a consumer guard a setRenderTarget redirect
   // (which silently no-ops on an absent id) so it never accidentally draws into the previously-bound target.
   virtual bool hasFrameBuffer(String const& id) const = 0;
+  // Bumped whenever every framebuffer is destroyed and re-created with UNDEFINED content -- i.e. on any
+  // renderer config reload (the hdr and antiAliasing client options each trigger one, and both are polled
+  // every frame). A retained/persistent (clear:false) surface CANNOT see this: its own refresh key (size,
+  // camera, counter) is unchanged across the realloc, so it would happily composite undefined GPU memory.
+  // Any such consumer MUST fold this into its refresh key. Not pure: a backend that never reallocates
+  // correctly reports a constant, and is thereby never falsely invalidated.
+  virtual uint64_t frameBufferGeneration() const { return 0; }
   // Arm/disarm this frame's clears of framebuffers marked "clearGated" in config. Such FBOs (e.g. the
   // env-cache oracle's envRef reference) are startFrame-cleared like any clear:true target only while their
   // debug/optional consumer has armed them, so they cost nothing (no per-frame clear) when that consumer is off.

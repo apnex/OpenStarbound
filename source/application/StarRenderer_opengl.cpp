@@ -234,6 +234,11 @@ OpenGlRenderer::GlFrameBuffer::~GlFrameBuffer() {
 }
 
 void OpenGlRenderer::loadConfig(Json const& config) {
+  // Every framebuffer below is destroyed and re-created with UNDEFINED content. Retained (clear:false)
+  // surfaces have no other way to learn this -- their refresh keys (size/camera/counter) are unchanged
+  // across the realloc -- so bump the generation and let them invalidate. Both setMainHDR and
+  // setMultiSampling land here, and ClientApplication polls both client options every frame.
+  ++m_frameBufferGeneration;
   m_frameBuffers.clear();
 
   for (auto& pair : config.getObject("frameBuffers", {})) {
@@ -843,6 +848,10 @@ pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String 
 
 bool OpenGlRenderer::hasFrameBuffer(String const& id) const {
   return m_frameBuffers.contains(id);
+}
+
+uint64_t OpenGlRenderer::frameBufferGeneration() const {
+  return m_frameBufferGeneration;
 }
 
 void OpenGlRenderer::setGatedFrameBufferClears(bool active) {
