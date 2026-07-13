@@ -176,6 +176,7 @@ private:
   String m_renderTestAbKey;
   Json m_renderTestAbA;
   Json m_renderTestAbB;
+  Json m_renderTestAbOriginal;   // shipped value, restored on exit so the A/B never PINS a setting
   int m_renderTestAbPhase = -1;      // -1 = no A/B; 0 = leg A settling; 1 = leg B settling
   uint64_t m_renderTestAbHashA = 0;
   Image m_renderTestAbFrameA;

@@ -1090,8 +1090,15 @@ void ClientApplication::renderTestCapture() {
       Logger::info("[rendertest] settled ({} frozen frames)", m_renderTestWarmup);
       if (!m_renderTestAbKey.empty()) {
         m_renderTestAbPhase = 0;
+        // Remember the shipped value. Configuration::set PERSISTS to storage/starbound.config on exit, so an
+        // A/B run would otherwise PIN leg B's value into the harness config and silently poison every later
+        // run. That is exactly the config-pinning trap this campaign has already been bitten by twice -- and it
+        // bit the harness itself: a `lightingGpu=true|false` A/B left CPU lighting pinned on, and the next run
+        // rendered a black world that looked exactly like the AA bug under investigation.
+        m_renderTestAbOriginal = m_root->configuration()->get(m_renderTestAbKey);
         m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbA);
-        Logger::info("[rendertest] A/B leg A: {} = {}", m_renderTestAbKey, m_renderTestAbA.repr());
+        Logger::info("[rendertest] A/B leg A: {} = {} (will restore {} on exit)",
+          m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbOriginal.repr());
       }
     }
     return;
@@ -1158,6 +1165,7 @@ void ClientApplication::renderTestCapture() {
         differing, 100.0 * (double)differing / (double)px, maxAbs,
         m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
     }
+    m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbOriginal);   // never leave the pin behind
     appController()->quit();
     return;
   }
