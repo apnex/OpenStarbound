@@ -48,3 +48,6 @@ _deps
 
 # Built Visual Studio Code Extensions
 *.vsix
+# Headless render harness (P-0): a LOCAL install holding a COPY of the save so the live world can
+# never be touched. 545MB of world data -- regenerate it, never version it.
+harness/
