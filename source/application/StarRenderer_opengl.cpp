@@ -1043,6 +1043,18 @@ void OpenGlRenderer::flush(Mat3F const& transformation) {
 void OpenGlRenderer::beginGpuTimer(String const& name) {
   if (!Telemetry::deepEnabled())
     return;
+  // Task #141: STAR_NO_PERPASS_GPU_TIMERS=1 suppresses the per-pass GL_TIME_ELAPSED queries while LEAVING the
+  // whole-frame GL_TIMESTAMP span running. Each GL_TIME_ELAPSED bracket forces a pipeline boundary, so the
+  // instrument itself costs GPU time -- and an adversarial analysis put that cost as high as 50-90% of what the
+  // compose timers report. Running the frame with and without them makes that cost DIRECTLY MEASURABLE
+  // (span_with - span_without) instead of a modelled guess. A diagnostic env var, not a config key: it must
+  // never be settable from a live session, and it must not widen the shipped config surface.
+  static bool const perPassEnabled = []() {
+    char const* e = getenv("STAR_NO_PERPASS_GPU_TIMERS");
+    return !(e && *e && *e != '0');
+  }();
+  if (!perPassEnabled)
+    return;
   // Submit any pending primitives first so the query measures only the work that follows.
   flushImmediatePrimitives();
   auto& ring = m_gpuTimers[name];
@@ -1118,9 +1130,45 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
 }
 
 void OpenGlRenderer::startFrame() {
+  // WHOLE-FRAME GPU SPAN (task #141). The per-pass timers use GL_TIME_ELAPSED and CANNOT NEST -- there is a
+  // single m_gpuTimerActive bool -- so they can never tell us the frame TOTAL, and therefore can never tell us
+  // how much of the frame they FAIL to account for. GL_TIMESTAMP is a different query target and coexists with
+  // them freely, so this measures the GPU-timeline span of the entire frame (every pass, the interface render,
+  // the clears, and the final blit) WHILE the per-pass timers still run.
+  //
+  // That gives three numbers from two runs:
+  //   frameSpan with per-pass timers ON   -- what the instrumented frame costs
+  //   frameSpan with per-pass timers OFF  -- what the frame REALLY costs (the timers' own cost is the delta)
+  //   sum(per-pass timers)                -- what the campaign has been quoting
+  // total-vs-sum exposes the UNATTRIBUTED remainder directly. Half the GPU frame may be in it.
+  if (Telemetry::deepEnabled()) {
+    auto& ring = m_frameSpan;
+    unsigned slot = ring.writeIdx;
+    if (ring.begins[slot] == 0) {
+      glGenQueries(1, &ring.begins[slot]);
+      glGenQueries(1, &ring.ends[slot]);
+    } else if (ring.issued[slot]) {
+      // This slot was issued 3 frames ago; read it back without stalling the pipeline.
+      GLuint availB = 0, availE = 0;
+      glGetQueryObjectuiv(ring.begins[slot], GL_QUERY_RESULT_AVAILABLE, &availB);
+      glGetQueryObjectuiv(ring.ends[slot], GL_QUERY_RESULT_AVAILABLE, &availE);
+      if (availB && availE) {
+        GLuint64 t0 = 0, t1 = 0;
+        glGetQueryObjectui64v(ring.begins[slot], GL_QUERY_RESULT, &t0);
+        glGetQueryObjectui64v(ring.ends[slot], GL_QUERY_RESULT, &t1);
+        if (t1 > t0)
+          Telemetry::timer("render.frame.gpu_span_us").record((int64_t)((t1 - t0) / 1000));
+      }
+      ring.issued[slot] = false;
+    }
+    glQueryCounter(ring.begins[slot], GL_TIMESTAMP);
+    m_frameSpanSlot = slot;
+    m_frameSpanOpen = true;
+  }
+
   if (m_scissorRect)
     glDisable(GL_SCISSOR_TEST);
-  
+
   for (auto& frameBuffer : m_frameBuffers) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->id);
     // clearGated FBOs (e.g. the oracle's envRef) are only cleared while their consumer is armed, so a
@@ -1140,6 +1188,7 @@ void OpenGlRenderer::startFrame() {
 
 void OpenGlRenderer::finishFrame() {
   flushImmediatePrimitives();
+  // Close the whole-frame GPU span AFTER the final blit, not here -- see the end of this function.
   // Make sure that the immediate render buffer doesn't needlessly lock texutres
   // from being compressed.
   List<RenderPrimitive> empty;
@@ -1158,6 +1207,17 @@ void OpenGlRenderer::finishFrame() {
 
   // Blit if another shader hasn't
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+  // Close the whole-frame GPU span here -- AFTER every pass, the interface render, the clears and the final
+  // blit -- so "render.frame.gpu_span_us" is the frame's ENTIRE GPU cost, not just the part we happen to have
+  // instrumented. Everything the per-pass timers do NOT cover shows up as (span - sum(passes)).
+  if (m_frameSpanOpen) {
+    auto& ring = m_frameSpan;
+    glQueryCounter(ring.ends[m_frameSpanSlot], GL_TIMESTAMP);
+    ring.issued[m_frameSpanSlot] = true;
+    ring.writeIdx = (ring.writeIdx + 1) % GpuTimerRingSize;
+    m_frameSpanOpen = false;
+  }
 
   if (DebugEnabled)
     logGlErrorSummary("OpenGL errors this frame");

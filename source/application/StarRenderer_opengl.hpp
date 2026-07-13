@@ -311,6 +311,23 @@ private:
   unsigned m_gpuTimerSlot = 0;
   StringMap<int64_t> m_gpuTimerLastMicros; // last read-back µs per scope (for the /debug HUD)
 
+  // WHOLE-FRAME GPU SPAN (task #141). GL_TIME_ELAPSED cannot nest -- there is one m_gpuTimerActive bool -- so
+  // the per-pass timers can never report the frame TOTAL, and therefore can never reveal how much of the frame
+  // they FAIL to account for. GL_TIMESTAMP is a separate query target that coexists with them, so a pair of
+  // timestamps around startFrame..finishFrame gives the frame's entire GPU span (every pass, the interface
+  // render, the clears, the final blit) WHILE the per-pass timers still run. (span - sum(passes)) is the
+  // unattributed remainder -- which may be more than half the frame.
+  static constexpr unsigned GpuTimerRingSize = 3;
+  struct FrameSpanRing {
+    GLuint begins[GpuTimerRingSize] = {0, 0, 0};
+    GLuint ends[GpuTimerRingSize] = {0, 0, 0};
+    bool issued[GpuTimerRingSize] = {false, false, false};
+    unsigned writeIdx = 0;
+  };
+  FrameSpanRing m_frameSpan;
+  unsigned m_frameSpanSlot = 0;
+  bool m_frameSpanOpen = false;
+
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;
   unsigned m_multiSampling; // if non-zero, is enabled and acts as sample count
