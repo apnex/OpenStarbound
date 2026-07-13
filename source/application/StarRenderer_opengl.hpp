@@ -347,7 +347,11 @@ private:
   // GL_UNSIGNED_BYTE` to `GL_UNSIGNED_BYTE + 5*hdr`, so a garbage byte of e.g. 116 yields 0x1645 -- not a GL
   // type enum. glTexImage2D then fails GL_INVALID_ENUM, allocates nothing, and the framebuffer surfaces as
   // "OpenGL framebuffer is not complete!". Intermittent, because the garbage varied from run to run.
-  bool m_hdrSetting = false;
+  //
+  // `true` matches upstream (36a389c6, "Fix HDR crash (#535)") and is not arbitrary: ClientApplication defaults
+  // the hdr option to true, so starting true means the first loadConfig already builds the framebuffers in the
+  // format the very next setMainHDR asks for -- no redundant rebuild of the whole set at startup.
+  bool m_hdrSetting = true;
   List<shared_ptr<GlTextureGroup>> m_liveTextureGroups;
 
   List<RenderPrimitive> m_immediatePrimitives;
