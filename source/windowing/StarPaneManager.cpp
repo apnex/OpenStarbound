@@ -1,4 +1,5 @@
 #include "StarPaneManager.hpp"
+#include "StarButtonWidget.hpp"   // [rendertest] dump button image paths
 #include <typeinfo>   // [rendertest] pane-type dump (task #141)
 #include <functional>
 #include "StarGameTypes.hpp"
@@ -273,16 +274,22 @@ void PaneManager::render() {
   // Task #141 diagnostic: renderWindows() -> PaneManager::render() was measured by whole-frame ablation at
   // 8,271us of an 11,794us GPU frame -- 70% of the ENTIRE frame, at a base, standing still, with nothing open.
   // Dump exactly what is being drawn, once, so the culprit pane can be named rather than guessed at.
-  static bool dumped = false;
-  if (!dumped && getenv("STAR_RENDERTEST_DUMP_PANES")) {
-    dumped = true;
+  // Fire LATE, not on the first call: PaneManager is shared code, and the first render() in the process is the
+  // TITLE SCREEN's pane manager (singleplayer/multiplayer/options/quit buttons). Dumping on call #1 reported
+  // the title menu and told us nothing about what is actually costing 8.3ms in-game.
+  static int calls = 0;
+  ++calls;
+  if (calls == 900 && getenv("STAR_RENDERTEST_DUMP_PANES")) {
     Logger::info("[panes] backgroundWidget={}", m_backgroundWidget ? "YES" : "no");
     std::function<void(Widget const*, int)> dump = [&](Widget const* w, int depth) {
       String pad;
       for (int i = 0; i < depth; ++i) pad += "  ";
-      Logger::info("[panes] {}{} visible={} size={}x{} pos=({},{}) children={}",
+      String extra;
+      if (auto b = dynamic_cast<ButtonWidget const*>(w))
+        extra = strf("  base='{}' overlay='{}'", b->baseImage(), b->overlayImage());
+      Logger::info("[panes] {}{} visible={} size={}x{} pos=({},{}) children={}{}",
         pad, typeid(*w).name(), w->visibility(),
-        w->size()[0], w->size()[1], w->position()[0], w->position()[1], w->members().size());
+        w->size()[0], w->size()[1], w->position()[0], w->position()[1], w->members().size(), extra);
       if (depth < 4)
         for (auto const& c : w->members())
           dump(c.get(), depth + 1);

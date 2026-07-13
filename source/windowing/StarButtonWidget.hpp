@@ -104,6 +104,12 @@ protected:
   bool m_highlighted;
 
   String m_baseImage;
+public:
+  // [rendertest] task #141: the HUD costs 8.3ms of GPU from five buttons. Expose the image paths so the
+  // pane dump can show whether a DYNAMIC DIRECTIVE is minting a fresh texture every frame (the #127 bug class).
+  String const& baseImage() const { return m_baseImage; }
+  String const& overlayImage() const { return m_overlayImage; }
+private:
   String m_hoverImage;
   String m_pressedImage;
   String m_disabledImage;

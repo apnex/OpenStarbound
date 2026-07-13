@@ -1594,6 +1594,16 @@ void OpenGlRenderer::flushImmediatePrimitives(Mat3F const& transformation) {
   if (m_immediatePrimitives.empty())
     return;
 
+  // Task #141: every flush re-writes the SINGLE shared immediate VBO (glBufferSubData / glBufferData below)
+  // and then draws from it. If the GPU is still reading that buffer from the previous flush, the write forces
+  // an IMPLICIT SYNCHRONISATION -- a full pipeline stall. Widget::render -> setupDrawRegion -> setScissorRect
+  // calls this for EVERY widget, and the in-game HUD has ~92 of them. Count them, and count the primitives per
+  // flush: a high flush count with a tiny primitive count is the signature of stall-per-widget.
+  static auto flushes = Telemetry::counter("render.flush.count");
+  static auto flushPrims = Telemetry::counter("render.flush.primitives");
+  flushes.inc(1);
+  flushPrims.inc(m_immediatePrimitives.size());
+
   m_immediateRenderBuffer->set(m_immediatePrimitives);
   m_immediatePrimitives.resize(0);
   renderGlBuffer(*m_immediateRenderBuffer, transformation);
