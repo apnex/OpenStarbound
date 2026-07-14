@@ -38,7 +38,6 @@
 
 #include "imgui.h"
 #include "imgui_freetype.h"
-#include "StarRenderer_opengl.hpp"   // setPassRefactor -- TEMPORARY refactor scaffold, deleted with F2a
 
 #if defined STAR_SYSTEM_WINDOWS
 #include <windows.h>
@@ -504,9 +503,6 @@ void ClientApplication::render() {
   renderer->setMultiSampling(config->get("antiAliasing").optBool().value(false) ? 4 : 0);
   renderer->setMainHDR(config->get("hdr").optBool().value(true));
   renderer->setVboOrphan(config->get("renderVboOrphan").optBool().value(true));
-  // TEMPORARY REFACTOR SCAFFOLD: lets STAR_RENDERTEST_AB='passRefactor=false|true' hold ONE frozen frame and
-  // render it down BOTH the old and the new bind path, then compare byte-for-byte. Deleted with the refactor.
-  setPassRefactor(config->get("passRefactor", true).optBool().value(true));
   // Like setMainHDR/setMultiSampling above, this reloads the whole framebuffer set when it changes, so it
   // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
   // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.

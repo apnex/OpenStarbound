@@ -34,14 +34,6 @@ void OpenGlRenderer::setVboOrphan(bool enabled) {
 
 size_t const MultiTextureCount = 4;
 
-// TEMPORARY REFACTOR SCAFFOLD (see the header). Default TRUE: the new path is what ships; the old one exists
-// only so the A/B gate can prove they are the same frame.
-static std::atomic<bool> g_passRefactor{true};
-
-void setPassRefactor(bool enabled) {
-  g_passRefactor.store(enabled, std::memory_order_relaxed);
-}
-
 
 char const* DefaultVertexShader = R"SHADER(
 #version 150
@@ -806,22 +798,8 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
   // It also only ever re-specified writeFace(), so a DOUBLED surface resized here would have been left with
   // two faces of different sizes. resize() re-specifies every live face. Nothing in-tree is doubled today, so
   // this is bit-identical -- but it is bit-identical by accident, and now it is correct by construction.
-  if (size[0] != 0 && size[1] != 0) {
-    if (g_passRefactor.load(std::memory_order_relaxed)) {
-      buf->resize(size);   // idempotent: no GL calls at all if it is already that size
-    } else {
-      // THE OLD PATH, verbatim, for the A/B. Deleted with the scaffold.
-      if (buf->writeFace().texture->textureSize != size) {
-        bool hdr = settingModeValue(buf->hdrMode, buf->config.getBool("hdrSetting", false));
-        auto format = buf->alpha ? GL_RGBA : GL_RGB;
-        auto internalFormat = hdr ? (buf->alpha ? GL_RGBA16F : GL_RGB16F) : (buf->alpha ? GL_RGBA8 : GL_RGB8);
-        auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-        glBindTexture(GL_TEXTURE_2D, buf->writeFace().texture->textureId);
-        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
-        buf->writeFace().texture->textureSize = size;
-      }
-    }
-  }
+  if (size[0] != 0 && size[1] != 0)
+    buf->resize(size);   // idempotent: no GL calls at all if it is already that size
 
   bindTarget(buf);
 
@@ -2006,30 +1984,9 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
   m_gpuTimer.end("render.frame.blit.gpu_us");
 }
 
-// THE OLD PATH, kept verbatim for the A/B and deleted with the last F2a step. Do not "improve" it: its whole
-// job is to be exactly what we had before, so that MATCH means something.
-void OpenGlRenderer::switchGlFrameBufferLegacy(RefPtr<GlFrameBuffer> const& frameBuffer) {
-  if (m_pass.target == frameBuffer && !frameBuffer->justSwapped)
-    return;
-
-  frameBuffer->justSwapped = false;
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->writeFace().id);
-  m_pass.target = frameBuffer;
-
-  Vec2U vp = frameBuffer->writeFace().texture->glTextureSize();
-  if (vp[0] == 0 || vp[1] == 0)
-    vp = m_screenSize / frameBuffer->sizeDiv;
-  glViewport(0, 0, vp[0], vp[1]);
-  if (m_pass.screenSizeUniform != -1)
-    glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
-}
-
-// The one place the two paths meet. Every caller goes through here, so the A/B switches ALL of them at once.
+// The renderer's single door to the pass bind. Every caller goes through here.
 void OpenGlRenderer::bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer) {
-  if (g_passRefactor.load(std::memory_order_relaxed))
-    m_pass.bindTarget(frameBuffer, m_screenSize);
-  else
-    switchGlFrameBufferLegacy(frameBuffer);
+  m_pass.bindTarget(frameBuffer, m_screenSize);
 }
 
 void OpenGlRenderer::GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize) {
