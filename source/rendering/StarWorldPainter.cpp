@@ -264,16 +264,21 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
 
-    // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). At N=1 the cache
-    // path MUST be pixel-identical to a direct env render. Render the SAME env sequence into "envRef" -- a
-    // clear:true FBO that startFrame blacks every frame with main's exact clear (NOT the manual
-    // clearRenderTarget under test) -- then pixel-compare against the just-composited "main". Any diff
-    // localizes the divergence to surface lifecycle / global GL state (the class per-pass review is blind
-    // to), NOT the provably-identity compose. envRef takes no explicit size, so it is never reallocated
-    // here: it relies purely on setScreenSize's allocation + the startFrame clear. (At N>1 a non-zero diff
-    // is EXPECTED on skip frames -- it measures inter-refresh sky motion, not a correctness fault; run the
-    // gate at N=1.)
-    if (envOracle && m_renderer->hasFrameBuffer("envRef")) {
+    // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). The cache path MUST
+    // be pixel-identical to a direct env render. Render the SAME env sequence into "envRef" -- a clear:true
+    // FBO that startFrame blacks every frame with main's exact clear (NOT the manual clearRenderTarget under
+    // test) -- then pixel-compare against the just-composited "main". Any diff localizes the divergence to
+    // surface lifecycle / global GL state (the class per-pass review is blind to), NOT the provably-identity
+    // compose. envRef takes no explicit size, so it is never reallocated here: it relies purely on
+    // setScreenSize's allocation + the startFrame clear.
+    //
+    // ONLY ON REFRESH FRAMES. On a skip frame "main" holds an env up to N-1 frames old while envRef is drawn
+    // fresh, so the comparison measures TEMPORAL STALENESS -- the cache doing precisely what the lever exists
+    // to do -- and reports it as a DIFF. That is a correct number answering a question nobody asked, and it
+    // is worse than no number: it read as a 40%-failure rate and I filed a bug against my own gate. Gated
+    // here, the oracle compares two freshly-drawn envs at EVERY N, so it always answers the one question it
+    // exists to answer -- is the cache MECHANISM identity? -- and cannot be run outside its contract.
+    if (envOracle && refreshEnv && m_renderer->hasFrameBuffer("envRef")) {
       m_renderer->setRenderTarget(String("envRef"));
       drawEnv();
       // Restore the draw target to "main"; the effect is already "world", so switchEffectConfig("world")
