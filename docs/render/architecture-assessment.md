@@ -276,3 +276,89 @@ documentation outruns the code.
 
 **Whoever picks this up: do item B first.** It costs an hour and it is the difference between documentation
 and marketing.
+
+---
+
+## 8. The ceiling — what would make Layer 1 EXCELLENT, not merely better than vanilla
+
+**"Better than vanilla" is a low bar and we have already cleared it.** Vanilla leaks a framebuffer and a
+texture on every AA toggle, writes its format ladder out three times, and its own author gave up on the
+duplication in a comment. Say it plainly and stop congratulating ourselves for it.
+
+Finishing §6 and `layer1-residuals.md` makes Layer 1 **defensibly** better rather than **arguably** better —
+two to three days, mostly mechanical, no design left. Worth having. **But it is hygiene, not architecture.**
+
+**The step-change is three moves, and only one of them is on any existing list.**
+
+### i. Kill the last divergent fact — `Maybe<Face>`
+**~20 lines. The single highest-leverage change in the subsystem.**
+
+`bool doubled` is a biconditional (*"faces[1] exists iff doubled"*) **that the type does not enforce** — which
+is precisely how upstream's `altId` bug walked back in through our own front door (§6 item A). Replace it with
+`Maybe<Face> secondFace` and **existence IS the fact**. There is no second bool left to disagree with reality,
+and the "one writer, many mutators" family — which produced *four* of this campaign's bugs — loses its last
+foothold in `GlFrameBuffer`.
+
+This is the difference between *"we fixed the bug"* and *"the bug is not expressible."* The whole refactor is
+sold on the second. Right now it delivers the second for the **faces** and the first for **whether there are
+two of them**.
+
+### ii. Make the seal structural, not a doorbell
+**The four components in their own translation unit. No `friend`.**
+
+Today the seal is `friend class OpenGlRenderer`, and per `[class.access.nest]` that readmits **every nested
+sibling** — which is exactly the population where all seven defects lived. `GlFrameBuffer` is a private nested
+type: *nothing outside this TU can even name it*, so **there is no outside**. "Sovereign" is currently a
+convention honoured by every call site and **guaranteed against none**.
+
+Move them out and the compiler enforces what the comments claim. This is the item that converts the word
+"sealed" from marketing into a fact, and it is the reason §4 has to exist at all.
+
+### iii. Fix the neighbourhood, not the house
+**The effect-texture boundary — and it is on no list.**
+
+**Three of our four self-inflicted bugs (RB-1, RB-5, RB-6) lived in the effect-texture path, not in
+`GlFrameBuffer`.** The surface is good. **The boundary is bad**: three hand-copied guard predicates holding the
+framebuffer's invariant up from outside, two 29-line character-identical allocators, and a sampler that can
+*borrow* a target's storage with nothing but a `String` and a convention standing between it and corruption.
+
+That is where the next class of bugs already is. It is the least glamorous item here and the one most likely
+to bite.
+
+---
+
+## 9. THE DECISION — Layer 1 gets finished to the same standard as 2 and 3
+
+**Director's ruling, 2026-07-14.** The assessment's author recommended taking only item B and `Maybe<Face>`,
+banking the rest opportunistically, and moving to Layer 2 on the grounds that Layer 1 "doesn't need to be
+excellent, it needs to be not the problem."
+
+**That lean was overruled, and correctly.**
+
+> *"We are already committed to Layer 2 and Layer 3 being excellent. Layer 1 might as well be too."*
+
+The argument is **Foundation-of-Sand (A8)**, and it is the right one. Layers 2 and 3 are not neighbours of
+Layer 1 — they are **built on top of it**. `RetainedSurface` *is* a Surface plus policy. `BackdropPass` *owns*
+two of them. A merely-adequate substrate under two excellent layers is not a pragmatic trade; it is the
+foundation fault the axioms name, and every shortcut left in Layer 1 is one that Layers 2 and 3 will be
+obliged to route around — and then to *document* routing around, which is how the "correct by convention"
+comments in §4 got written in the first place.
+
+**So: finish it.** §6, then `layer1-residuals.md`, then the three ceiling moves above. The order that
+maximises value per day:
+
+1. **§6 B** — the four false comments (1 hour). Nothing else should be written on top of a file that teaches
+   things that are not true.
+2. **§8 i** — `Maybe<Face>` (20 lines). It closes a real latent bug *and* it is the last divergent fact.
+3. **residuals item 2** — the `(target, face, size)` bind key, folded with **§6 D** (GlPass gets a `private:`
+   and an `unbind()`). These are the same commit; doing them apart is doing them twice.
+4. **§8 iii** — the effect-texture boundary. One seal predicate, one allocator, and the borrow made
+   structural rather than stringly-typed.
+5. **§8 ii** — the components move to their own TU, and the `friend`s go. Do this **last**: it is the move
+   that makes every preceding one compiler-enforced, and doing it first would just mean fighting the seal
+   while still changing what is behind it.
+6. The remaining residuals (the `Json config` members, the inert sampling config, the type ladders) —
+   opportunistically, whenever a commit already has the file open.
+
+**The bar is not "better than vanilla." It is: every architectural comment in the file is true of the code,
+and the bug classes we closed are closed by the compiler rather than by our care.**

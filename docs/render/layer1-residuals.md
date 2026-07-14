@@ -7,6 +7,15 @@
 > latent bug this document missed — `makeDoubled()` can leak a face, which is upstream's `altId` bug
 > resurrected inside our own resolver. It also found four **false comments** in the source, including one that
 > states GlPass's entire reason for existing. Fix those before writing any more.
+>
+> **AND READ ITS §8–§9.** Director's ruling: Layer 1 is finished to the **same standard as Layers 2 and 3**,
+> not merely to "no longer the problem." Layers 2 and 3 are *built on* this one — a merely-adequate substrate
+> under two excellent layers is the **Foundation-of-Sand** fault, and every shortcut left here is one they will
+> be obliged to route around. The assessment's §9 gives the ordering; **this document is steps 3 and 6 of it,
+> not the whole plan.**
+>
+> **The bar is not "better than vanilla."** It is: *every architectural comment in the file is true of the
+> code, and the bug classes we closed are closed by the compiler rather than by our care.*
 
 Layer 1 is the render-surface substrate inside the GL backend: **`GlFrameBuffer`** (one surface, its 1–2
 faces, its storage), **`GlTargets`** (which surfaces exist, and the generation), **`GlPass`** (the bind — the
