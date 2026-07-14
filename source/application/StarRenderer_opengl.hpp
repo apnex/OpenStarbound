@@ -337,26 +337,47 @@ private:
 
   Vec2U m_screenSize;
 
-  GLuint m_program = 0;
+  // THE PASS: the binding of ONE effect to ONE target, for a sequence of draws.
+  //
+  // GL has exactly one current program and exactly one current draw framebuffer, and THEY ARE COUPLED:
+  // binding an effect resolves and binds ITS framebuffer (and swaps its faces, if it reads what it writes);
+  // binding a framebuffer writes the screenSize uniform of the CURRENT PROGRAM. That coupling is why a naive
+  // "effects here, targets there" split cannot work -- the two halves would each need the other's privates,
+  // which is the Air-Gap violated by construction.
+  //
+  // The coupling is not an obstacle to the decomposition. It IS a component, and nobody had written it.
+  // switchEffectConfig, switchGlFrameBuffer, setRenderTarget, composite, blitGlFrameBuffer and
+  // setEffectTextureFromTarget are not six problems: they are one missing Pass wearing six hats. A Pass
+  // depends DOWNWARD on effects and on targets; neither of them knows the other exists.
+  //
+  // THIS STEP MOVES THE STATE ONLY. The six functions follow, one at a time, each certified bit-identical
+  // against the three GPU oracles -- because three of them carry real behaviour changes that must not ride
+  // in on a refactor, or the oracle goes red and we cannot tell a fix from a regression.
+  struct GlPass {
+    // The flattened locations of the bound program. Read per draw, on the hot path.
+    GLuint program = 0;
+    GLint positionAttribute = -1;
+    GLint colorAttribute = -1;
+    GLint texCoordAttribute = -1;
+    GLint dataAttribute = -1;
+    List<GLint> textureUniforms = {};
+    List<GLint> textureSizeUniforms = {};
+    GLint screenSizeUniform = -1;
+    GLint vertexTransformUniform = -1;
 
-  GLint m_positionAttribute = -1;
-  GLint m_colorAttribute = -1;
-  GLint m_texCoordAttribute = -1;
-  GLint m_dataAttribute = -1;
-  List<GLint> m_textureUniforms = {};
-  List<GLint> m_textureSizeUniforms = {};
-  GLint m_screenSizeUniform = -1;
-  GLint m_vertexTransformUniform = -1;
+    // THE COUPLED PAIR. This is the whole reason the component exists.
+    Effect* effect = nullptr;
+    RefPtr<GlFrameBuffer> target;
+  };
+  GlPass m_pass;
 
   Json m_config;
 
   StringMap<Effect> m_effects;
-  Effect* m_currentEffect;
 
   StringMap<RefPtr<GlFrameBuffer>> m_frameBuffers;
   // Bumped by loadConfig() each time m_frameBuffers is cleared + rebuilt (all content becomes undefined).
   uint64_t m_frameBufferGeneration = 0;
-  RefPtr<GlFrameBuffer> m_currentFrameBuffer;
 
   RefPtr<GlTexture> m_whiteTexture;
 

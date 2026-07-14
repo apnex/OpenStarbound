@@ -470,19 +470,19 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     throw RendererException(strf("Failed to link program: {}\n", logBuffer));
   }
 
-  glUseProgram(m_program = program);
+  glUseProgram(m_pass.program = program);
 
   auto& effect = m_effects.emplace(name, Effect()).first->second;
-  effect.program = m_program;
+  effect.program = m_pass.program;
   effect.config = effectConfig;
   effect.includeVBTextures = effectConfig.getBool("includeVBTextures",true);
-  m_currentEffect = &effect;
+  m_pass.effect = &effect;
   setupGlUniforms(effect, m_screenSize);
 
   for (auto const& p : effectConfig.getObject("effectParameters", {})) {
     EffectParameter effectParameter;
 
-    effectParameter.parameterUniform = glGetUniformLocation(m_program, p.second.getString("uniform").utf8Ptr());
+    effectParameter.parameterUniform = glGetUniformLocation(m_pass.program, p.second.getString("uniform").utf8Ptr());
     if (effectParameter.parameterUniform == -1) {
       Logger::warn("OpenGL20 effect parameter '{}' in effect '{}' has no associated uniform, skipping", p.first, name);
     } else {
@@ -548,7 +548,7 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
 
   for (auto const& p : effectConfig.getObject("effectTextures", {})) {
     EffectTexture effectTexture;
-    effectTexture.textureUniform = glGetUniformLocation(m_program, p.second.getString("textureUniform").utf8Ptr());
+    effectTexture.textureUniform = glGetUniformLocation(m_pass.program, p.second.getString("textureUniform").utf8Ptr());
     if (effectTexture.textureUniform == -1) {
       Logger::warn("OpenGL20 effect parameter '{}' has no associated uniform, skipping", p.first);
     } else {
@@ -558,7 +558,7 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
         effectTexture.textureAddressing = TextureAddressingNames.getLeft(p.second.getString("textureAddressing", "clamp"));
         effectTexture.textureFiltering = TextureFilteringNames.getLeft(p.second.getString("textureFiltering", "nearest"));
         if (auto tsu = p.second.optString("textureSizeUniform")) {
-          effectTexture.textureSizeUniform = glGetUniformLocation(m_program, tsu->utf8Ptr());
+          effectTexture.textureSizeUniform = glGetUniformLocation(m_pass.program, tsu->utf8Ptr());
           if (effectTexture.textureSizeUniform == -1)
             Logger::warn("OpenGL20 effect parameter '{}' has textureSizeUniform '{}' with no associated uniform", p.first, *tsu);
         }
@@ -617,14 +617,14 @@ void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectPara
 }
 
 void OpenGlRenderer::setEffectParameter(String const& parameterName, RenderEffectParameter const& value) {
-  auto ptr = m_currentEffect->parameters.ptr(parameterName);
+  auto ptr = m_pass.effect->parameters.ptr(parameterName);
   if (!ptr)
     return;
   applyEffectParameter(ptr, value, parameterName);
 }
 
 OpenGlRenderer::EffectParameterHandle OpenGlRenderer::getEffectParameterHandle(String const& parameterName) {
-  return (EffectParameterHandle)m_currentEffect->parameters.ptr(parameterName);
+  return (EffectParameterHandle)m_pass.effect->parameters.ptr(parameterName);
 }
 
 void OpenGlRenderer::setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& value) {
@@ -678,7 +678,7 @@ Maybe<VariantTypeIndex> OpenGlRenderer::getEffectScriptableParameterType(String 
 }
 
 void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const& image) {
-  auto ptr = m_currentEffect->textures.ptr(textureName);
+  auto ptr = m_pass.effect->textures.ptr(textureName);
   if (!ptr)
     return;
 
@@ -705,7 +705,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     return false;
 
   Effect& effect = find->second;
-  if (m_currentEffect == &effect)
+  if (m_pass.effect == &effect)
     return true;
 
   auto effectScreenSize = m_screenSize;
@@ -725,20 +725,20 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     }
     switchGlFrameBuffer(buf);
   } else {
-    m_currentFrameBuffer.reset();
+    m_pass.target.reset();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
   }
 
-  glUseProgram(m_program = effect.program);
+  glUseProgram(m_pass.program = effect.program);
   setupGlUniforms(effect, effectScreenSize);
-  m_currentEffect = &effect;
+  m_pass.effect = &effect;
 
   setEffectParameter("vertexRounding", m_multiSampling > 0);
   if (auto fbts = effect.config.optArray("frameBufferTextures")) {
     for (auto const& fbt : *fbts) {
       if (auto frameBufferId = fbt.optString("framebuffer")) {
         auto textureUniform = fbt.getString("texture");
-        auto ptr = m_currentEffect->textures.ptr(textureUniform);
+        auto ptr = m_pass.effect->textures.ptr(textureUniform);
         if (ptr) {
           auto undefined = !ptr->textureValue || ptr->textureValue->textureId == 0;
           auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
@@ -768,11 +768,11 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
 
   if (!frameBufferId) {
     // Restore the screen as the draw target and the full-screen viewport/screenSize.
-    m_currentFrameBuffer.reset();
+    m_pass.target.reset();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glViewport(0, 0, m_screenSize[0], m_screenSize[1]);
-    if (m_screenSizeUniform != -1)
-      glUniform2f(m_screenSizeUniform, (float)m_screenSize[0], (float)m_screenSize[1]);
+    if (m_pass.screenSizeUniform != -1)
+      glUniform2f(m_pass.screenSizeUniform, (float)m_screenSize[0], (float)m_screenSize[1]);
     return;
   }
 
@@ -800,8 +800,8 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
   switchGlFrameBuffer(buf);
   Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
   glViewport(0, 0, vp[0], vp[1]);
-  if (m_screenSizeUniform != -1)
-    glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
+  if (m_pass.screenSizeUniform != -1)
+    glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
 void OpenGlRenderer::clearRenderTarget(Vec4F clearColor) {
@@ -824,7 +824,7 @@ void OpenGlRenderer::clearRenderTarget(Vec4F clearColor) {
 }
 
 void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) {
-  auto ptr = m_currentEffect->textures.ptr(textureName);
+  auto ptr = m_pass.effect->textures.ptr(textureName);
   if (!ptr)
     return;
 
@@ -840,8 +840,8 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
 }
 
 void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) {
-  auto dest = m_currentEffect->textures.ptr(destTextureName);
-  auto src = m_currentEffect->textures.ptr(sourceTextureName);
+  auto dest = m_pass.effect->textures.ptr(destTextureName);
+  auto src = m_pass.effect->textures.ptr(sourceTextureName);
   if (!dest || !src || !src->textureValue)
     return;
 
@@ -857,7 +857,7 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
 }
 
 void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) {
-  auto ptr = m_currentEffect->textures.ptr(textureName);
+  auto ptr = m_pass.effect->textures.ptr(textureName);
   if (!ptr || size[0] == 0 || size[1] == 0)
     return;
 
@@ -906,7 +906,7 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
 }
 
 void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) {
-  auto ptr = m_currentEffect->textures.ptr(textureName);
+  auto ptr = m_pass.effect->textures.ptr(textureName);
   if (!ptr || size[0] == 0 || size[1] == 0)
     return;
 
@@ -997,7 +997,7 @@ Image OpenGlRenderer::GlRenderOracle::read(String const& frameBufferId) {
   glBindFramebuffer(GL_READ_FRAMEBUFFER, readFrom);
   glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
   // Restore the read binding to whatever draw target is current (screen if none).
-  auto current = m_renderer.m_currentFrameBuffer;
+  auto current = m_renderer.m_pass.target;
   glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, current ? current->writeFace().id : 0);
 
@@ -1055,7 +1055,7 @@ pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, Str
   glBindFramebuffer(GL_READ_FRAMEBUFFER, (*bPtr)->writeFace().id);
   glReadPixels(0, 0, sizeB[0], sizeB[1], GL_RGB, GL_FLOAT, bufB.ptr());
   GLenum readErr = glGetError();
-  auto current = m_renderer.m_currentFrameBuffer;
+  auto current = m_renderer.m_pass.target;
   glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
   if (readErr != GL_NO_ERROR) {
     // A failed readback leaves the zero-filled buffers untouched -> would score as a false MATCH. Bail.
@@ -1305,7 +1305,7 @@ Maybe<int64_t> OpenGlRenderer::GlGpuTimer::lastMicros(String const& name) const 
 void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
   m_screenSize = screenSize;
   glViewport(0, 0, m_screenSize[0], m_screenSize[1]);
-  glUniform2f(m_screenSizeUniform, m_screenSize[0], m_screenSize[1]);
+  glUniform2f(m_pass.screenSizeUniform, m_screenSize[0], m_screenSize[1]);
 
   // A framebuffer that declares an explicit "size" is not screen-sized -- it is sized by its purpose (the
   // lightmap targets are 512x512, the upscale target 2048x2048). Resizing those to the screen resolution
@@ -1842,17 +1842,17 @@ auto OpenGlRenderer::createGlRenderBuffer() -> shared_ptr<GlRenderBuffer> {
 
 void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation) {
   for (auto const& vb : renderBuffer.vertexBuffers) {
-    glUniformMatrix3fv(m_vertexTransformUniform, 1, GL_TRUE, transformation.ptr());
+    glUniformMatrix3fv(m_pass.vertexTransformUniform, 1, GL_TRUE, transformation.ptr());
 
-    if (m_currentEffect->includeVBTextures) {
+    if (m_pass.effect->includeVBTextures) {
       for (size_t i = 0; i < vb.textures.size(); ++i) {
-        glUniform2f(m_textureSizeUniforms[i], vb.textures[i].size[0], vb.textures[i].size[1]);
+        glUniform2f(m_pass.textureSizeUniforms[i], vb.textures[i].size[0], vb.textures[i].size[1]);
         glActiveTexture(GL_TEXTURE0 + i);
         glBindTexture(GL_TEXTURE_2D, vb.textures[i].texture);
       }
     }
 
-    for (auto const& p : m_currentEffect->textures) {
+    for (auto const& p : m_pass.effect->textures) {
       if (p.second.textureValue) {
         glActiveTexture(GL_TEXTURE0 + p.second.textureUnit);
         glBindTexture(GL_TEXTURE_2D, p.second.textureValue->textureId);
@@ -1882,15 +1882,15 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 
     glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
 
-    glEnableVertexAttribArray(m_positionAttribute);
-    glEnableVertexAttribArray(m_texCoordAttribute);
-    glEnableVertexAttribArray(m_colorAttribute);
-    glEnableVertexAttribArray(m_dataAttribute);
+    glEnableVertexAttribArray(m_pass.positionAttribute);
+    glEnableVertexAttribArray(m_pass.texCoordAttribute);
+    glEnableVertexAttribArray(m_pass.colorAttribute);
+    glEnableVertexAttribArray(m_pass.dataAttribute);
 
-    glVertexAttribPointer(m_positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
-    glVertexAttribPointer(m_texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
-    glVertexAttribPointer(m_colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
-    glVertexAttribIPointer(m_dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+    glVertexAttribPointer(m_pass.positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
+    glVertexAttribPointer(m_pass.texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
+    glVertexAttribPointer(m_pass.colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
+    glVertexAttribIPointer(m_pass.dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
 
     glDrawArrays(GL_TRIANGLES, 0, vb.vertexCount);
   }
@@ -1898,28 +1898,28 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 
 //Assumes the passed effect program is currently in use.
 void OpenGlRenderer::setupGlUniforms(Effect& effect, Vec2U screenSize) {
-  m_positionAttribute = effect.getAttribute("vertexPosition");
-  m_colorAttribute = effect.getAttribute("vertexColor");
-  m_texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
-  m_dataAttribute = effect.getAttribute("vertexData");
+  m_pass.positionAttribute = effect.getAttribute("vertexPosition");
+  m_pass.colorAttribute = effect.getAttribute("vertexColor");
+  m_pass.texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
+  m_pass.dataAttribute = effect.getAttribute("vertexData");
 
-  m_textureUniforms.clear();
-  m_textureSizeUniforms.clear();
+  m_pass.textureUniforms.clear();
+  m_pass.textureSizeUniforms.clear();
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i) {
-      m_textureUniforms.append(effect.getUniform(strf("texture{}", i).c_str()));
-      m_textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
+      m_pass.textureUniforms.append(effect.getUniform(strf("texture{}", i).c_str()));
+      m_pass.textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
     }
   }
-  m_screenSizeUniform = effect.getUniform("screenSize");
-  m_vertexTransformUniform = effect.getUniform("vertexTransform");
+  m_pass.screenSizeUniform = effect.getUniform("screenSize");
+  m_pass.vertexTransformUniform = effect.getUniform("vertexTransform");
 
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
-      glUniform1i(m_textureUniforms[i], i);
+      glUniform1i(m_pass.textureUniforms[i], i);
   }
 
-  glUniform2f(m_screenSizeUniform, screenSize[0], screenSize[1]);
+  glUniform2f(m_pass.screenSizeUniform, screenSize[0], screenSize[1]);
   
   for (auto& param : effect.scriptables) {
     auto ptr = &param.second;
@@ -1975,12 +1975,12 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
 }
 
 void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer) {
-  if (m_currentFrameBuffer == frameBuffer && !frameBuffer->justSwapped)
+  if (m_pass.target == frameBuffer && !frameBuffer->justSwapped)
     return;
 
   frameBuffer->justSwapped = false;
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->writeFace().id);
-  m_currentFrameBuffer = frameBuffer;
+  m_pass.target = frameBuffer;
 
   // THE bind path, so this happens here and cannot be forgotten anywhere else. Nothing used to set the
   // viewport when an effect switched to a framebuffer, so an effect declaring `frameBuffer` together with a
@@ -1990,8 +1990,8 @@ void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffe
   if (vp[0] == 0 || vp[1] == 0)
     vp = m_screenSize / frameBuffer->sizeDiv;
   glViewport(0, 0, vp[0], vp[1]);
-  if (m_screenSizeUniform != -1)
-    glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
+  if (m_pass.screenSizeUniform != -1)
+    glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
 GLuint OpenGlRenderer::Effect::getAttribute(String const& name) {
