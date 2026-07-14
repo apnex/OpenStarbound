@@ -4,7 +4,7 @@
 #include "StarLogging.hpp"
 #include "StarTelemetry.hpp"
 
-#include <cstring>  // memcmp (compareFrameBuffers bit-identity)
+#include <cstring>  // memcmp (RenderOracle::compare bit-identity)
 
 namespace Star {
 
@@ -128,7 +128,9 @@ bool settingModeValue(BoolSettingMode const& mode, bool const& setting) {
   }
 }
 
-OpenGlRenderer::OpenGlRenderer() {
+OpenGlRenderer::OpenGlRenderer()
+  // The timer's whole dependency on the renderer, made explicit and one-directional.
+  : m_gpuTimer([this]() { flushImmediatePrimitives(); }), m_oracle(*this) {
   auto glewResult = glewInit();
   if (glewResult != GLEW_OK && glewResult != GLEW_ERROR_NO_GLX_DISPLAY)
     throw RendererException::format("Could not initialize GLEW: {}", (char*)glewGetErrorString(glewResult));
@@ -342,7 +344,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     // A "devOnly" surface exists solely to serve a validation oracle, which is off in normal play. These are
     // screen-sized HDR surfaces (~22MB each at 1440p), so allocating them unconditionally spent real VRAM on
     // something nothing ever read. Create them only while an oracle is actually armed.
-    if (config.getBool("devOnly", false) && !m_oracleSurfaces)
+    if (config.getBool("devOnly", false) && !m_oracle.enabled())
       continue;
 
     Logger::info("Creating framebuffer {}", pair.first);
@@ -357,12 +359,26 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   m_config = config;
 }
 
-void OpenGlRenderer::setOracleSurfaces(bool enabled) {
-  if (m_oracleSurfaces == enabled)
+OpenGlRenderer::GlRenderOracle::GlRenderOracle(OpenGlRenderer& renderer) : m_renderer(renderer) {}
+
+bool OpenGlRenderer::GlRenderOracle::enabled() const {
+  return m_enabled;
+}
+
+void OpenGlRenderer::GlRenderOracle::setEnabled(bool enabled) {
+  if (m_enabled == enabled)
     return;
 
-  m_oracleSurfaces = enabled;
-  loadConfig(m_config);
+  m_enabled = enabled;
+  m_renderer.loadConfig(m_renderer.m_config);
+}
+
+GpuTimer& OpenGlRenderer::gpuTimer() {
+  return m_gpuTimer;
+}
+
+RenderOracle& OpenGlRenderer::oracle() {
+  return m_oracle;
 }
 
 void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
@@ -905,12 +921,12 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
   }
 }
 
-Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
-  flushImmediatePrimitives();
+Image OpenGlRenderer::GlRenderOracle::read(String const& frameBufferId) {
+  m_renderer.flushImmediatePrimitives();
 
-  auto bufPtr = m_frameBuffers.ptr(frameBufferId);
+  auto bufPtr = m_renderer.m_frameBuffers.ptr(frameBufferId);
   if (!bufPtr) {
-    Logger::warn("readFrameBuffer: frame buffer '{}' does not exist", frameBufferId);
+    Logger::warn("RenderOracle::read: frame buffer '{}' does not exist", frameBufferId);
     return Image();
   }
   auto buf = *bufPtr;
@@ -921,7 +937,7 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   // PASS forever while seeing nothing at all. Empty is loud; zero-filled is a false green.
   Vec2U size = buf->writeFace().texture->textureSize;
   if (size[0] == 0 || size[1] == 0) {
-    Logger::warn("readFrameBuffer: frame buffer '{}' has no recorded size", frameBufferId);
+    Logger::warn("RenderOracle::read: frame buffer '{}' has no recorded size", frameBufferId);
     return Image();
   }
 
@@ -953,8 +969,9 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   glBindFramebuffer(GL_READ_FRAMEBUFFER, readFrom);
   glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
   // Restore the read binding to whatever draw target is current (screen if none).
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->writeFace().id : 0);
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->writeFace().id : 0);
+  auto current = m_renderer.m_currentFrameBuffer;
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, current ? current->writeFace().id : 0);
 
   if (resolveFbo) {
     glDeleteFramebuffers(1, &resolveFbo);
@@ -962,39 +979,39 @@ Image OpenGlRenderer::readFrameBuffer(String const& frameBufferId) {
   }
 
   if (GLenum err = glGetError(); err != GL_NO_ERROR) {
-    Logger::warn("readFrameBuffer: read of '{}' failed (GL error {:#x})", frameBufferId, (unsigned)err);
+    Logger::warn("RenderOracle::read: read of '{}' failed (GL error {:#x})", frameBufferId, (unsigned)err);
     return Image();
   }
   return result;
 }
 
-pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) {
+pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, String const& b, float* maxAbsDiff) {
   // Offline bit-identity oracle. Flush pending draws, then GL-read both framebuffers' color to CPU and
   // count per-pixel BIT differences (memcmp of the raw float triples). Reads GL_RGB/GL_FLOAT like
-  // readFrameBuffer: GL converts from RGB8 or RGB16F storage, so this is format-agnostic across the hdr
+  // RenderOracle::read: GL converts from RGB8 or RGB16F storage, so this is format-agnostic across the hdr
   // FromSetting modes. A raw bit compare is the correct test -- both buffers are the same-format render of
   // the same inputs, so a bit-identical cache path MUST produce identical pixels -- and it is NaN-safe
   // (identical NaN bit patterns compare equal, unlike float !=). glReadPixels stalls; debug/validate only.
   // Returns {NPos, {}} (not-comparable) on absent/multisample/mismatched-size targets or a readback error,
   // so a failed read can never be scored as a false MATCH.
-  flushImmediatePrimitives();
+  m_renderer.flushImmediatePrimitives();
 
-  auto aPtr = m_frameBuffers.ptr(a);
-  auto bPtr = m_frameBuffers.ptr(b);
+  auto aPtr = m_renderer.m_frameBuffers.ptr(a);
+  auto bPtr = m_renderer.m_frameBuffers.ptr(b);
   if (!aPtr || !bPtr) {
-    Logger::warn("compareFrameBuffers: frame buffer '{}' or '{}' does not exist", a, b);
+    Logger::warn("RenderOracle::compare: frame buffer '{}' or '{}' does not exist", a, b);
     return {NPos, Vec2U()};
   }
   // Multisample color attachments cannot be glReadPixels'd (GL_INVALID_OPERATION); the oracle is an AA-off
   // instrument, so treat a multisample target as not-comparable rather than reading garbage.
   if ((*aPtr)->multisample || (*bPtr)->multisample) {
-    Logger::warn("compareFrameBuffers: '{}' or '{}' is multisample -- not comparable", a, b);
+    Logger::warn("RenderOracle::compare:'{}' or '{}' is multisample -- not comparable", a, b);
     return {NPos, Vec2U()};
   }
   Vec2U sizeA = (*aPtr)->writeFace().texture->textureSize;
   Vec2U sizeB = (*bPtr)->writeFace().texture->textureSize;
   if (sizeA != sizeB || sizeA[0] == 0 || sizeA[1] == 0) {
-    Logger::warn("compareFrameBuffers: size mismatch/empty ('{}'={},{} vs '{}'={},{})",
+    Logger::warn("RenderOracle::compare:size mismatch/empty ('{}'={},{} vs '{}'={},{})",
       a, sizeA[0], sizeA[1], b, sizeB[0], sizeB[1]);
     return {NPos, Vec2U()};
   }
@@ -1010,10 +1027,11 @@ pair<size_t, Vec2U> OpenGlRenderer::compareFrameBuffers(String const& a, String 
   glBindFramebuffer(GL_READ_FRAMEBUFFER, (*bPtr)->writeFace().id);
   glReadPixels(0, 0, sizeB[0], sizeB[1], GL_RGB, GL_FLOAT, bufB.ptr());
   GLenum readErr = glGetError();
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, m_currentFrameBuffer ? m_currentFrameBuffer->writeFace().id : 0);
+  auto current = m_renderer.m_currentFrameBuffer;
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
   if (readErr != GL_NO_ERROR) {
     // A failed readback leaves the zero-filled buffers untouched -> would score as a false MATCH. Bail.
-    Logger::warn("compareFrameBuffers: glReadPixels error 0x{:x} on '{}'/'{}' -- not comparable", (unsigned)readErr, a, b);
+    Logger::warn("RenderOracle::compare: glReadPixels error 0x{:x} on '{}'/'{}' -- not comparable", (unsigned)readErr, a, b);
     return {NPos, Vec2U()};
   }
 
@@ -1188,7 +1206,10 @@ void OpenGlRenderer::flush(Mat3F const& transformation) {
   flushImmediatePrimitives(transformation);
 }
 
-void OpenGlRenderer::beginGpuTimer(String const& name) {
+OpenGlRenderer::GlGpuTimer::GlGpuTimer(function<void()> flushPending)
+  : m_flushPending(std::move(flushPending)) {}
+
+void OpenGlRenderer::GlGpuTimer::begin(String const& name) {
   if (!Telemetry::deepEnabled())
     return;
   // Task #141: STAR_NO_PERPASS_GPU_TIMERS=1 suppresses the per-pass GL_TIME_ELAPSED queries while LEAVING the
@@ -1207,13 +1228,13 @@ void OpenGlRenderer::beginGpuTimer(String const& name) {
   // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
   // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlFrameBuffer is
   // reached during the interface render), and the resulting numbers were nonsense.
-  if (m_gpuTimerActive) {
-    Logger::warn("beginGpuTimer('{}') nested inside an active timer -- ignored (GL_TIME_ELAPSED cannot nest)", name);
+  if (m_active) {
+    Logger::warn("GpuTimer::begin('{}') nested inside an active timer -- ignored (GL_TIME_ELAPSED cannot nest)", name);
     return;
   }
   // Submit any pending primitives first so the query measures only the work that follows.
-  flushImmediatePrimitives();
-  auto& ring = m_gpuTimers[name];
+  m_flushPending();
+  auto& ring = m_rings[name];
   unsigned slot = ring.writeIdx;
   if (ring.queries[slot] == 0)
     glGenQueries(1, &ring.queries[slot]);
@@ -1225,30 +1246,30 @@ void OpenGlRenderer::beginGpuTimer(String const& name) {
       GLuint64 elapsedNs = 0;
       glGetQueryObjectui64v(ring.queries[slot], GL_QUERY_RESULT, &elapsedNs);
       Telemetry::timer(name).record((int64_t)(elapsedNs / 1000));
-      m_gpuTimerLastMicros[name] = (int64_t)(elapsedNs / 1000);
+      m_lastMicros[name] = (int64_t)(elapsedNs / 1000);
     }
     ring.issued[slot] = false; // reuse the query object regardless (drops a rare not-ready sample)
   }
   glBeginQuery(GL_TIME_ELAPSED, ring.queries[slot]);
-  m_gpuTimerActive = true;
-  m_gpuTimerCurrent = &ring;
-  m_gpuTimerSlot = slot;
+  m_active = true;
+  m_current = &ring;
+  m_slot = slot;
 }
 
-void OpenGlRenderer::endGpuTimer(String const&) {
-  if (!m_gpuTimerActive)
+void OpenGlRenderer::GlGpuTimer::end(String const&) {
+  if (!m_active)
     return;
   // Submit this scope's primitives so they fall inside the query, then close it.
-  flushImmediatePrimitives();
+  m_flushPending();
   glEndQuery(GL_TIME_ELAPSED);
-  m_gpuTimerCurrent->issued[m_gpuTimerSlot] = true;
-  m_gpuTimerCurrent->writeIdx = (m_gpuTimerSlot + 1) % 3;
-  m_gpuTimerActive = false;
-  m_gpuTimerCurrent = nullptr;
+  m_current->issued[m_slot] = true;
+  m_current->writeIdx = (m_slot + 1) % 3;
+  m_active = false;
+  m_current = nullptr;
 }
 
-Maybe<int64_t> OpenGlRenderer::gpuTimerLastMicros(String const& name) const {
-  if (auto p = m_gpuTimerLastMicros.ptr(name))
+Maybe<int64_t> OpenGlRenderer::GlGpuTimer::lastMicros(String const& name) const {
+  if (auto p = m_lastMicros.ptr(name))
     return *p;
   return {};
 }
@@ -1340,7 +1361,7 @@ void OpenGlRenderer::startFrame() {
 
   // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
-  beginGpuTimer("render.frame.clear.gpu_us");
+  m_gpuTimer.begin("render.frame.clear.gpu_us");
 
   for (auto& frameBuffer : m_frameBuffers) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->faces[0].id);
@@ -1359,7 +1380,7 @@ void OpenGlRenderer::startFrame() {
 
   glClear(GL_COLOR_BUFFER_BIT);
 
-  endGpuTimer("render.frame.clear.gpu_us");
+  m_gpuTimer.end("render.frame.clear.gpu_us");
 
   if (m_scissorRect)
     glEnable(GL_SCISSOR_TEST);
@@ -1947,7 +1968,7 @@ RefPtr<OpenGlRenderer::GlFrameBuffer> OpenGlRenderer::getGlFrameBuffer(String co
 // them in the timer: at 2560x1440 RGBA16F, MSAA-resolving when antiAliasing is on, this blit is not free, and
 // it was part of the 1.8-3.5ms/frame the whole-frame span proved was unaccounted for (task #141).
 void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt) {
-  beginGpuTimer("render.frame.blit.gpu_us");
+  m_gpuTimer.begin("render.frame.blit.gpu_us");
 
   auto& size = m_screenSize;
   // useAlt: the caller is a double-buffered effect, so it wants the face it is NOT writing -- the one that
@@ -1959,7 +1980,7 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
     GL_COLOR_BUFFER_BIT, GL_NEAREST
   );
 
-  endGpuTimer("render.frame.blit.gpu_us");
+  m_gpuTimer.end("render.frame.blit.gpu_us");
 }
 
 void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer) {

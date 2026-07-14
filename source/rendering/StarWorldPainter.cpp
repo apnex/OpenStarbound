@@ -220,9 +220,9 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   bool envCacheActive = !envAntiAliasing && (envRefreshInterval > 1 || envOracle);
   if (!envCacheActive) {
     m_envCacheSize = {0, 0};
-    m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
     drawEnv();
-    m_renderer->endGpuTimer("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
   } else {
     // Cache path (AA off). Force a refresh on the first frame + after any resize (envCache is realloc'd
     // to undefined content) so a skip frame never composites garbage. The pixelRatio term is NOT redundant
@@ -237,7 +237,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     (refreshEnv ? envRefreshed : envSkipped).inc(1);
     envRefreshedThisFrame = refreshEnv;
 
-    m_renderer->beginGpuTimer("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
     if (refreshEnv) {
       // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
       // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
@@ -252,16 +252,16 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       m_envCacheSize = envScreenSize;
       m_envCachePixelRatio = envPixelRatio;
     }
-    m_renderer->endGpuTimer("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
 
     // Composite the cached env into "main" every frame: a full-screen passthrough quad reusing
     // lightingPassthrough (nearest sampling; applyCap=false forces alpha=1.0 => a clean rgb replace of the
     // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
     // mutations of the shared effect can't bleed in -- no forked config needed.
-    m_renderer->beginGpuTimer("render.pass.environment.compose.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
     m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", "envCache",
       {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
-    m_renderer->endGpuTimer("render.pass.environment.compose.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
 
     // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). At N=1 the cache
@@ -279,7 +279,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       // Restore the draw target to "main"; the effect is already "world", so switchEffectConfig("world")
       // would early-out without rebinding and strand the target on envRef.
       m_renderer->setRenderTarget(String("main"));
-      auto d = m_renderer->compareFrameBuffers("envRef", "main");
+      auto d = m_renderer->oracle().compare("envRef", "main");
       bool atmosphereless = renderData.skyRenderData.type == SkyType::Atmosphereless;
       if (d.first == NPos)
         Logger::info("[envoracle] SKIPPED (absent fbo or size mismatch) N={} atmosphereless={}", envRefreshInterval, atmosphereless);
@@ -517,9 +517,9 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_parallaxCacheSize = {0, 0};
     if (parallaxHasLayers && !parallaxParked)
       parallaxBypassedCtr.inc(1);
-    m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
     drawParallax();
-    m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
   } else {
     // Cache path (camera parked). INVALIDATION terms force a redraw regardless; the TIME gate is the ordinary
     // N-frame cadence and is the only one the arbiter may defer.
@@ -544,7 +544,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     }
     (refreshParallax ? parallaxRefreshedCtr : parallaxSkippedCtr).inc(1);
 
-    m_renderer->beginGpuTimer("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
     if (refreshParallax) {
       m_renderer->setRenderTarget(String("parallaxCache"), parallaxScreenSize);
       m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
@@ -557,7 +557,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       m_parallaxCachePixelRatio = parallaxPixelRatio;
       m_parallaxCacheContentKey = parallaxContentKey;
     }
-    m_renderer->endGpuTimer("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
 
     // Oracle reference (before the cache composite modifies main): parallaxRef = env_bg (a copy of main) +
     // parallax DIRECT. Built here because the composite below overwrites main with the cache result.
@@ -572,20 +572,20 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     }
 
     // Composite the premultiplied cache over main (env bg) every frame.
-    m_renderer->beginGpuTimer("render.pass.parallax.compose.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us");
     m_renderer->setBlendMode(BlendMode::PremultipliedOver);
     m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", "parallaxCache",
       {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
     m_renderer->setBlendMode(BlendMode::Alpha);
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
-    m_renderer->endGpuTimer("render.pass.parallax.compose.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.parallax.compose.gpu_us");
 
     if (parallaxOracle && m_renderer->hasFrameBuffer("parallaxRef")) {
       // Bounded-diff gate (NOT a 0-diff gate): the premultiplied cache double-rounds partial-alpha texels, so a
       // small count on semi-transparent fringes with maxAbs ~<=1 LSB is EXPECTED + sub-perceptual. A large maxAbs
       // would flag a real blend/compose bug rather than the rounding.
       float pmax = 0.0f;
-      auto d = m_renderer->compareFrameBuffers("parallaxRef", "main", &pmax);
+      auto d = m_renderer->oracle().compare("parallaxRef", "main", &pmax);
       if (d.first == NPos)
         Logger::info("[paralloracle] SKIPPED (absent fbo or size mismatch) N={}", parallaxRefreshInterval);
       else if (d.first == 0)
@@ -598,7 +598,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   // Main world layers
 
-  m_renderer->beginGpuTimer("render.pass.world.gpu_us");
+  m_renderer->gpuTimer().begin("render.pass.world.gpu_us");
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : renderData.entityDrawables) {
     for (auto& p : ed.layers)
@@ -642,18 +642,18 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   drawDrawableSet(renderData.nametags);
   renderBars(renderData);
   renderEntitiesUntil({});
-  m_renderer->endGpuTimer("render.pass.world.gpu_us");
+  m_renderer->gpuTimer().end("render.pass.world.gpu_us");
 
-  m_renderer->beginGpuTimer("render.pass.compose.gpu_us");
+  m_renderer->gpuTimer().begin("render.pass.compose.gpu_us");
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0)
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
-  m_renderer->endGpuTimer("render.pass.compose.gpu_us");
+  m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
 
   // Rung 0: surface the per-pass GPU timings (populated only under deep telemetry) on the /debug HUD.
   for (auto const& key : {"render.pass.environment.gpu_us", "render.pass.parallax.gpu_us",
                           "render.pass.world.gpu_us", "render.pass.compose.gpu_us"}) {
-    if (auto us = m_renderer->gpuTimerLastMicros(key))
+    if (auto us = m_renderer->gpuTimer().lastMicros(key))
       LogMap::set(String(key), strf("{:05d}us", *us));
   }
 

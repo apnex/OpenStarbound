@@ -2,6 +2,7 @@
 
 #include "StarVariant.hpp"
 #include "StarImage.hpp"
+#include "StarRenderDiagnostics.hpp"
 #include "StarPoly.hpp"
 #include "StarJson.hpp"
 #include "StarBiMap.hpp"
@@ -181,14 +182,6 @@ public:
   // persistent clear:false FBOs (e.g. the environment cache) to reset to the once-per-frame clear state
   // that clear:true targets like "main" receive in startFrame.
   virtual void clearRenderTarget(Vec4F clearColor = Vec4F(0.0f, 0.0f, 0.0f, 1.0f)) = 0;
-  // Debug/validate oracle: read back two config framebuffers' color and count per-pixel differences.
-  // Returns {differing pixel count, first differing pixel {x,y}}; {NPos, {}} if a buffer is absent or the
-  // two sizes differ. Offline only (glReadPixels stalls the pipeline). Backs the env-cache bit-identity
-  // oracle and future retained-surface caches (#133).
-  // maxAbsDiff (optional out): the largest per-channel |a-b| over all differing pixels. Lets a caller
-  // distinguish an exact match / sub-LSB double-rounding (e.g. the parallax cache, ~1 ULP) from a real
-  // divergence. 0 when the buffers match.
-  virtual pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff = nullptr) = 0;
   // True if a config framebuffer with this id is loaded. Lets a consumer guard a setRenderTarget redirect
   // (which silently no-ops on an absent id) so it never accidentally draws into the previously-bound target.
   virtual bool hasFrameBuffer(String const& id) const = 0;
@@ -199,11 +192,6 @@ public:
   // Any such consumer MUST fold this into its refresh key. Not pure: a backend that never reallocates
   // correctly reports a constant, and is thereby never falsely invalidated.
   virtual uint64_t frameBufferGeneration() const { return 0; }
-  // Arm/disarm allocation of framebuffers marked "devOnly" in config -- surfaces that exist only to serve a
-  // validation oracle. They are screen-sized, so when no oracle is armed (the normal case) they are pure
-  // wasted VRAM; keeping them unallocated is the difference between a surface that is earned and one that is
-  // merely speculative. Flipping this reloads the framebuffer set, so call it only when the arming changes.
-  virtual void setOracleSurfaces(bool enabled) = 0;
   // Sample srcFbo's color (bound to `effect`'s `srcSampler`) through `effect` into `dstFbo`, drawn as a
   // full-screen quad sized to dstSize, after applying `params`. Returns false if `effect` is unregistered
   // (caller falls back). Sets `params` explicitly so a shared passthrough effect is bleed-safe across
@@ -225,9 +213,12 @@ public:
   // Upload single-channel 8-bit data to an effect sampler as an R8 texture (sampled via .r), a third
   // the bytes of RGB24. Used for GPU lighting's obstacle mask (a binary 0/255 flag, read as .r > 0.5).
   virtual void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) = 0;
-  // Read a config framebuffer's color texture back to a CPU RGB_F image (diagnostics, e.g. GPU
-  // lighting parity shadow-compare). Returns an empty image if the framebuffer is absent.
-  virtual Image readFrameBuffer(String const& frameBufferId) = 0;
+  // THE INSTRUMENTS (StarRenderDiagnostics.hpp). These observe the renderer rather than draw with it, so they
+  // are not part of the contract a backend must satisfy to render a frame -- they hang off it. Keeping them
+  // here as seven more virtuals meant every new diagnostic widened the surface all twelve consumers depend on;
+  // behind these two accessors, the next one widens nothing.
+  virtual GpuTimer& gpuTimer() = 0;
+  virtual RenderOracle& oracle() = 0;
   // Set the blend mode for subsequent draws (e.g. additive/max for GPU point-light accumulation);
   // restore to BlendMode::Alpha after. Flushes pending primitives so the mode applies cleanly.
   virtual void setBlendMode(BlendMode mode) = 0;
@@ -255,18 +246,6 @@ public:
   virtual void renderBuffer(RenderBufferPtr const& renderBuffer, Mat3F const& transformation = Mat3F::identity()) = 0;
 
   virtual void flush(Mat3F const& transformation = Mat3F::identity()) = 0;
-
-  // GPU-side timer queries. Bracket GPU work to measure its on-GPU execution time
-  // (e.g. GL_TIME_ELAPSED). begin/end flush pending primitives so the query spans exactly
-  // the enclosed draws; results are read back asynchronously and recorded to the named
-  // Telemetry timer. Default no-op; backends gate issuance on Telemetry::deepEnabled().
-  // Calls must be paired and non-nested.
-  virtual void beginGpuTimer(String const& name) { (void)name; }
-  virtual void endGpuTimer(String const& name) { (void)name; }
-
-  // Last GPU-timer result (microseconds) for a named scope, if one has been read back.
-  // Default none; backends that implement GPU timers return the most recent sample.
-  virtual Maybe<int64_t> gpuTimerLastMicros(String const& name) const { (void)name; return {}; }
 };
 
 }

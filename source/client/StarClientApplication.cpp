@@ -504,7 +504,7 @@ void ClientApplication::render() {
   // Like setMainHDR/setMultiSampling above, this reloads the whole framebuffer set when it changes, so it
   // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
   // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.
-  renderer->setOracleSurfaces(config->get("envOracle", false).optBool().value(false)
+  renderer->oracle().setEnabled(config->get("envOracle", false).optBool().value(false)
       || config->get("parallaxOracle", false).optBool().value(false)
       || config->get("lightingSpreadOracle", false).optBool().value(false));
   renderer->switchEffectConfig("interface");
@@ -594,11 +594,11 @@ void ClientApplication::render() {
       return e && *e ? (int)strtol(e, nullptr, 10) : 7;
     }();
     if (!skipInterface) {
-      renderer->beginGpuTimer("render.pass.interface.gpu_us");
+      renderer->gpuTimer().begin("render.pass.interface.gpu_us");
       if (uiMask & 1) m_mainInterface->renderInWorldElements();
       if (uiMask & 2) m_mainInterface->render();
       if (uiMask & 4) m_cinematicOverlay->render();
-      renderer->endGpuTimer("render.pass.interface.gpu_us");
+      renderer->gpuTimer().end("render.pass.interface.gpu_us");
     }
     // Task #141: the GUI had a debug-HUD string but NO telemetry timer, so its CPU cost was invisible -- and
     // that is load-bearing right now. The whole-frame "GPU span" is a GL_TIMESTAMP delta, which includes GPU
@@ -1168,9 +1168,9 @@ void ClientApplication::renderTestCapture() {
     if (legFrame < m_renderTestWarmup)
       return;   // still settling this leg
 
-    Image frame = renderer->readFrameBuffer("main");
+    Image frame = renderer->oracle().read("main");
     if (frame.empty()) {
-      Logger::error("[rendertest] FAIL: readFrameBuffer('main') returned nothing (unsized? GL error?)");
+      Logger::error("[rendertest] FAIL: oracle().read('main') returned nothing (unsized? GL error?)");
       appController()->quit();
       return;
     }
@@ -1229,11 +1229,11 @@ void ClientApplication::renderTestCapture() {
   unsigned index = m_renderTestSeen - m_renderTestWarmup;
   ++m_renderTestSeen;
 
-  Image frame = renderer->readFrameBuffer("main");
+  Image frame = renderer->oracle().read("main");
   if (frame.empty()) {
-    // readFrameBuffer returns EMPTY (never zero-filled) on every unreadable condition, precisely so this
+    // RenderOracle::read returns EMPTY (never zero-filled) on every unreadable condition, precisely so this
     // cannot silently pass. A zero-filled frame would hash consistently and report a stable false green.
-    Logger::error("[rendertest] FAIL frame={} readFrameBuffer('main') returned nothing (multisample? unsized? GL error?)", index);
+    Logger::error("[rendertest] FAIL frame={} oracle().read('main') returned nothing (multisample? unsized? GL error?)", index);
     appController()->quit();
     return;
   }

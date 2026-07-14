@@ -60,7 +60,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   size_t const texels = (size_t)size[0] * size[1];
   bool const packedEmission = emissionHalf.size() == texels * 3 && obstacleR8.size() == texels;
 
-  m_renderer->beginGpuTimer("lighting.gpu.spread.gpu_us");
+  m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us");
   if (packedEmission) {
     m_emissionRGBA.resize(texels * 4);
     for (size_t i = 0; i < texels; ++i) {
@@ -137,7 +137,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     lastTarget = runSpread(true);               // candidate: obstacle from lightState alpha
 
     float maxAbsDiff = 0.0f;
-    auto d = m_renderer->compareFrameBuffers("lightingRef", lastTarget, &maxAbsDiff);
+    auto d = m_renderer->oracle().compare("lightingRef", lastTarget, &maxAbsDiff);
     if (d.first == 0)
       Logger::info("[spreadoracle] MATCH (0 diff) iterations={} size={}x{}", spreadIterations, size[0], size[1]);
     else
@@ -146,12 +146,12 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   } else {
     lastTarget = runSpread(packedEmission);
   }
-  m_renderer->endGpuTimer("lighting.gpu.spread.gpu_us");
+  m_renderer->gpuTimer().end("lighting.gpu.spread.gpu_us");
 
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
-    m_renderer->beginGpuTimer("lighting.gpu.point.gpu_us");
+    m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us");
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
@@ -200,7 +200,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
       ++drawn;
     }
-    m_renderer->endGpuTimer("lighting.gpu.point.gpu_us");
+    m_renderer->gpuTimer().end("lighting.gpu.point.gpu_us");
     pointLightsDrawn.inc(drawn);
   }
 
@@ -215,15 +215,15 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
-  m_renderer->beginGpuTimer("lighting.gpu.compose.gpu_us");
+  m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us");
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
      {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
-  m_renderer->endGpuTimer("lighting.gpu.compose.gpu_us");
+  m_renderer->gpuTimer().end("lighting.gpu.compose.gpu_us");
   m_renderer->flush();
 
   if (shadowCompare && gpuResult)
-    *gpuResult = m_renderer->readFrameBuffer(composeTarget);
+    *gpuResult = m_renderer->oracle().read(composeTarget);
 
   if (worldUpscale >= 1.5f && m_renderer->switchEffectConfig("lightingUpscale")) {
     // R-A Form 2: bicubic-upscale the composed lightmap once (<=30Hz) into a higher-res linear FBO;
@@ -233,11 +233,11 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     // effect as a (bilinear) upscale -- the bug that made Form 2's first build show stepped shadow edges.
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
-    m_renderer->beginGpuTimer("lighting.gpu.upscale.gpu_us");
+    m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us");
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
     m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));
-    m_renderer->endGpuTimer("lighting.gpu.upscale.gpu_us");
+    m_renderer->gpuTimer().end("lighting.gpu.upscale.gpu_us");
     m_renderer->flush();
     m_renderer->setRenderTarget({});
     m_renderer->switchEffectConfig("world");

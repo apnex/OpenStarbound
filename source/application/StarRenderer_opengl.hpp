@@ -48,10 +48,8 @@ public:
 
   void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
   void clearRenderTarget(Vec4F clearColor) override;
-  pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) override;
   bool hasFrameBuffer(String const& id) const override;
   uint64_t frameBufferGeneration() const override;
-  void setOracleSurfaces(bool enabled) override;
   bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
                  String const& srcSampler, String const& srcFbo,
                  List<pair<String, RenderEffectParameter>> const& params) override;
@@ -59,7 +57,8 @@ public:
   void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
   void setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) override;
   void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) override;
-  Image readFrameBuffer(String const& frameBufferId) override;
+  GpuTimer& gpuTimer() override;
+  RenderOracle& oracle() override;
   void setBlendMode(BlendMode mode) override;
 
   TexturePtr createTexture(Image const& texture, TextureAddressing addressing, TextureFiltering filtering) override;
@@ -76,10 +75,6 @@ public:
   void renderBuffer(RenderBufferPtr const& renderBuffer, Mat3F const& transformation) override;
 
   void flush(Mat3F const& transformation) override;
-
-  void beginGpuTimer(String const& name) override;
-  void endGpuTimer(String const& name) override;
-  Maybe<int64_t> gpuTimerLastMicros(String const& name) const override;
 
   void setScreenSize(Vec2U screenSize);
 
@@ -343,21 +338,63 @@ private:
 
   Maybe<RectI> m_scissorRect;
 
-  // Armed by setOracleSurfaces; when false, loadConfig does not allocate framebuffers marked devOnly.
-  bool m_oracleSurfaces = false;
+  // THE INSTRUMENTS. Both are sealed: they own their own state and are reached only through the accessors
+  // Renderer declares, so no consumer -- and no future backend -- has to know they exist to draw a frame.
 
-  // GPU timer queries (GL_TIME_ELAPSED), one triple-buffered ring per named scope so results
-  // are read back ~3 frames later without stalling the pipeline. Only used when deepEnabled.
-  struct GpuTimerRing {
-    GLuint queries[3] = {0, 0, 0};
-    bool issued[3] = {false, false, false};
-    unsigned writeIdx = 0;
+  // GL_TIME_ELAPSED, one triple-buffered ring per named scope so results are read back ~3 frames later
+  // without stalling the pipeline. Only issues when Telemetry::deepEnabled().
+  //
+  // It takes a flush thunk rather than an OpenGlRenderer&: the timer's only need of the renderer is "submit
+  // what is pending, so the query brackets exactly the enclosed draws". Depending on the whole renderer to say
+  // that would be a back-door into every other concern, and would make the timer untestable without a GL
+  // context. One declared adapter, one direction.
+  class GlGpuTimer : public GpuTimer {
+  public:
+    explicit GlGpuTimer(function<void()> flushPending);
+
+    void begin(String const& name) override;
+    void end(String const& name) override;
+    Maybe<int64_t> lastMicros(String const& name) const override;
+
+  private:
+    struct Ring {
+      GLuint queries[3] = {0, 0, 0};
+      bool issued[3] = {false, false, false};
+      unsigned writeIdx = 0;
+    };
+
+    function<void()> m_flushPending;
+    StringMap<Ring> m_rings;
+    StringMap<int64_t> m_lastMicros; // last read-back µs per scope (for the /debug HUD)
+    Ring* m_current = nullptr;
+    unsigned m_slot = 0;
+    bool m_active = false;
   };
-  StringMap<GpuTimerRing> m_gpuTimers;
-  bool m_gpuTimerActive = false;
-  GpuTimerRing* m_gpuTimerCurrent = nullptr;
-  unsigned m_gpuTimerSlot = 0;
-  StringMap<int64_t> m_gpuTimerLastMicros; // last read-back µs per scope (for the /debug HUD)
+
+  // Pixel read-back for bit-identity certification. Unlike the timer, this genuinely needs the renderer's
+  // framebuffer set, so it holds a back-reference -- the same one-way gap as GlFrameBuffer's `friend
+  // OpenGlRenderer`. The gap that matters is the one the twelve consumers see, and that one is real: they get
+  // three methods and cannot name a framebuffer face.
+  //
+  // Expected lifetime: DELETED. See RenderOracle in StarRenderDiagnostics.hpp.
+  class GlRenderOracle : public RenderOracle {
+  public:
+    explicit GlRenderOracle(OpenGlRenderer& renderer);
+
+    void setEnabled(bool enabled) override;
+    pair<size_t, Vec2U> compare(String const& a, String const& b, float* maxAbsDiff) override;
+    Image read(String const& frameBufferId) override;
+
+    // Read by loadConfig: when false, framebuffers marked devOnly are not allocated at all.
+    bool enabled() const;
+
+  private:
+    OpenGlRenderer& m_renderer;
+    bool m_enabled = false;
+  };
+
+  GlGpuTimer m_gpuTimer;
+  GlRenderOracle m_oracle;
 
   // WHOLE-FRAME GPU SPAN (task #141). GL_TIME_ELAPSED cannot nest -- there is one m_gpuTimerActive bool -- so
   // the per-pass timers can never report the frame TOTAL, and therefore can never reveal how much of the frame
