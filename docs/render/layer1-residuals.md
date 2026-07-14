@@ -2,14 +2,24 @@
 
 **As of `d05f21682`.** All line numbers are against that commit and will drift; re-verify before cutting.
 
+> **READ [`architecture-assessment.md`](architecture-assessment.md) FIRST.** A hostile 58-agent audit ran
+> after this document was written. It **corrected two things below** (marked inline), and it added one real
+> latent bug this document missed — `makeDoubled()` can leak a face, which is upstream's `altId` bug
+> resurrected inside our own resolver. It also found four **false comments** in the source, including one that
+> states GlPass's entire reason for existing. Fix those before writing any more.
+
 Layer 1 is the render-surface substrate inside the GL backend: **`GlFrameBuffer`** (one surface, its 1–2
 faces, its storage), **`GlTargets`** (which surfaces exist, and the generation), **`GlPass`** (the bind — the
 coupled `(effect, target)` pair and the flattened locations the draw path reads), **`GlEffects`** (the
 compiled programs and the scriptable surface).
 
-**There are no known bugs left in Layer 1.** Everything below is structure. That is a deliberate statement of
-where the line is: the last four defects (RB-1, RB-5, RB-6, RB-7) are closed and each was proven on hardware
-before and after.
+**No known LIVE corruptions remain in Layer 1** — the last four (RB-1, RB-5, RB-6, RB-7) are closed, each
+proven on hardware before and after.
+
+**CORRECTED:** this originally said *"no known bugs left."* The later audit found **one latent bug** this
+document missed — `makeDoubled()` writes a live FBO into `faces[1]` and can then throw, leaving `doubled ==
+false` so the destructor forgets the face. See `architecture-assessment.md` §6 item A. Everything else below
+is structure.
 
 This list was produced by a 120-agent audit in which every proposal faced three independent skeptics.
 **25 of 38 proposals were killed** as wrong or as ceremony. What survived is below; what died is at the end,
@@ -299,7 +309,12 @@ Not a taste judgement. Ten greps and three oracles.
 5. **One allocator per side.** `glGenTextures` appears in exactly three places: `GlFrameBuffer::allocateFace`,
    `createEmptyLoneTexture`, `createAtlasTexture`
 6. **One writer of the storage descriptor.** `->textureSize =` and `->internalFormat =` each resolve to a
-   single function per side *(already true as of RB-6 — hold the line)*
+   single function per side.
+   **CORRECTED** — this originally read *"already true as of RB-6"*. **It is not.** RB-6 established a
+   different (and weaker) invariant: *whoever specifies storage records what it specified*. There are still
+   **four** writers on the effect side (`setEffectTexture`, `setEffectTextureHalf`, `setEffectTextureR8`,
+   `createGlTexture`). **Item 1 above (`createEmptyLoneTexture`) is what makes this true.** Do not tick it
+   until then.
 7. **The seal predicate appears once.** Zero inline copies of `textureId == 0 || … borrowed()`
 8. **The size rule appears once.** No `screenSize /` arithmetic outside `sizeFor()`
 9. **The type-name ladder appears once**
