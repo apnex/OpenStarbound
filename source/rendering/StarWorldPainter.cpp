@@ -564,8 +564,17 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // counter % 4 == 0, so for any N whose half is a multiple of 4 (notably the static-content default N=16, and
     // N=8) EVERY parallax refresh landed on an env refresh frame. Defer the time-gated refresh by one frame
     // instead; invalidation refreshes are never deferred (they would show a stale image).
+    //
+    // The deferral is bounded to ONE frame, and the bound is load-bearing. Without `!alreadyDeferred` the
+    // arbiter re-defers on every frame that env refreshes, so whenever env refreshes on CONSECUTIVE frames
+    // (env N==1, which is exactly what arming the env oracle forces) parallax is deferred forever: the cache
+    // freezes at its first frame and the sky silently stops updating. Measured: the parallax oracle's diff
+    // climbed monotonically from 187k to full-screen saturation over one run. Not reachable from the shipped
+    // config (env N=4 refreshes 1 frame in 4, so the deferred refresh always lands on a non-env frame), but
+    // it made the two oracles mutually exclusive and left the parallax gate reading garbage.
+    bool alreadyDeferred = m_parallaxRefreshDeferred;
     bool refreshParallax = parallaxInvalidated || parallaxTimeGate;
-    if (refreshParallax && !parallaxInvalidated && envRefreshedThisFrame) {
+    if (refreshParallax && !parallaxInvalidated && envRefreshedThisFrame && !alreadyDeferred) {
       refreshParallax = false;
       m_parallaxRefreshDeferred = true;   // fire next frame regardless of the counter
     } else if (refreshParallax) {
@@ -590,7 +599,13 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
     // Oracle reference (before the cache composite modifies main): parallaxRef = env_bg (a copy of main) +
     // parallax DIRECT. Built here because the composite below overwrites main with the cache result.
-    if (parallaxOracle && m_renderer->hasFrameBuffer("parallaxRef")) {
+    //
+    // ONLY ON A REFRESH FRAME. The cache's claim is "what I draw on a refresh equals what the direct path
+    // draws" -- it claims nothing about the N-1 frames in between, where it is deliberately serving an older
+    // image. Comparing on those frames measures staleness, not correctness, and reports a diff that grows
+    // with N. The env oracle had this exact defect (#149) and was gated on refreshEnv; this one never was, so
+    // it has been reporting a false failure at every N>1 for the whole campaign.
+    if (parallaxOracle && refreshParallax && m_renderer->hasFrameBuffer("parallaxRef")) {
       m_renderer->composite("lightingPassthrough", "parallaxRef", parallaxScreenSize, "inputTexture", "main",
         {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
       m_renderer->switchEffectConfig("world");                        // world effect (binds main)
@@ -609,7 +624,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
     m_renderer->gpuTimer().end("render.pass.parallax.compose.gpu_us");
 
-    if (parallaxOracle && m_renderer->hasFrameBuffer("parallaxRef")) {
+    if (parallaxOracle && refreshParallax && m_renderer->hasFrameBuffer("parallaxRef")) {
       // Bounded-diff gate (NOT a 0-diff gate): the premultiplied cache double-rounds partial-alpha texels, so a
       // small count on semi-transparent fringes with maxAbs ~<=1 LSB is EXPECTED + sub-perceptual. A large maxAbs
       // would flag a real blend/compose bug rather than the rounding.
