@@ -130,7 +130,12 @@ typedef Variant<float, int, Vec4F, Vec3F, Vec2F, bool> RenderEffectParameter;
 // composite a premultiplied intermediate over a destination (rgb + (1-a)*dst). Together they cache an
 // alpha-blended layer (e.g. parallax) for later compositing byte-identically (premultiplied "over" is
 // associative, unlike straight "over").
-enum class BlendMode { Alpha, Additive, Max, PremultiplyInto, PremultipliedOver };
+// None disables blending entirely: the fragment REPLACES the destination. Distinct from Alpha-with-alpha=1,
+// which only *behaves* like a replace by arithmetic accident (dst = src*1 + dst*0) -- and which is therefore
+// a trap for any pass that wants to write a meaningful alpha channel, because a fragment with alpha=0 would
+// blend to nothing instead of being written. It also removes a per-fragment blend op from passes that never
+// wanted one, and sidesteps the dst*0.0 = NaN hazard on a clear:false target whose contents are undefined.
+enum class BlendMode { None, Alpha, Additive, Max, PremultiplyInto, PremultipliedOver };
 
 class Renderer {
 public:

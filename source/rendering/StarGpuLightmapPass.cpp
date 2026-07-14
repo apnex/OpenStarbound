@@ -56,6 +56,18 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
   m_renderer->setEffectParameter("applyCap", false);
 
+  // Each Jacobi iteration REPLACES its target -- it is a relaxation step, not an accumulation. It has been
+  // getting that by accident: the ambient BlendMode::Alpha with the shader's hardcoded alpha=1.0 computes
+  // dst = src*1 + dst*0, which is a replace by arithmetic coincidence. Say what we mean instead.
+  //
+  // Bit-identical (src_alpha is 1.0 on every spread fragment, so the blend was already a pure replace), and
+  // it buys two things: the 33 iterations stop paying for a per-fragment blend op they never wanted, and the
+  // alpha channel stops being load-bearing -- an alpha of 0 would previously have blended the fragment away
+  // to nothing rather than writing it. That is what makes the obstacle flag able to live there (J-2).
+  // It also removes a latent dst*0.0 = NaN hazard: lightingGpu is clear:false, so its first-frame contents
+  // are undefined, and NaN*0 is NaN.
+  m_renderer->setBlendMode(BlendMode::None);
+
   char const* lastTarget = nullptr;
   for (unsigned i = 0; i < spreadIterations; ++i) {
     char const* target = targets[i % 2];
@@ -125,9 +137,17 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
       ++drawn;
     }
     m_renderer->endGpuTimer("lighting.gpu.point.gpu_us");
-    m_renderer->setBlendMode(BlendMode::Alpha);   // restore before the compose + world draw
     pointLightsDrawn.inc(drawn);
   }
+
+  // Restore the engine's ambient blend mode for the compose and the world draw that follow.
+  //
+  // UNCONDITIONAL, and it must be: this used to sit inside the `if (!lights.empty())` above, which was only
+  // safe while the point pass was the ONLY thing that touched the blend mode -- set and restored inside the
+  // same block. The spread now sets BlendMode::None outside that block, so a lights-empty frame would leave
+  // blending DISABLED for the compose and every subsequent world draw. Restore where the state was changed
+  // from, not where one of its changers happens to end.
+  m_renderer->setBlendMode(BlendMode::Alpha);
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget

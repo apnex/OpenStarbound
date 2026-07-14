@@ -1077,7 +1077,17 @@ bool OpenGlRenderer::composite(String const& effect, String const& dstFbo, Vec2U
 
 void OpenGlRenderer::setBlendMode(BlendMode mode) {
   flushImmediatePrimitives();
+
+  // GL_BLEND is enabled once at renderer init and every mode below only swaps the equation/func -- so None,
+  // the only mode that turns blending OFF, has to turn it back on for everyone else.
+  if (mode == BlendMode::None) {
+    glDisable(GL_BLEND);
+    return;
+  }
+  glEnable(GL_BLEND);
+
   switch (mode) {
+    case BlendMode::None: break;   // unreachable, handled above; listed so the switch stays exhaustive
     case BlendMode::Alpha:    glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); break;
     case BlendMode::Additive: glBlendEquation(GL_FUNC_ADD); glBlendFunc(GL_ONE, GL_ONE); break;
     case BlendMode::Max:      glBlendEquation(GL_MAX); glBlendFunc(GL_ONE, GL_ONE); break;
