@@ -224,17 +224,27 @@ private:
     Face const& writeFace() const { return faces[write]; }
     Face const& readFace() const { return faces[doubled ? (write ^ 1) : write]; }
 
-    // Give this surface its second face. Idempotent.
-    void makeDoubled(Vec2U const& screenSize);
+    // THE SIZE ORACLE. `size()` is what is ACTUALLY allocated, right now, on every live face -- never (0,0)
+    // on a live surface. `sizeFor()` is what this surface OUGHT to be at a given screen size, and it is the
+    // only place that rule is written down. The two were previously derived by hand at four call sites, two
+    // of which silently dropped `overrideSize`.
+    Vec2U size() const;
+    Vec2U sizeFor(Vec2U const& screenSize) const;
+
+    // Give this surface its second face, mirroring the first face's RECORDED size. Idempotent. It takes no
+    // screenSize: re-deriving the size here is how the two faces could be born different.
+    void makeDoubled();
     // Flip which face is written and which is read.
     void swap();
 
-    // THE one allocation path: size `face` in this surface's configured format, attach it to a fresh
-    // framebuffer object, verify, and record what was allocated. Every face -- first or second -- comes
-    // through here, so everything that must happen on allocation happens exactly once, in one place.
-    void allocateTarget(Face& face, Vec2U const& size, char const* which);
+    // Re-specify EVERY live face's storage at `size`, in this surface's configured format, and record it.
+    // Idempotent: resizing to the size already allocated issues no GL calls at all.
+    void resize(Vec2U const& size);
+    // Clear every live face. The one consumer (startFrame) used to reach for faces[0].id / faces[1].id raw,
+    // which is what made the seal a convention rather than a contract.
+    void clearFaces();
 
-    GlFrameBuffer(String const& name, Json const& config);
+    GlFrameBuffer(String const& name, Json const& config, Vec2U const& screenSize);
     ~GlFrameBuffer();
 
     // SEALED. The resolver is the contract, so the faces must not be reachable around it -- otherwise the
@@ -243,6 +253,20 @@ private:
     // allocate, resize and clear them; nobody else does, and nobody else can.
   private:
     friend class OpenGlRenderer;
+
+    // THE SINGLE OWNER OF FACE STORAGE. Derives the format from this surface's config (hdr / alpha /
+    // multisample), specifies the colour storage at `size`, and RECORDS what it got. Nothing else may do any
+    // of those three things.
+    //
+    // They used to be done by hand in three places -- the constructor, makeAlt, and setScreenSize -- each
+    // re-deriving the same format ladder, and none of them recording the size. That is not three bugs. It is
+    // one absent owner, and it produced: a second face that could be born a different size than the first;
+    // a mod-visible textureSize uniform that read (0,0) forever; and a format ladder that any future change
+    // would have had to find all three copies of.
+    void specifyStorage(Face& face, Vec2U const& size, char const* which);
+    // Bring `face` into existence: mint the GL objects, hand the storage to specifyStorage, set the sampling
+    // parameters, attach, verify. Creation only -- it does not duplicate the storage or the format rules.
+    void allocateFace(Face& face, Vec2U const& size, char const* which);
 
     Face faces[2];
     unsigned write = 0;      // index of the face currently being drawn into

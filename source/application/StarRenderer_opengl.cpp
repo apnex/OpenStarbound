@@ -162,19 +162,24 @@ Vec2U OpenGlRenderer::screenSize() const {
 // never allocated and the failure resurfaces further down as an incomplete framebuffer -- whose message then
 // names none of the things needed to act on it: which framebuffer, what size, what format, or which call
 // actually failed.
-void OpenGlRenderer::GlFrameBuffer::allocateTarget(Face& face, Vec2U const& size, char const* which) {
+// THE SIZE RULE, written once. Every hand-rolled copy of it dropped something: two dropped overrideSize
+// entirely, and makeAlt's copy could give the second face a different size than the first.
+Vec2U OpenGlRenderer::GlFrameBuffer::sizeFor(Vec2U const& screenSize) const {
+  if (overrideSize)
+    return *overrideSize;
+  return Vec2U(screenSize[0] / sizeDiv, screenSize[1] / sizeDiv);
+}
+
+// What is ACTUALLY allocated. Both faces always agree (specifyStorage is the only writer, and resize()
+// re-specifies every live face together), so face 0 speaks for the surface.
+Vec2U OpenGlRenderer::GlFrameBuffer::size() const {
+  return faces[0].texture ? faces[0].texture->textureSize : Vec2U(0, 0);
+}
+
+void OpenGlRenderer::GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* which) {
   RefPtr<GlLoneTexture>& tex = face.texture;
-  GLuint& fboId = face.id;
   bool hdr = settingModeValue(hdrMode, config.getBool("hdrSetting", false));
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-
-  tex = make_ref<GlLoneTexture>();
-  tex->textureFiltering = TextureFiltering::Nearest;
-  tex->textureAddressing = TextureAddressing::Clamp;
-  tex->textureSize = {0, 0};
-  glGenTextures(1, &tex->textureId);
-  if (tex->textureId == 0)
-    throw RendererException::format("Framebuffer '{}' ({}): could not generate OpenGL texture", name, which);
 
   glBindTexture(target, tex->glTextureId());
 
@@ -182,58 +187,61 @@ void OpenGlRenderer::GlFrameBuffer::allocateTarget(Face& face, Vec2U const& size
   // unrelated code would otherwise be blamed on the calls below. Start from a clean slate.
   while (glGetError() != GL_NO_ERROR) {}
 
-  GLenum firstError = GL_NO_ERROR;
-  char const* firstErrorCall = nullptr;
-  auto check = [&](char const* call) {
-    if (GLenum e = glGetError(); e != GL_NO_ERROR && firstError == GL_NO_ERROR) {
-      firstError = e;
-      firstErrorCall = call;
-    }
-  };
-
   if (multisample) {
     auto internalFormat = hdr ? GL_RGBA16F : GL_RGBA8;
-
     glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, size[0], size[1], GL_TRUE);
-    check("glTexImage2DMultisample");
   } else {
     auto format = alpha ? GL_RGBA : GL_RGB;
     auto internalFormat = hdr ?
         (alpha ? GL_RGBA16F : GL_RGB16F) :
         (alpha ? GL_RGBA8 : GL_RGB8);
     auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-
-    glTexImage2D(
-      GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
-    check("glTexImage2D");
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
   }
 
-  if (!multisample) {
-    auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
-    auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
-    if (addressing == TextureAddressing::Clamp) {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    } else {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    }
-    check("glTexParameteri(wrap)");
-    if (filtering == TextureFiltering::Nearest) {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    } else {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-    check("glTexParameterf(filter)");
-  }
-
-  if (firstError != GL_NO_ERROR)
+  if (GLenum e = glGetError(); e != GL_NO_ERROR)
     throw RendererException::format(
         "Framebuffer '{}' ({}): {} failed with OpenGL error {:#06x} -- {}x{}, {}, alpha={}, {} samples",
-        name, which, firstErrorCall, (unsigned)firstError, size[0], size[1],
-        hdr ? "HDR (16F)" : "8-bit", alpha, multisample);
+        name, which, multisample ? "glTexImage2DMultisample" : "glTexImage2D", (unsigned)e,
+        size[0], size[1], hdr ? "HDR (16F)" : "8-bit", alpha, multisample);
+
+  // RECORD WHAT WE GOT. Only here, and only after the call that got it succeeded -- so size() can never
+  // report a size we did not actually allocate. The mod-visible <name>Size uniform reads this; it used to
+  // read the (0,0) it was born with, because nothing ever wrote it.
+  tex->textureSize = size;
+}
+
+void OpenGlRenderer::GlFrameBuffer::allocateFace(Face& face, Vec2U const& size, char const* which) {
+  RefPtr<GlLoneTexture>& tex = face.texture;
+  GLuint& fboId = face.id;
+  GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
+
+  tex = make_ref<GlLoneTexture>();
+  tex->textureFiltering = TextureFiltering::Nearest;
+  tex->textureAddressing = TextureAddressing::Clamp;
+  glGenTextures(1, &tex->textureId);
+  if (tex->textureId == 0)
+    throw RendererException::format("Framebuffer '{}' ({}): could not generate OpenGL texture", name, which);
+
+  // The format rules and the storage call live in ONE place. This is not it.
+  specifyStorage(face, size, which);
+
+  // Sampling parameters belong to the texture OBJECT, not to its storage: they are set once, at creation,
+  // and survive every resize. A multisample texture has none -- it cannot be sampled.
+  if (!multisample) {
+    while (glGetError() != GL_NO_ERROR) {}
+    auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
+    auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
+    GLint wrap = addressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    GLint filter = filtering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, filter);
+    if (GLenum e = glGetError(); e != GL_NO_ERROR)
+      throw RendererException::format("Framebuffer '{}' ({}): glTexParameteri failed with OpenGL error {:#06x}",
+          name, which, (unsigned)e);
+  }
 
   fboId = 0;
   glGenFramebuffers(1, &fboId);
@@ -245,12 +253,28 @@ void OpenGlRenderer::GlFrameBuffer::allocateTarget(Face& face, Vec2U const& size
 
   if (GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); status != GL_FRAMEBUFFER_COMPLETE)
     throw RendererException::format(
-        "Framebuffer '{}' ({}) is not complete: status {:#06x} -- {}x{}, {}, alpha={}, {} samples",
-        name, which, (unsigned)status, size[0], size[1],
-        hdr ? "HDR (16F)" : "8-bit", alpha, multisample);
+        "Framebuffer '{}' ({}) is not complete: status {:#06x} -- {}x{}, alpha={}, {} samples",
+        name, which, (unsigned)status, size[0], size[1], alpha, multisample);
 }
 
-OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig)
+void OpenGlRenderer::GlFrameBuffer::resize(Vec2U const& newSize) {
+  // Idempotent, and it must be: setScreenSize runs on every config reload, and re-specifying storage would
+  // otherwise discard the contents of every retained (clear:false) surface for nothing.
+  if (size() == newSize)
+    return;
+
+  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i)
+    specifyStorage(faces[i], newSize, i == 0 ? "primary" : "second face");
+}
+
+void OpenGlRenderer::GlFrameBuffer::clearFaces() {
+  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i) {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, faces[i].id);
+    glClear(GL_COLOR_BUFFER_BIT);
+  }
+}
+
+OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig, Vec2U const& screenSize)
   : config(fbConfig), name(fbName) {
   clear = config.getBool("clear",true);
 
@@ -259,19 +283,23 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& f
   alpha = config.getBool("alpha",false) || multisample;
 
   sizeDiv = config.getUInt("sizeDiv", 1);
-  Vec2U size = Vec2U(256,256);
-  if (auto oSize = config.optArray("size")) {
+  if (auto oSize = config.optArray("size"))
     overrideSize = jsonToVec2U(*oSize);
-    size = *overrideSize;
-  }
 
-  allocateTarget(faces[0], size, "primary");
+  // BORN CORRECT, at its real size. It used to be born 256x256 -- a placeholder that setScreenSize corrected
+  // moments later, so in between, the surface reported a size it did not have. There is no two-phase
+  // construction protocol left for a caller to get wrong, and no window in which size() lies.
+  allocateFace(faces[0], sizeFor(screenSize), "primary");
 }
 
-void OpenGlRenderer::GlFrameBuffer::makeDoubled(Vec2U const& screenSize) {
+void OpenGlRenderer::GlFrameBuffer::makeDoubled() {
   if (doubled)
     return;   // idempotent: a surface has at most two faces
-  allocateTarget(faces[1], overrideSize ? *overrideSize : (screenSize / sizeDiv), "second face");
+
+  // MIRROR the first face's RECORDED size. It used to re-derive the size from screenSize/sizeDiv -- which is
+  // how a doubled surface could be born with two faces of DIFFERENT sizes: the first at its overrideSize (or
+  // at its 256x256 placeholder), the second at whatever the screen happened to be.
+  allocateFace(faces[1], size(), "second face");
   doubled = true;
 }
 
@@ -300,9 +328,9 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     config = config.set("multisample", m_multiSampling);
     config = config.set("hdrSetting", m_hdrSetting);
     Logger::info("Creating framebuffer {}", pair.first);
-    auto buf = make_ref<GlFrameBuffer>(pair.first, config);
+    auto buf = make_ref<GlFrameBuffer>(pair.first, config, m_screenSize);
     if (config.getBool("double",false)) {
-      buf->makeDoubled(m_screenSize);
+      buf->makeDoubled();
     }
     m_frameBuffers[pair.first] = buf;
 
@@ -605,7 +633,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
         // Allocating a framebuffer MID-FRAME hitches. Say so, and fix it in the config rather than here.
         Logger::warn("Effect '{}' reads the framebuffer '{}' that it writes, but that framebuffer is not "
                      "declared \"double\":true -- giving it a second face now, mid-frame.", name, *outFrameBufferId);
-        buf->makeDoubled(m_screenSize);
+        buf->makeDoubled();
       }
       buf->swap();
     }
@@ -751,56 +779,25 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
   glViewport(0, 0, m_screenSize[0], m_screenSize[1]);
   glUniform2f(m_screenSizeUniform, m_screenSize[0], m_screenSize[1]);
 
-  for (auto& frameBuffer : m_frameBuffers) {
-    if (frameBuffer.second->overrideSize) {
-      continue; // don't resize this one
-    }
-    unsigned sizeDiv = frameBuffer.second->sizeDiv;
-    bool hdr = settingModeValue(frameBuffer.second->hdrMode,m_hdrSetting);
-    if (unsigned multisample = frameBuffer.second->multisample) {
-      auto internalFormat =  hdr ? GL_RGBA16F : GL_RGBA8;
-      
-      for (unsigned f = 0; f < (frameBuffer.second->doubled ? 2u : 1u); ++f) {
-        auto& face = frameBuffer.second->faces[f];
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, face.texture->glTextureId());
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, GL_TRUE);
-        face.texture->textureSize = Vec2U(m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv);
-      }
-    } else {
-      auto format = frameBuffer.second->alpha ? GL_RGBA : GL_RGB;
-      auto internalFormat =  hdr ? 
-          (frameBuffer.second->alpha ? GL_RGBA16F : GL_RGB16F) :
-          (frameBuffer.second->alpha ? GL_RGBA8 : GL_RGB8);
-      auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-      
-      for (unsigned f = 0; f < (frameBuffer.second->doubled ? 2u : 1u); ++f) {
-        auto& face = frameBuffer.second->faces[f];
-        glBindTexture(GL_TEXTURE_2D, face.texture->glTextureId());
-        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, 0, format, type, NULL);
-        // Record what was allocated. Screen-sized surfaces otherwise keep their construction-time {0,0}
-        // forever, which is why the mod-visible textureSize uniform read (0,0).
-        face.texture->textureSize = Vec2U(m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv);
-      }
-    }
-  }
+  // The whole resize is now one line, because the surface owns its own size rule and its own storage.
+  // This was thirty lines: the format ladder written out twice (multisample and not), the size rule
+  // (screenSize / sizeDiv) written out four times, textureSize recorded twice, and an `overrideSize` special
+  // case that had to be skipped by hand. sizeFor() already knows about overrideSize, and resize() is
+  // idempotent -- so an override surface asks for the size it already has and issues no GL calls at all.
+  for (auto& frameBuffer : m_frameBuffers)
+    frameBuffer.second->resize(frameBuffer.second->sizeFor(m_screenSize));
 }
 
 void OpenGlRenderer::startFrame() {
   if (m_scissorRect)
     glDisable(GL_SCISSOR_TEST);
   
-  for (auto& frameBuffer : m_frameBuffers) {
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->faces[0].id);
+  // The surface clears its own faces. This was the last consumer reaching around the resolver for
+  // faces[0].id / faces[1].id, and it is why the seal was a convention rather than a contract -- the second
+  // face was handled by a copy-pasted block that a third face, or a forgetful edit, would simply have missed.
+  for (auto& frameBuffer : m_frameBuffers)
     if (frameBuffer.second->clear)
-      glClear(GL_COLOR_BUFFER_BIT);
-    
-    if (frameBuffer.second->doubled) {
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->faces[1].id);
-      if (frameBuffer.second->clear)
-        glClear(GL_COLOR_BUFFER_BIT);
-    }
-    
-  }
+      frameBuffer.second->clearFaces();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
