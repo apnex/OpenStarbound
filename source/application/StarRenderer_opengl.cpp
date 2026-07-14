@@ -410,6 +410,20 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   // surfaces have no other way to learn this -- their refresh keys (size/camera/counter) are unchanged
   // across the realloc -- so bump the generation and let them invalidate. Both setMainHDR and
   // setMultiSampling land here, and ClientApplication polls both client options every frame.
+  // THE PASS LETS GO FIRST. m_pass.target is a RefPtr, so a pass still holding one of these across the
+  // rebuild would keep its GlFrameBuffer -- and therefore its FBO -- alive after the registry has forgotten
+  // it. The surface is not freed, it is ORPHANED, and the pass goes on believing a dead surface is bound. Its
+  // identity-keyed bind cache would then match that corpse and skip a real rebind.
+  //
+  // This is the RB-5 defect in the last seat that had it. rebindBorrows() told the SAMPLERS the targets were
+  // rebuilt, and the generation counter tells the RETAINED SURFACES -- and nobody told the PASS.
+  //
+  // LATENT, not live, and it is worth being exact about why: ClientApplication polls the AA and HDR options
+  // (StarClientApplication.cpp:503-504) immediately after the previous frame ended with
+  // switchEffectConfig("interface"), and "interface" declares no frameBuffer -- so the pass is on the screen
+  // holding nothing at the one moment this runs. Correctness by frame ordering. Nothing states that ordering,
+  // nothing enforces it, and it is invisible to whoever next moves the poll or gives "interface" a target.
+  m_pass.target.reset();
   m_targets.destroyAll();
 
   for (auto& pair : config.getObject("frameBuffers", {})) {
