@@ -897,7 +897,21 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   auto outFrameBufferId = effect.config.optString("frameBuffer");
   if (outFrameBufferId) {
     auto buf = m_targets.get(*outFrameBufferId);
-    effectScreenSize = m_screenSize / (buf->sizeDiv);
+    // ASK THE SURFACE HOW BIG IT IS. This was the last hand-rolled copy of the size rule -- `m_screenSize /
+    // buf->sizeDiv` -- which F1 collapsed into GlFrameBuffer everywhere except here, because switchEffectConfig
+    // was not one of the sites F1 was able to see.
+    //
+    // It silently dropped overrideSize. lightingGpu is 512x512 and lightingGpuUpscaled 2048x2048, both with
+    // sizeDiv 1, so this handed those effects the SCREEN size as their `screenSize` uniform -- while bindTarget,
+    // three lines below, sets the viewport from the surface's ACTUAL allocated size. The uniform and the
+    // viewport disagreed, and every full-screen pass maps vertexPosition through screenSize and depends on them
+    // agreeing.
+    //
+    // In-tree it was covered: every consumer of a sized target calls setRenderTarget(id, size) immediately
+    // after, which rewrites the uniform before anything is drawn. It was live for a mod effect that declared
+    // `frameBuffer` on a sized surface and simply drew. size() is the same source bindTarget uses for the
+    // viewport, so the two now come from one place and cannot drift apart.
+    effectScreenSize = buf->size();
     if (effect.doubleBuffered) {
       if (!buf->doubled) {
         // Allocating a framebuffer MID-FRAME hitches. Say so, and fix it in the config rather than here.
