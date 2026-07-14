@@ -34,6 +34,15 @@ void OpenGlRenderer::setVboOrphan(bool enabled) {
 
 size_t const MultiTextureCount = 4;
 
+// TEMPORARY REFACTOR SCAFFOLD (see the header). Default TRUE: the new path is what ships; the old one exists
+// only so the A/B gate can prove they are the same frame.
+static std::atomic<bool> g_passRefactor{true};
+
+void setPassRefactor(bool enabled) {
+  g_passRefactor.store(enabled, std::memory_order_relaxed);
+}
+
+
 char const* DefaultVertexShader = R"SHADER(
 #version 150
 
@@ -787,19 +796,40 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
   }
   auto buf = *bufPtr;
 
-  // (Re)allocate the target's color texture when a non-zero size differs from the current one.
-  // Off-screen lighting targets are lightmap-sized (small, view-dependent), not screen-sized.
-  if (size[0] != 0 && size[1] != 0 && buf->writeFace().texture->textureSize != size) {
-    bool hdr = settingModeValue(buf->hdrMode, buf->config.getBool("hdrSetting", false));
-    auto format = buf->alpha ? GL_RGBA : GL_RGB;
-    auto internalFormat = hdr ? (buf->alpha ? GL_RGBA16F : GL_RGB16F) : (buf->alpha ? GL_RGBA8 : GL_RGB8);
-    auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-    glBindTexture(GL_TEXTURE_2D, buf->writeFace().texture->textureId);
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
-    buf->writeFace().texture->textureSize = size;
+  // THE TARGET RESIZES ITSELF. This block used to derive the format ladder by hand and re-specify the storage
+  // itself -- a FOURTH copy of rules that F1 was supposed to have collapsed to one. F1 could not see it: F1
+  // was authored on a branch cut from upstream, and setRenderTarget is OURS, so it does not exist there.
+  //
+  // I wrote, in F1's own commit message, "the next person who adds a fourth resize path will forget one of
+  // them. So will I." I had already done it, in a function F1 was structurally unable to look at.
+  //
+  // It also only ever re-specified writeFace(), so a DOUBLED surface resized here would have been left with
+  // two faces of different sizes. resize() re-specifies every live face. Nothing in-tree is doubled today, so
+  // this is bit-identical -- but it is bit-identical by accident, and now it is correct by construction.
+  if (size[0] != 0 && size[1] != 0) {
+    if (g_passRefactor.load(std::memory_order_relaxed)) {
+      buf->resize(size);   // idempotent: no GL calls at all if it is already that size
+    } else {
+      // THE OLD PATH, verbatim, for the A/B. Deleted with the scaffold.
+      if (buf->writeFace().texture->textureSize != size) {
+        bool hdr = settingModeValue(buf->hdrMode, buf->config.getBool("hdrSetting", false));
+        auto format = buf->alpha ? GL_RGBA : GL_RGB;
+        auto internalFormat = hdr ? (buf->alpha ? GL_RGBA16F : GL_RGB16F) : (buf->alpha ? GL_RGBA8 : GL_RGB8);
+        auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+        glBindTexture(GL_TEXTURE_2D, buf->writeFace().texture->textureId);
+        glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
+        buf->writeFace().texture->textureSize = size;
+      }
+    }
   }
 
   bindTarget(buf);
+
+  // THIS IS NOT REDUNDANT WITH bindTarget, and I nearly deleted it as such. bindTarget early-outs when the
+  // target is ALREADY BOUND -- and it early-outs BEFORE setting the viewport. So a caller that re-targets the
+  // SAME surface at a NEW size (which the lighting passes do every frame) would keep the previous viewport.
+  // The early-out is skipping work it should not skip; the honest fix is to key the bind cache on (target,
+  // size) as well as identity, and that is a behaviour change for F2b. Until then this line covers for it.
   Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
   glViewport(0, 0, vp[0], vp[1]);
   if (m_pass.screenSizeUniform != -1)
@@ -1974,14 +2004,6 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
   );
 
   m_gpuTimer.end("render.frame.blit.gpu_us");
-}
-
-// TEMPORARY REFACTOR SCAFFOLD (see the header). Default TRUE: the new path is what ships; the old one exists
-// only so the A/B gate can prove they are the same frame.
-static std::atomic<bool> g_passRefactor{true};
-
-void setPassRefactor(bool enabled) {
-  g_passRefactor.store(enabled, std::memory_order_relaxed);
 }
 
 // THE OLD PATH, kept verbatim for the A/B and deleted with the last F2a step. Do not "improve" it: its whole
