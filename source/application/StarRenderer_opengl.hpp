@@ -333,7 +333,6 @@ private:
 
   RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
   void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
-  void switchGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer);
 
   Vec2U m_screenSize;
 
@@ -368,6 +367,15 @@ private:
     // THE COUPLED PAIR. This is the whole reason the component exists.
     Effect* effect = nullptr;
     RefPtr<GlFrameBuffer> target;
+
+    // Make `target` the surface that subsequent draws land on: bind its write face, set the viewport to that
+    // face, and tell the BOUND PROGRAM how big it now is.
+    //
+    // Read those three clauses again. It binds a TARGET and it writes an EFFECT-PROGRAM UNIFORM. That single
+    // fact is the entire argument for this component: the two halves of the GL state machine cannot be split,
+    // because this operation is both of them at once. It takes screenSize by value and reaches for nothing
+    // else -- a Pass depends downward on targets and on effects, and on nothing above it.
+    void bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize);
   };
   GlPass m_pass;
 

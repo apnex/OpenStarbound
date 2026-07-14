@@ -723,7 +723,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
       }
       buf->swap();
     }
-    switchGlFrameBuffer(buf);
+    m_pass.bindTarget(buf, m_screenSize);
   } else {
     m_pass.target.reset();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -797,7 +797,7 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
     buf->writeFace().texture->textureSize = size;
   }
 
-  switchGlFrameBuffer(buf);
+  m_pass.bindTarget(buf, m_screenSize);
   Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
   glViewport(0, 0, vp[0], vp[1]);
   if (m_pass.screenSizeUniform != -1)
@@ -1974,24 +1974,32 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
   m_gpuTimer.end("render.frame.blit.gpu_us");
 }
 
-void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer) {
-  if (m_pass.target == frameBuffer && !frameBuffer->justSwapped)
+void OpenGlRenderer::GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize) {
+  // justSwapped defeats this early-out: a swap changes which FACE is the write face without changing the
+  // TARGET, so "already bound" would otherwise skip the rebind and the pass would keep drawing into the face
+  // it just stopped writing. (The honest fix is a (target, face) bind key, which retires this bool -- but
+  // that is a behaviour change and it belongs in F2b, with its own gate. It stays, verbatim, for now.)
+  if (target == newTarget && !newTarget->justSwapped)
     return;
 
-  frameBuffer->justSwapped = false;
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->writeFace().id);
-  m_pass.target = frameBuffer;
+  newTarget->justSwapped = false;
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, newTarget->writeFace().id);
+  target = newTarget;
 
   // THE bind path, so this happens here and cannot be forgotten anywhere else. Nothing used to set the
   // viewport when an effect switched to a framebuffer, so an effect declaring `frameBuffer` together with a
   // `sizeDiv` drew into a smaller surface through a stale full-screen viewport -- silently, and only for
   // mods, since nothing in-tree ships a sizeDiv surface.
-  Vec2U vp = frameBuffer->writeFace().texture->glTextureSize();
+  Vec2U vp = newTarget->writeFace().texture->glTextureSize();
   if (vp[0] == 0 || vp[1] == 0)
-    vp = m_screenSize / frameBuffer->sizeDiv;
+    vp = screenSize / newTarget->sizeDiv;
   glViewport(0, 0, vp[0], vp[1]);
-  if (m_pass.screenSizeUniform != -1)
-    glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
+
+  // AND HERE IS THE COUPLING, in one line: a TARGET operation writing an EFFECT-PROGRAM uniform. There is no
+  // seam to cut between "targets" and "effects" -- this statement is both of them, and any split that tried
+  // to put them in different components would need each to reach into the other's privates.
+  if (screenSizeUniform != -1)
+    glUniform2f(screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
 GLuint OpenGlRenderer::Effect::getAttribute(String const& name) {
