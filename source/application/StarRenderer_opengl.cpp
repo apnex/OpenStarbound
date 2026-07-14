@@ -512,44 +512,51 @@ Maybe<VariantTypeIndex> OpenGlRenderer::GlEffects::getScriptableType(String cons
 // effect and making it the one you are drawing with are two different acts, and for as long as they were one
 // function the second was an unannounced side effect of the first.
 OpenGlRenderer::Effect& OpenGlRenderer::GlEffects::load(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
-  if (auto effect = m_byName.ptr(name)) {
-    Logger::info("Reloading OpenGL effect {}", name);
-    glDeleteProgram(effect->program);
-    m_byName.erase(name);
-  }
-
   GLint status = 0;
   char logBuffer[1024];
 
-  auto compileShader = [&](GLenum type, String const& name) -> GLuint {
+  // The second parameter is a LABEL and the third is the SOURCE. It used to be one parameter doing three
+  // jobs -- a key into `shaders`, the source, and the error label -- and that is how the fallback below came
+  // to compile nothing at all.
+  auto compileStage = [&](GLenum type, char const* label, String const& source) -> GLuint {
+    if (source.empty())
+      return 0;   // this stage was not supplied; an effect may legitimately provide only one
+
     GLuint shader = glCreateShader(type);
-    auto* source = shaders.ptr(name);
-    if (!source)
-      return 0;
-    char const* sourcePtr = source->utf8Ptr();
+    char const* sourcePtr = source.utf8Ptr();
     glShaderSource(shader, 1, &sourcePtr, NULL);
     glCompileShader(shader);
 
     glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (!status) {
       glGetShaderInfoLog(shader, sizeof(logBuffer), NULL, logBuffer);
-      throw RendererException(strf("Failed to compile {} shader: {}\n", name, logBuffer));
+      glDeleteShader(shader);   // the old lambda threw straight past this and leaked the handle
+      throw RendererException(strf("Failed to compile {} shader of effect '{}': {}\n", label, name, logBuffer));
     }
 
     return shader;
   };
 
+  auto sourceOf = [&](char const* key) -> String {
+    auto* s = shaders.ptr(key);
+    return s ? *s : String();
+  };
+
   GLuint vertexShader = 0, fragmentShader = 0;
   try {
-    vertexShader = compileShader(GL_VERTEX_SHADER, "vertex");
-    fragmentShader = compileShader(GL_FRAGMENT_SHADER, "fragment");
+    vertexShader = compileStage(GL_VERTEX_SHADER, "vertex", sourceOf("vertex"));
+    fragmentShader = compileStage(GL_FRAGMENT_SHADER, "fragment", sourceOf("fragment"));
   }
   catch (RendererException const& e) {
-    Logger::error("Shader compile error, using default: {}", e.what());
+    // "using default" NOW USES THE DEFAULT. It used to pass DefaultVertexShader -- a char const* holding raw
+    // GLSL -- as the lambda's `name`, which was a KEY into `shaders`. The lookup missed, the lambda returned
+    // 0, nothing was attached, and this message announced a fallback that had not happened. Whether the empty
+    // program then linked or threw was left to the driver.
+    Logger::error("Shader compile error in effect '{}', falling back to the built-in default: {}", name, e.what());
     if (vertexShader) glDeleteShader(vertexShader);
     if (fragmentShader) glDeleteShader(fragmentShader);
-    vertexShader = compileShader(GL_VERTEX_SHADER, DefaultVertexShader);
-    fragmentShader = compileShader(GL_FRAGMENT_SHADER, DefaultFragmentShader);
+    vertexShader = compileStage(GL_VERTEX_SHADER, "default vertex", DefaultVertexShader);
+    fragmentShader = compileStage(GL_FRAGMENT_SHADER, "default fragment", DefaultFragmentShader);
   }
 
   GLuint program = glCreateProgram();
@@ -569,7 +576,22 @@ OpenGlRenderer::Effect& OpenGlRenderer::GlEffects::load(String const& name, Json
   if (!status) {
     glGetProgramInfoLog(program, sizeof(logBuffer), NULL, logBuffer);
     glDeleteProgram(program);
-    throw RendererException(strf("Failed to link program: {}\n", logBuffer));
+    throw RendererException(strf("Failed to link program for effect '{}': {}\n", name, logBuffer));
+  }
+
+  // NOTHING IS DESTROYED UNTIL THE NEW PROGRAM HAS LINKED. Every throw above leaves the registry exactly as
+  // it was, so a failed reload costs an error in the log and nothing else -- the old effect keeps rendering.
+  //
+  // The delete and the erase used to run FIRST, before a single line of the new program had been compiled. A
+  // link failure then left the effect PERMANENTLY ABSENT: its program deleted, its entry gone, and
+  // switchEffectConfig(name) returning false forever after -- a return value that StarClientApplication
+  // IGNORES for both "world" and "interface", so those layers would silently keep drawing under whatever
+  // effect happened to be bound last. One bad shader in a mod, and the game renders wrong rather than saying
+  // so.
+  if (auto existing = m_byName.ptr(name)) {
+    Logger::info("Reloading OpenGL effect {}", name);
+    glDeleteProgram(existing->program);
+    m_byName.erase(name);
   }
 
   auto& effect = m_byName.emplace(name, Effect()).first->second;
