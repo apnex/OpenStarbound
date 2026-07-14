@@ -52,6 +52,9 @@ private:
   // instead of rebuilding the identical 144-byte VBO through the immediate buffer on each of the
   // ~spreadIterations+1 draws. Byte-identical: same VBO contents, same draw order/target/effect.
   RenderBufferPtr m_fullQuadBuffer;
+  // Emission repacked as RGBA16F with the obstacle flag in alpha (J-2). Kept as a member so the per-recompute
+  // repack reuses its storage instead of reallocating a ~1MB buffer at the lighting cadence.
+  List<uint16_t> m_emissionRGBA;
   Vec2U m_fullQuadSize;
 };
 

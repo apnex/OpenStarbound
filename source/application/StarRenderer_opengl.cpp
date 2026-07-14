@@ -821,7 +821,7 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
   }
 }
 
-void OpenGlRenderer::setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) {
+void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) {
   auto ptr = m_currentEffect->textures.ptr(textureName);
   if (!ptr || size[0] == 0 || size[1] == 0)
     return;
@@ -848,15 +848,20 @@ void OpenGlRenderer::setEffectTextureHalfRGB(String const& textureName, Vec2U si
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
   }
-  // RGB16F storage + GL_HALF_FLOAT source: half the bytes of RGB_F, no precision loss (FBOs are 16F).
+  // 16F storage + GL_HALF_FLOAT source: half the bytes of the float upload, no precision loss (the FBOs are
+  // 16F anyway). channels==4 packs a fourth component -- used to carry the obstacle flag alongside emission,
+  // so the spread shader reads light and obstacle in ONE tap instead of two samplers.
   // Same-size re-upload goes through TexSubImage into the EXISTING storage: the old unconditional
   // glTexImage2D re-spec allocated a fresh driver buffer object per upload at the lighting cadence
   // (measured ~30% of the kernel texture cluster, #127). Size changes (zoom/resolution) still re-spec.
-  if (!fresh && ptr->textureValue->textureSize == size) {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], GL_RGB, GL_HALF_FLOAT, halfData);
+  GLenum const format = channels == 4 ? GL_RGBA : GL_RGB;
+  GLint  const internalFormat = channels == 4 ? GL_RGBA16F : GL_RGB16F;
+  if (!fresh && ptr->textureValue->textureSize == size && ptr->textureValue->uploadChannels == channels) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], format, GL_HALF_FLOAT, halfData);
   } else {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, size[0], size[1], 0, GL_RGB, GL_HALF_FLOAT, halfData);
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, GL_HALF_FLOAT, halfData);
     ptr->textureValue->textureSize = size;
+    ptr->textureValue->uploadChannels = channels;
   }
 
   if (ptr->textureSizeUniform != -1) {

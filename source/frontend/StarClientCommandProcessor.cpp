@@ -752,7 +752,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off] | gridbucket <n>";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off] | gridbucket <n> | spreadoracle [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -837,6 +837,17 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       return "usage: /lighting upscale <n>=1";
     cfg->set("lightingWorldUpscale", *f);
     return strf("lighting worldUpscale={}", *f);
+  }
+  if (args.at(0) == "spreadoracle") {
+    // J-2 lighting bit-identity oracle (default off). When on, the Jacobi spread runs TWICE per recompute in
+    // the SAME frame on the SAME inputs -- once reading each neighbour's obstacle bit from its own sampler
+    // (the original 17-taps-per-texel path), once from the alpha the spread now carries in lightState (the
+    // 9-tap path) -- and pixel-compares them, logging [spreadoracle] MATCH/DIFF. In-frame by construction, so
+    // it is immune to the world divergence that makes cross-run frame hashes useless. Costs a whole extra
+    // spread solve: validation only, never left on.
+    if (args.size() >= 2)
+      cfg->set("lightingSpreadOracle", args.at(1) == "on");
+    return strf("lighting spreadOracle={}", cfg->get("lightingSpreadOracle", false).toBool());
   }
   if (args.at(0) == "gathercache") {
     // A1/A2: reuse the per-frame-invariant tile gather across frames (cache hit on a still camera /

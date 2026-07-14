@@ -1,6 +1,7 @@
 #include "StarGpuLightmapPass.hpp"
 #include "StarTelemetry.hpp"
 #include "StarMathCommon.hpp"
+#include "StarLogging.hpp"
 
 namespace Star {
 
@@ -44,44 +45,107 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   };
 
   // --- Spread: K Jacobi iterations, NO cap (point lighting is blended on top before the cap). ---
-  // Upload emission as RGB16F from the lighting-thread-converted half buffer (half the per-frame
-  // transfer); fall back to the RGB_F upload if the half buffer is absent/mismatched.
+  //
+  // Emission goes up as RGBA16F, not RGB16F: the alpha carries this cell's OBSTACLE FLAG (1 = obstacle,
+  // 0 = air). The spread shader writes that flag straight back out in its own alpha, so from iteration 1
+  // onward a neighbour's light AND its obstacle-ness arrive in a SINGLE lightState tap. That is the whole
+  // J-2 lever: the obstacle field is invariant across the 33 iterations, yet the old shader re-fetched all
+  // eight neighbours' obstacle bits on every one of them -- 8 of 17 taps per texel spent re-reading a
+  // constant, 33 times over.
+  //
+  // Iteration 0 is why the flag must live in EMISSION and not just in the lightmap: it aliases lightState to
+  // the emission texture (no second upload), so if emission had no alpha, every cell would read as an
+  // obstacle on the first pass.
+  static uint16_t const HalfZero = 0x0000, HalfOne = 0x3C00;   // exact in fp16; 0/1 survive the round-trip
+  size_t const texels = (size_t)size[0] * size[1];
+  bool const packedEmission = emissionHalf.size() == texels * 3 && obstacleR8.size() == texels;
+
   m_renderer->beginGpuTimer("lighting.gpu.spread.gpu_us");
-  if (emissionHalf.size() == (size_t)size[0] * size[1] * 3)
-    m_renderer->setEffectTextureHalfRGB("emission", size, emissionHalf.ptr());
-  else
+  if (packedEmission) {
+    m_emissionRGBA.resize(texels * 4);
+    for (size_t i = 0; i < texels; ++i) {
+      m_emissionRGBA[i * 4 + 0] = emissionHalf[i * 3 + 0];
+      m_emissionRGBA[i * 4 + 1] = emissionHalf[i * 3 + 1];
+      m_emissionRGBA[i * 4 + 2] = emissionHalf[i * 3 + 2];
+      // Reproduce the shader's own test exactly: it did `texture(obstacle, uv).r > 0.5` on an R8 texture,
+      // i.e. byte/255 > 0.5.
+      m_emissionRGBA[i * 4 + 3] = (obstacleR8[i] / 255.0f > 0.5f) ? HalfOne : HalfZero;
+    }
+    m_renderer->setEffectTextureHalf("emission", size, m_emissionRGBA.ptr(), 4);
+  } else {
     m_renderer->setEffectTexture("emission", emission);
-  uploadObstacle();
+  }
+  uploadObstacle();   // still needed by the point pass, and by the oracle's reference leg
   m_renderer->setEffectParameter("dropoffAir", 1.0f / params.spreadMaxAir);
   m_renderer->setEffectParameter("dropoffObstacle", 1.0f / params.spreadMaxObstacle);
   m_renderer->setEffectParameter("applyCap", false);
 
-  // Each Jacobi iteration REPLACES its target -- it is a relaxation step, not an accumulation. It has been
-  // getting that by accident: the ambient BlendMode::Alpha with the shader's hardcoded alpha=1.0 computes
-  // dst = src*1 + dst*0, which is a replace by arithmetic coincidence. Say what we mean instead.
-  //
-  // Bit-identical (src_alpha is 1.0 on every spread fragment, so the blend was already a pure replace), and
-  // it buys two things: the 33 iterations stop paying for a per-fragment blend op they never wanted, and the
-  // alpha channel stops being load-bearing -- an alpha of 0 would previously have blended the fragment away
-  // to nothing rather than writing it. That is what makes the obstacle flag able to live there (J-2).
-  // It also removes a latent dst*0.0 = NaN hazard: lightingGpu is clear:false, so its first-frame contents
-  // are undefined, and NaN*0 is NaN.
+  // Each Jacobi iteration REPLACES its target -- it is a relaxation step, not an accumulation. It used to get
+  // that by accident (ambient BlendMode::Alpha + a hardcoded alpha of 1.0 computes dst = src*1 + dst*0). Now
+  // stated. This is also what makes the alpha channel usable at all: under alpha blending, a fragment with
+  // alpha=0 blends away to NOTHING instead of being written, so a 0/1 flag in alpha would silently delete
+  // every air cell. It further removes a latent dst*0.0 = NaN hazard on the clear:false target.
   m_renderer->setBlendMode(BlendMode::None);
 
+  // One spread solve. `fromAlpha` selects where a neighbour's obstacle-ness comes from: its lightState alpha
+  // (the J-2 path, 9 taps/texel) or the separate obstacle sampler (the original, 17 taps). Returns the target
+  // holding the result. Only `fromAlpha` differs between the two -- everything else is shared, so the oracle
+  // below cannot accidentally compare two different algorithms.
+  auto runSpread = [&](bool fromAlpha) -> char const* {
+    m_renderer->setEffectParameter("obstacleInAlpha", fromAlpha);
+    char const* last = nullptr;
+    for (unsigned i = 0; i < spreadIterations; ++i) {
+      char const* target = targets[i % 2];
+      m_renderer->setRenderTarget(String(target), size);
+      if (i == 0)
+        // iteration-0 light state == emission: alias the already-uploaded emission texture into the
+        // lightState sampler instead of uploading the same grid a second time (per-frame upload cut).
+        m_renderer->setEffectTextureAlias("lightState", "emission");
+      else
+        m_renderer->setEffectTextureFromTarget("lightState", last);
+      m_renderer->renderBuffer(m_fullQuadBuffer);
+      last = target;
+    }
+    spreadPasses.inc(spreadIterations);
+    return last;
+  };
+
+  // THE LIGHTING BIT-IDENTITY ORACLE (/lighting spreadoracle on; default off, devOnly surface).
+  //
+  // Run the spread BOTH ways in the SAME frame, on the SAME inputs, and pixel-compare. In-frame is the whole
+  // point: the harness's cross-run frame hash is worthless here because the unpaused load phase lets the sim
+  // diverge, and lightingGpuShadowCompare (GPU vs CPU reference) is permanently red for a known unrelated
+  // reason -- it can detect a change but cannot certify identity. This can.
+  //
+  // It exists because J-2's identity is NOT provable by argument: setEffectTextureFromTarget binds a
+  // framebuffer's texture object directly and never applies the effect's declared filtering, so `lightState`
+  // samples with lightingGpu's LINEAR filter even though lightingSpread.config says "nearest". A linear tap
+  // that lands fractionally off a texel centre would interpolate the alpha flag (0.5 between obstacle and
+  // air) where the genuinely-nearest obstacle sampler reads a hard 0 or 1. Whether the coordinates are exact
+  // is an empirical question, and this is what answers it.
+  bool const oracle = packedEmission && m_renderer->hasFrameBuffer("lightingRef");
   char const* lastTarget = nullptr;
-  for (unsigned i = 0; i < spreadIterations; ++i) {
-    char const* target = targets[i % 2];
-    m_renderer->setRenderTarget(String(target), size);
-    if (i == 0)
-      // iteration-0 light state == emission: alias the already-uploaded emission texture into the
-      // lightState sampler instead of uploading the same grid a second time (per-frame upload cut).
-      m_renderer->setEffectTextureAlias("lightState", "emission");
+  if (oracle) {
+    char const* refResult = runSpread(false);   // reference: obstacle from its own sampler
+    // Park the reference result where the second solve cannot overwrite it (the solve ping-pongs across both
+    // lighting targets). A passthrough with no cap/scale/tonemap and preserveAlpha is an exact 1:1 copy.
+    m_renderer->composite("lightingPassthrough", "lightingRef", size, "inputTexture", refResult,
+      {{"applyCap", false}, {"brightnessLimit", 1.0f}, {"brightnessScale", 1.0f},
+       {"tonemap", false}, {"preserveAlpha", true}});
+    m_renderer->switchEffectConfig("lightingSpread");
+
+    lastTarget = runSpread(true);               // candidate: obstacle from lightState alpha
+
+    float maxAbsDiff = 0.0f;
+    auto d = m_renderer->compareFrameBuffers("lightingRef", lastTarget, &maxAbsDiff);
+    if (d.first == 0)
+      Logger::info("[spreadoracle] MATCH (0 diff) iterations={} size={}x{}", spreadIterations, size[0], size[1]);
     else
-      m_renderer->setEffectTextureFromTarget("lightState", lastTarget);
-    m_renderer->renderBuffer(m_fullQuadBuffer);
-    lastTarget = target;
+      Logger::info("[spreadoracle] DIFF={} maxAbs={:.6f} first=({},{}) iterations={} size={}x{}",
+          d.first, maxAbsDiff, d.second[0], d.second[1], spreadIterations, size[0], size[1]);
+  } else {
+    lastTarget = runSpread(packedEmission);
   }
-  spreadPasses.inc(spreadIterations);
   m_renderer->endGpuTimer("lighting.gpu.spread.gpu_us");
 
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---

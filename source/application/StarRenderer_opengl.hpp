@@ -58,7 +58,7 @@ public:
                  List<pair<String, RenderEffectParameter>> const& params) override;
   void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
   void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
-  void setEffectTextureHalfRGB(String const& textureName, Vec2U size, uint16_t const* halfData) override;
+  void setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) override;
   void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) override;
   Image readFrameBuffer(String const& frameBufferId) override;
   void setBlendMode(BlendMode mode) override;
@@ -147,6 +147,9 @@ private:
 
     GLuint textureId = 0;
     Vec2U textureSize;
+    // Channel count of the last half-float upload. Without it, switching a texture from 3 to 4 channels at the
+    // same size would TexSubImage RGBA data into RGB storage -- a silent corruption, not an error.
+    unsigned uploadChannels = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Nearest;
   };

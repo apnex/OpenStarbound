@@ -15,6 +15,11 @@ uniform sampler2D obstacle;     // R8, obstacle in R channel (1.0 obstacle / 0 a
 uniform vec2 lightStateSize;    // texel dimensions of the lightmap grid
 uniform float dropoffAir;       // 1 / spreadMaxAir
 uniform float dropoffObstacle;  // 1 / spreadMaxObstacle
+// J-2: when true, each cell's obstacle flag rides in the ALPHA of `emission` and of `lightState` (which the
+// spread writes), so a neighbour's light AND its obstacle-ness arrive in ONE tap. When false, the obstacle is
+// read from its own sampler -- the original path, kept only so the oracle can run both in the same frame and
+// prove they agree. Delete the false branch (and the `obstacle` sampler) once it has.
+uniform bool obstacleInAlpha;
 uniform bool applyCap;          // final pass only
 uniform float brightnessLimit;
 
@@ -34,7 +39,8 @@ vec3 coloredSpread(vec3 source, vec3 dest, float drop) {
 
 void main() {
   vec2 texel = 1.0 / lightStateSize;
-  vec3 value = texture(emission, fragTexCoord).rgb;
+  vec4 e = texture(emission, fragTexCoord);
+  vec3 value = e.rgb;
 
   // 8-connected neighbours; dropoff keyed on the SOURCE (neighbour) cell's obstacle flag.
   for (int dx = -1; dx <= 1; ++dx) {
@@ -45,8 +51,9 @@ void main() {
       // Out-of-grid neighbours contribute nothing (clamp addressing would re-read the edge; guard).
       if (nuv.x < 0.0 || nuv.y < 0.0 || nuv.x > 1.0 || nuv.y > 1.0)
         continue;
-      vec3 src = texture(lightState, nuv).rgb;
-      bool obstacleCell = texture(obstacle, nuv).r > 0.5;
+      vec4 s = texture(lightState, nuv);
+      vec3 src = s.rgb;
+      bool obstacleCell = obstacleInAlpha ? (s.a > 0.5) : (texture(obstacle, nuv).r > 0.5);
       float dropoff = obstacleCell ? dropoffObstacle : dropoffAir;
       if (dx != 0 && dy != 0)
         dropoff *= SQRT2;
@@ -60,5 +67,8 @@ void main() {
       value *= brightnessLimit / intensity;
   }
 
-  fragColor = vec4(value, 1.0);
+  // Carry THIS cell's obstacle flag forward in alpha so the next iteration reads it with the light. Safe only
+  // because the spread runs under BlendMode::None (J-1): under alpha blending an alpha of 0 would blend the
+  // fragment away to nothing instead of writing it, silently deleting every air cell.
+  fragColor = vec4(value, e.a);
 }

@@ -505,7 +505,8 @@ void ClientApplication::render() {
   // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
   // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.
   renderer->setOracleSurfaces(config->get("envOracle", false).optBool().value(false)
-      || config->get("parallaxOracle", false).optBool().value(false));
+      || config->get("parallaxOracle", false).optBool().value(false)
+      || config->get("lightingSpreadOracle", false).optBool().value(false));
   renderer->switchEffectConfig("interface");
 
   if (auto interfaceScale = config->get("interfaceScale").optFloat().value(); interfaceScale != 0)
