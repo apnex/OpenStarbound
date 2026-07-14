@@ -237,6 +237,13 @@ private:
     GlFrameBuffer(String const& name, Json const& config);
     ~GlFrameBuffer();
 
+    // SEALED. The resolver is the contract, so the faces must not be reachable around it -- otherwise the
+    // Air-Gap holds only for as long as everyone remembers, which is exactly how altId got leaked and how
+    // the viewport went unset. The enclosing renderer is the surface's owner and needs the raw faces to
+    // allocate, resize and clear them; nobody else does, and nobody else can.
+  private:
+    friend class OpenGlRenderer;
+
     Face faces[2];
     unsigned write = 0;      // index of the face currently being drawn into
     bool doubled = false;    // true iff faces[1] exists
