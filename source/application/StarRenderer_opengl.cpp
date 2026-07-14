@@ -841,7 +841,17 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     return false;
 
   Effect& effect = *found;
-  if (m_pass.effect == &effect)
+  // ALREADY BOUND -- nothing to do, UNLESS the effect is double-buffered, in which case there is plenty to do.
+  //
+  // The early-out returns before buf->swap(), before the target bind, and before the frameBufferTextures
+  // rebind. For an ordinary effect that is a pure saving. For a DOUBLE-BUFFERED one it silently disables the
+  // feature: a post-process layer with a single effect and passes > 1 -- which is the canonical use of
+  // `passes`, iterating a feedback shader -- swaps on the first pass and then early-outs on every pass after
+  // it, so the shader samples the face it is drawing into. Measured on hardware with passes=2: 306 swaps and
+  // 306 early-outs across 306 frames, one of each per frame. The iteration did not iterate.
+  //
+  // A double-buffered effect has per-invocation work; being already bound does not excuse it.
+  if (m_pass.effect == &effect && !effect.doubleBuffered)
     return true;
 
   auto effectScreenSize = m_screenSize;
