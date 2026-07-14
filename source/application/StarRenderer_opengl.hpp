@@ -140,10 +140,21 @@ private:
     Vec2U glTextureCoordinateOffset() const override;
 
     GLuint textureId = 0;
+
+    // THE STORAGE DESCRIPTOR. Size and internal format together, because storage is ONE act and describing
+    // half of it is worse than describing none: a glTexSubImage2D fast path that consults a HALF-TRUE record
+    // will happily write into storage whose format has changed underneath it, and GL will not complain.
+    //
+    // internalFormat is 0 until storage has been specified. WHOEVER SPECIFIES STORAGE RECORDS WHAT IT
+    // SPECIFIED -- in the same breath, or the next reader is consulting a lie.
+    //
+    // This replaced an `uploadChannels` field that only ONE of the four storage-spec paths maintained. The
+    // other three re-specified the texture and left it stale, so the SubImage guard passed on a format that no
+    // longer existed. Proven: emission storage went RGBA16F -> RGB32F behind the guard's back and the pass
+    // wrote half-float RGBA into three-channel storage for the rest of the run, silently dropping the alpha
+    // that carries the obstacle flag.
     Vec2U textureSize;
-    // Channel count of the last half-float upload. Without it, switching a texture from 3 to 4 channels at the
-    // same size would TexSubImage RGBA data into RGB storage -- a silent corruption, not an error.
-    unsigned uploadChannels = 0;
+    GLint internalFormat = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Nearest;
   };
@@ -333,7 +344,8 @@ private:
   };
 
   static bool logGlErrorSummary(String prefix);
-  static void uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data);
+  // Returns the internal format it specified -- the caller MUST record it on the texture.
+  static GLint uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data);
 
   
   static RefPtr<GlLoneTexture> createGlTexture(ImageView const& image, TextureAddressing addressing, TextureFiltering filtering);
