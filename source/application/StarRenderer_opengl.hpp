@@ -204,14 +204,24 @@ private:
   };
 
   struct EffectTexture {
-    // TRUE when textureValue is a framebuffer's OWN colour attachment -- handed to us by
+    // NON-EMPTY when textureValue is a framebuffer's OWN colour attachment -- handed to us by
     // setEffectTextureFromTarget, by the frameBufferTextures block of an effect config, or by an alias of one
-    // of those. We are then a BORROWER: we may bind that texture and sample it, and we may NOT write to it.
+    // of those. It names WHICH framebuffer. We are then a BORROWER: we may bind that texture and sample it,
+    // and we may NOT write to it.
     //
-    // The upload setters (setEffectTexture / Half / R8) each have a "reuse the texture object I already have"
-    // branch, and without this flag that branch happily re-specified storage belonging to GlTargets --
-    // glTexImage2D through a sampler, into a live render target. See the comment on those setters.
-    bool targetOwned = false;
+    // It answers two questions, and it has to be a name rather than a flag to answer the second:
+    //
+    //   "may I write here?"  -- no. The upload setters (setEffectTexture / Half / R8) each have a "reuse the
+    //      texture object I already have" branch, and without this that branch re-specified storage belonging
+    //      to GlTargets: glTexImage2D through a sampler, into a live render target (RB-1).
+    //
+    //   "where do I come from?" -- loadConfig destroys and rebuilds every target. ~GlFrameBuffer only
+    //      RELEASES its RefPtr to the face texture; glDeleteTextures lives in ~GlLoneTexture and does not run
+    //      while a sampler still holds a reference. So the texture is not freed, it is ORPHANED, and the
+    //      sampler goes on sampling a framebuffer that no longer exists. Knowing the name lets us re-point it
+    //      at the rebuilt one (RB-5).
+    String borrowedFrom;
+    bool borrowed() const { return !borrowedFrom.empty(); }
     unsigned textureUnit = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Linear;
@@ -461,6 +471,12 @@ private:
     Maybe<VariantTypeIndex> getScriptableType(String const& effectName, String const& parameterName);
 
     void destroyAll();   // delete every program, then forget them
+
+    // GlTargets has just destroyed and rebuilt every render target. Point every sampler that was BORROWING a
+    // target's texture at the new one of the same name -- or, if that target is gone from the config
+    // entirely, let go of it. Without this the sampler holds an orphan: a live GL texture belonging to a
+    // framebuffer that has been destroyed, which it will happily keep sampling.
+    void rebindBorrows(GlTargets& targets);
 
   private:
     friend class OpenGlRenderer;

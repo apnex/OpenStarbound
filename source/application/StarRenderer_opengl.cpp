@@ -431,6 +431,22 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     Logger::info("Creating framebuffer {}", pair.first);
     m_targets.add(pair.first, config, m_screenSize);
   }
+
+  // THE TARGETS ARE NEW; THE SAMPLERS STILL POINT AT THE OLD ONES.
+  //
+  // destroyAll() ran above, but ~GlFrameBuffer only RELEASES its RefPtr to the face texture -- the
+  // glDeleteTextures lives in ~GlLoneTexture and does not run while an effect sampler still holds a reference.
+  // So the texture is not freed, it is ORPHANED: a live GL texture belonging to a framebuffer that no longer
+  // exists, still bound to a sampler, still being read every frame.
+  //
+  // This is reachable from the options menu. ClientApplication polls antiAliasing and HDR every frame and
+  // calls setMultiSampling / setMainHDR on change, both of which land here -- and loadConfig does NOT reload
+  // effects, so nothing else was ever going to re-point them. The world's `lightMap` would go on sampling a
+  // destroyed lighting target until the next lighting recompute happened to rebind it, which is temporally
+  // gated and can be several frames away.
+  //
+  // The generation counter announces the rebuild to RETAINED SURFACES; this announces it to SAMPLERS.
+  m_effects.rebindBorrows(m_targets);
   setScreenSize(m_screenSize);
   m_config = config;
 }
@@ -468,6 +484,28 @@ void OpenGlRenderer::GlEffects::destroyAll() {
   for (auto& effect : m_byName)
     glDeleteProgram(effect.second.program);
   m_byName.clear();
+}
+
+void OpenGlRenderer::GlEffects::rebindBorrows(GlTargets& targets) {
+  for (auto& effect : m_byName) {
+    for (auto& entry : effect.second.textures) {
+      EffectTexture& tex = entry.second;
+      if (!tex.borrowed())
+        continue;
+
+      if (auto buf = targets.find(tex.borrowedFrom)) {
+        // The same framebuffer, freshly rebuilt: take its new face. The old one is now an orphan and this
+        // drops our last reference to it, so it is finally deleted.
+        tex.textureValue = buf->writeFace().texture;
+      } else {
+        // That framebuffer is gone from the config altogether. Let go rather than hold a dangling orphan; the
+        // per-draw bind loop skips a null sampler, and switchEffectConfig's `undefined` guard will re-point it
+        // if the effect declares one.
+        tex.textureValue.reset();
+        tex.borrowedFrom = "";
+      }
+    }
+  }
 }
 
 void OpenGlRenderer::GlEffects::setScriptable(String const& effectName, String const& parameterName, RenderEffectParameter const& value) {
@@ -807,7 +845,7 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
   // AN UPLOAD SETTER OWNS THE TEXTURE IT UPLOADS INTO. If this sampler is currently BORROWING a framebuffer's
   // colour attachment, we take the fresh-allocation branch: we do not own that storage and must not touch it.
   //
-  // Without the targetOwned test the else-branch below did all three of the things GlFrameBuffer::specifyStorage
+  // Without the borrowed() test the else-branch below did all three of the things GlFrameBuffer::specifyStorage
   // declares itself the only owner of -- bind the target's texture, glTexImage2D a whole new storage spec into
   // it, and overwrite the textureSize record that GlFrameBuffer::size() reads -- from outside, through an
   // aliased RefPtr. It is reachable in ordinary play: the world effect's `lightMap` sampler is pointed at
@@ -819,9 +857,9 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
   // record this corruption also rewrites. It heals only because the corruption is self-reporting. An upload at
   // the SAME size and a DIFFERENT format is never noticed, and that internal format is wrong for the life of
   // the process.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->targetOwned) {
+  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
     ptr->textureValue = createGlTexture(image, ptr->textureAddressing, ptr->textureFiltering);
-    ptr->targetOwned = false;
+    ptr->borrowedFrom = "";
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
     ptr->textureValue->textureSize = image.size;
@@ -891,7 +929,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
             // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
             // face it is NOT writing. That is exactly what readFace() answers, so ask it.
             ptr->textureValue = swapped ? buf->readFace().texture : buf->writeFace().texture;
-            ptr->targetOwned = true;   // borrowed from GlTargets; the upload setters must not write to it
+            ptr->borrowedFrom = *frameBufferId;   // borrowed: no writing, and re-point me if it is rebuilt
             if (ptr->textureSizeUniform != -1 && undefined) {
               auto textureSize = ptr->textureValue->glTextureSize();
               glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
@@ -984,7 +1022,7 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
   // Bind the framebuffer's color texture (a GlLoneTexture, same type setEffectTexture produces)
   // directly to the sampler -- no CPU upload.
   ptr->textureValue = m_targets.get(frameBufferId)->writeFace().texture;
-  ptr->targetOwned = true;   // borrowed from GlTargets; the upload setters must not write to it
+  ptr->borrowedFrom = frameBufferId;   // borrowed: no writing, and re-point me if it is rebuilt
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
@@ -1002,7 +1040,7 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
   // Share the source sampler's already-uploaded texture (same GlLoneTexture, ref-counted) with the
   // dest sampler -- the per-draw bind loop will bind it to dest's texture unit. No CPU upload.
   dest->textureValue = src->textureValue;
-  dest->targetOwned = src->targetOwned;   // an alias of a borrowed texture is still borrowed
+  dest->borrowedFrom = src->borrowedFrom;   // an alias of a borrowed texture is still borrowed, from the same target
   if (dest->textureSizeUniform != -1) {
     auto textureSize = dest->textureValue->glTextureSize();
     glUniform2f(dest->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
@@ -1018,9 +1056,9 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   bool fresh = false;
-  // targetOwned: this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
+  // borrowed(): this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
   // than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live render target.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->targetOwned) {
+  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
     auto tex = make_ref<GlLoneTexture>();
     tex->textureFiltering = ptr->textureFiltering;
     tex->textureAddressing = ptr->textureAddressing;
@@ -1034,7 +1072,7 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
     ptr->textureValue = tex;
-    ptr->targetOwned = false;
+    ptr->borrowedFrom = "";
     fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
@@ -1070,9 +1108,9 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   bool fresh = false;
-  // targetOwned: this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
+  // borrowed(): this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
   // than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live render target.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->targetOwned) {
+  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
     auto tex = make_ref<GlLoneTexture>();
     tex->textureFiltering = ptr->textureFiltering;
     tex->textureAddressing = ptr->textureAddressing;
@@ -1086,7 +1124,7 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
     ptr->textureValue = tex;
-    ptr->targetOwned = false;
+    ptr->borrowedFrom = "";
     fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
