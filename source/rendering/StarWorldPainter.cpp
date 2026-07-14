@@ -185,7 +185,6 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // bit-identical to the direct-into-main path it replaces. Live: /rendercache envrefresh <N>.
   Vec2U envScreenSize = m_renderer->screenSize();
   float envPixelRatio = m_camera.pixelRatio();
-  bool envAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
   unsigned envRefreshInterval = Root::singleton().configuration()->get("envRefreshInterval", 1).optUInt().value(1);
   if (envRefreshInterval < 1)
     envRefreshInterval = 1;
@@ -212,12 +211,21 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       m_environmentPainter->renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(m_camera.screenSize()), renderData.skyRenderData);
   };
 
-  // Direct path (byte-identical stock env->main) when the cache is inactive: AA on ("main"/"envCache"
-  // are multisample -> render-to-cache + a sampler composite is invalid under MSAA), OR the cache is
-  // effectively off (envRefreshInterval<=1 with the oracle disarmed -- N=1 is a true zero-overhead "off",
-  // no per-frame compose). N=1 with the oracle ARMED still takes the cache path so the bit-identity gate
-  // can run. Invalidate the cache so re-entering it force-refreshes instead of compositing stale content.
-  bool envCacheActive = !envAntiAliasing && (envRefreshInterval > 1 || envOracle);
+  // Direct path (byte-identical stock env->main) when the cache is effectively off: envRefreshInterval<=1
+  // with the oracle disarmed -- N=1 is a true zero-overhead "off", no per-frame compose. N=1 with the oracle
+  // ARMED still takes the cache path so the bit-identity gate can run. Invalidate the cache so re-entering it
+  // force-refreshes instead of compositing stale content.
+  //
+  // THE ANTI-ALIASING GATE IS GONE, AND IT SHOULD HAVE GONE WHEN WE FIXED THE CAUSE. It read
+  // `!envAntiAliasing && ...`, on the rationale that '"main"/"envCache" are multisample -> render-to-cache +
+  // a sampler composite is invalid under MSAA'. That was true when multisampling was forced onto EVERY
+  // framebuffer -- a sampled GL_TEXTURE_2D_MULTISAMPLE binds as GL_INVALID_OPERATION and reads whatever was
+  // on the texture unit before. We fixed that at the cause: multisampling is now a per-framebuffer opt-in,
+  // and ONLY "main" opts in -- because only "main" is MSAA-RESOLVED to the screen (glBlitFramebuffer) and is
+  // never sampled. envCache is single-sample, so rendering into it and sampling it back is valid under AA.
+  // The gate was a symptom patch that outlived its symptom, and it was silently costing every AA player the
+  // whole env-cache lever.
+  bool envCacheActive = (envRefreshInterval > 1 || envOracle);
   if (!envCacheActive) {
     m_envCacheSize = {0, 0};
     m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
@@ -508,6 +516,22 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // jittering camera from thrashing refresh/bypass (each thrash would cost a refresh + a composite).
   static constexpr unsigned ParallaxParkFrames = 2;
   bool parallaxParked = m_parallaxStillFrames >= ParallaxParkFrames;
+  // THE ANTI-ALIASING GATE STAYS HERE -- and unlike the env cache's, it is NOT a dead symptom patch. I removed
+  // it, measured, and put it back.
+  //
+  // It is safe to SAMPLE parallaxCache under AA (it is multisampled:false, so no GL_INVALID_OPERATION), which
+  // is why the env cache's gate could go. But sampling is not the issue. antiAliasing turns on
+  // glMinSampleShading(1.f), so the DIRECT path shades every parallax fragment ONCE PER SAMPLE into
+  // multisampled "main". The CACHE path rasterizes parallax into a SINGLE-SAMPLE surface and then composites
+  // that as one flat quad -- so the cached parallax never gets per-sample shading at all. Measured, frozen
+  // world, in-process A/B of refresh 1 vs 8:
+  //     AA off : byte-identical
+  //     AA on  : 781760 px differ (22.3%), maxAbs 0.000977
+  // Sub-perceptual (under a quarter of an 8-bit LSB) -- but it is precisely the quality the player asked for
+  // when they ticked the box, and silently withholding it to buy back frame time is not our call to make.
+  //
+  // A retained surface CANNOT preserve the multisample shading of the content drawn into it. That is a
+  // property of retained surfaces under MSAA, not a bug, and it is the reason this gate is real.
   bool parallaxCacheActive = parallaxHasLayers && !parallaxAntiAliasing
       && (parallaxRefreshInterval > 1 || parallaxOracle)
       && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
