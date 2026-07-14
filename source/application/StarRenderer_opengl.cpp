@@ -519,10 +519,10 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     throw RendererException(strf("Failed to link program: {}\n", logBuffer));
   }
 
-  glUseProgram(m_pass.program = program);
+  glUseProgram(program);
 
   auto& effect = m_effects.emplace(name, Effect()).first->second;
-  effect.program = m_pass.program;
+  effect.program = program;
   effect.config = effectConfig;
   effect.includeVBTextures = effectConfig.getBool("includeVBTextures",true);
   m_pass.effect = &effect;
@@ -531,7 +531,7 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
   for (auto const& p : effectConfig.getObject("effectParameters", {})) {
     EffectParameter effectParameter;
 
-    effectParameter.parameterUniform = glGetUniformLocation(m_pass.program, p.second.getString("uniform").utf8Ptr());
+    effectParameter.parameterUniform = glGetUniformLocation(program, p.second.getString("uniform").utf8Ptr());
     if (effectParameter.parameterUniform == -1) {
       Logger::warn("OpenGL20 effect parameter '{}' in effect '{}' has no associated uniform, skipping", p.first, name);
     } else {
@@ -597,17 +597,19 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
 
   for (auto const& p : effectConfig.getObject("effectTextures", {})) {
     EffectTexture effectTexture;
-    effectTexture.textureUniform = glGetUniformLocation(m_pass.program, p.second.getString("textureUniform").utf8Ptr());
-    if (effectTexture.textureUniform == -1) {
+    // A load-time local, not state. It was an EffectTexture field, but nothing ever read it again after this
+    // loop -- the sampler unit is bound here, once, and the binding lives in the PROGRAM from then on.
+    GLint textureUniform = glGetUniformLocation(program, p.second.getString("textureUniform").utf8Ptr());
+    if (textureUniform == -1) {
       Logger::warn("OpenGL20 effect parameter '{}' has no associated uniform, skipping", p.first);
     } else {
         effectTexture.textureUnit = parameterTextureUnit++;
-        glUniform1i(effectTexture.textureUniform, effectTexture.textureUnit);
+        glUniform1i(textureUniform, effectTexture.textureUnit);
 
         effectTexture.textureAddressing = TextureAddressingNames.getLeft(p.second.getString("textureAddressing", "clamp"));
         effectTexture.textureFiltering = TextureFilteringNames.getLeft(p.second.getString("textureFiltering", "nearest"));
         if (auto tsu = p.second.optString("textureSizeUniform")) {
-          effectTexture.textureSizeUniform = glGetUniformLocation(m_pass.program, tsu->utf8Ptr());
+          effectTexture.textureSizeUniform = glGetUniformLocation(program, tsu->utf8Ptr());
           if (effectTexture.textureSizeUniform == -1)
             Logger::warn("OpenGL20 effect parameter '{}' has textureSizeUniform '{}' with no associated uniform", p.first, *tsu);
         }
@@ -640,6 +642,29 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     logGlErrorSummary("OpenGL errors setting effect config");
 }
 
+// The one place a RenderEffectParameter becomes a glUniform call. It was written out twice, character for
+// character -- here and in the scriptable replay at bind -- which is one variant ladder to keep in step every
+// time RenderEffectParameter gains a type. It is a free function, not a method: it needs no effect, no pass and
+// no registry, only a location and a value. Hanging it on a component would be the "and also uploads uniforms"
+// clause that the Law of One forbids.
+//
+// It writes into whatever program is CURRENTLY BOUND. That is not a defect of this function -- it is how
+// glUniform works -- but it means every caller owes the reader a reason why the right program is bound.
+static void uploadUniform(GLint location, RenderEffectParameter const& value) {
+  if (auto v = value.ptr<bool>())
+    glUniform1i(location, *v);
+  else if (auto v = value.ptr<int>())
+    glUniform1i(location, *v);
+  else if (auto v = value.ptr<float>())
+    glUniform1f(location, *v);
+  else if (auto v = value.ptr<Vec2F>())
+    glUniform2f(location, (*v)[0], (*v)[1]);
+  else if (auto v = value.ptr<Vec3F>())
+    glUniform3f(location, (*v)[0], (*v)[1], (*v)[2]);
+  else if (auto v = value.ptr<Vec4F>())
+    glUniform4f(location, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
+}
+
 void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectParameter const& value, String const& parameterName) {
   if (ptr->parameterValue && *ptr->parameterValue == value)
     return;
@@ -649,18 +674,7 @@ void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectPara
 
   flushImmediatePrimitives();
 
-  if (auto v = value.ptr<bool>())
-    glUniform1i(ptr->parameterUniform, *v);
-  else if (auto v = value.ptr<int>())
-    glUniform1i(ptr->parameterUniform, *v);
-  else if (auto v = value.ptr<float>())
-    glUniform1f(ptr->parameterUniform, *v);
-  else if (auto v = value.ptr<Vec2F>())
-    glUniform2f(ptr->parameterUniform, (*v)[0], (*v)[1]);
-  else if (auto v = value.ptr<Vec3F>())
-    glUniform3f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2]);
-  else if (auto v = value.ptr<Vec4F>())
-    glUniform4f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
+  uploadUniform(ptr->parameterUniform, value);
 
   ptr->parameterValue = value;
 }
@@ -778,7 +792,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
   }
 
-  glUseProgram(m_pass.program = effect.program);
+  glUseProgram(effect.program);
   setupGlUniforms(effect, effectScreenSize);
   m_pass.effect = &effect;
 
@@ -1954,42 +1968,35 @@ void OpenGlRenderer::setupGlUniforms(Effect& effect, Vec2U screenSize) {
   m_pass.texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
   m_pass.dataAttribute = effect.getAttribute("vertexData");
 
-  m_pass.textureUniforms.clear();
+  // textureUniforms used to be cached here alongside textureSizeUniforms. It was a cache of a cache --
+  // Effect::getUniform already memoizes the location -- and unlike textureSizeUniforms (read per draw, at
+  // :1900) it never escaped this function: filled in one loop, read in the next, never again. The sampler-unit
+  // binding it performs lives in the PROGRAM once set, so there is nothing to remember.
   m_pass.textureSizeUniforms.clear();
   if (effect.includeVBTextures) {
-    for (size_t i = 0; i < MultiTextureCount; ++i) {
-      m_pass.textureUniforms.append(effect.getUniform(strf("texture{}", i).c_str()));
+    for (size_t i = 0; i < MultiTextureCount; ++i)
       m_pass.textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
-    }
   }
   m_pass.screenSizeUniform = effect.getUniform("screenSize");
   m_pass.vertexTransformUniform = effect.getUniform("vertexTransform");
 
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
-      glUniform1i(m_pass.textureUniforms[i], i);
+      glUniform1i(effect.getUniform(strf("texture{}", i).c_str()), i);
   }
 
   glUniform2f(m_pass.screenSizeUniform, screenSize[0], screenSize[1]);
-  
+
+  // Scriptable parameters live on the CPU until a bind. This is that bind: the only path by which a value a
+  // script set on an unbound effect reaches the GPU.
+  //
+  // It does NOT go through applyEffectParameter, and must not. That function's job is to skip a redundant
+  // upload by comparing against the value it last uploaded -- but setEffectScriptableParameter has ALREADY
+  // written parameterValue, so the comparison would match on every single scriptable and elide every upload,
+  // silently and permanently. Same ladder, different contract.
   for (auto& param : effect.scriptables) {
-    auto ptr = &param.second;
-    auto mvalue = ptr->parameterValue;
-    if (mvalue) {
-      RenderEffectParameter value = mvalue.value();
-      if (auto v = value.ptr<bool>())
-        glUniform1i(ptr->parameterUniform, *v);
-      else if (auto v = value.ptr<int>())
-        glUniform1i(ptr->parameterUniform, *v);
-      else if (auto v = value.ptr<float>())
-        glUniform1f(ptr->parameterUniform, *v);
-      else if (auto v = value.ptr<Vec2F>())
-        glUniform2f(ptr->parameterUniform, (*v)[0], (*v)[1]);
-      else if (auto v = value.ptr<Vec3F>())
-        glUniform3f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2]);
-      else if (auto v = value.ptr<Vec4F>())
-        glUniform4f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
-    }
+    if (param.second.parameterValue)
+      uploadUniform(param.second.parameterUniform, *param.second.parameterValue);
   }
 }
 
@@ -2044,11 +2051,24 @@ void OpenGlRenderer::GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, 
     vp = screenSize / newTarget->sizeDiv;
   glViewport(0, 0, vp[0], vp[1]);
 
-  // AND HERE IS THE COUPLING, in one line: a TARGET operation writing an EFFECT-PROGRAM uniform. There is no
-  // seam to cut between "targets" and "effects" -- this statement is both of them, and any split that tried
-  // to put them in different components would need each to reach into the other's privates.
-  if (screenSizeUniform != -1)
-    glUniform2f(screenSizeUniform, (float)vp[0], (float)vp[1]);
+  // A `glUniform2f(screenSizeUniform, vp)` used to close this function, and a comment above it called that
+  // statement "THE COUPLING" -- a target operation writing an effect-program uniform, proof that targets and
+  // effects could not be split. It was the stated reason this component exists.
+  //
+  // It was dead at both call sites, and I never checked.
+  //
+  //   switchEffectConfig: bindTarget runs BEFORE glUseProgram. glUniform writes into the program that is
+  //     CURRENTLY bound -- the OUTGOING one -- through the OUTGOING program's cached location. The incoming
+  //     program then gets its screenSize from bindEffect a few lines later. The write landed on the wrong
+  //     program and was overwritten the next time that program was bound.
+  //   setRenderTarget: the very next statements re-write the viewport and the same uniform with the same
+  //     value, because bindTarget's early-out means the caller cannot rely on either happening here.
+  //
+  // So it wrote to the wrong program, or it wrote a value that was immediately rewritten. No draw could ever
+  // observe it. The viewport call above is real and load-bearing; that one was ceremony defending an argument.
+  //
+  // GlPass still earns its keep -- it is the coupled (effect, target) pair and the flattened locations the
+  // draw path reads -- but on THAT, honestly, and not on a uniform write no frame could see.
 }
 
 GLuint OpenGlRenderer::Effect::getAttribute(String const& name) {

@@ -204,7 +204,6 @@ private:
   };
 
   struct EffectTexture {
-    GLint textureUniform = -1;
     unsigned textureUnit = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Linear;
@@ -396,12 +395,10 @@ private:
   // in on a refactor, or the oracle goes red and we cannot tell a fix from a regression.
   struct GlPass {
     // The flattened locations of the bound program. Read per draw, on the hot path.
-    GLuint program = 0;
     GLint positionAttribute = -1;
     GLint colorAttribute = -1;
     GLint texCoordAttribute = -1;
     GLint dataAttribute = -1;
-    List<GLint> textureUniforms = {};
     List<GLint> textureSizeUniforms = {};
     GLint screenSizeUniform = -1;
     GLint vertexTransformUniform = -1;
