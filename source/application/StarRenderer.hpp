@@ -199,10 +199,6 @@ public:
   // Any such consumer MUST fold this into its refresh key. Not pure: a backend that never reallocates
   // correctly reports a constant, and is thereby never falsely invalidated.
   virtual uint64_t frameBufferGeneration() const { return 0; }
-  // Arm/disarm this frame's clears of framebuffers marked "clearGated" in config. Such FBOs (e.g. the
-  // env-cache oracle's envRef reference) are startFrame-cleared like any clear:true target only while their
-  // debug/optional consumer has armed them, so they cost nothing (no per-frame clear) when that consumer is off.
-  virtual void setGatedFrameBufferClears(bool active) = 0;
   // Arm/disarm allocation of framebuffers marked "devOnly" in config -- surfaces that exist only to serve a
   // validation oracle. They are screen-sized, so when no oracle is armed (the normal case) they are pure
   // wasted VRAM; keeping them unallocated is the difference between a surface that is earned and one that is

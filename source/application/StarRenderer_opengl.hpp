@@ -51,7 +51,6 @@ public:
   pair<size_t, Vec2U> compareFrameBuffers(String const& a, String const& b, float* maxAbsDiff) override;
   bool hasFrameBuffer(String const& id) const override;
   uint64_t frameBufferGeneration() const override;
-  void setGatedFrameBufferClears(bool active) override;
   void setOracleSurfaces(bool enabled) override;
   bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
                  String const& srcSampler, String const& srcFbo,
@@ -241,9 +240,6 @@ private:
     BoolSettingMode hdrMode = BoolSettingMode::Disabled;
     bool alpha = false;
     bool clear = true;
-    // When true, this clear:true FBO is only startFrame-cleared while gated clears are armed
-    // (setGatedFrameBufferClears) -- zero per-frame cost when its debug/optional consumer is off.
-    bool clearGated = false;
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
@@ -347,8 +343,6 @@ private:
 
   Maybe<RectI> m_scissorRect;
 
-  // Armed by setGatedFrameBufferClears; when false, startFrame skips clearing any FBO marked clearGated.
-  bool m_gatedClearsActive = false;
   // Armed by setOracleSurfaces; when false, loadConfig does not allocate framebuffers marked devOnly.
   bool m_oracleSurfaces = false;
 

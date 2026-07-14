@@ -1051,10 +1051,6 @@ uint64_t OpenGlRenderer::frameBufferGeneration() const {
   return m_frameBufferGeneration;
 }
 
-void OpenGlRenderer::setGatedFrameBufferClears(bool active) {
-  m_gatedClearsActive = active;
-}
-
 bool OpenGlRenderer::composite(String const& effect, String const& dstFbo, Vec2U dstSize,
     String const& srcSampler, String const& srcFbo, List<pair<String, RenderEffectParameter>> const& params) {
   // Collapses the hand-rolled "sample one FBO into another via a passthrough effect + full-screen quad"

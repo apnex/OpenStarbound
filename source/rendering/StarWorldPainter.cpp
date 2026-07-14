@@ -191,11 +191,6 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     envRefreshInterval = 1;
   bool envOracle = Root::singleton().configuration()->get("envOracle", false).optBool().value(false);
   bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
-  // Arm/disarm the gated startFrame clear of the oracle's envRef reference FBO so it costs nothing (no
-  // per-frame clear) when the oracle is off. Takes effect from the next startFrame; a 1-frame warmup at
-  // enable-time (one transient DIFF before envRef's first gated clear lands) is harmless -- the gate is
-  // read over a multi-second validation window and steady state is what matters.
-  m_renderer->setGatedFrameBufferClears(envOracle);
   // NB: the oracles' reference surfaces (envRef, parallaxRef) are marked devOnly and are only ALLOCATED while
   // an oracle is armed -- ClientApplication::render does that before the frame starts, because it reloads the
   // framebuffer set and must not run mid-frame. Both oracle paths below are already guarded by hasFrameBuffer,
