@@ -131,6 +131,58 @@ bool settingModeValue(BoolSettingMode const& mode, bool const& setting) {
   }
 }
 
+// ---------------------------------------------------------------------------------------------------------
+// GlTargets -- owns which render targets exist.
+
+RefPtr<OpenGlRenderer::GlFrameBuffer> OpenGlRenderer::GlTargets::find(String const& id) const {
+  if (auto ptr = m_byId.ptr(id))
+    return *ptr;
+  return {};
+}
+
+RefPtr<OpenGlRenderer::GlFrameBuffer> OpenGlRenderer::GlTargets::get(String const& id) const {
+  if (auto ptr = m_byId.ptr(id))
+    return *ptr;
+  throw RendererException::format("Frame buffer '{}' does not exist", id);
+}
+
+bool OpenGlRenderer::GlTargets::has(String const& id) const {
+  return m_byId.contains(id);
+}
+
+uint64_t OpenGlRenderer::GlTargets::generation() const {
+  return m_generation;
+}
+
+void OpenGlRenderer::GlTargets::destroyAll() {
+  // ONE act, not two. Every target's content becomes UNDEFINED here, and the generation is how a retained
+  // (clear:false) surface finds that out -- its own refresh key (size, camera, counter) is unchanged across
+  // the rebuild, so without this it would composite garbage and never know. Bumping it was a separate
+  // statement the caller had to remember; now it cannot be forgotten, because it is the same event.
+  ++m_generation;
+  m_byId.clear();
+}
+
+void OpenGlRenderer::GlTargets::add(String const& name, Json const& config, Vec2U const& screenSize) {
+  auto target = make_ref<GlFrameBuffer>(name, config, screenSize);
+  // "double" (#542): give the surface its second face, so an effect can read what it writes. At CONFIG time --
+  // switchEffectConfig used to allocate it mid-frame, on first use.
+  if (config.getBool("double", false))
+    target->makeDoubled();
+  m_byId[name] = target;
+}
+
+void OpenGlRenderer::GlTargets::resizeAll(Vec2U const& screenSize) {
+  for (auto& target : m_byId)
+    target.second->resize(target.second->sizeFor(screenSize));
+}
+
+void OpenGlRenderer::GlTargets::clearAll() {
+  for (auto& target : m_byId)
+    if (target.second->clear)
+      target.second->clearFaces();
+}
+
 OpenGlRenderer::OpenGlRenderer()
   // The timer's whole dependency on the renderer, made explicit and one-directional.
   : m_gpuTimer([this]() { flushImmediatePrimitives(); }), m_oracle(*this) {
@@ -174,7 +226,7 @@ OpenGlRenderer::~OpenGlRenderer() {
   for (auto& effect : m_effects)
     glDeleteProgram(effect.second.program);
 
-  m_frameBuffers.clear();
+  m_targets.destroyAll();
   logGlErrorSummary("OpenGL errors during shutdown");
 }
 
@@ -354,8 +406,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   // surfaces have no other way to learn this -- their refresh keys (size/camera/counter) are unchanged
   // across the realloc -- so bump the generation and let them invalidate. Both setMainHDR and
   // setMultiSampling land here, and ClientApplication polls both client options every frame.
-  ++m_frameBufferGeneration;
-  m_frameBuffers.clear();
+  m_targets.destroyAll();
 
   for (auto& pair : config.getObject("frameBuffers", {})) {
     Json config = pair.second;
@@ -379,12 +430,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
       continue;
 
     Logger::info("Creating framebuffer {}", pair.first);
-    auto buf = make_ref<GlFrameBuffer>(pair.first, config, m_screenSize);
-    // "double" (#542): give the surface its second face, so an effect can read what it writes. At CONFIG
-    // time -- switchEffectConfig used to allocate it mid-frame, on first use.
-    if (config.getBool("double", false))
-      buf->makeDoubled();
-    m_frameBuffers[pair.first] = buf;
+    m_targets.add(pair.first, config, m_screenSize);
   }
   setScreenSize(m_screenSize);
   m_config = config;
@@ -715,7 +761,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   
   auto outFrameBufferId = effect.config.optString("frameBuffer");
   if (outFrameBufferId) {
-    auto buf = getGlFrameBuffer(*outFrameBufferId);
+    auto buf = m_targets.get(*outFrameBufferId);
     effectScreenSize = m_screenSize / (buf->sizeDiv);
     if (effect.doubleBuffered) {
       if (!buf->doubled) {
@@ -745,7 +791,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
         if (ptr) {
           auto undefined = !ptr->textureValue || ptr->textureValue->textureId == 0;
           auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
-          auto buf = getGlFrameBuffer(*frameBufferId);
+          auto buf = m_targets.get(*frameBufferId);
           if (undefined || buf->doubled) {
             // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
             // face it is NOT writing. That is exactly what readFace() answers, so ask it.
@@ -761,7 +807,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   }
   
   if (auto blitFrameBufferId = effect.config.optString("blitFrameBuffer"))
-    blitGlFrameBuffer(getGlFrameBuffer(*blitFrameBufferId), effect.doubleBuffered);
+    blitGlFrameBuffer(m_targets.get(*blitFrameBufferId), effect.doubleBuffered);
   
   return true;
 }
@@ -781,12 +827,11 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
 
   // Tolerate a missing target rather than crashing the frame: callers (e.g. GpuLightmapPass)
   // degrade to their CPU path. Warn once via the renderer log on the absent id.
-  auto bufPtr = m_frameBuffers.ptr(*frameBufferId);
-  if (!bufPtr) {
+  auto buf = m_targets.find(*frameBufferId);
+  if (!buf) {
     Logger::warn("setRenderTarget: frame buffer '{}' does not exist; ignoring", *frameBufferId);
     return;
   }
-  auto buf = *bufPtr;
 
   // THE TARGET RESIZES ITSELF. This block used to derive the format ladder by hand and re-specify the storage
   // itself -- a FOURTH copy of rules that F1 was supposed to have collapsed to one. F1 could not see it: F1
@@ -842,7 +887,7 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
 
   // Bind the framebuffer's color texture (a GlLoneTexture, same type setEffectTexture produces)
   // directly to the sampler -- no CPU upload.
-  ptr->textureValue = getGlFrameBuffer(frameBufferId)->writeFace().texture;
+  ptr->textureValue = m_targets.get(frameBufferId)->writeFace().texture;
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
@@ -962,12 +1007,11 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
 Image OpenGlRenderer::GlRenderOracle::read(String const& frameBufferId) {
   m_renderer.flushImmediatePrimitives();
 
-  auto bufPtr = m_renderer.m_frameBuffers.ptr(frameBufferId);
-  if (!bufPtr) {
+  auto buf = m_renderer.m_targets.find(frameBufferId);
+  if (!buf) {
     Logger::warn("RenderOracle::read: frame buffer '{}' does not exist", frameBufferId);
     return Image();
   }
-  auto buf = *bufPtr;
 
   // EVERY not-readable condition MUST return an EMPTY image, never a zero-FILLED one. A caller that hashes
   // or compares the result cannot distinguish "the frame really is black" from "the read silently failed" --
@@ -1034,20 +1078,20 @@ pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, Str
   // so a failed read can never be scored as a false MATCH.
   m_renderer.flushImmediatePrimitives();
 
-  auto aPtr = m_renderer.m_frameBuffers.ptr(a);
-  auto bPtr = m_renderer.m_frameBuffers.ptr(b);
-  if (!aPtr || !bPtr) {
+  auto aBuf = m_renderer.m_targets.find(a);
+  auto bBuf = m_renderer.m_targets.find(b);
+  if (!aBuf || !bBuf) {
     Logger::warn("RenderOracle::compare: frame buffer '{}' or '{}' does not exist", a, b);
     return {NPos, Vec2U()};
   }
   // Multisample color attachments cannot be glReadPixels'd (GL_INVALID_OPERATION); the oracle is an AA-off
   // instrument, so treat a multisample target as not-comparable rather than reading garbage.
-  if ((*aPtr)->multisample || (*bPtr)->multisample) {
+  if (aBuf->multisample || bBuf->multisample) {
     Logger::warn("RenderOracle::compare:'{}' or '{}' is multisample -- not comparable", a, b);
     return {NPos, Vec2U()};
   }
-  Vec2U sizeA = (*aPtr)->writeFace().texture->textureSize;
-  Vec2U sizeB = (*bPtr)->writeFace().texture->textureSize;
+  Vec2U sizeA = aBuf->size();
+  Vec2U sizeB = bBuf->size();
   if (sizeA != sizeB || sizeA[0] == 0 || sizeA[1] == 0) {
     Logger::warn("RenderOracle::compare:size mismatch/empty ('{}'={},{} vs '{}'={},{})",
       a, sizeA[0], sizeA[1], b, sizeB[0], sizeB[1]);
@@ -1060,9 +1104,9 @@ pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, Str
   bufB.resize(pixels * 3);
 
   while (glGetError() != GL_NO_ERROR) {}  // drain pre-existing errors so the post-read check is isolated
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, (*aPtr)->writeFace().id);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, aBuf->writeFace().id);
   glReadPixels(0, 0, sizeA[0], sizeA[1], GL_RGB, GL_FLOAT, bufA.ptr());
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, (*bPtr)->writeFace().id);
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, bBuf->writeFace().id);
   glReadPixels(0, 0, sizeB[0], sizeB[1], GL_RGB, GL_FLOAT, bufB.ptr());
   GLenum readErr = glGetError();
   auto current = m_renderer.m_pass.target;
@@ -1100,11 +1144,11 @@ pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, Str
 }
 
 bool OpenGlRenderer::hasFrameBuffer(String const& id) const {
-  return m_frameBuffers.contains(id);
+  return m_targets.has(id);
 }
 
 uint64_t OpenGlRenderer::frameBufferGeneration() const {
-  return m_frameBufferGeneration;
+  return m_targets.generation();
 }
 
 bool OpenGlRenderer::composite(String const& effect, String const& dstFbo, Vec2U dstSize,
@@ -1322,8 +1366,9 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
   // allocated ~30MB apiece instead of 2-32MB. sizeFor() now encodes that rule, and resize() is idempotent, so
   // such a surface asks for the size it already has and issues no GL calls -- the hand-written `continue` that
   // used to skip it is gone, along with the thirty lines of format ladder and size arithmetic that followed.
-  for (auto& frameBuffer : m_frameBuffers)
-    frameBuffer.second->resize(frameBuffer.second->sizeFor(m_screenSize));
+  //
+  // The REGISTRY owns which targets exist, so it owns the loop over them. The renderer no longer holds the map.
+  m_targets.resizeAll(m_screenSize);
 }
 
 void OpenGlRenderer::startFrame() {
@@ -1370,12 +1415,8 @@ void OpenGlRenderer::startFrame() {
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
   m_gpuTimer.begin("render.frame.clear.gpu_us");
 
-  // The surface clears its own faces. This was the last consumer reaching around the resolver for
-  // faces[0].id / faces[1].id, and it is why the seal was a convention rather than a contract -- the second
-  // face was handled by a copy-pasted block that a third face, or a forgetful edit, would simply have missed.
-  for (auto& frameBuffer : m_frameBuffers)
-    if (frameBuffer.second->clear)
-      frameBuffer.second->clearFaces();
+  // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for faces[N].id.
+  m_targets.clearAll();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1950,13 +1991,6 @@ void OpenGlRenderer::setupGlUniforms(Effect& effect, Vec2U screenSize) {
         glUniform4f(ptr->parameterUniform, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
     }
   }
-}
-
-RefPtr<OpenGlRenderer::GlFrameBuffer> OpenGlRenderer::getGlFrameBuffer(String const& id) {
-  if (auto ptr = m_frameBuffers.ptr(id))
-    return *ptr;
-  else
-    throw RendererException::format("Frame buffer '{}' does not exist", id);
 }
 
 // Copies `frameBuffer` (or its alt half, when the calling effect is double-buffered) into whatever draw target

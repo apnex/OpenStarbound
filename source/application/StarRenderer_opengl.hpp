@@ -331,11 +331,50 @@ private:
 
   void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
-  RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
   void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
 
   // The renderer's single door to the pass bind.
   void bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer);
+
+  // GlTargets -- owns which render targets exist.
+  //
+  // That is the whole duty. Not what they contain, not what draws into them, not how they are bound: just
+  // which of them are alive, at what size, in the current config generation.
+  //
+  // The generation is the point. loadConfig destroys and rebuilds every target, so all their content becomes
+  // UNDEFINED -- and a retained (clear:false) surface cannot see that, because its own refresh key (size,
+  // camera, counter) is unchanged across the rebuild. It would happily composite garbage. So consumers fold
+  // the generation into their refresh key.
+  //
+  // It used to be two statements a caller had to remember to pair:
+  //     ++m_frameBufferGeneration;
+  //     m_frameBuffers.clear();
+  // Forget the first and a retained surface silently composites undefined GPU memory. Here they are ONE act,
+  // because they ARE one act: destroying the set IS the event the generation exists to announce.
+  struct GlTargets {
+    // The tolerant lookup: null when absent. Callers that can degrade (the lighting passes fall back to CPU)
+    // use this one.
+    RefPtr<GlFrameBuffer> find(String const& id) const;
+    // The strict lookup: throws when absent. Callers that cannot proceed without it use this one.
+    RefPtr<GlFrameBuffer> get(String const& id) const;
+    bool has(String const& id) const;
+    uint64_t generation() const;
+
+    // Destroy every target, and announce it. The bump cannot be forgotten because it is not a separate step.
+    void destroyAll();
+    void add(String const& name, Json const& config, Vec2U const& screenSize);
+
+    // Operations over the whole set. Each was a hand-rolled loop reaching into the map.
+    void resizeAll(Vec2U const& screenSize);
+    void clearAll();                 // the per-frame clear, honouring each target's clear:false
+
+  private:
+    friend class OpenGlRenderer;     // the oracle reads pixels back out of a target by name
+
+    StringMap<RefPtr<GlFrameBuffer>> m_byId;
+    uint64_t m_generation = 0;
+  };
+  GlTargets m_targets;
 
   Vec2U m_screenSize;
 
@@ -386,9 +425,6 @@ private:
 
   StringMap<Effect> m_effects;
 
-  StringMap<RefPtr<GlFrameBuffer>> m_frameBuffers;
-  // Bumped by loadConfig() each time m_frameBuffers is cleared + rebuilt (all content becomes undefined).
-  uint64_t m_frameBufferGeneration = 0;
 
   RefPtr<GlTexture> m_whiteTexture;
 
