@@ -157,23 +157,104 @@ Vec2U OpenGlRenderer::screenSize() const {
   return m_screenSize;
 }
 
-OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbConfig) {
-  texture = make_ref<GlLoneTexture>();
-  texture->textureFiltering = TextureFiltering::Nearest;
-  texture->textureAddressing = TextureAddressing::Clamp;
-  texture->textureSize = {0, 0};
-  glGenTextures(1, &texture->textureId);
-  if (texture->textureId == 0)
-    throw RendererException("Could not generate OpenGL texture for framebuffer");
-
-  clear = config.getBool("clear",true);
-  
-  multisample = GLEW_VERSION_4_0 ? config.getUInt("multisample", 0) : 0;
+// Every GL call in here is checked. GL reports an allocation failure (GL_OUT_OF_MEMORY) or a bad
+// format/type combination (GL_INVALID_ENUM) ONLY through glGetError; left unchecked, the texture is simply
+// never allocated and the failure resurfaces further down as an incomplete framebuffer -- whose message then
+// names none of the things needed to act on it: which framebuffer, what size, what format, or which call
+// actually failed.
+void OpenGlRenderer::GlFrameBuffer::allocateTarget(
+    RefPtr<GlLoneTexture>& tex, GLuint& fboId, Vec2U const& size, char const* which) {
+  bool hdr = settingModeValue(hdrMode, config.getBool("hdrSetting", false));
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-  glBindTexture(target, texture->glTextureId());
-  
+
+  tex = make_ref<GlLoneTexture>();
+  tex->textureFiltering = TextureFiltering::Nearest;
+  tex->textureAddressing = TextureAddressing::Clamp;
+  tex->textureSize = {0, 0};
+  glGenTextures(1, &tex->textureId);
+  if (tex->textureId == 0)
+    throw RendererException::format("Framebuffer '{}' ({}): could not generate OpenGL texture", name, which);
+
+  glBindTexture(target, tex->glTextureId());
+
+  // glGetError pops from a queue that ACCUMULATES until drained, so an error still pending from earlier,
+  // unrelated code would otherwise be blamed on the calls below. Start from a clean slate.
+  while (glGetError() != GL_NO_ERROR) {}
+
+  GLenum firstError = GL_NO_ERROR;
+  char const* firstErrorCall = nullptr;
+  auto check = [&](char const* call) {
+    if (GLenum e = glGetError(); e != GL_NO_ERROR && firstError == GL_NO_ERROR) {
+      firstError = e;
+      firstErrorCall = call;
+    }
+  };
+
+  if (multisample) {
+    auto internalFormat = hdr ? GL_RGBA16F : GL_RGBA8;
+
+    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, size[0], size[1], GL_TRUE);
+    check("glTexImage2DMultisample");
+  } else {
+    auto format = alpha ? GL_RGBA : GL_RGB;
+    auto internalFormat = hdr ?
+        (alpha ? GL_RGBA16F : GL_RGB16F) :
+        (alpha ? GL_RGBA8 : GL_RGB8);
+    auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
+
+    glTexImage2D(
+      GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
+    check("glTexImage2D");
+  }
+
+  if (!multisample) {
+    auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
+    auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
+    if (addressing == TextureAddressing::Clamp) {
+      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    } else {
+      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    }
+    check("glTexParameteri(wrap)");
+    if (filtering == TextureFiltering::Nearest) {
+      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    } else {
+      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
+    check("glTexParameterf(filter)");
+  }
+
+  if (firstError != GL_NO_ERROR)
+    throw RendererException::format(
+        "Framebuffer '{}' ({}): {} failed with OpenGL error {:#06x} -- {}x{}, {}, alpha={}, {} samples",
+        name, which, firstErrorCall, (unsigned)firstError, size[0], size[1],
+        hdr ? "HDR (16F)" : "8-bit", alpha, multisample);
+
+  fboId = 0;
+  glGenFramebuffers(1, &fboId);
+  if (!fboId)
+    throw RendererException::format("Framebuffer '{}' ({}): could not create OpenGL framebuffer", name, which);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, fboId);
+  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, tex->glTextureId(), 0);
+
+  if (GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); status != GL_FRAMEBUFFER_COMPLETE)
+    throw RendererException::format(
+        "Framebuffer '{}' ({}) is not complete: status {:#06x} -- {}x{}, {}, alpha={}, {} samples",
+        name, which, (unsigned)status, size[0], size[1],
+        hdr ? "HDR (16F)" : "8-bit", alpha, multisample);
+}
+
+OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig)
+  : config(fbConfig), name(fbName) {
+  clear = config.getBool("clear",true);
+
+  multisample = GLEW_VERSION_4_0 ? config.getUInt("multisample", 0) : 0;
   hdrMode = BoolSettingModeNames.getLeft(config.getString("hdr","Disabled"));
-  bool hdr = settingModeValue(hdrMode,config.getBool("hdrSetting",false));
   alpha = config.getBool("alpha",false) || multisample;
 
   sizeDiv = config.getUInt("sizeDiv", 1);
@@ -183,114 +264,11 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(Json const& fbConfig) : config(fbCo
     size = *overrideSize;
   }
 
-  if (multisample) {
-    auto internalFormat =  hdr ? GL_RGBA16F : GL_RGBA8;
-    
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, size[0], size[1], GL_TRUE);
-  } else {
-    auto format = alpha ? GL_RGBA : GL_RGB;
-    auto internalFormat =  hdr ? 
-        (alpha ? GL_RGBA16F : GL_RGB16F) :
-        (alpha ? GL_RGBA8 : GL_RGB8);
-    auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-    
-    glTexImage2D(
-      GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
-  }
-  auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
-  auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
-  if (!multisample) {
-    if (addressing == TextureAddressing::Clamp) {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    } else {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    }
-    if (filtering == TextureFiltering::Nearest) {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    } else {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-  }
-
-  glGenFramebuffers(1, &id);
-  if (!id)
-    throw RendererException("Failed to create OpenGL framebuffer");
-
-  glBindFramebuffer(GL_FRAMEBUFFER, id);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, texture->glTextureId(), 0);
-
-  auto framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
-    throw RendererException("OpenGL framebuffer is not complete!");
+  allocateTarget(texture, id, size, "primary");
 }
 
 void OpenGlRenderer::GlFrameBuffer::makeAlt(Vec2U const& screenSize) {
-  // Bott: ...this is a lot of repeated code. unfortunately it's also rather difficult to make it not repeated.
-  altTexture = make_ref<GlLoneTexture>();
-  altTexture->textureFiltering = TextureFiltering::Nearest;
-  altTexture->textureAddressing = TextureAddressing::Clamp;
-  altTexture->textureSize = {0, 0};
-  glGenTextures(1, &altTexture->textureId);
-  if (altTexture->textureId == 0)
-    throw RendererException("Could not generate OpenGL texture for framebuffer");
-
-  
-  GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
-  glBindTexture(target, altTexture->glTextureId());
-  
-  bool hdr = settingModeValue(hdrMode,config.getBool("hdrSetting",false));
-
-  Vec2U size = overrideSize ? *overrideSize : (screenSize / sizeDiv);
-
-  if (multisample) {
-    auto internalFormat =  hdr ? GL_RGBA16F : GL_RGBA8;
-    
-    glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, size[0], size[1], GL_TRUE);
-  } else {
-    auto format = alpha ? GL_RGBA : GL_RGB;
-    auto internalFormat =  hdr ? 
-        (alpha ? GL_RGBA16F : GL_RGB16F) :
-        (alpha ? GL_RGBA8 : GL_RGB8);
-    auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
-    
-    glTexImage2D(
-      GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, NULL);
-  }
-  auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
-  auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
-  if (!multisample) {
-    if (addressing == TextureAddressing::Clamp) {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    } else {
-      glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-      glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    }
-    if (filtering == TextureFiltering::Nearest) {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    } else {
-      glTexParameterf(target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameterf(target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
-  }
-
-  altId = 0;
-  glGenFramebuffers(1, &altId);
-  if (!altId)
-    throw RendererException("Failed to create OpenGL framebuffer");
-
-  glBindFramebuffer(GL_FRAMEBUFFER, altId);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, altTexture->glTextureId(), 0);
-
-  auto framebufferStatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (framebufferStatus != GL_FRAMEBUFFER_COMPLETE)
-    throw RendererException("OpenGL framebuffer is not complete!");
-  
+  allocateTarget(altTexture, altId, overrideSize ? *overrideSize : (screenSize / sizeDiv), "alt");
   hasAlt = true;
 }
 
@@ -306,6 +284,13 @@ void OpenGlRenderer::GlFrameBuffer::swap() {
 OpenGlRenderer::GlFrameBuffer::~GlFrameBuffer() {
   glDeleteFramebuffers(1, &id);
   texture.reset();
+  // The alt target was leaked: loadConfig clears and rebuilds every framebuffer (setMainHDR and
+  // setMultiSampling both land there), so each toggle leaked one framebuffer object and one full-size
+  // texture per double-buffered target.
+  if (hasAlt) {
+    glDeleteFramebuffers(1, &altId);
+    altTexture.reset();
+  }
 }
 
 void OpenGlRenderer::loadConfig(Json const& config) {
@@ -316,7 +301,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     config = config.set("multisample", m_multiSampling);
     config = config.set("hdrSetting", m_hdrSetting);
     Logger::info("Creating framebuffer {}", pair.first);
-    auto buf = make_ref<GlFrameBuffer>(config);
+    auto buf = make_ref<GlFrameBuffer>(pair.first, config);
     if (config.getBool("double",false)) {
       buf->makeAlt();
     }

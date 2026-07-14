@@ -190,26 +190,32 @@ private:
   struct GlFrameBuffer : RefCounter {
     GLuint id = 0;
     RefPtr<GlLoneTexture> texture;
-    
+
     bool hasAlt = false;
     GLuint altId = 0;
     RefPtr<GlLoneTexture> altTexture;
 
     Json config;
+    String name;
     Maybe<Vec2U> overrideSize;
     BoolSettingMode hdrMode = BoolSettingMode::Disabled;
     bool alpha = false;
     bool clear = true;
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
-    
+
     bool blitted = false;
     bool justSwapped = false;
-    
+
+    // Allocate `tex` at `size` in this framebuffer's configured format, attach it to a fresh framebuffer
+    // object in `fboId`, and verify the result. Shared by the primary target (constructor) and the
+    // double-buffered alt target (makeAlt), which previously each carried a hand-maintained copy of the
+    // same sequence. `which` identifies the target in any error message.
+    void allocateTarget(RefPtr<GlLoneTexture>& tex, GLuint& fboId, Vec2U const& size, char const* which);
     void makeAlt(Vec2U const& screenSize = Vec2U(256, 256));
     void swap();
-    
-    GlFrameBuffer(Json const& config);
+
+    GlFrameBuffer(String const& name, Json const& config);
     ~GlFrameBuffer();
   };
 
