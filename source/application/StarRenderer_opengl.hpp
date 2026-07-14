@@ -204,6 +204,14 @@ private:
   };
 
   struct EffectTexture {
+    // TRUE when textureValue is a framebuffer's OWN colour attachment -- handed to us by
+    // setEffectTextureFromTarget, by the frameBufferTextures block of an effect config, or by an alias of one
+    // of those. We are then a BORROWER: we may bind that texture and sample it, and we may NOT write to it.
+    //
+    // The upload setters (setEffectTexture / Half / R8) each have a "reuse the texture object I already have"
+    // branch, and without this flag that branch happily re-specified storage belonging to GlTargets --
+    // glTexImage2D through a sampler, into a live render target. See the comment on those setters.
+    bool targetOwned = false;
     unsigned textureUnit = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Linear;

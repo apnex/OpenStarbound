@@ -1158,6 +1158,23 @@ void ClientApplication::renderTestCapture() {
       m_renderTestLoading = false;
       m_renderTestFrozen = !noFreeze;
 
+      // STAR_RENDERTEST_FULLBRIGHT=1 -- the RB-1 probe. The GPU lighting pass points the world effect's
+      // `lightMap` sampler AT lightingGpuUpscaled's own colour attachment (setEffectTextureFromTarget).
+      // Fullbright then uploads a 1x1 white image into that same sampler, and before the ownership fix the
+      // upload setter's "reuse the texture I already have" branch re-specified the RENDER TARGET's storage.
+      //
+      // The pixel oracles are structurally blind to this: they run with GPU lighting ON and fullbright OFF, so
+      // the alias and the upload never collide in a gated frame. This knob makes them collide, on purpose.
+      static bool const fullbright = []() {
+        char const* e = getenv("STAR_RENDERTEST_FULLBRIGHT");
+        return e && *e && *e != '0';
+      }();
+      if (fullbright && m_universeClient && m_universeClient->worldClient()) {
+        m_universeClient->worldClient()->setFullBright(true);
+        Logger::info("[texowner] fullbright FORCED -- the lightMap sampler aliases a live render target and is "
+                     "about to be uploaded into");
+      }
+
       if (quiesced)
         Logger::info("[rendertest] world QUIESCED after {} frames -- {} entities, stable for {} -- sim {}",
           m_renderTestFrame, entities, m_renderTestQuiesce, m_renderTestFrozen ? "FROZEN" : "RUNNING (nofreeze)");
@@ -1170,6 +1187,19 @@ void ClientApplication::renderTestCapture() {
           m_renderTestLoad, entities, m_renderTestStable, m_renderTestQuiesce);
     }
     return;
+  }
+
+  // THE RB-1 OBSERVABLE. RenderOracle::read() sizes the image it returns from the target's OWN recorded size
+  // (writeFace().texture->textureSize) -- the very field the corruption overwrites. So asking the oracle how
+  // big lightingGpuUpscaled is asks the target what it thinks it is, which is exactly the question.
+  //
+  // Report it every frozen frame while the probe is armed: RED is a target that has silently become 1x1.
+  if (getenv("STAR_RENDERTEST_FULLBRIGHT") && m_renderTestSeen % 30 == 0) {
+    auto renderer = Application::renderer();
+    if (renderer->hasFrameBuffer("lightingGpuUpscaled")) {
+      auto size = renderer->oracle().read("lightingGpuUpscaled").size();
+      Logger::info("[texowner] lightingGpuUpscaled is {}x{}", size[0], size[1]);
+    }
   }
 
   // PHASE 2 -- SETTLE, frozen. Caches, atlases and the lighting pipeline quiesce against a static world.
