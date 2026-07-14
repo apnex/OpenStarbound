@@ -1,0 +1,40 @@
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=5 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=2 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=5 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=2 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=5 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=2 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.814] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x501
+[16:16:37.814] [Info] [d7] uniform=lightState unit=1 want=5 bound=10 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.814] [Info] [d7] uniform=emission unit=2 want=10 bound=10 err=0x0
+[16:16:37.827] [Info] [d7] uniform=obstacle unit=0 want=12 bound=12 err=0x501
+[16:16:37.827] [Info] [d7] uniform=obstacle unit=0 want=12 bound=12 err=0x501
+[16:16:37.827] [Info] [d7] uniform=obstacle unit=0 want=12 bound=12 err=0x501
+[16:16:37.827] [Info] [d7] uniform=inputTexture unit=0 want=2 bound=12 err=0x501
+[16:16:37.828] [Info] [d7] uniform=inputTexture unit=0 want=5 bound=12 err=0x501
+[16:16:37.848] [Info] [d7] uniform=lightMap unit=4 want=7 bound=0 err=0x501
+[16:16:37.861] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.861] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.861] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=lightMap unit=4 want=7 bound=13 err=0x502  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D
+[16:16:37.865] [Info] [d7] uniform=obstacle unit=0 want=11 bound=11 err=0x0
+[16:16:37.865] [Info] [d7] uniform=lightState unit=1 want=10 bound=10 err=0x0

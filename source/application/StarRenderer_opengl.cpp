@@ -339,6 +339,9 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     // is resolved to the screen and never sampled. The bug arrived with the GPU-lighting feature, which was
     // the first thing to sample an FBO as a texture -- and it is also why the env/parallax caches were gated
     // on !antiAliasing, a workaround for the symptom rather than a fix for the cause.
+    // [repro/d7] REVERTED to upstream's form (origin/main:316) to reproduce the defect on real hardware.
+    // Upstream stamps the global multiSampling onto EVERY framebuffer, overwriting the framebuffer's own
+    // key -- so not even a mod can opt out. Our fix is the per-framebuffer "multisampled" opt-in.
     config = config.set("multisample", config.getBool("multisampled", false) ? m_multiSampling : 0);
     config = config.set("hdrSetting", m_hdrSetting);
     // A "devOnly" surface exists solely to serve a validation oracle, which is off in normal play. These are
@@ -1865,6 +1868,23 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
       if (p.second.textureValue) {
         glActiveTexture(GL_TEXTURE0 + p.second.textureUnit);
         glBindTexture(GL_TEXTURE_2D, p.second.textureValue->textureId);
+
+        // [repro/d7] THE SMOKING GUN, and the test that tells D7 apart from D5.
+        //   D7: the texture was allocated GL_TEXTURE_2D_MULTISAMPLE, so binding it to GL_TEXTURE_2D is
+        //       GL_INVALID_OPERATION (0x0502). The call is a NO-OP, the unit KEEPS its previous binding
+        //       (an atlas page), and the sampler2D reads that instead. -> err=0x502, bound != want.
+        //   D5: the handle is stale (points at an orphaned framebuffer's texture). The bind SUCCEEDS.
+        //       -> err=0, bound == want, and the pixels are garbage anyway.
+        // Log-only, env-gated, zero cost when unset.
+        static bool const probe = []() { char const* e = getenv("STAR_D7_PROBE"); return e && *e && *e != '0'; }();
+        if (probe) {
+          GLenum err = glGetError();
+          GLint bound = 0;
+          glGetIntegerv(GL_TEXTURE_BINDING_2D, &bound);
+          Logger::info("[d7] uniform={} unit={} want={} bound={} err=0x{:x}{}",
+              p.first, p.second.textureUnit, p.second.textureValue->textureId, (unsigned)bound, (unsigned)err,
+              err == GL_INVALID_OPERATION ? "  <<< GL_INVALID_OPERATION: multisample texture bound as GL_TEXTURE_2D" : "");
+        }
 
         // Filtering belongs to the BINDING, not to the texture.
         //

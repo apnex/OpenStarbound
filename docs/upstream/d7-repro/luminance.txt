@@ -1,0 +1,6 @@
+frame=0 hash=e90031fee17845af size=2560x1371 meanLuminance=0.016682
+frame=1 hash=e90031fee17845af size=2560x1371 meanLuminance=0.016682
+frame=2 hash=e90031fee17845af size=2560x1371 meanLuminance=0.016682
+frame=0 hash=1d11b3af98190b7a size=2560x1371 meanLuminance=0.257642
+frame=1 hash=1d11b3af98190b7a size=2560x1371 meanLuminance=0.257642
+frame=2 hash=1d11b3af98190b7a size=2560x1371 meanLuminance=0.257642
