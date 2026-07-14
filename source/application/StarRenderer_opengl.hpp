@@ -187,13 +187,22 @@ private:
     RefPtr<GlLoneTexture> textureValue;
   };
   
+  // A framebuffer is a SURFACE with one or two FACES.
+  //
+  // A face is one drawable copy of the surface: a colour texture, plus the framebuffer object that draws
+  // into it. Normally there is one. A surface declared "double" (#542) has two, and the second is what lets
+  // a shader read what it is writing -- swap() flips which face is being written and which is readable.
+  //
+  // The faces are reached ONLY through writeFace() / readFace(). That is not style: every framebuffer bug
+  // this struct has had came from a consumer reaching past them. `altId` was leaked because the destructor
+  // knew about `id` and forgot its twin. `makeAlt` duplicated the entire constructor because there was no
+  // one allocator. And blitGlFrameBuffer / the effect-texture resolution each had to re-derive "which half
+  // do I mean?" by hand. One resolver, and none of those are expressible.
   struct GlFrameBuffer : RefCounter {
-    GLuint id = 0;
-    RefPtr<GlLoneTexture> texture;
-
-    bool hasAlt = false;
-    GLuint altId = 0;
-    RefPtr<GlLoneTexture> altTexture;
+    struct Face {
+      GLuint id = 0;
+      RefPtr<GlLoneTexture> texture;
+    };
 
     Json config;
     String name;
@@ -204,19 +213,33 @@ private:
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
-    bool blitted = false;
+    // Set by swap(); defeats switchGlFrameBuffer's "already bound" early-out so the new write face is
+    // actually bound rather than silently skipped.
     bool justSwapped = false;
 
-    // Allocate `tex` at `size` in this framebuffer's configured format, attach it to a fresh framebuffer
-    // object in `fboId`, and verify the result. Shared by the primary target (constructor) and the
-    // double-buffered alt target (makeAlt), which previously each carried a hand-maintained copy of the
-    // same sequence. `which` identifies the target in any error message.
-    void allocateTarget(RefPtr<GlLoneTexture>& tex, GLuint& fboId, Vec2U const& size, char const* which);
-    void makeAlt(Vec2U const& screenSize = Vec2U(256, 256));
+    // THE RESOLVER. Ask which face you are writing, or which you may read. Never reach for a texture or an
+    // id directly.
+    Face& writeFace() { return faces[write]; }
+    Face& readFace() { return faces[doubled ? (write ^ 1) : write]; }
+    Face const& writeFace() const { return faces[write]; }
+    Face const& readFace() const { return faces[doubled ? (write ^ 1) : write]; }
+
+    // Give this surface its second face. Idempotent.
+    void makeDoubled(Vec2U const& screenSize);
+    // Flip which face is written and which is read.
     void swap();
+
+    // THE one allocation path: size `face` in this surface's configured format, attach it to a fresh
+    // framebuffer object, verify, and record what was allocated. Every face -- first or second -- comes
+    // through here, so everything that must happen on allocation happens exactly once, in one place.
+    void allocateTarget(Face& face, Vec2U const& size, char const* which);
 
     GlFrameBuffer(String const& name, Json const& config);
     ~GlFrameBuffer();
+
+    Face faces[2];
+    unsigned write = 0;      // index of the face currently being drawn into
+    bool doubled = false;    // true iff faces[1] exists
   };
 
   class Effect {

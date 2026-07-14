@@ -162,8 +162,9 @@ Vec2U OpenGlRenderer::screenSize() const {
 // never allocated and the failure resurfaces further down as an incomplete framebuffer -- whose message then
 // names none of the things needed to act on it: which framebuffer, what size, what format, or which call
 // actually failed.
-void OpenGlRenderer::GlFrameBuffer::allocateTarget(
-    RefPtr<GlLoneTexture>& tex, GLuint& fboId, Vec2U const& size, char const* which) {
+void OpenGlRenderer::GlFrameBuffer::allocateTarget(Face& face, Vec2U const& size, char const* which) {
+  RefPtr<GlLoneTexture>& tex = face.texture;
+  GLuint& fboId = face.id;
   bool hdr = settingModeValue(hdrMode, config.getBool("hdrSetting", false));
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
@@ -264,32 +265,30 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& f
     size = *overrideSize;
   }
 
-  allocateTarget(texture, id, size, "primary");
+  allocateTarget(faces[0], size, "primary");
 }
 
-void OpenGlRenderer::GlFrameBuffer::makeAlt(Vec2U const& screenSize) {
-  allocateTarget(altTexture, altId, overrideSize ? *overrideSize : (screenSize / sizeDiv), "alt");
-  hasAlt = true;
+void OpenGlRenderer::GlFrameBuffer::makeDoubled(Vec2U const& screenSize) {
+  if (doubled)
+    return;   // idempotent: a surface has at most two faces
+  allocateTarget(faces[1], overrideSize ? *overrideSize : (screenSize / sizeDiv), "second face");
+  doubled = true;
 }
 
 void OpenGlRenderer::GlFrameBuffer::swap() {
-  if (!hasAlt)
-    throw RendererException("Attempting to swap framebuffer without an alt!");
-  
-  std::swap(id,altId);
-  std::swap(texture,altTexture);
+  if (!doubled)
+    throw RendererException::format("Framebuffer '{}': swap() on a surface with only one face", name);
+
+  write ^= 1;
   justSwapped = true;
 }
 
 OpenGlRenderer::GlFrameBuffer::~GlFrameBuffer() {
-  glDeleteFramebuffers(1, &id);
-  texture.reset();
-  // The alt target was leaked: loadConfig clears and rebuilds every framebuffer (setMainHDR and
-  // setMultiSampling both land there), so each toggle leaked one framebuffer object and one full-size
-  // texture per double-buffered target.
-  if (hasAlt) {
-    glDeleteFramebuffers(1, &altId);
-    altTexture.reset();
+  // One loop, and the second face cannot be forgotten. It used to be, on every loadConfig -- i.e. on every
+  // HDR or AA toggle -- because the destructor knew about `id` and not about `altId`.
+  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i) {
+    glDeleteFramebuffers(1, &faces[i].id);
+    faces[i].texture.reset();
   }
 }
 
@@ -303,7 +302,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
     Logger::info("Creating framebuffer {}", pair.first);
     auto buf = make_ref<GlFrameBuffer>(pair.first, config);
     if (config.getBool("double",false)) {
-      buf->makeAlt();
+      buf->makeDoubled(m_screenSize);
     }
     m_frameBuffers[pair.first] = buf;
 
@@ -602,9 +601,11 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     auto buf = getGlFrameBuffer(*outFrameBufferId);
     effectScreenSize = m_screenSize / (buf->sizeDiv);
     if (effect.doubleBuffered) {
-      if (!buf->hasAlt) {
-        Logger::warn("Effect {} should be double buffered, but framebuffer {} doesn't have an alt! Making one!", name, *outFrameBufferId);
-        buf->makeAlt(m_screenSize);
+      if (!buf->doubled) {
+        // Allocating a framebuffer MID-FRAME hitches. Say so, and fix it in the config rather than here.
+        Logger::warn("Effect '{}' reads the framebuffer '{}' that it writes, but that framebuffer is not "
+                     "declared \"double\":true -- giving it a second face now, mid-frame.", name, *outFrameBufferId);
+        buf->makeDoubled(m_screenSize);
       }
       buf->swap();
     }
@@ -628,9 +629,10 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
           auto undefined = !ptr->textureValue || ptr->textureValue->textureId == 0;
           auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
           auto buf = getGlFrameBuffer(*frameBufferId);
-          if (undefined || buf->hasAlt) {
-            auto texture = swapped ? buf->altTexture : buf->texture;
-            ptr->textureValue = texture;
+          if (undefined || buf->doubled) {
+            // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
+            // face it is NOT writing. That is exactly what readFace() answers, so ask it.
+            ptr->textureValue = swapped ? buf->readFace().texture : buf->writeFace().texture;
             if (ptr->textureSizeUniform != -1 && undefined) {
               auto textureSize = ptr->textureValue->glTextureSize();
               glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
@@ -758,11 +760,11 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
     if (unsigned multisample = frameBuffer.second->multisample) {
       auto internalFormat =  hdr ? GL_RGBA16F : GL_RGBA8;
       
-      glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, frameBuffer.second->texture->glTextureId());
-      glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, GL_TRUE);
-      if (frameBuffer.second->hasAlt) {
-        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, frameBuffer.second->altTexture->glTextureId());
+      for (unsigned f = 0; f < (frameBuffer.second->doubled ? 2u : 1u); ++f) {
+        auto& face = frameBuffer.second->faces[f];
+        glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, face.texture->glTextureId());
         glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, multisample, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, GL_TRUE);
+        face.texture->textureSize = Vec2U(m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv);
       }
     } else {
       auto format = frameBuffer.second->alpha ? GL_RGBA : GL_RGB;
@@ -771,11 +773,13 @@ void OpenGlRenderer::setScreenSize(Vec2U screenSize) {
           (frameBuffer.second->alpha ? GL_RGBA8 : GL_RGB8);
       auto type = hdr ? GL_FLOAT : GL_UNSIGNED_BYTE;
       
-      glBindTexture(GL_TEXTURE_2D, frameBuffer.second->texture->glTextureId());
-      glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, 0, format, type, NULL);
-      if (frameBuffer.second->hasAlt) {
-        glBindTexture(GL_TEXTURE_2D, frameBuffer.second->altTexture->glTextureId());
+      for (unsigned f = 0; f < (frameBuffer.second->doubled ? 2u : 1u); ++f) {
+        auto& face = frameBuffer.second->faces[f];
+        glBindTexture(GL_TEXTURE_2D, face.texture->glTextureId());
         glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv, 0, format, type, NULL);
+        // Record what was allocated. Screen-sized surfaces otherwise keep their construction-time {0,0}
+        // forever, which is why the mod-visible textureSize uniform read (0,0).
+        face.texture->textureSize = Vec2U(m_screenSize[0] / sizeDiv, m_screenSize[1] / sizeDiv);
       }
     }
   }
@@ -786,17 +790,16 @@ void OpenGlRenderer::startFrame() {
     glDisable(GL_SCISSOR_TEST);
   
   for (auto& frameBuffer : m_frameBuffers) {
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->id);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->faces[0].id);
     if (frameBuffer.second->clear)
       glClear(GL_COLOR_BUFFER_BIT);
     
-    if (frameBuffer.second->hasAlt) {
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->altId);
+    if (frameBuffer.second->doubled) {
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer.second->faces[1].id);
       if (frameBuffer.second->clear)
         glClear(GL_COLOR_BUFFER_BIT);
     }
     
-    frameBuffer.second->blitted = false;
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1249,6 +1252,27 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
       if (p.second.textureValue) {
         glActiveTexture(GL_TEXTURE0 + p.second.textureUnit);
         glBindTexture(GL_TEXTURE_2D, p.second.textureValue->textureId);
+
+        // Filtering belongs to the BINDING, not to the texture.
+        //
+        // An effect declares how it wants to sample ("textureFiltering" per effectTexture), but a texture
+        // object carries only one filter mode -- so when the texture comes from a framebuffer, the effect's
+        // declaration was silently ignored and it got whatever the framebuffer was allocated with. Real
+        // consequence in this tree: lightingSpread.config asks for "nearest" on its lightState sampler and
+        // was served "linear", because that is what the lightingGpu framebuffer happens to be (the bicubic
+        // upscale needs linear from the SAME surface). It did not corrupt anything only because the spread's
+        // sample coordinates land on exact texel centres, where linear degenerates to nearest -- which is
+        // luck, not design.
+        //
+        // Apply the declaration at the point of use. One surface can now be sampled "nearest" by one effect
+        // and "linear" by another, which is what the callers were asking for all along. (Sampler objects
+        // would be the tidier mechanism but they are GL 3.3; the floor here is 3.2.)
+        GLenum filt = p.second.textureFiltering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
+        GLenum wrap = p.second.textureAddressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
       }
     }
 
@@ -1323,7 +1347,9 @@ RefPtr<OpenGlRenderer::GlFrameBuffer> OpenGlRenderer::getGlFrameBuffer(String co
 
 void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt) {
   auto& size = m_screenSize;
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, (useAlt && frameBuffer->hasAlt) ? frameBuffer->altId : frameBuffer->id);
+  // useAlt: the caller is a double-buffered effect, so it wants the face it is NOT writing -- the one that
+  // still holds the previous content. Exactly readFace().
+  glBindFramebuffer(GL_READ_FRAMEBUFFER, useAlt ? frameBuffer->readFace().id : frameBuffer->writeFace().id);
   glBlitFramebuffer(
     0, 0, size[0], size[1],
     0, 0, size[0], size[1],
@@ -1334,10 +1360,21 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
 void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer) {
   if (m_currentFrameBuffer == frameBuffer && !frameBuffer->justSwapped)
     return;
-  
+
   frameBuffer->justSwapped = false;
-  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->writeFace().id);
   m_currentFrameBuffer = frameBuffer;
+
+  // THE bind path, so this happens here and cannot be forgotten anywhere else. Nothing used to set the
+  // viewport when an effect switched to a framebuffer, so an effect declaring `frameBuffer` together with a
+  // `sizeDiv` drew into a smaller surface through a stale full-screen viewport -- silently, and only for
+  // mods, since nothing in-tree ships a sizeDiv surface.
+  Vec2U vp = frameBuffer->writeFace().texture->glTextureSize();
+  if (vp[0] == 0 || vp[1] == 0)
+    vp = m_screenSize / frameBuffer->sizeDiv;
+  glViewport(0, 0, vp[0], vp[1]);
+  if (m_screenSizeUniform != -1)
+    glUniform2f(m_screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
 
 GLuint OpenGlRenderer::Effect::getAttribute(String const& name) {
