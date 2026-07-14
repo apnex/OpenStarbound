@@ -223,8 +223,7 @@ OpenGlRenderer::OpenGlRenderer()
 }
 
 OpenGlRenderer::~OpenGlRenderer() {
-  for (auto& effect : m_effects)
-    glDeleteProgram(effect.second.program);
+  m_effects.destroyAll();
 
   m_targets.destroyAll();
   logGlErrorSummary("OpenGL errors during shutdown");
@@ -458,11 +457,65 @@ RenderOracle& OpenGlRenderer::oracle() {
   return m_oracle;
 }
 
-void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
-  if (auto effect = m_effects.ptr(name)) {
+// ---------------------------------------------------------------------------------------------------------
+// GlEffects -- owns the compiled GPU programs.
+
+OpenGlRenderer::Effect* OpenGlRenderer::GlEffects::find(String const& name) {
+  return m_byName.ptr(name);
+}
+
+void OpenGlRenderer::GlEffects::destroyAll() {
+  for (auto& effect : m_byName)
+    glDeleteProgram(effect.second.program);
+  m_byName.clear();
+}
+
+void OpenGlRenderer::GlEffects::setScriptable(String const& effectName, String const& parameterName, RenderEffectParameter const& value) {
+  auto effect = find(effectName);
+  if (!effect)
+    return;
+
+  auto ptr = effect->scriptables.ptr(parameterName);
+  if (!ptr || (ptr->parameterValue && *ptr->parameterValue == value))
+    return;
+
+  if (ptr->parameterType != value.typeIndex())
+    throw RendererException::format("OpenGlRenderer::setEffectScriptableParameter '{}' parameter type mismatch", parameterName);
+
+  // A CPU write, and ONLY a CPU write. The effect named here may not be the bound one, so there is no program
+  // to issue a glUniform against. GlPass::bindEffect replays this the next time the effect is bound.
+  ptr->parameterValue = value;
+}
+
+Maybe<RenderEffectParameter> OpenGlRenderer::GlEffects::getScriptable(String const& effectName, String const& parameterName) {
+  auto effect = find(effectName);
+  if (!effect)
+    return {};
+  auto ptr = effect->scriptables.ptr(parameterName);
+  if (!ptr)
+    return {};
+  return ptr->parameterValue;
+}
+
+Maybe<VariantTypeIndex> OpenGlRenderer::GlEffects::getScriptableType(String const& effectName, String const& parameterName) {
+  auto effect = find(effectName);
+  if (!effect)
+    return {};
+  auto ptr = effect->scriptables.ptr(parameterName);
+  if (!ptr)
+    return {};
+  return ptr->parameterType;
+}
+
+// Compile, link, register. It does NOT glUseProgram and it does NOT touch the pass: binding is GlPass's job,
+// and loadEffectConfig does it on the very next line. That separation is the whole point -- registering an
+// effect and making it the one you are drawing with are two different acts, and for as long as they were one
+// function the second was an unannounced side effect of the first.
+OpenGlRenderer::Effect& OpenGlRenderer::GlEffects::load(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
+  if (auto effect = m_byName.ptr(name)) {
     Logger::info("Reloading OpenGL effect {}", name);
     glDeleteProgram(effect->program);
-    m_effects.erase(name);
+    m_byName.erase(name);
   }
 
   GLint status = 0;
@@ -519,14 +572,29 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     throw RendererException(strf("Failed to link program: {}\n", logBuffer));
   }
 
-  glUseProgram(program);
-
-  auto& effect = m_effects.emplace(name, Effect()).first->second;
+  auto& effect = m_byName.emplace(name, Effect()).first->second;
   effect.program = program;
   effect.config = effectConfig;
-  effect.includeVBTextures = effectConfig.getBool("includeVBTextures",true);
-  m_pass.effect = &effect;
-  setupGlUniforms(effect, m_screenSize);
+  effect.includeVBTextures = effectConfig.getBool("includeVBTextures", true);
+  return effect;
+}
+
+void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) {
+  // THE REGISTRY COMPILES IT; THE PASS BINDS IT. Two lines, and they used to be a hundred and eighty apart:
+  // the bind (`m_pass.effect = &effect` plus the uniform flatten) sat buried in the middle of the load, an
+  // unannounced side effect that nothing named.
+  //
+  // The bind is not optional and cannot be moved later. The parameter and texture loops below issue
+  // glUniform1i / glUniform* against the program they are describing, and glUniform writes into whatever
+  // program is CURRENTLY BOUND -- so the program must be current before the first of them runs.
+  //
+  // It is also what makes the renderer's pass valid AT ALL: the constructor's loadEffectConfig("internal") is
+  // the only thing that ever moves m_pass.effect off its nullptr, and every effect entry point dereferences
+  // it without a null check. A load() that did not bind would leave the renderer booted with a null pass and
+  // the first draw would take it.
+  Effect& effect = m_effects.load(name, effectConfig, shaders);
+  m_pass.bindEffect(effect, m_screenSize);
+  GLuint program = effect.program;
 
   for (auto const& p : effectConfig.getObject("effectParameters", {})) {
     EffectParameter effectParameter;
@@ -697,47 +765,14 @@ void OpenGlRenderer::setEffectParameter(EffectParameterHandle handle, RenderEffe
 }
 
 void OpenGlRenderer::setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& value) {
-  auto find = m_effects.find(effectName);
-  if (find == m_effects.end())
-    return;
-
-  Effect& effect = find->second;
-  
-  auto ptr = effect.scriptables.ptr(parameterName);
-  if (!ptr || (ptr->parameterValue && *ptr->parameterValue == value))
-    return;
-
-  if (ptr->parameterType != value.typeIndex())
-    throw RendererException::format("OpenGlRenderer::setEffectScriptableParameter '{}' parameter type mismatch", parameterName);
-
-  ptr->parameterValue = value;
+  m_effects.setScriptable(effectName, parameterName, value);
 }
 
 Maybe<RenderEffectParameter> OpenGlRenderer::getEffectScriptableParameter(String const& effectName, String const& parameterName) {
-  auto find = m_effects.find(effectName);
-  if (find == m_effects.end())
-    return {};
-
-  Effect& effect = find->second;
-
-  auto ptr = effect.scriptables.ptr(parameterName);
-  if (!ptr)
-    return {};
-  
-  return ptr->parameterValue;
+  return m_effects.getScriptable(effectName, parameterName);
 }
 Maybe<VariantTypeIndex> OpenGlRenderer::getEffectScriptableParameterType(String const& effectName, String const& parameterName) {
-  auto find = m_effects.find(effectName);
-  if (find == m_effects.end())
-    return {};
-
-  Effect& effect = find->second;
-
-  auto ptr = effect.scriptables.ptr(parameterName);
-  if (!ptr)
-    return {};
-  
-  return ptr->parameterType;
+  return m_effects.getScriptableType(effectName, parameterName);
 }
 
 void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const& image) {
@@ -763,11 +798,11 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
 
 bool OpenGlRenderer::switchEffectConfig(String const& name) {
   flushImmediatePrimitives();
-  auto find = m_effects.find(name);
-  if (find == m_effects.end())
+  auto found = m_effects.find(name);
+  if (!found)
     return false;
 
-  Effect& effect = find->second;
+  Effect& effect = *found;
   if (m_pass.effect == &effect)
     return true;
 
@@ -792,9 +827,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
   }
 
-  glUseProgram(effect.program);
-  setupGlUniforms(effect, effectScreenSize);
-  m_pass.effect = &effect;
+  m_pass.bindEffect(effect, effectScreenSize);
 
   setEffectParameter("vertexRounding", m_multiSampling > 0);
   if (auto fbts = effect.config.optArray("frameBufferTextures")) {
@@ -1962,30 +1995,34 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 }
 
 //Assumes the passed effect program is currently in use.
-void OpenGlRenderer::setupGlUniforms(Effect& effect, Vec2U screenSize) {
-  m_pass.positionAttribute = effect.getAttribute("vertexPosition");
-  m_pass.colorAttribute = effect.getAttribute("vertexColor");
-  m_pass.texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
-  m_pass.dataAttribute = effect.getAttribute("vertexData");
+void OpenGlRenderer::GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
+  Effect& effect = newEffect;
+  glUseProgram(effect.program);
+  this->effect = &effect;
+
+  positionAttribute = effect.getAttribute("vertexPosition");
+  colorAttribute = effect.getAttribute("vertexColor");
+  texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
+  dataAttribute = effect.getAttribute("vertexData");
 
   // textureUniforms used to be cached here alongside textureSizeUniforms. It was a cache of a cache --
   // Effect::getUniform already memoizes the location -- and unlike textureSizeUniforms (read per draw, at
   // :1900) it never escaped this function: filled in one loop, read in the next, never again. The sampler-unit
   // binding it performs lives in the PROGRAM once set, so there is nothing to remember.
-  m_pass.textureSizeUniforms.clear();
+  textureSizeUniforms.clear();
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
-      m_pass.textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
+      textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
   }
-  m_pass.screenSizeUniform = effect.getUniform("screenSize");
-  m_pass.vertexTransformUniform = effect.getUniform("vertexTransform");
+  screenSizeUniform = effect.getUniform("screenSize");
+  vertexTransformUniform = effect.getUniform("vertexTransform");
 
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
       glUniform1i(effect.getUniform(strf("texture{}", i).c_str()), i);
   }
 
-  glUniform2f(m_pass.screenSizeUniform, screenSize[0], screenSize[1]);
+  glUniform2f(screenSizeUniform, screenSize[0], screenSize[1]);
 
   // Scriptable parameters live on the CPU until a bind. This is that bind: the only path by which a value a
   // script set on an unbound effect reaches the GPU.

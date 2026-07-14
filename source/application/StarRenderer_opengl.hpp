@@ -326,7 +326,6 @@ private:
 
   void renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation);
 
-  void setupGlUniforms(Effect& effect, Vec2U screenSize);
 
   void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
@@ -415,12 +414,53 @@ private:
     // because this operation is both of them at once. It takes screenSize by value and reaches for nothing
     // else -- a Pass depends downward on targets and on effects, and on nothing above it.
     void bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize);
+
+    // Make `newEffect` the program that subsequent draws run: bind it, flatten its attribute and uniform
+    // locations for the draw path to read, point its vertex-buffer samplers at their texture units, tell it
+    // the screen size, and replay any scriptable values a script set while it was unbound.
+    //
+    // NO IDENTITY EARLY-OUT, deliberately. A reload erases an effect and re-emplaces it, and can hand back
+    // the SAME address carrying a BRAND-NEW program -- an "already bound, skip" test here would leave the
+    // pass holding the dead program's flattened locations. switchEffectConfig's early-out is a different
+    // animal: it guards a whole target-bind and texture-rebind sequence, not this.
+    void bindEffect(Effect& newEffect, Vec2U const& screenSize);
   };
   GlPass m_pass;
 
-  Json m_config;
+  // GlEffects -- owns the compiled GPU programs. Which effects exist, what program each one compiled to, and
+  // what a script has set on them. It binds nothing, draws nothing, and does not know a pass exists.
+  //
+  // THE REFERENCE DIES AT THE NEXT load(). StringMap is a FLAT, open-addressed hash map (StringMap -> HashMap
+  // -> MapMixin<FlatHashMap>): every Effect is stored INLINE in a std::vector of buckets, so an insert that
+  // rehashes MOVES all of them and an erase back-shifts. An `Effect&` or `Effect*` handed out here is valid
+  // only until the next load().
+  //
+  // GlPass caches exactly one such pointer, and it survives only because loadEffectConfig re-binds it
+  // immediately after every load -- an invariant that used to be an accident of a stray assignment buried in
+  // the middle of the load path, and is now the line after it. Do not cache a second Effect*.
+  struct GlEffects {
+    // Compile, link, and register `name`, replacing whatever was under it. Throws RendererException when the
+    // shaders will not compile or the program will not link.
+    Effect& load(String const& name, Json const& config, StringMap<String> const& shaders);
 
-  StringMap<Effect> m_effects;
+    Effect* find(String const& name);   // null when absent
+
+    // THE SCRIPTABLE SURFACE. Addressed BY NAME, on an effect that may not be the bound one -- that is the
+    // whole point of it, and the reason it lives here and not on the pass. These write a CPU value and issue
+    // no GL: the value reaches the GPU when GlPass::bindEffect next binds that effect.
+    void setScriptable(String const& effectName, String const& parameterName, RenderEffectParameter const& value);
+    Maybe<RenderEffectParameter> getScriptable(String const& effectName, String const& parameterName);
+    Maybe<VariantTypeIndex> getScriptableType(String const& effectName, String const& parameterName);
+
+    void destroyAll();   // delete every program, then forget them
+
+  private:
+    friend class OpenGlRenderer;
+    StringMap<Effect> m_byName;
+  };
+  GlEffects m_effects;
+
+  Json m_config;
 
 
   RefPtr<GlTexture> m_whiteTexture;
