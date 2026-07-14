@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // R-A Form 2: bicubic-reconstruct the tile-res composed lightmap into a higher-res (Nx) linear
 // target ONCE per lightmap update (<=30Hz). The world pass then does a single bilinear tap of this

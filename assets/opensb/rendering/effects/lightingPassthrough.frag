@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-1 spike: identity passthrough. Slice 3 also uses it as the final COMPOSE pass: read the
 // accumulation (spread + point), optionally apply the brightnessLimit cap (proportional,

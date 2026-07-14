@@ -239,7 +239,6 @@ private:
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
-    bool blitted = false;
     bool justSwapped = false;
 
     // Upstream's double-buffer (#542): a second colour target + framebuffer, so an effect can read the

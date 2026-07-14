@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-1 GPU plumbing spike: fullscreen passthrough. The engine feeds a screen-space
 // quad (vertexPosition in pixels) through the standard primitive path; we map it to clip

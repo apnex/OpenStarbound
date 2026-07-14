@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-2 GPU spread: ONE parallel Jacobi relaxation step, replicating spreadJacobiReference
 // (StarCellularLightArray.cpp) cell-for-cell so it converges to the CPU Gauss-Seidel sweep.

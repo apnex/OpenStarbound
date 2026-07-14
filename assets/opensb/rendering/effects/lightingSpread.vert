@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-2 GPU spread: fullscreen pass. The engine feeds a screen-space quad (vertexPosition in
 // pixels); map to clip space via the screenSize uniform (set to the lightmap size by

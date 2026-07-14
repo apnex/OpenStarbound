@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-3 GPU point lighting: ONE point light's per-cell contribution, replicating
 // pointLightingReference + obstacleRaycastDDA (StarCellularLightArray.cpp) cell-for-cell so it

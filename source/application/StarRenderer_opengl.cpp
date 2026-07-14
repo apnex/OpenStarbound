@@ -161,7 +161,6 @@ OpenGlRenderer::OpenGlRenderer() {
   m_limitTextureGroupSize = false;
   m_useMultiTexturing = true;
   m_multiSampling = false;
-  m_hdrSetting = true;
 
   logGlErrorSummary("OpenGL errors during renderer initialization");
 }
@@ -1358,7 +1357,6 @@ void OpenGlRenderer::startFrame() {
         glClear(GL_COLOR_BUFFER_BIT);
     }
     
-    frameBuffer.second->blitted = false;
   }
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1943,7 +1941,6 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
   );
 
   endGpuTimer("render.frame.blit.gpu_us");
-  frameBuffer->blitted = true;
 }
 
 void OpenGlRenderer::switchGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer) {

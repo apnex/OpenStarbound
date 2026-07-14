@@ -1,4 +1,4 @@
-#version 140
+#version 150
 
 // Slice-3 GPU point lighting: per-light bbox quad. The quad is supplied in lightmap-grid pixel
 // coords [lxmin,lymin]-[lxmax,lymax]; map to clip space via screenSize (= grid size, set by
