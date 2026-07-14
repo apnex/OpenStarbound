@@ -21,6 +21,24 @@ extern EnumMap<BoolSettingMode> const BoolSettingModeNames;
 
 bool settingModeValue(BoolSettingMode const& mode, bool const& setting);
 
+// ---------------------------------------------------------------------------------------------------------
+// TEMPORARY REFACTOR SCAFFOLD -- DELETE WITH THE LAST F2a STEP.
+//
+// A pure refactor must change no pixel, and we cannot prove that with a golden frame hash: the world is
+// simulated by a free-running server thread on a wall-clock dt, so two RUNS of the same binary render
+// different frames (measured -- see the harness). A cross-binary hash is therefore meaningless.
+//
+// What IS valid is an in-process A/B: hold ONE frozen frame, render it down the OLD path, render it down the
+// NEW path, and compare the two byte-for-byte. Same world, same instant, same everything -- so a difference is
+// attributable to the CODE and to nothing else. It is how the env cache was proven byte-identical, and unlike
+// the oracles (env/parallax/lighting only) it covers the WHOLE FRAME: world pass, entities and interface too.
+//
+// So both paths stay alive for exactly as long as the refactor takes:
+//     STAR_RENDERTEST_AB='passRefactor=false|true'   ->  must report MATCH: byte-identical
+// then the old path is deleted and this function goes with it. A scaffold, not a shipped flag -- which is why
+// it is a free function and not a virtual: the Renderer contract does not widen by one method for it.
+void setPassRefactor(bool enabled);
+
 // OpenGL 2.0 implementation of Renderer.  OpenGL context must be created and
 // active during construction, destruction, and all method calls.
 class OpenGlRenderer : public Renderer {
@@ -333,6 +351,11 @@ private:
 
   RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
   void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
+
+  // TEMPORARY REFACTOR SCAFFOLD. The one place the old and new bind paths meet, so the A/B switches every
+  // caller at once. Both go when the refactor lands.
+  void bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer);
+  void switchGlFrameBufferLegacy(RefPtr<GlFrameBuffer> const& frameBuffer);
 
   Vec2U m_screenSize;
 

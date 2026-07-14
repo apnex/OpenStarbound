@@ -2,6 +2,8 @@
 #include "StarJsonExtra.hpp"
 #include "StarCasting.hpp"
 #include "StarLogging.hpp"
+
+#include <atomic>
 #include "StarTelemetry.hpp"
 
 #include <cstring>  // memcmp (RenderOracle::compare bit-identity)
@@ -723,7 +725,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
       }
       buf->swap();
     }
-    m_pass.bindTarget(buf, m_screenSize);
+    bindTarget(buf);
   } else {
     m_pass.target.reset();
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
@@ -797,7 +799,7 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
     buf->writeFace().texture->textureSize = size;
   }
 
-  m_pass.bindTarget(buf, m_screenSize);
+  bindTarget(buf);
   Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
   glViewport(0, 0, vp[0], vp[1]);
   if (m_pass.screenSizeUniform != -1)
@@ -1972,6 +1974,40 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
   );
 
   m_gpuTimer.end("render.frame.blit.gpu_us");
+}
+
+// TEMPORARY REFACTOR SCAFFOLD (see the header). Default TRUE: the new path is what ships; the old one exists
+// only so the A/B gate can prove they are the same frame.
+static std::atomic<bool> g_passRefactor{true};
+
+void setPassRefactor(bool enabled) {
+  g_passRefactor.store(enabled, std::memory_order_relaxed);
+}
+
+// THE OLD PATH, kept verbatim for the A/B and deleted with the last F2a step. Do not "improve" it: its whole
+// job is to be exactly what we had before, so that MATCH means something.
+void OpenGlRenderer::switchGlFrameBufferLegacy(RefPtr<GlFrameBuffer> const& frameBuffer) {
+  if (m_pass.target == frameBuffer && !frameBuffer->justSwapped)
+    return;
+
+  frameBuffer->justSwapped = false;
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, frameBuffer->writeFace().id);
+  m_pass.target = frameBuffer;
+
+  Vec2U vp = frameBuffer->writeFace().texture->glTextureSize();
+  if (vp[0] == 0 || vp[1] == 0)
+    vp = m_screenSize / frameBuffer->sizeDiv;
+  glViewport(0, 0, vp[0], vp[1]);
+  if (m_pass.screenSizeUniform != -1)
+    glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
+}
+
+// The one place the two paths meet. Every caller goes through here, so the A/B switches ALL of them at once.
+void OpenGlRenderer::bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer) {
+  if (g_passRefactor.load(std::memory_order_relaxed))
+    m_pass.bindTarget(frameBuffer, m_screenSize);
+  else
+    switchGlFrameBufferLegacy(frameBuffer);
 }
 
 void OpenGlRenderer::GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize) {
