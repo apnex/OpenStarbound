@@ -41,9 +41,13 @@
 
 #if defined STAR_SYSTEM_WINDOWS
 #include <windows.h>
+// graphics driver is told by these exports to default to the dedicated GPU
 extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 1;
 extern "C" __declspec(dllexport) DWORD AmdPowerXpressRequestHighPerformance = 1;
-#endif // graphics driver is told by these exports to default to the dedicated GPU
+
+// https://docs.kicad.org/doxygen/windows_2app_8cpp_source.html L45
+extern "C" __declspec(dllexport) void NoHotPatch() { return; }
+#endif 
 
 namespace Star {
 
@@ -170,7 +174,10 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
   RootLoader rootLoader({AdditionalAssetsSettings, AdditionalDefaultConfiguration, String("starbound.log"), LogLevel::Info, false, String("starbound.config")});
   m_root = rootLoader.initOrDie(cmdLineArgs).first;
 
-  Logger::info("OpenStarbound Client v{} for v{} ({}) Source ID: {} Protocol: {}", OpenStarVersionString, StarVersionString, StarArchitectureString, StarSourceIdentifierString, StarProtocolVersion);
+  Logger::info("OpenStarbound Client v{} for v{} ({}) Source ID: {}", OpenStarVersionString, StarVersionString, StarArchitectureString, StarSourceIdentifierString);
+  #ifdef __clang__
+  Logger::info("Compiled with Clang {}", __clang_version__);
+  #endif
 
   // Headless render harness (P-0). Environment-driven so the shipped CLI surface is untouched and the harness
   // costs exactly nothing when unset. See the block comment in StarClientApplication.hpp.
@@ -294,7 +301,7 @@ void ClientApplication::applicationInit(ApplicationControllerPtr appController) 
     m_immediateFont = *assets->bytes("/hobo.ttf");
     ImFontConfig config{};
     config.FontDataOwnedByAtlas = false;
-    config.FontBuilderFlags = ImGuiFreeTypeBuilderFlags_ForceAutoHint;
+    config.FontLoaderFlags = ImGuiFreeTypeLoaderFlags_ForceAutoHint;
     io.Fonts->AddFontFromMemoryTTF(m_immediateFont.ptr(), m_immediateFont.size(),
       16, &config, io.Fonts->GetGlyphRangesDefault());
   }

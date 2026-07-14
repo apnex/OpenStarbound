@@ -218,10 +218,18 @@ private:
   struct GlFrameBuffer : RefCounter {
     GLuint id = 0;
     RefPtr<GlLoneTexture> texture;
+    
+    bool hasAlt = false;
+    GLuint altId = 0;
+    RefPtr<GlLoneTexture> altTexture;
 
     Json config;
+    // Our name in the "frameBuffers" config. Carried so a failure can say WHICH framebuffer broke.
     String name;
-    bool blitted = false;
+    // Upstream's name for what we had called fixedSize: set when the config declares an explicit "size", which
+    // means this framebuffer is NOT screen-sized and setScreenSize must leave it alone. Same fix, both arrived
+    // at independently; upstream's name wins.
+    Maybe<Vec2U> overrideSize;
     BoolSettingMode hdrMode = BoolSettingMode::Disabled;
     bool alpha = false;
     bool clear = true;
@@ -230,9 +238,20 @@ private:
     bool clearGated = false;
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
-    // Set when the config declares an explicit "size". Such a framebuffer is NOT screen-sized and must be
-    // left alone by setScreenSize -- see the comment there.
-    Maybe<Vec2U> fixedSize;
+
+    bool blitted = false;
+    bool justSwapped = false;
+
+    // Upstream's double-buffer (#542): a second colour target + framebuffer, so an effect can read the
+    // framebuffer it is writing. swap() flips which is which. This generalises the ping-pong we hand-rolled
+    // in GpuLightmapPass between the lightingGpu / lightingGpuB framebuffers -- see the note there.
+    void makeAlt(Vec2U const& screenSize = Vec2U(256, 256));
+    void swap();
+
+    // Allocate `tex` at `size` in this framebuffer's configured format, attach it to a fresh framebuffer in
+    // `fboId`, and verify the result -- checking every GL call so a failure names itself. Shared by the
+    // primary target (ctor) and the alt target (makeAlt), which upstream otherwise duplicates.
+    void allocateTarget(RefPtr<GlLoneTexture>& tex, GLuint& fboId, Vec2U const& size, char const* which);
 
     GlFrameBuffer(String const& name, Json const& config);
     ~GlFrameBuffer();
@@ -252,6 +271,7 @@ private:
     GLuint getAttribute(String const& name);
     GLuint getUniform(String const& name);
     bool includeVBTextures;
+    bool doubleBuffered = false;
   };
 
   static bool logGlErrorSummary(String prefix);
@@ -271,7 +291,7 @@ private:
   void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
   RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
-  void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer);
+  void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
   void switchGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer);
 
   Vec2U m_screenSize;
