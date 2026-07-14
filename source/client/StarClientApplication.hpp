@@ -173,6 +173,27 @@ private:
   unsigned m_renderTestSeen = 0;     // frames since the freeze
   bool m_renderTestEntered = false;
   bool m_renderTestFrozen = false;
+
+  // THE LOAD ENDS ON QUIESCENCE, NOT ON A FRAME COUNT.
+  //
+  // It used to freeze after a fixed number of frames. But the world streams in ASYNCHRONOUSLY -- chunks and
+  // entities arrive on the server thread -- so how much had loaded after N frames depended on wall-clock and
+  // thread scheduling. Two runs of the SAME binary froze with 217 and 214 entities. That is why the cross-run
+  // frame hash "legitimately differed", and it is why we could only ever certify a refactor against the
+  // in-frame oracles, which cover env/parallax/lighting and NOT the world pass.
+  //
+  // Freezing when the entity count has been STABLE for N consecutive frames converges to the same world state
+  // regardless of machine speed -- which makes the frozen-world frame hash a valid CROSS-BINARY golden, and
+  // therefore makes every refactor certifiable, not just the oracle-covered ones.
+  //
+  //   STAR_RENDERTEST_QUIESCE -- consecutive frames the entity count must hold before freezing. Default 90.
+  //   STAR_RENDERTEST_LOAD    -- now a HARD CAP, not a target: if the world has not settled by then, we freeze
+  //                              anyway and say so LOUDLY, because a hash taken from an unsettled world is a
+  //                              number that looks like a result and is not one.
+  unsigned m_renderTestQuiesce = 90;
+  unsigned m_renderTestStable = 0;      // consecutive frames the entity count has held
+  size_t m_renderTestLastEntities = 0;
+  bool m_renderTestLoading = true;
   String m_renderTestWarp;      // STAR_RENDERTEST_WARP=<substring of a teleport bookmark name>
   bool m_renderTestWarped = false;
   String m_renderTestAbKey;

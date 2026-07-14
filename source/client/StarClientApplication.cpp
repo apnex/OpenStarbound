@@ -185,6 +185,8 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
     m_renderTestFrames = (unsigned)strtoul(frames, nullptr, 10);
     if (char const* load = getenv("STAR_RENDERTEST_LOAD"))
       m_renderTestLoad = (unsigned)strtoul(load, nullptr, 10);
+    if (char const* quiesce = getenv("STAR_RENDERTEST_QUIESCE"))
+      m_renderTestQuiesce = (unsigned)strtoul(quiesce, nullptr, 10);
     if (char const* warmup = getenv("STAR_RENDERTEST_WARMUP"))
       m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
     if (char const* out = getenv("STAR_RENDERTEST_OUT"))
@@ -1120,20 +1122,52 @@ void ClientApplication::renderTestCapture() {
   auto& renderer = Application::renderer();
 
   // PHASE 1 -- LOAD, unpaused. The world must actually stream in; a paused world never populates.
-  if (m_renderTestFrame < m_renderTestLoad) {
+  //
+  // WE FREEZE ON QUIESCENCE, NOT ON A FRAME COUNT. This used to run a fixed number of frames and then freeze,
+  // which sounds deterministic and is not: chunks and entities arrive ASYNCHRONOUSLY on the server thread, so
+  // how much had loaded after N frames depended on wall-clock and thread scheduling. Two runs of the SAME
+  // binary froze with 217 and 214 entities -- which is why the frozen-world frame hash "legitimately differed"
+  // between runs, and why we could only ever certify a refactor against the in-frame oracles (env, parallax,
+  // lighting) and never against the world pass, the entities, or the interface.
+  //
+  // Waiting for the entity count to HOLD STILL converges to the same world state whatever the machine is
+  // doing. That makes the frozen-world hash a valid CROSS-BINARY golden, which makes every refactor
+  // certifiable -- not just the ones the oracles happen to cover.
+  if (m_renderTestLoading) {
     ++m_renderTestFrame;
-    if (m_renderTestFrame == m_renderTestLoad) {
+
+    size_t entities = m_renderData.entityDrawables.size();
+    if (entities > 0 && entities == m_renderTestLastEntities)
+      ++m_renderTestStable;
+    else
+      m_renderTestStable = 0;   // still arriving -- restart the count
+    m_renderTestLastEntities = entities;
+
+    bool quiesced = m_renderTestStable >= m_renderTestQuiesce;
+    bool timedOut = m_renderTestFrame >= m_renderTestLoad;
+
+    if (quiesced || timedOut) {
       // STAR_RENDERTEST_NOFREEZE=1: leave the sim RUNNING. The frozen scene is required for the byte-identity
-      // A/B gate (it needs deterministic input), but it measures a FLOOR, not real play -- no entity animation,
+      // gate (it needs deterministic input), but it measures a FLOOR, not real play -- no entity animation,
       // no particles, no liquid motion, no lighting recomputes. For TIMING we do not need determinism, only
       // averages, so an unfrozen run is the honest number to compare against the Director's live HUD reading.
       static bool const noFreeze = []() {
         char const* e = getenv("STAR_RENDERTEST_NOFREEZE");
         return e && *e && *e != '0';
       }();
+      m_renderTestLoading = false;
       m_renderTestFrozen = !noFreeze;
-      Logger::info("[rendertest] world loaded ({} frames) -- sim {}", m_renderTestLoad,
-        m_renderTestFrozen ? "FROZEN" : "RUNNING (nofreeze)");
+
+      if (quiesced)
+        Logger::info("[rendertest] world QUIESCED after {} frames -- {} entities, stable for {} -- sim {}",
+          m_renderTestFrame, entities, m_renderTestQuiesce, m_renderTestFrozen ? "FROZEN" : "RUNNING (nofreeze)");
+      else
+        // LOUD, because a hash taken from an unsettled world is a number that looks like a result and is not
+        // one. Raise STAR_RENDERTEST_LOAD; do not quietly accept the frame.
+        Logger::error("[rendertest] world did NOT settle: hit the {}-frame cap with {} entities (stable for only "
+                      "{} of {} required). The frozen state is NOT reproducible and any cross-binary hash "
+                      "comparison from this run is INVALID.",
+          m_renderTestLoad, entities, m_renderTestStable, m_renderTestQuiesce);
     }
     return;
   }
