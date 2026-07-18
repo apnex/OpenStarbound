@@ -36,6 +36,13 @@ The point of the decomposition is not to fix those four bugs — it is to make t
 impossible: give every fact exactly one sovereign owner, written by the act that changes the thing the fact
 describes, so no second mutator exists to leave the record stale.
 
+> **Attribution note** (per the [2026-07-18 comparative assessment](layer1-vs-vanilla-assessment.md)): this
+> bug-shape closure is delivered by the **sealing** — private descriptor fields, the `m_owned` bit, the
+> self-recording chokepoints — which is *separable* from the four-component **extraction**. A nested-but-sealed
+> monolith closes the same shape; the extraction itself buys module sovereignty (goal (b)), not the bug closure.
+> Throughout this document "decomposition" means the **whole arc — sealing *and* extraction** — not the file
+> split alone. See the assessment §2 for the honest vs-upstream / vs-monolith split.
+
 **(b) Turn the substrate into composable primitives.** The floor-reduction feature arc — retained caches
 (environment / parallax / world), refresh gates, sovereign render passes — is being built *on top of* this
 substrate. If the substrate stays a god-object, each of those features is hand-rolled inside it, re-deriving the
@@ -314,10 +321,19 @@ The remaining caveats, stated rather than buried:
   Private fields close the raw-poke seat; "recorded beside the spec" is the byte-identity-bounded residual
   (Appendix C). Making it truly unrepresentable needs a `GlLoneTexture`-owned upload method, which the shared
   atlas caller and the `glPixelStorei` alignment co-location forbid at DIFF=0. Stopped at the strongest form.
-- **Correctness evidence is the render-gate oracle, not standalone unit tests.** No unit test constructs
-  `GlFrameBuffer` / `GlTargets` / `GlPass` / `GlEffects` directly (`star_application` is not linked into the
-  test targets, and the components make direct GL calls needing a context the harness lacks). Sovereignty makes
-  such tests *possible*; they are not yet *written* — a genuine gap, and the cheapest future strengthening.
+- **`GlPass` caches a raw non-owning `Effect*` into `GlEffects`' `m_byName` storage** — kept valid by the
+  co-located rebind-after-`load()` in `loadEffectConfig`. This is by-care (the header warns "the reference dies
+  at the next `load()`"), byte-identity-bounded, **reducible** (making it a RefPtr borrow closes it by
+  construction — backlog item 4), and pre-existing in the monolith (it was `m_currentEffect`). Not one of the
+  sovereignty-*irreducible* residues; a code-quality choice, disclosed here for completeness.
+- **Correctness evidence is the render-gate oracle plus a first set of standalone unit tests.**
+  `render_surface_tests` (9 cases, `source/test/render_surface_test.cpp`, the `render_surface_tests` ctest) now
+  construct `EffectTexture` and `GlLoneTexture` in isolation — with no GL context — and assert the RB-1
+  borrow-trio (`adopt`/`share`/`release`, including the empty-name sibling-alias seal) and the RB-6
+  storage-descriptor invariants directly. These are the first tests to exercise a Layer-1 component standalone,
+  and they are only possible *because* the module is sovereign. Still NOT unit-tested: the GL-calling components
+  (`GlFrameBuffer` / `GlTargets` / `GlPass` / `GlEffects`), which allocate via direct GL calls needing a context
+  the headless harness lacks; those remain covered by the render gate alone.
 - **Byte-identity is certified for one config of one frozen world** (AA off, HDR on). The render oracle cannot
   compare a multisample target by construction, so the AA path — RB-5's home — is verified by reasoning, not by
   the gate. The AA/HDR/double-buffer permutation matrix is asserted, not exercised.
