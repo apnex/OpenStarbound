@@ -7,12 +7,16 @@
 > supersedes the former `layer1-residuals.md` worklist: all seven residuals are shipped, and that build history
 > is preserved in [Appendix B](#appendix-b--how-it-was-built-the-seven-structural-decisions).
 
-> **STATUS: COMPLETE.** The four render-boundary corruptions (RB-1/5/6/7) are closed; all ten checkable
-> conditions ([§7](#7-the-acceptance-bar--the-checkable-conditions)) are green; the whole substrate is certified
-> byte-identical on hardware (render gate env/parallax/spread DIFF=0, GL_INVALID=0; `core_tests` 226/226;
-> `game_tests` 90/91, the lone failure pre-existing and unrelated — `ItemTest.ItemComparison`, #146). Shipped to
-> `dev/upstream-merge`. The honest completeness verdict, including its remaining caveats, is
-> [§8](#8-honest-status--the-remaining-caveats).
+> **STATUS: COMPLETE — to the Layer-2/3 bar on both its clauses, after a completeness audit.** A first "done"
+> verdict overclaimed; a read-only adversarial re-assessment caught false comments and two still-open bug seats
+> (an RB-7 frame-boundary staleness and an RB-1 sibling-alias, both aimed at the Layer-2 retained surfaces).
+> Those were fixed and re-certified, the comments corrected, and the grep-rules converted to type-rules where
+> byte-identity allowed. Now: the four render-boundary corruptions (RB-1/5/6/7) are closed by construction —
+> save one *irreducible* by-care residue that A3's Air-Gap forbids folding away (§4.2 item 3); the ten checkable
+> conditions ([§7](#7-the-acceptance-bar--the-checkable-conditions)) hold under their corrected, module-scoped
+> definitions; and the substrate is certified byte-identical on hardware (render gate env/parallax/spread
+> DIFF=0, GL_INVALID=0; `core_tests` 226/226; `game_tests` 90/91, the lone failure pre-existing — #146). Shipped
+> to `dev/upstream-merge`. The honest verdict and remaining caveats are [§8](#8-honest-status--the-remaining-caveats).
 
 ---
 
@@ -136,24 +140,37 @@ have a single owner:
 
 This is the A8 ledger — the reason the bug class cannot recur, stated per invariant:
 
-1. **The storage descriptor is written only by the act that specifies it.** Storage specification and
-   descriptor recording are one indivisible operation, and no setter writes its own same-size/same-format
-   guard. Two self-recording chokepoints do it: `uploadLoneStorage` (owns *the* guard for the numeric upload
-   paths; `setEffectTextureHalf`/`R8` route through it) and `uploadTextureImage` (records the descriptor itself
-   via a `GlLoneTexture*` out-param). `createEmptyGlTexture` is the documented allocator carve-out — it writes
-   only `textureSize`; `internalFormat` stays the `0` sentinel that no guard can match, so a half-recorded
-   texture cannot reach a fast path. This is what closed **RB-6** for good.
-2. **A borrow is set as one act.** `adopt` / `share` / `release` move a texture and its borrow-status together;
-   `ownsWritableStorage()` refuses to re-specify storage the sampler is only borrowing. An effect upload setter
-   therefore cannot write through an aliased framebuffer face. This closed **RB-1**.
-3. **A rebuild invalidates every view of what it rebuilt.** `GlTargets` carries a generation counter; retained
-   surfaces and samplers re-point on a bump, and the pass is invalidated before `destroyAll`. No holder keeps a
-   destroyed FBO alive to be sampled or re-bound. This closed **RB-5** and **RB-7**.
-4. **Existence *is* doubledness.** A `GlFrameBuffer` is `Face front; Maybe<Face> back;`. It has a second face
-   iff `back` is engaged — there is no separate `bool doubled` that could disagree. `makeDoubled()` builds the
-   second face in a local and `emplace`s `back` only once it is fully allocated, so a throw leaks nothing and
-   there is no instant at which `doubled()` is true over half-formed storage. This closes, by construction, the
-   `altId` face-leak that vanilla and an earlier draft both carried.
+1. **The storage descriptor is written only by the act that specifies it — and cannot be poked.** Storage
+   specification and descriptor recording are one indivisible operation, and no setter writes its own
+   same-size/same-format guard: two self-recording chokepoints do it (`uploadLoneStorage` owns *the* guard for
+   the numeric paths; `uploadTextureImage` records via a `GlLoneTexture*` out-param), and `createEmptyGlTexture`
+   is the allocator carve-out (`internalFormat` stays the `0` sentinel no guard can match). The descriptor
+   fields (`textureSize`, `internalFormat`) are **private**, changed only through `recordStorage()` /
+   `setAllocatedSize()`, so a raw field poke can no longer half-record them. This closes **RB-6**. *Honest
+   limit:* "recorded beside the spec" is still co-location by convention — `glTex*Image2D` are free globals a
+   future path could call directly — the byte-identity-bounded residual named in §7 condition #6 / Appendix C.
+2. **A borrow is set as one atomic act, on private state.** The borrow trio (the texture, whether we adopted
+   it `m_owned`, and which named target to re-point to) is **private**, changed only by `adopt` / `share` /
+   `release`, so no call site can poke one field and desync it. `ownsWritableStorage()` trusts `m_owned` (set
+   only by `adopt`), not the target name — because `adopt(tex)` and `share(tex, "")` both leave the name empty
+   yet mean opposite things (ours vs owned-elsewhere), and deriving writability from the name alone let
+   `setEffectTextureAlias` of a non-borrowed source re-specify the source's live texture through the alias.
+   This closes **RB-1** and its sibling-alias seat, by the compiler.
+3. **A rebuild invalidates every view of what it rebuilt — some by construction, some irreducibly by care.**
+   `GlTargets` carries a generation counter; retained surfaces and samplers re-point on a bump. The pass bind
+   cache is dropped wherever GL_DRAW changes outside the pass: `loadConfig` (before `destroyAll`) and — the fix
+   the audit forced — `startFrame` (which clears faces and raw-binds 0 at the frame boundary, so a frame ending
+   with a non-screen target still live cannot leave the next frame's first bind trusting a stale cache; the
+   exact hazard aimed at the Layer-2 retained surfaces). **Honest residue:** the two cross-component teardown
+   notifications — `rebindBorrows` (RB-5) and the pass's `invalidate()` (RB-7) — are hand-ordered companion
+   calls to `destroyAll` in `loadConfig`. A3's Air-Gap *forbids* folding them into `GlTargets::destroyAll`
+   (targets may not reach into effects or the pass), so this residue is by care, and it is **irreducible under
+   sovereignty** — a consequence of the seal, not a shortcut left in it.
+4. **Existence *is* doubledness, and a face owns its FBO.** A `GlFrameBuffer` is `Face front; Maybe<Face> back;`
+   — it has a second face iff `back` is engaged, with no separate `bool doubled` to disagree (this closed the
+   `altId` bug). And a `Face` now RAIIs its framebuffer object (destructor deletes it, move hands it off, copy
+   deleted), so `makeDoubled()` — which builds the second face into a LOCAL — leaks nothing even if
+   `allocateFace` throws after `glGenFramebuffers`: the local reclaims the FBO on unwind. Both by construction.
 5. **The bind key is `(target, write-face index, size)`.** The pass rebinds exactly when what it is bound to
    changes; a `swap()` moves the face index, which changes the key and forces the rebind *by itself* — there is
    no `justSwapped` bool, no cover `glViewport`. The screen is a representable (null) target, so no site
@@ -234,58 +251,77 @@ The bar is not "better than vanilla." It is the standard set for Layers 2 and 3:
 > *Every architectural comment in the file is true of the code, and the bug classes we closed are closed by the
 > compiler rather than by our care.*
 
-"Nailed" is not a taste judgement. It is **ten greps and three oracles**, each mechanically checkable:
+"Nailed" is not a taste judgement. It is a set of mechanical checks — worded against the **module**, not one
+translation unit (the components were extracted into `StarGlRenderSurface.*`, so a grep pinned to
+`StarRenderer_opengl.*` measures the wrong file; the first cut of this list made exactly that error):
 
-1. `grep -c "friend" StarRenderer_opengl.hpp` → **0**.
-2. `grep -c "glViewport" StarRenderer_opengl.cpp` → **2** (`setScreenSize` + the forwarder); the draw-path
-   `glViewport` lives only in `GlPass::bindTarget`. `justSwapped` → **0**.
-3. Exactly **one** writer of `GL_DRAW_FRAMEBUFFER` on the draw path (`GlPass::bindTarget`). `clearFaces`, the
-   blit and the oracle are the only exceptions, and each **restores what it found**.
+1. **No `friend` anywhere in the module.** All four components are top-level classes with private members; no
+   `friend` *declaration* exists in `StarGlRenderSurface.hpp` or `StarRenderer_opengl.hpp` (only prose).
+2. **`glViewport` appears only in `GlPass::bindTarget` (the draw path) and `OpenGlRenderer::setScreenSize`.**
+   `justSwapped` does not exist.
+3. **`GlPass::bindTarget` is the ONLY writer of `GL_DRAW_FRAMEBUFFER` on the draw path, and its cache is
+   honest.** The non-draw writers — `clearFaces`, `startFrame`/`finishFrame`'s screen bind, the blit, the
+   oracle — either restore what they found (blit, oracle) or are followed by `m_pass.invalidate()` that drops
+   the cache (`clearFaces` runs inside `startFrame`, which now invalidates). So no draw trusts a cache GL has
+   moved out from under. *(This was a fake-green before the frame-boundary fix: it counted the write-side while
+   the RB-7 invariant lives on the read-side early-out.)*
 4. **Zero `Json` in `switchEffectConfig`.** `Effect::config` and `GlFrameBuffer::config` do not exist as members.
-5. **One allocator per side.** `glGenTextures` on a managed texture appears in exactly three places:
-   `GlFrameBuffer::allocateFace`, `createEmptyGlTexture`, `GlTextureAtlasSet::createAtlasTexture`. (The oracle's
-   transient resolve scratch is diagnostic, outside the set.)
-6. **The storage-descriptor chokepoint.** *(Re-derived — the original "one writer per side" grep was the wrong
-   invariant; see [Appendix C](#appendix-c--condition-6-why-it-was-re-derived).)* Every `glTexSubImage2D` on a
-   `GlLoneTexture` is inside `uploadLoneStorage`; every storage-defining `glTexImage2D` on one is inside
-   `uploadLoneStorage`, `uploadTextureImage`, or `specifyStorage`; `->internalFormat =` resolves to exactly
-   those three; no setter writes its own SubImage guard. So spec, record, and the sub-vs-re-spec decision are
-   one indivisible act.
-7. **The seal predicate appears once.** Zero inline copies of `textureId == 0 || … borrowed()`; `hasStorage()`
-   and `ownsWritableStorage()` are the two named forms.
+5. **One allocator per side.** `glGenTextures` on a managed texture appears in exactly three functions:
+   `GlFrameBuffer::allocateFace` (`StarGlRenderSurface.cpp`), `createEmptyGlTexture` and
+   `GlTextureAtlasSet::createAtlasTexture` (`StarRenderer_opengl.cpp`). (The oracle's transient resolve scratch
+   is diagnostic, outside the set.)
+6. **The storage-descriptor chokepoint.** *(Re-derived — see [Appendix C](#appendix-c--condition-6-why-it-was-re-derived).)*
+   Every `glTexSubImage2D` on a `GlLoneTexture` is inside `uploadLoneStorage`; every storage-defining
+   `glTexImage2D` on one is inside `uploadLoneStorage`, `uploadTextureImage`, or `specifyStorage`; the descriptor
+   fields are **private**, written only by `recordStorage` / `setAllocatedSize`. Spec, record, guard: one act.
+7. **The seal predicate appears once.** Zero inline copies of the "may I write?" test; `hasStorage()` and
+   `ownsWritableStorage()` are the two named forms, over **private** borrow state.
 8. **The size rule appears once.** No `screenSize /` arithmetic outside `sizeFor()`.
 9. **The effect-parameter type-name ladder appears once** (`parseEffectParameter`).
-10. Every component's one-line description contains **no "and"**, and every architectural comment in the file is
-    true of the code as it stands.
+10. **Every architectural comment is true of the code** (verified after the false-comment cleanup). Each
+    component's responsibility is singular, or its "and" is a *defended coupling* stated as such: `GlPass` binds
+    one effect **and** its coupled target because GL sets the current program and draw framebuffer together;
+    `GlEffects` owns the compiled programs **and** the scriptable shadow that rides on them, one registry.
 
-Plus: all three GPU pixel oracles MATCH (`DIFF=0`), with the bind-key change (the one item that could move a
-pixel) carrying its own oracle run on its own commit.
-
-**All ten are green** as of the chokepoint commit (git log `condition #6 re-derived`).
+Plus: all three GPU pixel oracles MATCH (`DIFF=0`); every commit that could move a pixel carried its own oracle
+run. All checks hold as of the tier-3 hardening (git log `L1 harden`).
 
 ## 8. Honest status & the remaining caveats
 
-Layer 1 is, honestly, **finished to the Layer-2/3 bar** on the two things that bar actually names: the bug
-class is closed by construction (§4.2), and the architectural comments are true of the code. The four live
-corruptions are gone, proven on hardware before and after; the `makeDoubled` latent leak is closed by the
-`Maybe<Face>` representation; the substrate has a real "outside" — it is constructible and composable by Layers
-2 and 3.
+Layer 1 is finished to the Layer-2/3 bar on both clauses the Director named — **now**, after a completeness
+audit corrected an earlier overclaim. A first "10/10, done" verdict was wrong on both clauses, and a read-only
+adversarial re-assessment caught it: several architectural comments were false, and two flagship bug seats — an
+RB-7 frame-boundary cache staleness and an RB-1 sibling-alias — were still open and pointed straight at the
+Layer-2 retained surfaces. Both were fixed and re-certified byte-identical; the false comments were corrected;
+and the grep-rules were converted to type-rules where byte-identity allowed (private borrow trio, private
+storage descriptor, RAII face FBO). The honest state:
 
-The caveats, stated rather than buried:
+- **Clause (a) — every comment true: met.** The false-comment cluster (a `friend` cross-reference to friends
+  that no longer exist, a `[class.access.nest]` justification for classes that are no longer nested, a
+  `bindEffect` precondition it establishes itself, stale `faces[]` nomenclature) is fixed. The two "and"
+  one-liners are defended couplings, stated (condition #10).
+- **Clause (b) — closed by the compiler, not our care: met, with one irreducible residue.** RB-1 (borrow
+  atomicity + sibling alias), RB-6 (descriptor raw-poke), the `makeDoubled` FBO leak, the RB-7 frame-boundary
+  staleness, and the bind key are structural. The **irreducible residue** is RB-5/RB-7's cross-component
+  teardown notifications (`rebindBorrows` / `invalidate`): A3's Air-Gap forbids folding them into
+  `GlTargets::destroyAll`, so they stay hand-ordered companion calls in `loadConfig` — by care, but *forced by
+  sovereignty*, and documented as such rather than marked "closed" (§4.2 item 3).
 
-- **The chokepoint is "one grep rule," not compiler-impossible.** `glTexImage2D` / `glTexSubImage2D` are free
-  globals and `GlLoneTexture`'s descriptor fields are public, so a *future* direct bypass is representable. The
-  guarantee is that every spec routed through the sanctioned path self-records and self-guards; a bypass is a
-  single greppable violation, not a per-site audit. Making it truly unrepresentable would require private
-  descriptor fields and a `GlLoneTexture`-owned upload method — which the shared atlas caller and the
-  `glPixelStorei` alignment co-location forbid at byte-identity. Deliberately stopped at the strongest DIFF=0
-  form.
-- **Correctness evidence is the render-gate oracle, not standalone unit tests.** Sovereignty makes the
-  components *constructible* in isolation, but no unit test yet exercises `GlFrameBuffer` / `GlTargets` /
-  `GlPass` / `GlEffects` directly; the byte-identity gate is the proof. That is a genuine gap against "testable
-  in isolation," and the cheapest future strengthening.
-- **One permanently-divergent file from upstream.** The substrate cannot merge cleanly with upstream's
-  monolithic renderer; the cost is paid at each upstream merge (~4×/year), consciously.
+The remaining caveats, stated rather than buried:
+
+- **The descriptor chokepoint is compiler-sealed against a field poke, but co-location is still by convention.**
+  `glTex*Image2D` are free globals a future path could call directly (and then call `recordStorage`, or not).
+  Private fields close the raw-poke seat; "recorded beside the spec" is the byte-identity-bounded residual
+  (Appendix C). Making it truly unrepresentable needs a `GlLoneTexture`-owned upload method, which the shared
+  atlas caller and the `glPixelStorei` alignment co-location forbid at DIFF=0. Stopped at the strongest form.
+- **Correctness evidence is the render-gate oracle, not standalone unit tests.** No unit test constructs
+  `GlFrameBuffer` / `GlTargets` / `GlPass` / `GlEffects` directly (`star_application` is not linked into the
+  test targets, and the components make direct GL calls needing a context the harness lacks). Sovereignty makes
+  such tests *possible*; they are not yet *written* — a genuine gap, and the cheapest future strengthening.
+- **Byte-identity is certified for one config of one frozen world** (AA off, HDR on). The render oracle cannot
+  compare a multisample target by construction, so the AA path — RB-5's home — is verified by reasoning, not by
+  the gate. The AA/HDR/double-buffer permutation matrix is asserted, not exercised.
+- **One permanently-divergent file from upstream**, paid at each upstream merge (~4×/year), consciously.
 
 ## 9. Ongoing perfection
 
