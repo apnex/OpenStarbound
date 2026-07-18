@@ -534,15 +534,14 @@ void OpenGlRenderer::GlEffects::rebindBorrows(GlTargets& targets) {
         continue;
 
       if (auto buf = targets.find(tex.borrowedFrom)) {
-        // The same framebuffer, freshly rebuilt: take its new face. The old one is now an orphan and this
-        // drops our last reference to it, so it is finally deleted.
-        tex.textureValue = buf->writeFace().texture;
+        // The same framebuffer, freshly rebuilt: re-point to its new face, still borrowed from the same name.
+        // The old face is now an orphan and this drops our last reference to it, so it is finally deleted.
+        tex.share(buf->writeFace().texture, tex.borrowedFrom);
       } else {
         // That framebuffer is gone from the config altogether. Let go rather than hold a dangling orphan; the
         // per-draw bind loop skips a null sampler, and switchEffectConfig's `undefined` guard will re-point it
         // if the effect declares one.
-        tex.textureValue.reset();
-        tex.borrowedFrom = "";
+        tex.release();
       }
     }
   }
@@ -897,9 +896,8 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
   // record this corruption also rewrites. It heals only because the corruption is self-reporting. An upload at
   // the SAME size and a DIFFERENT format is never noticed, and that internal format is wrong for the life of
   // the process.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
-    ptr->textureValue = createGlTexture(image, ptr->textureAddressing, ptr->textureFiltering);
-    ptr->borrowedFrom = "";
+  if (!ptr->ownsWritableStorage()) {
+    ptr->adopt(createGlTexture(image, ptr->textureAddressing, ptr->textureFiltering));
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
     // A FULL RE-SPECIFICATION, so the WHOLE descriptor is rewritten. Recording only the size -- which is what
@@ -991,9 +989,9 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
           auto buf = m_targets.get(*frameBufferId);
           if (undefined || buf->doubled()) {
             // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
-            // face it is NOT writing. That is exactly what readFace() answers, so ask it.
-            ptr->textureValue = swapped ? buf->readFace().texture : buf->writeFace().texture;
-            ptr->borrowedFrom = *frameBufferId;   // borrowed: no writing, and re-point me if it is rebuilt
+            // face it is NOT writing. That is exactly what readFace() answers, so ask it. share() records the
+            // borrow: no writing, re-point on rebuild.
+            ptr->share(swapped ? buf->readFace().texture : buf->writeFace().texture, *frameBufferId);
             if (ptr->textureSizeUniform != -1 && undefined) {
               auto textureSize = ptr->textureValue->glTextureSize();
               glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
@@ -1084,9 +1082,8 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
   flushImmediatePrimitives();
 
   // Bind the framebuffer's color texture (a GlLoneTexture, same type setEffectTexture produces)
-  // directly to the sampler -- no CPU upload.
-  ptr->textureValue = m_targets.get(frameBufferId)->writeFace().texture;
-  ptr->borrowedFrom = frameBufferId;   // borrowed: no writing, and re-point me if it is rebuilt
+  // directly to the sampler -- no CPU upload. share() records whose it is: no writing, and re-point on rebuild.
+  ptr->share(m_targets.get(frameBufferId)->writeFace().texture, frameBufferId);
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
@@ -1101,10 +1098,10 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
 
   flushImmediatePrimitives();
 
-  // Share the source sampler's already-uploaded texture (same GlLoneTexture, ref-counted) with the
-  // dest sampler -- the per-draw bind loop will bind it to dest's texture unit. No CPU upload.
-  dest->textureValue = src->textureValue;
-  dest->borrowedFrom = src->borrowedFrom;   // an alias of a borrowed texture is still borrowed, from the same target
+  // Share the source sampler's already-uploaded texture (same GlLoneTexture, ref-counted) with the dest
+  // sampler -- the per-draw bind loop will bind it to dest's texture unit. No CPU upload. The alias inherits
+  // the source's borrow status: an alias of a borrowed texture is still borrowed, from the same target.
+  dest->share(src->textureValue, src->borrowedFrom);
   if (dest->textureSizeUniform != -1) {
     auto textureSize = dest->textureValue->glTextureSize();
     glUniform2f(dest->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
@@ -1120,23 +1117,10 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   bool fresh = false;
-  // borrowed(): this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
-  // than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live render target.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
-    auto tex = make_ref<GlLoneTexture>();
-    tex->textureFiltering = ptr->textureFiltering;
-    tex->textureAddressing = ptr->textureAddressing;
-    tex->textureSize = size;
-    glGenTextures(1, &tex->textureId);
-    glBindTexture(GL_TEXTURE_2D, tex->textureId);
-    GLenum wrap = ptr->textureAddressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
-    GLenum filt = ptr->textureFiltering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
-    ptr->textureValue = tex;
-    ptr->borrowedFrom = "";
+  // ownsWritableStorage() false -> absent, empty, or BORROWING a framebuffer's colour attachment. Allocate our
+  // own storage rather than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live target.
+  if (!ptr->ownsWritableStorage()) {
+    ptr->adopt(createEmptyGlTexture(size, ptr->textureAddressing, ptr->textureFiltering));
     fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
@@ -1175,23 +1159,10 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
 
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   bool fresh = false;
-  // borrowed(): this sampler is BORROWING a framebuffer's colour attachment. Allocate our own storage rather
-  // than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live render target.
-  if (!ptr->textureValue || ptr->textureValue->textureId == 0 || ptr->borrowed()) {
-    auto tex = make_ref<GlLoneTexture>();
-    tex->textureFiltering = ptr->textureFiltering;
-    tex->textureAddressing = ptr->textureAddressing;
-    tex->textureSize = size;
-    glGenTextures(1, &tex->textureId);
-    glBindTexture(GL_TEXTURE_2D, tex->textureId);
-    GLenum wrap = ptr->textureAddressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
-    GLenum filt = ptr->textureFiltering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
-    ptr->textureValue = tex;
-    ptr->borrowedFrom = "";
+  // ownsWritableStorage() false -> absent, empty, or BORROWING a framebuffer's colour attachment. Allocate our
+  // own storage rather than glTexSubImage2D pixels -- or glTexImage2D a whole new spec -- into a live target.
+  if (!ptr->ownsWritableStorage()) {
+    ptr->adopt(createEmptyGlTexture(size, ptr->textureAddressing, ptr->textureFiltering));
     fresh = true;
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
@@ -2098,6 +2069,23 @@ auto OpenGlRenderer::createGlTexture(ImageView const& image, TextureAddressing a
     glLoneTexture->internalFormat = uploadTextureImage(image.format, image.size, image.data);
 
   return glLoneTexture;
+}
+
+auto OpenGlRenderer::createEmptyGlTexture(Vec2U size, TextureAddressing addressing, TextureFiltering filtering)
+    ->RefPtr<GlLoneTexture> {
+  auto tex = make_ref<GlLoneTexture>();
+  tex->textureFiltering = filtering;
+  tex->textureAddressing = addressing;
+  tex->textureSize = size;
+  glGenTextures(1, &tex->textureId);
+  glBindTexture(GL_TEXTURE_2D, tex->textureId);
+  GLenum wrap = addressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrap);
+  GLenum filt = filtering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filt);
+  glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filt);
+  return tex;
 }
 
 auto OpenGlRenderer::createGlRenderBuffer() -> shared_ptr<GlRenderBuffer> {

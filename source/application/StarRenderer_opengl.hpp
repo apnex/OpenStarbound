@@ -233,6 +233,22 @@ private:
     //      at the rebuilt one (RB-5).
     String borrowedFrom;
     bool borrowed() const { return !borrowedFrom.empty(); }
+
+    // THE BORROW, SET AS ONE ACT. The texture and its borrow-status are two facts that must agree -- write
+    // into a texture you are only borrowing and you re-specify a live render target (RB-1). They used to be set
+    // by two independent field pokes at every call site, and the upload setters hand-copied the "may I write
+    // here?" predicate three times to guess whether they had diverged. Now the pair moves together:
+    //   adopt()   -- we allocated this texture, it is OURS to write, so we are no longer borrowing.
+    //   share()   -- we point at storage someone else owns (a framebuffer face, or another sampler's texture),
+    //                recording whose it is; `from` empty == shared-but-owned-elsewhere, not a target.
+    //   release() -- let go of everything.
+    //   ownsWritableStorage() -- the single predicate the upload setters branch on. False -> allocate fresh
+    //                rather than write into storage that is absent, empty, or borrowed.
+    void adopt(RefPtr<GlLoneTexture> tex) { textureValue = std::move(tex); borrowedFrom = ""; }
+    void share(RefPtr<GlLoneTexture> tex, String from) { textureValue = std::move(tex); borrowedFrom = std::move(from); }
+    void release() { textureValue.reset(); borrowedFrom = ""; }
+    bool ownsWritableStorage() const { return textureValue && textureValue->textureId != 0 && !borrowed(); }
+
     unsigned textureUnit = 0;
     TextureAddressing textureAddressing = TextureAddressing::Clamp;
     TextureFiltering textureFiltering = TextureFiltering::Linear;
@@ -364,6 +380,11 @@ private:
 
   
   static RefPtr<GlLoneTexture> createGlTexture(ImageView const& image, TextureAddressing addressing, TextureFiltering filtering);
+  // Mint an EMPTY GL texture object -- generated, bound, sampling params set, NO storage specified -- for a
+  // caller that will glTexImage2D its own. setEffectTextureHalf and setEffectTextureR8 minted it identically,
+  // 29 lines each; this is that allocator, once. It leaves GL_TEXTURE_2D bound to the new texture so the
+  // caller's upload lands on it.
+  static RefPtr<GlLoneTexture> createEmptyGlTexture(Vec2U size, TextureAddressing addressing, TextureFiltering filtering);
 
   shared_ptr<GlRenderBuffer> createGlRenderBuffer();
 

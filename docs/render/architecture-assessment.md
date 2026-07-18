@@ -329,6 +329,8 @@ Move them out and the compiler enforces what the comments claim. This is the ite
 "sealed" from marketing into a fact, and it is the reason §4 has to exist at all.
 
 ### iii. Fix the neighbourhood, not the house
+**DONE (§9 step 4).** Three hand-copied fresh-allocation predicates -> one `EffectTexture::ownsWritableStorage()`. Two 29-line character-identical allocators -> one `createEmptyGlTexture()`. The borrow set atomically through `adopt()`/`share()`/`release()` so texture and borrow-status cannot diverge — no setter hand-pokes `borrowedFrom` any more. Byte-identical; certified env 83/83, parallax 20/20, spread 216/216, 0 GL errors, RB-1 probe clean.
+
 **The effect-texture boundary — and it is on no list.**
 
 **Three of our four self-inflicted bugs (RB-1, RB-5, RB-6) lived in the effect-texture path, not in
