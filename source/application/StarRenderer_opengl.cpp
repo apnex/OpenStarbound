@@ -1086,6 +1086,14 @@ void OpenGlRenderer::startFrame() {
 
   glClear(GL_COLOR_BUFFER_BIT);
 
+  // DROP THE PASS CACHE at the frame boundary. clearAll() bound each face and the line above raw-bound FBO 0 --
+  // all OUTSIDE GlPass -- so GL_DRAW no longer matches whatever the pass cached at the end of the previous
+  // frame. Without this, a frame that ended with a non-screen target still live (a retained/env-cache surface
+  // warmed last -- exactly the Layer-2/3 consumer shape) would leave the cache reading `target == T` while GL
+  // reads 0; the next frame's first bindTarget(T) would early-out over that stale cache and draw to the screen.
+  // In-tree the interface ends every frame on the screen, so this is a latent-hazard closure, not a live fix.
+  m_pass.invalidate();
+
   m_gpuTimer.end("render.frame.clear.gpu_us");
 
   if (m_scissorRect)

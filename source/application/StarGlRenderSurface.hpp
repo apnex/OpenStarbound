@@ -48,34 +48,39 @@ struct EffectTexture {
   //      sampler goes on sampling a framebuffer that no longer exists. Knowing the name lets us re-point it
   //      at the rebuilt one (RB-5).
   String borrowedFrom;
-  bool borrowed() const { return !borrowedFrom.empty(); }
+  bool borrowed() const { return !borrowedFrom.empty(); }   // borrows a NAMED target -> re-point on rebuild
 
-  // THE BORROW, SET AS ONE ACT. The texture and its borrow-status are two facts that must agree -- write
-  // into a texture you are only borrowing and you re-specify a live render target (RB-1). They used to be set
-  // by two independent field pokes at every call site, and the upload setters hand-copied the "may I write
-  // here?" predicate three times to guess whether they had diverged. Now the pair moves together:
-  //   adopt()   -- we allocated this texture, it is OURS to write, so we are no longer borrowing.
-  //   share()   -- we point at storage someone else owns (a framebuffer face, or another sampler's texture),
-  //                recording whose it is; `from` empty == shared-but-owned-elsewhere, not a target.
+  // THE BORROW, SET AS ONE ACT. Three facts must agree -- the texture, whether it is OURS to write, and which
+  // named target (if any) to re-point to on rebuild -- so the mutators set them together and the predicates
+  // never reconstruct "may I write?" from the others. That reconstruction is what put half-float RGBA into a
+  // live render target (RB-1); deriving writability from `borrowedFrom` alone is a SECOND seat of the same
+  // trap, because adopt() and share(tex, "") both leave borrowedFrom empty yet mean opposite things:
+  //   adopt()   -- we allocated this texture; it is OURS to write. (m_owned = true)
+  //   share()   -- we point at storage someone else owns: a framebuffer face BY NAME, or another sampler's
+  //                already-uploaded texture with an EMPTY name (shared-but-owned-elsewhere). NOT ours to write.
   //   release() -- let go of everything.
+  // Writability is therefore its own recorded fact (m_owned, set only by adopt); `borrowedFrom` answers only
+  // the separate "which target do I re-point to?" question. setEffectTextureAlias of a NON-borrowed source is
+  // exactly share(tex, ""): without m_owned it read as writable, and a later upload re-specified the source's
+  // live texture through the alias.
   //
-  // Two predicates, one built from the other, because two sites ask two different questions:
   //   hasStorage()          -- a texture exists and has been specified. The frameBufferTextures binder asks
-  //                this: it re-points a sampler at a rebuilt target and must do so EVEN when the sampler is
-  //                currently borrowing, so it must NOT exclude borrowed textures.
-  //   ownsWritableStorage() -- hasStorage() AND it is ours to write into. The upload setters branch on this:
-  //                false -> allocate fresh rather than write into storage that is absent, empty, or borrowed.
-  void adopt(RefPtr<GlLoneTexture> tex) { textureValue = std::move(tex); borrowedFrom = ""; }
-  void share(RefPtr<GlLoneTexture> tex, String from) { textureValue = std::move(tex); borrowedFrom = std::move(from); }
-  void release() { textureValue.reset(); borrowedFrom = ""; }
+  //                this: it re-points a sampler at a rebuilt target EVEN when borrowing, so it must NOT exclude
+  //                borrowed textures.
+  //   ownsWritableStorage() -- hasStorage() AND we adopted it. The upload setters branch on this: false ->
+  //                allocate fresh rather than write into storage that is absent, empty, or owned elsewhere.
+  void adopt(RefPtr<GlLoneTexture> tex) { textureValue = std::move(tex); borrowedFrom = ""; m_owned = true; }
+  void share(RefPtr<GlLoneTexture> tex, String from) { textureValue = std::move(tex); borrowedFrom = std::move(from); m_owned = false; }
+  void release() { textureValue.reset(); borrowedFrom = ""; m_owned = false; }
   bool hasStorage() const { return textureValue && textureValue->textureId != 0; }
-  bool ownsWritableStorage() const { return hasStorage() && !borrowed(); }
+  bool ownsWritableStorage() const { return hasStorage() && m_owned; }
 
   unsigned textureUnit = 0;
   TextureAddressing textureAddressing = TextureAddressing::Clamp;
   TextureFiltering textureFiltering = TextureFiltering::Linear;
   GLint textureSizeUniform = -1;
   RefPtr<GlLoneTexture> textureValue;
+  bool m_owned = false;   // true only after adopt(): the one fact ownsWritableStorage() may trust
 };
 
 // A framebuffer is a SURFACE with one or two FACES.
@@ -304,10 +309,11 @@ struct GlPass {
   // its callers (setRenderTarget / switchEffectConfig) are OpenGlRenderer methods, external to GlPass.
   void unbind(Vec2U const& screenSize) { bindTarget({}, screenSize); }
 
-  // DROP THE CACHE without touching GL. loadConfig calls this: it destroys and rebuilds every target,
-  // leaving GL_DRAW on a just-reallocated FBO while `target` becomes null -- so the cache would otherwise
-  // read (screen, stale screenSize) and let the next screen unbind early-out over that corpse binding. The
-  // {0,0} viewport sentinel matches no real screen or target size, forcing the next bind to emit real GL.
+  // DROP THE CACHE without touching GL. Called wherever GL_DRAW is changed OUTSIDE the pass: loadConfig
+  // (destroys and rebuilds every target, leaving GL_DRAW on a just-reallocated FBO while `target` becomes
+  // null) and startFrame (clears every face and raw-binds 0 at the frame boundary). Without it the cache
+  // would read a stale (target/screen, size) and let the next bind early-out over a corpse or wrong binding.
+  // The {0,0} viewport sentinel matches no real screen or target size, forcing the next bind to emit real GL.
   void invalidate() { target = {}; boundWriteToBack = false; boundViewport = Vec2U(0, 0); }
 
   // Make `newEffect` the program that subsequent draws run: bind it, flatten its attribute and uniform

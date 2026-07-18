@@ -586,12 +586,13 @@ void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& scr
   // A null target IS THE SCREEN (framebuffer 0). This is the one place the screen is bound -- the two
   // hand-rolled `target.reset(); glBindFramebuffer(0)` sites now route here through unbind().
   if (!newTarget) {
-    // Early-out only when the cache proves the screen is already bound at this size. The cache is trustworthy
-    // in-frame: `target == null` coincides with GL_DRAW == 0 because every screen bind runs through here and
-    // startFrame/finishFrame re-bind 0 without changing size. The ONE place it goes stale is loadConfig, which
-    // reallocates targets under GL while resetting `target` -- so loadConfig calls invalidate() to make the
-    // {0,0} sentinel here refuse this early-out. Without that, a stale (screen, screenSize) would skip the
-    // rebind and leave draws landing in a just-reallocated target FBO (the AA/HDR-toggle regression).
+    // Early-out only when the cache proves the screen is already bound at this size. Every DRAW-PATH framebuffer
+    // bind runs through here, so within a draw sequence the cache tracks GL. Two acts change GL_DRAW OUTSIDE the
+    // pass, and each must drop the cache so this early-out cannot fire over a stale one: loadConfig (reallocates
+    // targets under GL while resetting `target`) and startFrame (clearAll binds faces, then raw-binds 0) -- both
+    // call invalidate(), whose {0,0} viewport sentinel matches no real size and forces a real bind. startFrame's
+    // invalidate is what makes it safe for a frame to end with a non-screen target still live (a retained
+    // surface): the stale (target, size) cannot survive into the next frame's first bind.
     if (!target && boundViewport == screenSize)
       return;
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
