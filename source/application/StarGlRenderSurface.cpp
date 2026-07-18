@@ -480,6 +480,7 @@ Effect& GlEffects::load(String const& name, Json const& effectConfig, StringMap<
   effect.program = program;
   effect.config = effectConfig;
   effect.includeVBTextures = effectConfig.getBool("includeVBTextures", true);
+  effect.resolveLocations();   // fixed attribute/uniform locations, once, now that the program is linked
   return effect;
 }
 
@@ -512,26 +513,24 @@ void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
   glUseProgram(effect.program);
   this->effect = &effect;
 
-  positionAttribute = effect.getAttribute("vertexPosition");
-  colorAttribute = effect.getAttribute("vertexColor");
-  texCoordAttribute = effect.getAttribute("vertexTextureCoordinate");
-  dataAttribute = effect.getAttribute("vertexData");
+  // Copy the locations the effect resolved once at load. No glGet*, no by-name map lookup.
+  positionAttribute = effect.positionAttribute;
+  colorAttribute = effect.colorAttribute;
+  texCoordAttribute = effect.texCoordAttribute;
+  dataAttribute = effect.dataAttribute;
+  screenSizeUniform = effect.screenSizeUniform;
+  vertexTransformUniform = effect.vertexTransformUniform;
 
-  // textureUniforms used to be cached here alongside textureSizeUniforms. It was a cache of a cache --
-  // Effect::getUniform already memoizes the location -- and unlike textureSizeUniforms (read per draw, at
-  // :1900) it never escaped this function: filled in one loop, read in the next, never again. The sampler-unit
-  // binding it performs lives in the PROGRAM once set, so there is nothing to remember.
+  // textureSizeUniforms is read per draw (renderGlBuffer), so it stays flattened onto the pass.
   textureSizeUniforms.clear();
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
-      textureSizeUniforms.append(effect.getUniform(strf("textureSize{}", i).c_str()));
+      textureSizeUniforms.append(effect.vbTextureSizeUniforms[i]);
   }
-  screenSizeUniform = effect.getUniform("screenSize");
-  vertexTransformUniform = effect.getUniform("vertexTransform");
 
   if (effect.includeVBTextures) {
     for (size_t i = 0; i < MultiTextureCount; ++i)
-      glUniform1i(effect.getUniform(strf("texture{}", i).c_str()), i);
+      glUniform1i(effect.vbTextureUniforms[i], i);
   }
 
   glUniform2f(screenSizeUniform, screenSize[0], screenSize[1]);
@@ -591,24 +590,19 @@ void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& scr
   boundViewport = vp;
 }
 
-GLuint Effect::getAttribute(String const& name) {
-  auto find = attributes.find(name);
-  if (find == attributes.end()) {
-    GLuint attrib = glGetAttribLocation(program, name.utf8Ptr());
-    attributes[name] = attrib;
-    return attrib;
+void Effect::resolveLocations() {
+  positionAttribute = glGetAttribLocation(program, "vertexPosition");
+  colorAttribute = glGetAttribLocation(program, "vertexColor");
+  texCoordAttribute = glGetAttribLocation(program, "vertexTextureCoordinate");
+  dataAttribute = glGetAttribLocation(program, "vertexData");
+  screenSizeUniform = glGetUniformLocation(program, "screenSize");
+  vertexTransformUniform = glGetUniformLocation(program, "vertexTransform");
+  if (includeVBTextures) {
+    for (size_t i = 0; i < MultiTextureCount; ++i) {
+      vbTextureUniforms[i] = glGetUniformLocation(program, strf("texture{}", i).c_str());
+      vbTextureSizeUniforms[i] = glGetUniformLocation(program, strf("textureSize{}", i).c_str());
+    }
   }
-  return find->second;
-}
-
-GLuint Effect::getUniform(String const& name) {
-  auto find = uniforms.find(name);
-  if (find == uniforms.end()) {
-    GLuint uniform = glGetUniformLocation(program, name.utf8Ptr());
-    uniforms[name] = uniform;
-    return uniform;
-  }
-  return find->second;
 }
 
 }

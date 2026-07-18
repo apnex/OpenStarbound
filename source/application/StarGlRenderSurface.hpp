@@ -182,13 +182,20 @@ public:
   StringMap<EffectParameter> scriptables; // scriptable parameters which can be changed when the effect is not loaded
   StringMap<EffectTexture> textures;
 
-  StringMap<GLuint> attributes;
-  StringMap<GLuint> uniforms;
-
-  GLuint getAttribute(String const& name);
-  GLuint getUniform(String const& name);
-  bool includeVBTextures;
+  // THE FIXED LOCATIONS, resolved ONCE at load. They used to be two StringMaps memoizing glGet*Location, looked
+  // up BY NAME on every effect switch by the one caller (GlPass::bindEffect) that immediately flattened them
+  // into fixed fields -- a cache serving a function that already caches. Resolved here at load, bindEffect is a
+  // handful of field copies. -1 == absent: glGet* returns -1, and these are GLint, not the old GLuint that made
+  // "absent" read as 0xFFFFFFFF and only came right by a lossy round-trip into a GLint pass field.
+  bool includeVBTextures = false;
   bool doubleBuffered = false;
+  GLint positionAttribute = -1, colorAttribute = -1, texCoordAttribute = -1, dataAttribute = -1;
+  GLint screenSizeUniform = -1, vertexTransformUniform = -1;
+  GLint vbTextureUniforms[MultiTextureCount] = {};      // the sampler and its size, resolved iff includeVBTextures
+  GLint vbTextureSizeUniforms[MultiTextureCount] = {};
+
+  // Resolve the fixed locations from `program`. Call after the program is linked and includeVBTextures is set.
+  void resolveLocations();
 };
 
 // GlTargets -- owns which render targets exist.
