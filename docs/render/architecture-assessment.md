@@ -318,6 +318,8 @@ sold on the second. Right now it delivers the second for the **faces** and the f
 two of them**.
 
 ### ii. Make the seal structural, not a doorbell
+**DONE (§9 step 5).** 5a deleted the three vestigial friends (compiler-enforced seal). 5b physically extracted the substrate to its own translation unit in two tiers: Tier 1 = GlTexture+GlLoneTexture (StarGlTexturePrimitives), Tier 2 = the four components + Effect types (StarGlRenderSurface), depending on Tier 1. The god-header dropped 635->312 lines. The components are now a namespace-scope module with a real OUTSIDE -- sealed against every consumer, constructible in a test, composable by Layers 2/3. Pure relocation, byte-identical; certified env/parallax/spread green, core 226/226.
+
 **The four components in their own translation unit. No `friend`.**
 
 Today the seal is `friend class OpenGlRenderer`, and per `[class.access.nest]` that readmits **every nested
