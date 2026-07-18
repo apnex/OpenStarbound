@@ -297,11 +297,14 @@ struct GlPass {
   GLint screenSizeUniform = -1;
   GLint vertexTransformUniform = -1;
 
-  // THE COUPLED PAIR. This is the whole reason the component exists. `target` == null means the screen
-  // (framebuffer 0); a non-null target is the surface subsequent draws land on. Read externally (oracle
-  // restores, config teardown), so it stays public.
-  Effect* effect = nullptr;
-  RefPtr<GlFrameBuffer> target;
+  // THE COUPLED PAIR. This is the whole reason the component exists. A null target means the screen
+  // (framebuffer 0); a non-null target is the surface subsequent draws land on. Read externally (the oracle
+  // saves/restores the bound target; applyEffectParameter reaches the bound effect) through the const accessors
+  // below -- but the fields themselves are PRIVATE (bottom of the class), so only GlPass's own bind acts
+  // (bindEffect / bindTarget / invalidate) can move them. The "one writer per fact" seal on the bind is now
+  // compiler-enforced, not a comment: no external site can poke `m_effect` or `m_target`.
+  Effect* effect() const { return m_effect; }
+  RefPtr<GlFrameBuffer> const& target() const { return m_target; }
 
   // Make `newTarget` the surface subsequent draws land on: bind its write face and set the viewport to that
   // face's size. A null newTarget binds the screen instead (see unbind). Keyed on (target, write-face,
@@ -320,7 +323,14 @@ struct GlPass {
   // null) and startFrame (clears every face and raw-binds 0 at the frame boundary). Without it the cache
   // would read a stale (target/screen, size) and let the next bind early-out over a corpse or wrong binding.
   // The {0,0} viewport sentinel matches no real screen or target size, forcing the next bind to emit real GL.
-  void invalidate() { target = {}; boundWriteToBack = false; boundViewport = Vec2U(0, 0); }
+  void invalidate() { m_target = {}; boundWriteToBack = false; boundViewport = Vec2U(0, 0); }
+
+  // THE FRAME-BOUNDARY RESET, as ONE act. Raw-bind framebuffer 0 AND drop the cache together, so the invalidate
+  // can never be separated from the raw bind that necessitates it. startFrame's clearAll() has just bound every
+  // face outside the pass; this puts GL_DRAW back on the screen and leaves the {0,0} viewport sentinel forcing
+  // the next bindTarget to emit real GL. Replaces the hand-ordered glBindFramebuffer(0) + invalidate() pair that
+  // startFrame used to keep in sync by care -- now it is by construction (the bind and the drop are one method).
+  void resetToScreen();
 
   // Make `newEffect` the program that subsequent draws run: bind it, flatten its attribute and uniform
   // locations for the draw path to read, point its vertex-buffer samplers at their texture units, tell it
@@ -339,8 +349,12 @@ struct GlPass {
   // privates unreachable from outside its own methods. There is no enclosing class and no nested-type
   // relationship any more -- the components were lifted out of OpenGlRenderer.
 private:
-  bool boundWriteToBack = false;  // which face of `target` GL currently draws into
-  Vec2U boundViewport = {};       // the viewport GL currently has set (== screenSize when target is null)
+  // THE COUPLED PAIR, sealed. Only bindEffect / bindTarget / invalidate write these; the renderer reads them
+  // through effect() / target(). A null m_target is the screen (framebuffer 0).
+  Effect* m_effect = nullptr;
+  RefPtr<GlFrameBuffer> m_target;
+  bool boundWriteToBack = false;  // which face of m_target GL currently draws into
+  Vec2U boundViewport = {};       // the viewport GL currently has set (== screenSize when m_target is null)
 };
 
 // GlEffects -- owns the compiled GPU programs. Which effects exist, what program each one compiled to, and

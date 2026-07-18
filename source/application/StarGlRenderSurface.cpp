@@ -556,7 +556,7 @@ void uploadUniform(GLint location, RenderEffectParameter const& value) {
 void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
   Effect& effect = newEffect;
   glUseProgram(effect.program);
-  this->effect = &effect;
+  m_effect = &effect;
 
   // Copy the locations the effect resolved once at load. No glGet*, no by-name map lookup.
   positionAttribute = effect.positionAttribute;
@@ -604,11 +604,11 @@ void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& scr
     // call invalidate(), whose {0,0} viewport sentinel matches no real size and forces a real bind. startFrame's
     // invalidate is what makes it safe for a frame to end with a non-screen target still live (a retained
     // surface): the stale (target, size) cannot survive into the next frame's first bind.
-    if (!target && boundViewport == screenSize)
+    if (!m_target && boundViewport == screenSize)
       return;
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glViewport(0, 0, screenSize[0], screenSize[1]);
-    target = {};
+    m_target = {};
     boundViewport = screenSize;
     boundWriteToBack = false;
     return;
@@ -627,13 +627,20 @@ void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& scr
   // viewport -- silently, and only for mods, since nothing in-tree ships a sizeDiv surface.
   Vec2U vp = newTarget->size();
   bool wtb = newTarget->writingBack();
-  if (target == newTarget && boundWriteToBack == wtb && boundViewport == vp)
+  if (m_target == newTarget && boundWriteToBack == wtb && boundViewport == vp)
     return;
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, newTarget->writeFace().id);
   glViewport(0, 0, vp[0], vp[1]);
-  target = newTarget;
+  m_target = newTarget;
   boundWriteToBack = wtb;
   boundViewport = vp;
+}
+
+void GlPass::resetToScreen() {
+  // Byte-identical to startFrame's old glBindFramebuffer(GL_FRAMEBUFFER, 0) followed by m_pass.invalidate():
+  // the raw screen bind and the cache drop, welded into one act so the two can never drift apart.
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  invalidate();
 }
 
 void Effect::resolveLocations() {

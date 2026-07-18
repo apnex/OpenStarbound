@@ -340,14 +340,14 @@ void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectPara
 }
 
 void OpenGlRenderer::setEffectParameter(String const& parameterName, RenderEffectParameter const& value) {
-  auto ptr = m_pass.effect->parameters.ptr(parameterName);
+  auto ptr = m_pass.effect()->parameters.ptr(parameterName);
   if (!ptr)
     return;
   applyEffectParameter(ptr, value, parameterName);
 }
 
 OpenGlRenderer::EffectParameterHandle OpenGlRenderer::getEffectParameterHandle(String const& parameterName) {
-  return (EffectParameterHandle)m_pass.effect->parameters.ptr(parameterName);
+  return (EffectParameterHandle)m_pass.effect()->parameters.ptr(parameterName);
 }
 
 void OpenGlRenderer::setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& value) {
@@ -368,7 +368,7 @@ Maybe<VariantTypeIndex> OpenGlRenderer::getEffectScriptableParameterType(String 
 }
 
 void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const& image) {
-  auto ptr = m_pass.effect->textures.ptr(textureName);
+  auto ptr = m_pass.effect()->textures.ptr(textureName);
   if (!ptr)
     return;
 
@@ -422,7 +422,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   // 306 early-outs across 306 frames, one of each per frame. The iteration did not iterate.
   //
   // A double-buffered effect has per-invocation work; being already bound does not excuse it.
-  if (m_pass.effect == &effect && !effect.doubleBuffered)
+  if (m_pass.effect() == &effect && !effect.doubleBuffered)
     return true;
 
   auto effectScreenSize = m_screenSize;
@@ -475,7 +475,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   for (auto const& ft : effect.frameBufferTextures) {
     String const& textureUniform = ft.first;
     String const& frameBufferId = ft.second;
-    auto ptr = m_pass.effect->textures.ptr(textureUniform);
+    auto ptr = m_pass.effect()->textures.ptr(textureUniform);
     if (ptr) {
       auto undefined = !ptr->hasStorage();
       auto swapped = effect.doubleBuffered && frameBufferId.equals(*outFrameBufferId);
@@ -566,7 +566,7 @@ void OpenGlRenderer::clearRenderTarget(Vec4F clearColor) {
 }
 
 void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) {
-  auto ptr = m_pass.effect->textures.ptr(textureName);
+  auto ptr = m_pass.effect()->textures.ptr(textureName);
   if (!ptr)
     return;
 
@@ -582,8 +582,8 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
 }
 
 void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) {
-  auto dest = m_pass.effect->textures.ptr(destTextureName);
-  auto src = m_pass.effect->textures.ptr(sourceTextureName);
+  auto dest = m_pass.effect()->textures.ptr(destTextureName);
+  auto src = m_pass.effect()->textures.ptr(sourceTextureName);
   if (!dest || !src || !src->texture())
     return;
 
@@ -600,7 +600,7 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
 }
 
 void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) {
-  auto ptr = m_pass.effect->textures.ptr(textureName);
+  auto ptr = m_pass.effect()->textures.ptr(textureName);
   if (!ptr || size[0] == 0 || size[1] == 0)
     return;
 
@@ -635,7 +635,7 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
 }
 
 void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) {
-  auto ptr = m_pass.effect->textures.ptr(textureName);
+  auto ptr = m_pass.effect()->textures.ptr(textureName);
   if (!ptr || size[0] == 0 || size[1] == 0)
     return;
 
@@ -715,7 +715,7 @@ Image OpenGlRenderer::GlRenderOracle::read(String const& frameBufferId) {
   glBindFramebuffer(GL_READ_FRAMEBUFFER, readFrom);
   glReadPixels(0, 0, size[0], size[1], GL_RGB, GL_FLOAT, result.data());
   // Restore the read binding to whatever draw target is current (screen if none).
-  auto current = m_renderer.m_pass.target;
+  auto current = m_renderer.m_pass.target();
   glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, current ? current->writeFace().id : 0);
 
@@ -773,7 +773,7 @@ pair<size_t, Vec2U> OpenGlRenderer::GlRenderOracle::compare(String const& a, Str
   glBindFramebuffer(GL_READ_FRAMEBUFFER, bBuf->writeFace().id);
   glReadPixels(0, 0, sizeB[0], sizeB[1], GL_RGB, GL_FLOAT, bufB.ptr());
   GLenum readErr = glGetError();
-  auto current = m_renderer.m_pass.target;
+  auto current = m_renderer.m_pass.target();
   glBindFramebuffer(GL_READ_FRAMEBUFFER, current ? current->writeFace().id : 0);
   if (readErr != GL_NO_ERROR) {
     // A failed readback leaves the zero-filled buffers untouched -> would score as a false MATCH. Bail.
@@ -1082,17 +1082,17 @@ void OpenGlRenderer::startFrame() {
   // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for the raw face ids.
   m_targets.clearAll();
 
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  // FRAME-BOUNDARY RESET as ONE act (backlog item 5): put GL_DRAW back on the screen AND drop the pass cache
+  // together, welded inside GlPass::resetToScreen() so startFrame can no longer bind 0 and forget the drop.
+  // clearAll() bound each face outside GlPass, so GL_DRAW no longer matches whatever the pass cached at the end
+  // of the previous frame. Without the drop, a frame that ended with a non-screen target still live (a
+  // retained/env-cache surface warmed last -- exactly the Layer-2/3 consumer shape) would leave the cache
+  // reading `target == T` while GL reads 0; the next frame's first bindTarget(T) would early-out over that stale
+  // cache and draw to the screen. In-tree the interface ends every frame on the screen, so this is a
+  // latent-hazard closure, not a live fix.
+  m_pass.resetToScreen();
 
   glClear(GL_COLOR_BUFFER_BIT);
-
-  // DROP THE PASS CACHE at the frame boundary. clearAll() bound each face and the line above raw-bound FBO 0 --
-  // all OUTSIDE GlPass -- so GL_DRAW no longer matches whatever the pass cached at the end of the previous
-  // frame. Without this, a frame that ended with a non-screen target still live (a retained/env-cache surface
-  // warmed last -- exactly the Layer-2/3 consumer shape) would leave the cache reading `target == T` while GL
-  // reads 0; the next frame's first bindTarget(T) would early-out over that stale cache and draw to the screen.
-  // In-tree the interface ends every frame on the screen, so this is a latent-hazard closure, not a live fix.
-  m_pass.invalidate();
 
   m_gpuTimer.end("render.frame.clear.gpu_us");
 
@@ -1562,7 +1562,7 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
   for (auto const& vb : renderBuffer.vertexBuffers) {
     glUniformMatrix3fv(m_pass.vertexTransformUniform, 1, GL_TRUE, transformation.ptr());
 
-    if (m_pass.effect->includeVBTextures) {
+    if (m_pass.effect()->includeVBTextures) {
       for (size_t i = 0; i < vb.textures.size(); ++i) {
         glUniform2f(m_pass.textureSizeUniforms[i], vb.textures[i].size[0], vb.textures[i].size[1]);
         glActiveTexture(GL_TEXTURE0 + i);
@@ -1570,7 +1570,7 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
       }
     }
 
-    for (auto const& p : m_pass.effect->textures) {
+    for (auto const& p : m_pass.effect()->textures) {
       if (p.second.texture()) {
         glActiveTexture(GL_TEXTURE0 + p.second.textureUnit);
         glBindTexture(GL_TEXTURE_2D, p.second.texture()->textureId);
