@@ -36,24 +36,29 @@ struct GlLoneTexture : public GlTexture {
   Vec2U glTextureSize() const override;
   Vec2U glTextureCoordinateOffset() const override;
 
-  GLuint textureId = 0;
+  // THE STORAGE DESCRIPTOR -- size and internal format together, because storage is ONE act and describing half
+  // of it is worse than describing none: a glTexSubImage2D fast path that consults a HALF-TRUE record writes
+  // into storage whose format changed underneath it, and GL does not complain. It replaced an `uploadChannels`
+  // field only ONE of the storage-spec paths maintained; the others left it stale, so emission storage went
+  // RGBA16F -> RGB32F behind the guard's back and the pass wrote half-float RGBA into three-channel storage for
+  // the rest of the run, dropping the obstacle-flag alpha (RB-6).
+  //
+  // The two fields are PRIVATE. They change ONLY through recordStorage() -- co-located with a glTex{Sub}Image2D
+  // at every caller -- or setAllocatedSize() for the pure allocator (internalFormat stays the 0 sentinel, which
+  // no SubImage guard can match). So no call site can poke half the descriptor and desync the pair. The
+  // "recorded beside the spec" co-location is still by convention (glTex*Image2D are free globals a future path
+  // could call directly), but the raw-field-poke seat of RB-6 is closed by the compiler.
+  void recordStorage(Vec2U size, GLint format) { textureSize = size; internalFormat = format; }
+  void setAllocatedSize(Vec2U size) { textureSize = size; }   // allocator pre-stamp; internalFormat stays 0
+  GLint format() const { return internalFormat; }             // read by the SubImage same-format guard
 
-  // THE STORAGE DESCRIPTOR. Size and internal format together, because storage is ONE act and describing
-  // half of it is worse than describing none: a glTexSubImage2D fast path that consults a HALF-TRUE record
-  // will happily write into storage whose format has changed underneath it, and GL will not complain.
-  //
-  // internalFormat is 0 until storage has been specified. WHOEVER SPECIFIES STORAGE RECORDS WHAT IT
-  // SPECIFIED -- in the same breath, or the next reader is consulting a lie.
-  //
-  // This replaced an `uploadChannels` field that only ONE of the four storage-spec paths maintained. The
-  // other three re-specified the texture and left it stale, so the SubImage guard passed on a format that no
-  // longer existed. Proven: emission storage went RGBA16F -> RGB32F behind the guard's back and the pass
-  // wrote half-float RGBA into three-channel storage for the rest of the run, silently dropping the alpha
-  // that carries the obstacle flag.
-  Vec2U textureSize;
-  GLint internalFormat = 0;
+  GLuint textureId = 0;
   TextureAddressing textureAddressing = TextureAddressing::Clamp;
   TextureFiltering textureFiltering = TextureFiltering::Nearest;
+
+private:
+  Vec2U textureSize;
+  GLint internalFormat = 0;
 };
 
 }

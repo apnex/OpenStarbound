@@ -541,7 +541,7 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
   // passes, every frame) -- it owns the viewport unconditionally. `vp` survives only to feed the screenSize
   // UNIFORM, which bindTarget does not write: `size` if the caller gave one (buf was just resized to it, so it
   // equals buf->size() -- the viewport and the uniform still agree), else the target's actual face size.
-  Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
+  Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->glTextureSize();
   if (m_pass.screenSizeUniform != -1)
     glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
@@ -681,7 +681,7 @@ Image OpenGlRenderer::GlRenderOracle::read(String const& frameBufferId) {
   // or compares the result cannot distinguish "the frame really is black" from "the read silently failed" --
   // and a silently-zeroed frame hashes CONSISTENTLY, so a golden-hash gate built on it would report a stable
   // PASS forever while seeing nothing at all. Empty is loud; zero-filled is a false green.
-  Vec2U size = buf->writeFace().texture->textureSize;
+  Vec2U size = buf->writeFace().texture->glTextureSize();
   if (size[0] == 0 || size[1] == 0) {
     Logger::warn("RenderOracle::read: frame buffer '{}' has no recorded size", frameBufferId);
     return Image();
@@ -1475,10 +1475,8 @@ GLint OpenGlRenderer::uploadTextureImage(PixelFormat pixelFormat, Vec2U size, ui
   glTexImage2D(GL_TEXTURE_2D, 0, specified, size[0], size[1], 0, format, type, data);
   // Record the WHOLE descriptor for the act that just specified it -- no caller can spec an image and forget
   // half. The raw-GLuint atlas caller passes record=nullptr (it holds no GlLoneTexture descriptor).
-  if (record) {
-    record->textureSize = size;
-    record->internalFormat = specified;
-  }
+  if (record)
+    record->recordStorage(size, specified);
   return specified;
 }
 
@@ -1487,12 +1485,11 @@ void OpenGlRenderer::uploadLoneStorage(GlLoneTexture& tex, Vec2U size, GLint int
   // SubImage into existing storage ONLY when the recorded descriptor still matches BOTH size and format;
   // otherwise re-specify and rewrite the whole descriptor in the same breath. `fresh` (just-allocated:
   // internalFormat still 0, storage unspecified) forces the re-spec.
-  if (!fresh && tex.textureSize == size && tex.internalFormat == internalFormat) {
+  if (!fresh && tex.glTextureSize() == size && tex.format() == internalFormat) {
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], format, type, data);
   } else {
     glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, data);
-    tex.textureSize = size;
-    tex.internalFormat = internalFormat;
+    tex.recordStorage(size, internalFormat);
   }
 }
 
@@ -1537,7 +1534,7 @@ auto OpenGlRenderer::createEmptyGlTexture(Vec2U size, TextureAddressing addressi
   auto tex = make_ref<GlLoneTexture>();
   tex->textureFiltering = filtering;
   tex->textureAddressing = addressing;
-  tex->textureSize = size;
+  tex->setAllocatedSize(size);
   glGenTextures(1, &tex->textureId);
   // The one effect-side allocator, so the one place the gen can fail. setEffectTextureHalf/R8 and createGlTexture
   // all route their allocation through here and thereby GAIN this throw -- the two upload setters' old inline

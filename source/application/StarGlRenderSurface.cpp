@@ -157,7 +157,7 @@ Vec2U GlFrameBuffer::sizeFor(Vec2U const& screenSize) const {
 // What is ACTUALLY allocated. Both faces always agree (specifyStorage is the only writer, and resize()
 // re-specifies every live face together), so the front face speaks for the surface.
 Vec2U GlFrameBuffer::size() const {
-  return front.texture ? front.texture->textureSize : Vec2U(0, 0);
+  return front.texture ? front.texture->glTextureSize() : Vec2U(0, 0);
 }
 
 void GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* which) {
@@ -196,8 +196,7 @@ void GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* wh
   //
   // The FORMAT is half the descriptor and it is recorded for the same reason: a texture that cannot say what
   // format it is cannot be safely sub-uploaded into, and this one can be handed to an effect sampler.
-  tex->textureSize = size;
-  tex->internalFormat = internalFormat;
+  tex->recordStorage(size, internalFormat);
 }
 
 void GlFrameBuffer::allocateFace(Face& face, Vec2U const& size, char const* which) {
