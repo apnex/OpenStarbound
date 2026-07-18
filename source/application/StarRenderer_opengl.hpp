@@ -271,11 +271,15 @@ private:
     bool justSwapped = false;
 
     // THE RESOLVER. Ask which face you are writing, or which you may read. Never reach for a texture or an
-    // id directly.
-    Face& writeFace() { return faces[write]; }
-    Face& readFace() { return faces[doubled ? (write ^ 1) : write]; }
-    Face const& writeFace() const { return faces[write]; }
-    Face const& readFace() const { return faces[doubled ? (write ^ 1) : write]; }
+    // id directly. A single-faced surface answers `front` to both.
+    Face& writeFace() { return writeToBack ? *back : front; }
+    Face& readFace() { return (back && !writeToBack) ? *back : front; }
+    Face const& writeFace() const { return writeToBack ? *back : front; }
+    Face const& readFace() const { return (back && !writeToBack) ? *back : front; }
+
+    // Whether this surface can read what it writes -- i.e. has a second face. Existence IS the fact: this is
+    // `back.isValid()` given a name, not a bool that could disagree with whether a second texture exists.
+    bool doubled() const { return back.isValid(); }
 
     // THE SIZE ORACLE. `size()` is what is ACTUALLY allocated, right now, on every live face -- never (0,0)
     // on a live surface. `sizeFor()` is what this surface OUGHT to be at a given screen size, and it is the
@@ -326,9 +330,13 @@ private:
     // parameters, attach, verify. Creation only -- it does not duplicate the storage or the format rules.
     void allocateFace(Face& face, Vec2U const& size, char const* which);
 
-    Face faces[2];
-    unsigned write = 0;      // index of the face currently being drawn into
-    bool doubled = false;    // true iff faces[1] exists
+    Face front;                     // the primary face -- present the moment the surface exists
+    Maybe<Face> back;               // the second face. Its EXISTENCE is doubledness. There is no `bool doubled`
+                                    // to disagree with whether a second texture is actually allocated -- and
+                                    // that exact disagreement is how upstream's altId leaked back in: a face
+                                    // the destructor knew about as a bool but not as a thing to free. Here the
+                                    // fact and the storage are one object; you cannot have one without the other.
+    bool writeToBack = false;       // which face draws land on. Only ever true while `back` exists.
   };
 
   class Effect {

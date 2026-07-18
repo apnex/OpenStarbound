@@ -251,9 +251,9 @@ Vec2U OpenGlRenderer::GlFrameBuffer::sizeFor(Vec2U const& screenSize) const {
 }
 
 // What is ACTUALLY allocated. Both faces always agree (specifyStorage is the only writer, and resize()
-// re-specifies every live face together), so face 0 speaks for the surface.
+// re-specifies every live face together), so the front face speaks for the surface.
 Vec2U OpenGlRenderer::GlFrameBuffer::size() const {
-  return faces[0].texture ? faces[0].texture->textureSize : Vec2U(0, 0);
+  return front.texture ? front.texture->textureSize : Vec2U(0, 0);
 }
 
 void OpenGlRenderer::GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* which) {
@@ -348,13 +348,16 @@ void OpenGlRenderer::GlFrameBuffer::resize(Vec2U const& newSize) {
   if (size() == newSize)
     return;
 
-  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i)
-    specifyStorage(faces[i], newSize, i == 0 ? "primary" : "second face");
+  specifyStorage(front, newSize, "primary");
+  if (back)
+    specifyStorage(*back, newSize, "second face");
 }
 
 void OpenGlRenderer::GlFrameBuffer::clearFaces() {
-  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i) {
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, faces[i].id);
+  glBindFramebuffer(GL_DRAW_FRAMEBUFFER, front.id);
+  glClear(GL_COLOR_BUFFER_BIT);
+  if (back) {
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, back->id);
     glClear(GL_COLOR_BUFFER_BIT);
   }
 }
@@ -374,34 +377,41 @@ OpenGlRenderer::GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& f
   // BORN CORRECT, at its real size. It used to be born 256x256 -- a placeholder that setScreenSize corrected
   // moments later, so in between, the surface reported a size it did not have. There is no two-phase
   // construction protocol left for a caller to get wrong, and no window in which size() lies.
-  allocateFace(faces[0], sizeFor(screenSize), "primary");
+  allocateFace(front, sizeFor(screenSize), "primary");
 }
 
 void OpenGlRenderer::GlFrameBuffer::makeDoubled() {
-  if (doubled)
+  if (back)
     return;   // idempotent: a surface has at most two faces
 
   // MIRROR the first face's RECORDED size. It used to re-derive the size from screenSize/sizeDiv -- which is
   // how a doubled surface could be born with two faces of DIFFERENT sizes: the first at its overrideSize (or
   // at its 256x256 placeholder), the second at whatever the screen happened to be.
-  allocateFace(faces[1], size(), "second face");
-  doubled = true;
+  //
+  // Allocate into a local, then move it into `back`. So `back` becomes valid ONLY once the second face is
+  // fully built: there is no instant at which doubled() is true but the storage behind it is half-formed.
+  Face second;
+  allocateFace(second, size(), "second face");
+  back.emplace(std::move(second));
 }
 
 void OpenGlRenderer::GlFrameBuffer::swap() {
-  if (!doubled)
+  if (!back)
     throw RendererException::format("Framebuffer '{}': swap() on a surface with only one face", name);
 
-  write ^= 1;
+  writeToBack = !writeToBack;
   justSwapped = true;
 }
 
 OpenGlRenderer::GlFrameBuffer::~GlFrameBuffer() {
-  // One loop, and the second face cannot be forgotten. It used to be, on every loadConfig -- i.e. on every
-  // HDR or AA toggle -- because the destructor knew about `id` and not about `altId`.
-  for (unsigned i = 0; i < (doubled ? 2u : 1u); ++i) {
-    glDeleteFramebuffers(1, &faces[i].id);
-    faces[i].texture.reset();
+  // The second face cannot be forgotten. It used to be, on every loadConfig -- i.e. on every HDR or AA toggle
+  // -- because the destructor knew about `id` and not about `altId`. Now `back` is one object: if it exists,
+  // its framebuffer is freed; if it does not, there is nothing to free and nothing to remember.
+  glDeleteFramebuffers(1, &front.id);
+  front.texture.reset();
+  if (back) {
+    glDeleteFramebuffers(1, &back->id);
+    back->texture.reset();
   }
 }
 
@@ -935,7 +945,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     // viewport, so the two now come from one place and cannot drift apart.
     effectScreenSize = buf->size();
     if (effect.doubleBuffered) {
-      if (!buf->doubled) {
+      if (!buf->doubled()) {
         // Allocating a framebuffer MID-FRAME hitches. Say so, and fix it in the config rather than here.
         Logger::warn("Effect '{}' reads the framebuffer '{}' that it writes, but that framebuffer is not "
                      "declared \"double\":true -- giving it a second face now, mid-frame.", name, *outFrameBufferId);
@@ -961,7 +971,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
           auto undefined = !ptr->textureValue || ptr->textureValue->textureId == 0;
           auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
           auto buf = m_targets.get(*frameBufferId);
-          if (undefined || buf->doubled) {
+          if (undefined || buf->doubled()) {
             // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
             // face it is NOT writing. That is exactly what readFace() answers, so ask it.
             ptr->textureValue = swapped ? buf->readFace().texture : buf->writeFace().texture;

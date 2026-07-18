@@ -297,6 +297,13 @@ two to three days, mostly mechanical, no design left. Worth having. **But it is 
 **The step-change is three moves, and only one of them is on any existing list.**
 
 ### i. Kill the last divergent fact — `Maybe<Face>`
+**DONE (§9 step 2).** `Face faces[2]` + `bool doubled` + `unsigned write` → `Face front` + `Maybe<Face> back`
++ `bool writeToBack`. Existence IS doubledness (`doubled()` == `back.isValid()`); there is no bool left to
+disagree with whether a second texture is allocated, and `makeDoubled` builds into a local and moves it in, so
+there is no instant where `doubled()` is true but the storage is half-formed. `front`/`back`/`writeToBack` map
+exactly onto the old `faces[0]`/`faces[1]`/`write` — single-face path gate-verified byte-identical (3 oracles,
+0 GL errors); doubled path is dead in-tree, verified by the exact mapping and now compiler-enforced.
+
 **~20 lines. The single highest-leverage change in the subsystem.**
 
 `bool doubled` is a biconditional (*"faces[1] exists iff doubled"*) **that the type does not enforce** — which
