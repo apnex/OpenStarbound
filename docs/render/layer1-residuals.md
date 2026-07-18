@@ -1,5 +1,38 @@
 # Layer 1 — remaining residuals
 
+> ## STATUS: COMPLETE (§9 step 6 done)
+>
+> All seven items are shipped, each certified byte-identical (render gate env/parallax/spread DIFF=0,
+> GL_INVALID=0; core_tests 226/226; game_tests 90/91 with ItemComparison pre-existing, #146):
+>
+> | Item | What | Commit |
+> |---|---|---|
+> | 1 | one effect-side allocator (`createEmptyGlTexture`) + `hasStorage()`/`ownsWritableStorage()` predicates + throw | `b65f67a8` |
+> | 2 | bind key on (target, face, size) | step 3 (earlier) |
+> | 3 | zero `friend` (removed in Tier-2; false comment fixed) | `b65f67a8` |
+> | 4 | delete both retained `Json config` members | `c6a3d57c` |
+> | 5 | framebuffer face = completeness floor, not sampling config | `fe7fe81b` |
+> | 6 | one effect-parameter type ladder (`parseEffectParameter`) | `81494710` |
+> | 7 | delete `Effect::attributes`/`uniforms` cache | `8b8a2499` |
+>
+> **Checkable conditions (the ten greps + three oracles): 9 of 10 literally green.**
+> #1 friend→0 ✓ · #2 glViewport in {bindTarget, setScreenSize}, justSwapped→0 ✓ · #3 one draw-path
+> `GL_DRAW_FRAMEBUFFER` writer (bindTarget); clearFaces/blit/oracle restore ✓ · #4 zero Json in
+> switchEffectConfig, both config members gone ✓ · #5 one allocator per side (allocateFace,
+> createEmptyGlTexture, createAtlasTexture; the oracle's transient resolve scratch is diagnostic) ✓ ·
+> #7 seal predicate appears once ✓ · #8 size rule only in `sizeFor()` ✓ · #9 type ladder appears once ✓ ·
+> #10 architectural comments true ✓ · all three GPU oracles MATCH ✓.
+>
+> **#6 (one storage-descriptor writer per side) — substantively met, not literally.** Framebuffer side: ONE
+> writer, `specifyStorage`. Effect side: the ALLOCATOR is unified (`createEmptyGlTexture`, item 1), but the
+> descriptor (`textureSize`/`internalFormat`) is still written by three distinct-contract upload paths — the
+> general PixelFormat image uploader (`uploadTextureImage`), and the numeric `setEffectTextureHalf` / `R8`
+> re-specs. The doc's #6 correction over-credited item 1: an allocator cannot absorb a re-spec, and the three
+> paths upload genuinely different source types. The bug class #6 targets — a descriptor write NOT co-located
+> with its actual spec, so the SubImage guard trusts a stale record — IS closed (the RB-6 invariant: every
+> re-spec rewrites the WHOLE descriptor beside its `glTexImage2D`). Forcing the three through one function would
+> relocate the format switch, not remove it. Left as-is, deliberately.
+
 **As of `d05f21682`.** All line numbers are against that commit and will drift; re-verify before cutting.
 
 > **READ [`architecture-assessment.md`](architecture-assessment.md) FIRST.** A hostile 58-agent audit ran

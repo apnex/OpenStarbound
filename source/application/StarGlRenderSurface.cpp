@@ -309,8 +309,8 @@ void GlFrameBuffer::swap() {
     throw RendererException::format("Framebuffer '{}': swap() on a surface with only one face", name);
 
   // Flip which face is written. GlPass::bindTarget keys on the write-face index (writingBack()), so this flip
-  // changes its bind key and forces the rebind by itself -- the old `justSwapped` bool that defeated an
-  // identity-only early-out is gone, retired by the (target, face, size) key.
+  // changes its bind key and forces the rebind by itself. The old per-swap rebind-forcing bool that used to
+  // defeat an identity-only early-out is gone, retired by the (target, face, size) key.
   writeToBack = !writeToBack;
 }
 
@@ -608,8 +608,8 @@ void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& scr
   // writeFace().texture->glTextureSize() on every single-faced (in-tree / oracle) surface -- byte-identical.
   //
   // The key adds the write-FACE index and the VIEWPORT to the old identity-only test. That fixes two real
-  // skips the old key made: a swap() flips the write face without changing the target (was patched by
-  // justSwapped, now folded in), and a caller re-targeting the SAME surface at a NEW size wants a new viewport
+  // skips the old key made: a swap() flips the write face without changing the target (was patched by a
+  // per-swap rebind-forcing bool, now folded in), and a caller re-targeting the SAME surface at a NEW size wants a new viewport
   // (was patched by setRenderTarget's cover glViewport, now folded in and deleted). Setting the viewport HERE
   // is also why an effect declaring `frameBuffer` + `sizeDiv` no longer draws through a stale full-screen
   // viewport -- silently, and only for mods, since nothing in-tree ships a sizeDiv surface.
