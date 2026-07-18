@@ -553,7 +553,6 @@ void uploadUniform(GLint location, RenderEffectParameter const& value) {
     glUniform4f(location, (*v)[0], (*v)[1], (*v)[2], (*v)[3]);
 }
 
-//Assumes the passed effect program is currently in use.
 void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
   Effect& effect = newEffect;
   glUseProgram(effect.program);

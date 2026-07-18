@@ -1079,7 +1079,7 @@ void OpenGlRenderer::startFrame() {
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
   m_gpuTimer.begin("render.frame.clear.gpu_us");
 
-  // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for faces[N].id.
+  // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for the raw face ids.
   m_targets.clearAll();
 
   glBindFramebuffer(GL_FRAMEBUFFER, 0);

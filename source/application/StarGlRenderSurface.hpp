@@ -126,7 +126,7 @@ struct GlFrameBuffer : RefCounter {
   Face const& readFace() const { return (back && !writeToBack) ? *back : front; }
 
   // WHICH FACE IS THE WRITE FACE, as a value the bind cache can key on. `writeToBack` is private (the seal),
-  // so GlPass -- a sibling nested type, not a friend of this one -- reaches it through here. swap() flips it;
+  // so GlPass -- another Layer-1 class, granted no friend here -- reaches it through this accessor. swap() flips it;
   // that flip changes GlPass's (target, face, size) key and forces the rebind that the old `justSwapped`
   // bool used to force. Single-faced surfaces (everything in-tree) always answer false.
   bool writingBack() const { return writeToBack; }
@@ -151,7 +151,7 @@ struct GlFrameBuffer : RefCounter {
   // Re-specify EVERY live face's storage at `size`, in this surface's configured format, and record it.
   // Idempotent: resizing to the size already allocated issues no GL calls at all.
   void resize(Vec2U const& size);
-  // Clear every live face. The one consumer (startFrame) used to reach for faces[0].id / faces[1].id raw,
+  // Clear every live face. The one consumer (startFrame) used to reach for the raw front/back face ids,
   // which is what made the seal a convention rather than a contract.
   void clearFaces();
 
@@ -162,14 +162,14 @@ struct GlFrameBuffer : RefCounter {
   // Air-Gap holds only for as long as everyone remembers, which is exactly how altId got leaked and how
   // the viewport went unset. Everything a consumer legitimately needs is public: the resolver
   // (writeFace/readFace), the size oracle, and the lifecycle (makeDoubled/resize/clearFaces). Verified:
-  // NOTHING outside this struct reaches faces[], specifyStorage or allocateFace.
+  // NOTHING outside this struct reaches the faces, specifyStorage or allocateFace.
 private:
-  // NO friend. There was a `friend class OpenGlRenderer` here, granting the enclosing class access to the
-  // members below -- and the enclosing class is where every consumer lives, so the seal it claimed was a
-  // doorbell on a wall with no door. It is gone (§9 step 5), and the seal is now REAL and compiler-enforced:
-  // C++ [class.access.nest] gives an enclosing class NO special access to a nested type's privates, so with
-  // the friend removed, nothing outside GlFrameBuffer's own methods -- not even OpenGlRenderer -- can reach
-  // faces, specifyStorage or allocateFace. The compile proved it: removing the friend broke nothing.
+  // NO friend. GlFrameBuffer once carried a `friend class OpenGlRenderer` while it was NESTED inside the
+  // renderer -- a doorbell on a wall with no door, since the enclosing class was where every consumer lived.
+  // Both are gone now: the friend was removed (§9 step 5) and the type was lifted OUT of OpenGlRenderer into
+  // this file, so it is an ordinary top-level class. The seal is REAL and compiler-enforced by plain access
+  // control -- no nesting relationship is involved any more -- so nothing outside GlFrameBuffer's own methods,
+  // OpenGlRenderer included, can reach the private front/back faces, specifyStorage or allocateFace.
 
   // THE SINGLE OWNER OF FACE STORAGE. Derives the format from this surface's config (hdr / alpha /
   // multisample), specifies the colour storage at `size`, and RECORDS what it got. Nothing else may do any
@@ -260,8 +260,8 @@ struct GlTargets {
 
 private:
   // NO friend (§9 step 5): nothing outside GlTargets touches m_byId or m_generation -- the oracle reaches
-  // targets through the public find(), not around it -- so the enclosing class needs no access, and the
-  // compiler now enforces that.
+  // targets through the public find(), not around it -- so no other class needs access, and plain access
+  // control now enforces that.
 
   StringMap<RefPtr<GlFrameBuffer>> m_byId;
   uint64_t m_generation = 0;
@@ -332,11 +332,12 @@ struct GlPass {
   // animal: it guards a whole target-bind and texture-rebind sequence, not this.
   void bindEffect(Effect& newEffect, Vec2U const& screenSize);
 
-  // THE REST OF THE BIND KEY. A REAL seal, now, not §8.ii ceremony: nothing outside GlPass's own methods
-  // reads these two fields, so -- unlike GlFrameBuffer / GlTargets / GlEffects, whose `friend class
-  // OpenGlRenderer` re-opens their privates to the enclosing class -- GlPass deliberately adds NO friend.
-  // The enclosing class has no special access to a nested type's privates (C++ [class.access.nest]), so
-  // without the friend the seal genuinely holds: the renderer cannot poke boundViewport, which is the point.
+  // THE REST OF THE BIND KEY, sealed. boundViewport / boundWriteToBack are private and read only by GlPass's
+  // own methods, so the renderer cannot poke them -- which is the point: the bind cache cannot be corrupted
+  // from outside. This is the same seal every Layer-1 component now has. All four (GlFrameBuffer / GlTargets /
+  // GlPass / GlEffects) are top-level classes with NO `friend`, so plain access control keeps each one's
+  // privates unreachable from outside its own methods. There is no enclosing class and no nested-type
+  // relationship any more -- the components were lifted out of OpenGlRenderer.
 private:
   bool boundWriteToBack = false;  // which face of `target` GL currently draws into
   Vec2U boundViewport = {};       // the viewport GL currently has set (== screenSize when target is null)
@@ -376,8 +377,8 @@ struct GlEffects {
   void rebindBorrows(GlTargets& targets);
 
 private:
-  // NO friend (§9 step 5): only GlEffects' own methods touch m_byName; the enclosing class reaches effects
-  // through find()/load()/get(), so the compiler now enforces the seal against it too.
+  // NO friend (§9 step 5): only GlEffects' own methods touch m_byName; the renderer reaches effects through
+  // find()/load()/get(), so plain access control now enforces the seal against it too.
   StringMap<Effect> m_byName;
 };
 
