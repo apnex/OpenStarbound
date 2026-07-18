@@ -399,8 +399,10 @@ void OpenGlRenderer::GlFrameBuffer::swap() {
   if (!back)
     throw RendererException::format("Framebuffer '{}': swap() on a surface with only one face", name);
 
+  // Flip which face is written. GlPass::bindTarget keys on the write-face index (writingBack()), so this flip
+  // changes its bind key and forces the rebind by itself -- the old `justSwapped` bool that defeated an
+  // identity-only early-out is gone, retired by the (target, face, size) key.
   writeToBack = !writeToBack;
-  justSwapped = true;
 }
 
 OpenGlRenderer::GlFrameBuffer::~GlFrameBuffer() {
@@ -433,7 +435,16 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   // switchEffectConfig("interface"), and "interface" declares no frameBuffer -- so the pass is on the screen
   // holding nothing at the one moment this runs. Correctness by frame ordering. Nothing states that ordering,
   // nothing enforces it, and it is invisible to whoever next moves the poll or gives "interface" a target.
-  m_pass.target.reset();
+  //
+  // invalidate(), not just target.reset(): the (target, face, size) bind key means the screen early-out now
+  // trusts boundViewport too, and the target rebuild below leaves GL_DRAW on the LAST-allocated FBO
+  // (allocateFace binds it) while boundViewport stays == screenSize from that interface unbind. A bare
+  // target.reset() would leave the cache reading (screen, screenSize) -- matching the screen key -- so the
+  // next screen bind would early-out over that corpse binding and draw into a live target FBO. Dropping the
+  // whole cache to its {0,0} sentinel forces the next bind to emit real GL. This is the RB-5 defect closed for
+  // the bind cache the same way target.reset() closed it for the RefPtr. Off every oracle path (loadConfig
+  // never runs mid-recompute), so byte-identical on all certified paths.
+  m_pass.invalidate();
   m_targets.destroyAll();
 
   for (auto& pair : config.getObject("frameBuffers", {})) {
@@ -955,8 +966,15 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
     }
     bindTarget(buf);
   } else {
-    m_pass.target.reset();
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    // No frameBuffer: the effect draws to the screen. unbind() binds framebuffer 0 -- and now ALSO sets the
+    // full-screen viewport, which this branch never used to set. THE ONE INTENDED DELTA. It is safe because a
+    // screen-target draw wants the full-screen viewport, and every in-tree effect that reaches here either has
+    // its viewport already at screenSize (interface, after the world's screen-sized "main" pass) or issues a
+    // setRenderTarget that resets the viewport before it draws (lightingSpread / lightingPoint redirect to
+    // off-screen targets). Where it changes anything at all -- a mod post-process leaving a sub-screen viewport
+    // before a screen draw -- it is a latent FIX, never a regression. bindEffect below writes this effect's
+    // screenSize uniform, so unbind must not (and does not) write one.
+    m_pass.unbind(m_screenSize);
   }
 
   m_pass.bindEffect(effect, effectScreenSize);
@@ -996,10 +1014,11 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
   flushImmediatePrimitives();
 
   if (!frameBufferId) {
-    // Restore the screen as the draw target and the full-screen viewport/screenSize.
-    m_pass.target.reset();
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    glViewport(0, 0, m_screenSize[0], m_screenSize[1]);
+    // Restore the screen as the draw target and the full-screen viewport. unbind() owns the framebuffer bind
+    // and the viewport now (byte-identical: it binds 0 + viewport screenSize, or early-outs only when both are
+    // already so). The screenSize UNIFORM write stays here -- bindTarget writes no uniform, and the uniform
+    // targets the currently-bound program, which is correct on this path (no glUseProgram intervenes).
+    m_pass.unbind(m_screenSize);
     if (m_pass.screenSizeUniform != -1)
       glUniform2f(m_pass.screenSizeUniform, (float)m_screenSize[0], (float)m_screenSize[1]);
     return;
@@ -1028,13 +1047,12 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
 
   bindTarget(buf);
 
-  // THIS IS NOT REDUNDANT WITH bindTarget, and I nearly deleted it as such. bindTarget early-outs when the
-  // target is ALREADY BOUND -- and it early-outs BEFORE setting the viewport. So a caller that re-targets the
-  // SAME surface at a NEW size (which the lighting passes do every frame) would keep the previous viewport.
-  // The early-out is skipping work it should not skip; the honest fix is to key the bind cache on (target,
-  // size) as well as identity, and that is a behaviour change for F2b. Until then this line covers for it.
+  // THE COVER glViewport IS GONE. bindTarget now keys its bind cache on (target, face, size), so it no longer
+  // early-outs before the viewport when a caller re-targets the SAME surface at a NEW size (the lighting
+  // passes, every frame) -- it owns the viewport unconditionally. `vp` survives only to feed the screenSize
+  // UNIFORM, which bindTarget does not write: `size` if the caller gave one (buf was just resized to it, so it
+  // equals buf->size() -- the viewport and the uniform still agree), else the target's actual face size.
   Vec2U vp = (size[0] != 0 && size[1] != 0) ? size : buf->writeFace().texture->textureSize;
-  glViewport(0, 0, vp[0], vp[1]);
   if (m_pass.screenSizeUniform != -1)
     glUniform2f(m_pass.screenSizeUniform, (float)vp[0], (float)vp[1]);
 }
@@ -2219,44 +2237,45 @@ void OpenGlRenderer::bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer) {
 }
 
 void OpenGlRenderer::GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize) {
-  // justSwapped defeats this early-out: a swap changes which FACE is the write face without changing the
-  // TARGET, so "already bound" would otherwise skip the rebind and the pass would keep drawing into the face
-  // it just stopped writing. (The honest fix is a (target, face) bind key, which retires this bool -- but
-  // that is a behaviour change and it belongs in F2b, with its own gate. It stays, verbatim, for now.)
-  if (target == newTarget && !newTarget->justSwapped)
+  // A null target IS THE SCREEN (framebuffer 0). This is the one place the screen is bound -- the two
+  // hand-rolled `target.reset(); glBindFramebuffer(0)` sites now route here through unbind().
+  if (!newTarget) {
+    // Early-out only when the cache proves the screen is already bound at this size. The cache is trustworthy
+    // in-frame: `target == null` coincides with GL_DRAW == 0 because every screen bind runs through here and
+    // startFrame/finishFrame re-bind 0 without changing size. The ONE place it goes stale is loadConfig, which
+    // reallocates targets under GL while resetting `target` -- so loadConfig calls invalidate() to make the
+    // {0,0} sentinel here refuse this early-out. Without that, a stale (screen, screenSize) would skip the
+    // rebind and leave draws landing in a just-reallocated target FBO (the AA/HDR-toggle regression).
+    if (!target && boundViewport == screenSize)
+      return;
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glViewport(0, 0, screenSize[0], screenSize[1]);
+    target = {};
+    boundViewport = screenSize;
+    boundWriteToBack = false;
     return;
+  }
 
-  newTarget->justSwapped = false;
+  // THE (target, face, size) BIND KEY. A live surface is never (0,0) -- F1 makes every surface born correct
+  // at its real size, so size() is always the viewport and the old `vp == 0 -> screenSize / sizeDiv` fallback
+  // is dead code, removed. size() reads front.texture->textureSize, which equals the old
+  // writeFace().texture->glTextureSize() on every single-faced (in-tree / oracle) surface -- byte-identical.
+  //
+  // The key adds the write-FACE index and the VIEWPORT to the old identity-only test. That fixes two real
+  // skips the old key made: a swap() flips the write face without changing the target (was patched by
+  // justSwapped, now folded in), and a caller re-targeting the SAME surface at a NEW size wants a new viewport
+  // (was patched by setRenderTarget's cover glViewport, now folded in and deleted). Setting the viewport HERE
+  // is also why an effect declaring `frameBuffer` + `sizeDiv` no longer draws through a stale full-screen
+  // viewport -- silently, and only for mods, since nothing in-tree ships a sizeDiv surface.
+  Vec2U vp = newTarget->size();
+  bool wtb = newTarget->writingBack();
+  if (target == newTarget && boundWriteToBack == wtb && boundViewport == vp)
+    return;
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, newTarget->writeFace().id);
-  target = newTarget;
-
-  // THE bind path, so this happens here and cannot be forgotten anywhere else. Nothing used to set the
-  // viewport when an effect switched to a framebuffer, so an effect declaring `frameBuffer` together with a
-  // `sizeDiv` drew into a smaller surface through a stale full-screen viewport -- silently, and only for
-  // mods, since nothing in-tree ships a sizeDiv surface.
-  Vec2U vp = newTarget->writeFace().texture->glTextureSize();
-  if (vp[0] == 0 || vp[1] == 0)
-    vp = screenSize / newTarget->sizeDiv;
   glViewport(0, 0, vp[0], vp[1]);
-
-  // A `glUniform2f(screenSizeUniform, vp)` used to close this function, and a comment above it called that
-  // statement "THE COUPLING" -- a target operation writing an effect-program uniform, proof that targets and
-  // effects could not be split. It was the stated reason this component exists.
-  //
-  // It was dead at both call sites, and I never checked.
-  //
-  //   switchEffectConfig: bindTarget runs BEFORE glUseProgram. glUniform writes into the program that is
-  //     CURRENTLY bound -- the OUTGOING one -- through the OUTGOING program's cached location. The incoming
-  //     program then gets its screenSize from bindEffect a few lines later. The write landed on the wrong
-  //     program and was overwritten the next time that program was bound.
-  //   setRenderTarget: the very next statements re-write the viewport and the same uniform with the same
-  //     value, because bindTarget's early-out means the caller cannot rely on either happening here.
-  //
-  // So it wrote to the wrong program, or it wrote a value that was immediately rewritten. No draw could ever
-  // observe it. The viewport call above is real and load-bearing; that one was ceremony defending an argument.
-  //
-  // GlPass still earns its keep -- it is the coupled (effect, target) pair and the flattened locations the
-  // draw path reads -- but on THAT, honestly, and not on a uniform write no frame could see.
+  target = newTarget;
+  boundWriteToBack = wtb;
+  boundViewport = vp;
 }
 
 GLuint OpenGlRenderer::Effect::getAttribute(String const& name) {

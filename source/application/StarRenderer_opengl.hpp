@@ -266,16 +266,18 @@ private:
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
-    // Set by swap(); defeats GlPass::bindTarget's "already bound" early-out so the new write face is
-    // actually bound rather than silently skipped.
-    bool justSwapped = false;
-
     // THE RESOLVER. Ask which face you are writing, or which you may read. Never reach for a texture or an
     // id directly. A single-faced surface answers `front` to both.
     Face& writeFace() { return writeToBack ? *back : front; }
     Face& readFace() { return (back && !writeToBack) ? *back : front; }
     Face const& writeFace() const { return writeToBack ? *back : front; }
     Face const& readFace() const { return (back && !writeToBack) ? *back : front; }
+
+    // WHICH FACE IS THE WRITE FACE, as a value the bind cache can key on. `writeToBack` is private (the seal),
+    // so GlPass -- a sibling nested type, not a friend of this one -- reaches it through here. swap() flips it;
+    // that flip changes GlPass's (target, face, size) key and forces the rebind that the old `justSwapped`
+    // bool used to force. Single-faced surfaces (everything in-tree) always answer false.
+    bool writingBack() const { return writeToBack; }
 
     // Whether this surface can read what it writes -- i.e. has a second face. Existence IS the fact: this is
     // `back.isValid()` given a name, not a bool that could disagree with whether a second texture exists.
@@ -452,16 +454,29 @@ private:
     GLint screenSizeUniform = -1;
     GLint vertexTransformUniform = -1;
 
-    // THE COUPLED PAIR. This is the whole reason the component exists.
+    // THE COUPLED PAIR. This is the whole reason the component exists. `target` == null means the screen
+    // (framebuffer 0); a non-null target is the surface subsequent draws land on. Read externally (oracle
+    // restores, config teardown), so it stays public.
     Effect* effect = nullptr;
     RefPtr<GlFrameBuffer> target;
 
-    // Make `target` the surface that subsequent draws land on: bind its write face and set the viewport to
-    // that face. That is all it does -- it used to ALSO write the bound program's screenSize uniform, and the
-    // header called that "the entire argument for this component". The write was dead at both call sites and
-    // was deleted in F3b.1 (the .cpp explains why). It takes screenSize by value and reaches for nothing
-    // else -- a Pass depends downward on targets and on effects, and on nothing above it.
+    // Make `newTarget` the surface subsequent draws land on: bind its write face and set the viewport to that
+    // face's size. A null newTarget binds the screen instead (see unbind). Keyed on (target, write-face,
+    // viewport): it early-outs only when the cache proves all three already match, so a swap() (face flip) or
+    // a same-target resize rebinds where the old identity-only key would have wrongly skipped. It writes NO
+    // uniform -- that write was dead at both call sites and was deleted in F3b.1 (the .cpp explains why).
     void bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize);
+
+    // THE ONE screen-bind path: bind framebuffer 0 at the full-screen viewport, via bindTarget's null branch.
+    // Replaces the two hand-rolled `target.reset(); glBindFramebuffer(0)` inverse-of-bindTarget sites. Public:
+    // its callers (setRenderTarget / switchEffectConfig) are OpenGlRenderer methods, external to GlPass.
+    void unbind(Vec2U const& screenSize) { bindTarget({}, screenSize); }
+
+    // DROP THE CACHE without touching GL. loadConfig calls this: it destroys and rebuilds every target,
+    // leaving GL_DRAW on a just-reallocated FBO while `target` becomes null -- so the cache would otherwise
+    // read (screen, stale screenSize) and let the next screen unbind early-out over that corpse binding. The
+    // {0,0} viewport sentinel matches no real screen or target size, forcing the next bind to emit real GL.
+    void invalidate() { target = {}; boundWriteToBack = false; boundViewport = Vec2U(0, 0); }
 
     // Make `newEffect` the program that subsequent draws run: bind it, flatten its attribute and uniform
     // locations for the draw path to read, point its vertex-buffer samplers at their texture units, tell it
@@ -472,6 +487,15 @@ private:
     // pass holding the dead program's flattened locations. switchEffectConfig's early-out is a different
     // animal: it guards a whole target-bind and texture-rebind sequence, not this.
     void bindEffect(Effect& newEffect, Vec2U const& screenSize);
+
+    // THE REST OF THE BIND KEY. A REAL seal, now, not §8.ii ceremony: nothing outside GlPass's own methods
+    // reads these two fields, so -- unlike GlFrameBuffer / GlTargets / GlEffects, whose `friend class
+    // OpenGlRenderer` re-opens their privates to the enclosing class -- GlPass deliberately adds NO friend.
+    // The enclosing class has no special access to a nested type's privates (C++ [class.access.nest]), so
+    // without the friend the seal genuinely holds: the renderer cannot poke boundViewport, which is the point.
+  private:
+    bool boundWriteToBack = false;  // which face of `target` GL currently draws into
+    Vec2U boundViewport = {};       // the viewport GL currently has set (== screenSize when target is null)
   };
   GlPass m_pass;
 

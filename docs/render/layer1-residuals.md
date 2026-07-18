@@ -90,6 +90,8 @@ Error path only. State it in the commit; do not smuggle it.
 
 ## 2. The bind key — and the screen as a representable target
 
+**DONE (§9 step 3).** Keyed on (target RefPtr, writingBack(), size). justSwapped + the vp==0 fallback + setRenderTarget's cover glViewport all deleted; both hand-rolled screen binds folded into GlPass::unbind(); the screen is a null target. ONE design correction over the literal spec: loadConfig calls GlPass::invalidate() (not target.reset()) — the new screen early-out would otherwise fire over the corpse FBO left bound after a target rebuild. Certified: env 83/83, parallax 20/20, spread 204/204, 0 GL errors; core 226/226; game 90/91.
+
 **BEHAVIOUR CHANGE. Its own gate. ~1 day. This is the only real day of work on the list.**
 
 Key the pass bind on **`(target identity, write-face index, size)`**.

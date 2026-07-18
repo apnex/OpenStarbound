@@ -249,6 +249,7 @@ is the single most important sentence in this document.
 pre-existing redundant binds. **Measure it; do not claim a win without a number.**
 
 ### D. Give `GlPass` a `private:` and an `unbind()`
+**DONE (§9 step 3, folded with the bind key).**
 **PURE-STRUCTURAL. ~2 hours.** 32 raw field pokes, and two hand-rolled inverse-of-bindTarget sites that
 disagree. Fold both into `GlPass::unbind(Vec2U)`. Then GlPass is a component rather than a field bag. **Note:
 this partly overlaps residuals item 2 (the bind key) — do them together or do the bind key first.**
