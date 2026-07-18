@@ -1768,34 +1768,7 @@ void OpenGlRenderer::GlGroupedTexture::decrementBufferUseCount() {
   --bufferUseCount;
 }
 
-OpenGlRenderer::GlLoneTexture::~GlLoneTexture() {
-  if (textureId != 0)
-    glDeleteTextures(1, &textureId);
-}
-
-Vec2U OpenGlRenderer::GlLoneTexture::size() const {
-  return textureSize;
-}
-
-TextureFiltering OpenGlRenderer::GlLoneTexture::filtering() const {
-  return textureFiltering;
-}
-
-TextureAddressing OpenGlRenderer::GlLoneTexture::addressing() const {
-  return textureAddressing;
-}
-
-GLuint OpenGlRenderer::GlLoneTexture::glTextureId() const {
-  return textureId;
-}
-
-Vec2U OpenGlRenderer::GlLoneTexture::glTextureSize() const {
-  return textureSize;
-}
-
-Vec2U OpenGlRenderer::GlLoneTexture::glTextureCoordinateOffset() const {
-  return Vec2U();
-}
+// GlLoneTexture's methods moved to StarGlTexturePrimitives.cpp (Tier 1 of the §8.ii extraction).
 
 OpenGlRenderer::GlRenderBuffer::GlRenderBuffer() {
   glGenVertexArrays(1, &vertexArray);

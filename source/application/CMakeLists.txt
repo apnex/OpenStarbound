@@ -20,6 +20,7 @@ SET (star_application_SOURCES
 SET (star_application_HEADERS ${star_application_HEADERS}
     StarP2PNetworkingService_pc.hpp
     StarPlatformServices_pc.hpp
+    StarGlTexturePrimitives.hpp
     StarRenderer_opengl.hpp
   )
 
@@ -27,6 +28,7 @@ SET (star_application_SOURCES ${star_application_SOURCES}
     StarMainApplication_sdl.cpp
     StarP2PNetworkingService_pc.cpp
     StarPlatformServices_pc.cpp
+    StarGlTexturePrimitives.cpp
     StarRenderer_opengl.cpp
   )
 

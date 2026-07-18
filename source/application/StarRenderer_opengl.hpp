@@ -2,6 +2,7 @@
 
 #include "StarTextureAtlas.hpp"
 #include "StarRenderer.hpp"
+#include "StarGlTexturePrimitives.hpp"
 
 #include "GL/glew.h"
 
@@ -103,12 +104,9 @@ private:
     GlTextureAtlasSet textureAtlasSet;
   };
 
-  struct GlTexture : public Texture {
-    virtual GLuint glTextureId() const = 0;
-    virtual Vec2U glTextureSize() const = 0;
-    virtual Vec2U glTextureCoordinateOffset() const = 0;
-  };
-
+  // GlTexture and GlLoneTexture now live in StarGlTexturePrimitives.hpp (Tier 1 of the §8.ii extraction) --
+  // GlLoneTexture is atlas-free and self-contained, so the render-surface substrate depends on it there
+  // without depending on this whole class. GlGroupedTexture stays here because it IS the atlas coupling.
   struct GlGroupedTexture : public GlTexture {
     ~GlGroupedTexture();
 
@@ -126,37 +124,6 @@ private:
     unsigned bufferUseCount = 0;
     shared_ptr<GlTextureGroup> parentGroup;
     GlTextureAtlasSet::TextureHandle parentAtlasTexture = nullptr;
-  };
-
-  struct GlLoneTexture : public GlTexture {
-    ~GlLoneTexture();
-
-    Vec2U size() const override;
-    TextureFiltering filtering() const override;
-    TextureAddressing addressing() const override;
-
-    GLuint glTextureId() const override;
-    Vec2U glTextureSize() const override;
-    Vec2U glTextureCoordinateOffset() const override;
-
-    GLuint textureId = 0;
-
-    // THE STORAGE DESCRIPTOR. Size and internal format together, because storage is ONE act and describing
-    // half of it is worse than describing none: a glTexSubImage2D fast path that consults a HALF-TRUE record
-    // will happily write into storage whose format has changed underneath it, and GL will not complain.
-    //
-    // internalFormat is 0 until storage has been specified. WHOEVER SPECIFIES STORAGE RECORDS WHAT IT
-    // SPECIFIED -- in the same breath, or the next reader is consulting a lie.
-    //
-    // This replaced an `uploadChannels` field that only ONE of the four storage-spec paths maintained. The
-    // other three re-specified the texture and left it stale, so the SubImage guard passed on a format that no
-    // longer existed. Proven: emission storage went RGBA16F -> RGB32F behind the guard's back and the pass
-    // wrote half-float RGBA into three-channel storage for the rest of the run, silently dropping the alpha
-    // that carries the obstacle flag.
-    Vec2U textureSize;
-    GLint internalFormat = 0;
-    TextureAddressing textureAddressing = TextureAddressing::Clamp;
-    TextureFiltering textureFiltering = TextureFiltering::Nearest;
   };
 
   struct GlPackedVertexData {
