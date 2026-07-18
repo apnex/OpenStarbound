@@ -512,7 +512,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
         auto textureUniform = fbt.getString("texture");
         auto ptr = m_pass.effect->textures.ptr(textureUniform);
         if (ptr) {
-          auto undefined = !ptr->textureValue || ptr->textureValue->textureId == 0;
+          auto undefined = !ptr->hasStorage();
           auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
           auto buf = m_targets.get(*frameBufferId);
           if (undefined || buf->doubled()) {
@@ -1538,33 +1538,12 @@ void OpenGlRenderer::flushImmediatePrimitives(Mat3F const& transformation) {
 
 auto OpenGlRenderer::createGlTexture(ImageView const& image, TextureAddressing addressing, TextureFiltering filtering)
     ->RefPtr<GlLoneTexture> {
-  auto glLoneTexture = make_ref<GlLoneTexture>();
-  glLoneTexture->textureFiltering = filtering;
-  glLoneTexture->textureAddressing = addressing;
-  glLoneTexture->textureSize = image.size;
-
-  glGenTextures(1, &glLoneTexture->textureId);
-  if (glLoneTexture->textureId == 0)
-    throw RendererException("Could not generate texture in OpenGlRenderer::createGlTexture");
-
-  glBindTexture(GL_TEXTURE_2D, glLoneTexture->textureId);
-
-  if (addressing == TextureAddressing::Clamp) {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  } else {
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  }
-
-  if (filtering == TextureFiltering::Nearest) {
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  } else {
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  }
-
+  // createGlTexture = createEmptyGlTexture (allocate + sampling params) + the pixel upload. Delegating keeps
+  // glGenTextures to ONE allocator per side (this one, via the empty allocator, plus allocateFace and
+  // createAtlasTexture) instead of a second verbatim copy of the gen-bind-param preamble. Same GL call stream:
+  // the empty allocator sets WRAP with glTexParameteri and MIN/MAG with glTexParameterf, exactly as here, and
+  // leaves the new texture BOUND, so the upload lands in it.
+  auto glLoneTexture = createEmptyGlTexture(image.size, addressing, filtering);
 
   if (!image.empty())
     glLoneTexture->internalFormat = uploadTextureImage(image.format, image.size, image.data);
@@ -1579,6 +1558,11 @@ auto OpenGlRenderer::createEmptyGlTexture(Vec2U size, TextureAddressing addressi
   tex->textureAddressing = addressing;
   tex->textureSize = size;
   glGenTextures(1, &tex->textureId);
+  // The one effect-side allocator, so the one place the gen can fail. setEffectTextureHalf/R8 and createGlTexture
+  // all route their allocation through here and thereby GAIN this throw -- the two upload setters' old inline
+  // copies of the preamble lacked it, silently proceeding to bind and spec texture 0. Error path only.
+  if (tex->textureId == 0)
+    throw RendererException("Could not generate texture in OpenGlRenderer::createEmptyGlTexture");
   glBindTexture(GL_TEXTURE_2D, tex->textureId);
   GLenum wrap = addressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrap);

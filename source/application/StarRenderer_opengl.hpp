@@ -246,9 +246,11 @@ private:
   };
 
   // Pixel read-back for bit-identity certification. Unlike the timer, this genuinely needs the renderer's
-  // framebuffer set, so it holds a back-reference -- the same one-way gap as GlFrameBuffer's `friend
-  // OpenGlRenderer`. The gap that matters is the one the twelve consumers see, and that one is real: they get
-  // three methods and cannot name a framebuffer face.
+  // framebuffer set, so it holds a concrete back-reference to OpenGlRenderer -- a one-way coupling internal to
+  // the backend. That is a diagnostic seam, not a hole in the seal: no Layer-1 component re-opens its privates
+  // to the renderer any more (the compile proved none needed to). The gap that matters is the one the twelve
+  // consumers see through the Renderer interface, and that one is real: they get three methods and cannot name
+  // a framebuffer face.
   //
   // Expected lifetime: DELETED. See RenderOracle in StarRenderDiagnostics.hpp.
   class GlRenderOracle : public RenderOracle {

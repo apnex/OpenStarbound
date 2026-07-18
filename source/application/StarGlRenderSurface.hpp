@@ -58,12 +58,18 @@ struct EffectTexture {
   //   share()   -- we point at storage someone else owns (a framebuffer face, or another sampler's texture),
   //                recording whose it is; `from` empty == shared-but-owned-elsewhere, not a target.
   //   release() -- let go of everything.
-  //   ownsWritableStorage() -- the single predicate the upload setters branch on. False -> allocate fresh
-  //                rather than write into storage that is absent, empty, or borrowed.
+  //
+  // Two predicates, one built from the other, because two sites ask two different questions:
+  //   hasStorage()          -- a texture exists and has been specified. The frameBufferTextures binder asks
+  //                this: it re-points a sampler at a rebuilt target and must do so EVEN when the sampler is
+  //                currently borrowing, so it must NOT exclude borrowed textures.
+  //   ownsWritableStorage() -- hasStorage() AND it is ours to write into. The upload setters branch on this:
+  //                false -> allocate fresh rather than write into storage that is absent, empty, or borrowed.
   void adopt(RefPtr<GlLoneTexture> tex) { textureValue = std::move(tex); borrowedFrom = ""; }
   void share(RefPtr<GlLoneTexture> tex, String from) { textureValue = std::move(tex); borrowedFrom = std::move(from); }
   void release() { textureValue.reset(); borrowedFrom = ""; }
-  bool ownsWritableStorage() const { return textureValue && textureValue->textureId != 0 && !borrowed(); }
+  bool hasStorage() const { return textureValue && textureValue->textureId != 0; }
+  bool ownsWritableStorage() const { return hasStorage() && !borrowed(); }
 
   unsigned textureUnit = 0;
   TextureAddressing textureAddressing = TextureAddressing::Clamp;
