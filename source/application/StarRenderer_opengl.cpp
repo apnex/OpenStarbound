@@ -392,15 +392,15 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
   if (!ptr->ownsWritableStorage()) {
     ptr->adopt(createGlTexture(image, ptr->textureAddressing, ptr->textureFiltering));
   } else {
-    glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
+    glBindTexture(GL_TEXTURE_2D, ptr->texture()->textureId);
     // A FULL RE-SPECIFICATION, so the WHOLE descriptor is rewritten -- by the act that specifies it.
     // uploadTextureImage now records both fields itself; recording only the size (which is what this did) left
     // the format record describing storage that no longer existed, and the half-float SubImage guard trusted it.
-    uploadTextureImage(image.format, image.size, image.data, ptr->textureValue.get());
+    uploadTextureImage(image.format, image.size, image.data, ptr->texture().get());
   }
 
   if (ptr->textureSizeUniform != -1) {
-    auto textureSize = ptr->textureValue->glTextureSize();
+    auto textureSize = ptr->texture()->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
   }
 }
@@ -486,7 +486,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
         // borrow: no writing, re-point on rebuild.
         ptr->share(swapped ? buf->readFace().texture : buf->writeFace().texture, frameBufferId);
         if (ptr->textureSizeUniform != -1 && undefined) {
-          auto textureSize = ptr->textureValue->glTextureSize();
+          auto textureSize = ptr->texture()->glTextureSize();
           glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
         }
       }
@@ -576,7 +576,7 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
   // directly to the sampler -- no CPU upload. share() records whose it is: no writing, and re-point on rebuild.
   ptr->share(m_targets.get(frameBufferId)->writeFace().texture, frameBufferId);
   if (ptr->textureSizeUniform != -1) {
-    auto textureSize = ptr->textureValue->glTextureSize();
+    auto textureSize = ptr->texture()->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
   }
 }
@@ -584,7 +584,7 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
 void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) {
   auto dest = m_pass.effect->textures.ptr(destTextureName);
   auto src = m_pass.effect->textures.ptr(sourceTextureName);
-  if (!dest || !src || !src->textureValue)
+  if (!dest || !src || !src->texture())
     return;
 
   flushImmediatePrimitives();
@@ -592,9 +592,9 @@ void OpenGlRenderer::setEffectTextureAlias(String const& destTextureName, String
   // Share the source sampler's already-uploaded texture (same GlLoneTexture, ref-counted) with the dest
   // sampler -- the per-draw bind loop will bind it to dest's texture unit. No CPU upload. The alias inherits
   // the source's borrow status: an alias of a borrowed texture is still borrowed, from the same target.
-  dest->share(src->textureValue, src->borrowedFrom);
+  dest->share(src->texture(), src->borrowFrom());
   if (dest->textureSizeUniform != -1) {
-    auto textureSize = dest->textureValue->glTextureSize();
+    auto textureSize = dest->texture()->glTextureSize();
     glUniform2f(dest->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
   }
 }
@@ -614,7 +614,7 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
     ptr->adopt(createEmptyGlTexture(size, ptr->textureAddressing, ptr->textureFiltering));
     fresh = true;
   } else {
-    glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
+    glBindTexture(GL_TEXTURE_2D, ptr->texture()->textureId);
   }
   // 16F storage + GL_HALF_FLOAT source: half the bytes of the float upload, no precision loss (the FBOs are
   // 16F anyway). channels==4 packs a fourth component -- used to carry the obstacle flag alongside emission,
@@ -626,10 +626,10 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
   GLint  const internalFormat = channels == 4 ? GL_RGBA16F : GL_RGB16F;
   // Guard + spec + record are one act now (uploadLoneStorage), which tests size AND format. This setter used to
   // consult `uploadChannels`, a field only IT maintained -- the shared chokepoint cannot be given a stale one.
-  uploadLoneStorage(*ptr->textureValue, size, internalFormat, format, GL_HALF_FLOAT, halfData, fresh);
+  uploadLoneStorage(*ptr->texture(), size, internalFormat, format, GL_HALF_FLOAT, halfData, fresh);
 
   if (ptr->textureSizeUniform != -1) {
-    auto textureSize = ptr->textureValue->glTextureSize();
+    auto textureSize = ptr->texture()->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
   }
 }
@@ -649,7 +649,7 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
     ptr->adopt(createEmptyGlTexture(size, ptr->textureAddressing, ptr->textureFiltering));
     fresh = true;
   } else {
-    glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
+    glBindTexture(GL_TEXTURE_2D, ptr->texture()->textureId);
   }
   // R8 storage + GL_RED source: a third the bytes of RGB24 for the binary obstacle mask (read as .r).
   // Same-size re-upload goes through TexSubImage (see setEffectTextureHalfRGB above) -- this runs twice
@@ -660,10 +660,10 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
   // on the same sampler), so one RGB24 frame re-specified the storage and every R8 upload after it wrote GL_RED
   // bytes into whatever that left behind, forever, because the size never changed. There is no per-setter guard
   // to get wrong now: uploadLoneStorage owns the one guard, and it tests size AND format.
-  uploadLoneStorage(*ptr->textureValue, size, GL_R8, GL_RED, GL_UNSIGNED_BYTE, data, fresh);
+  uploadLoneStorage(*ptr->texture(), size, GL_R8, GL_RED, GL_UNSIGNED_BYTE, data, fresh);
 
   if (ptr->textureSizeUniform != -1) {
-    auto textureSize = ptr->textureValue->glTextureSize();
+    auto textureSize = ptr->texture()->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);
   }
 }
@@ -1574,9 +1574,9 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
     }
 
     for (auto const& p : m_pass.effect->textures) {
-      if (p.second.textureValue) {
+      if (p.second.texture()) {
         glActiveTexture(GL_TEXTURE0 + p.second.textureUnit);
-        glBindTexture(GL_TEXTURE_2D, p.second.textureValue->textureId);
+        glBindTexture(GL_TEXTURE_2D, p.second.texture()->textureId);
 
         // Filtering belongs to the BINDING, not to the texture.
         //

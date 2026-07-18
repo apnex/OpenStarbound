@@ -31,55 +31,49 @@ struct EffectParameter {
 };
 
 struct EffectTexture {
-  // NON-EMPTY when textureValue is a framebuffer's OWN colour attachment -- handed to us by
-  // setEffectTextureFromTarget, by the frameBufferTextures block of an effect config, or by an alias of one
-  // of those. It names WHICH framebuffer. We are then a BORROWER: we may bind that texture and sample it,
-  // and we may NOT write to it.
+  // THE BORROW, SET AS ONE ACT. A sampler's storage and its status -- whose it is, and whether we may write it,
+  // and which named target to re-point to on a rebuild -- must agree, so the three mutators set them together
+  // and the predicates never reconstruct "may I write?" from the others. That reconstruction put half-float
+  // RGBA into a live render target (RB-1). borrowedFrom NON-EMPTY names the framebuffer target this sampler
+  // borrows a colour attachment from: loadConfig destroys and rebuilds every target, so the binder re-points
+  // us at the rebuilt one BY NAME (RB-5) -- otherwise the sampler is not freed but ORPHANED. Empty means "not
+  // a named target": either we adopted our own storage, or we share a texture another sampler owns.
   //
-  // It answers two questions, and it has to be a name rather than a flag to answer the second:
-  //
-  //   "may I write here?"  -- no. The upload setters (setEffectTexture / Half / R8) each have a "reuse the
-  //      texture object I already have" branch, and without this that branch re-specified storage belonging
-  //      to GlTargets: glTexImage2D through a sampler, into a live render target (RB-1).
-  //
-  //   "where do I come from?" -- loadConfig destroys and rebuilds every target. ~GlFrameBuffer only
-  //      RELEASES its RefPtr to the face texture; glDeleteTextures lives in ~GlLoneTexture and does not run
-  //      while a sampler still holds a reference. So the texture is not freed, it is ORPHANED, and the
-  //      sampler goes on sampling a framebuffer that no longer exists. Knowing the name lets us re-point it
-  //      at the rebuilt one (RB-5).
-  String borrowedFrom;
-  bool borrowed() const { return !borrowedFrom.empty(); }   // borrows a NAMED target -> re-point on rebuild
-
-  // THE BORROW, SET AS ONE ACT. Three facts must agree -- the texture, whether it is OURS to write, and which
-  // named target (if any) to re-point to on rebuild -- so the mutators set them together and the predicates
-  // never reconstruct "may I write?" from the others. That reconstruction is what put half-float RGBA into a
-  // live render target (RB-1); deriving writability from `borrowedFrom` alone is a SECOND seat of the same
-  // trap, because adopt() and share(tex, "") both leave borrowedFrom empty yet mean opposite things:
   //   adopt()   -- we allocated this texture; it is OURS to write. (m_owned = true)
   //   share()   -- we point at storage someone else owns: a framebuffer face BY NAME, or another sampler's
   //                already-uploaded texture with an EMPTY name (shared-but-owned-elsewhere). NOT ours to write.
   //   release() -- let go of everything.
-  // Writability is therefore its own recorded fact (m_owned, set only by adopt); `borrowedFrom` answers only
-  // the separate "which target do I re-point to?" question. setEffectTextureAlias of a NON-borrowed source is
-  // exactly share(tex, ""): without m_owned it read as writable, and a later upload re-specified the source's
-  // live texture through the alias.
   //
+  // Writability is its OWN recorded fact (m_owned, set only by adopt), because adopt() and share(tex, "") both
+  // leave borrowedFrom empty yet mean opposite things -- setEffectTextureAlias of a NON-borrowed source is
+  // exactly share(tex, ""), and deriving writability from the name alone let a later upload re-specify the
+  // source's live texture through the alias. The three fields are PRIVATE (below): the only way to change any
+  // of them is one of the three atomic acts, so no call site can poke one and desync the trio -- RB-1 closed
+  // by the compiler, not by care.
+  void adopt(RefPtr<GlLoneTexture> tex) { m_textureValue = std::move(tex); m_borrowedFrom = ""; m_owned = true; }
+  void share(RefPtr<GlLoneTexture> tex, String from) { m_textureValue = std::move(tex); m_borrowedFrom = std::move(from); m_owned = false; }
+  void release() { m_textureValue.reset(); m_borrowedFrom = ""; m_owned = false; }
+
+  RefPtr<GlLoneTexture> const& texture() const { return m_textureValue; }   // the storage, read-only to the outside
+  String const& borrowFrom() const { return m_borrowedFrom; }               // which named target (empty = none)
+  bool borrowed() const { return !m_borrowedFrom.empty(); }                 // borrows a NAMED target -> re-point on rebuild
+
   //   hasStorage()          -- a texture exists and has been specified. The frameBufferTextures binder asks
   //                this: it re-points a sampler at a rebuilt target EVEN when borrowing, so it must NOT exclude
   //                borrowed textures.
   //   ownsWritableStorage() -- hasStorage() AND we adopted it. The upload setters branch on this: false ->
   //                allocate fresh rather than write into storage that is absent, empty, or owned elsewhere.
-  void adopt(RefPtr<GlLoneTexture> tex) { textureValue = std::move(tex); borrowedFrom = ""; m_owned = true; }
-  void share(RefPtr<GlLoneTexture> tex, String from) { textureValue = std::move(tex); borrowedFrom = std::move(from); m_owned = false; }
-  void release() { textureValue.reset(); borrowedFrom = ""; m_owned = false; }
-  bool hasStorage() const { return textureValue && textureValue->textureId != 0; }
+  bool hasStorage() const { return m_textureValue && m_textureValue->glTextureId() != 0; }
   bool ownsWritableStorage() const { return hasStorage() && m_owned; }
 
   unsigned textureUnit = 0;
   TextureAddressing textureAddressing = TextureAddressing::Clamp;
   TextureFiltering textureFiltering = TextureFiltering::Linear;
   GLint textureSizeUniform = -1;
-  RefPtr<GlLoneTexture> textureValue;
+
+private:
+  RefPtr<GlLoneTexture> m_textureValue;
+  String m_borrowedFrom;
   bool m_owned = false;   // true only after adopt(): the one fact ownsWritableStorage() may trust
 };
 
@@ -95,9 +89,21 @@ struct EffectTexture {
 // one allocator. And blitGlFrameBuffer / the effect-texture resolution each had to re-derive "which half
 // do I mean?" by hand. One resolver, and none of those are expressible.
 struct GlFrameBuffer : RefCounter {
+  // A face OWNS its framebuffer object. The texture is a RefPtr (~GlLoneTexture deletes the GL texture), but the
+  // FBO `id` is a raw GLuint with no such wrapper, so the face RAIIs it: deletes it on destruction, hands it off
+  // on move, and forbids copy. That is what makes the FBO unleakable -- including the makeDoubled case where a
+  // second face is built into a LOCAL and allocateFace throws after glGenFramebuffers: the local's destructor
+  // reclaims the FBO. ~GlFrameBuffer no longer frees anything by hand; front and back reclaim themselves.
   struct Face {
     GLuint id = 0;
     RefPtr<GlLoneTexture> texture;
+
+    Face() = default;
+    Face(Face&& o) noexcept;
+    Face& operator=(Face&& o) noexcept;
+    Face(Face const&) = delete;
+    Face& operator=(Face const&) = delete;
+    ~Face();
   };
 
   String name;

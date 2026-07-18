@@ -314,17 +314,30 @@ void GlFrameBuffer::swap() {
   writeToBack = !writeToBack;
 }
 
-GlFrameBuffer::~GlFrameBuffer() {
-  // The second face cannot be forgotten. It used to be, on every loadConfig -- i.e. on every HDR or AA toggle
-  // -- because the destructor knew about `id` and not about `altId`. Now `back` is one object: if it exists,
-  // its framebuffer is freed; if it does not, there is nothing to free and nothing to remember.
-  glDeleteFramebuffers(1, &front.id);
-  front.texture.reset();
-  if (back) {
-    glDeleteFramebuffers(1, &back->id);
-    back->texture.reset();
-  }
+GlFrameBuffer::Face::Face(Face&& o) noexcept : id(o.id), texture(std::move(o.texture)) {
+  o.id = 0;   // the moved-from face owns nothing, so its destructor deletes nothing (no double-free)
 }
+
+GlFrameBuffer::Face& GlFrameBuffer::Face::operator=(Face&& o) noexcept {
+  if (this != &o) {
+    if (id != 0)
+      glDeleteFramebuffers(1, &id);   // reclaim what we held before taking o's
+    id = o.id;
+    o.id = 0;
+    texture = std::move(o.texture);
+  }
+  return *this;
+}
+
+GlFrameBuffer::Face::~Face() {
+  if (id != 0)
+    glDeleteFramebuffers(1, &id);
+}
+
+// The FBOs free themselves: front's and back's Face destructors run here. The second face cannot be forgotten
+// (the altId leak) because `back` is one object -- if it exists its Face reclaims its FBO, if it does not there
+// is nothing to reclaim. Defaulted because there is nothing left to do by hand.
+GlFrameBuffer::~GlFrameBuffer() = default;
 
 Effect* GlEffects::find(String const& name) {
   return m_byName.ptr(name);
@@ -343,10 +356,10 @@ void GlEffects::rebindBorrows(GlTargets& targets) {
       if (!tex.borrowed())
         continue;
 
-      if (auto buf = targets.find(tex.borrowedFrom)) {
+      if (auto buf = targets.find(tex.borrowFrom())) {
         // The same framebuffer, freshly rebuilt: re-point to its new face, still borrowed from the same name.
         // The old face is now an orphan and this drops our last reference to it, so it is finally deleted.
-        tex.share(buf->writeFace().texture, tex.borrowedFrom);
+        tex.share(buf->writeFace().texture, tex.borrowFrom());
       } else {
         // That framebuffer is gone from the config altogether. Let go rather than hold a dangling orphan; the
         // per-draw bind loop skips a null sampler, and switchEffectConfig's `undefined` guard will re-point it
