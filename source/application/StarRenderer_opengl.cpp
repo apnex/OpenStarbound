@@ -393,11 +393,10 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
     ptr->adopt(createGlTexture(image, ptr->textureAddressing, ptr->textureFiltering));
   } else {
     glBindTexture(GL_TEXTURE_2D, ptr->textureValue->textureId);
-    // A FULL RE-SPECIFICATION, so the WHOLE descriptor is rewritten. Recording only the size -- which is what
-    // this did -- left the format record describing storage that no longer existed, and the half-float
-    // SubImage guard then trusted it.
-    ptr->textureValue->textureSize = image.size;
-    ptr->textureValue->internalFormat = uploadTextureImage(image.format, image.size, image.data);
+    // A FULL RE-SPECIFICATION, so the WHOLE descriptor is rewritten -- by the act that specifies it.
+    // uploadTextureImage now records both fields itself; recording only the size (which is what this did) left
+    // the format record describing storage that no longer existed, and the half-float SubImage guard trusted it.
+    uploadTextureImage(image.format, image.size, image.data, ptr->textureValue.get());
   }
 
   if (ptr->textureSizeUniform != -1) {
@@ -625,16 +624,9 @@ void OpenGlRenderer::setEffectTextureHalf(String const& textureName, Vec2U size,
   // (measured ~30% of the kernel texture cluster, #127). Size changes (zoom/resolution) still re-spec.
   GLenum const format = channels == 4 ? GL_RGBA : GL_RGB;
   GLint  const internalFormat = channels == 4 ? GL_RGBA16F : GL_RGB16F;
-  // SubImage ONLY into storage that is still what we think it is -- same size AND same FORMAT. Every other
-  // setter that re-specifies this texture now updates the format record, so this guard cannot be fooled by a
-  // stale one. It used to consult `uploadChannels`, a field only THIS function maintained.
-  if (!fresh && ptr->textureValue->textureSize == size && ptr->textureValue->internalFormat == internalFormat) {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], format, GL_HALF_FLOAT, halfData);
-  } else {
-    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, GL_HALF_FLOAT, halfData);
-    ptr->textureValue->textureSize = size;
-    ptr->textureValue->internalFormat = internalFormat;
-  }
+  // Guard + spec + record are one act now (uploadLoneStorage), which tests size AND format. This setter used to
+  // consult `uploadChannels`, a field only IT maintained -- the shared chokepoint cannot be given a stale one.
+  uploadLoneStorage(*ptr->textureValue, size, internalFormat, format, GL_HALF_FLOAT, halfData, fresh);
 
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
@@ -663,17 +655,12 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
   // Same-size re-upload goes through TexSubImage (see setEffectTextureHalfRGB above) -- this runs twice
   // per recompute (the spread and point effects each own an "obstacle" sampler), so both duplicate
   // uploads become SubImages into persistent storage instead of fresh-BO re-specs.
-  // The format test was ABSENT here -- this guard trusted the SIZE alone. The "obstacle" sampler is fed by
-  // BOTH this setter and setEffectTexture (StarGpuLightmapPass.cpp:42/44 -- a runtime fallback on the same
-  // sampler), so one RGB24 frame re-specified the storage and every R8 upload after it wrote GL_RED bytes
-  // into whatever that left behind, forever, because the size never changed.
-  if (!fresh && ptr->textureValue->textureSize == size && ptr->textureValue->internalFormat == GL_R8) {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], GL_RED, GL_UNSIGNED_BYTE, data);
-  } else {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, size[0], size[1], 0, GL_RED, GL_UNSIGNED_BYTE, data);
-    ptr->textureValue->textureSize = size;
-    ptr->textureValue->internalFormat = GL_R8;
-  }
+  // The format test was ABSENT here once -- this setter's own guard trusted the SIZE alone. The "obstacle"
+  // sampler is fed by BOTH this setter and setEffectTexture (StarGpuLightmapPass.cpp:42/44 -- a runtime fallback
+  // on the same sampler), so one RGB24 frame re-specified the storage and every R8 upload after it wrote GL_RED
+  // bytes into whatever that left behind, forever, because the size never changed. There is no per-setter guard
+  // to get wrong now: uploadLoneStorage owns the one guard, and it tests size AND format.
+  uploadLoneStorage(*ptr->textureValue, size, GL_R8, GL_RED, GL_UNSIGNED_BYTE, data, fresh);
 
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->textureValue->glTextureSize();
@@ -1450,7 +1437,7 @@ bool OpenGlRenderer::logGlErrorSummary(String prefix) {
   return false;
 }
 
-GLint OpenGlRenderer::uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data) {
+GLint OpenGlRenderer::uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data, GlLoneTexture* record) {
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
   Maybe<GLenum> internalFormat;
@@ -1478,7 +1465,27 @@ GLint OpenGlRenderer::uploadTextureImage(PixelFormat pixelFormat, Vec2U size, ui
 
   GLint const specified = (GLint)internalFormat.value(format);
   glTexImage2D(GL_TEXTURE_2D, 0, specified, size[0], size[1], 0, format, type, data);
+  // Record the WHOLE descriptor for the act that just specified it -- no caller can spec an image and forget
+  // half. The raw-GLuint atlas caller passes record=nullptr (it holds no GlLoneTexture descriptor).
+  if (record) {
+    record->textureSize = size;
+    record->internalFormat = specified;
+  }
   return specified;
+}
+
+void OpenGlRenderer::uploadLoneStorage(GlLoneTexture& tex, Vec2U size, GLint internalFormat, GLenum format,
+    GLenum type, void const* data, bool fresh) {
+  // SubImage into existing storage ONLY when the recorded descriptor still matches BOTH size and format;
+  // otherwise re-specify and rewrite the whole descriptor in the same breath. `fresh` (just-allocated:
+  // internalFormat still 0, storage unspecified) forces the re-spec.
+  if (!fresh && tex.textureSize == size && tex.internalFormat == internalFormat) {
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, size[0], size[1], format, type, data);
+  } else {
+    glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, size[0], size[1], 0, format, type, data);
+    tex.textureSize = size;
+    tex.internalFormat = internalFormat;
+  }
 }
 
 void OpenGlRenderer::flushImmediatePrimitives(Mat3F const& transformation) {
@@ -1509,8 +1516,10 @@ auto OpenGlRenderer::createGlTexture(ImageView const& image, TextureAddressing a
   // leaves the new texture BOUND, so the upload lands in it.
   auto glLoneTexture = createEmptyGlTexture(image.size, addressing, filtering);
 
+  // uploadTextureImage records the descriptor (re-stamping textureSize to the same image.size the allocator
+  // already set, plus internalFormat). Empty images skip it: internalFormat stays the 0 sentinel.
   if (!image.empty())
-    glLoneTexture->internalFormat = uploadTextureImage(image.format, image.size, image.data);
+    uploadTextureImage(image.format, image.size, image.data, glLoneTexture.get());
 
   return glLoneTexture;
 }

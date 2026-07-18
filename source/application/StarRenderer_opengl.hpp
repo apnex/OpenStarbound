@@ -172,10 +172,21 @@ private:
 
 
   static bool logGlErrorSummary(String prefix);
-  // Returns the internal format it specified -- the caller MUST record it on the texture.
-  static GLint uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data);
+  // Specifies an image's storage AND records the descriptor on `record` (if given), in the same call as the
+  // glTexImage2D -- so an effect-image spec cannot leave the descriptor unwritten. The raw-GLuint atlas caller
+  // passes record=nullptr (no descriptor). Still returns the internal format for callers that want it.
+  static GLint uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data, GlLoneTexture* record = nullptr);
 
-  
+  // THE one home of the "re-spec vs sub-upload" decision for a lone texture: the guard, the glTex{Sub}Image2D,
+  // and the whole-descriptor record are ONE indivisible act, so no numeric setter writes its own guard. That is
+  // what makes RB-6 unreintroducible from a call site: setEffectTextureR8's original size-only guard (which let
+  // a GL_RED upload land in RGB storage forever) is now unrepresentable here -- the guard tests size AND format,
+  // always, because there is only one guard. `fresh` (a just-allocated texture, internalFormat still 0) forces
+  // the re-spec. Callers own the glPixelStorei/glBindTexture before calling; this touches only storage + record.
+  static void uploadLoneStorage(GlLoneTexture& tex, Vec2U size, GLint internalFormat, GLenum format, GLenum type,
+      void const* data, bool fresh);
+
+
   static RefPtr<GlLoneTexture> createGlTexture(ImageView const& image, TextureAddressing addressing, TextureFiltering filtering);
   // Mint an EMPTY GL texture object -- generated, bound, sampling params set, NO storage specified -- for a
   // caller that will glTexImage2D its own. setEffectTextureHalf and setEffectTextureR8 minted it identically,

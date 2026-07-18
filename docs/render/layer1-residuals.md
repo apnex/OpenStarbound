@@ -15,23 +15,33 @@
 > | 6 | one effect-parameter type ladder (`parseEffectParameter`) | `81494710` |
 > | 7 | delete `Effect::attributes`/`uniforms` cache | `8b8a2499` |
 >
-> **Checkable conditions (the ten greps + three oracles): 9 of 10 literally green.**
+> **Checkable conditions (the ten greps + three oracles): 10 of 10 green.**
 > #1 friend→0 ✓ · #2 glViewport in {bindTarget, setScreenSize}, justSwapped→0 ✓ · #3 one draw-path
 > `GL_DRAW_FRAMEBUFFER` writer (bindTarget); clearFaces/blit/oracle restore ✓ · #4 zero Json in
 > switchEffectConfig, both config members gone ✓ · #5 one allocator per side (allocateFace,
 > createEmptyGlTexture, createAtlasTexture; the oracle's transient resolve scratch is diagnostic) ✓ ·
-> #7 seal predicate appears once ✓ · #8 size rule only in `sizeFor()` ✓ · #9 type ladder appears once ✓ ·
-> #10 architectural comments true ✓ · all three GPU oracles MATCH ✓.
+> #6 storage-descriptor chokepoint (see below) ✓ · #7 seal predicate appears once ✓ · #8 size rule only in
+> `sizeFor()` ✓ · #9 type ladder appears once ✓ · #10 architectural comments true ✓ · all three GPU oracles MATCH ✓.
 >
-> **#6 (one storage-descriptor writer per side) — substantively met, not literally.** Framebuffer side: ONE
-> writer, `specifyStorage`. Effect side: the ALLOCATOR is unified (`createEmptyGlTexture`, item 1), but the
-> descriptor (`textureSize`/`internalFormat`) is still written by three distinct-contract upload paths — the
-> general PixelFormat image uploader (`uploadTextureImage`), and the numeric `setEffectTextureHalf` / `R8`
-> re-specs. The doc's #6 correction over-credited item 1: an allocator cannot absorb a re-spec, and the three
-> paths upload genuinely different source types. The bug class #6 targets — a descriptor write NOT co-located
-> with its actual spec, so the SubImage guard trusts a stale record — IS closed (the RB-6 invariant: every
-> re-spec rewrites the WHOLE descriptor beside its `glTexImage2D`). Forcing the three through one function would
-> relocate the format switch, not remove it. Left as-is, deliberately.
+> **#6 — REDEFINED and GREEN (chokepoint)** — git log `condition #6 re-derived`. The original "one writer per side" grep was the
+> wrong invariant: it's unreachable on the effect side (the upload paths carry irreducibly different formats) AND
+> it measured the wrong half — RB-6 detonates on the READ side (a `glTexSubImage2D` fast-path guard trusting a
+> stale descriptor), which a write-side single-writer never touches. A 9-agent re-evaluation (source + RB-6/RB-7
+> intent + adversarial critique) re-derived the real invariant:
+> > *No path specifies a `GlLoneTexture`'s storage without recording its whole descriptor, and no setter writes
+> > its own SubImage guard — the guard, the spec, and the record are one indivisible act.*
+> Realized byte-identically by two self-recording chokepoints: **`uploadLoneStorage`** (owns the one size-AND-format
+> guard for the numeric paths — `setEffectTextureHalf`/`R8` route through it, so the size-only guard that WAS RB-6's
+> R8 seat is now unrepresentable at a call site) and **`uploadTextureImage`** (records the descriptor itself via a
+> `GlLoneTexture*` out-param; `setEffectTexture`/`createGlTexture` stop recording by hand). `createEmptyGlTexture`
+> stays the documented allocator carve-out (writes only `textureSize`; `internalFormat` stays the `0` sentinel, which
+> no guard can match). FB side unchanged: one writer, `specifyStorage`. Effect side went from 4 hand-record sites +
+> 2 hand-written guards → 2 self-recording chokepoints + 0 hand-written guards. Checkable in one pass: every
+> `glTexSubImage2D` on a `GlLoneTexture` is inside `uploadLoneStorage`; every `glTexImage2D` on one is inside
+> `uploadLoneStorage`/`uploadTextureImage`/`specifyStorage`; `->internalFormat =` resolves to exactly those three.
+> Honest limit: `glTex*Image2D` are free globals, so a direct bypass isn't compiler-impossible — but it's now one
+> grep rule, not a per-site audit. Certified byte-identical (env 83/83, parallax 20/20, spread 207/207, DIFF=0;
+> core 226/226; game 90/91 #146-pre-existing).
 
 **As of `d05f21682`.** All line numbers are against that commit and will drift; re-verify before cutting.
 
