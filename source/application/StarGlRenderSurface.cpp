@@ -215,14 +215,18 @@ void GlFrameBuffer::allocateFace(Face& face, Vec2U const& size, char const* whic
   // The format rules and the storage call live in ONE place. This is not it.
   specifyStorage(face, size, which);
 
-  // Sampling parameters belong to the texture OBJECT, not to its storage: they are set once, at creation,
-  // and survive every resize. A multisample texture has none -- it cannot be sampled.
+  // A COMPLETENESS FLOOR, not the sampling config. A face texture reaches the GPU only through an
+  // EffectTexture sampler, and renderGlBuffer re-specifies MIN/MAG/WRAP on it every draw from the SAMPLING
+  // effect's declaration -- so whatever is set here is overwritten before anything reads it. The binding owns
+  // the sampling; the face owns only being COMPLETE (GL's default MIN_FILTER is GL_NEAREST_MIPMAP_LINEAR, and a
+  // mip-less face with that is incomplete). So set the floor from the SAME Nearest/Clamp the object records
+  // above -- not from config. This deletes the read of `textureFiltering`/`textureAddressing`, which did
+  // nothing, and its lie: when the config said "linear", GL was LINEAR while this object's filtering() still
+  // self-reported Nearest. The C++ record contradicted its own GL state for the whole life of the surface.
   if (!multisample) {
     while (glGetError() != GL_NO_ERROR) {}
-    auto addressing = TextureAddressingNames.getLeft(config.getString("textureAddressing", "clamp"));
-    auto filtering = TextureFilteringNames.getLeft(config.getString("textureFiltering", "nearest"));
-    GLint wrap = addressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
-    GLint filter = filtering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
+    GLint wrap = tex->textureAddressing == TextureAddressing::Clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT;
+    GLint filter = tex->textureFiltering == TextureFiltering::Nearest ? GL_NEAREST : GL_LINEAR;
     glTexParameteri(target, GL_TEXTURE_WRAP_S, wrap);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, wrap);
     glTexParameteri(target, GL_TEXTURE_MIN_FILTER, filter);
