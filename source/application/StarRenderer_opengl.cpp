@@ -1031,7 +1031,7 @@ void OpenGlRenderer::setRenderTarget(Maybe<String> const& frameBufferId, Vec2U s
 
 void OpenGlRenderer::clearRenderTarget(Vec4F clearColor) {
   // Flush pending immediate primitives first so they aren't wiped by the clear. Clears the currently
-  // bound GL_DRAW_FRAMEBUFFER (set by setRenderTarget -> switchGlFrameBuffer). Default clearColor
+  // bound GL_DRAW_FRAMEBUFFER (set by setRenderTarget -> GlPass::bindTarget). Default clearColor
   // (0,0,0,1) == the constant startFrame clear (byte-identical to the env-cache path). A non-default
   // color (e.g. transparent (0,0,0,0) for the premultiplied parallax cache) is set then restored, since
   // glClearColor is otherwise a constant. Disable scissor around the clear (mirrors startFrame).
@@ -2179,7 +2179,7 @@ void OpenGlRenderer::GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSi
 }
 
 // Copies `frameBuffer` (or its alt half, when the calling effect is double-buffered) into whatever draw target
-// is currently bound -- switchGlFrameBuffer binds it, and switchEffectConfig binds the screen (0) for an
+// is currently bound -- GlPass::bindTarget binds it, and switchEffectConfig binds the screen (0) for an
 // effect with no render target, which is how "main" reaches the display.
 //
 // NOTE the missing once-per-frame guard. Upstream deliberately dropped the `if (blitted) return;` that vanilla

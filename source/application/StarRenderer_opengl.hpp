@@ -266,7 +266,7 @@ private:
     unsigned multisample = 0;
     unsigned sizeDiv = 1;
 
-    // Set by swap(); defeats switchGlFrameBuffer's "already bound" early-out so the new write face is
+    // Set by swap(); defeats GlPass::bindTarget's "already bound" early-out so the new write face is
     // actually bound rather than silently skipped.
     bool justSwapped = false;
 
@@ -302,9 +302,14 @@ private:
 
     // SEALED. The resolver is the contract, so the faces must not be reachable around it -- otherwise the
     // Air-Gap holds only for as long as everyone remembers, which is exactly how altId got leaked and how
-    // the viewport went unset. The enclosing renderer is the surface's owner and needs the raw faces to
-    // allocate, resize and clear them; nobody else does, and nobody else can.
+    // the viewport went unset. Everything a consumer legitimately needs is public: the resolver
+    // (writeFace/readFace), the size oracle, and the lifecycle (makeDoubled/resize/clearFaces). Verified:
+    // NOTHING outside this struct reaches faces[], specifyStorage or allocateFace.
   private:
+    // So this friend currently guards nothing -- it is a doorbell on a wall with no door, because
+    // GlFrameBuffer is a private nested type and OpenGlRenderer is its own outer class. The seal is real only
+    // for a genuine outsider; making it structural (moving these components to their own translation unit, at
+    // which point this friend comes OUT) is step §8.ii of the finish plan.
     friend class OpenGlRenderer;
 
     // THE SINGLE OWNER OF FACE STORAGE. Derives the format from this surface's config (hdr / alpha /
@@ -397,7 +402,10 @@ private:
     void clearAll();                 // the per-frame clear, honouring each target's clear:false
 
   private:
-    friend class OpenGlRenderer;     // the oracle reads pixels back out of a target by name
+    // Vestigial, like GlFrameBuffer's: verified that nothing outside GlTargets touches m_byId or
+    // m_generation -- the oracle reaches targets through the public find(), not around it. Comes out at
+    // §8.ii with the rest.
+    friend class OpenGlRenderer;
 
     StringMap<RefPtr<GlFrameBuffer>> m_byId;
     uint64_t m_generation = 0;
@@ -406,18 +414,22 @@ private:
 
   Vec2U m_screenSize;
 
-  // THE PASS: the binding of ONE effect to ONE target, for a sequence of draws.
+  // THE PASS: what is CURRENTLY bound -- one effect and one target -- for a sequence of draws.
   //
-  // GL has exactly one current program and exactly one current draw framebuffer, and THEY ARE COUPLED:
-  // binding an effect resolves and binds ITS framebuffer (and swaps its faces, if it reads what it writes);
-  // binding a framebuffer writes the screenSize uniform of the CURRENT PROGRAM. That coupling is why a naive
-  // "effects here, targets there" split cannot work -- the two halves would each need the other's privates,
-  // which is the Air-Gap violated by construction.
+  // GL has exactly one current program and exactly one current draw framebuffer. Every draw reads BOTH, plus
+  // the flattened attribute/uniform locations of that program. GlPass owns that ambient draw state as one
+  // thing because it IS one thing: the pair is set together and read together. And the two are coupled --
+  // binding an effect resolves and binds ITS declared framebuffer (and swaps its faces, if it reads what it
+  // writes) -- so they cannot be owned by two components blind to each other without violating the Air-Gap.
   //
   // The coupling is not an obstacle to the decomposition. It IS a component, and nobody had written it.
-  // switchEffectConfig, switchGlFrameBuffer, setRenderTarget, composite, blitGlFrameBuffer and
-  // setEffectTextureFromTarget are not six problems: they are one missing Pass wearing six hats. A Pass
-  // depends DOWNWARD on effects and on targets; neither of them knows the other exists.
+  // switchEffectConfig, setRenderTarget, composite, blitGlFrameBuffer and setEffectTextureFromTarget are not
+  // five problems: they are one missing Pass wearing several hats. A Pass depends DOWNWARD on effects and on
+  // targets; neither of them knows the other exists.
+  //
+  // (The header once made a STRONGER claim for this component -- that bindTarget itself writes the current
+  // program's screenSize uniform, so target-binding was also an effect operation. F3b.1 deleted that write as
+  // dead at both call sites. The component stands on the pair-and-locations above, not on the retracted write.)
   //
   // THIS STEP MOVES THE STATE ONLY. The six functions follow, one at a time, each certified bit-identical
   // against the three GPU oracles -- because three of them carry real behaviour changes that must not ride
@@ -436,12 +448,10 @@ private:
     Effect* effect = nullptr;
     RefPtr<GlFrameBuffer> target;
 
-    // Make `target` the surface that subsequent draws land on: bind its write face, set the viewport to that
-    // face, and tell the BOUND PROGRAM how big it now is.
-    //
-    // Read those three clauses again. It binds a TARGET and it writes an EFFECT-PROGRAM UNIFORM. That single
-    // fact is the entire argument for this component: the two halves of the GL state machine cannot be split,
-    // because this operation is both of them at once. It takes screenSize by value and reaches for nothing
+    // Make `target` the surface that subsequent draws land on: bind its write face and set the viewport to
+    // that face. That is all it does -- it used to ALSO write the bound program's screenSize uniform, and the
+    // header called that "the entire argument for this component". The write was dead at both call sites and
+    // was deleted in F3b.1 (the .cpp explains why). It takes screenSize by value and reaches for nothing
     // else -- a Pass depends downward on targets and on effects, and on nothing above it.
     void bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize);
 

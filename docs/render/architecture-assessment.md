@@ -219,6 +219,12 @@ enforce.** The idiomatic fix is `Maybe<Face> secondFace` — a pattern **this ve
 reality. It was available and was not taken.
 
 ### B. Fix the four false comments — before anything else is written
+**DONE (§9 step 1).** All four corrected: the `switchGlFrameBuffer` ghost (4 sites → 0), the `bindTarget`
+"entire argument for this component" claim (F3b.1 deleted that write — comment now states so and the intro
+premise is corrected to ground GlPass on the current-state pair + per-draw locations), the GlFrameBuffer
+"renderer needs the raw faces" claim (verified nothing outside touches the privates; friend labelled
+vestigial-until-§8.ii), and the GlTargets friend non-sequitur (same). Comment-only; binary byte-identical.
+
 **DOC-ONLY. One hour. Highest value per minute on this list.**
 
 - **`hpp:443`** — states `bindTarget` *"binds a TARGET and it writes an EFFECT-PROGRAM UNIFORM. That single
