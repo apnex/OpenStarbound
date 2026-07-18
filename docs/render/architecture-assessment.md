@@ -1,8 +1,14 @@
 # Render architecture — honest assessment, HEAD vs upstream
 
-**Written 2026-07-14 at `e472e594b`. Nothing in here has been implemented — this is the brief for a future
-session.** Companion to [`layer1-residuals.md`](layer1-residuals.md), which it **corrects in two places**
-(see §5).
+> **For the canonical definition of render Layer 1 — its purpose, scope, intent, and acceptance bar — see
+> [`layer1-architecture.md`](layer1-architecture.md).** This document is a point-in-time *audit*; that one is
+> the living *definition*. The residuals this assessment discusses are all shipped; their history and the final
+> checkable-condition state live there.
+
+**Written 2026-07-14 at `e472e594b`. This was the brief for a future session; that session ran — the
+`layer1-architecture.md` residuals (its §6 and the ten checkable conditions) are all implemented and certified
+byte-identical.** Companion to [`layer1-architecture.md`](layer1-architecture.md), which it **corrected in two
+places** (see §5), now folded into that doc.
 
 ## How this was produced, and why you should trust it over the commit messages
 
@@ -176,7 +182,7 @@ split; subtractive only."**
 
 ---
 
-## 5. Corrections to `layer1-residuals.md`
+## 5. Corrections to `layer1-architecture.md`
 
 That document is otherwise sound. **Two things in it are wrong:**
 
@@ -292,7 +298,7 @@ and marketing.
 texture on every AA toggle, writes its format ladder out three times, and its own author gave up on the
 duplication in a comment. Say it plainly and stop congratulating ourselves for it.
 
-Finishing §6 and `layer1-residuals.md` makes Layer 1 **defensibly** better rather than **arguably** better —
+Finishing §6 and `layer1-architecture.md` makes Layer 1 **defensibly** better rather than **arguably** better —
 two to three days, mostly mechanical, no design left. Worth having. **But it is hygiene, not architecture.**
 
 **The step-change is three moves, and only one of them is on any existing list.**
@@ -362,7 +368,7 @@ foundation fault the axioms name, and every shortcut left in Layer 1 is one that
 obliged to route around — and then to *document* routing around, which is how the "correct by convention"
 comments in §4 got written in the first place.
 
-**So: finish it.** §6, then `layer1-residuals.md`, then the three ceiling moves above. The order that
+**So: finish it.** §6, then `layer1-architecture.md`, then the three ceiling moves above. The order that
 maximises value per day:
 
 1. **§6 B** — the four false comments (1 hour). Nothing else should be written on top of a file that teaches
