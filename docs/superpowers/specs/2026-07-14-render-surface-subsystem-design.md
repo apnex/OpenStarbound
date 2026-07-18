@@ -1,6 +1,9 @@
 # Unified Render-Surface Subsystem — Design
 
-**Status:** approved (director, 2026-07-14). Layer 1 in build.
+**Status:** approved (director, 2026-07-14). The fork-side four-component substrate this `Surface` evolves from
+is built and hardened — canonical definition [`../../render/layer1-architecture.md`](../../render/layer1-architecture.md);
+the `Surface` (upstream-track Layer 1) below is refined by the
+[2026-07-18 hardening findings](#findings-from-the-fork-side-layer-1-hardening-2026-07-18).
 **Supersedes:** task #133 ("first-class retained cache surface"), #137 (sovereignty extraction), and the
 ad-hoc half of #143 (compose merge).
 
@@ -128,6 +131,76 @@ by modifying them."*
 
 ---
 
+## Findings from the fork-side Layer-1 hardening (2026-07-18)
+
+The four-component substrate this `Surface` evolves from was extracted and hardened on the fork (canonical:
+[`../../render/layer1-architecture.md`](../../render/layer1-architecture.md)). A read-only adversarial
+completeness audit overturned a premature "done" verdict and produced findings that sharpen this design. Two are
+requirements the `Surface` **must** meet (each was a latent bug pointed straight at a Layer-2 retained surface);
+one is the single residue sovereignty made *irreducible* on the fork, with the design move that closes it here;
+two are places the `Surface`, being a fresh build not bound by the fork's byte-identity constraint, can go
+*further* than the extraction did.
+
+**Requirements the `Surface` bind/lifecycle model must meet:**
+
+1. **The bind cache is invalidated wherever `GL_DRAW` changes outside the Surface — the frame boundary
+   included.** The extraction's bind early-outs on a `(target, face, size)` cache; `startFrame` cleared faces
+   and raw-bound framebuffer 0 *outside* the pass, and nothing dropped the cache at the frame boundary. A frame
+   ending with a non-screen target still live left the next frame's first bind trusting a stale cache and
+   drawing to the screen — the exact hazard aimed at a **retained surface**. `Surface::bind(Write)` must own
+   this as an invariant, not a remembered call: any bind that bypasses it (frame-start clear, config reload)
+   drops the cache.
+2. **"May I write this storage?" is a RECORDED fact, never derived from a name.** The extraction derived
+   writability from an empty borrow-name, so `adopt(tex)` and `share(tex, "")` — an alias of a *non-borrowed*
+   texture — collapsed to the same state, and a later upload re-specified a sibling's live texture through the
+   alias. The `Surface`/face borrow model records ownership explicitly (owned vs borrowed-by-name vs
+   shared-elsewhere); it never reconstructs writability.
+
+**The residue the extraction could NOT close — and how the `Surface` closes it:**
+
+3. **A rebuild severs every external view BY CONSTRUCTION — through the generation handle, not a companion
+   call.** The extraction invalidates on a `generation` bump, but the two cross-component teardown
+   notifications (`rebindBorrows` for samplers, the pass's `invalidate`) are *hand-ordered companion calls* to
+   the registry's `destroyAll` in `loadConfig` — by care. A3's Air-Gap **forbids** folding them into
+   `destroyAll` (the target registry may not reach into effects or the pass), so on the fork this residue is
+   irreducible. The `Surface`'s `generation` field is the escape, but only if it is a **generation-checked
+   non-owning handle** — one that re-resolves or nulls itself on a mismatch — rather than a bare counter
+   consumers compare by hand. Then a rebuild invalidates every view *as a property of the read*: no
+   notification to order, no holder to remember. **Design `generation` as the handle, and this by-care residue
+   becomes by-construction.**
+
+**Two improvements the extraction was byte-identity-bounded out of:**
+
+4. **Born as type-rules: private state + RAII, not privatized late.** The extraction closed the descriptor and
+   borrow-state raw-poke seats only at the end, by privatizing bare `struct`s, and RAII'd the face's framebuffer
+   object to close a `makeDoubled` throw-leak. The `Surface` is born this way — descriptor and face lifetime
+   private and RAII-owned, the resolver the only door — so none of these is ever a convention to be broken.
+5. **Spec and record as ONE inseparable act.** The extraction records the storage descriptor *beside* its
+   `glTexImage2D`, not *inside* it (two chokepoints record after the spec), because folding the spec into the
+   texture primitive was blocked at byte-identity by the shared atlas caller and `glPixelStorei` alignment.
+   `Surface::allocate()` is a fresh path with no such consumer; make the spec-and-record a single method the
+   descriptor cannot exist without — closing what the fork documented as its one free-global residual.
+
+**Verification findings (they refine [Verification](#verification)):**
+
+- **The oracle has a structural blind spot exactly where a flagship bug lives.** `compareFrameBuffers` cannot
+  read a multisample target, so the AA path is never oracle-compared — and the AA/HDR toggle is `RB-5`'s home.
+  Byte-identity is certified for one config (AA off, HDR on) of one frozen world; the AA/HDR/`double` matrix is
+  asserted by reasoning, not exercised. The `Surface` test plan must cover the AA path some other way — a
+  resolve-then-read in the oracle, or an explicit AA-toggle gate.
+- **Sovereignty makes unit tests possible; the extraction never wrote them.** The four components are
+  constructible in isolation, but no test constructs them (`star_application` is unlinked from the test
+  targets). The `Surface`, born sovereign, should ship with direct construct → bind → swap → resolve unit
+  tests — the cheapest strengthening the extraction left on the table.
+
+**Meta-lesson, kept:** a checkable condition is itself a claim that can be wrong. The extraction's "ten greps"
+had two fake-greens (a write-side proxy witnessing a read-side invariant) and three that silently measured the
+wrong translation unit after the code moved out of `OpenGlRenderer`. Any acceptance checklist for the `Surface`
+must assert that each check *ran* and measures what it names — the same trap the lighting oracle's vocabulary
+bug taught once already.
+
+---
+
 ## What this is NOT
 
 - **Not a replacement for the Jacobi ping-pong.** Upstream's #542 **cannot** express it: `switchEffectConfig`
@@ -174,7 +247,10 @@ worthless here (the unpaused load phase lets the sim diverge; entity counts diff
 **What no gate catches:** the oracles compare *our* renderer against *itself*. They cannot tell us whether
 upstream's rendering changed the picture. That is what the merge's frozen-camera oracle run answered
 (bit-identical), and it is why a *golden-image* comparison against the pre-merge build is not available —
-the load-phase divergence poisons it.
+the load-phase divergence poisons it. And by construction they cannot read a **multisample** target, so the
+AA path — where `RB-5` lives — is a blind spot in the current gate; the fork-side hardening flagged this as a
+`Surface` test-plan requirement (resolve-then-read, or an explicit AA-toggle gate). See
+[Findings from the fork-side Layer-1 hardening](#findings-from-the-fork-side-layer-1-hardening-2026-07-18).
 
 ---
 
