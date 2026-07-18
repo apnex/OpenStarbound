@@ -328,11 +328,12 @@ private:
     // (writeFace/readFace), the size oracle, and the lifecycle (makeDoubled/resize/clearFaces). Verified:
     // NOTHING outside this struct reaches faces[], specifyStorage or allocateFace.
   private:
-    // So this friend currently guards nothing -- it is a doorbell on a wall with no door, because
-    // GlFrameBuffer is a private nested type and OpenGlRenderer is its own outer class. The seal is real only
-    // for a genuine outsider; making it structural (moving these components to their own translation unit, at
-    // which point this friend comes OUT) is step §8.ii of the finish plan.
-    friend class OpenGlRenderer;
+    // NO friend. There was a `friend class OpenGlRenderer` here, granting the enclosing class access to the
+    // members below -- and the enclosing class is where every consumer lives, so the seal it claimed was a
+    // doorbell on a wall with no door. It is gone (§9 step 5), and the seal is now REAL and compiler-enforced:
+    // C++ [class.access.nest] gives an enclosing class NO special access to a nested type's privates, so with
+    // the friend removed, nothing outside GlFrameBuffer's own methods -- not even OpenGlRenderer -- can reach
+    // faces, specifyStorage or allocateFace. The compile proved it: removing the friend broke nothing.
 
     // THE SINGLE OWNER OF FACE STORAGE. Derives the format from this surface's config (hdr / alpha /
     // multisample), specifies the colour storage at `size`, and RECORDS what it got. Nothing else may do any
@@ -433,10 +434,9 @@ private:
     void clearAll();                 // the per-frame clear, honouring each target's clear:false
 
   private:
-    // Vestigial, like GlFrameBuffer's: verified that nothing outside GlTargets touches m_byId or
-    // m_generation -- the oracle reaches targets through the public find(), not around it. Comes out at
-    // §8.ii with the rest.
-    friend class OpenGlRenderer;
+    // NO friend (§9 step 5): nothing outside GlTargets touches m_byId or m_generation -- the oracle reaches
+    // targets through the public find(), not around it -- so the enclosing class needs no access, and the
+    // compiler now enforces that.
 
     StringMap<RefPtr<GlFrameBuffer>> m_byId;
     uint64_t m_generation = 0;
@@ -554,7 +554,8 @@ private:
     void rebindBorrows(GlTargets& targets);
 
   private:
-    friend class OpenGlRenderer;
+    // NO friend (§9 step 5): only GlEffects' own methods touch m_byName; the enclosing class reaches effects
+    // through find()/load()/get(), so the compiler now enforces the seal against it too.
     StringMap<Effect> m_byName;
   };
   GlEffects m_effects;
