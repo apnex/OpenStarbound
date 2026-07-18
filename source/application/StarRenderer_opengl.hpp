@@ -190,6 +190,11 @@ private:
   void renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation);
 
 
+  // The one home of the effect-parameter type-name ladder. Parses a default of the named GLSL type ("bool" ..
+  // "vec4") into a typed RenderEffectParameter, throwing on an unrecognized type. `def` may be an unset Json
+  // (no "default" key): then the type's zero value is returned, so parameterType is still derivable from it.
+  static RenderEffectParameter parseEffectParameter(String const& type, Json const& def);
+
   void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
   void blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);

@@ -253,56 +253,26 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
       Logger::warn("OpenGL20 effect parameter '{}' in effect '{}' has no associated uniform, skipping", p.first, name);
     } else {
       String type = p.second.getString("type");
-      if (type == "bool") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<bool>();
-      } else if (type == "int") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<int>();
-      } else if (type == "float") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<float>();
-      } else if (type == "vec2") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<Vec2F>();
-      } else if (type == "vec3") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<Vec3F>();
-      } else if (type == "vec4") {
-        effectParameter.parameterType = RenderEffectParameter::typeIndexOf<Vec4F>();
-      } else {
-        throw RendererException::format("Unrecognized effect parameter type '{}'", type);
-      }
+      Json def = p.second.get("default", {});
+      // ONE type-name ladder, in parseEffectParameter, and parameterType is DERIVED from what it returns --
+      // not decided by a second, parallel if-chain. The two used to be maintained independently: a skew threw
+      // at the first script write for scriptables (whose default path was checked by NOTHING) and mismatched
+      // at upload for the rest. Same function, same value now, so the type and the default cannot disagree.
+      RenderEffectParameter parsed = parseEffectParameter(type, def);
+      effectParameter.parameterType = parsed.typeIndex();
 
-      if (p.second.getBool("scriptable",false)) {
-        if (Json def = p.second.get("default", {})) {
-          if (type == "bool") {
-            effectParameter.parameterValue = (RenderEffectParameter)def.toBool();
-          } else if (type == "int") {
-            effectParameter.parameterValue = (RenderEffectParameter)(int)def.toInt();
-          } else if (type == "float") {
-            effectParameter.parameterValue = (RenderEffectParameter)def.toFloat();
-          } else if (type == "vec2") {
-            effectParameter.parameterValue = (RenderEffectParameter)jsonToVec2F(def);
-          } else if (type == "vec3") {
-            effectParameter.parameterValue = (RenderEffectParameter)jsonToVec3F(def);
-          } else if (type == "vec4") {
-            effectParameter.parameterValue = (RenderEffectParameter)jsonToVec4F(def);
-          }
-        }
+      if (p.second.getBool("scriptable", false)) {
+        if (def)
+          effectParameter.parameterValue = parsed;
         effect.scriptables[p.first] = effectParameter;
       } else {
+        // Insert the type-only parameter (parameterValue UNSET) FIRST, then upload the default through
+        // setEffectParameter. applyEffectParameter's dedup guard skips the glUniform when the stored value
+        // already equals the incoming one -- so pre-populating parameterValue here would silently elide every
+        // non-scriptable default upload.
         effect.parameters[p.first] = effectParameter;
-        if (Json def = p.second.get("default", {})) {
-          if (type == "bool") {
-            setEffectParameter(p.first, def.toBool());
-          } else if (type == "int") {
-            setEffectParameter(p.first, (int)def.toInt());
-          } else if (type == "float") {
-            setEffectParameter(p.first, def.toFloat());
-          } else if (type == "vec2") {
-            setEffectParameter(p.first, jsonToVec2F(def));
-          } else if (type == "vec3") {
-            setEffectParameter(p.first, jsonToVec3F(def));
-          } else if (type == "vec4") {
-            setEffectParameter(p.first, jsonToVec4F(def));
-          }
-        }
+        if (def)
+          setEffectParameter(p.first, parsed);
       }
     }
   }
@@ -359,6 +329,18 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     logGlErrorSummary("OpenGL errors setting effect config");
 }
 
+
+RenderEffectParameter OpenGlRenderer::parseEffectParameter(String const& type, Json const& def) {
+  // `def` falsy == no "default" key: return the type's zero value. Its bits never reach the GPU (the callers
+  // upload only when def is present); it exists solely so parameterType is derivable from .typeIndex() here.
+  if (type == "bool")  return (RenderEffectParameter)(def ? def.toBool() : false);
+  if (type == "int")   return (RenderEffectParameter)(int)(def ? def.toInt() : 0);
+  if (type == "float") return (RenderEffectParameter)(def ? def.toFloat() : 0.0f);
+  if (type == "vec2")  return (RenderEffectParameter)(def ? jsonToVec2F(def) : Vec2F());
+  if (type == "vec3")  return (RenderEffectParameter)(def ? jsonToVec3F(def) : Vec3F());
+  if (type == "vec4")  return (RenderEffectParameter)(def ? jsonToVec4F(def) : Vec4F());
+  throw RendererException::format("Unrecognized effect parameter type '{}'", type);
+}
 
 void OpenGlRenderer::applyEffectParameter(EffectParameter* ptr, RenderEffectParameter const& value, String const& parameterName) {
   if (ptr->parameterValue && *ptr->parameterValue == value)
