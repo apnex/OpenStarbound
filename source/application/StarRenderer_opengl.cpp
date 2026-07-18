@@ -305,25 +305,8 @@ void OpenGlRenderer::loadEffectConfig(String const& name, Json const& effectConf
     }
   }
   
-  if (auto outFrameBufferId = effect.config.optString("frameBuffer")) {
-    if (auto blitFrameBufferId = effect.config.optString("blitFrameBuffer")) {
-      if ((*outFrameBufferId).equals((*blitFrameBufferId))) {
-        effect.doubleBuffered = true;
-      }
-    }
-    if (!effect.doubleBuffered) {
-      if (auto fbts = effect.config.optArray("frameBufferTextures")) {
-        for (auto const& fbt : *fbts) {
-          if (auto inFrameBufferId = fbt.optString("framebuffer")) {
-            if ((*outFrameBufferId).equals((*inFrameBufferId))) {
-              effect.doubleBuffered = true;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
+  // doubleBuffered is derived in GlEffects::load now, from the parsed frame-buffer fields -- not re-scanned
+  // from JSON here.
 
   if (DebugEnabled)
     logGlErrorSummary("OpenGL errors setting effect config");
@@ -445,7 +428,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
 
   auto effectScreenSize = m_screenSize;
   
-  auto outFrameBufferId = effect.config.optString("frameBuffer");
+  auto const& outFrameBufferId = effect.frameBuffer;
   if (outFrameBufferId) {
     auto buf = m_targets.get(*outFrameBufferId);
     // ASK THE SURFACE HOW BIG IT IS. This was the last hand-rolled copy of the size rule -- `m_screenSize /
@@ -488,32 +471,31 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   m_pass.bindEffect(effect, effectScreenSize);
 
   setEffectParameter("vertexRounding", m_multiSampling > 0);
-  if (auto fbts = effect.config.optArray("frameBufferTextures")) {
-    for (auto const& fbt : *fbts) {
-      if (auto frameBufferId = fbt.optString("framebuffer")) {
-        auto textureUniform = fbt.getString("texture");
-        auto ptr = m_pass.effect->textures.ptr(textureUniform);
-        if (ptr) {
-          auto undefined = !ptr->hasStorage();
-          auto swapped = effect.doubleBuffered && (*frameBufferId).equals(*outFrameBufferId);
-          auto buf = m_targets.get(*frameBufferId);
-          if (undefined || buf->doubled()) {
-            // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
-            // face it is NOT writing. That is exactly what readFace() answers, so ask it. share() records the
-            // borrow: no writing, re-point on rebuild.
-            ptr->share(swapped ? buf->readFace().texture : buf->writeFace().texture, *frameBufferId);
-            if (ptr->textureSizeUniform != -1 && undefined) {
-              auto textureSize = ptr->textureValue->glTextureSize();
-              glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
-            }
-          }
+  // The frame-buffer texture wiring, parsed at load into an ORDERED list of (textureUniform, framebufferName).
+  // No JSON here: switchEffectConfig runs on every effect change.
+  for (auto const& ft : effect.frameBufferTextures) {
+    String const& textureUniform = ft.first;
+    String const& frameBufferId = ft.second;
+    auto ptr = m_pass.effect->textures.ptr(textureUniform);
+    if (ptr) {
+      auto undefined = !ptr->hasStorage();
+      auto swapped = effect.doubleBuffered && frameBufferId.equals(*outFrameBufferId);
+      auto buf = m_targets.get(frameBufferId);
+      if (undefined || buf->doubled()) {
+        // `swapped` means this effect is sampling the very surface it is drawing into: it must read the
+        // face it is NOT writing. That is exactly what readFace() answers, so ask it. share() records the
+        // borrow: no writing, re-point on rebuild.
+        ptr->share(swapped ? buf->readFace().texture : buf->writeFace().texture, frameBufferId);
+        if (ptr->textureSizeUniform != -1 && undefined) {
+          auto textureSize = ptr->textureValue->glTextureSize();
+          glUniform2f(ptr->textureSizeUniform, textureSize[0], textureSize[1]);
         }
       }
     }
   }
   
-  if (auto blitFrameBufferId = effect.config.optString("blitFrameBuffer"))
-    blitGlFrameBuffer(m_targets.get(*blitFrameBufferId), effect.doubleBuffered);
+  if (effect.blitFrameBuffer)
+    blitGlFrameBuffer(m_targets.get(*effect.blitFrameBuffer), effect.doubleBuffered);
   
   return true;
 }

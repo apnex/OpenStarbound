@@ -162,7 +162,7 @@ Vec2U GlFrameBuffer::size() const {
 
 void GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* which) {
   RefPtr<GlLoneTexture>& tex = face.texture;
-  bool hdr = settingModeValue(hdrMode, config.getBool("hdrSetting", false));
+  // `hdr` is the field derived once at construction -- no per-resize JSON re-hash.
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
 
   glBindTexture(target, tex->glTextureId());
@@ -271,15 +271,16 @@ void GlFrameBuffer::clearFaces() {
 }
 
 GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig, Vec2U const& screenSize)
-  : config(fbConfig), name(fbName) {
-  clear = config.getBool("clear",true);
+  : name(fbName) {
+  clear = fbConfig.getBool("clear",true);
 
-  multisample = GLEW_VERSION_4_0 ? config.getUInt("multisample", 0) : 0;
-  hdrMode = BoolSettingModeNames.getLeft(config.getString("hdr","Disabled"));
-  alpha = config.getBool("alpha",false) || multisample;
+  multisample = GLEW_VERSION_4_0 ? fbConfig.getUInt("multisample", 0) : 0;
+  hdrMode = BoolSettingModeNames.getLeft(fbConfig.getString("hdr","Disabled"));
+  hdr = settingModeValue(hdrMode, fbConfig.getBool("hdrSetting", false));
+  alpha = fbConfig.getBool("alpha",false) || multisample;
 
-  sizeDiv = config.getUInt("sizeDiv", 1);
-  if (auto oSize = config.optArray("size"))
+  sizeDiv = fbConfig.getUInt("sizeDiv", 1);
+  if (auto oSize = fbConfig.optArray("size"))
     overrideSize = jsonToVec2U(*oSize);
 
   // BORN CORRECT, at its real size. It used to be born 256x256 -- a placeholder that setScreenSize corrected
@@ -482,8 +483,37 @@ Effect& GlEffects::load(String const& name, Json const& effectConfig, StringMap<
 
   auto& effect = m_byName.emplace(name, Effect()).first->second;
   effect.program = program;
-  effect.config = effectConfig;
   effect.includeVBTextures = effectConfig.getBool("includeVBTextures", true);
+
+  // Parse the frame-buffer wiring ONCE, here, into fields -- this is why Effect no longer retains its Json
+  // config. switchEffectConfig used to re-hash these three keys out of JSON on every effect change.
+  effect.frameBuffer = effectConfig.optString("frameBuffer");
+  effect.blitFrameBuffer = effectConfig.optString("blitFrameBuffer");
+  effect.frameBufferTextures.clear();
+  if (auto fbts = effectConfig.optArray("frameBufferTextures")) {
+    for (auto const& fbt : *fbts) {
+      // Only entries that NAME a framebuffer are wired; for those, `texture` is REQUIRED. getString throws
+      // here -- at LOAD -- rather than on the first switchEffectConfig mid-frame. Fail early, and once.
+      if (auto framebuffer = fbt.optString("framebuffer"))
+        effect.frameBufferTextures.append({fbt.getString("texture"), *framebuffer});
+    }
+  }
+  // doubleBuffered: the effect samples the very surface it draws into -- its blit target equals its frameBuffer,
+  // or one of its frameBufferTextures does. Falls out of the parse above; the old JSON re-scan is deleted.
+  effect.doubleBuffered = false;
+  if (effect.frameBuffer) {
+    if (effect.blitFrameBuffer && effect.frameBuffer->equals(*effect.blitFrameBuffer))
+      effect.doubleBuffered = true;
+    if (!effect.doubleBuffered) {
+      for (auto const& ft : effect.frameBufferTextures) {
+        if (effect.frameBuffer->equals(ft.second)) {
+          effect.doubleBuffered = true;
+          break;
+        }
+      }
+    }
+  }
+
   effect.resolveLocations();   // fixed attribute/uniform locations, once, now that the program is linked
   return effect;
 }

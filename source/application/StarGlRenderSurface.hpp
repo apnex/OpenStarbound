@@ -95,10 +95,13 @@ struct GlFrameBuffer : RefCounter {
     RefPtr<GlLoneTexture> texture;
   };
 
-  Json config;
   String name;
   Maybe<Vec2U> overrideSize;
   BoolSettingMode hdrMode = BoolSettingMode::Disabled;
+  // The resolved HDR bit -- settingModeValue(hdrMode, the injected hdrSetting) -- derived ONCE at construction.
+  // specifyStorage reads THIS field, not JSON: it runs on every resize, per face, and the config it used to
+  // re-hash is fixed for the surface's whole life (loadConfig bakes hdrSetting into the config at construction).
+  bool hdr = false;
   bool alpha = false;
   bool clear = true;
   unsigned multisample = 0;
@@ -183,7 +186,15 @@ private:
 class Effect {
 public:
   GLuint program = 0;
-  Json config;
+  // The frame-buffer wiring, parsed ONCE from the effect config at load (GlEffects::load) into fields, so
+  // switchEffectConfig re-hashes no JSON. NAMES, never resolved targets: loadConfig destroys and rebuilds every
+  // target, devOnly targets may be absent, and GlTargets::get throws -- a stored RefPtr would dangle. The
+  // texture list is ORDERED, not a map: switchEffectConfig's `undefined || doubled` guard is order-sensitive
+  // when a config names one framebuffer on two samplers. Entries are (textureUniform, framebufferName), for
+  // framebuffer-named entries only; `doubleBuffered` (below) is derived from these in the same load pass.
+  Maybe<String> frameBuffer;
+  Maybe<String> blitFrameBuffer;
+  List<pair<String, String>> frameBufferTextures;
   StringMap<EffectParameter> parameters;
   StringMap<EffectParameter> scriptables; // scriptable parameters which can be changed when the effect is not loaded
   StringMap<EffectTexture> textures;
