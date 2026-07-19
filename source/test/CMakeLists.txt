@@ -4,6 +4,7 @@ INCLUDE_DIRECTORIES (
     ${STAR_BASE_INCLUDES}
     ${STAR_PLATFORM_INCLUDES}
     ${STAR_GAME_INCLUDES}
+    ${PROJECT_SOURCE_DIR}/rendering
   )
 
 # Add top-level test directory so  gtest-all.cc can find its own include file
@@ -44,6 +45,7 @@ SET (star_core_tests_SOURCES
       poly_test.cpp
       random_test.cpp
       rect_test.cpp
+      retained_surface_test.cpp
       serialization_test.cpp
       spatial_hash_test.cpp
       static_vector_test.cpp
