@@ -1,6 +1,7 @@
 #include "StarWorldClient.hpp"
 #include "StarIterator.hpp"
 #include "StarLogging.hpp"
+#include "StarTelemetry.hpp"
 #include "StarBiome.hpp"
 #include "StarMaterialRenderProfile.hpp"
 #include "StarLiquidTypes.hpp"
@@ -23,6 +24,26 @@
 #include "StarCurve25519.hpp"
 
 namespace Star {
+
+// IEEE-754 float32 -> float16 (half) with round-to-nearest. Used to pre-convert the GPU-lighting
+// emission grid on the lighting thread so the render thread uploads RGB16F (half the bytes). Lighting
+// values are non-negative and moderate, so the simple range handling (flush tiny to 0, clamp big to
+// inf) is sufficient; the spread pipeline already runs at 16F precision.
+static uint16_t floatToHalf(float f) {
+  uint32_t x;
+  memcpy(&x, &f, sizeof(x));
+  uint32_t sign = (x >> 16) & 0x8000u;
+  int32_t exp = (int32_t)((x >> 23) & 0xffu) - 127 + 15;
+  uint32_t mant = x & 0x7fffffu;
+  if (exp <= 0)
+    return (uint16_t)sign;                          // subnormal/zero -> 0
+  if (exp >= 31)
+    return (uint16_t)(sign | 0x7c00u);              // overflow/inf/nan -> inf
+  uint16_t h = (uint16_t)(sign | ((uint32_t)exp << 10) | (mant >> 13));
+  if (mant & 0x1000u)                               // round to nearest (dropped-bit MSB set)
+    ++h;
+  return h;
+}
 
 const std::string SECRET_BROADCAST_PUBLIC_KEY = "SecretBroadcastPublicKey";
 const std::string SECRET_BROADCAST_PREFIX = "\0Broadcast\0"s;
@@ -158,6 +179,12 @@ void WorldClient::resendEntity(EntityId entityId) {
 
   auto fromVersion = m_masterEntitiesNetVersion.take(entity->entityId());
   auto netRules = m_clientState.netCompatibilityRules();
+  // Lever #4: pump deferred stores so this final delta isn't dropped by an
+  // early-out (mirrors the server-side WorldServer::removeEntity). The client
+  // periodic-update loop pumps too (see below); this resend path is the same
+  // master-entity delta write and was the second un-pumped client call site.
+  if (NetElementEarlyOut::active())
+    entity->netStorePump();
   ByteArray finalNetState = entity->writeNetState(fromVersion, netRules).first;
   m_outgoingPackets.append(make_shared<EntityDestroyPacket>(entity->entityId(), std::move(finalNetState), false));
   notifyEntityCreate(entity);
@@ -190,6 +217,11 @@ void WorldClient::removeEntity(EntityId entityId, bool andDie) {
 
   if (auto version = m_masterEntitiesNetVersion.maybeTake(entity->entityId())) {
     auto netRules = m_clientState.netCompatibilityRules();
+    // Lever #4: pump deferred stores so the final destroy delta isn't dropped by
+    // an early-out (mirrors WorldServer::removeEntity:2268-2271). This was the
+    // call site that produced the validate-live MISMATCH on player teardown at exit.
+    if (NetElementEarlyOut::active())
+      entity->netStorePump();
     ByteArray finalNetState = entity->writeNetState(*version, netRules).first;
     m_outgoingPackets.append(make_shared<EntityDestroyPacket>(entity->entityId(), std::move(finalNetState), andDie));
   }
@@ -210,6 +242,11 @@ SkyConstPtr WorldClient::currentSky() const {
   return m_sky;
 }
 
+void WorldClient::pinSkyEpochTime(double epochTime) {
+  if (m_sky)
+    m_sky->setEpochTime(epochTime);
+}
+
 void WorldClient::timer(float delay, WorldAction worldAction) {
   if (!inWorld())
     return;
@@ -228,37 +265,37 @@ void WorldClient::forAllEntities(EntityCallback callback) const {
   m_entityMap->forAllEntities(callback);
 }
 
-void WorldClient::forEachEntity(RectF const& boundBox, EntityCallback callback) const {
+void WorldClient::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntity(boundBox, callback);
 }
 
-void WorldClient::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const {
+void WorldClient::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntityLine(begin, end, callback);
 }
 
-void WorldClient::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> callback) const {
+void WorldClient::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   if (!inWorld())
     return;
   m_entityMap->forEachEntityAtTile(pos, callback);
 }
 
-EntityPtr WorldClient::findEntity(RectF const& boundBox, EntityFilter entityFilter) const {
+EntityPtr WorldClient::findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntity(boundBox, entityFilter);
 }
 
-EntityPtr WorldClient::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const {
+EntityPtr WorldClient::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntityLine(begin, end, entityFilter);
 }
 
-EntityPtr WorldClient::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const {
+EntityPtr WorldClient::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const {
   if (!inWorld())
     return {};
   return m_entityMap->findEntityAtTile(pos, entityFilter);
@@ -279,16 +316,19 @@ CollisionKind WorldClient::tileCollisionKind(Vec2I const& pos) const {
 void WorldClient::forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const {
   if (!inWorld())
     return;
-
   const_cast<WorldClient*>(this)->freshenCollision(region);
-  m_tileArray->tileEach(region, [iterator](Vec2I const& pos, ClientTile const& tile) {
-      if (tile.getCollision() == CollisionKind::Null) {
-        iterator(CollisionBlock::nullBlock(pos));
-      } else {
-        starAssert(!tile.collisionCacheDirty);
-        for (auto const& block : tile.collisionCache)
-          iterator(block);
-      }
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&iterator](Vec2I const& pos, CollisionBlock const* block) {
+      if (block) iterator(*block);
+      else iterator(CollisionBlock::nullBlock(pos));
+    });
+}
+
+void WorldClient::getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const {
+  if (!inWorld())
+    return;
+  const_cast<WorldClient*>(this)->freshenCollision(region);
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&output](Vec2I const& pos, CollisionBlock const* block) {
+      output.append(CollisionBlockRef{pos, block});
     });
 }
 
@@ -509,7 +549,23 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       MutexLocker m_prepLocker(m_lightMapPrepMutex);
       m_pendingLights = std::move(renderLightSources);
       m_pendingParticleLights = m_particles->lightSources();
-      m_pendingLightRange = window.padded(1);
+      // Stable lighting grid (#127): round the light-query size up to a bucket so the calc region --
+      // and everything slaved to it (emission/obstacle grids, the lighting ping-pong FBOs, the upscale
+      // FBO) -- holds a constant size across camera scroll instead of breathing +-1 tile. The breathe
+      // made setRenderTarget re-spec the FBO textures (a fresh driver buffer object each time) at the
+      // lighting cadence -- measured ~60% of the kernel texture-upload cluster. Bucket 1 = exact size
+      // (kill-switch). Min corner is untouched: it scrolls with the camera, which the lighting gather
+      // (and its A2 scroll-shift cache) already handles. Default 32, NOT 8: the window's real variance
+      // is +-2+ tiles, which crossed the 112 boundary at bucket 8 (bucketed size flipped 112<->120,
+      // re-spec churn persisted); 32 was measured to fully absorb the swing (zero re-specs in combat).
+      RectI lightWindow = window.padded(1);
+      unsigned gridBucket = (unsigned)Root::singleton().configuration()->get("lightingGridSizeBucket", 32).toUInt();
+      if (gridBucket > 1) {
+        Vec2I bucketed((lightWindow.width() + gridBucket - 1) / gridBucket * gridBucket,
+            (lightWindow.height() + gridBucket - 1) / gridBucket * gridBucket);
+        lightWindow = RectI::withSize(lightWindow.min(), bucketed);
+      }
+      m_pendingLightRange = lightWindow;
       m_pendingLightReady = true;
     } //Kae: Padded by one to fix light spread issues at the edges of the frame.
 
@@ -580,14 +636,14 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       }
 
       if (m_interactiveHighlightMode || (!inspecting && entity->entityId() == playerAimInteractive)) {
-        if (auto interactive = as<InteractiveEntity>(entity)) {
+        if (auto interactive = entityCast<InteractiveEntity>(entity)) {
           if (interactive->isInteractive()) {
             ed.highlightEffect.type = EntityHighlightEffectType::Interactive;
             ed.highlightEffect.level = pulseLevel;
           }
         }
       } else if (inspecting) {
-        if (auto inspectable = as<InspectableEntity>(entity)) {
+        if (auto inspectable = entityCast<InspectableEntity>(entity)) {
           ed.highlightEffect = m_mainPlayer->inspectionHighlight(inspectable);
           ed.highlightEffect.level *= inspectionFlickerMultiplier;
         }
@@ -682,6 +738,9 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
 
   renderData.particles = &m_particles->particles();
   LogMap::set("client_render_particle_count", renderData.particles->size());
+  // Durable telemetry mirror (R-F gate): particle count in the snapshot, not just the /debug HUD.
+  static auto particleCountGauge = Telemetry::gauge("render.particle.count");
+  particleCountGauge.set((int64_t)renderData.particles->size());
 
   renderData.skyRenderData = m_sky->renderData();
 
@@ -962,8 +1021,10 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
 
     } else if (auto liquidUpdate = as<TileLiquidUpdatePacket>(packet)) {
       m_predictedTiles.remove(liquidUpdate->position);
-      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position))
+      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
+        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: liquid radiance changed
+      }
 
     } else if (auto giveItem = as<GiveItemPacket>(packet)) {
       tryGiveMainPlayerItem(itemDatabase->item(giveItem->item));
@@ -1473,20 +1534,46 @@ void WorldClient::collectLiquid(List<Vec2I> const& tilePositions, LiquidId liqui
 bool WorldClient::waitForLighting(WorldRenderData* renderData) {
   MutexLocker prepLocker(m_lightMapPrepMutex);
   MutexLocker lightMapLocker(m_lightMapMutex);
-  if (renderData && !m_lightMap.empty()) {
-    for (auto& previewTile : m_previewTiles) {
-      if (previewTile.updateLight) {
-        Vec2I lightArrayPos = m_geometry.diff(previewTile.position, m_lightMinPosition);
-        if (lightArrayPos[0] >= 0 && lightArrayPos[0] < (int)m_lightMap.width()
-         && lightArrayPos[1] >= 0 && lightArrayPos[1] < (int)m_lightMap.height())
-          m_lightMap.set(lightArrayPos[0], lightArrayPos[1], Color::v3bToFloat(previewTile.light));
+  // Slice 4: a lighting frame is "ready to consume" when either the CPU lightMap is
+  // fresh (CPU mode / first GPU frame / shadow-compare) OR fresh GPU inputs were
+  // exported (skip-calculate GPU mode, where m_lightMap is intentionally empty).
+  // m_lightingEmission is moved out below, so !empty() is a fresh-once signal -- the
+  // same consume-once mechanic m_lightMap uses.
+  if (renderData && (!m_lightMap.empty() || (m_lightingInputsValid && !m_lightingEmission.empty()))) {
+    // Preview-tile light injection patches the CPU lightMap so client-predicted (pre-server-confirm)
+    // block placement lights up instantly. Known limitation (Slice 4): in skip-calculate GPU mode
+    // m_lightMap is intentionally empty, so this patch is unavailable -- a placed block's light
+    // appears one server-confirm round-trip later (once it enters the tile gather -> export -> GPU).
+    // The empty-guard makes that skip explicit (the bounds checks would no-op against width/height 0).
+    if (!m_lightMap.empty()) {
+      for (auto& previewTile : m_previewTiles) {
+        if (previewTile.updateLight) {
+          Vec2I lightArrayPos = m_geometry.diff(previewTile.position, m_lightMinPosition);
+          if (lightArrayPos[0] >= 0 && lightArrayPos[0] < (int)m_lightMap.width()
+           && lightArrayPos[1] >= 0 && lightArrayPos[1] < (int)m_lightMap.height())
+            m_lightMap.set(lightArrayPos[0], lightArrayPos[1], Color::v3bToFloat(previewTile.light));
+        }
       }
     }
     renderData->lightMap = std::move(m_lightMap);
     renderData->lightMinPosition = m_lightMinPosition;
+    // Travel the GPU-spread inputs alongside the lightmap when present.
+    renderData->lightingInputsValid = m_lightingInputsValid;
+    if (m_lightingInputsValid) {
+      renderData->lightingEmission = std::move(m_lightingEmission);
+      renderData->lightingObstacle = std::move(m_lightingObstacle);
+      renderData->lightingPointLights = std::move(m_lightingPointLights);
+      renderData->lightingEmissionHalf = std::move(m_lightingEmissionHalf);
+      renderData->lightingObstacleR8 = std::move(m_lightingObstacleR8);
+      renderData->lightMapBorder = m_lightingBorder;
+    }
     return true;
   }
   return false;
+}
+
+void WorldClient::setGpuLightingActive(bool active) {
+  m_gpuLightingActive.store(active, std::memory_order_relaxed);
 }
 
 WorldClient::BroadcastCallback& WorldClient::broadcastCallback() {
@@ -1527,6 +1614,11 @@ void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
     auto netRules = m_clientState.netCompatibilityRules();
     m_entityMap->forAllEntities([&](EntityPtr const& entity) {
         if (auto version = m_masterEntitiesNetVersion.ptr(entity->entityId())) {
+          // Lever #4: pump deferred stores before the early-out — the client's
+          // master entities (e.g. the player in single-player) are gated by the
+          // same process-global flag set in WorldServer::init.
+          if (NetElementEarlyOut::active())
+            entity->netStorePump();
           auto updateAndVersion = entity->writeNetState(*version, netRules);
           if (!updateAndVersion.first.empty())
             entityUpdateSet->deltas[entity->entityId()] = std::move(updateAndVersion.first);
@@ -1710,50 +1802,300 @@ void WorldClient::lightingTileGather() {
 
   m_tileArray->tileEvalColumnsParallel(m_lightingCalculator.calculationRegion(), [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
     size_t baseIndex = m_lightingCalculator.baseIndexFor(pos);
+    // Stage the column, then write it with a single setCellColumn so the monochrome/Either
+    // branch is resolved once per column instead of once per tile. Byte-identical to the
+    // per-tile setCellIndex. ySize is guaranteed <= the sector size (comment above).
+    Vec3F colLight[WorldSectorSize];
+    bool colObstacle[WorldSectorSize];
+    // Memoize radiantLight across vertical runs of identical material/mod (stone columns, open
+    // sky). radiantLight is a pure function of (id, mod) -> reusing the cached value is byte-
+    // identical. Sentinel = the "no material" state (EmptyMaterialId, NoModId), which never passes
+    // the emission guard, so the first emitting tile always recomputes.
+    MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
+    MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
     for (size_t y = 0; y < ySize; ++y) {
       auto& tile = column[y];
       Vec3F light;
-      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId)
-        light += materialDatabase->radiantLight(tile.foreground, tile.foregroundMod);
+      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId) {
+        if (tile.foreground != fgMat || tile.foregroundMod != fgMod) {
+          fgMat = tile.foreground; fgMod = tile.foregroundMod;
+          fgLight = materialDatabase->radiantLight(fgMat, fgMod);
+        }
+        light += fgLight;
+      }
 
       if (tile.liquid.liquid != EmptyLiquidId && tile.liquid.level != 0.0f)
         light += liquidsDatabase->radiantLight(tile.liquid);
       if (tile.foregroundLightTransparent) {
-        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId)
-          light += materialDatabase->radiantLight(tile.background, tile.backgroundMod);
+        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId) {
+          if (tile.background != bgMat || tile.backgroundMod != bgMod) {
+            bgMat = tile.background; bgMod = tile.backgroundMod;
+            bgLight = materialDatabase->radiantLight(bgMat, bgMod);
+          }
+          light += bgLight;
+        }
         if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
           light += environmentLight;
       }
-      m_lightingCalculator.setCellIndex(baseIndex + y, light, !tile.foregroundLightTransparent);
+      colLight[y] = light;
+      colObstacle[y] = !tile.foregroundLightTransparent;
     }
+    m_lightingCalculator.setCellColumn(baseIndex, colLight, colObstacle, ySize);
   });
   LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
 }
 
+void WorldClient::lightingStableGather() {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
+  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
+  // the direct gather. Then gather the full calc region over the top.
+  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)calcRegion.height(), GatherCell{});
+  gatherStableColumns(calcRegion);
+}
+
+void WorldClient::gatherStableColumns(RectI const& region) {
+  float undergroundLevel = m_worldTemplate->undergroundLevel();
+  auto liquidsDatabase = Root::singleton().liquidsDatabase();
+  auto materialDatabase = Root::singleton().materialDatabase();
+
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int height = calcRegion.height();
+  Vec2I calcMin = calcRegion.min();
+  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size. Indexing is
+  // relative to the current calc region (calcMin/height), matching baseIndexFor, so the same routine
+  // serves both the full gather and the A2 margin (the grid is always aligned to calcMin).
+  m_tileArray->tileEvalColumnsParallel(region, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
+    size_t baseIndex = (size_t)(pos[0] - calcMin[0]) * (size_t)height + (size_t)(pos[1] - calcMin[1]);
+    // Same per-tile compute + material-run memo as lightingTileGather, but the per-frame
+    // environmentLight is EXCLUDED from stableLight and recorded as the skyExposed bit instead, so
+    // the grid is reusable across frames (env-light re-applied each frame in applyStableToCells).
+    MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
+    MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
+    for (size_t y = 0; y < ySize; ++y) {
+      auto& tile = column[y];
+      Vec3F light;
+      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId) {
+        if (tile.foreground != fgMat || tile.foregroundMod != fgMod) {
+          fgMat = tile.foreground; fgMod = tile.foregroundMod;
+          fgLight = materialDatabase->radiantLight(fgMat, fgMod);
+        }
+        light += fgLight;
+      }
+
+      if (tile.liquid.liquid != EmptyLiquidId && tile.liquid.level != 0.0f)
+        light += liquidsDatabase->radiantLight(tile.liquid);
+      bool skyExposed = false;
+      if (tile.foregroundLightTransparent) {
+        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId) {
+          if (tile.background != bgMat || tile.backgroundMod != bgMod) {
+            bgMat = tile.background; bgMod = tile.backgroundMod;
+            bgLight = materialDatabase->radiantLight(bgMat, bgMod);
+          }
+          light += bgLight;
+        }
+        if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
+          skyExposed = true;
+      }
+      GatherCell& gc = m_gatherGrid[baseIndex + y];
+      gc.stableLight = light;
+      gc.obstacle = tile.foregroundLightTransparent ? 0 : 1;
+      gc.skyExposed = skyExposed ? 1 : 0;
+    }
+  });
+}
+
+void WorldClient::shiftAndGatherMargin(int dx, int dy) {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int width = calcRegion.width();
+  int height = calcRegion.height();
+  Vec2I calcMin = calcRegion.min();
+  int adx = dx < 0 ? -dx : dx;
+  int ady = dy < 0 ? -dy : dy;
+  // Double-buffer shift: copy the overlap (cells present in BOTH the old and new grid) from
+  // m_gatherGrid into the zeroed scratch at the shifted position, then swap. Disjoint buffers, so
+  // any column order is safe (no in-place memmove ordering hazard, and the dy intra-column move is a
+  // plain slice copy). World tile at new index (nx, ny) was at old index (nx + dx, ny + dy).
+  m_gatherScratch.assign((size_t)width * (size_t)height, GatherCell{});
+  int nxStart = dx > 0 ? 0 : adx;
+  int nxEnd = dx > 0 ? width - dx : width;
+  int nyStart = dy > 0 ? 0 : ady;
+  int nyEnd = dy > 0 ? height - dy : height;
+  int copyLen = nyEnd - nyStart;
+  GatherCell const* gridPtr = m_gatherGrid.ptr();
+  GatherCell* scratchPtr = m_gatherScratch.ptr();
+  for (int nx = nxStart; nx < nxEnd; ++nx) {
+    GatherCell const* src = gridPtr + (size_t)(nx + dx) * (size_t)height + (size_t)(nyStart + dy);
+    GatherCell* dst = scratchPtr + (size_t)nx * (size_t)height + (size_t)nyStart;
+    for (int k = 0; k < copyLen; ++k)
+      dst[k] = src[k]; // trivially-copyable GatherCell -> the compiler lowers this to a memcpy
+  }
+  std::swap(m_gatherGrid, m_gatherScratch); // O(1) buffer-pointer swap (List::swap is element-swap)
+
+  // Gather the L-shaped margin (cells new in x OR new in y) into the shifted grid. Rect A = the |dx|
+  // newly-exposed columns (full height); Rect B = the |dy| newly-exposed rows (full width). Their
+  // union is exactly the margin; they overlap only in the corner (gathered twice, identical value).
+  // Neither rect touches the shifted overlap, so no retained cell is clobbered.
+  if (dx != 0) {
+    int ax = dx > 0 ? calcMin[0] + width - dx : calcMin[0];
+    gatherStableColumns(RectI::withSize(Vec2I(ax, calcMin[1]), Vec2I(adx, height)));
+  }
+  if (dy != 0) {
+    int by = dy > 0 ? calcMin[1] + height - dy : calcMin[1];
+    gatherStableColumns(RectI::withSize(Vec2I(calcMin[0], by), Vec2I(width, ady)));
+  }
+}
+
+void WorldClient::applyStableToCells() {
+  Vec3F environmentLight = m_sky->environmentLight().toRgbF();
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int width = calcRegion.width();
+  int height = calcRegion.height();
+  // Write the calc cells from the stable grid, re-applying the current-frame environmentLight to
+  // sky-exposed cells. Reconstructs exactly the light the direct gather would have produced this
+  // frame. Process WorldSectorSize-tall chunks so setCellColumn resolves the monochrome/Either
+  // branch once per chunk (a grid column may exceed the sector size).
+  Vec3F colLight[WorldSectorSize];
+  bool colObstacle[WorldSectorSize];
+  for (int x = 0; x < width; ++x) {
+    size_t colBase = (size_t)x * (size_t)height;
+    for (int y0 = 0; y0 < height; y0 += (int)WorldSectorSize) {
+      int n = height - y0 < (int)WorldSectorSize ? height - y0 : (int)WorldSectorSize;
+      for (int k = 0; k < n; ++k) {
+        GatherCell const& gc = m_gatherGrid[colBase + (size_t)(y0 + k)];
+        colLight[k] = gc.skyExposed ? gc.stableLight + environmentLight : gc.stableLight;
+        colObstacle[k] = gc.obstacle != 0;
+      }
+      m_lightingCalculator.setCellColumn(colBase + (size_t)y0, colLight, colObstacle, (size_t)n);
+    }
+  }
+}
+
 void WorldClient::lightingCalc() {
+  // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
+  // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
+  static auto totalTimer = Telemetry::timer("lighting.cpu.total.us");
+  static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us");
+
   MutexLocker prepLocker(m_lightMapPrepMutex);
   if (!m_pendingLightReady.load())
     return;
+  TelemetryScope totalScope(totalTimer);
   m_pendingLightReady = false;
   RectI lightRange = m_pendingLightRange;
   List<LightSource> lights = std::move(m_pendingLights);
   List<std::pair<Vec2F, Vec3F>> particleLights = std::move(m_pendingParticleLights);
   auto& root = Root::singleton();
   auto configuration = root.configuration();
+
+  // --- Temporal lighting decoupling: skip this recompute when the scene is calm (only flicker /
+  // particle-motion / ambient changed) and we are between the floor cadence; nothing is republished, so
+  // the render thread reuses the previously-published lightmap. Off (flag off / floorMs<=0) => recompute
+  // every frame (byte-identical). Flicker-tolerant: the activity signature ignores light colour. ---
+  static auto temporalRecomputed = Telemetry::counter("lighting.temporal.recomputed");
+  static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped");
+  {
+    bool temporalEnabled = configuration->get("lightingTemporalDecouple").optBool().value(true);
+    double temporalFloorMs = configuration->get("lightingTemporalFloorMs", 33.0).toDouble();
+    int64_t nowMs = Time::monotonicMilliseconds();
+    uint64_t epoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+    auto sig = TemporalLightingGate::signatureOf(lights);
+    if (!TemporalLightingGate::shouldRecompute(
+            m_temporalBaseline, temporalEnabled, temporalFloorMs, epoch, lightRange, sig, nowMs)) {
+      temporalSkipped.inc(1);
+      return; // calm -> reuse the previously-published lightmap (prepLocker releases on return)
+    }
+    temporalRecomputed.inc(1);
+    m_temporalBaseline = {true, epoch, lightRange, std::move(sig), nowMs};
+  }
+
   bool newLighting = configuration->get("newLighting").optBool().value(true);
   bool monochrome = configuration->get("monochromeLighting").toBool();
   m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
   m_lightingCalculator.setMonochrome(monochrome);
   m_lightingCalculator.begin(lightRange);
-  lightingTileGather();
+  {
+    TelemetryScope gatherScope(gatherTimer);
+    // A1: when lightingGatherCache is on, reuse the per-frame-invariant stable grid across frames --
+    // a cache HIT (tile epoch + calc anchor/dims unchanged) skips the tile gather entirely and only
+    // re-applies the current-frame environmentLight. On a MISS we re-gather the stable grid. The
+    // entity-light add-loop + exportSpreadInputs below run every frame regardless, so moving/flickering
+    // lights are never cached. Flag OFF = the original direct gather (B1+B2) -- the clean A/B baseline.
+    if (configuration->get("lightingGatherCache").optBool().value(true)) {
+      int64_t gatherStart = Time::monotonicMicroseconds();
+      RectI calcRegion = m_lightingCalculator.calculationRegion();
+      Vec2I calcMin = calcRegion.min();
+      Vec2I calcDims = Vec2I(calcRegion.width(), calcRegion.height());
+      // The cache key is (tile epoch, anchor, dims). It deliberately does NOT track sector load/unload,
+      // which is safe ONLY because the calc region (the query window padded by the light-spread border)
+      // is strictly inside the loaded-sector region (sectors load for the monitored window padded by a
+      // full sector), so no unloaded sector is ever gathered. Preserve that padding invariant.
+      uint64_t tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      // Same grid layout (size + tile epoch) as last frame? Then we can reuse it: a HIT (same anchor)
+      // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the
+      // newly-exposed margin. Anything else (first frame, zoom/resize/size-breathe, tile edit, or a
+      // jump >= the grid size) falls back to a full stable gather.
+      bool sameGrid = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch;
+      if (sameGrid && m_gatherAnchor == calcMin) {
+        // cache hit: nothing to gather; applyStableToCells re-applies the current env-light below.
+      } else if (sameGrid) {
+        int dx = calcMin[0] - m_gatherAnchor[0];
+        int dy = calcMin[1] - m_gatherAnchor[1];
+        int adx = dx < 0 ? -dx : dx;
+        int ady = dy < 0 ? -dy : dy;
+        if (adx < calcDims[0] && ady < calcDims[1])
+          shiftAndGatherMargin(dx, dy); // A2: scroll -- shift the overlap + gather only the margin
+        else
+          lightingStableGather();       // jump >= grid size: no overlap, full gather
+      } else {
+        lightingStableGather();         // first frame / zoom / resize / size-breathe / tile edit
+      }
+      m_gatherAnchor = calcMin;
+      m_gatherDims = calcDims;
+      m_gatherEpoch = tileEpoch;
+      m_gatherValid = true;
+      applyStableToCells();
+      // Mirror lightingTileGather's HUD timer so the gather cost shows in /debug whether the cache is on or off.
+      LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}µs", Time::monotonicMicroseconds() - gatherStart));
+    } else {
+      lightingTileGather();
+      m_gatherValid = false; // re-enabling the cache later must force a fresh gather
+    }
+  }
 
   prepLocker.unlock();
 
+  // CDL (lightingPromoteDynamic): promote static fill (Spread) lights to dynamic by a fraction
+  // p in [0,1] -- (1-p) soft spread + p full directional point. p=0 off (Spread unchanged,
+  // byte-identical); p~0.15 ~= the old hybrid; p=1 full Point (the mod's look). Gated on lightingGpu:
+  // in confirmed GPU mode the CPU calculate() below is skipped, so this feeds the GPU point pass
+  // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
+  // are untouched -- no double-promote.
+  float promoteFraction = 0.0f;
+  float promoteMinIntensity = 0.0f;
+  if (configuration->get("lightingGpu").optBool().value(false)) {
+    // Read defensively: an interim build persisted this key as a bool, so coerce bool->fraction
+    // (true=>0.5, false=>0) rather than throwing toFloat() on a type-mismatched persisted value.
+    Json pd = configuration->get("lightingPromoteDynamic");
+    promoteFraction = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
+    // Floor below which a Spread light is NOT promoted to a dynamic point: ultra-dim fill lights
+    // (e.g. item drops at 20/255 ~= 0.078) gain nothing from sharp point rendering and flicker on a
+    // jittery emitter -> keep them soft spreads. 0 disables the floor (promote everything).
+    promoteMinIntensity = configuration->get("lightingPromoteMinIntensity", 0.1f).toFloat();
+  }
+  promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
+
   for (auto const& light : lights) {
     Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
-    if (light.type == LightType::Spread)
+    // Promote only "feature" Spread lights: skip the floor (item-drop-class fill) -> pure spread.
+    bool promote = promoteFraction > 0.0f && light.color.max() >= promoteMinIntensity;
+    if (light.type == LightType::Spread && promote) {
+      if (promoteFraction < 1.0f)
+        m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
+      m_lightingCalculator.addPointLight(position, light.color * promoteFraction, light.pointBeam, light.beamAngle, light.beamAmbience);
+    } else if (light.type == LightType::Spread) {
       m_lightingCalculator.addSpreadLight(position, light.color);
-    else {
+    } else {
       if (light.type == LightType::PointAsSpread) {
         if (!newLighting)
           m_lightingCalculator.addSpreadLight(position, light.color);
@@ -1772,11 +2114,74 @@ void WorldClient::lightingCalc() {
     m_lightingCalculator.addSpreadLight(position, lightPair.second);
   }
 
-  m_lightingCalculator.calculate(m_pendingLightMap);
+  // GPU lighting (Slice 2/3): when the lightingGpu flag is on, export the seeded
+  // emission + obstacle grids and the point-light list for the GPU passes.
+  // exportSpreadInputs must run BEFORE calculate(), which overwrites the cells with
+  // the spread result.
+  bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
+  bool shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
+  int lightMapBorder = 0;
+  if (lightingGpu) {
+    m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
+    m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
+    // Border (cells) between the calc-region-sized GPU result and the query region the world shader
+    // samples. calculationRegion == queryRegion(lightRange).padded(borderCells), so this is exactly
+    // borderCells. Computed here from the calculator's geometry and carried in renderData; WorldPainter
+    // must NOT reverse-derive it from the CPU lightMap width, which is empty when the CPU calc is skipped.
+    lightMapBorder = ((int)m_lightingCalculator.calculationRegion().width() - (int)lightRange.width()) / 2;
+    // Convert the RGB_F emission grid to 16-bit half-floats HERE (lighting thread, idle) so the render
+    // thread uploads RGB16F -- half the per-frame transfer/store. No precision loss (the spread FBOs
+    // are already 16F). The RGB_F emission is still kept for the auto-K scan + shadow-compare reference.
+    {
+      float const* ef = (float const*)m_pendingLightingEmission.data();
+      size_t n = (size_t)m_pendingLightingEmission.size()[0] * m_pendingLightingEmission.size()[1] * 3;
+      m_pendingLightingEmissionHalf.resize(n);
+      uint16_t* hf = m_pendingLightingEmissionHalf.ptr();
+      for (size_t i = 0; i < n; ++i)
+        hf[i] = floatToHalf(ef[i]);
+    }
+    // Extract the obstacle mask's R channel (RGB24 0/255) into a single-channel R8 buffer so the GPU
+    // upload is R8 (a third the bytes); the shaders already read obstacle as .r.
+    {
+      uint8_t const* ob = (uint8_t const*)m_pendingLightingObstacle.data();
+      size_t cells = (size_t)m_pendingLightingObstacle.size()[0] * m_pendingLightingObstacle.size()[1];
+      m_pendingLightingObstacleR8.resize(cells);
+      uint8_t* r8 = m_pendingLightingObstacleR8.ptr();
+      for (size_t i = 0; i < cells; ++i)
+        r8[i] = ob[i * 3];   // R channel of each RGB24 texel
+    }
+  }
+
+  // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
+  // exported grids, so the CPU calculate() (spread sweep + point raycast, the bulk of
+  // the CPU lighting cost) is pure redundant work -- skip it. Guards:
+  //  - m_gpuLightingActive: only skip once the render thread has confirmed a successful
+  //    GPU pass. The first lighting frame (latch off) runs the CPU path so a valid
+  //    m_lightMap exists for the fallback; if a later GPU frame fails, the render thread
+  //    reports false and the CPU path re-arms within ~1 frame (self-healing).
+  //  - !shadowCompare: shadow-compare keeps the CPU lightMap as the parity reference.
+  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran");
+  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped");
+  bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
+  if (skipCpuCalc) {
+    calcSkipped.inc(1);
+  } else {
+    m_lightingCalculator.calculate(m_pendingLightMap);
+    calcRan.inc(1);
+  }
   {
     MutexLocker mapLocker(m_lightMapMutex);
     m_lightMinPosition = lightRange.min();
     m_lightMap = std::move(m_pendingLightMap);
+    m_lightingInputsValid = lightingGpu;
+    if (lightingGpu) {
+      m_lightingEmission = std::move(m_pendingLightingEmission);
+      m_lightingObstacle = std::move(m_pendingLightingObstacle);
+      m_lightingPointLights = std::move(m_pendingLightingPointLights);
+      m_lightingEmissionHalf = std::move(m_pendingLightingEmissionHalf);
+      m_lightingObstacleR8 = std::move(m_pendingLightingObstacleR8);
+      m_lightingBorder = lightMapBorder;
+    }
   }
 }
 
@@ -1900,6 +2305,7 @@ void WorldClient::clearWorld() {
   m_worldProperties.clear();
 
   m_tileArray.reset();
+  m_gatherValid = false; // A1/A2: drop the stable tile-gather cache so a reused WorldClient (world hop) can't reapply the previous world's lighting for a frame
 
   m_damageManager.reset();
 
@@ -2069,6 +2475,7 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
   tile->backgroundLightTransparent = materialDatabase->backgroundLightTransparent(tile->background);
   tile->foregroundLightTransparent =
       materialDatabase->foregroundLightTransparent(tile->foreground) && tile->collision != CollisionKind::Dynamic;
+  m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: tile light input changed
 
   if (updateCollision)
     dirtyCollision(RectI::withSize(pos, {1, 1}));
@@ -2093,15 +2500,19 @@ void WorldClient::freshenCollision(RectI const& region) {
   if (!inWorld())
     return;
 
+  // Lever L4 (mirror of WorldServer::freshenCollision -- keep both identical for
+  // master/slave parity): read-only, column-amortized dirty scan via tileEachColumns,
+  // which skips invalid/unloaded/out-of-y-range positions exactly like the old
+  // per-tile modifyTile guard (so it visits the same dirty set; NOT the const tileEach,
+  // whose dirty-by-default m_default would balloon freshenRegion). Byte-identical;
+  // pass 2 below still mutates via modifyTile.
   RectI freshenRegion = RectI::null();
-  for (int x = region.xMin(); x < region.xMax(); ++x) {
-    for (int y = region.yMin(); y < region.yMax(); ++y) {
-      if (auto tile = m_tileArray->modifyTile({x, y})) {
-        if (tile->collisionCacheDirty)
-          freshenRegion.combine(RectI(x, y, x + 1, y + 1));
+  m_tileArray->tileEachColumns(region, [&freshenRegion](Vec2I const& pos, auto const* column, size_t columnSize) {
+      for (size_t i = 0; i < columnSize; ++i) {
+        if (column[i].collisionCacheDirty)
+          freshenRegion.combine(RectI(pos[0], pos[1] + (int)i, pos[0] + 1, pos[1] + (int)i + 1));
       }
-    }
-  }
+    });
 
   if (!freshenRegion.isNull()) {
     for (int x = freshenRegion.xMin(); x < freshenRegion.xMax(); ++x) {
