@@ -599,5 +599,301 @@ String ClientCommandProcessor::render(String const& path) {
   return strf("Saved '{}.png' ({}x{}) and copied to clipboard", outputName, image->width(), image->height());
 }
 
+String ClientCommandProcessor::telemetry(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  if (args.empty())
+    return strf("telemetry: enabled={} deep={} hud={} interval={}",
+      cfg->get("telemetryEnabled", true).toBool(), cfg->get("telemetryDeepTracing", false).toBool(),
+      cfg->get("telemetryHud", false).toBool(), cfg->get("telemetryReportInterval", 0).toInt());
+
+  String sub = args.at(0);
+  if (sub == "on") {
+    cfg->set("telemetryEnabled", true);
+    Telemetry::setEnabled(true);
+    return "telemetry on";
+  }
+  if (sub == "off") {
+    cfg->set("telemetryEnabled", false);
+    Telemetry::setEnabled(false);
+    return "telemetry off";
+  }
+  if (sub == "deep") {
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("telemetryDeepTracing", v);
+    Telemetry::setDeepEnabled(v);
+    return strf("telemetry deep={}", v);
+  }
+  if (sub == "hud") {
+    bool v = !cfg->get("telemetryHud", false).toBool();
+    cfg->set("telemetryHud", v);
+    return strf("telemetry hud={}", v);
+  }
+  if (sub == "interval") {
+    int s = args.size() > 1 ? lexicalCast<int>(args.at(1)) : 0;
+    cfg->set("telemetryReportInterval", s);
+    return strf("telemetry interval={}", s);
+  }
+  if (sub == "snapshot") {
+    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""));
+    return strf("wrote {}", p);
+  }
+  return "usage: /telemetry [on|off|deep [off]|hud|interval <s>|snapshot]";
+}
+
+// Drawable-cache toggles (registered as /rendercache when /render is taken).
+// Frontend-only: reads/writes the runtime config keys the NetworkedAnimator
+// drawable path consults each call -- no game-logic side effects.
+String ClientCommandProcessor::renderCache(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off | parallaxrefresh <N> | paralloracle on|off";
+  auto status = [&]() {
+    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={} parallaxRefreshInterval={} parallaxOracle={}",
+      cfg->get("renderDrawableCache", false).toBool(),
+      cfg->get("renderDrawableCachePerPart", false).toBool(),
+      cfg->get("renderDrawableCacheShadowCompare", false).toBool(),
+      cfg->get("envRefreshInterval", 1).toUInt(),
+      cfg->get("envOracle", false).toBool(),
+      cfg->get("parallaxRefreshInterval", 1).toUInt(),
+      cfg->get("parallaxOracle", false).toBool());
+  };
+
+  if (!args.empty() && args.at(0) == "envrefresh") {
+    // Environment-cache probe: refresh the cached env FBO every N frames (1 = current behavior,
+    // bit-identical). It is composited into "main" every frame regardless of N. (AA-off only; the
+    // renderer runs the direct env path when antiAliasing is on.)
+    if (args.size() >= 2) {
+      auto n = maybeLexicalCast<unsigned>(args.at(1));
+      if (!n || *n < 1)
+        return "usage: /rendercache envrefresh <N>  (N >= 1; 1 = every frame = current behavior)";
+      cfg->set("envRefreshInterval", *n);
+    }
+    return strf("render cache envRefreshInterval={}", cfg->get("envRefreshInterval", 1).toUInt());
+  }
+
+  if (!args.empty() && args.at(0) == "envoracle") {
+    // Env-cache bit-identity oracle (default off). When on, each AA-off frame ALSO renders the env pass
+    // into the "envRef" reference FBO (direct clear:true black -- NOT the cache) and pixel-compares it
+    // against the composited "main", logging [envoracle] DIFF/MATCH. Offline validate gate only
+    // (glReadPixels stalls). At N=1 a MATCH proves the cache path is bit-identical to the direct path.
+    if (args.size() >= 2)
+      cfg->set("envOracle", args.at(1) == "on");
+    bool on = cfg->get("envOracle", false).toBool();
+    if (on && cfg->get("antiAliasing").optBool().value(false))
+      return "render cache envOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off (disable AA in graphics settings), otherwise no [envoracle] lines are emitted";
+    return strf("render cache envOracle={}", on);
+  }
+
+  if (!args.empty() && args.at(0) == "parallaxrefresh") {
+    // Parallax retained-cache (SP-2): refresh the cached parallax FBO every N frames (1 = direct/stock).
+    // Composited (premultiplied-over) into "main" every frame at N>1; also force-refreshes on camera move /
+    // zoom (Option B). AA-off only.
+    if (args.size() >= 2) {
+      auto n = maybeLexicalCast<unsigned>(args.at(1));
+      if (!n)
+        return "usage: /rendercache parallaxrefresh <N>  (0 = ADAPTIVE, auto-derived per world [default]; 1 = off/direct; >1 = manual fixed N)";
+      cfg->set("parallaxRefreshInterval", *n);
+    }
+    unsigned pn = cfg->get("parallaxRefreshInterval", 0).toUInt();
+    return strf("render cache parallaxRefreshInterval={}{}", pn, pn == 0 ? " (ADAPTIVE -- auto per world; see [parallaxauto] in the log)" : (pn == 1 ? " (off/direct)" : " (manual)"));
+  }
+
+  if (!args.empty() && args.at(0) == "paralloracle") {
+    // Parallax bit-identity oracle (default off). When on, builds parallaxRef = env_bg + parallax DIRECT and
+    // pixel-compares it against the composited main (env_bg + premultiplied cache); logs [paralloracle]
+    // DIFF/MATCH. At N=1 a MATCH proves the premultiplied cache path is bit-identical. AA-off only.
+    if (args.size() >= 2)
+      cfg->set("parallaxOracle", args.at(1) == "on");
+    bool on = cfg->get("parallaxOracle", false).toBool();
+    if (on && cfg->get("antiAliasing").optBool().value(false))
+      return "render cache parallaxOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off";
+    return strf("render cache parallaxOracle={}", on);
+  }
+
+  if (args.empty() || args.at(0) != "cache")
+    return usage;
+  if (args.size() < 2 || args.at(1) == "status")
+    return status();
+
+  String sub = args.at(1);
+  if (sub == "on") {
+    cfg->set("renderDrawableCache", true);
+    return "render cache on";
+  }
+  if (sub == "off") {
+    cfg->set("renderDrawableCache", false);
+    return "render cache off";
+  }
+  if (sub == "perpart") {
+    bool v = args.size() < 3 || args.at(2) != "off";
+    cfg->set("renderDrawableCachePerPart", v);
+    return strf("render cache perPart={}", v);
+  }
+  if (sub == "shadow") {
+    bool v = args.size() < 3 || args.at(2) != "off";
+    cfg->set("renderDrawableCacheShadowCompare", v);
+    return strf("render cache shadow={}", v);
+  }
+  return usage;
+}
+
+// GPU lighting toggle (Slice 1: passthrough plumbing spike). Frontend-only:
+// reads/writes the runtime config key WorldPainter consults each frame.
+String ClientCommandProcessor::lighting(String const& argumentsString) {
+  auto args = m_parser.tokenizeToStringList(argumentsString);
+  auto cfg = Root::singleton().configuration();
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | temporal [on|off|floor <ms>] | bilinear [on|off] | upscale <n> | gathercache [on|off] | gridbucket <n> | spreadoracle [on|off]";
+  auto status = [&]() {
+    // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
+    Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
+    float pdf = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
+    return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} promoteMinIntensity={} tonemap={}",
+      cfg->get("lightingGpu", false).toBool(),
+      cfg->get("lightingGpuShadowCompare", false).toBool(),
+      cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
+      cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
+      pdf,
+      cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
+      cfg->get("lightingTonemap", false).toBool())
+      + strf(" | temporal={} floorMs={} | worldSampleBilinear={} upscale={} gatherCache={} gridBucket={}",
+        cfg->get("lightingTemporalDecouple", true).toBool(),
+        cfg->get("lightingTemporalFloorMs", 33.0f).toFloat(),
+        cfg->get("lightingWorldSampleBilinear", false).toBool(),
+        cfg->get("lightingWorldUpscale", 1.0f).toFloat(),
+        cfg->get("lightingGatherCache", true).toBool(),
+        cfg->get("lightingGridSizeBucket", 8).toUInt());
+  };
+
+  if (args.empty())
+    return usage;
+
+  // CDL flags (independent of the `gpu` sub-commands): promote all Spread lights to
+  // PointAsSpread (consumed at dispatch, T4), and tonemap the additive HDR compose
+  // instead of hard-clamping (consumed at the GPU compose + CPU mirror, T3).
+  if (args.at(0) == "promotedynamic") {
+    // fraction in [0,1]: 0 = off (Spread unchanged), ~0.15 = old hybrid, 1.0 = full Point.
+    float p = 0.0f;
+    if (args.size() >= 2 && args.at(1) != "off") {
+      auto f = maybeLexicalCast<float>(args.at(1));
+      if (!f)
+        return "usage: /lighting promotedynamic <0..1 | off>";
+      p = *f < 0.0f ? 0.0f : (*f > 1.0f ? 1.0f : *f);
+    }
+    cfg->set("lightingPromoteDynamic", p);
+    return strf("lighting promoteDynamic={}", p);
+  }
+  if (args.at(0) == "promoteminintensity") {
+    // Spread lights with max colour channel below this are NOT promoted to dynamic points (they stay
+    // soft spreads) -- excludes ultra-dim fill lights like item drops (~0.078) that flicker. 0 = off.
+    if (args.size() < 2)
+      return "usage: /lighting promoteminintensity <f>  (e.g. 0.1; 0 = promote everything)";
+    auto f = maybeLexicalCast<float>(args.at(1));
+    if (!f || *f < 0.0f)
+      return "usage: /lighting promoteminintensity <f>=0";
+    cfg->set("lightingPromoteMinIntensity", *f);
+    return strf("lighting promoteMinIntensity={}", *f);
+  }
+  if (args.at(0) == "temporal") {
+    // Recompute the lightmap at a floor cadence when calm (only flicker/particles/ambient), 60Hz on
+    // real activity. floor <ms> sets the calm cadence (0 = recompute every frame = off).
+    if (args.size() >= 2 && args.at(1) == "floor") {
+      if (args.size() < 3) return "usage: /lighting temporal floor <ms>  (0 = recompute every frame)";
+      auto f = maybeLexicalCast<float>(args.at(2));
+      if (!f || *f < 0.0f) return "usage: /lighting temporal floor <ms>=0";
+      cfg->set("lightingTemporalFloorMs", *f);
+      return strf("lighting temporalFloorMs={}", *f);
+    }
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingTemporalDecouple", v);
+    return strf("lighting temporalDecouple={}", v);
+  }
+  if (args.at(0) == "tonemap") {
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingTonemap", v);
+    return strf("lighting tonemap={}", v);
+  }
+  if (args.at(0) == "bilinear") {
+    // R-A: sample the lightMap with a single bilinear tap in world.frag instead of the 4-tap bicubic.
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingWorldSampleBilinear", v);
+    return strf("lighting worldSampleBilinear={}", v);
+  }
+  if (args.at(0) == "upscale") {
+    // R-A Form 2: bicubic-upscale factor (1 = off/bicubic; 2..4 = bilinear of the N-upscaled map).
+    if (args.size() < 2)
+      return "usage: /lighting upscale <n>  (1 = off; 2-4 typical)";
+    auto f = maybeLexicalCast<float>(args.at(1));
+    if (!f || *f < 1.0f)
+      return "usage: /lighting upscale <n>=1";
+    cfg->set("lightingWorldUpscale", *f);
+    return strf("lighting worldUpscale={}", *f);
+  }
+  if (args.at(0) == "spreadoracle") {
+    // J-2 lighting bit-identity oracle (default off). When on, the Jacobi spread runs TWICE per recompute in
+    // the SAME frame on the SAME inputs -- once reading each neighbour's obstacle bit from its own sampler
+    // (the original 17-taps-per-texel path), once from the alpha the spread now carries in lightState (the
+    // 9-tap path) -- and pixel-compares them, logging [spreadoracle] MATCH/DIFF. In-frame by construction, so
+    // it is immune to the world divergence that makes cross-run frame hashes useless. Costs a whole extra
+    // spread solve: validation only, never left on.
+    if (args.size() >= 2)
+      cfg->set("lightingSpreadOracle", args.at(1) == "on");
+    return strf("lighting spreadOracle={}", cfg->get("lightingSpreadOracle", false).toBool());
+  }
+  if (args.at(0) == "gathercache") {
+    // A1/A2: reuse the per-frame-invariant tile gather across frames (cache hit on a still camera /
+    // shift on scroll), re-applying environmentLight via the sky-exposed bit. off = re-gather every
+    // frame (the A/B baseline). Visual-only; default on (kill-switch).
+    bool v = args.size() < 2 || args.at(1) != "off";
+    cfg->set("lightingGatherCache", v);
+    return strf("lighting gatherCache={}", v);
+  }
+  if (args.at(0) == "gridbucket") {
+    // Stable lighting grid (#127): light-query size rounded up to this bucket (1 = exact size / off).
+    if (args.size() < 2)
+      return "usage: /lighting gridbucket <n>=1  (default 8; 1 = exact size)";
+    auto n = maybeLexicalCast<unsigned>(args.at(1));
+    if (!n || *n < 1)
+      return "usage: /lighting gridbucket <n>=1";
+    cfg->set("lightingGridSizeBucket", *n);
+    return strf("lighting gridSizeBucket={}", *n);
+  }
+
+  if (args.at(0) != "gpu")
+    return usage;
+  if (args.size() < 2 || args.at(1) == "status")
+    return status();
+
+  String sub = args.at(1);
+  if (sub == "on") {
+    cfg->set("lightingGpu", true);
+    return "lighting gpu on";
+  }
+  if (sub == "off") {
+    cfg->set("lightingGpu", false);
+    return "lighting gpu off";
+  }
+  if (sub == "shadow") {
+    bool v = args.size() < 3 || args.at(2) != "off";
+    cfg->set("lightingGpuShadowCompare", v);
+    return strf("lighting gpu shadow={}", v);
+  }
+  if (sub == "iterations" && args.size() >= 3) {
+    auto n = maybeLexicalCast<unsigned>(args.at(2));
+    if (n) {
+      cfg->set("lightingGpuSpreadIterations", *n);
+      return strf("lighting gpu spreadIterations={}", *n);
+    }
+  }
+  if (sub == "brightness" && args.size() >= 3) {
+    auto v = maybeLexicalCast<float>(args.at(2));
+    if (v) {
+      cfg->set("lightingGpuBrightness", *v);
+      return strf("lighting gpu brightness={}", *v);
+    }
+  }
+  return usage;
+}
+
 
 }

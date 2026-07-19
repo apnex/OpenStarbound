@@ -178,6 +178,116 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
   }
 }
 
+Vec3F tonemapHighlights(Vec3F color, float white) {
+  float i = color[0];
+  if (color[1] > i) i = color[1];
+  if (color[2] > i) i = color[2];
+  if (i <= 1.0f || i <= 0.0f)
+    return color;                 // normal range untouched
+  float e = i - 1.0f;             // excess above 1
+  float k = white - 1.0f;         // headroom toward the white-point
+  if (k < 1.0e-4f) k = 1.0e-4f;   // guard white <= 1
+  float iOut = 1.0f + k * e / (k + e);  // (1,inf) -> (1, 1+k=white), monotonic
+  return color * (iOut / i);
+}
+
+SpreadParameters CellularLightingCalculator::spreadParameters() const {
+  return SpreadParameters{
+      m_config.getFloat("spreadMaxAir"),
+      m_config.getFloat("spreadMaxObstacle"),
+      m_config.getFloat("brightnessLimit")
+    };
+}
+
+PointParameters CellularLightingCalculator::pointParameters() const {
+  return PointParameters{
+      m_config.getFloat("pointMaxAir"),
+      m_config.getFloat("pointMaxObstacle"),
+      m_config.getFloat("pointObstacleBoost"),
+      m_config.getBool("pointAdditive", false),
+      m_config.getFloat("spreadMaxAir"),
+      m_config.getFloat("spreadMaxObstacle"),
+      m_config.getFloat("brightnessLimit")
+    };
+}
+
+void CellularLightingCalculator::snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle) {
+  size_t width = m_calculationRegion.width();
+  size_t height = m_calculationRegion.height();
+  size_t count = width * height;
+  emission.resize(count);
+  obstacle.resize(count);
+
+  if (m_monochrome) {
+    m_lightArray.right().seedSpreadLights();
+    for (size_t i = 0; i < count; ++i) {
+      auto const& cell = m_lightArray.right().cellAtIndex(i);
+      emission[i] = Vec3F::filled(cell.light);
+      obstacle[i] = cell.obstacle ? 1 : 0;
+    }
+  } else {
+    m_lightArray.left().seedSpreadLights();
+    for (size_t i = 0; i < count; ++i) {
+      auto const& cell = m_lightArray.left().cellAtIndex(i);
+      emission[i] = cell.light;
+      obstacle[i] = cell.obstacle ? 1 : 0;
+    }
+  }
+}
+
+void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obstacle) {
+  unsigned width = (unsigned)m_calculationRegion.width();
+  unsigned height = (unsigned)m_calculationRegion.height();
+
+  // RGB_F float emission for the GPU spread; RGB24 obstacle mask (no
+  // single-channel format exists, the shader reads .r). reset() zero-fills.
+  emission.reset(width, height, PixelFormat::RGB_F);
+  obstacle.reset(width, height, PixelFormat::RGB24);
+
+  float* emissionData = (float*)emission.data();
+  Vec3B const obstacleByte(255, 255, 255);
+  Vec3B const airByte(0, 0, 0);
+
+  // Cell index x * height + y (array column-major) -> image pixel (x, y).
+  if (m_monochrome) {
+    m_lightArray.right().seedSpreadLights();
+    for (unsigned x = 0; x < width; ++x) {
+      for (unsigned y = 0; y < height; ++y) {
+        auto const& cell = m_lightArray.right().cellAtIndex((size_t)x * height + y);
+        size_t pixel = ((size_t)y * width + x) * 3;
+        emissionData[pixel] = emissionData[pixel + 1] = emissionData[pixel + 2] = cell.light;
+        obstacle.set24(x, y, cell.obstacle ? obstacleByte : airByte);
+      }
+    }
+  } else {
+    m_lightArray.left().seedSpreadLights();
+    for (unsigned x = 0; x < width; ++x) {
+      for (unsigned y = 0; y < height; ++y) {
+        auto const& cell = m_lightArray.left().cellAtIndex((size_t)x * height + y);
+        size_t pixel = ((size_t)y * width + x) * 3;
+        emissionData[pixel] = cell.light[0];
+        emissionData[pixel + 1] = cell.light[1];
+        emissionData[pixel + 2] = cell.light[2];
+        obstacle.set24(x, y, cell.obstacle ? obstacleByte : airByte);
+      }
+    }
+  }
+}
+
+void CellularLightingCalculator::exportPointLights(List<ColoredCellularLightArray::PointLight>& out) {
+  // Mirror exportSpreadInputs' monochrome/colored branch. The colored array
+  // already stores ColoredCellularLightArray::PointLight, so copy directly; the
+  // monochrome array stores a scalar value, broadcast it to all channels (as the
+  // monochrome emission export does) so the GPU point pass sees one struct type.
+  out.clear();
+  if (m_monochrome) {
+    for (auto const& light : m_lightArray.right().pointLights())
+      out.append({light.position, Vec3F::filled(light.value), light.beam, light.beamAngle, light.beamAmbience, light.asSpread});
+  } else {
+    out = m_lightArray.left().pointLights();
+  }
+}
+
 void CellularLightingCalculator::setupImage(Image& image, PixelFormat format) const {
   Vec2S arrayMin = Vec2S(m_queryRegion.min() - m_calculationRegion.min());
   Vec2S arrayMax = Vec2S(m_queryRegion.max() - m_calculationRegion.min());

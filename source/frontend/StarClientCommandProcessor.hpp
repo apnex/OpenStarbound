@@ -61,6 +61,9 @@ private:
   String swap(String const& argumentsString);
   String respawnInWorld(String const& argumentsString);
   String render(String const& imagePath);
+  String renderCache(String const& argumentsString);
+  String telemetry(String const& argumentsString);
+  String lighting(String const& argumentsString);
 
   UniverseClientPtr m_universeClient;
   CinematicPtr m_cinematicOverlay;

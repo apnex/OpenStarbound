@@ -243,7 +243,9 @@ void EnvironmentPainter::renderParallaxLayers(
   auto& primitives = m_renderer->immediatePrimitives();
 
   for (auto& layer : layers) {
-    if (layer.alpha == 0)
+    // R-D: skip fully-transparent layers (floor(255*alpha)==0 => no-op alpha-blend => byte-identical).
+    // The alpha-threshold lever was measured a dead-end (parallax here is opaque-overdraw-bound), so removed.
+    if (floor(255.0f * layer.alpha) == 0)
       continue;
 
     Vec4B drawColor;

@@ -94,11 +94,23 @@ public:
   Cell const& cellAtIndex(size_t index) const;
   Cell& cellAtIndex(size_t index);
 
+  // Read-only access to the configured point lights (array-relative position,
+  // in insertion order). Exposed so the GPU point pass can export the same list
+  // production's calculatePointLighting consumes.
+  List<PointLight> const& pointLights() const;
+
   // Calculate lighting in the given sub-rect, in order to properly do spread
   // lighting, and initial lighting must be given for the ambient border this
   // given rect, and the array size must be at least that large.  xMax / yMax
   // are not inclusive, the range is [xMin, xMax) and [yMin, yMax).
   void calculate(size_t xMin, size_t yMin, size_t xMax, size_t yMax);
+
+  // Seeds the configured spread lights into the cell grid (the pre-sweep
+  // "emission" state), exactly as the first step of calculate() does. Exposed
+  // so the Jacobi spread reference (spreadJacobiReference) can be checked
+  // against the exact emission the production sweep consumes. Does NOT run the
+  // spread or point passes. Seeding is idempotent (max-based).
+  void seedSpreadLights();
 
 private:
   // Set 4 points based on interpolated light position and free space
@@ -134,6 +146,82 @@ private:
 
 typedef CellularLightArray<ColoredLightTraits> ColoredCellularLightArray;
 typedef CellularLightArray<ScalarLightTraits> ScalarCellularLightArray;
+
+// Parameters consumed by the Jacobi spread reference (see spreadJacobiReference).
+struct SpreadParameters {
+  float spreadMaxAir;
+  float spreadMaxObstacle;
+  float brightnessLimit;
+};
+
+// Parallel Jacobi-relaxation reference for the colored spread sweep
+// (CellularLightArray::calculateLightSpread). Where the production sweep is a
+// sequential Gauss-Seidel pass (it reads neighbours already updated this pass),
+// this is the pure parallel relaxation a GPU fragment shader runs: every cell
+// reads only the PREVIOUS iteration. For this max-propagation operation both
+// converge to the same fixed point; this reference exists to PROVE that (and to
+// discover the minimal iteration count K) before any shader work.
+//
+//   emission   : per-cell seeded light, column-major (x * height + y), matching
+//                CellularLightArray's internal layout (see seedSpreadLights()).
+//   obstacle   : per-cell obstacle flag (1/0), same layout. uint8_t (not bool)
+//                to avoid the std::vector<bool> proxy in the hot loop.
+//   iterations : number of Jacobi steps (K).
+//
+// Replicates ColoredLightTraits::spread verbatim, the SOURCE-cell-keyed dropoff
+// (air vs obstacle), the sqrt2 diagonal factor, and applies brightnessLimit at
+// the end exactly like CellularLightingCalculator::calculate.
+List<Vec3F> spreadJacobiReference(List<Vec3F> const& emission, List<uint8_t> const& obstacle,
+    size_t width, size_t height, SpreadParameters const& params, unsigned iterations);
+
+// Parameters consumed by the point-lighting reference (see pointLightingReference).
+// Mirrors the point/spread dropoffs + brightnessLimit from the active config.
+struct PointParameters {
+  float pointMaxAir;
+  float pointMaxObstacle;
+  float pointObstacleBoost;
+  bool pointAdditive;
+  float spreadMaxAir;
+  float spreadMaxObstacle;
+  float brightnessLimit;
+};
+
+// Selects the obstacle raycast pointLightingReference uses for the per-light
+// shadow term:
+//  - LineAttenuation: a verbatim mirror of CellularLightArray::lineAttenuation
+//    (Xiaolin-Wu anti-aliased line + early-exit) over the obstacle grid. Gives
+//    near-exact parity with production.
+//  - PortableDDA: the GLSL-portable form a fragment shader will run -- a single
+//    uniform-loop major-axis DDA with fpart/rfpart straddle weighting and
+//    fractional endpoint coverage + early-exit, no recursion, loop bounded by the
+//    major-axis cell distance. This is the Xiaolin-Wu-portability de-risk: it must
+//    match production within a looser perceptual tolerance. (The endpoint coverage
+//    term is required; dropping it diverges by ~26/255 at obstacle cells.)
+enum class ObstacleRaycast {
+  LineAttenuation,
+  PortableDDA
+};
+
+// Parallel-friendly per-cell-per-light point reference for the colored point
+// sweep (CellularLightArray<ColoredLightTraits>::calculatePointLighting). Runs
+// the EXACT production per-cell math (air attenuation, beam cone with
+// beamDirection = Vec2F(1,0).rotate(beamAngle), circularized obstacle term,
+// single-obstacle boost when !asSpread, additive vs max blend, colored
+// hue-preserving subtract) on top of a spread-only 'base', accumulating point
+// lights in the given order -- exactly as production reads getLight and writes
+// setLight on the post-spread buffer. brightnessLimit is NOT applied here (apply
+// it after, like CellularLightingCalculator::calculate). This exists to PROVE the
+// point math is reproducible off the production CellularLightArray (a GPU per-
+// light-quad shader runs the same math) and to lock the GLSL-portable raycast.
+//
+//   base     : per-cell spread-only light, column-major (x * height + y),
+//              matching CellularLightArray's internal layout.
+//   obstacle : per-cell obstacle flag (1/0), same layout. uint8_t.
+//   lights   : array-relative point lights, in production insertion order.
+//   raycast  : obstacle term form (see ObstacleRaycast).
+List<Vec3F> pointLightingReference(List<Vec3F> const& base, List<uint8_t> const& obstacle,
+    List<ColoredCellularLightArray::PointLight> const& lights, size_t width, size_t height,
+    PointParameters const& params, ObstacleRaycast raycast = ObstacleRaycast::LineAttenuation);
 
 inline float ScalarLightTraits::spread(float source, float dest, float drop) {
   return std::max(source - drop, dest);
@@ -334,6 +422,11 @@ void CellularLightArray<LightTraits>::setSpreadLightingPoints() {
     if (maxX >= 0 && maxX < (int)m_width && maxY >= 0 && maxY < (int)m_height)
       setLight(maxX, maxY, LightTraits::max(getLight(maxX, maxY), LightTraits::subtract(light.value, oneBlockAtt * (2.0f - (xdist) - (ydist)))));
   }
+}
+
+template <typename LightTraits>
+void CellularLightArray<LightTraits>::seedSpreadLights() {
+  setSpreadLightingPoints();
 }
 
 template <typename LightTraits>

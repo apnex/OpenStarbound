@@ -10,6 +10,7 @@
 #include "StarEntity.hpp"
 #include "StarThread.hpp"
 #include "StarCellularLighting.hpp"
+#include "StarCellularLightArray.hpp"
 
 namespace Star {
 
@@ -28,6 +29,31 @@ struct WorldRenderData {
   RenderTileArray tiles;
   Vec2I lightMinPosition;
   Lightmap lightMap;
+
+  // GPU-spread inputs (Slice 2), populated by waitForLighting only when the
+  // 'lightingGpu' flag is on. emission is RGB_F per-cell seeded light; obstacle
+  // is RGB24 (255 obstacle / 0 air). lightingInputsValid gates their use.
+  Image lightingEmission;
+  Image lightingObstacle;
+  // The emission grid as 16-bit half-floats (RGB packed), pre-converted on the lighting thread so the
+  // GPU upload is RGB16F (half the per-frame transfer). Travels alongside lightingEmission; the RGB_F
+  // version is still kept for the auto-K scan + shadow-compare reference.
+  List<uint16_t> lightingEmissionHalf;
+  // The obstacle mask as single-channel R8 bytes (0/255), pre-extracted on the lighting thread so the
+  // GPU upload is R8 (a third the bytes of RGB24). Travels alongside lightingObstacle (RGB24 kept for
+  // the shadow-compare reference).
+  List<uint8_t> lightingObstacleR8;
+  // The point lights (array-relative, insertion order) for the GPU per-light-quad
+  // point pass (Slice 3). Travels alongside emission/obstacle, gated by
+  // lightingInputsValid.
+  List<ColoredCellularLightArray::PointLight> lightingPointLights;
+  bool lightingInputsValid = false;
+  // GPU lightmap border in cells: the GPU result is calc-region-sized (= emission size), so the
+  // world shader offsets by this border (calc-vs-query padding) to sample the query region. Carried
+  // here from the calculator's known geometry (Slice 4) because the CPU lightMap -- which WorldPainter
+  // previously reverse-derived the border from -- is empty when the redundant CPU calc is skipped.
+  // 0 for the CPU path (the lightMap is itself query-sized).
+  int lightMapBorder = 0;
 
   List<EntityDrawables> entityDrawables;
   List<Particle> const* particles;
@@ -50,6 +76,7 @@ struct WorldRenderData {
 inline void WorldRenderData::clear() {
   tiles.resize({0, 0}); // keep reserved
 
+  lightingInputsValid = false;
   entityDrawables.clear();
   particles = nullptr;
   overheadBars.clear();

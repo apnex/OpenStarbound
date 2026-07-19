@@ -2,6 +2,8 @@
 
 #include "StarTextureAtlas.hpp"
 #include "StarRenderer.hpp"
+#include "StarGlRenderSurface.hpp"
+#include "StarGlTexturePrimitives.hpp"
 
 #include "GL/glew.h"
 
@@ -11,15 +13,6 @@ STAR_CLASS(OpenGlRenderer);
 
 constexpr size_t FrameBufferCount = 1;
 
-// TODO: Bott - This isn't really rendering-specific. Don't really like it either. It's nicer than having redundant bool options, though.
-enum class BoolSettingMode {
-  Enabled,
-  FromSetting,
-  Disabled
-};
-extern EnumMap<BoolSettingMode> const BoolSettingModeNames;
-
-bool settingModeValue(BoolSettingMode const& mode, bool const& setting);
 
 // OpenGL 2.0 implementation of Renderer.  OpenGL context must be created and
 // active during construction, destruction, and all method calls.
@@ -35,6 +28,8 @@ public:
   void loadEffectConfig(String const& name, Json const& effectConfig, StringMap<String> const& shaders) override;
 
   void setEffectParameter(String const& parameterName, RenderEffectParameter const& parameter) override;
+  EffectParameterHandle getEffectParameterHandle(String const& parameterName) override;
+  void setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& parameter) override;
   void setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& parameter) override;
   Maybe<RenderEffectParameter> getEffectScriptableParameter(String const& effectName, String const& parameterName) override;
   Maybe<VariantTypeIndex> getEffectScriptableParameterType(String const& effectName, String const& parameterName) override;
@@ -44,11 +39,27 @@ public:
 
   bool switchEffectConfig(String const& name) override;
 
+  void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) override;
+  void clearRenderTarget(Vec4F clearColor) override;
+  bool hasFrameBuffer(String const& id) const override;
+  uint64_t frameBufferGeneration() const override;
+  bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
+                 String const& srcSampler, String const& srcFbo,
+                 List<pair<String, RenderEffectParameter>> const& params) override;
+  void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) override;
+  void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) override;
+  void setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) override;
+  void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) override;
+  GpuTimer& gpuTimer() override;
+  RenderOracle& oracle() override;
+  void setBlendMode(BlendMode mode) override;
+
   TexturePtr createTexture(Image const& texture, TextureAddressing addressing, TextureFiltering filtering) override;
   void setSizeLimitEnabled(bool enabled) override;
   void setMultiTexturingEnabled(bool enabled) override;
   void setMultiSampling(unsigned multiSampling) override;
   void setMainHDR(bool enabled) override;
+  void setVboOrphan(bool enabled) override;
   TextureGroupPtr createTextureGroup(TextureGroupSize size, TextureFiltering filtering) override;
   RenderBufferPtr createRenderBuffer() override;
 
@@ -85,12 +96,9 @@ private:
     GlTextureAtlasSet textureAtlasSet;
   };
 
-  struct GlTexture : public Texture {
-    virtual GLuint glTextureId() const = 0;
-    virtual Vec2U glTextureSize() const = 0;
-    virtual Vec2U glTextureCoordinateOffset() const = 0;
-  };
-
+  // GlTexture and GlLoneTexture now live in StarGlTexturePrimitives.hpp (Tier 1 of the §8.ii extraction) --
+  // GlLoneTexture is atlas-free and self-contained, so the render-surface substrate depends on it there
+  // without depending on this whole class. GlGroupedTexture stays here because it IS the atlas coupling.
   struct GlGroupedTexture : public GlTexture {
     ~GlGroupedTexture();
 
@@ -108,23 +116,6 @@ private:
     unsigned bufferUseCount = 0;
     shared_ptr<GlTextureGroup> parentGroup;
     GlTextureAtlasSet::TextureHandle parentAtlasTexture = nullptr;
-  };
-
-  struct GlLoneTexture : public GlTexture {
-    ~GlLoneTexture();
-
-    Vec2U size() const override;
-    TextureFiltering filtering() const override;
-    TextureAddressing addressing() const override;
-
-    GLuint glTextureId() const override;
-    Vec2U glTextureSize() const override;
-    Vec2U glTextureCoordinateOffset() const override;
-
-    GLuint textureId = 0;
-    Vec2U textureSize;
-    TextureAddressing textureAddressing = TextureAddressing::Clamp;
-    TextureFiltering textureFiltering = TextureFiltering::Nearest;
   };
 
   struct GlPackedVertexData {
@@ -155,6 +146,10 @@ private:
       List<GlVertexBufferTexture> textures;
       GLuint vertexBuffer = 0;
       size_t vertexCount = 0;
+      // True allocated storage size (bytes). Distinct from vertexCount (the draw count): tracking
+      // the high-water capacity means a grow->shrink->grow size sequence reuses existing storage
+      // via glBufferSubData instead of re-specifying it with glBufferData every time it re-grows.
+      size_t byteCapacity = 0;
     };
 
     GlRenderBuffer();
@@ -172,69 +167,32 @@ private:
     bool useMultiTexturing{true};
   };
 
-  struct EffectParameter {
-    GLint parameterUniform = -1;
-    VariantTypeIndex parameterType = 0;
-    Maybe<RenderEffectParameter> parameterValue;
-  };
 
-  struct EffectTexture {
-    GLint textureUniform = -1;
-    unsigned textureUnit = 0;
-    TextureAddressing textureAddressing = TextureAddressing::Clamp;
-    TextureFiltering textureFiltering = TextureFiltering::Linear;
-    GLint textureSizeUniform = -1;
-    RefPtr<GlLoneTexture> textureValue;
-  };
   
-  struct GlFrameBuffer : RefCounter {
-    GLuint id = 0;
-    RefPtr<GlLoneTexture> texture;
-    
-    bool hasAlt = false;
-    GLuint altId = 0;
-    RefPtr<GlLoneTexture> altTexture;
 
-    Json config;
-    Maybe<Vec2U> overrideSize;
-    BoolSettingMode hdrMode = BoolSettingMode::Disabled;
-    bool alpha = false;
-    bool clear = true;
-    unsigned multisample = 0;
-    unsigned sizeDiv = 1;
-    
-    bool blitted = false;
-    bool justSwapped = false;
-    
-    void makeAlt(Vec2U const& screenSize = Vec2U(256, 256));
-    void swap();
-    
-    GlFrameBuffer(Json const& config);
-    ~GlFrameBuffer();
-  };
-
-  class Effect {
-  public:
-    GLuint program = 0;
-    Json config;
-    StringMap<EffectParameter> parameters;
-    StringMap<EffectParameter> scriptables; // scriptable parameters which can be changed when the effect is not loaded
-    StringMap<EffectTexture> textures;
-
-    StringMap<GLuint> attributes;
-    StringMap<GLuint> uniforms;
-
-    GLuint getAttribute(String const& name);
-    GLuint getUniform(String const& name);
-    bool includeVBTextures;
-    bool doubleBuffered = false;
-  };
 
   static bool logGlErrorSummary(String prefix);
-  static void uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data);
+  // Specifies an image's storage AND records the descriptor on `record` (if given), in the same call as the
+  // glTexImage2D -- so an effect-image spec cannot leave the descriptor unwritten. The raw-GLuint atlas caller
+  // passes record=nullptr (no descriptor). Still returns the internal format for callers that want it.
+  static GLint uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data, GlLoneTexture* record = nullptr);
 
-  
+  // THE one home of the "re-spec vs sub-upload" decision for a lone texture: the guard, the glTex{Sub}Image2D,
+  // and the whole-descriptor record are ONE indivisible act, so no numeric setter writes its own guard. That is
+  // what makes RB-6 unreintroducible from a call site: setEffectTextureR8's original size-only guard (which let
+  // a GL_RED upload land in RGB storage forever) is now unrepresentable here -- the guard tests size AND format,
+  // always, because there is only one guard. `fresh` (a just-allocated texture, internalFormat still 0) forces
+  // the re-spec. Callers own the glPixelStorei/glBindTexture before calling; this touches only storage + record.
+  static void uploadLoneStorage(GlLoneTexture& tex, Vec2U size, GLint internalFormat, GLenum format, GLenum type,
+      void const* data, bool fresh);
+
+
   static RefPtr<GlLoneTexture> createGlTexture(ImageView const& image, TextureAddressing addressing, TextureFiltering filtering);
+  // Mint an EMPTY GL texture object -- generated, bound, sampling params set, NO storage specified -- for a
+  // caller that will glTexImage2D its own. setEffectTextureHalf and setEffectTextureR8 minted it identically,
+  // 29 lines each; this is that allocator, once. It leaves GL_TEXTURE_2D bound to the new texture so the
+  // caller's upload lands on it.
+  static RefPtr<GlLoneTexture> createEmptyGlTexture(Vec2U size, TextureAddressing addressing, TextureFiltering filtering);
 
   shared_ptr<GlRenderBuffer> createGlRenderBuffer();
 
@@ -242,41 +200,127 @@ private:
 
   void renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation);
 
-  void setupGlUniforms(Effect& effect, Vec2U screenSize);
 
-  RefPtr<OpenGlRenderer::GlFrameBuffer> getGlFrameBuffer(String const& id);
-  void blitGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
-  void switchGlFrameBuffer(RefPtr<OpenGlRenderer::GlFrameBuffer> const& frameBuffer);
+  // The one home of the effect-parameter type-name ladder. Parses a default of the named GLSL type ("bool" ..
+  // "vec4") into a typed RenderEffectParameter, throwing on an unrecognized type. `def` may be an unset Json
+  // (no "default" key): then the type's zero value is returned, so parameterType is still derivable from it.
+  static RenderEffectParameter parseEffectParameter(String const& type, Json const& def);
+
+  void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
+
+  void blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
+
+  // The renderer's single door to the pass bind.
+  void bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer);
+
+  GlTargets m_targets;
 
   Vec2U m_screenSize;
 
-  GLuint m_program = 0;
+  GlPass m_pass;
 
-  GLint m_positionAttribute = -1;
-  GLint m_colorAttribute = -1;
-  GLint m_texCoordAttribute = -1;
-  GLint m_dataAttribute = -1;
-  List<GLint> m_textureUniforms = {};
-  List<GLint> m_textureSizeUniforms = {};
-  GLint m_screenSizeUniform = -1;
-  GLint m_vertexTransformUniform = -1;
+  GlEffects m_effects;
 
   Json m_config;
 
-  StringMap<Effect> m_effects;
-  Effect* m_currentEffect;
-
-  StringMap<RefPtr<GlFrameBuffer>> m_frameBuffers;
-  RefPtr<GlFrameBuffer> m_currentFrameBuffer;
 
   RefPtr<GlTexture> m_whiteTexture;
 
   Maybe<RectI> m_scissorRect;
 
+  // THE INSTRUMENTS. Both are sealed: they own their own state and are reached only through the accessors
+  // Renderer declares, so no consumer -- and no future backend -- has to know they exist to draw a frame.
+
+  // GL_TIME_ELAPSED, one triple-buffered ring per named scope so results are read back ~3 frames later
+  // without stalling the pipeline. Only issues when Telemetry::deepEnabled().
+  //
+  // It takes a flush thunk rather than an OpenGlRenderer&: the timer's only need of the renderer is "submit
+  // what is pending, so the query brackets exactly the enclosed draws". Depending on the whole renderer to say
+  // that would be a back-door into every other concern, and would make the timer untestable without a GL
+  // context. One declared adapter, one direction.
+  class GlGpuTimer : public GpuTimer {
+  public:
+    explicit GlGpuTimer(function<void()> flushPending);
+
+    void begin(String const& name) override;
+    void end(String const& name) override;
+    Maybe<int64_t> lastMicros(String const& name) const override;
+
+  private:
+    struct Ring {
+      GLuint queries[3] = {0, 0, 0};
+      bool issued[3] = {false, false, false};
+      unsigned writeIdx = 0;
+    };
+
+    function<void()> m_flushPending;
+    StringMap<Ring> m_rings;
+    StringMap<int64_t> m_lastMicros; // last read-back µs per scope (for the /debug HUD)
+    Ring* m_current = nullptr;
+    unsigned m_slot = 0;
+    bool m_active = false;
+  };
+
+  // Pixel read-back for bit-identity certification. Unlike the timer, this genuinely needs the renderer's
+  // framebuffer set, so it holds a concrete back-reference to OpenGlRenderer -- a one-way coupling internal to
+  // the backend. That is a diagnostic seam, not a hole in the seal: no Layer-1 component re-opens its privates
+  // to the renderer any more (the compile proved none needed to). The gap that matters is the one the twelve
+  // consumers see through the Renderer interface, and that one is real: they get three methods and cannot name
+  // a framebuffer face.
+  //
+  // Expected lifetime: DELETED. See RenderOracle in StarRenderDiagnostics.hpp.
+  class GlRenderOracle : public RenderOracle {
+  public:
+    explicit GlRenderOracle(OpenGlRenderer& renderer);
+
+    void setEnabled(bool enabled) override;
+    pair<size_t, Vec2U> compare(String const& a, String const& b, float* maxAbsDiff) override;
+    Image read(String const& frameBufferId) override;
+
+    // Read by loadConfig: when false, framebuffers marked devOnly are not allocated at all.
+    bool enabled() const;
+
+  private:
+    OpenGlRenderer& m_renderer;
+    bool m_enabled = false;
+  };
+
+  GlGpuTimer m_gpuTimer;
+  GlRenderOracle m_oracle;
+
+  // WHOLE-FRAME GPU SPAN (task #141). GL_TIME_ELAPSED cannot nest -- there is one m_gpuTimerActive bool -- so
+  // the per-pass timers can never report the frame TOTAL, and therefore can never reveal how much of the frame
+  // they FAIL to account for. GL_TIMESTAMP is a separate query target that coexists with them, so a pair of
+  // timestamps around startFrame..finishFrame gives the frame's entire GPU span (every pass, the interface
+  // render, the clears, the final blit) WHILE the per-pass timers still run. (span - sum(passes)) is the
+  // unattributed remainder -- which may be more than half the frame.
+  static constexpr unsigned GpuTimerRingSize = 3;
+  struct FrameSpanRing {
+    GLuint begins[GpuTimerRingSize] = {0, 0, 0};
+    GLuint ends[GpuTimerRingSize] = {0, 0, 0};
+    bool issued[GpuTimerRingSize] = {false, false, false};
+    unsigned writeIdx = 0;
+  };
+  FrameSpanRing m_frameSpan;
+  unsigned m_frameSpanSlot = 0;
+  bool m_frameSpanOpen = false;
+
+
   bool m_limitTextureGroupSize;
   bool m_useMultiTexturing;
-  unsigned m_multiSampling; // if non-zero, is enabled and acts as sample count
-  bool m_hdrSetting;
+  unsigned m_multiSampling = 0; // if non-zero, is enabled and acts as sample count
+  // MUST be initialized. loadConfig injects this into every framebuffer's config as "hdrSetting", and it runs
+  // for the first time from renderInit -- BEFORE setMainHDR (its only writer) is ever called. Left
+  // indeterminate, every framebuffer declaring "hdr":"FromSetting" received a bool holding neither 0 nor 1;
+  // settingModeValue passes that byte through verbatim, and the compiler lowers `hdr ? GL_FLOAT :
+  // GL_UNSIGNED_BYTE` to `GL_UNSIGNED_BYTE + 5*hdr`, so a garbage byte of e.g. 116 yields 0x1645 -- not a GL
+  // type enum. glTexImage2D then fails GL_INVALID_ENUM, allocates nothing, and the framebuffer surfaces as
+  // "OpenGL framebuffer is not complete!". Intermittent, because the garbage varied from run to run.
+  //
+  // `true` matches upstream (36a389c6, "Fix HDR crash (#535)") and is not arbitrary: ClientApplication defaults
+  // the hdr option to true, so starting true means the first loadConfig already builds the framebuffers in the
+  // format the very next setMainHDR asks for -- no redundant rebuild of the whole set at startup.
+  bool m_hdrSetting = true;
   List<shared_ptr<GlTextureGroup>> m_liveTextureGroups;
 
   List<RenderPrimitive> m_immediatePrimitives;
