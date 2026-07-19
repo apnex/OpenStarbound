@@ -11,6 +11,7 @@ INCLUDE_DIRECTORIES (
 SET (star_rendering_HEADERS
       StarAnchorTypes.hpp
       StarAssetTextureGroup.hpp
+      StarBackdropPass.hpp
       StarDrawablePainter.hpp
       StarEnvironmentPainter.hpp
       StarFontTextureGroup.hpp
@@ -23,6 +24,7 @@ SET (star_rendering_HEADERS
 SET (star_rendering_SOURCES
       StarAnchorTypes.cpp
       StarAssetTextureGroup.cpp
+      StarBackdropPass.cpp
       StarDrawablePainter.cpp
       StarEnvironmentPainter.cpp
       StarFontTextureGroup.cpp
