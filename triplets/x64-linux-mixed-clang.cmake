@@ -24,3 +24,7 @@ if(PORT MATCHES "opus")
     "-DBUILD_TESTING=OFF"
   )
 endif()
+# Fedora 44 glibc adds C23 _Generic const-correct strstr/bsearch macros that systemd v257 predates;
+# relax that false-positive -Werror so the full, real libsystemd compiles (no functionality dropped).
+set(VCPKG_C_FLAGS "${VCPKG_C_FLAGS} -Wno-error")
+set(VCPKG_CXX_FLAGS "${VCPKG_CXX_FLAGS} -Wno-error")
