@@ -52,6 +52,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {});
 
   EntityType entityType() const override;
+  Npc* asNpc() override { return this; }
   ClientEntityMode clientEntityMode() const override;
 
   void init(World* world, EntityId entityId, EntityMode mode) override;
@@ -70,6 +71,7 @@ public:
   RectF collisionArea() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   void enableInterpolation(float extrapolationHint = 0.0f) override;
@@ -174,6 +176,7 @@ public:
   void playEmote(HumanoidEmote emote) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: Lua/tool-mutable sources, not O(1) — never skipped
 
   List<PhysicsForceRegion> forceRegions() const override;
 

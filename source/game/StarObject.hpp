@@ -40,6 +40,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {});
 
   virtual EntityType entityType() const override;
+  Object* asObject() override { return this; }
   virtual ClientEntityMode clientEntityMode() const override;
 
   virtual void init(World* world, EntityId entityId, EntityMode mode) override;

@@ -28,6 +28,8 @@ class TileEntity : public virtual InteractiveEntity {
 public:
   TileEntity();
 
+  TileEntity* asTileEntity() override { return this; }
+
   // position() here is simply the tilePosition (but Vec2F)
   virtual Vec2F position() const override;
 
@@ -47,7 +49,8 @@ public:
 
   // TileEntities may register some of their occupied spaces with metamaterials
   // to generate collidable regions
-  virtual List<MaterialSpace> materialSpaces() const;
+  // L-OBJ-2: const& return (was by-value) — overrides hand back stable stored lists.
+  virtual List<MaterialSpace> const& materialSpaces() const;
   
   // Returns whether the entity was destroyed
   virtual bool damageTiles(List<Vec2I> const& positions, Vec2F const& sourcePosition, TileDamage const& tileDamage);

@@ -65,18 +65,63 @@ public:
   List<EntityPtr> entityLineQuery(Vec2F const& begin, Vec2F const& end, EntityFilter const& filter = {}) const;
 
   // Callback versions of query functions.
-  void forEachEntity(RectF const& boundBox, EntityCallback const& callback) const;
-  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const;
-  // Returns tile-based entities that occupy the given tile position.
+  //
+  // Lever #1 (perf/foreach-template-callback): forEachEntity / forEachEntityLine /
+  // findEntity / findEntityLine forward a callback (or filter) to the
+  // already-templated SpatialHash2D::forEach -- directly, or via forEachEntity --
+  // so making the callback/filter a deduced template parameter lets a
+  // concrete-lambda caller (entityQuery, the WorldStorage / WireProcessor sector
+  // sweeps, etc.) flow its lambda straight through and INLINE the per-entity
+  // dispatch, instead of constructing a type-erased std::function. The World
+  // virtual overrides still call these with an EntityCallback / EntityFilter,
+  // which binds Function = EntityCallback const& and reproduces the prior
+  // (std::function) behavior verbatim -- no call-site edits required.
+  template <typename Function>
+  void forEachEntity(RectF const& boundBox, Function&& function) const {
+    m_spatialMap.forEach(m_geometry.splitRect(boundBox), std::forward<Function>(function));
+  }
+  template <typename Function>
+  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, Function&& function) const {
+    m_spatialMap.forEach(m_geometry.splitRect(RectF::boundBoxOf(begin, end)), [&](EntityPtr const& entity) {
+        if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position())))
+          function(entity);
+      });
+  }
+  // Returns tile-based entities that occupy the given tile position. Kept a
+  // non-template std::function forwarder (defined in the .cpp): its body needs
+  // the complete TileEntity type, which we deliberately do not pull into this
+  // widely-included header. It still benefits from Lever #1 -- its internal
+  // lambda flows through the templated forEachEntity above.
   void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const;
 
   // Iterate through all the entities, optionally in the given sort order.
   void forAllEntities(EntityCallback const& callback, function<bool(EntityPtr const&, EntityPtr const&)> sortOrder = {}) const;
 
   // Stops searching when filter returns true, and returns the entity which
-  // caused it.
-  EntityPtr findEntity(RectF const& boundBox, EntityFilter const& filter) const;
-  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& filter) const;
+  // caused it. (templated, see Lever #1 note on forEachEntity above)
+  template <typename Filter>
+  EntityPtr findEntity(RectF const& boundBox, Filter&& filter) const {
+    EntityPtr res;
+    forEachEntity(boundBox, [&filter, &res](EntityPtr const& entity) {
+        if (res)
+          return;
+        if (filter(entity))
+          res = entity;
+      });
+    return res;
+  }
+  template <typename Filter>
+  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, Filter&& filter) const {
+    return findEntity(RectF::boundBoxOf(begin, end), [&](EntityPtr const& entity) {
+        if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position()))) {
+          if (filter(entity))
+            return true;
+        }
+        return false;
+      });
+  }
+  // Kept a non-template std::function forwarder (defined in the .cpp): body needs
+  // the complete TileEntity type. Still benefits from Lever #1 via findEntity.
   EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& filter) const;
 
   // Closest entity that satisfies the given selector, if given.
@@ -144,7 +189,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::query(RectF const& boundBox, EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   for (auto const& entity : entityQuery(boundBox, entityTypeFilter(filter)))
-    entities.append(as<EntityT>(entity));
+    entities.append(entityCast<EntityT>(entity));
 
   return entities;
 }
@@ -153,7 +198,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::all(EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   forAllEntities([&](EntityPtr const& entity) {
-    if (auto e = as<EntityT>(entity)) {
+    if (auto e = entityCast<EntityT>(entity)) {
       if (!filter || filter(e))
         entities.append(e);
     }
@@ -166,7 +211,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::lineQuery(Vec2F const& begin, Vec2F const& end, EntityFilterOf<EntityT> const& filter) const {
   List<shared_ptr<EntityT>> entities;
   for (auto const& entity : entityLineQuery(begin, end, entityTypeFilter(filter)))
-    entities.append(as<EntityT>(entity));
+    entities.append(entityCast<EntityT>(entity));
 
   return entities;
 }
@@ -180,7 +225,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> EntityMap::atTile(Vec2I const& pos) const {
   List<shared_ptr<EntityT>> list;
   forEachEntityAtTile(pos, [&](TileEntityPtr const& entity) {
-      if (auto e = as<EntityT>(entity))
+      if (auto e = entityCast<EntityT>(entity))
         list.append(std::move(e));
       return false;
     });

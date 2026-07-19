@@ -550,7 +550,7 @@ void DungeonGeneratorWorld::clearTileEntities(RectI const& bounds, Set<Vec2I> co
   auto entities = m_worldServer->entityQuery(RectF(bounds).padded(1), entityTypeFilter<TileEntity>());
   auto geometry = m_worldServer->geometry();
   entities.filter([positions, geometry, clearAnchoredObjects](EntityPtr entity) {
-      auto tileEntity = as<TileEntity>(entity);
+      auto* tileEntity = entity->asTileEntity();
       for (auto pos : tileEntity->spaces()) {
         if (positions.contains(geometry.xwrap(pos + tileEntity->tilePosition())))
           return true;
@@ -560,7 +560,7 @@ void DungeonGeneratorWorld::clearTileEntities(RectI const& bounds, Set<Vec2I> co
           if (positions.contains(geometry.xwrap(pos + tileEntity->tilePosition())))
             return true;
         }
-        if (auto object = as<Object>(entity)) {
+        if (auto object = entityCast<Object>(entity)) {
           for (auto pos : object->anchorPositions()) {
             if (positions.contains(geometry.xwrap(pos)))
               return true;
@@ -699,14 +699,14 @@ void WorldGenerator::terraformSector(WorldStorage* worldStorage, Sector const& s
 
 void WorldGenerator::initEntity(WorldStorage*, EntityId entityId, EntityPtr const& entity) {
   entity->init(m_worldServer, entityId, EntityMode::Master);
-  if (auto tileEntity = as<TileEntity>(entity))
+  if (auto* tileEntity = entity->asTileEntity())
     m_worldServer->updateTileEntityTiles(tileEntity, false, false);
 }
 
 void WorldGenerator::destructEntity(WorldStorage*, EntityPtr const& entity) {
   if (entity->isSlave())
     throw StarException("Cannot destruct slave entity in WorldStorage, something has gone wrong!");
-  if (auto tileEntity = as<TileEntity>(entity))
+  if (auto* tileEntity = entity->asTileEntity())
     m_worldServer->updateTileEntityTiles(tileEntity, true, false);
   entity->uninit();
 }
@@ -1191,11 +1191,11 @@ void WorldGenerator::reapplyBiome(WorldStorage* worldStorage, ServerTileSectorAr
   auto entities = m_worldServer->entityQuery(RectF(sectorTiles.padded(1)));
   List<TileEntityPtr> biomeTileEntities;
   for (auto entity : entities) {
-    if (auto plant = as<Plant>(entity)) {
-      biomeTileEntities.append(as<TileEntity>(entity));
-    } else if (auto object = as<Object>(entity)) {
+    if (auto plant = entityCast<Plant>(entity)) {
+      biomeTileEntities.append(entityCast<TileEntity>(entity));
+    } else if (auto object = entityCast<Object>(entity)) {
       if (object->biomePlaced())
-        biomeTileEntities.append(as<TileEntity>(entity));
+        biomeTileEntities.append(entityCast<TileEntity>(entity));
     }
   }
 

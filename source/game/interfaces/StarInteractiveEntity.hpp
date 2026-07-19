@@ -10,6 +10,8 @@ STAR_CLASS(InteractiveEntity);
 
 class InteractiveEntity : public virtual Entity {
 public:
+  InteractiveEntity* asInteractiveEntity() override { return this; }
+
   // Interaction always takes place on the *server*, whether the interactive
   // entity is master or slave there.
   virtual InteractAction interact(InteractRequest const& request) = 0;

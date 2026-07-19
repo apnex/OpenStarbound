@@ -24,6 +24,7 @@ public:
   void uninit() override;
 
   EntityType entityType() const override;
+  Stagehand* asStagehand() override { return this; }
 
   void setPosition(Vec2F const& position);
 
@@ -32,6 +33,7 @@ public:
   RectF metaBoundBox() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   String name() const override;

@@ -45,6 +45,7 @@ public:
   bool masterOnly() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   void enableInterpolation(float extrapolationHint = 0.0f) override;
@@ -56,6 +57,7 @@ public:
   void destroy(RenderCallback* renderCallback) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: time-varying windup, no O(1) hook — never skipped
   void hitOther(EntityId targetEntityId, DamageRequest const& dr) override;
 
   void update(float dt, uint64_t currentStep) override;

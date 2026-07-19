@@ -363,6 +363,10 @@ pair<ByteArray, uint64_t> PlantDrop::writeNetState(uint64_t fromVersion, NetComp
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void PlantDrop::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void PlantDrop::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

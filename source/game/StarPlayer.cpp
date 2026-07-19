@@ -1748,6 +1748,10 @@ pair<ByteArray, uint64_t> Player::writeNetState(uint64_t fromVersion, NetCompati
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Player::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Player::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }
@@ -2232,7 +2236,18 @@ void Player::setShipSpecies(String species) {
 }
 
 String Player::shipSpecies() const {
-  return m_shipSpecies;
+  // m_shipSpecies is only ever assigned on the DISK-LOAD path (diskLoad: getString("shipSpecies",
+  // m_identity.species)) -- a freshly created player, one that has never round-tripped through storage, carries
+  // an EMPTY ship species. The server then looks it up in universe_server.config:speciesShips and throws
+  // MapException("Key '' not found"), which kills the client's ship world.
+  //
+  // Live play masks this: a new character is written to disk before it is ever played, and diskStore already
+  // applies exactly this fallback on the way out (`!m_shipSpecies.empty() ? m_shipSpecies : m_identity.species`),
+  // so the value is correct by the time anyone loads it. Anything that uses a player WITHOUT that round-trip --
+  // game_tests' TestUniverse being the case in hand -- gets the empty string.
+  //
+  // Apply the same fallback the serializer already applies, so the accessor cannot hand out an empty species.
+  return !m_shipSpecies.empty() ? m_shipSpecies : m_identity.species;
 }
 
 String Player::name() const {

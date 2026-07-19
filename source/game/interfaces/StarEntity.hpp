@@ -51,6 +51,34 @@ public:
 
   virtual EntityType entityType() const = 0;
 
+  // Fast-path downcasts for the per-tick entity hot paths: a single virtual
+  // dispatch instead of an expensive dynamic_cast through the entity's
+  // virtual-inheritance hierarchy. The base returns nullptr; each target type
+  // overrides to return `this` (concrete leaves on the leaf class, cross-cutting
+  // interfaces on the interface so every implementer inherits it). Semantically
+  // identical to as<T>() but without the RTTI traversal; the entity-query
+  // templates dispatch to these via entityCast<T>() (below). Any type WITHOUT an
+  // override here stays byte-identical to as<T>() (entityCast falls back to it).
+  // INVARIANT: equivalence with dynamic_cast holds only because every accessor
+  // target is reached by *public virtual* inheritance with a single subobject of
+  // that type. A future class reaching one of these via a private/protected base,
+  // or via two non-virtual subobjects, would make asX() and dynamic_cast disagree
+  // (the latter case fails loud at compile time as an ambiguous final overrider).
+  virtual TileEntity* asTileEntity() { return nullptr; }
+  virtual WireEntity* asWireEntity() { return nullptr; }
+  virtual Object* asObject() { return nullptr; }
+  virtual Monster* asMonster() { return nullptr; }
+  virtual Npc* asNpc() { return nullptr; }
+  virtual Player* asPlayer() { return nullptr; }
+  virtual ItemDrop* asItemDrop() { return nullptr; }
+  virtual Stagehand* asStagehand() { return nullptr; }
+  virtual Plant* asPlant() { return nullptr; }
+  virtual PhysicsEntity* asPhysicsEntity() { return nullptr; }
+  virtual ScriptedEntity* asScriptedEntity() { return nullptr; }
+  virtual InspectableEntity* asInspectableEntity() { return nullptr; }
+  virtual ChattyEntity* asChattyEntity() { return nullptr; }
+  virtual InteractiveEntity* asInteractiveEntity() { return nullptr; }
+
   // Called when an entity is first inserted into a World.  Calling base class
   // init sets the world pointer, entityId, and entityMode.
   virtual void init(World* world, EntityId entityId, EntityMode mode);
@@ -215,12 +243,67 @@ using EntityFilterOf = function<bool(shared_ptr<EntityT> const&)>;
 typedef EntityCallbackOf<Entity> EntityCallback;
 typedef EntityFilterOf<Entity> EntityFilter;
 
+// Turns the per-candidate query downcast from a dynamic_pointer_cast (an RTTI
+// traversal of the virtual-inheritance diamond, run once per entity in every
+// spatial query) into a single virtual dispatch via the asX() accessors above.
+//
+// EntityDowncast<T> maps a target type to its accessor; the primary template
+// has no accessor, so any T without a specialization falls through entityCast's
+// dynamic_cast fallback and is byte-identical to as<T>(). A type WITH an
+// accessor is reconstructed through the shared_ptr aliasing constructor, which
+// shares the source control block (zero allocation) and stores exactly the
+// adjusted pointer the override's `return this` yields -- the same pointer
+// dynamic_pointer_cast would produce, with identical lifetime/deleter semantics.
+template <typename T>
+struct EntityDowncast { static constexpr bool HasAccessor = false; };
+
+#define STAR_ENTITY_DOWNCAST(Type, accessor)                  \
+  template <>                                                 \
+  struct EntityDowncast<Type> {                               \
+    static constexpr bool HasAccessor = true;                 \
+    static Type* get(Entity* e) { return e->accessor(); }     \
+  };
+STAR_ENTITY_DOWNCAST(TileEntity, asTileEntity)
+STAR_ENTITY_DOWNCAST(WireEntity, asWireEntity)
+STAR_ENTITY_DOWNCAST(Object, asObject)
+STAR_ENTITY_DOWNCAST(Monster, asMonster)
+STAR_ENTITY_DOWNCAST(Npc, asNpc)
+STAR_ENTITY_DOWNCAST(Player, asPlayer)
+STAR_ENTITY_DOWNCAST(ItemDrop, asItemDrop)
+STAR_ENTITY_DOWNCAST(Stagehand, asStagehand)
+STAR_ENTITY_DOWNCAST(Plant, asPlant)
+STAR_ENTITY_DOWNCAST(PhysicsEntity, asPhysicsEntity)
+STAR_ENTITY_DOWNCAST(ScriptedEntity, asScriptedEntity)
+STAR_ENTITY_DOWNCAST(InspectableEntity, asInspectableEntity)
+STAR_ENTITY_DOWNCAST(ChattyEntity, asChattyEntity)
+STAR_ENTITY_DOWNCAST(InteractiveEntity, asInteractiveEntity)
+#undef STAR_ENTITY_DOWNCAST
+
+// Drop-in replacement for as<T>(EntityPtr) on the query hot paths. Templated on
+// the source pointer U so a caller holding a derived pointer (e.g. atTile's
+// TileEntityPtr) need not build a temporary EntityPtr. Identity/upcast and the
+// accessor path avoid RTTI entirely; everything else keeps the dynamic_cast.
+template <typename T, typename U>
+shared_ptr<T> entityCast(shared_ptr<U> const& e) {
+  if constexpr (std::is_same_v<T, U> || std::is_same_v<T, Entity>) {
+    return e;
+  } else if constexpr (EntityDowncast<T>::HasAccessor) {
+    if (e) {
+      if (T* p = EntityDowncast<T>::get(e.get()))
+        return shared_ptr<T>(e, p);
+    }
+    return {};
+  } else {
+    return as<T>(e);
+  }
+}
+
 // Filters based first on dynamic casting to the given type, then optionally on
 // the given derived type filter.
 template <typename EntityT>
 EntityFilter entityTypeFilter(function<bool(shared_ptr<EntityT> const&)> filter = {}) {
   return [filter](EntityPtr const& e) -> bool {
-    if (auto entity = as<EntityT>(e)) {
+    if (auto entity = entityCast<EntityT>(e)) {
       return !filter || filter(entity);
     } else {
       return false;

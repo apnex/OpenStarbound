@@ -44,12 +44,14 @@ SET (star_core_tests_SOURCES
       random_test.cpp
       rect_test.cpp
       serialization_test.cpp
+      spatial_hash_test.cpp
       static_vector_test.cpp
       small_vector_test.cpp
       sha_test.cpp
       shell_parse.cpp
       string_test.cpp
       strong_typedef_test.cpp
+      telemetry_test.cpp
       thread_test.cpp
       worker_pool_test.cpp
       variant_test.cpp
