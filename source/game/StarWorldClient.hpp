@@ -5,6 +5,7 @@
 #include "StarWorldRenderData.hpp"
 #include "StarAmbient.hpp"
 #include "StarCellularLighting.hpp"
+#include "StarTemporalLightingGate.hpp"
 #include "StarWeather.hpp"
 #include "StarInterpolationTracker.hpp"
 #include "StarWorldStructure.hpp"
@@ -59,15 +60,16 @@ public:
   void addEntity(EntityPtr const& entity, EntityId entityId = NullEntityId) override;
   EntityPtr closestEntity(Vec2F const& center, float radius, EntityFilter selector = EntityFilter()) const override;
   void forAllEntities(EntityCallback entityCallback) const override;
-  void forEachEntity(RectF const& boundBox, EntityCallback callback) const override;
-  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const override;
-  void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> entityCallback) const override;
-  EntityPtr findEntity(RectF const& boundBox, EntityFilter entityFilter) const override;
-  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const override;
-  EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const override;
+  void forEachEntity(RectF const& boundBox, EntityCallback const& callback) const override;
+  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const override;
+  void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& entityCallback) const override;
+  EntityPtr findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const override;
+  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const override;
+  EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const override;
   bool tileIsOccupied(Vec2I const& pos, TileLayer layer, bool includeEphemeral = false, bool checkCollision = false) const override;
   CollisionKind tileCollisionKind(Vec2I const& pos) const override;
   void forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const override;
+  void getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const override;
   bool isTileConnectable(Vec2I const& pos, TileLayer layer, bool tilesOnly = false) const override;
   bool pointTileCollision(Vec2F const& point, CollisionSet const& collisionSet = DefaultCollisionSet) const override;
   bool lineTileCollision(Vec2F const& begin, Vec2F const& end, CollisionSet const& collisionSet = DefaultCollisionSet) const override;
@@ -120,6 +122,14 @@ public:
   WorldTemplateConstPtr currentTemplate() const;
   void setTemplate(Json newTemplate);
   SkyConstPtr currentSky() const;
+
+  // Render harness (P-0): pin the sky's clock so a golden-frame hash reproduces across runs. The universe
+  // clock is WALL-CLOCK derived, so two runs load the same save at different real times and land on a
+  // different epochTime -- which moves the stars, the orbiters, the day/night colour and the parallax drift.
+  // Measured: with the world paused, camera / entity count / parallax-layer count were already bit-identical
+  // across runs and epochTime was the SOLE remaining source of hash drift. Called every frame by the harness;
+  // never called in normal play.
+  void pinSkyEpochTime(double epochTime);
 
   void dimWorld();
   bool interactiveHighlightMode() const;
@@ -178,6 +188,12 @@ public:
 
   bool waitForLighting(WorldRenderData* renderData = nullptr);
 
+  // Slice 4: render-thread feedback. The render thread (ClientApplication) reports
+  // whether the GPU lightmap pass succeeded this frame; the lighting thread reads it
+  // to decide whether the CPU calculate() is redundant. Latches off (CPU keeps running)
+  // until a real GPU success, and re-arms the CPU path the moment a GPU frame fails.
+  void setGpuLightingActive(bool active);
+
   typedef std::function<bool(PlayerPtr, StringView)> BroadcastCallback;
   BroadcastCallback& broadcastCallback();
 
@@ -219,6 +235,19 @@ private:
   typedef function<ClientTile const& (Vec2I)> ClientTileGetter;
 
   void lightingTileGather();
+  // A1: gather the per-frame-INVARIANT tile lighting (block+liquid+background emission + obstacle +
+  // sky-exposed bit, EXCLUDING the per-frame environmentLight) into the reusable stable grid (full
+  // calc region; zeroes first so unloaded-margin cells read as begin()'s {0, not-obstacle}).
+  void lightingStableGather();
+  // A1/A2: gather the stable tile lighting for the given world-tile sub-rect into m_gatherGrid
+  // (indexed relative to the current calc region). Shared by the full gather and the A2 margin.
+  void gatherStableColumns(RectI const& region);
+  // A2: shift the stable grid by the integer-tile camera delta (dx, dy) via the scratch buffer, then
+  // gather only the newly-exposed L-shaped margin. Caller guarantees same dims+epoch and |d| < dims.
+  void shiftAndGatherMargin(int dx, int dy);
+  // A1: write the calculator cells from the stable grid, re-applying the current-frame
+  // environmentLight to sky-exposed cells. Cheap (no material DB lookups / tile traversal).
+  void applyStableToCells();
   void lightingCalc();
   void lightingMain();
 
@@ -289,12 +318,67 @@ private:
 
   Lightmap m_pendingLightMap;
   Lightmap m_lightMap;
+  // GPU-spread inputs (Slice 2): exported alongside the lightmap when the
+  // 'lightingGpu' flag is on. The pending pair is filled in lightingCalc outside
+  // the map mutex, then published under m_lightMapMutex into the m_lighting* pair
+  // (gated by m_lightingInputsValid) for waitForLighting to move into renderData.
+  Image m_pendingLightingEmission;
+  Image m_pendingLightingObstacle;
+  Image m_lightingEmission;
+  Image m_lightingObstacle;
+  // The emission grid pre-converted to 16-bit half-floats (RGB, packed) on the lighting thread, so
+  // the render thread uploads RGB16F (half the bytes) instead of RGB_F. Same pending->published handoff.
+  List<uint16_t> m_pendingLightingEmissionHalf;
+  List<uint16_t> m_lightingEmissionHalf;
+  // The obstacle mask as single-channel R8 bytes (0/255), extracted on the lighting thread so the GPU
+  // upload is R8 (a third the bytes of RGB24). Same pending->published handoff.
+  List<uint8_t> m_pendingLightingObstacleR8;
+  List<uint8_t> m_lightingObstacleR8;
+  // The point-light list (Slice 3), exported/published alongside the emission +
+  // obstacle grids for the GPU point pass; same pending->published handoff.
+  List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;
+  List<ColoredCellularLightArray::PointLight> m_lightingPointLights;
+  bool m_lightingInputsValid = false;
+  // GPU lightmap border (cells) = calc-vs-query region padding, computed from the calculator's
+  // geometry and published alongside the GPU inputs for waitForLighting to travel into renderData.
+  int m_lightingBorder = 0;
+  // Slice 4: set by the render thread via setGpuLightingActive(); read by the lighting
+  // thread (lightingCalc) to skip the redundant CPU calculate() in confirmed GPU mode.
+  atomic<bool> m_gpuLightingActive{false};
   List<LightSource> m_pendingLights;
   List<std::pair<Vec2F, Vec3F>> m_pendingParticleLights;
   RectI m_pendingLightRange;
   atomic<bool> m_pendingLightReady;
   Vec2I m_lightMinPosition;
   List<PreviewTile> m_previewTiles;
+
+  // Bumped at every writer of lighting-relevant ClientTile fields (block/mod/liquid); a monotonic
+  // change-detector for the temporal lighting gate (StarTemporalLightingGate). Atomic: written on the
+  // packet/update thread, read on the lighting thread.
+  atomic<uint64_t> m_lightingTileEpoch{0};
+  // Temporal lighting decoupling (flag lightingTemporalDecouple, default on): the last computed frame's
+  // activity baseline. lightingCalc skips the recompute (render reuses the prior lightmap) on calm
+  // frames between the floor cadence. Lighting-thread private.
+  TemporalLightingGate::Baseline m_temporalBaseline;
+
+  // A1/A2: scroll-incremental cached tile-gather (flag lightingGatherCache, default on; kill-switch).
+  // The "stable" grid holds the per-frame-INVARIANT part of the tile gather (block+liquid+background
+  // emission + obstacle + sky-exposed bit), EXCLUDING the per-frame environmentLight (re-applied each
+  // frame via the skyExposed bit in applyStableToCells). Reused across frames when the tile epoch +
+  // calc anchor/dims are unchanged (cache hit); shifted + margin-gathered on camera scroll (A2).
+  // Column-major (x*height+y), matching CellularLightingCalculator::baseIndexFor. Lighting-thread
+  // private (touched only in lightingCalc / lightingStableGather / applyStableToCells).
+  struct GatherCell {
+    Vec3F stableLight;
+    uint8_t obstacle;
+    uint8_t skyExposed;
+  };
+  List<GatherCell> m_gatherGrid;
+  List<GatherCell> m_gatherScratch; // A2 double-buffer: shift destination, swapped into m_gatherGrid
+  Vec2I m_gatherAnchor = Vec2I();
+  Vec2I m_gatherDims = Vec2I();
+  uint64_t m_gatherEpoch = 0;
+  bool m_gatherValid = false;
 
   SkyPtr m_sky;
 
