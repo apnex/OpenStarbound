@@ -166,7 +166,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   if (fbGeneration != m_cacheFrameBufferGeneration) {
     m_cacheFrameBufferGeneration = fbGeneration;
     m_envCache.invalidate();
-    m_parallaxCacheSize = {0, 0};
+    m_parallaxCache.invalidate();
   }
 
   // Did the env cache do its heavy redraw this frame? Read by the parallax refresh arbiter below, which
@@ -546,7 +546,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   if (!parallaxCacheActive) {
     // Direct path (byte-identical stock parallax->main): camera moving, AA on, N<=1 oracle-off, or no layers.
     // Invalidate the cache so re-entry force-refreshes.
-    m_parallaxCacheSize = {0, 0};
+    m_parallaxCache.invalidate();
     if (parallaxHasLayers && !parallaxParked)
       parallaxBypassedCtr.inc(1);
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
@@ -555,12 +555,13 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   } else {
     // Cache path (camera parked). INVALIDATION terms force a redraw regardless; the TIME gate is the ordinary
     // N-frame cadence and is the only one the arbiter may defer.
-    bool parallaxInvalidated = (parallaxScreenSize != m_parallaxCacheSize)
+    bool parallaxInvalidated = m_parallaxCache.invalidated(parallaxScreenSize, parallaxPixelRatio)
         || (m_parallaxWorldPosition != m_parallaxCachePosition)
-        || (parallaxPixelRatio != m_parallaxCachePixelRatio)
         || (parallaxContentKey != m_parallaxCacheContentKey);
-    bool parallaxTimeGate = (m_parallaxRefreshCounter % parallaxRefreshInterval == 0) || m_parallaxRefreshDeferred;
-    ++m_parallaxRefreshCounter;
+    // cadenceHit advances the counter every active frame -- exactly the old separate `++m_parallaxRefreshCounter;`
+    // statement. It is the FIRST operand of the || so it is always evaluated (never short-circuited); the
+    // deferred flag is a side-effect-free bool read, so OR order is immaterial. (Same reasoning as the env cache.)
+    bool parallaxTimeGate = m_parallaxCache.cadenceHit(parallaxRefreshInterval) || m_parallaxRefreshDeferred;
 
     // CROSS-SURFACE ARBITER. Stacking the env redraw and the parallax redraw into one frame spikes that frame's
     // GPU time. The old mechanism -- offsetting parallax's gate by +N/2 -- could not prevent it: env fires on
@@ -587,15 +588,14 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
     if (refreshParallax) {
-      m_renderer->setRenderTarget(String("parallaxCache"), parallaxScreenSize);
+      m_renderer->setRenderTarget(m_parallaxCache.name(), parallaxScreenSize);
       m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
       m_renderer->setBlendMode(BlendMode::PremultiplyInto);
       drawParallax();
       m_renderer->flush();                          // render the parallax quads into the cache under PremultiplyInto
       m_renderer->setBlendMode(BlendMode::Alpha);   // restore the default blend
-      m_parallaxCacheSize = parallaxScreenSize;
+      m_parallaxCache.recordFilled(parallaxScreenSize, parallaxPixelRatio);
       m_parallaxCachePosition = m_parallaxWorldPosition;
-      m_parallaxCachePixelRatio = parallaxPixelRatio;
       m_parallaxCacheContentKey = parallaxContentKey;
     }
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
@@ -621,7 +621,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // Composite the premultiplied cache over main (env bg) every frame.
     m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us");
     m_renderer->setBlendMode(BlendMode::PremultipliedOver);
-    m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", "parallaxCache",
+    m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_parallaxCache.name(),
       {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
     m_renderer->setBlendMode(BlendMode::Alpha);
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers

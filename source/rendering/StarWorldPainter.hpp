@@ -73,12 +73,16 @@ private:
   RetainedSurface m_envCache{"envCache"};
 
   // Parallax retained-cache (SP-2): like the env cache, but the source scrolls with the camera, so the
-  // refresh gate adds camera-position + pixelRatio(zoom) terms (Option B: force-full on any move). Parked
-  // camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires spuriously.
-  uint64_t m_parallaxRefreshCounter = 0;
-  Vec2U m_parallaxCacheSize = {0, 0};
+  // refresh gate adds a camera-position term (+ content, below) on top of the shared size/pixelRatio(zoom)
+  // key. The N-frame cadence + size/pixelRatio structural key live in the shared RetainedSurface (as for the
+  // env cache); the scroll-with-camera position has no env counterpart, so it stays a loose member here.
+  // Parked camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires spuriously.
+  // (The shared surface inits its pixelRatio sentinel to -1.0f; the pre-migration parallax member inited to
+  // 0.0f. Output-invariant: the content key below is a nonzero FNV hash over >=1 layer, so it forces a refresh
+  // on the FIRST cache-active frame regardless -- the pixelRatio sentinel is never the deciding term. -1.0f is
+  // also the more-robust sentinel, matching the env cache: no real camera pixelRatio equals it.)
+  RetainedSurface m_parallaxCache{"parallaxCache"};
   Vec2F m_parallaxCachePosition = {0.0f, 0.0f};
-  float m_parallaxCachePixelRatio = 0.0f;
   // Everything OTHER than camera/zoom/size that changes the drawn parallax image: renderParallaxLayers tints
   // each non-unlit/non-lightMapped layer with sky.environmentLight and fades it by floor(255*layer.alpha) --
   // and layer.alpha is exactly what the biome CROSSFADE and timeOfDayCorrelation animate. Neither was in the
