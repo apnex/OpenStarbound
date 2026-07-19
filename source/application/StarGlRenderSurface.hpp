@@ -4,7 +4,7 @@
 
 namespace Star {
 
-// THE RENDER-SURFACE SUBSTRATE (Layer 1) -- four sovereign components (GlFrameBuffer surface, GlTargets
+// THE RENDER-SURFACE SUBSTRATE (Layer 1) -- four sovereign components (GlSurface surface, GlTargets
 // registry, GlEffects programs, GlPass the coupled effect/target bind) plus the effect data they own,
 // lifted out of OpenGlRenderer (§8.ii Tier 2) so they form a module with a real OUTSIDE: sealed against
 // every consumer, constructible in a test, composable by the higher layers. They reach nothing in the
@@ -86,14 +86,14 @@ private:
 // The faces are reached ONLY through writeFace() / readFace(). That is not style: every framebuffer bug
 // this struct has had came from a consumer reaching past them. `altId` was leaked because the destructor
 // knew about `id` and forgot its twin. `makeAlt` duplicated the entire constructor because there was no
-// one allocator. And blitGlFrameBuffer / the effect-texture resolution each had to re-derive "which half
+// one allocator. And blitGlSurface / the effect-texture resolution each had to re-derive "which half
 // do I mean?" by hand. One resolver, and none of those are expressible.
-struct GlFrameBuffer : RefCounter {
+struct GlSurface : RefCounter {
   // A face OWNS its framebuffer object. The texture is a RefPtr (~GlLoneTexture deletes the GL texture), but the
   // FBO `id` is a raw GLuint with no such wrapper, so the face RAIIs it: deletes it on destruction, hands it off
   // on move, and forbids copy. That is what makes the FBO unleakable -- including the makeDoubled case where a
   // second face is built into a LOCAL and allocateFace throws after glGenFramebuffers: the local's destructor
-  // reclaims the FBO. ~GlFrameBuffer no longer frees anything by hand; front and back reclaim themselves.
+  // reclaims the FBO. ~GlSurface no longer frees anything by hand; front and back reclaim themselves.
   struct Face {
     GLuint id = 0;
     RefPtr<GlLoneTexture> texture;
@@ -155,8 +155,8 @@ struct GlFrameBuffer : RefCounter {
   // which is what made the seal a convention rather than a contract.
   void clearFaces();
 
-  GlFrameBuffer(String const& name, Json const& config, Vec2U const& screenSize);
-  ~GlFrameBuffer();
+  GlSurface(String const& name, Json const& config, Vec2U const& screenSize);
+  ~GlSurface();
 
   // SEALED. The resolver is the contract, so the faces must not be reachable around it -- otherwise the
   // Air-Gap holds only for as long as everyone remembers, which is exactly how altId got leaked and how
@@ -164,11 +164,11 @@ struct GlFrameBuffer : RefCounter {
   // (writeFace/readFace), the size oracle, and the lifecycle (makeDoubled/resize/clearFaces). Verified:
   // NOTHING outside this struct reaches the faces, specifyStorage or allocateFace.
 private:
-  // NO friend. GlFrameBuffer once carried a `friend class OpenGlRenderer` while it was NESTED inside the
+  // NO friend. GlSurface once carried a `friend class OpenGlRenderer` while it was NESTED inside the
   // renderer -- a doorbell on a wall with no door, since the enclosing class was where every consumer lived.
   // Both are gone now: the friend was removed (§9 step 5) and the type was lifted OUT of OpenGlRenderer into
   // this file, so it is an ordinary top-level class. The seal is REAL and compiler-enforced by plain access
-  // control -- no nesting relationship is involved any more -- so nothing outside GlFrameBuffer's own methods,
+  // control -- no nesting relationship is involved any more -- so nothing outside GlSurface's own methods,
   // OpenGlRenderer included, can reach the private front/back faces, specifyStorage or allocateFace.
 
   // THE SINGLE OWNER OF FACE STORAGE. Derives the format from this surface's config (hdr / alpha /
@@ -244,9 +244,9 @@ public:
 struct GlTargets {
   // The tolerant lookup: null when absent. Callers that can degrade (the lighting passes fall back to CPU)
   // use this one.
-  RefPtr<GlFrameBuffer> find(String const& id) const;
+  RefPtr<GlSurface> find(String const& id) const;
   // The strict lookup: throws when absent. Callers that cannot proceed without it use this one.
-  RefPtr<GlFrameBuffer> get(String const& id) const;
+  RefPtr<GlSurface> get(String const& id) const;
   bool has(String const& id) const;
   uint64_t generation() const;
 
@@ -263,7 +263,7 @@ private:
   // targets through the public find(), not around it -- so no other class needs access, and plain access
   // control now enforces that.
 
-  StringMap<RefPtr<GlFrameBuffer>> m_byId;
+  StringMap<RefPtr<GlSurface>> m_byId;
   uint64_t m_generation = 0;
 };
 
@@ -276,7 +276,7 @@ private:
 // writes) -- so they cannot be owned by two components blind to each other without violating the Air-Gap.
 //
 // The coupling is not an obstacle to the decomposition. It IS a component, and nobody had written it.
-// switchEffectConfig, setRenderTarget, composite, blitGlFrameBuffer and setEffectTextureFromTarget are not
+// switchEffectConfig, setRenderTarget, composite, blitGlSurface and setEffectTextureFromTarget are not
 // five problems: they are one missing Pass wearing several hats. A Pass depends DOWNWARD on effects and on
 // targets; neither of them knows the other exists.
 //
@@ -304,14 +304,14 @@ struct GlPass {
   // (bindEffect / bindTarget / invalidate) can move them. The "one writer per fact" seal on the bind is now
   // compiler-enforced, not a comment: no external site can poke `m_effect` or `m_target`.
   Effect* effect() const { return m_effect; }
-  RefPtr<GlFrameBuffer> const& target() const { return m_target; }
+  RefPtr<GlSurface> const& target() const { return m_target; }
 
   // Make `newTarget` the surface subsequent draws land on: bind its write face and set the viewport to that
   // face's size. A null newTarget binds the screen instead (see unbind). Keyed on (target, write-face,
   // viewport): it early-outs only when the cache proves all three already match, so a swap() (face flip) or
   // a same-target resize rebinds where the old identity-only key would have wrongly skipped. It writes NO
   // uniform -- that write was dead at both call sites and was deleted in F3b.1 (the .cpp explains why).
-  void bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize);
+  void bindTarget(RefPtr<GlSurface> const& newTarget, Vec2U const& screenSize);
 
   // THE ONE screen-bind path: bind framebuffer 0 at the full-screen viewport, via bindTarget's null branch.
   // Replaces the two hand-rolled `target.reset(); glBindFramebuffer(0)` inverse-of-bindTarget sites. Public:
@@ -344,7 +344,7 @@ struct GlPass {
 
   // THE REST OF THE BIND KEY, sealed. boundViewport / boundWriteToBack are private and read only by GlPass's
   // own methods, so the renderer cannot poke them -- which is the point: the bind cache cannot be corrupted
-  // from outside. This is the same seal every Layer-1 component now has. All four (GlFrameBuffer / GlTargets /
+  // from outside. This is the same seal every Layer-1 component now has. All four (GlSurface / GlTargets /
   // GlPass / GlEffects) are top-level classes with NO `friend`, so plain access control keeps each one's
   // privates unreachable from outside its own methods. There is no enclosing class and no nested-type
   // relationship any more -- the components were lifted out of OpenGlRenderer.
@@ -352,7 +352,7 @@ private:
   // THE COUPLED PAIR, sealed. Only bindEffect / bindTarget / invalidate write these; the renderer reads them
   // through effect() / target(). A null m_target is the screen (framebuffer 0).
   Effect* m_effect = nullptr;
-  RefPtr<GlFrameBuffer> m_target;
+  RefPtr<GlSurface> m_target;
   bool boundWriteToBack = false;  // which face of m_target GL currently draws into
   Vec2U boundViewport = {};       // the viewport GL currently has set (== screenSize when m_target is null)
 };

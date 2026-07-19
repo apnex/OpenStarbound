@@ -92,13 +92,13 @@ bool settingModeValue(BoolSettingMode const& mode, bool const& setting) {
   }
 }
 
-RefPtr<GlFrameBuffer> GlTargets::find(String const& id) const {
+RefPtr<GlSurface> GlTargets::find(String const& id) const {
   if (auto ptr = m_byId.ptr(id))
     return *ptr;
   return {};
 }
 
-RefPtr<GlFrameBuffer> GlTargets::get(String const& id) const {
+RefPtr<GlSurface> GlTargets::get(String const& id) const {
   if (auto ptr = m_byId.ptr(id))
     return *ptr;
   throw RendererException::format("Frame buffer '{}' does not exist", id);
@@ -122,7 +122,7 @@ void GlTargets::destroyAll() {
 }
 
 void GlTargets::add(String const& name, Json const& config, Vec2U const& screenSize) {
-  auto target = make_ref<GlFrameBuffer>(name, config, screenSize);
+  auto target = make_ref<GlSurface>(name, config, screenSize);
   // "double" (#542): give the surface its second face, so an effect can read what it writes. At CONFIG time --
   // switchEffectConfig used to allocate it mid-frame, on first use.
   if (config.getBool("double", false))
@@ -148,7 +148,7 @@ void GlTargets::clearAll() {
 // actually failed.
 // THE SIZE RULE, written once. Every hand-rolled copy of it dropped something: two dropped overrideSize
 // entirely, and makeAlt's copy could give the second face a different size than the first.
-Vec2U GlFrameBuffer::sizeFor(Vec2U const& screenSize) const {
+Vec2U GlSurface::sizeFor(Vec2U const& screenSize) const {
   if (overrideSize)
     return *overrideSize;
   return Vec2U(screenSize[0] / sizeDiv, screenSize[1] / sizeDiv);
@@ -156,11 +156,11 @@ Vec2U GlFrameBuffer::sizeFor(Vec2U const& screenSize) const {
 
 // What is ACTUALLY allocated. Both faces always agree (specifyStorage is the only writer, and resize()
 // re-specifies every live face together), so the front face speaks for the surface.
-Vec2U GlFrameBuffer::size() const {
+Vec2U GlSurface::size() const {
   return front.texture ? front.texture->glTextureSize() : Vec2U(0, 0);
 }
 
-void GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* which) {
+void GlSurface::specifyStorage(Face& face, Vec2U const& size, char const* which) {
   RefPtr<GlLoneTexture>& tex = face.texture;
   // `hdr` is the field derived once at construction -- no per-resize JSON re-hash.
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
@@ -199,7 +199,7 @@ void GlFrameBuffer::specifyStorage(Face& face, Vec2U const& size, char const* wh
   tex->recordStorage(size, internalFormat);
 }
 
-void GlFrameBuffer::allocateFace(Face& face, Vec2U const& size, char const* which) {
+void GlSurface::allocateFace(Face& face, Vec2U const& size, char const* which) {
   RefPtr<GlLoneTexture>& tex = face.texture;
   GLuint& fboId = face.id;
   GLenum target = multisample ? GL_TEXTURE_2D_MULTISAMPLE : GL_TEXTURE_2D;
@@ -249,7 +249,7 @@ void GlFrameBuffer::allocateFace(Face& face, Vec2U const& size, char const* whic
         name, which, (unsigned)status, size[0], size[1], alpha, multisample);
 }
 
-void GlFrameBuffer::resize(Vec2U const& newSize) {
+void GlSurface::resize(Vec2U const& newSize) {
   // Idempotent, and it must be: setScreenSize runs on every config reload, and re-specifying storage would
   // otherwise discard the contents of every retained (clear:false) surface for nothing.
   if (size() == newSize)
@@ -260,7 +260,7 @@ void GlFrameBuffer::resize(Vec2U const& newSize) {
     specifyStorage(*back, newSize, "second face");
 }
 
-void GlFrameBuffer::clearFaces() {
+void GlSurface::clearFaces() {
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, front.id);
   glClear(GL_COLOR_BUFFER_BIT);
   if (back) {
@@ -269,7 +269,7 @@ void GlFrameBuffer::clearFaces() {
   }
 }
 
-GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig, Vec2U const& screenSize)
+GlSurface::GlSurface(String const& fbName, Json const& fbConfig, Vec2U const& screenSize)
   : name(fbName) {
   clear = fbConfig.getBool("clear",true);
 
@@ -288,7 +288,7 @@ GlFrameBuffer::GlFrameBuffer(String const& fbName, Json const& fbConfig, Vec2U c
   allocateFace(front, sizeFor(screenSize), "primary");
 }
 
-void GlFrameBuffer::makeDoubled() {
+void GlSurface::makeDoubled() {
   if (back)
     return;   // idempotent: a surface has at most two faces
 
@@ -303,7 +303,7 @@ void GlFrameBuffer::makeDoubled() {
   back.emplace(std::move(second));
 }
 
-void GlFrameBuffer::swap() {
+void GlSurface::swap() {
   if (!back)
     throw RendererException::format("Framebuffer '{}': swap() on a surface with only one face", name);
 
@@ -313,11 +313,11 @@ void GlFrameBuffer::swap() {
   writeToBack = !writeToBack;
 }
 
-GlFrameBuffer::Face::Face(Face&& o) noexcept : id(o.id), texture(std::move(o.texture)) {
+GlSurface::Face::Face(Face&& o) noexcept : id(o.id), texture(std::move(o.texture)) {
   o.id = 0;   // the moved-from face owns nothing, so its destructor deletes nothing (no double-free)
 }
 
-GlFrameBuffer::Face& GlFrameBuffer::Face::operator=(Face&& o) noexcept {
+GlSurface::Face& GlSurface::Face::operator=(Face&& o) noexcept {
   if (this != &o) {
     if (id != 0)
       glDeleteFramebuffers(1, &id);   // reclaim what we held before taking o's
@@ -328,7 +328,7 @@ GlFrameBuffer::Face& GlFrameBuffer::Face::operator=(Face&& o) noexcept {
   return *this;
 }
 
-GlFrameBuffer::Face::~Face() {
+GlSurface::Face::~Face() {
   if (id != 0)
     glDeleteFramebuffers(1, &id);
 }
@@ -336,7 +336,7 @@ GlFrameBuffer::Face::~Face() {
 // The FBOs free themselves: front's and back's Face destructors run here. The second face cannot be forgotten
 // (the altId leak) because `back` is one object -- if it exists its Face reclaims its FBO, if it does not there
 // is nothing to reclaim. Defaulted because there is nothing left to do by hand.
-GlFrameBuffer::~GlFrameBuffer() = default;
+GlSurface::~GlSurface() = default;
 
 Effect* GlEffects::find(String const& name) {
   return m_byName.ptr(name);
@@ -593,7 +593,7 @@ void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
   }
 }
 
-void GlPass::bindTarget(RefPtr<GlFrameBuffer> const& newTarget, Vec2U const& screenSize) {
+void GlPass::bindTarget(RefPtr<GlSurface> const& newTarget, Vec2U const& screenSize) {
   // A null target IS THE SCREEN (framebuffer 0). This is the one place the screen is bound -- the two
   // hand-rolled `target.reset(); glBindFramebuffer(0)` sites now route here through unbind().
   if (!newTarget) {

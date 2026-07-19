@@ -7,7 +7,7 @@
 namespace Star {
 
 // GL TEXTURE PRIMITIVES -- the concrete GPU textures the renderer draws with, lifted OUT of OpenGlRenderer so
-// the render-surface substrate (GlFrameBuffer / GlTargets / GlPass / GlEffects) can depend on GlLoneTexture
+// the render-surface substrate (GlSurface / GlTargets / GlPass / GlEffects) can depend on GlLoneTexture
 // without dragging in the whole renderer. This is Tier 1 of the §8.ii sovereignty extraction: GlLoneTexture
 // is genuinely self-contained (it touches nothing in OpenGlRenderer and nothing in the texture atlas), so it
 // comes out cleanly; the atlas-coupled GlGroupedTexture stays with the renderer and just implements the
@@ -24,7 +24,7 @@ struct GlTexture : public Texture {
 
 // A standalone GL texture: one glGenTextures name, owning its storage, deleting it on destruction. Everything
 // that is NOT an atlas page -- framebuffer colour attachments, effect samplers, the white pixel -- is one of
-// these. It is the type GlFrameBuffer's faces and an effect's samplers hold.
+// these. It is the type GlSurface's faces and an effect's samplers hold.
 struct GlLoneTexture : public GlTexture {
   ~GlLoneTexture();
 

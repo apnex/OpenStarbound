@@ -128,7 +128,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   // across the realloc -- so bump the generation and let them invalidate. Both setMainHDR and
   // setMultiSampling land here, and ClientApplication polls both client options every frame.
   // THE PASS LETS GO FIRST. m_pass.target is a RefPtr, so a pass still holding one of these across the
-  // rebuild would keep its GlFrameBuffer -- and therefore its FBO -- alive after the registry has forgotten
+  // rebuild would keep its GlSurface -- and therefore its FBO -- alive after the registry has forgotten
   // it. The surface is not freed, it is ORPHANED, and the pass goes on believing a dead surface is bound. Its
   // identity-keyed bind cache would then match that corpse and skip a real rebind.
   //
@@ -179,7 +179,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
 
   // THE TARGETS ARE NEW; THE SAMPLERS STILL POINT AT THE OLD ONES.
   //
-  // destroyAll() ran above, but ~GlFrameBuffer only RELEASES its RefPtr to the face texture -- the
+  // destroyAll() ran above, but ~GlSurface only RELEASES its RefPtr to the face texture -- the
   // glDeleteTextures lives in ~GlLoneTexture and does not run while an effect sampler still holds a reference.
   // So the texture is not freed, it is ORPHANED: a live GL texture belonging to a framebuffer that no longer
   // exists, still bound to a sampler, still being read every frame.
@@ -377,9 +377,9 @@ void OpenGlRenderer::setEffectTexture(String const& textureName, ImageView const
   // AN UPLOAD SETTER OWNS THE TEXTURE IT UPLOADS INTO. If this sampler is currently BORROWING a framebuffer's
   // colour attachment, we take the fresh-allocation branch: we do not own that storage and must not touch it.
   //
-  // Without the borrowed() test the else-branch below did all three of the things GlFrameBuffer::specifyStorage
+  // Without the borrowed() test the else-branch below did all three of the things GlSurface::specifyStorage
   // declares itself the only owner of -- bind the target's texture, glTexImage2D a whole new storage spec into
-  // it, and overwrite the textureSize record that GlFrameBuffer::size() reads -- from outside, through an
+  // it, and overwrite the textureSize record that GlSurface::size() reads -- from outside, through an
   // aliased RefPtr. It is reachable in ordinary play: the world effect's `lightMap` sampler is pointed at
   // lightingGpuUpscaled's face by the GPU lighting pass, and then fullbright (StarWorldPainter.cpp) uploads a
   // 1x1 white image into that same sampler, re-specifying a live render target to a 1x1 RGB8.
@@ -431,7 +431,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   if (outFrameBufferId) {
     auto buf = m_targets.get(*outFrameBufferId);
     // ASK THE SURFACE HOW BIG IT IS. This was the last hand-rolled copy of the size rule -- `m_screenSize /
-    // buf->sizeDiv` -- which F1 collapsed into GlFrameBuffer everywhere except here, because switchEffectConfig
+    // buf->sizeDiv` -- which F1 collapsed into GlSurface everywhere except here, because switchEffectConfig
     // was not one of the sites F1 was able to see.
     //
     // It silently dropped overrideSize. lightingGpu is 512x512 and lightingGpuUpscaled 2048x2048, both with
@@ -494,7 +494,7 @@ bool OpenGlRenderer::switchEffectConfig(String const& name) {
   }
   
   if (effect.blitFrameBuffer)
-    blitGlFrameBuffer(m_targets.get(*effect.blitFrameBuffer), effect.doubleBuffered);
+    blitGlSurface(m_targets.get(*effect.blitFrameBuffer), effect.doubleBuffered);
   
   return true;
 }
@@ -972,7 +972,7 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name) {
     return;
   // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
   // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
-  // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlFrameBuffer is
+  // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlSurface is
   // reached during the interface render), and the resulting numbers were nonsense.
   if (m_active) {
     Logger::warn("GpuTimer::begin('{}') nested inside an active timer -- ignored (GL_TIME_ELAPSED cannot nest)", name);
@@ -1624,7 +1624,7 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 // per frame -- the guard would silently starve the feature. We keep upstream's semantics exactly and only wrap
 // them in the timer: at 2560x1440 RGBA16F, MSAA-resolving when antiAliasing is on, this blit is not free, and
 // it was part of the 1.8-3.5ms/frame the whole-frame span proved was unaccounted for (task #141).
-void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt) {
+void OpenGlRenderer::blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt) {
   m_gpuTimer.begin("render.frame.blit.gpu_us");
 
   auto& size = m_screenSize;
@@ -1641,7 +1641,7 @@ void OpenGlRenderer::blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer,
 }
 
 // The renderer's single door to the pass bind. Every caller goes through here.
-void OpenGlRenderer::bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer) {
+void OpenGlRenderer::bindTarget(RefPtr<GlSurface> const& frameBuffer) {
   m_pass.bindTarget(frameBuffer, m_screenSize);
 }
 

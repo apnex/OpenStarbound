@@ -208,10 +208,10 @@ private:
 
   void applyEffectParameter(EffectParameter* parameter, RenderEffectParameter const& value, String const& parameterName);
 
-  void blitGlFrameBuffer(RefPtr<GlFrameBuffer> const& frameBuffer, bool const& useAlt = false);
+  void blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt = false);
 
   // The renderer's single door to the pass bind.
-  void bindTarget(RefPtr<GlFrameBuffer> const& frameBuffer);
+  void bindTarget(RefPtr<GlSurface> const& frameBuffer);
 
   GlTargets m_targets;
 
