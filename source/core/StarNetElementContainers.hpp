@@ -442,6 +442,8 @@ auto NetElementMapWrapper<BaseMap>::readChange(DataStream& ds) -> ElementChange 
 template <typename BaseMap>
 void NetElementMapWrapper<BaseMap>::addChangeData(ElementChange change) {
   uint64_t currentVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   starAssert(m_changeData.empty() || m_changeData.last().first <= currentVersion);
 
   m_changeData.append({currentVersion, std::move(change)});

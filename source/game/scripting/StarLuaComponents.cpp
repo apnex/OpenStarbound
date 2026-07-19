@@ -34,11 +34,15 @@ void LuaBaseComponent::setScripts(StringList scripts) {
 }
 
 void LuaBaseComponent::addCallbacks(String groupName, LuaCallbacks callbacks) {
-  if (!m_callbacks.insert(groupName, callbacks).second)
+  // Move the callbacks into the map rather than copying the whole std::function
+  // table. If a context already exists, materialize it from the stored element
+  // (insert-then-throw-on-duplicate semantics are preserved exactly).
+  auto result = m_callbacks.insert(groupName, std::move(callbacks));
+  if (!result.second)
     throw LuaComponentException::format("Duplicate callbacks named '{}' in LuaBaseComponent", groupName);
 
   if (m_context)
-    m_context->setCallbacks(groupName, callbacks);
+    m_context->setCallbacks(groupName, result.first->second);
 }
 
 bool LuaBaseComponent::removeCallbacks(String const& groupName) {

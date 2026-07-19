@@ -7,6 +7,7 @@ namespace Star {
 
 LuaCallbacks LuaBindings::makeStatusControllerCallbacks(StatusController* statController) {
   LuaCallbacks callbacks;
+  callbacks.reserve(39); // keep in sync with the registrations below (over/under only costs a rehash)
 
   callbacks.registerCallbackWithSignature<Json, String, Json>(
       "statusProperty", bind(StatusControllerCallbacks::statusProperty, statController, _1, _2));
