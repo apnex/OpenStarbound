@@ -191,15 +191,108 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         Image gpuResult;
         float brightnessScale = config->get("lightingGpuBrightness").optFloat().value(1.0f);
         bool tonemap = config->get("lightingTonemap").optBool().value(false);
-        gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
-            renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
-            iterations, params, brightnessScale, tonemap, shadowCompare, &gpuResult);
+
+        // --- dirty-REGION Stage 2: full / partial / validate selection. All flags default off ->
+        // processFull(captureSpread=false) = byte-identical to before. partial re-relaxes only the
+        // dilated dirty-rect; validate dual-runs partial-vs-full and exact-compares. ---
+        bool drPartial = config->get("lightingDirtyRegionPartial").optBool().value(false);
+        bool drValidate = config->get("lightingDirtyRegionValidate").optBool().value(false);
+        bool drSelfCheck = config->get("lightingDirtyRegionSelfCheck").optBool().value(false);
+        bool drActive = drPartial || drValidate;
+        Vec2U calcSize = renderData.lightingEmission.size();
+
+        if (!drActive) {
+          // Default path: byte-identical full recompute (no persistS capture, no dilation/force-full work).
+          gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
+              renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+              iterations, params, brightnessScale, tonemap, shadowCompare, &gpuResult, false);
+        } else {
+          // Chebyshev (L-inf) dilation radius. A removed/changed bright light's reach is ceil(M*spreadMaxAir);
+          // for subtractive edits use max(M_old, M_new) so the removed light's OLD reach is fully recomputed.
+          // M_old is the previous frame's peak emission (invalid -> force full below). Clamp D <= K.
+          float mOld = m_lastMaxEmissionValid ? m_lastMaxEmission : maxEmission;
+          int D = (int)std::ceil(std::max(mOld, maxEmission) * params.spreadMaxAir);
+          if (D > (int)iterations)
+            D = (int)iterations;
+
+          // The gather published an EXCLUSIVE dirty rect in calc cells; dilate it + take its +1 ring,
+          // clamped to the calc grid. A null rect -> nothing to partial (forced full below).
+          RectI calcRect(0, 0, (int)calcSize[0], (int)calcSize[1]);
+          RectI bufDirty = renderData.lightDirtyRect;
+          RectI interior = RectI::null(), ring = RectI::null();
+          bool degrade = false;
+          if (!bufDirty.isNull()) {
+            interior = bufDirty.padded(D).limited(calcRect);
+            ring = interior.padded(1).limited(calcRect);
+            // Degrade-to-full when the recompute would cover most of the calc region (no win, just cost).
+            double calcArea = (double)calcSize[0] * (double)calcSize[1];
+            if ((double)interior.volume() >= 0.5 * calcArea)
+              degrade = true;
+          }
+
+          // Combined force-full = gather-side (any non-tile input change / scroll / gather-race / first
+          // frame, via renderData.lightForceFull) OR render-side: (e) calc/screen resize + persistS-first
+          // all surface as a size mismatch or !persistValid; (f) cap-bind truncates the full frame to a
+          // transient (LIVE cap, not a literal); (g) compose-param change; (h) lightMinPosition (scroll)
+          // cross-check; plus a null dirty rect, an invalid M_old, or the degrade-to-full.
+          bool capBind = (unsigned)std::ceil(maxEmission * params.spreadMaxAir) > cap;
+          bool renderForceFull = calcSize != m_prevCalcSize || !m_persistValid
+              || capBind
+              || brightnessScale != m_lastBrightnessScale || tonemap != m_lastTonemap
+              || params.brightnessLimit != m_lastBrightnessLimit
+              || renderData.lightMinPosition != m_lastLightMinPosition
+              || !m_lastMaxEmissionValid
+              || bufDirty.isNull()
+              || degrade;
+          bool forceFull = renderData.lightForceFull || renderForceFull;
+
+          // Opportunity meter (render side): on EDIT frames, attribute which side blocks the partial
+          // path (gather vs a render reason) and how often it actually RAN. Pairs with the gather meter.
+          if (!bufDirty.isNull()) {
+            ++m_rffTotal;
+            if (renderData.lightForceFull) ++m_rffGather;
+            else if (calcSize != m_prevCalcSize || !m_persistValid) ++m_rffSizePersist;
+            else if (capBind) ++m_rffCap;
+            else if (brightnessScale != m_lastBrightnessScale || tonemap != m_lastTonemap || params.brightnessLimit != m_lastBrightnessLimit) ++m_rffCompose;
+            else if (renderData.lightMinPosition != m_lastLightMinPosition) ++m_rffScroll;
+            else if (!m_lastMaxEmissionValid) ++m_rffMaxEm;
+            else if (degrade) ++m_rffDegrade;
+            else ++m_rffPartial;   // nothing forced -> partial path ran
+            if (m_rffTotal % 600 == 0)
+              Logger::info("dirty-REGION render meter (last {} EDIT frames): gather-forced={} size/persist={} cap={} compose={} scroll={} maxEmInvalid={} degrade={} PARTIAL-RAN={}",
+                  m_rffTotal, m_rffGather, m_rffSizePersist, m_rffCap, m_rffCompose, m_rffScroll, m_rffMaxEm, m_rffDegrade, m_rffPartial);
+          }
+
+          if (drValidate) {
+            gpuLightmap = m_gpuLightmapPass->processValidateDirtyRegion(renderData.lightingEmission, renderData.lightingEmissionHalf,
+                renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+                iterations, params, interior, ring, forceFull, drSelfCheck, brightnessScale, tonemap, &gpuResult);
+          } else if (drPartial && !forceFull) {
+            gpuLightmap = m_gpuLightmapPass->processPartial(renderData.lightingEmission, renderData.lightingEmissionHalf,
+                renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+                iterations, params, interior, ring, brightnessScale, tonemap);
+          } else {
+            gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
+                renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+                iterations, params, brightnessScale, tonemap, shadowCompare, &gpuResult, true);
+          }
+        }
         if (gpuLightmap) {
           // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
           // world shader samples the query region. The border is carried in renderData from the
           // calculator's geometry (Slice 4) -- it must NOT be reverse-derived from renderData.lightMap
           // width, which is empty (=> a garbage offset, dark world) when the CPU calc is skipped.
           m_lightMapBorder = renderData.lightMapBorder;
+          // Cache this frame's state for the next frame's partial decision. persistS/persistL are only
+          // captured/maintained while the feature is on, so m_persistValid mirrors drActive.
+          m_prevCalcSize = calcSize;
+          m_persistValid = drActive;
+          m_lastMaxEmission = maxEmission;
+          m_lastMaxEmissionValid = true;
+          m_lastLightMinPosition = renderData.lightMinPosition;
+          m_lastBrightnessScale = brightnessScale;
+          m_lastTonemap = tonemap;
+          m_lastBrightnessLimit = params.brightnessLimit;
           if (shadowCompare && gpuResult.size()[0] > 0)
             shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder,
                 renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights, params, iterations);

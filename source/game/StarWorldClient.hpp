@@ -354,6 +354,20 @@ private:
           && spreadIterations == o.spreadIterations && lights == o.lights && particleLights == o.particleLights;
     }
     bool operator!=(LightFingerprint const& o) const { return !(*this == o); }
+    // dirty-REGION Stage 2: operator== MINUS the tileEpoch term. Tile writes are the partial-eligible
+    // domain (covered by the dirty rect), so the partial path's force-full must fire on a change to ANY
+    // OTHER fingerprint field -- environmentLight (day/night ambient on sky cells), particleLights,
+    // promoteFraction/promoteMinIntensity/monochrome/newLighting/undergroundLevel/etc. -- none of which
+    // the tile dirty rect tracks. (lightingGpu/shadowCompare flips already force full via the size/persist
+    // resets, but including them here is harmless and complete.)
+    bool equalsIgnoringTileEpoch(LightFingerprint const& o) const {
+      return lightRange == o.lightRange && environmentLight == o.environmentLight
+          && undergroundLevel == o.undergroundLevel && newLighting == o.newLighting && monochrome == o.monochrome
+          && lightingGpu == o.lightingGpu && shadowCompare == o.shadowCompare && tonemap == o.tonemap
+          && promoteFraction == o.promoteFraction && gpuBrightness == o.gpuBrightness
+          && promoteMinIntensity == o.promoteMinIntensity
+          && spreadIterations == o.spreadIterations && lights == o.lights && particleLights == o.particleLights;
+    }
   };
   // Bumped at every writer of lighting-relevant ClientTile fields (emission/obstacle); the
   // fingerprint compares it to detect any tile change without a per-tile dirty-rect intersect.
@@ -391,6 +405,29 @@ private:
   uint64_t m_validateRegionEdits = 0;
   uint64_t m_validateRegionUnderReports = 0;
   uint64_t m_validateRegionLastLogEdits = 0;
+
+  // --- Dirty-REGION Stage 2 (flags lightingDirtyRegionPartial / ...Validate, default off) ---
+  // Hop A publishes the consumed dirty rect (translated to CALC-region cells, exclusive max) and a
+  // combined gather-side force-full to the render thread via these members (guarded by m_lightMapMutex,
+  // same handoff as the GPU inputs). They COALESCE: combine the rect + OR the force-full across every
+  // recompute the lighting thread publishes before the render thread consumes (Hop B), which then moves
+  // them into renderData and resets them. Gather-side force-full reasons: a light-set change (the tile
+  // tracker does NOT see moving/spawned spread lights), a window scroll (Option B), a tile write racing
+  // the gather, or the first frame.
+  RectI m_lightingDirtyRect = RectI::null();
+  bool m_lightingForceFull = true;
+  // Lighting-thread-private gather state for the force-full comparison: the prior recompute's FULL
+  // input fingerprint. The partial path forces full whenever any non-tile input changed -- compared via
+  // LightFingerprint::equalsIgnoringTileEpoch (tile writes are the partial-eligible domain). Maintained
+  // whenever partial/validate is on, independently of whether the dirty-gate fingerprint is maintained.
+  LightFingerprint m_lightSpreadPrevFingerprint;
+  bool m_lightSpreadStateValid = false;
+  // Stage-2 diagnostic "opportunity meter" (gather side, logged periodically under validate): why each
+  // recompute force-fulls, so we can tell whether the partial path can EVER run in real play -- the
+  // churner (flickering lights / lit particles / day-night ambient / scroll) vs a fixable
+  // over-conservatism -- before investing further. clean = gather-side did NOT force (partial-eligible).
+  uint64_t m_ffTotal = 0, m_ffClean = 0, m_ffFirst = 0, m_ffEpoch = 0, m_ffScroll = 0,
+           m_ffLights = 0, m_ffParticles = 0, m_ffEnv = 0, m_ffConfig = 0;
 
   SkyPtr m_sky;
 

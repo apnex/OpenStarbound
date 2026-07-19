@@ -57,6 +57,24 @@ private:
   // Slice 4: latest GPU-lightmap-pass outcome, reported back to WorldClient each frame.
   bool m_gpuLightingActive = false;
 
+  // --- Dirty-REGION Stage 2 render-side state (flags lightingDirtyRegionPartial / ...Validate, off by
+  // default). The persistent spread (persistS) + lightmap (persistL) are only captured/maintained while
+  // the feature is on, so m_persistValid tracks whether they hold valid full-grid data at m_prevCalcSize.
+  // m_lastMaxEmission is the previous frame's peak emission (M_old) for the subtractive-edit dilation;
+  // the rest are the previous-frame values whose change forces a full recompute (caveats / Option B). ---
+  Vec2U m_prevCalcSize = Vec2U();
+  bool m_persistValid = false;
+  float m_lastMaxEmission = 0.0f;
+  bool m_lastMaxEmissionValid = false;
+  Vec2I m_lastLightMinPosition = Vec2I();
+  float m_lastBrightnessScale = 1.0f;
+  bool m_lastTonemap = false;
+  float m_lastBrightnessLimit = 0.0f;
+  // Stage-2 diagnostic "opportunity meter" (render side): on edit frames, which side blocks the partial
+  // path + how often it actually RAN. Pairs with the gather-side meter in WorldClient. Logged each 600.
+  uint64_t m_rffTotal = 0, m_rffGather = 0, m_rffSizePersist = 0, m_rffCap = 0, m_rffCompose = 0,
+           m_rffScroll = 0, m_rffMaxEm = 0, m_rffDegrade = 0, m_rffPartial = 0;
+
   Json m_highlightConfig;
   Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
 

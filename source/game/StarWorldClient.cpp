@@ -1528,6 +1528,12 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
       renderData->lightingEmissionHalf = std::move(m_lightingEmissionHalf);
       renderData->lightingObstacleR8 = std::move(m_lightingObstacleR8);
       renderData->lightMapBorder = m_lightingBorder;
+      // dirty-REGION Stage 2 (Hop B): move the coalesced dirty rect + force-full into renderData, then
+      // RESET them so the next batch of lighting-thread publishes coalesces fresh (combine/OR base).
+      renderData->lightDirtyRect = m_lightingDirtyRect;
+      renderData->lightForceFull = m_lightingForceFull;
+      m_lightingDirtyRect = RectI::null();
+      m_lightingForceFull = false;
     }
     return true;
   }
@@ -1814,12 +1820,18 @@ void WorldClient::lightingCalc() {
   static auto gateRecomputed = Telemetry::counter("lighting.dirtygate.recomputed");
   static auto gateMismatch = Telemetry::counter("lighting.dirtygate.validate.mismatch");
   bool dirtyGate = false, dirtyGateValidate = false, clean = false;
+  // dirty-REGION Stage 2: read the partial/validate flags here too so the fingerprint `fp` is populated
+  // for the Hop A force-full comparison below (it captures every non-tile spread input). These do NOT
+  // change the dirty-gate skip-return (still gated on dirtyGate explicitly).
+  bool drPartial = false, drValidate = false;
   LightFingerprint fp;
   {
     auto& dgCfg = *Root::singleton().configuration();
     dirtyGate = dgCfg.get("lightingDirtyGate").optBool().value(false);
     dirtyGateValidate = dgCfg.get("lightingDirtyGateValidate").optBool().value(false);
-    if (dirtyGate || dirtyGateValidate) {
+    drPartial = dgCfg.get("lightingDirtyRegionPartial").optBool().value(false);
+    drValidate = dgCfg.get("lightingDirtyRegionValidate").optBool().value(false);
+    if (dirtyGate || dirtyGateValidate || drPartial || drValidate) {
       fp.lightRange = lightRange;
       fp.tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
       fp.environmentLight = m_sky->environmentLight().toRgbF();
@@ -1931,6 +1943,11 @@ void WorldClient::lightingCalc() {
   bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
   bool shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
   int lightMapBorder = 0;
+  // dirty-REGION Stage 2 (Hop A): the consumed tile-dirty bbox translated to CALC-region cells +
+  // the gather-side force-full, computed below inside the export block and published (coalesced)
+  // under m_lightMapMutex. Defaults: null rect + force-full (the render thread treats both as "full").
+  RectI dirtyRegionBufRect = RectI::null();
+  bool dirtyRegionForceFull = true;
   if (lightingGpu) {
     m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
     m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
@@ -2040,6 +2057,57 @@ void WorldClient::lightingCalc() {
         m_validateRegionRefValid = false;
       }
     }
+
+    // --- Dirty-REGION Stage 2 (Hop A): compute the consumed dirty rect (translated to CALC-region
+    // cell coords) + the gather-side force-full for the render thread's partial-spread decision.
+    // Maintained whenever partial OR validate is on, INDEPENDENT of the dirty-gate skip. The partial
+    // path reuses the prior frame's spread everywhere outside the dirty rect, so it must force a full
+    // recompute whenever ANY non-tile input changed -- compared via the full input fingerprint minus
+    // its tileEpoch term (tile writes ARE the partial-eligible domain, covered by the dirty rect). This
+    // subsumes the light-set change AND environmentLight / particleLights / promote / scroll / etc. ---
+    if (drPartial || drValidate) {
+      uint64_t epochNow = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      dirtyRegionForceFull = !m_lightSpreadStateValid
+          || !fp.equalsIgnoringTileEpoch(m_lightSpreadPrevFingerprint)   // any non-tile input changed
+          || (epochNow != epochAtConsume);                              // a tile write raced the gather snapshot
+
+      // --- Opportunity meter: on OPPORTUNITY frames (a tile actually changed -> a non-null dirty rect;
+      // idle no-change frames are uninteresting), attribute WHY this would force-full (dominant reason,
+      // first match), so we can tell whether the partial path can EVER run in real play. gather-clean =
+      // gather side did not force -> partial-eligible (only the render side could still block).
+      // m_lightSpreadPrevFingerprint still holds the PRIOR frame here (updated below). Logged each 600. ---
+      if (!lightDirtyRect.isNull()) {
+        auto const& prevFp = m_lightSpreadPrevFingerprint;
+        ++m_ffTotal;
+        if (!dirtyRegionForceFull) ++m_ffClean;
+        else if (!m_lightSpreadStateValid) ++m_ffFirst;
+        else if (epochNow != epochAtConsume) ++m_ffEpoch;
+        else if (fp.lightRange != prevFp.lightRange) ++m_ffScroll;
+        else if (fp.lights != prevFp.lights) ++m_ffLights;
+        else if (fp.particleLights != prevFp.particleLights) ++m_ffParticles;
+        else if (fp.environmentLight != prevFp.environmentLight) ++m_ffEnv;
+        else ++m_ffConfig;
+        if (m_ffTotal % 600 == 0)
+          Logger::info("dirty-REGION force-full meter (last {} EDIT frames): gather-clean(partial-eligible)={} first={} epoch={} scroll={} lights={} particles={} env={} config={}",
+              m_ffTotal, m_ffClean, m_ffFirst, m_ffEpoch, m_ffScroll, m_ffLights, m_ffParticles, m_ffEnv, m_ffConfig);
+      }
+      // Translate the world-coord dirty bbox to calc cells. markLightDirtyTile combine()s individual
+      // tiles, so the bbox is INCLUSIVE (min==max for one tile); +1 on the max makes it the EXCLUSIVE
+      // rect the render-side scissor / dilation expect (a single tile -> a 1-cell rect). Clamp to grid.
+      if (!lightDirtyRect.isNull()) {
+        Vec2I o = m_lightingCalculator.calculationRegion().min();
+        int calcW = (int)m_pendingLightingObstacle.size()[0];
+        int calcH = (int)m_pendingLightingObstacle.size()[1];
+        RectI buf(lightDirtyRect.min() - o, lightDirtyRect.max() - o + Vec2I(1, 1));
+        buf = buf.limited(RectI(0, 0, calcW, calcH));
+        if (!buf.isEmpty())
+          dirtyRegionBufRect = buf;
+      }
+      // Cache this recompute's full fingerprint for the next frame's comparison (lighting-thread
+      // private; a COPY -- fp may be std::move'd into m_lightingFingerprint later, after this point).
+      m_lightSpreadPrevFingerprint = fp;
+      m_lightSpreadStateValid = true;
+    }
   }
 
   // Slice 4: in confirmed GPU mode the GPU produces the COMPLETE lightmap from the
@@ -2071,6 +2139,12 @@ void WorldClient::lightingCalc() {
       m_lightingEmissionHalf = std::move(m_pendingLightingEmissionHalf);
       m_lightingObstacleR8 = std::move(m_pendingLightingObstacleR8);
       m_lightingBorder = lightMapBorder;
+      // dirty-REGION Stage 2 (Hop A publish): COALESCE into the published members -- combine() the
+      // rect and OR the force-full -- because the lighting thread can publish multiple recomputes
+      // before the render thread (Hop B) consumes; overwriting would drop a rect / force-full reason
+      // the render thread never saw. combine() with a null rect is a no-op, so it accumulates cleanly.
+      m_lightingDirtyRect.combine(dirtyRegionBufRect);
+      m_lightingForceFull = m_lightingForceFull || dirtyRegionForceFull;
     }
   }
 

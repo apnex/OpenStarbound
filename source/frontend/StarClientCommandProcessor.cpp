@@ -651,7 +651,7 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
 String ClientCommandProcessor::lighting(String const& argumentsString) {
   auto args = m_parser.tokenizeToStringList(argumentsString);
   auto cfg = Root::singleton().configuration();
-  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | dirtygate [on|off|validate on|off] | dirtyregion validate [on|off]";
+  String const usage = "usage: /lighting gpu [on|off|status|shadow on|off|iterations <n>|brightness <f>] | promotedynamic [<0..1>|off] | promoteminintensity <f> | tonemap [on|off] | dirtygate [on|off|validate on|off] | dirtyregion partial|validate|selfcheck [on|off]";
   auto status = [&]() {
     // defensive: coerce a stale bool-typed lightingPromoteDynamic instead of throwing toFloat().
     Json pd = cfg->get("lightingPromoteDynamic", 0.0f);
@@ -666,7 +666,10 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
       cfg->get("lightingTonemap", false).toBool(),
       cfg->get("lightingDirtyGate", false).toBool(),
       cfg->get("lightingDirtyGateValidate", false).toBool())
-      + strf(" dirtyRegionValidate={}", cfg->get("lightingDirtyRegionValidate", false).toBool());
+      + strf(" | dirtyRegion: partial={} validate={} selfCheck={}",
+        cfg->get("lightingDirtyRegionPartial", false).toBool(),
+        cfg->get("lightingDirtyRegionValidate", false).toBool(),
+        cfg->get("lightingDirtyRegionSelfCheck", false).toBool());
   };
 
   if (args.empty())
@@ -717,14 +720,27 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     return strf("lighting dirtyGate={}", v);
   }
   if (args.at(0) == "dirtyregion") {
-    // Stage 0: validate the dirty-REGION tile tracker (obstacle-diff containment). No skip behavior
-    // yet (the rect is not consumed for partial recompute); validate-only (lighting.dirtyregion.*).
+    // Stage 2: partial SPREAD on the dilated dirty-rect (point + compose stay full). `partial` runs
+    // the production partial path (no oracle); `validate` dual-runs partial-vs-full each frame and
+    // exact-compares the composed lightmap (also runs the Stage-0 obstacle-containment tracker check);
+    // `selfcheck` runs full-vs-full once to prove the output oracle before partial is trusted. All
+    // render-side, default off (lighting.gpu.dirtyregion.* counters).
+    if (args.size() >= 2 && args.at(1) == "partial") {
+      bool v = args.size() < 3 || args.at(2) != "off";
+      cfg->set("lightingDirtyRegionPartial", v);
+      return strf("lighting dirtyRegionPartial={}", v);
+    }
     if (args.size() >= 2 && args.at(1) == "validate") {
       bool v = args.size() < 3 || args.at(2) != "off";
       cfg->set("lightingDirtyRegionValidate", v);
       return strf("lighting dirtyRegionValidate={}", v);
     }
-    return "usage: /lighting dirtyregion validate [on|off]";
+    if (args.size() >= 2 && args.at(1) == "selfcheck") {
+      bool v = args.size() < 3 || args.at(2) != "off";
+      cfg->set("lightingDirtyRegionSelfCheck", v);
+      return strf("lighting dirtyRegionSelfCheck={}", v);
+    }
+    return "usage: /lighting dirtyregion partial|validate|selfcheck [on|off]";
   }
 
   if (args.at(0) != "gpu")

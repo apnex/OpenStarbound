@@ -38,14 +38,54 @@ public:
   // RGB_F emission is uploaded as a fallback.
   // obstacleR8 is the obstacle mask as single-channel bytes; when it matches the texel count it is
   // uploaded as R8 (a third the bytes of the RGB24 obstacle), else the RGB24 obstacle is the fallback.
+  // captureSpread (dirty-REGION Stage 2): after the spread loop and BEFORE the point pass, copy the
+  // pure-spread result (lastTarget) into the persistent `lightingSpreadPersist` buffer (persistS) so
+  // the NEXT frame's partial path can hold it as a fixed Dirichlet boundary. It is a read-only copy of
+  // lastTarget into a separate buffer, so the visible output is byte-identical to captureSpread=false.
   bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
       ImageView const& obstacle, List<uint8_t> const& obstacleR8,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
       PointParameters const& params, float brightnessScale = 1.0f, bool tonemap = false,
-      bool shadowCompare = false, Image* gpuResult = nullptr);
+      bool shadowCompare = false, Image* gpuResult = nullptr, bool captureSpread = false);
+
+  // dirty-REGION Stage 2: PARTIAL spread. Re-relax ONLY the dilated dirty-rect interior (seeded
+  // from-below by current emission, +1 ring held fixed from persistS), write the fresh interior back
+  // into persistS, materialize the full-grid spread, then run the SAME full point+compose+bind tail.
+  // interior/ring are calc-region FBO pixel rects (exclusive max). Byte-identity vs processFull on the
+  // same inputs is what the output oracle proves; off by default. Returns false on empty/missing inputs.
+  bool processPartial(ImageView const& emission, List<uint16_t> const& emissionHalf,
+      ImageView const& obstacle, List<uint8_t> const& obstacleR8,
+      List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
+      PointParameters const& params, RectI const& interior, RectI const& ring,
+      float brightnessScale = 1.0f, bool tonemap = false);
+
+  // dirty-REGION Stage 2 output oracle (lightingDirtyRegionValidate): dual-run partial-vs-full and
+  // exact-compare the composed lightmap (GPU-vs-GPU, zero tolerance, ±0/NaN float fallback). The
+  // authoritative FULL runs LAST and total-overwrites persistS+persistL and ends with the world bind,
+  // so the visible frame is always the full result (no snapshot/restore needed at Stage 2). selfCheck
+  // (lightingDirtyRegionSelfCheck) runs full-vs-full once to validate the oracle before trusting partial.
+  bool processValidateDirtyRegion(ImageView const& emission, List<uint16_t> const& emissionHalf,
+      ImageView const& obstacle, List<uint8_t> const& obstacleR8,
+      List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
+      PointParameters const& params, RectI const& interior, RectI const& ring,
+      bool forceFull, bool selfCheck, float brightnessScale = 1.0f, bool tonemap = false,
+      Image* gpuResult = nullptr);
 
 private:
+  // Shared point+compose+bind tail (extracted from processFull so processFull and processPartial run
+  // BYTE-IDENTICAL bytes): blended per-light point quads onto the spread in `lastTarget`, then the
+  // brightnessLimit cap-compose into persistL, then restore the screen target + "world" effect and
+  // bind persistL as the world lightMap. lastTarget holds the full-grid spread for both callers.
+  void composeTail(Vec2U size, float w, float h, char const* lastTarget,
+      ImageView const& obstacle, List<uint8_t> const& obstacleR8,
+      List<ColoredCellularLightArray::PointLight> const& lights, PointParameters const& params,
+      float brightnessScale, bool tonemap, bool shadowCompare, Image* gpuResult);
+
   Renderer* m_renderer;
+  // dirty-REGION Stage 2 output oracle: set true once a full-vs-full self-check has read back identical
+  // (proves the readback/compare oracle is sound). While selfCheck is enabled and this is false, the
+  // validate path runs ONLY the self-check and does NOT count/trust the partial-vs-full comparison.
+  bool m_dirtyRegionSelfCheckPassed = false;
 };
 
 }

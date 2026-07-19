@@ -109,6 +109,8 @@ R"JSON(
       "lightingDirtyGate" : false,
       "lightingDirtyGateValidate" : false,
       "lightingDirtyRegionValidate" : false,
+      "lightingDirtyRegionPartial" : false,
+      "lightingDirtyRegionSelfCheck" : false,
 
       "safe" : {
         "alwaysAllowClipboard" : false,

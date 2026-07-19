@@ -55,6 +55,15 @@ struct WorldRenderData {
   // 0 for the CPU path (the lightMap is itself query-sized).
   int lightMapBorder = 0;
 
+  // dirty-REGION Stage 2: the coalesced dirty bbox of lighting-relevant tile writes since the last
+  // consumed lightmap, translated to CALC-region cell coords (origin = calculationRegion().min(),
+  // exclusive max) by the lighting thread (Hop A). The render thread dilates it for the partial
+  // spread scissor. lightForceFull ORs every gather-side reason the partial path cannot reuse the
+  // prior frame (light-set change / scroll / gather-race / first frame); it is defaulted TRUE in
+  // clear() so a frame that skips the lighting publish never consumes a stale rect.
+  RectI lightDirtyRect = RectI::null();
+  bool lightForceFull = true;
+
   List<EntityDrawables> entityDrawables;
   List<Particle> const* particles;
 
@@ -77,6 +86,10 @@ inline void WorldRenderData::clear() {
   tiles.resize({0, 0}); // keep reserved
 
   lightingInputsValid = false;
+  // dirty-REGION Stage 2: a frame that does not consume a fresh lighting publish (Hop B not reached)
+  // must never partial-recompute against a stale rect -> default to force-full + an empty rect.
+  lightDirtyRect = RectI::null();
+  lightForceFull = true;
   entityDrawables.clear();
   particles = nullptr;
   overheadBars.clear();
