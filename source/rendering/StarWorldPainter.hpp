@@ -37,6 +37,12 @@ private:
   void renderParticles(WorldRenderData& renderData, Particle::Layer layer);
   void renderBars(WorldRenderData& renderData);
 
+  // GPU-lightmap dispatch: prepare the pass inputs from renderData + config/assets, run GpuLightmapPass, and
+  // return its explicit LightmapResult. Returns {active=false} (caller falls back to the CPU lightMap) when GPU
+  // lighting is off, the inputs are invalid, or the pass declines. Pulled out of render() so the orchestrator
+  // stays thin and the lightmap phase has one entry.
+  LightmapResult runGpuLightmapPass(WorldRenderData& renderData);
+
   void drawEntityLayer(List<Drawable> drawables, EntityHighlightEffect highlightEffect = EntityHighlightEffect());
 
   void drawDrawable(Drawable drawable);

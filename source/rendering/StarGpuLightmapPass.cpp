@@ -7,10 +7,11 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
-bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
+LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
     ImageView const& obstacle, List<uint8_t> const& obstacleR8,
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-    PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult) {
+    PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult,
+    int lightMapBorder) {
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
   static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights");
@@ -19,9 +20,9 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
   Vec2U size = emission.size;
   float w = (float)size[0], h = (float)size[1];
   if (size[0] == 0 || size[1] == 0 || spreadIterations == 0)
-    return false;
+    return {};
   if (!m_renderer->switchEffectConfig("lightingSpread"))
-    return false;   // assets missing -> caller falls back to CPU
+    return {};   // assets missing -> caller falls back to CPU
 
   // L3: (re)build the persistent full-quad buffer only when the lightmap size changes.
   if (!m_fullQuadBuffer)
@@ -247,7 +248,7 @@ bool GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> cons
     m_renderer->switchEffectConfig("world");
     m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
   }
-  return true;
+  return {true, lightMapBorder};
 }
 
 }

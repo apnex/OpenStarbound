@@ -9,6 +9,17 @@ namespace Star {
 
 STAR_CLASS(GpuLightmapPass);
 
+// The explicit outcome of a lightmap pass: whether the GPU pass bound a lightMap this frame and, when it did,
+// the calc-region border the bound lightMap carries (the padding between the calc region and the query region
+// the world shader samples). Returned as ONE value so a bound lightMap can never desync from its border -- the
+// caller applies both from a single result instead of a bool plus a separately-sourced border (the dark-world
+// bug the WorldPainter lightMapOffset comment warns against, where the border was reverse-derived from an empty
+// lightMap width).
+struct LightmapResult {
+  bool active = false;
+  int border = 0;
+};
+
 // GPU lighting pass driver (render thread; the async lighting thread has no GL context).
 //
 // Slice 2: computes the lightmap SPREAD on the GPU via K parallel-Jacobi relaxation iterations
@@ -30,19 +41,22 @@ public:
   // params.pointAdditive), then a brightnessLimit cap-compose; restores the screen target + "world"
   // effect and binds the result as the world "lightMap". emission/obstacle are calc-region grids
   // (ImageView so Lightmap converts directly); lights are array-relative.
-  // Returns false (doing nothing) for empty inputs or if the GPU lighting assets are missing --
-  // the caller then binds the CPU lightmap (fail-forward: never crash the frame). When shadowCompare
-  // is set, reads the final result back into `gpuResult` for the caller's parity check (diagnostics).
+  // Returns a LightmapResult with active=false (doing nothing) for empty inputs or if the GPU lighting
+  // assets are missing -- the caller then binds the CPU lightmap (fail-forward: never crash the frame). On
+  // success returns {active=true, border=lightMapBorder}, echoing the caller's calc-region border WITH the
+  // active flag so the two can never be paired incorrectly. When shadowCompare is set, reads the final result
+  // back into `gpuResult` for the caller's parity check (diagnostics).
   // emissionHalf is the emission grid pre-converted to 16-bit half-floats (RGB packed) on the lighting
   // thread; when it matches emission's texel count it is uploaded as RGB16F (half the bytes), else the
   // RGB_F emission is uploaded as a fallback.
   // obstacleR8 is the obstacle mask as single-channel bytes; when it matches the texel count it is
   // uploaded as R8 (a third the bytes of the RGB24 obstacle), else the RGB24 obstacle is the fallback.
-  bool processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
+  LightmapResult processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
       ImageView const& obstacle, List<uint8_t> const& obstacleR8,
       List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
       PointParameters const& params, float brightnessScale = 1.0f, bool tonemap = false,
-      bool shadowCompare = false, float worldUpscale = 1.0f, Image* gpuResult = nullptr);
+      bool shadowCompare = false, float worldUpscale = 1.0f, Image* gpuResult = nullptr,
+      int lightMapBorder = 0);
 
 private:
   Renderer* m_renderer;
