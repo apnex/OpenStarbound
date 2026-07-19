@@ -2,6 +2,7 @@
 #include "StarMathCommon.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarInterpolation.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -170,6 +171,10 @@ AnimatedPartSet::State const& AnimatedPartSet::getState(String const& stateTypeN
   return *m_stateTypes.get(stateTypeName).states.get(stateName);
 }
 
+JsonObject const& AnimatedPartSet::stateTypeProperties(String const& stateTypeName) const {
+  return m_stateTypes.get(stateTypeName).stateTypeProperties;
+}
+
 StringMap<AnimatedPartSet::Part> const& AnimatedPartSet::constParts() const {
   return m_parts;
 }
@@ -219,15 +224,25 @@ void AnimatedPartSet::update(float dt) {
       } else if (state.animationMode == Loop) {
         stateType.activeState.timer = std::fmod(stateType.activeState.timer, state.cycle);
       } else if (state.animationMode == Transition) {
+        // Transition auto-advance changes the resolved state -> force a re-merge.
         stateType.activeState.stateName = state.transitionState;
         stateType.activeState.timer = 0.0f;
         stateType.activeStatePointer = stateType.states.get(state.transitionState).get();
+        stateType.activeStateDirty = true;
       }
     }
-
-    stateType.activeStateDirty = true;
   }
+  // NOTE: state properties self-gate. freshenActiveState recomputes the cheap timer-derived
+  // frame/frameProgress every call and re-merges state properties only when the resolved key
+  // changes. The expensive part property merge likewise re-runs only when its matched
+  // (stateType,state,frame,nextFrame) key changes in freshenActivePart. Explicit mutators set
+  // activePartDirty to force a correct re-resolve on real changes.
 
+  // Mark parts for a once-per-tick transform refresh. This is the CADENCE signal for the
+  // continuous affine-transform layer (accumulating, non-reset transforms must advance exactly
+  // once per update, as before) — it does NOT drive the expensive property merge, which is gated
+  // on the resolved key in freshenActivePart. Setting bools is cheap; the eliminated cost was the
+  // per-tick JSON property re-merge, which remains gated.
   for (auto& pair : m_parts)
     pair.second.activePartDirty = true;
 }
@@ -270,132 +285,184 @@ AnimatedPartSet::AnimationMode AnimatedPartSet::stringToAnimationMode(String con
 }
 
 void AnimatedPartSet::freshenActiveState(StateType& stateType) {
-  if (stateType.activeStateDirty) {
-    auto const& state = *stateType.activeStatePointer;
-    auto& activeState = stateType.activeState;
+  static auto cPerformed = Telemetry::counter("animator.state.merge.performed");
+  static auto cSkipped = Telemetry::counter("animator.state.merge.skipped");
+  auto const& state = *stateType.activeStatePointer;
+  auto& activeState = stateType.activeState;
 
-    double progress = (activeState.timer / state.cycle * state.frames);
-    activeState.frameProgress = std::fmod(progress, 1);
-    activeState.frame = clamp<int>(progress, 0, state.frames - 1);
-    if (activeState.reverse) {
-      activeState.frame = (state.frames - 1) - activeState.frame;
-      if ((state.animationMode == Loop) && (activeState.frame <= 0)) {
-        activeState.nextFrame = state.frames - 1;
-      } else {
-        activeState.nextFrame = clamp<int>(activeState.frame - 1, 0, state.frames - 1);
-      }
-    } else {
-      if ((state.animationMode == Loop) && (activeState.frame >= (state.frames - 1))) {
-        activeState.nextFrame = 0;
-      } else {
-        activeState.nextFrame = clamp<int>(activeState.frame + 1, 0, state.frames - 1);
-      }
-    }
-
-    activeState.properties = stateType.stateTypeProperties;
-    activeState.properties.merge(state.stateProperties, true);
-
-    activeState.nextProperties = stateType.stateTypeProperties;
-    activeState.nextProperties.merge(state.stateProperties, true);
-
-    for (auto const& pair : state.stateFrameProperties) {
-      if (activeState.frame < pair.second.size())
-        activeState.properties[pair.first] = pair.second.get(activeState.frame);
-      if (activeState.nextFrame < pair.second.size())
-        activeState.nextProperties[pair.first] = pair.second.get(activeState.nextFrame);
-    }
-
-    stateType.activeStateDirty = false;
+  // ---- CHEAP LAYER (always, every call): timer-derived frame/frameProgress/nextFrame ----
+  double progress = (activeState.timer / state.cycle * state.frames);
+  activeState.frameProgress = std::fmod(progress, 1);
+  unsigned newFrame = clamp<int>(progress, 0, state.frames - 1);
+  unsigned newNextFrame;
+  if (activeState.reverse) {
+    newFrame = (state.frames - 1) - newFrame;
+    if ((state.animationMode == Loop) && (newFrame <= 0))
+      newNextFrame = state.frames - 1;
+    else
+      newNextFrame = clamp<int>((int)newFrame - 1, 0, state.frames - 1);
+  } else {
+    if ((state.animationMode == Loop) && (newFrame >= (state.frames - 1)))
+      newNextFrame = 0;
+    else
+      newNextFrame = clamp<int>((int)newFrame + 1, 0, state.frames - 1);
   }
+  activeState.frame = newFrame;
+  activeState.nextFrame = newNextFrame;
+
+  // ---- MEMOIZED LAYER: re-merge properties only when the resolved key changes ----
+  bool keyChanged = !stateType.resolvedValid
+      || stateType.activeStateDirty
+      || stateType.resolvedStateName != activeState.stateName
+      || stateType.resolvedFrame != newFrame
+      || stateType.resolvedNextFrame != newNextFrame
+      || stateType.resolvedReverse != activeState.reverse;
+  if (!keyChanged) {
+    cSkipped.inc();
+    return;
+  }
+
+  activeState.properties = stateType.stateTypeProperties;
+  activeState.properties.merge(state.stateProperties, true);
+  activeState.nextProperties = stateType.stateTypeProperties;
+  activeState.nextProperties.merge(state.stateProperties, true);
+  for (auto const& pair : state.stateFrameProperties) {
+    if (activeState.frame < pair.second.size())
+      activeState.properties[pair.first] = pair.second.get(activeState.frame);
+    if (activeState.nextFrame < pair.second.size())
+      activeState.nextProperties[pair.first] = pair.second.get(activeState.nextFrame);
+  }
+
+  stateType.resolvedStateName = activeState.stateName;
+  stateType.resolvedFrame = newFrame;
+  stateType.resolvedNextFrame = newNextFrame;
+  stateType.resolvedReverse = activeState.reverse;
+  stateType.resolvedValid = true;
+  stateType.activeStateDirty = false;
+  ++m_generation;
+  ++stateType.generation;
+  ++m_stateTypesEpoch;
+  cPerformed.inc();
 }
 
 void AnimatedPartSet::freshenActivePart(Part& part) {
-  if (part.activePartDirty) {
-    // First reset all the active part information assuming that no state type
-    // x state match exists.
-    auto& activePart = part.activePart;
-    activePart.activeState = {};
+  static auto cPerformed = Telemetry::counter("animator.part.merge.performed");
+  static auto cSkipped = Telemetry::counter("animator.part.merge.skipped");
+  static auto cTransform = Telemetry::counter("animator.part.transform.applied");
+  auto& activePart = part.activePart;
+
+  // (a) ALWAYS: find the highest-priority enabled state type with a matching partState.
+  //     Calling freshenActiveState here runs the cheap layer (live frame/frameProgress).
+  StateType* matchStateType = nullptr;
+  String matchStateTypeName;
+  String matchStateName;
+  unsigned matchFrame = ~0u;
+  unsigned matchNextFrame = ~0u;
+  for (auto& stateTypePair : m_stateTypes) {
+    auto& stateType = stateTypePair.second;
+    if (!stateType.enabled)
+      continue;
+    auto partStateType = part.partStates.ptr(stateTypePair.first);
+    if (!partStateType)
+      continue;
+    auto const& stateName = stateType.activeState.stateName;
+    if (!partStateType->ptr(stateName))
+      continue;
+    freshenActiveState(stateType);
+    matchStateType = &stateType;
+    matchStateTypeName = stateTypePair.first;
+    matchStateName = stateName;
+    matchFrame = stateType.activeState.frame;
+    matchNextFrame = stateType.activeState.nextFrame;
+    break; // one match per part
+  }
+
+  // (b) MEMOIZED: rebuild merged properties only when the matched key changed. The key fully
+  //     determines the merge output, and every explicit mutator that sets activePartDirty also
+  //     changes the key — so the merge gate is key-only (plus first-resolve), NOT activePartDirty.
+  bool keyChanged = !part.resolvedValid
+      || part.resolvedStateTypeName != matchStateTypeName
+      || part.resolvedStateName != matchStateName
+      || part.resolvedFrame != matchFrame
+      || part.resolvedNextFrame != matchNextFrame;
+  if (keyChanged) {
     activePart.properties = part.partProperties;
     activePart.nextProperties = part.partProperties;
-
-    // Then go through each of the state types and states and look for a part
-    // state match in order of priority.
-    for (auto& stateTypePair : m_stateTypes) {
-      auto const& stateTypeName = stateTypePair.first;
-      auto& stateType = stateTypePair.second;
-
-      // Skip disabled state types
-      if (!stateType.enabled)
-        continue;
-
-      auto partStateType = part.partStates.ptr(stateTypeName);
-      if (!partStateType)
-        continue;
-
-      auto const& stateName = stateType.activeState.stateName;
-      auto partState = partStateType->ptr(stateName);
-      if (!partState)
-        continue;
-
-      // If we have a partState match, then set the active state information.
-      freshenActiveState(stateType);
-      activePart.activeState = stateType.activeState;
-      unsigned frame = stateType.activeState.frame;
-      unsigned nextFrame = stateType.activeState.nextFrame;
-
-      // Then set the part state data, as well as any part state frame data if
-      // the current frame is within the list size.
+    if (matchStateType) {
+      auto partStateType = part.partStates.ptr(matchStateTypeName);
+      auto partState = partStateType->ptr(matchStateName);
       activePart.properties.merge(partState->partStateProperties, true);
-
       activePart.nextProperties.merge(partState->partStateProperties, true);
-
       for (auto const& pair : partState->partStateFrameProperties) {
-        if (frame < pair.second.size())
-          activePart.properties[pair.first] = pair.second.get(frame);
-        if (nextFrame < pair.second.size())
-          activePart.nextProperties[pair.first] = pair.second.get(nextFrame);
+        if (matchFrame < pair.second.size())
+          activePart.properties[pair.first] = pair.second.get(matchFrame);
+        if (matchNextFrame < pair.second.size())
+          activePart.nextProperties[pair.first] = pair.second.get(matchNextFrame);
       }
-
-      // Each part can only have one state type x state match, so we are done.
-      break;
     }
-    if (version() > 0) {
-      auto processTransforms = [](Mat3F mat, JsonArray transforms, JsonObject properties) -> Mat3F {
-        for (auto const& v : transforms) {
-          auto action = v.getString(0);
-          if (action == "reset") {
-            mat = Mat3F::identity();
-          } else if (action == "translate") {
-            mat.translate(jsonToVec2F(v.getArray(1)));
-          } else if (action == "rotate") {
-            mat.rotate(v.getFloat(1), jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "rotateDegrees") { // because radians are fucking annoying
-            mat.rotate(v.getFloat(1) * Star::Constants::pi / 180, jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "scale") {
-            mat.scale(jsonToVec2F(v.getArray(1)), jsonToVec2F(v.getArray(2, properties.maybe("scalingCenter").value(JsonArray({0,0})).toArray())));
-          } else if (action == "transform") {
-            mat = Mat3F(v.getFloat(1), v.getFloat(2), v.getFloat(3), v.getFloat(4), v.getFloat(5), v.getFloat(6), 0, 0, 1) * mat;
-          }
+    part.resolvedStateTypeName = matchStateTypeName;
+    part.resolvedStateName = matchStateName;
+    part.resolvedFrame = matchFrame;
+    part.resolvedNextFrame = matchNextFrame;
+    part.resolvedValid = true;
+    ++m_generation;
+    ++part.partGeneration;
+    cPerformed.inc();
+  } else {
+    cSkipped.inc();
+  }
+
+  // ALWAYS refresh activeState (cheap copy) so frameProgress is LIVE for the continuous layer.
+  if (matchStateType)
+    activePart.activeState = matchStateType->activeState;
+  else
+    activePart.activeState = {};
+
+  // (c) CONTINUOUS LAYER (cadence-gated): affine transforms from LIVE frameProgress, recomputed
+  //     ONCE per tick. update() sets activePartDirty each tick, so the transform advances exactly
+  //     once per tick: the first activePart() access this tick clears the flag, later same-tick
+  //     accesses skip and return the cached affine. This preserves the original once-per-tick
+  //     accumulation for non-reset transforms while keeping frameProgress-driven interpolation
+  //     live (frameProgress is fresh each tick). keyChanged is OR'd in (belt-and-suspenders) so
+  //     the transform always refreshes whenever the property merge does.
+  if (part.activePartDirty || keyChanged) {
+  if (version() > 0) {
+    auto processTransforms = [](Mat3F mat, JsonArray transforms, JsonObject properties) -> Mat3F {
+      for (auto const& v : transforms) {
+        auto action = v.getString(0);
+        if (action == "reset") {
+          mat = Mat3F::identity();
+        } else if (action == "translate") {
+          mat.translate(jsonToVec2F(v.getArray(1)));
+        } else if (action == "rotate") {
+          mat.rotate(v.getFloat(1), jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "rotateDegrees") { // because radians are fucking annoying
+          mat.rotate(v.getFloat(1) * Star::Constants::pi / 180, jsonToVec2F(v.getArray(2, properties.maybe("rotationCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "scale") {
+          mat.scale(jsonToVec2F(v.getArray(1)), jsonToVec2F(v.getArray(2, properties.maybe("scalingCenter").value(JsonArray({0,0})).toArray())));
+        } else if (action == "transform") {
+          mat = Mat3F(v.getFloat(1), v.getFloat(2), v.getFloat(3), v.getFloat(4), v.getFloat(5), v.getFloat(6), 0, 0, 1) * mat;
         }
-        return mat;
-      };
+      }
+      return mat;
+    };
 
 
-      if (auto transforms = activePart.properties.ptr("transforms")) {
-        auto mat = processTransforms(activePart.animationAffineTransform(), transforms->toArray(), activePart.properties);
-        if (activePart.properties.maybe("interpolated").value(false).toBool()) {
-          if (auto nextTransforms = activePart.nextProperties.ptr("transforms")) {
-            auto nextMat = processTransforms(activePart.animationAffineTransform(), nextTransforms->toArray(), activePart.nextProperties);
-            activePart.setAnimationAffineTransform(mat, nextMat, activePart.activeState ? activePart.activeState->frameProgress : 1);
-          } else {
-            activePart.setAnimationAffineTransform(mat);
-          }
+    if (auto transforms = activePart.properties.ptr("transforms")) {
+      auto mat = processTransforms(activePart.animationAffineTransform(), transforms->toArray(), activePart.properties);
+      if (activePart.properties.maybe("interpolated").value(false).toBool()) {
+        if (auto nextTransforms = activePart.nextProperties.ptr("transforms")) {
+          auto nextMat = processTransforms(activePart.animationAffineTransform(), nextTransforms->toArray(), activePart.nextProperties);
+          activePart.setAnimationAffineTransform(mat, nextMat, activePart.activeState ? activePart.activeState->frameProgress : 1);
         } else {
           activePart.setAnimationAffineTransform(mat);
         }
+      } else {
+        activePart.setAnimationAffineTransform(mat);
       }
     }
-
+  }
+    cTransform.inc();
     part.activePartDirty = false;
   }
 }
@@ -427,6 +494,26 @@ Mat3F AnimatedPartSet::ActivePartInformation::animationAffineTransform() const {
 
 uint8_t AnimatedPartSet::version() const {
   return m_animatorVersion;
+}
+
+uint64_t AnimatedPartSet::generation() const {
+  return m_generation;
+}
+
+uint64_t AnimatedPartSet::partGeneration(String const& partName) const {
+  if (auto part = m_parts.ptr(partName))
+    return part->partGeneration;
+  return 0;
+}
+
+uint64_t AnimatedPartSet::stateTypeGeneration(String const& stateTypeName) const {
+  if (auto stateType = m_stateTypes.ptr(stateTypeName))
+    return stateType->generation;
+  return 0;
+}
+
+uint64_t AnimatedPartSet::stateTypesEpoch() const {
+  return m_stateTypesEpoch;
 }
 
 Json AnimatedPartSet::getStateFrameProperty(String const & stateTypeName, String const & propertyName, String stateName, int frame) const {

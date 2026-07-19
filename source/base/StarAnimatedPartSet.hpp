@@ -98,6 +98,20 @@ public:
     ActiveStateInformation activeState;
     State const* activeStatePointer;
     bool activeStateDirty;
+
+    // Memo of the last resolved key for which activeState.properties/nextProperties were merged.
+    String resolvedStateName;
+    unsigned resolvedFrame = ~0u;
+    unsigned resolvedNextFrame = ~0u;
+    bool resolvedReverse = false;
+    bool resolvedValid = false;
+
+    // Per-state-type counterpart of generation(): bumped only when THIS state
+    // type's resolved (stateName, frame, nextFrame, reverse) key changes -- i.e.
+    // exactly when its <T_state>/<T_frame>/<T_frameIndex> tags (and re-merged
+    // custom animationTags) change. Lets the per-part drawable cache invalidate
+    // a part that resolves a FOREIGN state type's tag. Per-instance; not serialized.
+    uint64_t generation = 1;
   };
 
   struct PartState {
@@ -111,6 +125,19 @@ public:
 
     ActivePartInformation activePart;
     bool activePartDirty;
+
+    // Memo of the matched (stateType,state,frame,nextFrame) for which the property merge ran.
+    String resolvedStateTypeName;
+    String resolvedStateName;
+    unsigned resolvedFrame = ~0u;
+    unsigned resolvedNextFrame = ~0u;
+    bool resolvedValid = false;
+
+    // Per-part counterpart of generation(): bumped only when THIS part's resolved
+    // (stateType,state,frame,nextFrame) key changes (same site as the whole-entity
+    // generation() bump).  Lets the per-part drawable cache invalidate one part
+    // without rebuilding its siblings.  Per-instance; never serialized.
+    uint64_t partGeneration = 1;
   };
 
   AnimatedPartSet();
@@ -143,6 +170,10 @@ public:
   ActiveStateInformation const& activeState(String const& stateTypeName) const;
   ActivePartInformation const& activePart(String const& partName) const;
   State const& getState(String const& stateTypeName, String const& stateName) const;
+  // The raw (unmerged) state-type-level properties. Used by the per-part drawable
+  // cache to scan custom animationTags keys defined at the state-type level, which
+  // the flat (overwrite) state/frame merge can hide from any single active state.
+  JsonObject const& stateTypeProperties(String const& stateTypeName) const;
 
   StringMap<Part> const& constParts() const;
   StringMap<Part>& parts();
@@ -154,6 +185,24 @@ public:
   // Function will be given the name of each part, and the
   // ActivePartInformation for the active part.
   void forEachActivePart(function<void(String const&, ActivePartInformation const&)> callback) const;
+
+  // Like forEachActiveState, but stops as soon as the visitor returns true and
+  // yields the (already-freshened) StateType so the caller can read both the
+  // active state and its State definition without a second name lookup. Iterates
+  // m_stateTypes directly -- its forward order is exactly stateTypes()/keys()
+  // order (keys() is built over the same ordered storage), so this is byte-identical
+  // to a `for (name : stateTypes()) activeState(name)` scan while avoiding the
+  // per-call keys() StringList allocation and the per-iteration hash lookup. Used
+  // for highest-priority-wins and any-still-animating scans on the hot server path.
+  // Visitor: bool(String const& stateTypeName, StateType const& stateType).
+  template <typename Visitor>
+  void forEachStateTypeUntil(Visitor&& visitor) const {
+    for (auto const& p : m_stateTypes) {
+      const_cast<AnimatedPartSet*>(this)->freshenActiveState(const_cast<StateType&>(p.second));
+      if (visitor(p.first, p.second))
+        break;
+    }
+  }
 
   // Useful for serializing state changes.  Since each set of states for a
   // state type is ordered, it is possible to simply serialize and deserialize
@@ -171,6 +220,23 @@ public:
 
   uint8_t version() const;
 
+  // Monotonic stamp bumped only when the resolved static output (active state name,
+  // integer frame/nextFrame, reverse, or part property resolution) changes. Does NOT
+  // change for sub-frame frameProgress / continuous transforms. Per-instance; never serialized.
+  uint64_t generation() const;
+
+  // Per-part counterpart of generation(): the monotonic stamp for one part,
+  // bumped only when that part's resolved key changes.  Returns 0 for an unknown
+  // part name.  Read AFTER freshening (forEachActivePart / the drawable path's
+  // part enumeration), exactly like generation().
+  uint64_t partGeneration(String const& partName) const;
+
+  // Per-state-type counterpart of generation(); 0 for an unknown state type.
+  uint64_t stateTypeGeneration(String const& stateTypeName) const;
+  // Bumps whenever ANY state type's resolved key changes. Conservative dependency
+  // for parts that consume custom animationTags (whose first-definer owner can shift).
+  uint64_t stateTypesEpoch() const;
+
   Json getStateFrameProperty(String const& stateType, String const& propertyName, String state, int frame) const;
   Json getPartStateFrameProperty(String const& partName, String const& propertyName, String const& stateType, String state, int frame) const;
 
@@ -184,6 +250,8 @@ private:
   StringMap<Part> m_parts;
 
   uint8_t m_animatorVersion;
+  uint64_t m_generation = 1;
+  uint64_t m_stateTypesEpoch = 1;
 };
 
 }

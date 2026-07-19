@@ -1,13 +1,21 @@
 #include "StarNetworkedAnimator.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarIterator.hpp"
+#include "StarSet.hpp"
 #include "StarParticleDatabase.hpp"
 #include "StarRoot.hpp"
 #include "StarAssets.hpp"
+#include "StarConfiguration.hpp"
 #include "StarLexicalCast.hpp"
 #include "StarDataStreamExtra.hpp"
 #include "StarRandom.hpp"
 #include "StarGameTypes.hpp"
+#include "StarTelemetry.hpp"
+#include "StarLogging.hpp"
+
+#include <cstdint>
+#include <cstring>
+#include <limits>
 
 namespace Star {
 
@@ -271,6 +279,17 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator&& animator) {
   m_localTags = std::move(animator.m_localTags);
   m_animatorVersion = std::move(animator.m_animatorVersion);
   setupNetStates();
+  // Assignment replaces every drawable-affecting member wholesale; bump the
+  // target's own (never-copied) render version so any cached render output is
+  // invalidated.  The static cache is never copied: drop it explicitly.  The
+  // partition memo's verdicts are for the REPLACED config, and the incoming
+  // AnimatedPartSet's generation could collide with the recorded one: drop it
+  // too.
+  m_staticCacheValid = false;
+  m_staticCachePerPart.clear();
+  m_partitionMemo.clear();
+  m_partitionMemoGeneration = 0;
+  bumpRenderVersion();
 
   return *this;
 }
@@ -297,6 +316,17 @@ NetworkedAnimator& NetworkedAnimator::operator=(NetworkedAnimator const& animato
   m_localTags = animator.m_localTags;
   m_animatorVersion = animator.m_animatorVersion;
   setupNetStates();
+  // Assignment replaces every drawable-affecting member wholesale; bump the
+  // target's own (never-copied) render version so any cached render output is
+  // invalidated.  The static cache is never copied: drop it explicitly.  The
+  // partition memo's verdicts are for the REPLACED config, and the incoming
+  // AnimatedPartSet's generation could collide with the recorded one: drop it
+  // too.
+  m_staticCacheValid = false;
+  m_staticCachePerPart.clear();
+  m_partitionMemo.clear();
+  m_partitionMemoGeneration = 0;
+  bumpRenderVersion();
 
   return *this;
 }
@@ -452,14 +482,23 @@ Maybe<PolyF> NetworkedAnimator::partPoly(String const& partName, String const& p
 }
 
 void NetworkedAnimator::setGlobalTag(String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    if (auto current = m_globalTags.ptr(tagName); current && *current == *tagValue)
+      return;
     m_globalTags.set(std::move(tagName), std::move(*tagValue));
-  else
-    m_globalTags.remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    if (!m_globalTags.remove(tagName))
+      return;
+  }
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::removeGlobalTag(String const& tagName) {
-  m_globalTags.remove(tagName);
+  // Observable state identical (removing an absent tag) => skip write + version bump.
+  if (m_globalTags.remove(tagName))
+    bumpRenderVersion();
 }
 
 String const* NetworkedAnimator::globalTagPtr(String const& tagName) const {
@@ -468,24 +507,91 @@ String const* NetworkedAnimator::globalTagPtr(String const& tagName) const {
 
 
 void NetworkedAnimator::setPartTag(String const& partType, String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    // ptr() to avoid operator[]'s insertion: setupNetStates pre-registers an
+    // entry per part, so a miss here means an unknown partType.
+    if (auto tags = m_partTags.ptr(partType))
+      if (auto current = tags->ptr(tagName); current && *current == *tagValue)
+        return;
     m_partTags[partType].set(std::move(tagName), std::move(*tagValue));
-  else
-    m_partTags[partType].remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    auto tags = m_partTags.ptr(partType);
+    if (!tags || !tags->remove(tagName))
+      return;
+  }
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setLocalTag(String tagName, Maybe<String> tagValue) {
-  if (tagValue)
+  if (tagValue) {
+    // Observable state identical (tag already has this value) => skip write + version bump.
+    if (auto current = m_localTags.ptr(tagName); current && *current == *tagValue)
+      return;
     m_localTags.set(tagName, *tagValue);
-  else
-    m_localTags.remove(tagName);
+  } else {
+    // Observable state identical (clearing an absent tag) => skip write + version bump.
+    if (!m_localTags.remove(tagName))
+      return;
+  }
+  bumpRenderVersion();
+}
+
+namespace {
+  // Exact per-field Drawable comparison for the setPartDrawables no-op guard:
+  // the same salient fields shadowCompare diffs, but EXACT everywhere (these
+  // are caller-provided values compared against their previously-stored
+  // selves, not cross-path arithmetic, so no ulp tolerance applies).
+  bool drawableEquals(Drawable const& a, Drawable const& b) {
+    if (a.position != b.position || !(a.color == b.color) || a.fullbright != b.fullbright)
+      return false;
+    if (a.isImage() != b.isImage() || a.isLine() != b.isLine() || a.isPoly() != b.isPoly())
+      return false;
+    if (a.isImage()) {
+      auto const& ai = a.imagePart();
+      auto const& bi = b.imagePart();
+      return ai.image == bi.image && ai.transformation == bi.transformation;
+    }
+    if (a.isLine()) {
+      auto const& al = a.linePart();
+      auto const& bl = b.linePart();
+      return al.line == bl.line && al.width == bl.width && al.endColor == bl.endColor;
+    }
+    if (a.isPoly())
+      return a.polyPart().poly == b.polyPart().poly;
+    return true;  // both part-less
+  }
+
+  bool drawableListsEqual(List<Drawable> const& a, List<Drawable> const& b) {
+    if (a.size() != b.size())
+      return false;
+    for (size_t i = 0; i < a.size(); ++i)
+      if (!drawableEquals(a[i], b[i]))
+        return false;
+    return true;
+  }
 }
 
 void NetworkedAnimator::setPartDrawables(String const& partName, List<Drawable> drawables) {
+  // Observable state identical (stored list matches field-for-field) => skip
+  // write + version bump.  Only when an entry already exists: the first set
+  // also establishes the m_partDrawables entry addPartDrawables appends to.
+  if (auto current = m_partDrawables.ptr(partName); current && drawableListsEqual(*current, drawables))
+    return;
   m_partDrawables.set(partName, drawables);
+  // The render-version bump already re-keys the static cache; the explicit
+  // invalidation is belt-and-braces for changes to the part set itself.
+  m_staticCacheValid = false;
+  bumpRenderVersion();
 }
 void NetworkedAnimator::addPartDrawables(String const& partName, List<Drawable> drawables) {
+  // Observable state identical (appending nothing) => skip write + version bump.
+  if (drawables.empty())
+    return;
   m_partDrawables.ptr(partName)->appendAll(drawables);
+  m_staticCacheValid = false;
+  bumpRenderVersion();
 }
 String NetworkedAnimator::applyPartTags(String const& partName, String apply) const {
   HashMap<String, String> animationTags = m_localTags;
@@ -550,10 +656,12 @@ String NetworkedAnimator::applyPartTags(String const& partName, String apply) co
 
 void NetworkedAnimator::setProcessingDirectives(Directives const& directives) {
   m_processingDirectives.set(directives);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setZoom(float zoom) {
   m_zoom.set(zoom);
+  bumpRenderVersion();
 }
 
 bool NetworkedAnimator::flipped() const {
@@ -567,6 +675,7 @@ float NetworkedAnimator::flippedRelativeCenterLine() const {
 void NetworkedAnimator::setFlipped(bool flipped, float relativeCenterLine) {
   m_flipped.set(flipped);
   m_flippedRelativeCenterLine.set(relativeCenterLine);
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setAnimationRate(float rate) {
@@ -583,12 +692,17 @@ bool NetworkedAnimator::hasRotationGroup(String const& rotationGroup) const {
 
 void NetworkedAnimator::rotateGroup(String const& rotationGroup, float targetAngle, bool immediate) {
   auto& group = m_rotationGroups.get(rotationGroup);
+  // Observable state identical (same target, and nothing to snap unless
+  // immediate) => skip write + version bump.
+  if (group.targetAngle.get() == targetAngle && (!immediate || group.currentAngle == targetAngle))
+    return;
   group.targetAngle.set(targetAngle);
 
   if (immediate) {
     group.currentAngle = targetAngle;
     group.netImmediateEvent.trigger();
   }
+  bumpRenderVersion();
 }
 
 float NetworkedAnimator::currentRotationAngle(String const& rotationGroup) const {
@@ -602,24 +716,28 @@ bool NetworkedAnimator::hasTransformationGroup(String const& transformationGroup
 void NetworkedAnimator::translateTransformationGroup(String const& transformationGroup, Vec2F const& translation) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::translation(translation) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::rotateTransformationGroup(
     String const& transformationGroup, float rotation, Vec2F const& rotationCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::rotation(rotation, rotationCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleTransformationGroup(
     String const& transformationGroup, float scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::scaleTransformationGroup(
     String const& transformationGroup, Vec2F const& scale, Vec2F const& scaleCenter) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setAffineTransform(Mat3F::scaling(scale, scaleCenter) * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::transformTransformationGroup(
@@ -627,19 +745,30 @@ void NetworkedAnimator::transformTransformationGroup(
   auto& group = m_transformationGroups.get(transformationGroup);
   Mat3F transform = Mat3F(a, b, tx, c, d, ty, 0, 0, 1);
   group.setAffineTransform(transform * group.affineTransform());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::resetTransformationGroup(String const& transformationGroup) {
   m_transformationGroups.get(transformationGroup).setAffineTransform(Mat3F::identity());
+  bumpRenderVersion();
 }
 
 void NetworkedAnimator::setTransformationGroup(String const& transformationGroup, Mat3F transform) {
   m_transformationGroups.get(transformationGroup).setAffineTransform(transform);
+  bumpRenderVersion();
 }
 
 Mat3F NetworkedAnimator::getTransformationGroup(String const& transformationGroup) {
   return m_transformationGroups.get(transformationGroup).affineTransform();
 }
+// The Local transformation-group setters deliberately do NOT bump
+// renderVersion: Humanoid::render calls them in reset+rotate(SAME angle) pairs
+// every frame, and reset->identity->rotate-back is two real value changes
+// netting to zero, so neither per-call bumps nor per-call value-diffs can keep
+// a visually-stationary animator's cache key stable.  Instead the combined
+// matrix state keys the static cache directly via localTransformHash() (see
+// drawablesWithZLevel): if ANY group's localTransform matrix differs, the key
+// differs -- exactly the invalidation coverage the bumps used to provide.
 void NetworkedAnimator::translateLocalTransformationGroup(String const& transformationGroup, Vec2F const& translation) {
   auto& group = m_transformationGroups.get(transformationGroup);
   group.setLocalAffineTransform(Mat3F::translation(translation) * group.localAffineTransform());
@@ -768,6 +897,7 @@ void NetworkedAnimator::stopAllSounds(String const& soundName, float rampTime) {
 
 void NetworkedAnimator::setEffectEnabled(String const& effect, bool enabled) {
   m_effects.get(effect).enabled.set(enabled);
+  bumpRenderVersion();
 }
 
 List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
@@ -778,11 +908,387 @@ List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
 }
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& position) const {
+  auto configuration = Root::singleton().configuration();
+  // Per-part cache wins over whole-entity when both are on (A/B sets exactly one).
+  if (configuration->get("renderDrawableCachePerPart", false).toBool())
+    return drawablesWithZLevelPerPart(position);
+  if (!configuration->get("renderDrawableCache", false).toBool())
+    return drawablesWithZLevelRebuild(position);
+  bool shadow = configuration->get("renderDrawableCacheShadowCompare", false).toBool();
+
   size_t partCount = m_animatedParts.constParts().size();
   if (!partCount)
     return {};
 
-  List<Directives> baseProcessingDirectives = { m_processingDirectives.get() };
+  // Enumerate + stable-sort the active parts exactly as the rebuild does.
+  // Enumerating also freshens every part (AnimatedPartSet resolves lazily and
+  // can bump generation() mid-enumeration), but parts only settle the state
+  // types they actually listen to (matching partStates).  A state type NO part
+  // lists still feeds every part's build through drawableBuildContext's
+  // <stateType_*> animation tags, and a pending setState/finishAnimations on
+  // it (master mutation between update() and render) would otherwise not land
+  // in generation() until the next update() -- a one-call stale serve of any
+  // cached image resolving its tags.  So explicitly freshen every state type
+  // too (forEachActiveState is the same lazy-resolve accessor update() uses;
+  // read-only here), settling generation() fully BEFORE the cache is keyed
+  // on it.
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+  m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
+
+  // The third key component covers the local transformation-group matrices,
+  // which are excluded from m_renderVersion (see localTransformHash and the
+  // note at the Local setters).  Computed here only -- after the flag check --
+  // so the flag-off path stays untouched.
+  uint64_t lth = localTransformHash();
+  auto key = std::make_tuple(m_renderVersion, m_animatedParts.generation(), lth);
+  if (!m_staticCacheValid || m_staticCacheKey != key) {
+    // Re-key reason attribution (diagnostics): which key component moved --
+    // renderVersion (0) vs generation (1) vs the local-transform hash (2).  A
+    // cold/invalid cache counts toward all reasons.
+    static auto s_rekeyVersionCounter = Telemetry::counter("render.drawable.cache.rekey.version");
+    static auto s_rekeyGenerationCounter = Telemetry::counter("render.drawable.cache.rekey.generation");
+    static auto s_rekeyLocalTransformCounter = Telemetry::counter("render.drawable.cache.rekey.localtransform");
+    if (!m_staticCacheValid || std::get<0>(m_staticCacheKey) != std::get<0>(key))
+      s_rekeyVersionCounter.inc();
+    if (!m_staticCacheValid || std::get<1>(m_staticCacheKey) != std::get<1>(key))
+      s_rekeyGenerationCounter.inc();
+    if (!m_staticCacheValid || std::get<2>(m_staticCacheKey) != lth)
+      s_rekeyLocalTransformCounter.inc();
+    rebuildStaticCache(parts, key);
+  }
+
+  // Assemble in the sorted part order: static parts are served from the cache
+  // (zero-translate copies), LIVE parts are built fresh through the same
+  // per-part helper the rebuild uses.  Drawable order is identical to the
+  // rebuild by construction, so no merge re-sort is needed (and equal-zLevel
+  // ordering is preserved exactly).
+  // Telemetry (static-handle idiom: registration/lookup once, then lock-free
+  // increments): "cached" counts static parts served from the cache, "rebuilt"
+  // counts parts built (LIVE parts here every call, static parts inside
+  // rebuildStaticCache).
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  // Maps assembled drawable index -> source part name, for shadow-compare
+  // diagnostics only (populated only while the shadow flag is on).
+  List<pair<size_t, String const*>> partStarts;
+  if (shadow)
+    partStarts.reserve(parts.size());
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  bool contextBuilt = false;
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (shadow)
+      partStarts.append({drawables.size(), &partName});
+    if (auto cached = m_staticCache.ptr(partName)) {
+      s_cachedCounter.inc();
+      for (auto const& p : *cached)
+        drawables.append(p);
+    } else {
+      if (!contextBuilt) {
+        drawableBuildContext(baseProcessingDirectives, animationTags);
+        contextBuilt = true;
+      }
+      s_rebuiltCounter.inc();
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, drawables);
+    }
+  }
+
+  // World translate applied live (everything above is at zero translate).
+  //
+  // Parity policy vs the rebuild: the rebuild folds the world translate into
+  // the part matrix BEFORE Drawable::transform, this path adds it AFTER.
+  // Float addition is non-associative, so for drawables entering the build
+  // with a non-zero base position (m_partDrawables: Humanoid held items, Lua
+  // animator.setPartDrawables) Drawable::position may differ from the rebuild
+  // by ~1 ulp; the plain image path (base position zero) and every other
+  // field, including the image matrix, are bitwise identical.  Anything
+  // comparing the two paths (the DrawableCache parity test, Task 5's
+  // shadowCompare) must compare position with a small ulp tolerance and all
+  // other fields exactly.
+  for (auto& p : drawables)
+    p.first.translate(position);
+
+  // Shadow-compare (runtime flag): verify this output against a forced full
+  // rebuild for the same state.  Diagnostics only -- the cache-path output is
+  // returned either way.
+  if (shadow)
+    shadowCompare(drawables, drawablesWithZLevelRebuild(position), partStarts);
+
+  return drawables;
+}
+
+void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
+    tuple<uint64_t, uint64_t, uint64_t> const& key) const {
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  // rebuilt.rekey counts ONLY the static-part builds done here (re-key churn);
+  // the live-part build site in drawablesWithZLevel increments plain rebuilt
+  // only, so rebuilt - rebuilt.rekey = genuinely-live part builds.
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
+  m_staticCache.clear();
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  bool contextBuilt = false;
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (!partIsStaticCacheable(partName))
+      continue;
+    if (!contextBuilt) {
+      drawableBuildContext(baseProcessingDirectives, animationTags);
+      contextBuilt = true;
+    }
+    List<pair<Drawable, float>> partDrawables;
+    s_rebuiltCounter.inc();
+    s_rebuiltRekeyCounter.inc();
+    appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(), baseProcessingDirectives, animationTags, partDrawables);
+    m_staticCache.set(partName, std::move(partDrawables));
+  }
+  m_staticCacheKey = key;
+  m_staticCacheValid = true;
+}
+
+List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F const& position) const {
+  auto configuration = Root::singleton().configuration();
+  bool shadow = configuration->get("renderDrawableCacheShadowCompare", false).toBool();
+
+  size_t partCount = m_animatedParts.constParts().size();
+  if (!partCount)
+    return {};
+
+  // Freshen all parts (enumerate + stable-sort, settling each part's
+  // partGeneration) and settle every state type so parts that DO rebuild this
+  // call resolve current animation tags.  partGeneration alone tracks only a
+  // part's OWN resolved state, so cross-state-type tag dependencies are tracked
+  // separately in the cache entry: when a part resolves ANOTHER state type's
+  // built-in <T_state>/<T_frame>/<T_frameIndex> tag, appendPartDrawables records
+  // a PRECISE per-state-type dep (stateTypeDeps, checked against that state
+  // type's generation); when it resolves any custom animationTags key (whose
+  // first-definer owner can shift), it records the conservative stateTypesEpoch
+  // dep (dependsAllStateTypes).  Either firing invalidates the entry, so a static
+  // part stays correct when a foreign state type changes (proven by the
+  // DrawableCache.PerPart* invalidation tests).
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+  m_animatedParts.forEachActiveState([](String const&, AnimatedPartSet::ActiveStateInformation const&) {});
+
+  // renderVersion and localTransformHash are GLOBAL key components (a global
+  // tag/directive/effect or local-transform change re-validates every part);
+  // partGeneration is the per-part component that lets a looping part rebuild
+  // alone.
+  uint64_t rv = m_renderVersion;
+  uint64_t lth = localTransformHash();
+
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
+
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  List<pair<size_t, String const*>> partStarts;
+  if (shadow)
+    partStarts.reserve(parts.size());
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  TagDeps tagDeps;
+  bool contextBuilt = false;
+  auto ensureContext = [&]() {
+    if (!contextBuilt) {
+      drawableBuildContext(baseProcessingDirectives, animationTags, &tagDeps);
+      contextBuilt = true;
+    }
+  };
+
+  for (auto& entry : parts) {
+    auto& partName = *get<1>(entry);
+    if (shadow)
+      partStarts.append({drawables.size(), &partName});
+
+    if (partIsStaticCacheable(partName)) {
+      uint64_t pg = m_animatedParts.partGeneration(partName);
+      auto cached = m_staticCachePerPart.ptr(partName);
+      bool depsFresh = cached
+          && cached->renderVersion == rv && cached->partGeneration == pg
+          && cached->localTransformHash == lth
+          && (!cached->dependsAllStateTypes || cached->stateTypesEpoch == m_animatedParts.stateTypesEpoch());
+      if (depsFresh)
+        for (auto const& dep : cached->stateTypeDeps)
+          if (m_animatedParts.stateTypeGeneration(dep.first) != dep.second) { depsFresh = false; break; }
+      if (depsFresh) {
+        s_cachedCounter.inc();
+        for (auto const& p : cached->drawables) drawables.append(p);
+        continue;
+      }
+      // MISS: rebuild ONLY this part and store its entry under its own key.
+      // rebuilt.rekey counts per-part static rebuilds (re-key churn), exactly as
+      // in rebuildStaticCache, so rebuilt - rebuilt.rekey stays = genuinely-live builds.
+      ensureContext();
+      List<pair<Drawable, float>> partDrawables;
+      s_rebuiltCounter.inc();
+      s_rebuiltRekeyCounter.inc();
+      Set<String> consumed;
+      bool consumedCustom = false;
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(),
+          baseProcessingDirectives, animationTags, partDrawables, &tagDeps, &consumed, &consumedCustom);
+      for (auto const& p : partDrawables)
+        drawables.append(p);
+      List<pair<String, uint64_t>> deps;
+      deps.reserve(consumed.size());
+      for (auto const& st : consumed) deps.append({st, m_animatedParts.stateTypeGeneration(st)});
+      m_staticCachePerPart.set(partName, StaticPartCacheEntry{std::move(partDrawables), rv, pg, lth,
+          std::move(deps), consumedCustom, m_animatedParts.stateTypesEpoch()});
+    } else {
+      // LIVE part: never cached, always built fresh (same as the whole-entity path).
+      ensureContext();
+      s_rebuiltCounter.inc();
+      appendPartDrawables(partName, *get<0>(entry), get<2>(entry), Vec2F(),
+          baseProcessingDirectives, animationTags, drawables);
+    }
+  }
+
+  // World translate applied live (everything above is at zero translate) -- same
+  // parity policy as the whole-entity path (see the comment block below).
+  for (auto& p : drawables)
+    p.first.translate(position);
+
+  if (shadow)
+    shadowCompare(drawables, drawablesWithZLevelRebuild(position), partStarts);
+
+  return drawables;
+}
+
+// Position parity policy for the shadow compare, shared with the DrawableCache
+// parity test (see the policy note in drawablesWithZLevel and the full
+// derivation in source/test/drawable_cache_test.cpp): the cache path applies
+// the world translate AFTER the part matrix, the rebuild folds it in BEFORE,
+// so drawables entering the build with a non-zero base position
+// (m_partDrawables: Humanoid held items, Lua animator.setPartDrawables) may
+// differ by ~1 ulp per position component.  Position is therefore compared
+// with a tight ulp bound; every other field must be EXACT.  Real cache bugs
+// (stale offset, missed invalidation, wrong translate) are orders of magnitude
+// larger than 4 ulps.
+namespace {
+  int64_t orderedFloatBits(float f) {
+    int32_t i;
+    std::memcpy(&i, &f, sizeof(i));
+    // Map the IEEE-754 sign-magnitude bit pattern to a monotonically ordered
+    // integer so adjacent floats differ by exactly 1.
+    return i >= 0 ? int64_t(i) : int64_t(std::numeric_limits<int32_t>::min()) - i;
+  }
+
+  int64_t ulpDistance(float a, float b) {
+    if (a == b)
+      return 0;  // also covers +0.0 == -0.0
+    int64_t d = orderedFloatBits(a) - orderedFloatBits(b);
+    return d < 0 ? -d : d;
+  }
+
+  int64_t const ShadowComparePositionMaxUlps = 4;
+}
+
+void NetworkedAnimator::shadowCompare(List<pair<Drawable, float>> const& cached,
+    List<pair<Drawable, float>> const& rebuilt,
+    List<pair<size_t, String const*>> const& partStarts) const {
+  static auto s_mismatchCounter = Telemetry::counter("render.drawable.cache.shadowMismatch");
+
+  auto partNameAt = [&](size_t index) -> String {
+    String const* name = nullptr;
+    for (auto const& start : partStarts) {
+      if (start.first > index)
+        break;
+      name = start.second;
+    }
+    return name ? *name : String("<unknown>");
+  };
+
+  // The warn is rate-limited to once per animator, NOT per frame (the mismatch
+  // counter still counts every mismatching drawable).  Always warn, never
+  // error: the test harness installs a strict ErrorLogSink that fails any test
+  // logging an Error.
+  auto report = [&](size_t index, char const* field) {
+    s_mismatchCounter.inc();
+    if (!m_shadowMismatchWarned) {
+      m_shadowMismatchWarned = true;
+      Logger::warn("NetworkedAnimator drawable cache shadow mismatch: part '{}' drawable {} field '{}'",
+          partNameAt(index), index, field);
+    }
+  };
+
+  if (cached.size() != rebuilt.size()) {
+    s_mismatchCounter.inc();
+    if (!m_shadowMismatchWarned) {
+      m_shadowMismatchWarned = true;
+      Logger::warn("NetworkedAnimator drawable cache shadow mismatch: {} cached vs {} rebuilt drawables", cached.size(), rebuilt.size());
+    }
+    return;
+  }
+
+  for (size_t i = 0; i < cached.size(); ++i) {
+    auto const& c = cached[i].first;
+    auto const& r = rebuilt[i].first;
+    if (cached[i].second != rebuilt[i].second) {
+      report(i, "zLevel");
+      continue;
+    }
+    if (c.isImage() != r.isImage() || c.isLine() != r.isLine() || c.isPoly() != r.isPoly()) {
+      report(i, "part type");
+      continue;
+    }
+    if (c.isImage()) {
+      if (!(c.imagePart().image == r.imagePart().image)) {
+        report(i, "image");
+        continue;
+      }
+      // The translation column of the image matrix cancels exactly in both
+      // translate orders, so this compare is exact.
+      if (!(c.imagePart().transformation == r.imagePart().transformation)) {
+        report(i, "image transformation");
+        continue;
+      }
+    }
+    // Line/poly vertex data is bitwise identical between the paths by
+    // construction (Drawable::transform strips the translation before
+    // touching vertices; it lands entirely in position), so position, color
+    // and fullbright are the remaining comparable fields.
+    if (ulpDistance(c.position[0], r.position[0]) > ShadowComparePositionMaxUlps
+        || ulpDistance(c.position[1], r.position[1]) > ShadowComparePositionMaxUlps) {
+      report(i, "position");
+      continue;
+    }
+    if (!(c.color == r.color)) {
+      report(i, "color");
+      continue;
+    }
+    if (c.fullbright != r.fullbright)
+      report(i, "fullbright");
+  }
+}
+
+List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelRebuild(Vec2F const& position) const {
+  size_t partCount = m_animatedParts.constParts().size();
+  if (!partCount)
+    return {};
+
+  List<Directives> baseProcessingDirectives;
+  HashMap<String, String> animationTags;
+  drawableBuildContext(baseProcessingDirectives, animationTags);
+
+  int drawableCount = 0;
+  auto parts = sortedActiveParts(drawableCount);
+
+  List<pair<Drawable, float>> drawables;
+  drawables.reserve(partCount + drawableCount);
+  for (auto& entry : parts)
+    appendPartDrawables(*get<1>(entry), *get<0>(entry), get<2>(entry), position, baseProcessingDirectives, animationTags, drawables);
+
+  return drawables;
+}
+
+void NetworkedAnimator::drawableBuildContext(List<Directives>& baseProcessingDirectives, HashMap<String, String>& animationTags, TagDeps* tagDeps) const {
+  baseProcessingDirectives.append(m_processingDirectives.get());
   for (auto& pair : m_effects) {
     auto const& effectState = pair.second;
 
@@ -799,7 +1305,7 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       }
     }
   }
-  HashMap<String, String> animationTags = m_localTags;
+  animationTags = m_localTags;
   if (version() > 0) {
     animationTags.set("relativePath", m_relativePath);
     for (auto& stateTypeName : m_animatedParts.stateTypes()) {
@@ -815,20 +1321,59 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       if (frame) {
         animationTags.set(stateTypeName + "_frame", frameStr);
         animationTags.set(stateTypeName + "_frameIndex", frameIndexStr);
+        if (tagDeps) {
+          tagDeps->stateTagOwner[stateTypeName + "_frame"] = stateTypeName;
+          tagDeps->stateTagOwner[stateTypeName + "_frameIndex"] = stateTypeName;
+        }
       }
       animationTags.set(stateTypeName + "_state", activeState.stateName);
+      if (tagDeps) tagDeps->stateTagOwner[stateTypeName + "_state"] = stateTypeName;
 
       if (auto p = activeState.properties.ptr("animationTags")) {
         for (auto tag : p->iterateObject())
-          if (!animationTags.contains(tag.first))
+          if (!animationTags.contains(tag.first)) {
             animationTags.set(tag.first, tag.second.toString());
+            if (tagDeps) tagDeps->customTags.insert(tag.first);
+          }
+      }
+      // Scan ALL states (including inactive ones) for potential custom tags.
+      // A custom tag defined only in an inactive state is absent from animationTags
+      // now, but a part whose image references it would silently consume a stale
+      // "default" and never call recordDep.  Collecting every possible custom tag
+      // key lets recordDep correctly mark any consumer as epoch-dependent.
+      //
+      // The scan must cover EVERY source that freshenActiveState merges into
+      // activeState.properties (see StarAnimatedPartSet.cpp): the state type's
+      // stateTypeProperties, each state's stateProperties, and each state's
+      // stateFrameProperties (per-frame, an object of arrays).  The merge is a
+      // flat overwrite, so a key present only at one level (e.g. a frame-varying
+      // tag, or a state-type-level tag hidden by a frame override in the active
+      // state) would otherwise be missed -> stale serve.  Over-collecting keys is
+      // safe (conservative epoch dep); under-collecting is a stale-serve bug.
+      if (tagDeps) {
+        auto collect = [&](Json const& animTags) {
+          if (animTags.isType(Json::Type::Object))
+            for (auto const& kv : animTags.iterateObject())
+              tagDeps->customTags.insert(kv.first);
+        };
+        collect(m_animatedParts.stateTypeProperties(stateTypeName).maybe("animationTags").value(Json()));
+        for (auto const& stateName : m_animatedParts.states(stateTypeName)) {
+          auto const& state = m_animatedParts.getState(stateTypeName, stateName);
+          collect(state.stateProperties.maybe("animationTags").value(Json()));
+          // stateFrameProperties["animationTags"] is an array of per-frame objects.
+          if (auto p = state.stateFrameProperties.ptr("animationTags"))
+            if (p->isType(Json::Type::Array))
+              for (auto const& frameTags : p->iterateArray())
+                collect(frameTags);
+        }
       }
     }
   }
+}
 
+List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> NetworkedAnimator::sortedActiveParts(int& drawableCount) const {
   List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> parts;
-  parts.reserve(partCount);
-  int drawableCount = 0;
+  parts.reserve(m_animatedParts.constParts().size());
   m_animatedParts.forEachActivePart([&](String const& partName, AnimatedPartSet::ActivePartInformation const& activePart) {
     Maybe<float> maybeZLevel;
     if (m_flipped.get()) {
@@ -844,32 +1389,80 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   });
 
   sort(parts, [](auto const& a, auto const& b) { return get<2>(a) < get<2>(b); });
+  return parts;
+}
 
-  List<pair<Drawable, float>> drawables;
-  drawables.reserve(partCount + drawableCount);
-  for (auto& entry : parts) {
-    auto& activePart = *get<0>(entry);
-    auto& partName = *get<1>(entry);
-    // Make sure we don't copy the original image
-    String fallback = "";
-    Json jImage = activePart.properties.value("image", {});
-    if (version() > 0 && m_flipped.get()) {
-      if (auto maybeFlipped = activePart.properties.value("flippedImage").optString())
-        jImage = *maybeFlipped;
+// The per-part drawable build, extracted VERBATIM from the old
+// drawablesWithZLevel loop body.  Single source of truth: the rebuild path,
+// the static-cache build, and the live-part serve path all call this, so
+// cached and live parts are built identically (output parity by construction).
+void NetworkedAnimator::appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
+    float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
+    HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables,
+    TagDeps const* tagDeps, Set<String>* consumedStateTypes, bool* consumedCustomTag) const {
+  // Make sure we don't copy the original image
+  String fallback = "";
+  Json jImage = activePart.properties.value("image", {});
+  if (version() > 0 && m_flipped.get()) {
+    if (auto maybeFlipped = activePart.properties.value("flippedImage").optString())
+      jImage = *maybeFlipped;
+  }
+
+  String const& image = jImage.isType(Json::Type::String) ? *jImage.stringPtr() : fallback;
+
+  bool centered = activePart.properties.value("centered").optBool().value(true);
+  bool fullbright = activePart.properties.value("fullbright").optBool().value(false);
+
+  size_t originalDirectivesSize = baseProcessingDirectives.size();
+
+  auto const& partTags = m_partTags.get(partName);
+
+  auto recordDep = [&](StringView tag) {
+    if (!tagDeps) return;
+    String tagStr(tag);
+    if (auto owner = tagDeps->stateTagOwner.ptr(tagStr)) {
+      if (consumedStateTypes) consumedStateTypes->insert(*owner);
+    } else if (tagDeps->customTags.contains(tagStr)) {
+      if (consumedCustomTag) *consumedCustomTag = true;
     }
+  };
 
-    String const& image = jImage.isType(Json::Type::String) ? *jImage.stringPtr() : fallback;
+  if (auto directives = activePart.properties.value("processingDirectives").optString()) {
+    if (version() > 0){
+      directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
+        // recordDep fires for EVERY resolved tag, before the lookups: a built-in
+        // <T_*> tag records its precise per-state-type dep, a custom tag (active,
+        // inactive, or shadowed by a higher-precedence source) marks the epoch
+        // dep, and a genuine global/part-only tag is a self-gated no-op.  This
+        // catches a global/part default shadowed by a per-state custom key.
+        recordDep(tag);
+        if (auto p = animationTags.ptr(tag)) {
+          return StringView(*p);
+        } else if (auto p = partTags.ptr(tag)) {
+          return StringView(*p);
+        } else if (auto p = m_globalTags.ptr(tag)) {
+          return StringView(*p);
+        }
+        return StringView("default");
+      });
+    }
+    baseProcessingDirectives.append(*directives);
+  }
 
-    bool centered = activePart.properties.value("centered").optBool().value(true);
-    bool fullbright = activePart.properties.value("fullbright").optBool().value(false);
+  Maybe<unsigned> frame;
+  String frameStr;
+  String frameIndexStr;
+  if (activePart.activeState) {
+    unsigned stateFrame = activePart.activeState->frame;
+    frame = stateFrame;
+    frameStr = static_cast<String>(toString(stateFrame + 1));
+    frameIndexStr = static_cast<String>(toString(stateFrame));
 
-    size_t originalDirectivesSize = baseProcessingDirectives.size();
-
-    auto const& partTags = m_partTags.get(partName);
-
-    if (auto directives = activePart.properties.value("processingDirectives").optString()) {
+    if (auto directives = activePart.activeState->properties.value("processingDirectives").optString()) {
       if (version() > 0){
         directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
+          // recordDep before the lookups -- see the part-level lambda above.
+          recordDep(tag);
           if (auto p = animationTags.ptr(tag)) {
             return StringView(*p);
           } else if (auto p = partTags.ptr(tag)) {
@@ -882,93 +1475,69 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
       }
       baseProcessingDirectives.append(*directives);
     }
-
-    Maybe<unsigned> frame;
-    String frameStr;
-    String frameIndexStr;
-    if (activePart.activeState) {
-      unsigned stateFrame = activePart.activeState->frame;
-      frame = stateFrame;
-      frameStr = static_cast<String>(toString(stateFrame + 1));
-      frameIndexStr = static_cast<String>(toString(stateFrame));
-
-      if (auto directives = activePart.activeState->properties.value("processingDirectives").optString()) {
-        if (version() > 0){
-          directives = directives->maybeLookupTagsView([&](StringView tag) -> StringView {
-            if (auto p = animationTags.ptr(tag)) {
-              return StringView(*p);
-            } else if (auto p = partTags.ptr(tag)) {
-              return StringView(*p);
-            } else if (auto p = m_globalTags.ptr(tag)) {
-              return StringView(*p);
-            }
-            return StringView("default");
-          });
-        }
-        baseProcessingDirectives.append(*directives);
-      }
-    }
-
-    Maybe<String> processedImage = image.maybeLookupTagsView([&](StringView tag) -> StringView {
-      if (tag == "frame") {
-        if (frame)
-          return frameStr;
-      } else if (tag == "frameIndex") {
-        if (frame)
-          return frameIndexStr;
-      } else if (auto p = animationTags.ptr(tag)) {
-        return StringView(*p);
-      } else if (auto p = partTags.ptr(tag)) {
-        return StringView(*p);
-      } else if (auto p = m_globalTags.ptr(tag)) {
-        return StringView(*p);
-      }
-
-      return StringView("default");
-    });
-    String const& usedImage = processedImage ? processedImage.get() : image;
-
-    auto transformation = globalTransformation() * partTransformation(partName);
-    transformation.translate(position);
-
-    if (!usedImage.empty() && usedImage[0] != ':' && usedImage[0] != '?') {
-      size_t hash = hashOf(usedImage);
-      auto find = m_cachedPartDrawables.find(partName);
-      if (find == m_cachedPartDrawables.end() || find->second.first != hash) {
-        String relativeImage;
-        if (usedImage[0] != '/')
-          relativeImage = AssetPath::relativeTo(m_relativePath, usedImage);
-
-        Drawable drawable = Drawable::makeImage(!relativeImage.empty() ? relativeImage : usedImage, 1.0f / TilePixels, centered, Vec2F());
-        if (find == m_cachedPartDrawables.end())
-          find = m_cachedPartDrawables.emplace(partName, std::pair{ hash, std::move(drawable) }).first;
-        else {
-          find->second.first = hash;
-          find->second.second = std::move(drawable);
-        }
-      }
-
-      Drawable drawable = find->second.second;
-      auto& imagePart = drawable.imagePart();
-      for (Directives const& directives : baseProcessingDirectives)
-        imagePart.addDirectives(directives, centered);
-      drawable.fullbright = fullbright;
-      drawable.transform(transformation);
-      drawables.append({std::move(drawable), get<2>(entry)});
-    }
-
-    if (m_partDrawables.contains(partName)) {
-      auto partDrawables = m_partDrawables.get(partName);
-      Drawable::transformAll(partDrawables, transformation);
-      for (auto drawable : partDrawables) {
-      drawables.append({drawable, get<2>(entry)});
-      }
-    }
-
-    baseProcessingDirectives.resize(originalDirectivesSize);
   }
 
-  return drawables;
+  Maybe<String> processedImage = image.maybeLookupTagsView([&](StringView tag) -> StringView {
+    // recordDep before the lookups -- see the part-level lambda above.  The literal
+    // <frame>/<frameIndex> special-cases are self-gated no-ops here (not built-in
+    // <T_*> keys nor custom keys); the per-part <T_frame>/<T_frameIndex> deps come
+    // from the prefixed tags in animationTags/stateTagOwner.
+    recordDep(tag);
+    if (tag == "frame") {
+      if (frame)
+        return frameStr;
+    } else if (tag == "frameIndex") {
+      if (frame)
+        return frameIndexStr;
+    } else if (auto p = animationTags.ptr(tag)) {
+      return StringView(*p);
+    } else if (auto p = partTags.ptr(tag)) {
+      return StringView(*p);
+    } else if (auto p = m_globalTags.ptr(tag)) {
+      return StringView(*p);
+    }
+    return StringView("default");
+  });
+  String const& usedImage = processedImage ? processedImage.get() : image;
+
+  auto transformation = globalTransformation() * partTransformation(partName);
+  transformation.translate(translate);
+
+  if (!usedImage.empty() && usedImage[0] != ':' && usedImage[0] != '?') {
+    size_t hash = hashOf(usedImage);
+    auto find = m_cachedPartDrawables.find(partName);
+    if (find == m_cachedPartDrawables.end() || find->second.first != hash) {
+      String relativeImage;
+      if (usedImage[0] != '/')
+        relativeImage = AssetPath::relativeTo(m_relativePath, usedImage);
+
+      Drawable drawable = Drawable::makeImage(!relativeImage.empty() ? relativeImage : usedImage, 1.0f / TilePixels, centered, Vec2F());
+      if (find == m_cachedPartDrawables.end())
+        find = m_cachedPartDrawables.emplace(partName, std::pair{ hash, std::move(drawable) }).first;
+      else {
+        find->second.first = hash;
+        find->second.second = std::move(drawable);
+      }
+    }
+
+    Drawable drawable = find->second.second;
+    auto& imagePart = drawable.imagePart();
+    for (Directives const& directives : baseProcessingDirectives)
+      imagePart.addDirectives(directives, centered);
+    drawable.fullbright = fullbright;
+    drawable.transform(transformation);
+    drawables.append({std::move(drawable), zLevel});
+  }
+
+  if (m_partDrawables.contains(partName)) {
+    auto partDrawables = m_partDrawables.get(partName);
+    Drawable::transformAll(partDrawables, transformation);
+    for (auto drawable : partDrawables) {
+    drawables.append({drawable, zLevel});
+    }
+  }
+
+  baseProcessingDirectives.resize(originalDirectivesSize);
 }
 
 List<LightSource> NetworkedAnimator::lightSources(Vec2F const& translate) const {
@@ -1121,8 +1690,11 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
       return mat;
     };
     for (auto& pair : m_transformationGroups) {
-      for (auto& stateTypeName : m_animatedParts.stateTypes()) {
-        auto& activeState = m_animatedParts.activeState(stateTypeName);
+      // L-ANIM-ITER: direct-iterate state types (priority order) instead of a
+      // per-group stateTypes() keys() alloc + per-iteration activeState(name) hash
+      // lookup. Byte-identical: same freshen set/order, same first-match break.
+      m_animatedParts.forEachStateTypeUntil([&](String const&, AnimatedPartSet::StateType const& stateType) -> bool {
+        auto const& activeState = stateType.activeState;
         if (auto transforms = activeState.properties.ptr(pair.first)) {
           auto mat = processTransforms(pair.second.animationAffineTransform(), transforms->toArray(), activeState.properties);
           if (pair.second.interpolated) {
@@ -1135,18 +1707,29 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
           } else {
             pair.second.setAnimationAffineTransform(mat);
           }
-          break;//we got one with the highest priority so break the loop
+          return true;//we got one with the highest priority so stop the scan
         }
-      }
+        return false;
+      });
     }
   }
 
   for (auto& pair : m_rotationGroups) {
     auto& rotationGroup = pair.second;
-    if (rotationGroup.angularVelocity == 0.0f)
-      rotationGroup.currentAngle = rotationGroup.targetAngle.get();
-    else
+    if (rotationGroup.angularVelocity == 0.0f) {
+      // Value-diffed bump: parts on a 0-angularVelocity rotation group are
+      // STATIC-cacheable.  rotateGroup / the net funnel bump renderVersion
+      // when targetAngle changes, but the drawable-visible currentAngle only
+      // snaps HERE -- a drawables() call between the bump and this snap would
+      // otherwise re-key the static cache on the stale angle.
+      float targetAngle = rotationGroup.targetAngle.get();
+      if (rotationGroup.currentAngle != targetAngle) {
+        rotationGroup.currentAngle = targetAngle;
+        bumpRenderVersion();
+      }
+    } else {
       rotationGroup.currentAngle = approachAngle(rotationGroup.targetAngle.get(), rotationGroup.currentAngle, rotationGroup.angularVelocity * dt);
+    }
   }
 
   if (dynamicTarget) {
@@ -1276,6 +1859,40 @@ void NetworkedAnimator::update(float dt, DynamicTarget* dynamicTarget) {
         effect.timer -= dt;
     }
   }
+}
+
+bool NetworkedAnimator::hasActiveAnimationWork() const {
+  // Any active animation state still advancing keeps the master updating:
+  //  - Loop never settles; Transition auto-advances the NETTED state index once
+  //    its cycle completes (the master must run update() to drive that change);
+  //  - an End state is still animating until its timer reaches its cycle.
+  // L-ANIM-WAKE: direct-iterate state types instead of a per-call stateTypes()
+  // keys() alloc + activeState(name) (outer hash get) + getState(name,...) (outer
+  // hash get again). Conservative variant -- still resolves the State via the same
+  // states.get(active.stateName) as getState(), so it is byte-identical; only the
+  // redundant outer m_stateTypes lookups and the keys() allocation are removed.
+  // Run once per awake animated object every step (Object::nextEngineWakeStep).
+  bool stillAnimating = false;
+  m_animatedParts.forEachStateTypeUntil([&](String const&, AnimatedPartSet::StateType const& stateType) -> bool {
+    auto const& active = stateType.activeState;
+    auto const& state = *stateType.states.get(active.stateName);
+    if (state.animationMode != AnimatedPartSet::End || active.timer < state.cycle) {
+      stillAnimating = true;
+      return true;
+    }
+    return false;
+  });
+  if (stillAnimating)
+    return true;
+
+  // A rotation group still approaching its target (or pending the one-shot snap of
+  // a zero-angularVelocity group) advances currentAngle on the next update().
+  for (auto const& pair : m_rotationGroups) {
+    if (pair.second.currentAngle != pair.second.targetAngle.get())
+      return true;
+  }
+
+  return false;
 }
 
 void NetworkedAnimator::finishAnimations() {
@@ -1438,6 +2055,77 @@ void NetworkedAnimator::netElementsNeedLoad(bool initial) {
     if (pair.second.netImmediateEvent.pullOccurred() || initial)
       pair.second.currentAngle = pair.second.targetAngle.get();
   }
+
+  // Slaves never call the setters; NetElement deserialization writes storage
+  // directly, and this funnel runs after netLoad, readNetDelta, and net
+  // interpolation ticks.  Bump the render version ONLY on a discrete
+  // drawable-affecting change (NOT every interpolation tick, or the static
+  // cache thrashes on moving entities).
+  bool discrete = false;
+  discrete |= m_globalTags.pullUpdated();
+  for (auto& pair : m_partTags)
+    discrete |= pair.second.pullUpdated();
+  // Value-diff the scalar/data NetElements against shadow copies kept on the
+  // animator (NetElementFloating has no pullUpdated, and a value-diff stays
+  // quiet across pure interpolation ticks since none of these interpolate).
+  if (m_processingDirectives.get() != m_lastSeenProcessingDirectives) {
+    m_lastSeenProcessingDirectives = m_processingDirectives.get();
+    discrete = true;
+  }
+  if (m_zoom.get() != m_lastSeenZoom) {
+    m_lastSeenZoom = m_zoom.get();
+    discrete = true;
+  }
+  if (m_flipped.get() != m_lastSeenFlipped) {
+    m_lastSeenFlipped = m_flipped.get();
+    discrete = true;
+  }
+  if (m_flippedRelativeCenterLine.get() != m_lastSeenCenterLine) {
+    m_lastSeenCenterLine = m_flippedRelativeCenterLine.get();
+    discrete = true;
+  }
+  for (auto& pair : m_effects) {
+    bool en = pair.second.enabled.get();
+    if (en != pair.second.lastSeenEnabled) {
+      pair.second.lastSeenEnabled = en;
+      discrete = true;
+    }
+  }
+  // RotationGroup::targetAngle and the non-interpolated TransformationGroup
+  // floats are likewise storage-written by deserialization on slaves, and
+  // partIsStaticCacheable keeps parts referencing them STATIC, so this funnel
+  // is their only invalidation path.  Neither has an interpolator (rotation
+  // targetAngle never; group floats only when interpolated, see
+  // setupNetStates), so these value-diffs only fire at delta-apply.
+  // Interpolated groups' floats lerp every tick and their referencing parts
+  // are LIVE already: skip them, or the static cache thrashes.
+  for (auto& pair : m_rotationGroups) {
+    float targetAngle = pair.second.targetAngle.get();
+    if (targetAngle != pair.second.lastSeenTargetAngle) {
+      pair.second.lastSeenTargetAngle = targetAngle;
+      discrete = true;
+    }
+  }
+  for (auto& pair : m_transformationGroups) {
+    auto& group = pair.second;
+    if (group.interpolated)
+      continue;
+    auto diff = [&discrete](NetElementFloat const& element, float& lastSeen) {
+      float value = element.get();
+      if (value != lastSeen) {
+        lastSeen = value;
+        discrete = true;
+      }
+    };
+    diff(group.xTranslation, group.lastSeenXTranslation);
+    diff(group.yTranslation, group.lastSeenYTranslation);
+    diff(group.xScale, group.lastSeenXScale);
+    diff(group.yScale, group.lastSeenYScale);
+    diff(group.xShear, group.lastSeenXShear);
+    diff(group.yShear, group.lastSeenYShear);
+  }
+  if (discrete)
+    bumpRenderVersion();
 }
 
 void NetworkedAnimator::netElementsNeedStore() {
@@ -1452,6 +2140,197 @@ void NetworkedAnimator::netElementsNeedStore() {
 
 uint8_t NetworkedAnimator::version() const {
   return m_animatorVersion;
+}
+
+uint64_t NetworkedAnimator::renderVersion() const {
+  return m_renderVersion;
+}
+
+void NetworkedAnimator::bumpRenderVersion() {
+  ++m_renderVersion;
+}
+
+uint64_t NetworkedAnimator::localTransformHash() const {
+  // Local transformation-group matrices are excluded from m_renderVersion
+  // (their setters are called in reset+rotate pairs every frame by Humanoid;
+  // per-call bumps would re-key a visually-stationary animator).  Instead the
+  // combined matrix state keys the static cache.  Hashes the raw float bits of
+  // ALL groups' localTransform (no dirty bits): if any matrix differs, the
+  // hash -- and with it the cache key -- differs.
+  uint64_t h = 5381;
+  for (auto const& pair : m_transformationGroups) {
+    auto const& m = pair.second.localTransform;
+    for (size_t r = 0; r < 3; ++r)
+      for (size_t c = 0; c < 3; ++c) {
+        uint32_t bits;
+        std::memcpy(&bits, &m[r][c], sizeof(bits));
+        h = (h * 1099511628211ull) ^ bits;
+      }
+  }
+  return h;
+}
+
+// Collects every value the given key could resolve to in a part's merged
+// activePart.properties: the base partProperties, every partState's
+// partStateProperties, and every per-frame value in partStateFrameProperties
+// (freshenActivePart merges exactly these three layers).  State-independent,
+// so the answer is conservative across state changes.
+static void collectPartPropertyValues(AnimatedPartSet::Part const& part, String const& key, List<Json>& values) {
+  if (auto v = part.partProperties.ptr(key))
+    values.append(*v);
+  for (auto const& stateTypePair : part.partStates) {
+    for (auto const& statePair : stateTypePair.second) {
+      if (auto v = statePair.second.partStateProperties.ptr(key))
+        values.append(*v);
+      if (auto frameValues = statePair.second.partStateFrameProperties.ptr(key)) {
+        // Frame properties are arrays of per-frame values.
+        if (frameValues->isType(Json::Type::Array)) {
+          for (auto const& v : frameValues->iterateArray())
+            values.append(v);
+        } else {
+          values.append(*frameValues);
+        }
+      }
+    }
+  }
+}
+
+bool NetworkedAnimator::anyFlashEffectActive() const {
+  for (auto const& pair : m_effects) {
+    if (pair.second.enabled.get() && pair.second.type == "flash")
+      return true;
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partReferencesLiveRotationGroup(AnimatedPartSet::Part const& part) const {
+  List<Json> refs;
+  collectPartPropertyValues(part, "rotationGroup", refs);
+  for (auto const& ref : refs) {
+    if (!ref.isType(Json::Type::String))
+      return true; // unintelligible reference: conservative live
+    auto group = m_rotationGroups.ptr(ref.toString());
+    if (!group)
+      return true; // unknown group: conservative live
+    // angularVelocity != 0 approaches the target angle continuously in
+    // update(); angularVelocity == 0 snaps (verified-safe-as-static).
+    if (group->angularVelocity != 0.0f)
+      return true;
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const {
+  List<Json> refs;
+  collectPartPropertyValues(part, "transformationGroups", refs);
+  for (auto const& ref : refs) {
+    if (!ref.isType(Json::Type::Array))
+      return true; // unintelligible reference list: conservative live
+    for (auto const& nameJson : ref.iterateArray()) {
+      if (!nameJson.isType(Json::Type::String))
+        return true;
+      String name = nameJson.toString();
+      auto group = m_transformationGroups.ptr(name);
+      if (!group)
+        return true; // unknown group: conservative live
+      // Interpolated groups lerp their networked affine components between
+      // deltas on slaves, and blend state animation by frameProgress: live.
+      if (group->interpolated)
+        return true;
+      // The active-state-animated case (update()): a group currently named by
+      // an active-state property is re-seeded from its own current animation
+      // transform every tick, so non-reset transforms accumulate continuously.
+      // Conservative: any currently-animated group is live.  Mirrors the
+      // version() > 0 gate and all-state-types scan of update().
+      if (version() > 0) {
+        for (auto const& stateTypeName : m_animatedParts.stateTypes()) {
+          if (m_animatedParts.activeState(stateTypeName).properties.contains(name))
+            return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool NetworkedAnimator::partHasTransformsProperty(AnimatedPartSet::Part const& part) {
+  // Part-local transforms interpolate by frameProgress or accumulate per tick
+  // (AnimatedPartSet::freshenActivePart).  Conservative: ANY entry is live.
+  List<Json> refs;
+  collectPartPropertyValues(part, "transforms", refs);
+  return !refs.empty();
+}
+
+bool NetworkedAnimator::partIsStaticCacheable(String const& partName) const {
+  // A flash-type effect toggles its directive purely off the per-tick effect
+  // timer and is prepended to every part's directives: global cache-bust.
+  // Runtime input (effect enabled flags): checked LIVE, OUTSIDE the
+  // structural memo.
+  if (anyFlashEffectActive())
+    return false;
+  return partIsStaticCacheableStructural(partName);
+}
+
+bool NetworkedAnimator::partIsStaticCacheableStructural(String const& partName) const {
+  // Memoized: every input of the walk below is construction-constant (part
+  // configs scanned across ALL states, anchor chain, group structure,
+  // RotationGroup::angularVelocity, TransformationGroup::interpolated,
+  // version()) EXCEPT the active-state-animated transformation-group check,
+  // which reads activeState(...).properties -- those re-merge only under a
+  // generation() bump (AnimatedPartSet's freshen layers).  Keying the memo on
+  // generation() therefore makes stale verdicts impossible, while a
+  // renderVersion-only re-key (the per-frame Humanoid tag/part-drawables
+  // pattern) reuses the partition wholesale instead of re-scanning every
+  // part's full config.
+  uint64_t generation = m_animatedParts.generation();
+  if (m_partitionMemoGeneration != generation) {
+    m_partitionMemo.clear();
+    m_partitionMemoGeneration = generation;
+  }
+  if (auto memo = m_partitionMemo.maybe(partName))
+    return *memo;
+
+  // Counts structural walks, i.e. memo MISSES -- the direct 'partition work'
+  // signal for the cache A/B.  Cache-path only: rebuildStaticCache is the
+  // sole engine caller (static-handle idiom: registration/lookup once).
+  static auto s_partitionScansCounter = Telemetry::counter("render.drawable.partition.scans");
+  s_partitionScansCounter.inc();
+
+  // A part is static-cacheable iff it AND its whole anchorPart chain have: no
+  // live rotation-group ref, no interpolated/active-state-animated
+  // transformation group, and no "transforms" property (partTransformation
+  // composes anchor transforms transitively).  anchorPart may be introduced by
+  // any partState, so follow every possible anchor value; `seen` guards
+  // against anchor cycles.
+  bool result = [&]() {
+    auto const& parts = m_animatedParts.constParts();
+    StringList pending = {partName};
+    Set<String> seen;
+    while (!pending.empty()) {
+      String current = pending.takeLast();
+      if (!seen.add(current))
+        continue;
+      auto part = parts.ptr(current);
+      if (!part)
+        return false; // unknown part: conservative live
+      if (partReferencesLiveRotationGroup(*part))
+        return false;
+      if (partReferencesLiveTransformationGroup(*part))
+        return false;
+      if (partHasTransformsProperty(*part))
+        return false;
+      List<Json> anchors;
+      collectPartPropertyValues(*part, "anchorPart", anchors);
+      for (auto const& anchor : anchors) {
+        if (!anchor.isType(Json::Type::String))
+          return false; // unintelligible anchor: conservative live
+        pending.append(anchor.toString());
+      }
+    }
+    return true;
+  }();
+  m_partitionMemo[partName] = result;
+  return result;
 }
 
 Json NetworkedAnimator::mergeIncludes(Json config, Json includes, String relativePath){
