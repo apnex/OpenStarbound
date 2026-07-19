@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include "StarSet.hpp"
 #include "StarNetElementSystem.hpp"
 #include "StarTileEntity.hpp"
@@ -11,6 +13,16 @@ namespace Star {
 
 STAR_CLASS(RenderCallback);
 STAR_CLASS(Plant);
+
+// Process-global gate for Lever L-WIND-A: skip the render-only wind computation
+// (m_windTime/m_windLevel) in Plant::update on the MASTER (server), where it is a
+// dead store -- those fields feed only branchRotation() -> Plant::render() (the
+// master never renders) and are not networked. Default ON; set from
+// worldserver.config in WorldServer::init. Slaves (clients) always compute it for
+// rendering. Mirrors the EntityDormancy/CollisionArena file-static atomic pattern.
+namespace PlantWind {
+  extern std::atomic<bool> serverSkip;
+}
 
 STAR_EXCEPTION(PlantException, StarException);
 

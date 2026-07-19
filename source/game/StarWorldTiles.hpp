@@ -87,6 +87,25 @@ struct ServerTile : public WorldTile {
   // Do not serialize - calculated at runtime
   CollisionKind objectCollision;
 };
+
+// Defined inline (moved from StarWorldTiles.cpp): the only hot callers are the
+// header templates in StarWorldImpl.hpp, which invoke these per-tile across the
+// collision broad-phase. With LTO disabled, an out-of-line definition costs a
+// real call/ret per tile. Bodies are byte-identical to the former out-of-line
+// versions; this is purely the de-indirection LTO would otherwise perform.
+inline CollisionKind ServerTile::getCollision() const {
+  CollisionKind kind = collision;
+  if (objectCollision != CollisionKind::None
+      && (objectCollision != CollisionKind::Platform || kind == CollisionKind::None)) {
+    kind = objectCollision;
+  }
+  return kind;
+}
+
+inline bool ServerTile::isColliding(CollisionSet const& collisionSet) const {
+  return Star::isColliding(getCollision(), collisionSet);
+}
+
 typedef TileSectorArray<ServerTile, WorldSectorSize> ServerTileSectorArray;
 typedef shared_ptr<ServerTileSectorArray> ServerTileSectorArrayPtr;
 

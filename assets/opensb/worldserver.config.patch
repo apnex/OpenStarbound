@@ -1,3 +1,57 @@
 {
-  "scriptContexts" : { "OpenStarbound" : ["/scripts/opensb/worldserver/worldserver.lua"] }
+  "scriptContexts" : { "OpenStarbound" : ["/scripts/opensb/worldserver/worldserver.lua"] },
+
+  // Lua GC: raise luaGcPause 1.2 -> 4.0 (LUA_GCPAUSE 120 -> 400); HOLD luaGcStepMultiplier
+  // at vanilla 1.2 (raising it adds per-step GC work and offsets the pause win). Clean A/B
+  // on the WorldServerThread at a steady base: GC self 1.12% -> ~0% (GC's share of Lua
+  // 0.083 -> 0.005, ~16x), no stutter. Est ~4% of the thread reclaimed under heavy-AI
+  // exploring (GC was ~4.2% there). Trades larger peak Lua heap (trivial on this box). Lever #1.
+  "luaGcPause" : 4.0,
+  "luaGcStepMultiplier" : 1.2,
+
+  // Net-delta dirty-version early-out (Lever #4). earlyOut: skip the writeNetDelta
+  // tree-walk for entities unchanged since the last delta (O(1) latestChange check).
+  // DEFAULT-ON: validated desync-safe live (validate mode x2, zero MISMATCH) +
+  // EarlyOutSoak/Trap tests. validate stays OFF — it's the debug shadow-oracle (runs
+  // BOTH paths + asserts the contract), expensive and only for a debug/asserts build.
+  // See plans/2026-06-15-netdelta-dirty-version-earlyout.md.
+  "netDeltaDirtyVersionEarlyOut" : true,
+  "netDeltaDirtyVersionValidate" : false,
+
+  // Entity-dormancy awake-set (Arc-A Rung 1). enabled: skip the per-tick update for
+  // entities the awake-set has marked dormant. DEFAULT-ON: validated correct live
+  // (zero DORMANCY MISMATCH over ~49 min, 2026-06-20) + EntityDormancy oracle tests
+  // (11). validate stays OFF — it's the debug shadow-oracle (shadow-runs each dormant
+  // tick + asserts it's a no-op), for a debug/asserts build only.
+  "entityDormancyEnabled" : true,
+  "entityDormancyValidate" : false,
+
+  // Lever L2: collision-poly arena — in-place reuse of MovementController's working
+  // collision list instead of draining/refilling it every query. DEFAULT-ON and
+  // byte-identical to OFF (the arena reproduces the drain/refill contents+order
+  // exactly; verified by perspective-diverse adversarial review = BYTE_IDENTICAL).
+  // This flag is the kill-switch + a live A/B toggle (flip OFF vs ON in dev to compare).
+  "collisionArenaEnabled" : true,
+
+  // Lever L-WIND-A: skip the render-only plant wind computation on the SERVER. The
+  // per-plant m_windTime/m_windLevel (a tile lookup + fmod, ~1.85% of the exploring
+  // WST) feed ONLY Plant render sway and are never networked, so on the server
+  // (which never renders) they are a dead store. DEFAULT-ON; byte-identical (clients
+  // still compute it for rendering). Kill-switch + A/B toggle.
+  "plantWindServerSkip" : true,
+
+  // Lever L-DMG-SKIP-0: skip the per-tick DamageManager damageSources() query for
+  // entities that provably have none (Entity::hasDamageSources()==false: the
+  // statically-empty types ItemDrop/Plant/PlantDrop/Stagehand, which dominate FU
+  // entity counts). DEFAULT-ON; byte-equivalent (the skipped call returns {} and
+  // mutates nothing). Kill-switch + live A/B toggle.
+  "damageSourceSkipEnabled" : true,
+
+  // Staggered max-sleep cap (Task 7 backstop). Upper bound, in seconds, on how long
+  // any entity may stay dormant: a {}-horizon (sleep-until-external-wake) or an
+  // over-cap horizon is clamped to a wake near this cap, staggered per-entity so the
+  // cap-wakes don't synchronize into a per-tick hitch. Bounds any UNKNOWN missed wake
+  // to <= this latency instead of a permanent freeze. Only consulted on the dormancy
+  // path, so OFF is unaffected. Converted to steps via ServerGlobalTimestep (1/60s).
+  "entityDormancyMaxSleepSeconds" : 10
 }

@@ -8,6 +8,10 @@
 
 namespace Star {
 
+namespace CollisionArena {
+  std::atomic<bool> enabled{true};   // Lever L2; default ON, kill-switch via worldserver.config
+}
+
 MovementParameters MovementParameters::sensibleDefaults() {
   return MovementParameters(Root::singleton().assets()->json("/default_movement.config").toObject());
 }
@@ -860,6 +864,15 @@ MovementController::CollisionResult MovementController::collisionMove(List<Colli
   if (body.isNull())
     return {movement, Vec2F(), {}, false, false, Vec2F(1, 0), CollisionKind::None};
 
+  // Lever L5: the per-poly sort key (squared distance to sortCenter) is a pure
+  // function of sortPosition (set in queryCollisions, never mutated here) and the
+  // constant sortCenter, so compute it ONCE here instead of redundantly in each of
+  // the up-to-7 collisionSeparate calls below. The per-call sort is kept verbatim
+  // (its unstable re-sort sequence is load-bearing) and now sees byte-identical
+  // sortDistance values -> byte-identical result.
+  for (auto& cp : collisionPolys)
+    cp.sortDistance = vmagSquared(cp.sortPosition - sortCenter);
+
   PolyF translatedBody = body;
   translatedBody.translate(movement);
   PolyF checkBody = translatedBody;
@@ -989,15 +1002,14 @@ MovementController::CollisionResult MovementController::collisionMove(List<Colli
 }
 
 MovementController::CollisionSeparation MovementController::collisionSeparate(List<CollisionPoly>& collisionPolys, PolyF const& poly,
-    bool ignorePlatforms, float maximumPlatformCorrection, Vec2F const& sortCenter, bool upward, float separationTolerance) {
+    bool ignorePlatforms, float maximumPlatformCorrection, Vec2F const& /*sortCenter: precomputed in collisionMove (L5)*/, bool upward, float separationTolerance) {
 
   CollisionSeparation separation = {};
   separation.collisionKind = CollisionKind::None;
   bool intersects = false;
 
-  for (auto& cp : collisionPolys)
-    cp.sortDistance = vmagSquared(cp.sortPosition - sortCenter);
-
+  // sortDistance is precomputed once per move in collisionMove (Lever L5); the
+  // sort below still runs every call (its unstable re-sort order is load-bearing).
   sort(collisionPolys, [](auto const& a, auto const& b) {
       return a.sortDistance < b.sortDistance;
     });
@@ -1067,11 +1079,25 @@ void MovementController::updatePositionInterpolators() {
 }
 
 void MovementController::queryCollisions(RectF const& region) {
-  while (!m_workingCollisions.empty()) {
-    m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+  // Lever L2: in-place "arena" reuse of m_workingCollisions instead of draining the
+  // whole list into m_collisionBuffers and refilling it every query. When enabled,
+  // overwrite the persistent slots [0,live) in place (each keeps its poly vector
+  // capacity), append only past the high-water mark, then trim any excess back into
+  // the recycle pool at the end -- leaving m_workingCollisions == the live set in the
+  // SAME fill order, so contents are byte-identical and collisionMove/collisionSeparate
+  // are untouched. The OFF path is the original drain/refill verbatim (kill-switch).
+  bool const arena = CollisionArena::enabled.load(std::memory_order_relaxed);  // read ONCE per query
+  if (!arena) {
+    while (!m_workingCollisions.empty()) {
+      m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+    }
   }
 
-  auto newCollisionPoly = [this]() -> CollisionPoly& {
+  size_t live = 0;
+  auto newCollisionPoly = [&]() -> CollisionPoly& {
+    if (arena && live < m_workingCollisions.size())
+      return m_workingCollisions[live++];   // overwrite a persistent slot in place
+    ++live;
     if (!m_collisionBuffers.empty())
       return m_workingCollisions.emplaceAppend(CollisionPoly{
           m_collisionBuffers.takeLast(), {}, {}, {}, {}, {}
@@ -1082,7 +1108,15 @@ void MovementController::queryCollisions(RectF const& region) {
 
   auto geometry = world()->geometry();
 
-  world()->forEachCollisionBlock(RectI::integral(region.padded(1)), [&](CollisionBlock const& block) {
+  // Buffered broad-phase: one virtual call + inlined loop instead of a per-block std::function
+  // dispatch (and the per-query std::function heap-alloc the captured closure caused).
+  // EQUIVALENCE rests on ORDER PRESERVATION: getCollisionBlocks yields the same blocks in the
+  // same tileEach order as the std::function overload (shared WorldImpl template). Do NOT reorder
+  // this buffer -- collisionSeparate's std::sort is UNSTABLE and ties occur, so a reorder could
+  // change the resolved position at tie boundaries.
+  m_collisionBlockBuffer.clear();   // keeps capacity (no per-call alloc, like EntityMap::m_entrySortBuffer)
+  world()->getCollisionBlocks(RectI::integral(region.padded(1)), m_collisionBlockBuffer);
+  auto consumeBlock = [&](CollisionBlock const& block) {
       if (block.kind != CollisionKind::None && !block.poly.isNull()) {
         RectF polyBounds = block.polyBounds;
         Vec2F basePosition = block.poly.vertex(0);
@@ -1099,7 +1133,13 @@ void MovementController::queryCollisions(RectF const& region) {
           collisionPoly.collisionKind = block.kind;
         }
       }
-    });
+    };
+  for (auto const& ref : m_collisionBlockBuffer) {
+    if (ref.block)
+      consumeBlock(*ref.block);
+    else
+      consumeBlock(CollisionBlock::nullBlock(ref.space));   // Null tile (unloaded chunk): reconstruct
+  }
 
   forEachMovingCollision(region, [&](MovingCollisionId id, PhysicsMovingCollision mc, PolyF poly, RectF bounds) {
     CollisionPoly& collisionPoly = newCollisionPoly();
@@ -1110,6 +1150,14 @@ void MovementController::queryCollisions(RectF const& region) {
     collisionPoly.collisionKind = mc.collisionKind;
     return true;
   });
+
+  if (arena) {
+    // Trim slots beyond the live set back into the recycle pool (preserving their
+    // poly vector capacity), so m_workingCollisions == [0,live) in fill order --
+    // byte-identical to what the drain/refill path leaves for collisionMove.
+    while (m_workingCollisions.size() > live)
+      m_collisionBuffers.append(m_workingCollisions.takeLast().poly);
+  }
 }
 
 float MovementController::gravity() {

@@ -79,6 +79,16 @@ struct CollisionBlock {
   RectF polyBounds;
 };
 
+// Lightweight, copy-cheap reference to a collision block for buffered iteration.
+// block == nullptr means a Null collision tile occupying `space` (reconstruct the unit
+// quad inline via CollisionBlock::nullBlock; see queryCollisions). NOTE: when block != nullptr
+// it points into a tile's collisionCache and is valid ONLY until the next tile mutation on
+// this world thread -- the caller must fully consume the buffer before yielding.
+struct CollisionBlockRef {
+  Vec2I space;
+  CollisionBlock const* block;
+};
+
 inline CollisionSet::CollisionSet()
   : m_kinds(0) {}
 
