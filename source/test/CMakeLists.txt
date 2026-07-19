@@ -84,5 +84,27 @@ ADD_EXECUTABLE (game_tests
 TARGET_LINK_LIBRARIES (game_tests ${STAR_EXT_LIBS})
 ADD_TEST (NAME game_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/game_tests)
 
+# Layer-1 architecture gate: the sovereign render-surface module must not name OpenGlRenderer in code.
+# Self-locating shell+python lint, no build artifact needed. See scripts/layer1-layering-lint.sh.
+ADD_TEST (NAME layer1_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layer1-layering-lint.sh)
+
+# Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
+# (no GL context). The two module TUs are compiled directly here -- they are sovereign (zero refs to
+# OpenGlRenderer, enforced by the layer1_layering gate) and Texture is a header-abstract interface, so they need
+# only core/base/extern + GL, not the whole star_application. gtest-all.cc + core_tests_main.cpp supply the
+# framework and main(); these are the first tests that construct a Layer-1 component standalone.
+SET (star_render_surface_tests_SOURCES
+      gtest/gtest-all.cc
+      core_tests_main.cpp
+      render_surface_test.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/../application/StarGlRenderSurface.cpp
+      ${CMAKE_CURRENT_SOURCE_DIR}/../application/StarGlTexturePrimitives.cpp)
+ADD_EXECUTABLE (render_surface_tests
+  $<TARGET_OBJECTS:star_extern> $<TARGET_OBJECTS:star_core> $<TARGET_OBJECTS:star_base>
+  ${star_render_surface_tests_SOURCES})
+TARGET_INCLUDE_DIRECTORIES (render_surface_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../application)
+TARGET_LINK_LIBRARIES (render_surface_tests ${STAR_EXT_LIBS} ${STAR_EXT_GUI_LIBS})
+ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/render_surface_tests)
+
 SET_TESTS_PROPERTIES(core_tests PROPERTIES
                      LABELS "NoAssets")

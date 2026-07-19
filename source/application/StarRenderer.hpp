@@ -2,6 +2,7 @@
 
 #include "StarVariant.hpp"
 #include "StarImage.hpp"
+#include "StarRenderDiagnostics.hpp"
 #include "StarPoly.hpp"
 #include "StarJson.hpp"
 #include "StarBiMap.hpp"
@@ -158,6 +159,10 @@ public:
   virtual void setMultiTexturingEnabled(bool enabled) = 0;
   virtual void setMultiSampling(unsigned multiSampling) = 0;
   virtual void setMainHDR(bool enabled) = 0;
+  // Orphan the immediate vertex buffer before re-writing it, so a re-write never implicitly synchronises with
+  // an in-flight draw still reading it. Byte-identical output; purely a driver allocation hint. Default ON --
+  // it is worth 74-81% of the GPU frame. Kept switchable ONLY so the render harness can A/B-prove that identity.
+  virtual void setVboOrphan(bool enabled) = 0;
   virtual TextureGroupPtr createTextureGroup(TextureGroupSize size = TextureGroupSize::Medium, TextureFiltering filtering = TextureFiltering::Nearest) = 0;
   virtual RenderBufferPtr createRenderBuffer() = 0;
 

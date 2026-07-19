@@ -437,6 +437,13 @@ void ClientApplication::render() {
 
   renderer->setMultiSampling(config->get("antiAliasing").optBool().value(false) ? 4 : 0);
   renderer->setMainHDR(config->get("hdr").optBool().value(true));
+  renderer->setVboOrphan(config->get("renderVboOrphan").optBool().value(true));
+  // Like setMainHDR/setMultiSampling above, this reloads the whole framebuffer set when it changes, so it
+  // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
+  // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.
+  renderer->oracle().setEnabled(config->get("envOracle", false).optBool().value(false)
+      || config->get("parallaxOracle", false).optBool().value(false)
+      || config->get("lightingSpreadOracle", false).optBool().value(false));
   renderer->switchEffectConfig("interface");
 
   if (auto interfaceScale = config->get("interfaceScale").optFloat().value(); interfaceScale != 0)
