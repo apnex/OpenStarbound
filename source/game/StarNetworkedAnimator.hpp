@@ -1,6 +1,7 @@
 #pragma once
 
 #include "StarPeriodicFunction.hpp"
+#include "StarSet.hpp"
 #include "StarAnimatedPartSet.hpp"
 #include "StarNetElementSystem.hpp"
 #include "StarDrawable.hpp"
@@ -221,6 +222,10 @@ public:
 
   List<Drawable> drawables(Vec2F const& translate = Vec2F()) const;
   List<pair<Drawable, float>> drawablesWithZLevel(Vec2F const& translate = Vec2F()) const;
+  // The always-rebuild drawables path (the pre-cache behaviour, kept verbatim).
+  // drawablesWithZLevel delegates here when renderDrawableCache is off, and the
+  // shadow-compare / parity tests use it as the golden master.
+  List<pair<Drawable, float>> drawablesWithZLevelRebuild(Vec2F const& translate = Vec2F()) const;
 
   List<LightSource> lightSources(Vec2F const& translate = Vec2F()) const;
 
@@ -228,10 +233,38 @@ public:
   // will be discarded
   void update(float dt, DynamicTarget* dynamicTarget);
 
+  // Dormancy idle-horizon helper (master/server).  Returns true iff the animator
+  // has active/non-settled per-tick work:
+  //   - an active animation state still advancing: a Loop state (animates forever)
+  //     or a Transition state (whose cycle completion auto-advances the NETTED
+  //     state index, so the master MUST keep running update() to drive it), or an
+  //     End state still short of its cycle; OR
+  //   - a rotation group whose currentAngle has not yet reached its targetAngle.
+  // Returns false only when provably idle (no active animated states, no live
+  // rotations).  Particle emitters, light flicker, effects and sounds are
+  // EXCLUDED: on the server update() runs with a null DynamicTarget so emitters
+  // produce nothing, and all of these are driven by netted state / run
+  // independently slave-side, so they need no master wake.  Conservative: when in
+  // doubt it reports work (over-wake is safe; under-wake would desync).
+  bool hasActiveAnimationWork() const;
+
   // Run through the current animations until the final frame, including any
   // transition animations.
   void finishAnimations();
   uint8_t version() const;
+
+  // Bumps when any drawable-affecting animator state changes (not
+  // generation()'s job).  Main-thread only: not synchronized.
+  uint64_t renderVersion() const;
+
+  // Static/live partition (conservative + transitive): true iff this part's
+  // drawable is fully determined by (renderVersion, generation), i.e. it and
+  // its whole anchorPart chain reference no continuously-interpolated state.
+  // Conservative: anything unintelligible is treated as live (not cacheable).
+  // Re-evaluate whenever generation() bumps (a state change can re-target
+  // which transformation group an active-state property animates).
+  // Main-thread only, like renderVersion().
+  bool partIsStaticCacheable(String const& partName) const;
 
 private:
   struct RotationGroup {
@@ -242,6 +275,13 @@ private:
     float currentAngle;
 
     NetElementEvent netImmediateEvent;
+
+    // Shadow of targetAngle.get() last seen by netElementsNeedLoad, for the
+    // slave-side discrete-change diff (rotateGroup never runs on slaves, and
+    // update() snaps/approaches currentAngle from the netted targetAngle).
+    // targetAngle never has an interpolator, so the diff is tick-quiet.
+    // Matches NetElementFloat's default value.
+    float lastSeenTargetAngle = 0.0f;
   };
 
   struct TransformationGroup {
@@ -273,6 +313,19 @@ private:
     float xShearAnimation;
     float yShearAnimation;
 
+    // Shadows of the six networked floats last seen by netElementsNeedLoad,
+    // for the slave-side discrete-change diff (the *TransformationGroup
+    // setters never run on slaves).  Only diffed for NON-interpolated groups:
+    // those floats have no interpolators and change only at delta-apply, so
+    // the diff is tick-quiet; interpolated groups lerp every tick, and parts
+    // referencing them are LIVE in partIsStaticCacheable anyway.  Defaults
+    // match the identity affine transform the constructor installs.
+    float lastSeenXTranslation = 0.0f;
+    float lastSeenYTranslation = 0.0f;
+    float lastSeenXScale = 1.0f;
+    float lastSeenYScale = 1.0f;
+    float lastSeenXShear = 0.0f;
+    float lastSeenYShear = 0.0f;
   };
 
   struct ParticleEmitter {
@@ -342,6 +395,9 @@ private:
     Directives directives;
 
     NetElementBool enabled;
+    // Shadow of enabled.get() last seen by netElementsNeedLoad, for the
+    // slave-side discrete-change diff.
+    bool lastSeenEnabled = false;
     float timer;
   };
 
@@ -353,6 +409,87 @@ private:
   };
 
   void setupNetStates();
+
+  void bumpRenderVersion();
+
+  // Order-stable hash of every transformation group's localTransform matrix.
+  // Local matrices are excluded from m_renderVersion (their setters are called
+  // in reset+rotate pairs every frame by Humanoid; per-call bumps would re-key
+  // a visually-stationary animator), so the combined matrix state keys the
+  // static cache as the third cache-key component instead.  Hashes ALL groups
+  // (no dirty bits); computed only on the cache path.  Iteration order only
+  // ever compares against the SAME animator's previous value, so the
+  // OrderedHashMap's stable per-instance order is sufficient.
+  uint64_t localTransformHash() const;
+
+  // Helpers for partIsStaticCacheable.  Each scans the part's full config
+  // structure (base partProperties plus every partState's properties and
+  // frameProperties), so the answer is conservative across state changes.
+  bool anyFlashEffectActive() const;
+  // The full structural walk behind partIsStaticCacheable (anchor chain,
+  // rotation/transformation groups, transforms property), memoized per part in
+  // m_partitionMemo.  The flash-effect gate is a runtime input and stays
+  // OUTSIDE, in partIsStaticCacheable itself.
+  bool partIsStaticCacheableStructural(String const& partName) const;
+  bool partReferencesLiveRotationGroup(AnimatedPartSet::Part const& part) const;
+  bool partReferencesLiveTransformationGroup(AnimatedPartSet::Part const& part) const;
+  static bool partHasTransformsProperty(AnimatedPartSet::Part const& part);
+
+  // Helpers shared by drawablesWithZLevelRebuild and the static-cache path.
+  // The per-part build (appendPartDrawables) is extracted verbatim from the
+  // old drawablesWithZLevel loop and is the SINGLE source of truth both paths
+  // call, so cached and live parts are built identically (parity by
+  // construction).
+
+  // Tag-dependency capture for the per-part cache. Populated by drawableBuildContext
+  // (per drawable call), read by appendPartDrawables. stateTagOwner maps a BUILT-IN
+  // animation tag key (<T>_frame/_frameIndex/_state) to its owning state type T
+  // (unique definer). customTags lists CUSTOM animationTags keys, whose first-definer
+  // owner can shift between state types -> a consumer of any custom tag must depend on
+  // the global stateTypesEpoch, not a single owner.
+  struct TagDeps {
+    HashMap<String, String> stateTagOwner;
+    Set<String> customTags;
+  };
+
+  // The per-call build context: effect/processing directives prefix plus the
+  // resolved animation tags.  baseProcessingDirectives is per-part
+  // appended/restored by appendPartDrawables, hence non-const.
+  void drawableBuildContext(List<Directives>& baseProcessingDirectives,
+      HashMap<String, String>& animationTags, TagDeps* tagDeps = nullptr) const;
+
+  // All active parts enumerated and stable-sorted by zLevel, exactly the
+  // ordering the rebuild path draws in.  Enumerating freshens every part
+  // (AnimatedPartSet does this lazily), settling generation() before the
+  // cache is keyed on it.  drawableCount accumulates m_partDrawables extras
+  // for reserve().
+  List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> sortedActiveParts(int& drawableCount) const;
+
+  // Builds the given part's drawables (image drawable plus m_partDrawables
+  // extras) at the given translate and appends them to the output list.
+  void appendPartDrawables(String const& partName, AnimatedPartSet::ActivePartInformation const& activePart,
+      float zLevel, Vec2F const& translate, List<Directives>& baseProcessingDirectives,
+      HashMap<String, String> const& animationTags, List<pair<Drawable, float>>& drawables,
+      TagDeps const* tagDeps = nullptr, Set<String>* consumedStateTypes = nullptr,
+      bool* consumedCustomTag = nullptr) const;
+
+  // Re-partitions and rebuilds m_staticCache (static parts only, ZERO
+  // translate) for the given sorted part list, recording the given cache key.
+  void rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
+      tuple<uint64_t, uint64_t, uint64_t> const& key) const;
+  List<pair<Drawable, float>> drawablesWithZLevelPerPart(Vec2F const& position) const;
+
+  // Shadow-compare (runtime flag renderDrawableCacheShadowCompare):
+  // diagnostics-only check of the assembled cache-path output against a
+  // forced rebuild for the same state.  Same size + per-drawable equality;
+  // position is compared with a small ulp tolerance (the two paths apply the
+  // world translate in a different order -- see the parity note in
+  // drawablesWithZLevel), every other field exactly.  Each mismatching
+  // drawable counts into render.drawable.cache.shadowMismatch; the
+  // Logger::warn is rate-limited to once per animator.  partStarts maps
+  // assembled drawable index -> source part name for the warn's diagnostics.
+  void shadowCompare(List<pair<Drawable, float>> const& cached, List<pair<Drawable, float>> const& rebuilt,
+      List<pair<size_t, String const*>> const& partStarts) const;
 
   void netElementsNeedLoad(bool full) override;
   void netElementsNeedStore() override;
@@ -386,6 +523,84 @@ private:
   HashMap<String,List<Drawable>> m_partDrawables;
 
   mutable StringMap<std::pair<size_t, Drawable>> m_cachedPartDrawables;
+
+  // Static-partition drawable cache (runtime flag renderDrawableCache), keyed
+  // by part name: presence in the map IS the static partition recorded at
+  // build time, so the serve path builds exactly the complement (LIVE parts)
+  // fresh each call.  Drawables are cached at ZERO translate; the world
+  // translate is applied live after assembly.  Valid only while
+  // m_staticCacheKey == (m_renderVersion, m_animatedParts.generation(),
+  // localTransformHash()).  Main-thread only like m_renderVersion (no
+  // atomics); mutable for the const drawables path.
+  mutable StringMap<List<pair<Drawable, float>>> m_staticCache;
+  mutable bool m_staticCacheValid = false;
+  mutable tuple<uint64_t, uint64_t, uint64_t> m_staticCacheKey;
+
+  // Per-part static drawable cache (runtime flag renderDrawableCachePerPart):
+  // the part-granular refinement of m_staticCache above.  Each static part
+  // caches its zero-translate drawables under its OWN key
+  // (m_renderVersion, m_animatedParts.partGeneration(part), localTransformHash()),
+  // so a sibling part advancing its animation frame -- which bumps the
+  // whole-entity generation() and would re-key the single m_staticCacheKey,
+  // clearing the WHOLE m_staticCache -- no longer invalidates parts that did not
+  // themselves change.  Same zero-translate / world-translate-after convention
+  // and same partIsStaticCacheable partition as m_staticCache.  Correctness on
+  // config replacement is covered by the renderVersion key component (operator=
+  // bumps renderVersion); also cleared in operator= for memory hygiene.
+  // Main-thread only; mutable for the const drawables path.
+  // Cross-state-type animation tags ARE captured per entry (the partGeneration
+  // key tracks only a part's OWN resolved state).  A static part resolving
+  // another state type's built-in <T_state>/<T_frame>/<T_frameIndex> tag records
+  // a PRECISE per-state-type dependency (stateTypeDeps, checked against that
+  // state type's generation); resolving any custom animationTags key records the
+  // conservative stateTypesEpoch dependency (dependsAllStateTypes).  Either
+  // invalidates the entry when the foreign state type changes, so the per-part
+  // cache stays correct (DrawableCache.PerPart* tests).
+  struct StaticPartCacheEntry {
+    List<pair<Drawable, float>> drawables;
+    uint64_t renderVersion = 0;
+    uint64_t partGeneration = 0;
+    uint64_t localTransformHash = 0;
+    // Cross-state-type-tag dependency (Lever 1b): built-in foreign tags -> exact
+    // per-state-type deps; any custom-tag consumption -> depend on stateTypesEpoch.
+    List<pair<String, uint64_t>> stateTypeDeps;
+    bool dependsAllStateTypes = false;
+    uint64_t stateTypesEpoch = 0;
+  };
+  mutable StringMap<StaticPartCacheEntry> m_staticCachePerPart;
+
+  // Memo of partIsStaticCacheableStructural verdicts.  Every structural input
+  // is construction-constant (part configs, anchor chain, group structure,
+  // angularVelocity, interpolated, version()) EXCEPT the active-state-animated
+  // transformation-group check, which reads activeState(...).properties --
+  // those re-merge only under a generation() bump (AnimatedPartSet's freshen
+  // layers), so the memo is keyed on generation() (m_partitionMemoGeneration)
+  // and stale verdicts are impossible.  Cleared by operator= (assignment
+  // replaces the whole config; generations are per-AnimatedPartSet counters
+  // and could collide).  The flash-effect gate is a runtime input and stays
+  // OUTSIDE the memo.  Main-thread only like the cache; mutable for the const
+  // drawables path.
+  mutable StringMap<bool> m_partitionMemo;
+  mutable uint64_t m_partitionMemoGeneration = 0;
+
+  // Rate-limits the shadow-mismatch Logger::warn to once per animator (the
+  // shadowMismatch counter still counts every mismatch).  Main-thread only
+  // like the cache; mutable for the const drawables path.
+  mutable bool m_shadowMismatchWarned = false;
+
+  // Main-thread only (no atomics): drawables() and netElementsNeedLoad are
+  // expected to run on the same thread.
+  uint64_t m_renderVersion = 1;
+
+  // Shadow copies of the last values of the discrete drawable-affecting
+  // NetElements seen by netElementsNeedLoad.  On slaves the setters are never
+  // called (NetElement deserialization writes storage directly), so the net
+  // funnel value-diffs against these to detect discrete changes.  Initialised
+  // to the same defaults the default constructor gives their NetElements.
+  Directives m_lastSeenProcessingDirectives;
+  float m_lastSeenZoom = 1.0f;
+  bool m_lastSeenFlipped = false;
+  float m_lastSeenCenterLine = 0.0f;
 };
 
 }

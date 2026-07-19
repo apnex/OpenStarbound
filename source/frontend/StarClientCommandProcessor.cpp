@@ -57,8 +57,15 @@ ClientCommandProcessor::ClientCommandProcessor(UniverseClientPtr universeClient,
     {"upgradeship", bind(&ClientCommandProcessor::upgradeShip, this, _1)},
     {"swap", bind(&ClientCommandProcessor::swap, this, _1)},
     {"respawnInWorld", bind(&ClientCommandProcessor::respawnInWorld, this, _1)},
-    {"render", bind(&ClientCommandProcessor::render, this, _1)}
+    {"render", bind(&ClientCommandProcessor::render, this, _1)},
+    {"telemetry", bind(&ClientCommandProcessor::telemetry, this, _1)},
+    {"lighting", bind(&ClientCommandProcessor::lighting, this, _1)}
   };
+  // The drawable-cache command would prefer /render, but that name is taken by
+  // the image-render command above, so it falls back to /rendercache
+  // (subcommands unchanged: cache on|off, cache shadow on|off, cache status).
+  m_builtinCommands.set(m_builtinCommands.contains("render") ? "rendercache" : "render",
+      bind(&ClientCommandProcessor::renderCache, this, _1));
 }
 
 bool ClientCommandProcessor::adminCommandAllowed() const {
