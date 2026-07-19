@@ -7,6 +7,7 @@
 #include "StarDrawablePainter.hpp"
 #include "StarRenderer.hpp"
 #include "StarGpuLightmapPass.hpp"
+#include "StarRetainedSurface.hpp"
 
 namespace Star {
 
@@ -63,14 +64,13 @@ private:
   // across it. Both caches invalidate on a bump, or they composite undefined GPU memory.
   uint64_t m_cacheFrameBufferGeneration = 0;
 
-  // Environment-cache probe (envRefreshInterval): frame counter gating the env->cache refresh, and the
-  // screen size the cache currently holds (a mismatch forces a refresh on the first frame + after resize;
-  // {0,0} also forces one on the first AA-off frame after MSAA was on).
-  uint64_t m_envRefreshCounter = 0;
-  Vec2U m_envCacheSize = {0, 0};
-  // The env draw scales stars/debris/orbiters by camera pixelRatio (starAndDebrisRatio / orbiterAndPlanetRatio),
-  // so a zoom change alters the cached image while size/counter stay put. Part of the env refresh key.
-  float m_envCachePixelRatio = -1.0f;
+  // Environment-cache decision state (envRefreshInterval): the N-frame refresh cadence + the structural
+  // invalidation key (screen size + camera pixelRatio the cache was last filled at). A mismatch forces a
+  // refresh on the first frame + after resize; {0,0} also forces one on the first AA-off frame after MSAA
+  // was on. The env draw scales stars/debris/orbiters by camera pixelRatio (starAndDebrisRatio /
+  // orbiterAndPlanetRatio), so a zoom alters the cached image at an unchanged screen size -- hence
+  // pixelRatio is part of the key, not just size. Bookkeeping owned by RetainedSurface (StarRetainedSurface.hpp).
+  RetainedSurface m_envCache{"envCache"};
 
   // Parallax retained-cache (SP-2): like the env cache, but the source scrolls with the camera, so the
   // refresh gate adds camera-position + pixelRatio(zoom) terms (Option B: force-full on any move). Parked

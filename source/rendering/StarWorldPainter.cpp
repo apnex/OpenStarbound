@@ -165,7 +165,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   uint64_t fbGeneration = m_renderer->frameBufferGeneration();
   if (fbGeneration != m_cacheFrameBufferGeneration) {
     m_cacheFrameBufferGeneration = fbGeneration;
-    m_envCacheSize = {0, 0};
+    m_envCache.invalidate();
     m_parallaxCacheSize = {0, 0};
   }
 
@@ -227,7 +227,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // whole env-cache lever.
   bool envCacheActive = (envRefreshInterval > 1 || envOracle);
   if (!envCacheActive) {
-    m_envCacheSize = {0, 0};
+    m_envCache.invalidate();
     m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
     drawEnv();
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
@@ -239,9 +239,13 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // without it, zooming left the sky stale until the counter next came round.
     static auto envRefreshed = Telemetry::counter("render.cache.env.refreshed");
     static auto envSkipped = Telemetry::counter("render.cache.env.skipped");
-    bool envInvalidated = (envScreenSize != m_envCacheSize) || (envPixelRatio != m_envCachePixelRatio);
-    bool refreshEnv = envInvalidated || (m_envRefreshCounter % envRefreshInterval == 0);
-    ++m_envRefreshCounter;
+    bool envInvalidated = m_envCache.invalidated(envScreenSize, envPixelRatio);
+    // cadenceHit is called UNCONDITIONALLY (not short-circuited behind envInvalidated) so the frame counter
+    // advances every active frame -- exactly the old separate `++m_envRefreshCounter;` statement, which ran
+    // even when the modulo test was skipped. Folding it into `envInvalidated || cadenceHit(...)` would stop
+    // advancing the counter on invalidation frames and silently shift the N-cadence phase afterwards.
+    bool envCadence = m_envCache.cadenceHit(envRefreshInterval);
+    bool refreshEnv = envInvalidated || envCadence;
     (refreshEnv ? envRefreshed : envSkipped).inc(1);
     envRefreshedThisFrame = refreshEnv;
 
@@ -250,15 +254,14 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
       // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
       // size still drives the first-frame / post-resize (re)alloc + the viewport.
-      m_renderer->setRenderTarget(String("envCache"), envScreenSize);
+      m_renderer->setRenderTarget(m_envCache.name(), envScreenSize);
       // clear:false FBO -> clear manually to main's clear color (0,0,0,1), matching the direct path's
       // once-per-frame startFrame clear (also stops alpha<1 sky/star draws ghost-accumulating).
       m_renderer->clearRenderTarget();
       // The env painters do NOT switchEffectConfig -- they inherit the bound "world" effect; only the
       // render target moved, so the draws are otherwise identical to the direct path.
       drawEnv();
-      m_envCacheSize = envScreenSize;
-      m_envCachePixelRatio = envPixelRatio;
+      m_envCache.recordFilled(envScreenSize, envPixelRatio);
     }
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
 
@@ -267,7 +270,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
     // mutations of the shared effect can't bleed in -- no forked config needed.
     m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
-    m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", "envCache",
+    m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
       {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
     m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
     m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
