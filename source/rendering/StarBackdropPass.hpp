@@ -30,6 +30,13 @@ public:
   // reset the caches mid-session and diverge (stale-sky / park-timing) from the pre-extraction behavior.
   void setRenderer(Renderer* renderer) { m_renderer = renderer; }
 
+  // Force both retained caches to redraw on their next frame. Called from WorldPainter::renderInit so a fresh
+  // world (or a recreated renderer) never composites the PREVIOUS world's cached sky. The frame-loop FBO-
+  // generation drop already covers a renderer whose generation bumped; this also covers a SAME-renderer world
+  // entry, where the env cache's refresh key (size + pixelRatio + counter, no content term) would otherwise
+  // hold world A's sky for up to N-1 frames. (Parallax self-heals via its content key + camera position.)
+  void invalidateCaches() { m_envCache.invalidate(); m_parallaxCache.invalidate(); }
+
   // Draw + compose the environment (sky/stars/debris/orbiters) into "main" via the envCache retained surface,
   // refreshing it on the envRefreshInterval cadence / on resize / zoom / FBO-generation drop. Records whether
   // the env cache refreshed this frame, for the parallax arbiter in renderParallax(). ablateEnv suppresses the

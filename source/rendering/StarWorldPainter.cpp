@@ -110,6 +110,9 @@ void WorldPainter::renderInit(RendererPtr renderer) {
     m_backdropPass = make_shared<BackdropPass>(m_renderer.get());
   else
     m_backdropPass->setRenderer(m_renderer.get());
+  // DELIBERATE improvement (NOT byte-identical, surfaced by step-3 verification): a fresh world / recreated
+  // renderer gets fresh backdrop caches, so we never composite the previous world's cached sky on re-entry.
+  m_backdropPass->invalidateCaches();
 }
 
 void WorldPainter::setCameraPosition(WorldGeometry const& geometry, Vec2F const& position) {
