@@ -97,6 +97,9 @@ public:
   shared_ptr<WidgetType> findChild(String const& name);
 
   WidgetPtr childPtr(Widget const* widget) const;
+  // [rendertest] task #141: expose the child list so the pane-tree dump can name the widget that is burning
+  // 70% of the GPU frame. Read-only; no behaviour change.
+  List<WidgetPtr> const& members() const { return m_members; }
 
   virtual size_t numChildren() const;
   virtual WidgetPtr getChildNum(size_t num) const;
