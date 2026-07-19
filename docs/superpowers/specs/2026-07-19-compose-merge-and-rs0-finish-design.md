@@ -78,9 +78,23 @@ floor target, and the only place the merge applies.
 
 ---
 
-## Component 2 — R2: unify the Jacobi ping-pong onto `swap()`
+## Component 2 — R2: unify the Jacobi ping-pong onto `swap()` — **DROPPED (director, 2026-07-19)**
 
-### Today
+**Why dropped:** implementing R2 revealed the lightmap is not a pure ping-pong but a **4-stage pipeline** —
+N Jacobi spread iterations (ping-pong) → the point pass **accumulates in-place** onto the final spread result
+→ compose reads that and writes the *other* buffer → shadowCompare/upscale **read the compose output**. The
+`swap()` read-face/write-face model fits a pure ping-pong; here it would require (a) a shared-primitive change
+(`setEffectTextureFromTarget` currently binds the *write*-face; a doubled consumer needs the *read*-face) plus
+(b) swap-parity juggling across the point/compose/upscale boundaries, where each "produce then read" step needs
+an extra `swap()`. That is a **byte-identical change with zero perf gain and zero bug fix** that trades two
+clearly-named buffers (`lightingGpu`/`lightingGpuB` + `%2`) for more code — the opposite of the Logic-Density
+simplification the RS-0 spec promised (which assumed a pure ping-pong). The two-named-buffer pipeline stays.
+
+**Superseded by** real Jacobi improvements (perf/quality, not byte-identical) captured as task #161 for a later
+measure→design→review: temporal warm-start (seed iter-0 from last frame → fewer iterations), red-black
+Gauss-Seidel (~2× convergence), residual early-exit, multigrid.
+
+### Today *(retained for reference; NOT implemented)*
 
 `StarGpuLightmapPass::runSpread` ping-pongs **two named framebuffers** via parity:
 

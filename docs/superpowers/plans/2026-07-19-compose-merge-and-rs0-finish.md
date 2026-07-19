@@ -6,7 +6,9 @@
 
 **Architecture:** All work is on branch `render/decomposition`. CM-1 adds a two-input `backdropCompose` effect and, on the both-caches-active path, defers the env compose so `renderParallax` issues a single merged full-screen pass into `main`. R2 makes `lightingGpu` a doubled `GlSurface` and rewrites the spread loop from two named FBOs to `swap()`. R4 is a mechanical rename done last so it sweeps the new code.
 
-**Tech Stack:** C++17, OpenGL 3.2 (GLSL `#version 150`), the fork's `Renderer`/`OpenGlRenderer`, effect `.config`/`.frag`/`.vert` assets, `scripts/render-gate.sh` (offscreen GPU oracles), CMake (Clang, `VCPKG_ROOT=/root/vcpkg`).
+**Tech Stack:** C++17, OpenGL 3.2 (GLSL `#version 150`), the fork's `Renderer`/`OpenGlRenderer`, effect `.config`/`.frag`/`.vert` assets, `scripts/render-gate.sh` (offscreen GPU oracles), CMake+Ninja (Clang, `VCPKG_ROOT=/root/vcpkg`).
+
+**Build command (all tasks):** `VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target starbound -j 8` — the client target is `starbound`, output goes directly to `dist/starbound` (which `render-gate.sh` boots). The harness reads assets straight from the repo (`harness/sbinit.config`), so new `.config`/`.frag` files are live in the gate with no deploy. (The live game would need `scripts/deploy-install.sh`; we gate via the harness.) R4 also has a `render_surface_tests` target worth running.
 
 **Domain note on "tests":** This is a byte-identical GPU refactor. The test of record is the **in-frame render-gate oracle** (`scripts/render-gate.sh`: env `MATCH/0`, parallax `EXACT`/bounded, spread `MATCH/0`, `GL_INVALID=0`), not xUnit. Where a pure-C++ unit is added (none here — RetainedSurface already has its suite), TDD applies; otherwise each task's "test" step is the oracle run. Every build: user **out of game** (`pgrep starbound` first), E-core-pinned `taskset -c 6-15 nice -n 19`, `VCPKG_ROOT=/root/vcpkg` inline.
 
