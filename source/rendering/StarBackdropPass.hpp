@@ -22,6 +22,14 @@ class BackdropPass {
 public:
   explicit BackdropPass(Renderer* renderer);
 
+  // WorldPainter::renderInit() is called AGAIN on every world entry and on renderer recreation, but the
+  // WorldPainter (and its single BackdropPass) is long-lived. The pre-extraction code kept this cache/arbiter
+  // state as inline WorldPainter members that renderInit never reset, so it PERSISTED across world entries.
+  // WorldPainter therefore constructs BackdropPass once and calls setRenderer() on subsequent renderInits to
+  // refresh the (possibly recreated) renderer WITHOUT wiping the retained state -- reconstructing instead would
+  // reset the caches mid-session and diverge (stale-sky / park-timing) from the pre-extraction behavior.
+  void setRenderer(Renderer* renderer) { m_renderer = renderer; }
+
   // Draw + compose the environment (sky/stars/debris/orbiters) into "main" via the envCache retained surface,
   // refreshing it on the envRefreshInterval cadence / on resize / zoom / FBO-generation drop. Records whether
   // the env cache refreshed this frame, for the parallax arbiter in renderParallax(). ablateEnv suppresses the

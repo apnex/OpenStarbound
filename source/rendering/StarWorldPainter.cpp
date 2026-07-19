@@ -103,7 +103,13 @@ void WorldPainter::renderInit(RendererPtr renderer) {
   m_tilePainter = make_shared<TilePainter>(m_renderer);
   m_drawablePainter = make_shared<DrawablePainter>(m_renderer, make_shared<AssetTextureGroup>(textureGroup));
   m_environmentPainter = make_shared<EnvironmentPainter>(m_renderer);
-  m_backdropPass = make_shared<BackdropPass>(m_renderer.get());
+  // renderInit runs again on every world entry / renderer recreation; keep the ONE BackdropPass so its retained
+  // env+parallax cache/arbiter state persists across world entries (as the pre-extraction inline members did --
+  // reconstructing here would wipe it mid-session). Just refresh its renderer pointer on re-init.
+  if (!m_backdropPass)
+    m_backdropPass = make_shared<BackdropPass>(m_renderer.get());
+  else
+    m_backdropPass->setRenderer(m_renderer.get());
 }
 
 void WorldPainter::setCameraPosition(WorldGeometry const& geometry, Vec2F const& position) {
