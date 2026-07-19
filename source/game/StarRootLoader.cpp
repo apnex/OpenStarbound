@@ -110,6 +110,7 @@ R"JSON(
       "parallaxRefreshInterval" : 0,
       "parallaxMaxDriftStepPx" : 0.75,
       "parallaxOracle" : false,
+      "backdropComposeMerge" : true,
 
       "lightingGpu" : true,
       "lightingGpuSpreadIterations" : 32,

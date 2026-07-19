@@ -51,6 +51,20 @@ public:
       bool ablateParallax);
 
 private:
+  // CM-1: one full-screen pass sampling BOTH caches into "main" (env opaque base + parallax premultiplied-
+  // over), replacing the two sequential composites. Own a screen-space quad buffer (rebuilt on resize) like
+  // GpuLightmapPass. Only used on the both-caches-active path; the env compose is deferred from
+  // renderEnvironment (m_envComposeDeferred) and issued here so env reaches "main" exactly once.
+  void mergedCompose(Vec2U const& size);
+  RenderBufferPtr m_fullQuadBuffer;
+  Vec2U m_fullQuadSize = {0, 0};
+  // Set by renderEnvironment when the merge is enabled AND the env cache is active: the env->main compose is
+  // skipped there and reconciled in renderParallax (merged if parallax also caches, standalone otherwise).
+  bool m_envComposeDeferred = false;
+  // Log the merged compose once, when it first engages -- empirical confirmation the lever is live (not a
+  // silently-inert default) + observability, mirroring the [parallaxauto] one-shot line.
+  bool m_backdropMergeLogged = false;
+
   Renderer* m_renderer;
 
   // Renderer framebuffer generation the retained caches were last filled under. A renderer config reload

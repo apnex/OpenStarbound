@@ -658,14 +658,15 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
   auto cfg = Root::singleton().configuration();
   String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off | parallaxrefresh <N> | paralloracle on|off";
   auto status = [&]() {
-    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={} parallaxRefreshInterval={} parallaxOracle={}",
+    return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={} parallaxRefreshInterval={} parallaxOracle={} backdropComposeMerge={}",
       cfg->get("renderDrawableCache", false).toBool(),
       cfg->get("renderDrawableCachePerPart", false).toBool(),
       cfg->get("renderDrawableCacheShadowCompare", false).toBool(),
       cfg->get("envRefreshInterval", 1).toUInt(),
       cfg->get("envOracle", false).toBool(),
       cfg->get("parallaxRefreshInterval", 1).toUInt(),
-      cfg->get("parallaxOracle", false).toBool());
+      cfg->get("parallaxOracle", false).toBool(),
+      cfg->get("backdropComposeMerge", true).toBool());
   };
 
   if (!args.empty() && args.at(0) == "envrefresh") {

@@ -10,6 +10,35 @@ namespace Star {
 
 BackdropPass::BackdropPass(Renderer* renderer) : m_renderer(renderer) {}
 
+// CM-1: the merged env+parallax compose. One full-screen quad, sampling the env cache (opaque backdrop) and
+// the parallax cache (premultiplied coverage), writing "main" once via the backdropCompose effect:
+//   out = P.rgb + E.rgb * (1 - P.a)
+// which is algebraically the sequential (env opaque replace, then parallax premultiplied-over) result. Blend
+// is irrelevant -- the shader writes the full opaque result and env covers every pixel, so "main" (still on
+// the startFrame clear, since the env compose was deferred) is fully overwritten. Mirrors GpuLightmapPass's
+// full-quad pattern.
+void BackdropPass::mergedCompose(Vec2U const& size) {
+  if (!m_backdropMergeLogged) {
+    Logger::info("[backdropmerge] engaged: env+parallax composited in one pass ({}x{})", size[0], size[1]);
+    m_backdropMergeLogged = true;
+  }
+  if (!m_fullQuadBuffer)
+    m_fullQuadBuffer = m_renderer->createRenderBuffer();
+  if (m_fullQuadSize != size) {
+    List<RenderPrimitive> prims;
+    prims.append(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f));
+    m_fullQuadBuffer->set(prims);
+    m_fullQuadSize = size;
+  }
+  m_renderer->switchEffectConfig("backdropCompose");
+  m_renderer->setEffectTextureFromTarget("envTexture", m_envCache.name());
+  m_renderer->setEffectTextureFromTarget("parallaxTexture", m_parallaxCache.name());
+  m_renderer->setRenderTarget(String("main"), size);
+  m_renderer->renderBuffer(m_fullQuadBuffer);
+  m_renderer->flush();
+  m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
+}
+
 void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData,
     EnvironmentPainter& envPainter, bool ablateEnv) {
   // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
@@ -27,6 +56,9 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // Did the env cache do its heavy redraw this frame? Read by the parallax refresh arbiter (renderParallax),
   // which defers a purely time-gated parallax refresh off any frame env is already redrawing on.
   m_envRefreshedThisFrame = false;
+  // CM-1: reset each frame; set true below iff the env cache is active AND the merge is enabled, in which case
+  // the env->main compose is DEFERRED to renderParallax. The direct env path (cache off) never defers.
+  m_envComposeDeferred = false;
 
   // Use a fixed pixel ratio for certain things.
   float pixelRatioBasis = camera.screenSize()[1] / 1080.0f;
@@ -119,15 +151,25 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     }
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
 
-    // Composite the cached env into "main" every frame: a full-screen passthrough quad reusing
-    // lightingPassthrough (nearest sampling; applyCap=false forces alpha=1.0 => a clean rgb replace of the
-    // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
-    // mutations of the shared effect can't bleed in -- no forked config needed.
-    m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
-    m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
-      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
-    m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
-    m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
+    // CM-1: when backdropComposeMerge is enabled, DEFER the env->main compose to renderParallax so env+parallax
+    // become one full-screen pass. The env cache is already FILLED (above); only the compose moves. renderParallax
+    // then guarantees env reaches "main" exactly once -- merged with parallax if the parallax cache is also active
+    // this frame, standalone otherwise. Nothing draws into "main" between here and the parallax compose (the
+    // lightmap phase only binds a texture), so deferring is order-safe.
+    bool composeMerge = Root::singleton().configuration()->get("backdropComposeMerge", true).optBool().value(true);
+    if (composeMerge) {
+      m_envComposeDeferred = true;
+    } else {
+      // Composite the cached env into "main" every frame: a full-screen passthrough quad reusing
+      // lightingPassthrough (nearest sampling; applyCap=false forces alpha=1.0 => a clean rgb replace of the
+      // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
+      // mutations of the shared effect can't bleed in -- no forked config needed.
+      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
+      m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
+        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+      m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
+      m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
+    }
 
     // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). The cache path MUST
     // be pixel-identical to a direct env render. Render the SAME env sequence into "envRef" -- a clear:true
@@ -149,7 +191,10 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // Restore the draw target to "main"; the effect is already "world", so switchEffectConfig("world")
       // would early-out without rebinding and strand the target on envRef.
       m_renderer->setRenderTarget(String("main"));
-      auto d = m_renderer->oracle().compare("envRef", "main");
+      // In merge mode the env compose is deferred (main holds no env yet), so compare the reference against the
+      // env CACHE -- which the passthrough compose would copy to main byte-for-byte (opaque replace). Non-merge:
+      // main already holds the composited env, so compare vs main (also validates the compose into main).
+      auto d = m_renderer->oracle().compare("envRef", m_envComposeDeferred ? m_envCache.name() : String("main"));
       bool atmosphereless = renderData.skyRenderData.type == SkyType::Atmosphereless;
       if (d.first == NPos)
         Logger::info("[envoracle] SKIPPED (absent fbo or size mismatch) N={} atmosphereless={}", envRefreshInterval, atmosphereless);
@@ -313,6 +358,18 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     m_parallaxCache.invalidate();
     if (parallaxHasLayers && !parallaxParked)
       parallaxBypassedCtr.inc(1);
+    // CM-1 reconcile: renderEnvironment deferred the env compose for a merge that will NOT happen (parallax is
+    // not caching this frame -- moving camera, AA on, no layers, or N<=1). Composite the env cache into "main"
+    // now, standalone, so env still reaches "main" exactly once before the direct parallax draws over it. Same
+    // passthrough the deferred env compose would have used; env stays byte-identical.
+    if (m_envComposeDeferred) {
+      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
+      m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_envCache.name(),
+        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+      m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
+      m_renderer->switchEffectConfig("world");
+      m_envComposeDeferred = false;
+    }
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
     drawParallax();
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
@@ -373,7 +430,13 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // with N. The env oracle had this exact defect (#149) and was gated on refreshEnv; this one never was, so
     // it has been reporting a false failure at every N>1 for the whole campaign.
     if (parallaxOracle && refreshParallax && m_renderer->hasFrameBuffer("parallaxRef")) {
-      m_renderer->composite("lightingPassthrough", "parallaxRef", parallaxScreenSize, "inputTexture", "main",
+      // Reference background: in merge mode env was deferred (main is empty), so seed parallaxRef from the env
+      // CACHE (opaque); non-merge, main already holds the composited env, so copy main. Then draw parallax DIRECT
+      // over it -> parallaxRef = env + parallax-direct, the sequential result the cache/merge must match. Both
+      // compose to parallax.rgb*a + env*(1-a): the merged premultiplied pass and this direct-over reference agree
+      // to <=1 LSB (the same premult double-rounding the parallax cache already carries).
+      m_renderer->composite("lightingPassthrough", "parallaxRef", parallaxScreenSize, "inputTexture",
+        m_envComposeDeferred ? m_envCache.name() : String("main"),
         {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
       m_renderer->switchEffectConfig("world");                        // world effect (binds main)
       m_renderer->setRenderTarget(String("parallaxRef"), parallaxScreenSize);   // -> parallaxRef, effect stays "world"
@@ -382,13 +445,20 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       m_renderer->flush();
     }
 
-    // Composite the premultiplied cache over main (env bg) every frame.
+    // Composite into "main" every frame. CM-1: if the env compose was deferred, do the MERGED pass (env opaque
+    // base + parallax premultiplied-over, one full-screen quad via backdropCompose); otherwise the standard
+    // premultiplied-over parallax composite over the env already sitting in main.
     m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us");
-    m_renderer->setBlendMode(BlendMode::PremultipliedOver);
-    m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_parallaxCache.name(),
-      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
-    m_renderer->setBlendMode(BlendMode::Alpha);
-    m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
+    if (m_envComposeDeferred) {
+      mergedCompose(parallaxScreenSize);
+      m_envComposeDeferred = false;
+    } else {
+      m_renderer->setBlendMode(BlendMode::PremultipliedOver);
+      m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_parallaxCache.name(),
+        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
+      m_renderer->setBlendMode(BlendMode::Alpha);
+      m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
+    }
     m_renderer->gpuTimer().end("render.pass.parallax.compose.gpu_us");
 
     if (parallaxOracle && refreshParallax && m_renderer->hasFrameBuffer("parallaxRef")) {
