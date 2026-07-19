@@ -8,6 +8,7 @@
 #include "StarRenderer.hpp"
 #include "StarGpuLightmapPass.hpp"
 #include "StarBackdropPass.hpp"
+#include "StarWorldPass.hpp"
 
 namespace Star {
 
@@ -34,31 +35,23 @@ public:
   bool gpuLightingActive() const { return m_gpuLightingActive; }
 
 private:
-  void renderParticles(WorldRenderData& renderData, Particle::Layer layer);
-  void renderBars(WorldRenderData& renderData);
-
   // GPU-lightmap dispatch: prepare the pass inputs from renderData + config/assets, run GpuLightmapPass, and
   // return its explicit LightmapResult. Returns {active=false} (caller falls back to the CPU lightMap) when GPU
   // lighting is off, the inputs are invalid, or the pass declines. Pulled out of render() so the orchestrator
   // stays thin and the lightmap phase has one entry.
   LightmapResult runGpuLightmapPass(WorldRenderData& renderData);
 
-  void drawEntityLayer(List<Drawable> drawables, EntityHighlightEffect highlightEffect = EntityHighlightEffect());
-
-  void drawDrawable(Drawable drawable);
-  void drawDrawableSet(List<Drawable>& drawable);
-
   WorldCamera m_camera;
 
   RendererPtr m_renderer;
 
-  TextPainterPtr m_textPainter;
-  DrawablePainterPtr m_drawablePainter;
   EnvironmentPainterPtr m_environmentPainter;
-  TilePainterPtr m_tilePainter;
   GpuLightmapPassPtr m_gpuLightmapPass;
   // Sky/environment + parallax backdrop pass: owns the two retained caches + the cross-surface refresh arbiter.
   BackdropPassPtr m_backdropPass;
+  // World-body pass: owns the tile/drawable/text painters + entity-render config; draws the interleaved world
+  // layers (tiles + entities + particles + drawables + bars).
+  WorldPassPtr m_worldPass;
   // Border (in cells) between the bound lightMap texture and the query region: 0 for the CPU
   // (query-sized) lightMap, borderCells for the GPU (calc-region-sized) result. Persists across
   // non-update frames since the lightMap binding persists. Shifts lightMapOffset accordingly.
@@ -66,19 +59,8 @@ private:
   // Slice 4: latest GPU-lightmap-pass outcome, reported back to WorldClient each frame.
   bool m_gpuLightingActive = false;
 
-  Json m_highlightConfig;
-  Map<EntityHighlightEffectType, pair<Directives, Directives>> m_highlightDirectives;
-
-  Vec2F m_entityBarOffset;
-  Vec2F m_entityBarSpacing;
-  Vec2F m_entityBarSize;
-  Vec2F m_entityBarIconOffset;
-
   // Updated every frame
-
   AssetsConstPtr m_assets;
-
-  float m_preloadTextureChance;
 };
 
 }

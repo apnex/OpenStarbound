@@ -19,6 +19,7 @@ SET (star_rendering_HEADERS
       StarTextPainter.hpp
       StarTilePainter.hpp
       StarWorldPainter.hpp
+      StarWorldPass.hpp
     )
 
 SET (star_rendering_SOURCES
@@ -32,6 +33,7 @@ SET (star_rendering_SOURCES
       StarTextPainter.cpp
       StarTilePainter.cpp
       StarWorldPainter.cpp
+      StarWorldPass.cpp
     )
 
 ADD_LIBRARY (star_rendering OBJECT ${star_rendering_SOURCES} ${star_rendering_HEADERS})
