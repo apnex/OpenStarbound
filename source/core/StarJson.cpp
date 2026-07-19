@@ -623,6 +623,35 @@ JsonObject Json::queryObject(String const& q) const {
 }
 
 Json Json::query(String const& query, Json def) const {
+  // Fast path (Lever #6): a bare single-segment object key (no '.'/'[' separators) is
+  // by far the dominant configValue/instanceValue/jsonMergeQuery case. For such a key
+  // parseQueryPath emits exactly one Object segment whose buffer == query, and pathFind's
+  // Object branch does contains()+get() (TWO FlatHashMap finds) after constructing +
+  // reserving a scratch String and dispatching through the PathParser std::function. This
+  // collapses that to a single map find via ptr(), skipping the scratch String, the
+  // reserve() alloc, and the parser dispatch.
+  //
+  // All three conjuncts are required for exact pathFind-equivalence (see
+  // JsonTest.QueryFastPathEquivalence):
+  //   - !empty   : an empty path makes pathFind's while-loop run zero times and return the
+  //                base value itself (even for non-object bases) -> must fall through.
+  //   - Object   : ptr() THROWS on a non-Object base, whereas pathFind returns def via its
+  //                trailing `else return {}` -> the type() guard keeps every non-Object base
+  //                on the unchanged path (no throw-vs-def divergence).
+  //   - no '.'/'[': any separator means multi-segment / array-index / leading-dot (the last
+  //                must still throw ParsingException) -> must fall through.
+  // The separator set "[." must stay in lockstep with parseQueryPath (StarJsonPath.cpp).
+  // ']' is intentionally excluded: it is an ordinary object-key char there.
+  //
+  // This exact-stored-value return (incl. a stored Json Null) is correct ONLY for this
+  // overload. Do NOT copy into queryInt/Double/Bool/String/Array/Object or optQuery* --
+  // those use `if (json && *json)` (a stored Null is treated as not-found -> def).
+  if (!query.empty() && type() == Type::Object && query.findFirstOf("[.") == NPos) {
+    if (auto p = ptr(query))
+      return *p;
+    return def;
+  }
+
   if (auto json = JsonPath::pathFind(*this, JsonPath::parseQueryPath, query))
     return *json;
   return def;
@@ -1038,7 +1067,7 @@ Json const* Json::ptr(String const& key) const {
 Json jsonMerge(Json const& base, Json const& merger) {
   if (base.type() == Json::Type::Object && merger.type() == Json::Type::Object) {
     JsonObject merged = base.toObject();
-    for (auto const& p : merger.toObject()) {
+    for (auto const& p : merger.iterateObject()) {  // Lever #13: iterate the shared const map (refcount), not a by-value deep clone
       auto res = merged.insert(p);
       if (!res.second)
         res.first->second = jsonMerge(res.first->second, p.second);
@@ -1051,7 +1080,7 @@ Json jsonMerge(Json const& base, Json const& merger) {
 Json jsonMergeNulling(Json const& base, Json const& merger) {
   if (base.type() == Json::Type::Object && merger.type() == Json::Type::Object) {
     JsonObject merged = base.toObject();
-    for (auto const& p : merger.toObject()) {
+    for (auto const& p : merger.iterateObject()) {  // Lever #13: iterate the shared const map (refcount), not a by-value deep clone
       if (p.second.isNull())
         merged.erase(p.first);
       else {

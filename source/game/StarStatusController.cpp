@@ -471,6 +471,13 @@ bool StatusController::writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCo
   return m_netGroup.writeNetDelta(ds, fromVersion, rules);
 }
 
+void StatusController::netStorePump() {
+  // Generic recurse — m_netGroup's children include a StatCollection SyncGroup
+  // whose netElementsNeedStore does a structural setContents, so a hand-rolled
+  // subset would miss it.
+  m_netGroup.netStorePump();
+}
+
 void StatusController::readNetDelta(DataStream& ds, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetDelta(ds, interpolationTime, rules);
 }
@@ -636,6 +643,10 @@ void StatusController::EffectAnimator::tickNetInterpolation(float dt) {
 
 bool StatusController::EffectAnimator::writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules) const {
   return animator.writeNetDelta(ds, fromVersion, rules);
+}
+
+void StatusController::EffectAnimator::netStorePump() {
+  animator.netStorePump();
 }
 
 void StatusController::EffectAnimator::readNetDelta(DataStream& ds, float interpolationTime, NetCompatibilityRules rules) {
@@ -813,6 +824,7 @@ void StatusController::uninitUniqueEffectScript(UniqueEffectInstance& uniqueEffe
 
 LuaCallbacks StatusController::makeUniqueEffectCallbacks(UniqueEffectInstance& uniqueEffect) {
   LuaCallbacks callbacks;
+  callbacks.reserve(12); // keep in sync with the registrations below (over/under only costs a rehash)
 
   callbacks.registerCallback("name", [this, &uniqueEffect]() {
     return m_uniqueEffectMetadata.getNetElement(uniqueEffect.metadataId)->effect;

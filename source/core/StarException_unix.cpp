@@ -74,7 +74,7 @@ const char* StarException::what() const throw() {
 
 StarException::StarException(char const* type, std::string message, bool genStackTrace) noexcept {
 #ifdef STAR_USE_CPPTRACE
-  auto printException = [](std::ostream& os, bool fullStacktrace, char const* type, std::string message, std::string stack) {
+  auto printException = [](std::ostream& os, bool fullStacktrace, char const* type, std::string message, cpptrace::raw_trace stack) {
 #else
   auto printException = [](std::ostream& os, bool fullStacktrace, char const* type, std::string message, Maybe<StackCapture> stack) {
 #endif
@@ -84,8 +84,12 @@ StarException::StarException(char const* type, std::string message, bool genStac
 
 #ifdef STAR_USE_CPPTRACE
     if (fullStacktrace && !stack.empty()) {
+      // Resolve the raw trace to source frames lazily -- only now, when a full stacktrace is actually
+      // being printed (fatal handlers / explicit trace logs). The common caught-and-discarded path
+      // (and .what(), which passes fullStacktrace=false) never pays the DWARF-symbolize cost.
       os << std::endl;
-      os << stack;
+      auto formatter = cpptrace::formatter{}.paths(cpptrace::formatter::path_mode::basename);
+      formatter.print(os, stack.resolve());
     }
 #else
     if (fullStacktrace && stack) {
@@ -95,7 +99,10 @@ StarException::StarException(char const* type, std::string message, bool genStac
 #endif
   };
 #ifdef STAR_USE_CPPTRACE
-  m_printException = bind(printException, _1, _2, type, std::move(message), genStackTrace ? captureBacktrace() : std::string());
+  // Capture the raw trace (addresses only -- cheap); it is resolved to source lazily in the lambda
+  // above, and only when a full stacktrace is actually printed. Eager resolution here cost ~209us per
+  // throw (DWARF symbolize) and was paid even by caught-and-discarded control-flow exceptions.
+  m_printException = bind(printException, _1, _2, type, std::move(message), genStackTrace ? cpptrace::generate_raw_trace() : cpptrace::raw_trace{});
 #else
   m_printException = bind(printException, _1, _2, type, std::move(message), genStackTrace ? captureStack() : Maybe<StackCapture>());
 #endif

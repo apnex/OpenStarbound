@@ -323,6 +323,14 @@ pair<ByteArray, uint64_t> Object::writeNetState(uint64_t fromVersion, NetCompati
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Object::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
+Maybe<uint64_t> Object::netVersionLatestChange() const {
+  return m_netGroup.netVersionLatestChange();
+}
+
 void Object::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

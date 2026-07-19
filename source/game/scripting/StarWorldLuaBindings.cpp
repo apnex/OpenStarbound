@@ -97,7 +97,7 @@ namespace LuaBindings {
         return false;
 
       if (callScript) {
-        auto scriptedEntity = as<ScriptedEntity>(entity);
+        auto scriptedEntity = entityCast<ScriptedEntity>(entity);
         if (!scriptedEntity || !scriptedEntity->isMaster())
           return false;
 

@@ -157,6 +157,8 @@ void NetElementBasicField<T>::push(T value) {
   m_value = std::move(value);
   updated();
   m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   if (m_pendingInterpolatedValues)
     m_pendingInterpolatedValues->clear();
 }
@@ -172,6 +174,8 @@ void NetElementBasicField<T>::update(Mutator&& mutator) {
   if (mutator(m_value)) {
     updated();
     m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+    if (m_netVersion)
+      m_netVersion->markChanged();
     if (m_pendingInterpolatedValues)
       m_pendingInterpolatedValues->clear();
   }
@@ -224,6 +228,8 @@ void NetElementBasicField<T>::netLoad(DataStream& ds, NetCompatibilityRules rule
   if (!checkWithRules(rules)) return;
   readData(ds, m_value);
   m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   updated();
   if (m_pendingInterpolatedValues)
     m_pendingInterpolatedValues->clear();
@@ -249,6 +255,8 @@ void NetElementBasicField<T>::readNetDelta(DataStream& ds, float interpolationTi
   T t;
   readData(ds, t);
   m_latestUpdateVersion = m_netVersion ? m_netVersion->current() : 0;
+  if (m_netVersion)
+    m_netVersion->markChanged();
   if (m_pendingInterpolatedValues) {
     // Only append an incoming delta to our pending value list if the incoming
     // step is forward in time of every other pending value.  In any other

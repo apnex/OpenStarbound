@@ -34,6 +34,11 @@ public:
   bool writeNetDelta(DataStream& ds, uint64_t fromVersion, NetCompatibilityRules rules = {}) const override;
   void readNetDelta(DataStream& ds, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
   void blankNetDelta(float interpolationTime) override;
+  void netStorePump() override;
+  // A group is always a pump candidate for its parent; its own netStorePump
+  // then recurses only into m_pumpElements (Lever #4b). Cheap when it holds
+  // only leaves (m_pumpElements empty).
+  bool netStoreNeedsPump() const override { return true; }
 
   NetElementVersion const* netVersion() const;
   bool netInterpolationEnabled() const;
@@ -41,6 +46,11 @@ public:
 
 private:
   List<pair<NetElement*, bool>> m_elements;
+  // Subset of m_elements whose netStoreNeedsPump() is true (the deferred-store
+  // composites). netStorePump() iterates only these, not the leaf-heavy
+  // m_elements. Maintained alongside m_elements; pump-relevance is immutable
+  // per element, so no rebuild/staleness concern (Lever #4b).
+  List<NetElement*> m_pumpElements;
   NetElementVersion const* m_version = nullptr;
   bool m_interpolationEnabled = false;
   float m_extrapolationHint = 0.0f;
