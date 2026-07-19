@@ -3,12 +3,15 @@
 #include "StarJsonExtra.hpp"
 #include "StarFile.hpp"
 #include "StarEncode.hpp"
+#include "StarXXHash.hpp"   // [rendertest] golden-frame hash
 #include "StarLogging.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarRoot.hpp"
 #include "StarVersion.hpp"
 #include "StarPlayer.hpp"
 #include "StarPlayerStorage.hpp"
+#include "StarWarping.hpp"           // [rendertest] warp to a bookmark
+#include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
@@ -161,13 +164,59 @@ Json const AdditionalDefaultConfiguration = Json::parseJson(R"JSON(
     }
   )JSON");
 
+// Fixed sky clock for the render harness (P-0). Any constant works; it only has to be the SAME constant in
+// every run, so two binaries render the same sky. The universe clock is wall-clock derived, so without this
+// two runs of the same save land on a different epochTime -- which moves stars, orbiters, day/night colour and
+// parallax drift, and was the SOLE source of cross-run hash drift once the world was paused.
+static double const RenderTestEpochTime = 36714000.0;
+
 void ClientApplication::startup(StringList const& cmdLineArgs) {
   RootLoader rootLoader({AdditionalAssetsSettings, AdditionalDefaultConfiguration, String("starbound.log"), LogLevel::Info, false, String("starbound.config")});
   m_root = rootLoader.initOrDie(cmdLineArgs).first;
+
   Logger::info("OpenStarbound Client v{} for v{} ({}) Source ID: {}", OpenStarVersionString, StarVersionString, StarArchitectureString, StarSourceIdentifierString);
   #ifdef __clang__
   Logger::info("Compiled with Clang {}", __clang_version__);
   #endif
+
+  // Headless render harness (P-0). Environment-driven so the shipped CLI surface is untouched and the harness
+  // costs exactly nothing when unset. See the block comment in StarClientApplication.hpp.
+  if (char const* frames = getenv("STAR_RENDERTEST_FRAMES")) {
+    m_renderTestFrames = (unsigned)strtoul(frames, nullptr, 10);
+    if (char const* load = getenv("STAR_RENDERTEST_LOAD"))
+      m_renderTestLoad = (unsigned)strtoul(load, nullptr, 10);
+    if (char const* quiesce = getenv("STAR_RENDERTEST_QUIESCE"))
+      m_renderTestQuiesce = (unsigned)strtoul(quiesce, nullptr, 10);
+    if (char const* warmup = getenv("STAR_RENDERTEST_WARMUP"))
+      m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
+    if (char const* out = getenv("STAR_RENDERTEST_OUT"))
+      m_renderTestOut = String(out);
+    if (char const* warp = getenv("STAR_RENDERTEST_WARP"))
+      m_renderTestWarp = String(warp);
+    // "<configKey>=<jsonA>|<jsonB>", e.g. envRefreshInterval=1|4  or  lightingGpu=true|false
+    if (char const* ab = getenv("STAR_RENDERTEST_AB")) {
+      String spec(ab);
+      if (auto eq = spec.find('='); eq != NPos) {
+        String key = spec.substr(0, eq);
+        String vals = spec.substr(eq + 1);
+        if (auto bar = vals.find('|'); bar != NPos) {
+          try {
+            m_renderTestAbKey = key;
+            m_renderTestAbA = Json::parse(vals.substr(0, bar));
+            m_renderTestAbB = Json::parse(vals.substr(bar + 1));
+          } catch (std::exception const& e) {
+            Logger::error("[rendertest] bad STAR_RENDERTEST_AB '{}': {}", spec, outputException(e, false));
+            m_renderTestAbKey = "";
+          }
+        }
+      }
+      if (m_renderTestAbKey.empty())
+        Logger::error("[rendertest] STAR_RENDERTEST_AB must look like 'key=jsonA|jsonB' -- got '{}'", spec);
+    }
+    if (m_renderTestFrames)
+      Logger::info("[rendertest] ARMED load={} warmup={} frames={} warp='{}' ab='{}' out='{}'",
+        m_renderTestLoad, m_renderTestWarmup, m_renderTestFrames, m_renderTestWarp, m_renderTestAbKey, m_renderTestOut);
+  }
 }
 
 void ClientApplication::shutdown() {
@@ -482,6 +531,11 @@ void ClientApplication::render() {
       auto totalStart = Time::monotonicMicroseconds();
       renderer->switchEffectConfig("world");
       auto clientStart = totalStart;
+      // Render harness: pin the sky clock BEFORE the sky bakes its render data (star offsets, orbit angle,
+      // day/night colour are all derived from epochTime, so overriding the field afterwards would be too late).
+      // With the world paused this was the sole remaining source of cross-run hash drift.
+      if (m_renderTestFrames)
+        worldClient->pinSkyEpochTime(RenderTestEpochTime);
       worldClient->render(m_renderData, TilePainter::BorderTileSize);
       LogMap::set("client_render_world_client", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - clientStart));
 
@@ -1048,7 +1102,271 @@ void ClientApplication::updateError(float) {
     changeState(MainAppState::Title);
 }
 
+uint64_t ClientApplication::renderTestHash(Image const& frame, double* meanLuminance) const {
+  XXHash64 hasher;
+  hasher.push((char const*)frame.data(), (size_t)frame.width() * frame.height() * frame.bytesPerPixel());
+  if (meanLuminance) {
+    // A uniformly-black frame hashes perfectly stably -- and is exactly what the AA bug produced. Report
+    // luminance too, so a STABLE hash can never be mistaken for a CORRECT one.
+    double lum = 0.0;
+    auto const* px = (float const*)frame.data();
+    size_t n = (size_t)frame.width() * frame.height() * 3;
+    for (size_t i = 0; i < n; ++i)
+      lum += px[i];
+    *meanLuminance = lum / (double)n;
+  }
+  return hasher.digest();
+}
+
+void ClientApplication::renderTestCapture() {
+  auto& renderer = Application::renderer();
+
+  // PHASE 1 -- LOAD, unpaused. The world must actually stream in; a paused world never populates.
+  //
+  // WE FREEZE ON QUIESCENCE, NOT ON A FRAME COUNT. This used to run a fixed number of frames and then freeze,
+  // which sounds deterministic and is not: chunks and entities arrive ASYNCHRONOUSLY on the server thread, so
+  // how much had loaded after N frames depended on wall-clock and thread scheduling. Two runs of the SAME
+  // binary froze with 217 and 214 entities -- which is why the frozen-world frame hash "legitimately differed"
+  // between runs, and why we could only ever certify a refactor against the in-frame oracles (env, parallax,
+  // lighting) and never against the world pass, the entities, or the interface.
+  //
+  // Waiting for the entity count to HOLD STILL converges to the same world state whatever the machine is
+  // doing. That makes the frozen-world hash a valid CROSS-BINARY golden, which makes every refactor
+  // certifiable -- not just the ones the oracles happen to cover.
+  if (m_renderTestLoading) {
+    ++m_renderTestFrame;
+
+    size_t entities = m_renderData.entityDrawables.size();
+    if (entities > 0 && entities == m_renderTestLastEntities)
+      ++m_renderTestStable;
+    else
+      m_renderTestStable = 0;   // still arriving -- restart the count
+    m_renderTestLastEntities = entities;
+
+    bool quiesced = m_renderTestStable >= m_renderTestQuiesce;
+    bool timedOut = m_renderTestFrame >= m_renderTestLoad;
+
+    if (quiesced || timedOut) {
+      // STAR_RENDERTEST_NOFREEZE=1: leave the sim RUNNING. The frozen scene is required for the byte-identity
+      // gate (it needs deterministic input), but it measures a FLOOR, not real play -- no entity animation,
+      // no particles, no liquid motion, no lighting recomputes. For TIMING we do not need determinism, only
+      // averages, so an unfrozen run is the honest number to compare against the Director's live HUD reading.
+      static bool const noFreeze = []() {
+        char const* e = getenv("STAR_RENDERTEST_NOFREEZE");
+        return e && *e && *e != '0';
+      }();
+      m_renderTestLoading = false;
+      m_renderTestFrozen = !noFreeze;
+
+      // STAR_RENDERTEST_FULLBRIGHT=1 -- the RB-1 probe. The GPU lighting pass points the world effect's
+      // `lightMap` sampler AT lightingGpuUpscaled's own colour attachment (setEffectTextureFromTarget).
+      // Fullbright then uploads a 1x1 white image into that same sampler, and before the ownership fix the
+      // upload setter's "reuse the texture I already have" branch re-specified the RENDER TARGET's storage.
+      //
+      // The pixel oracles are structurally blind to this: they run with GPU lighting ON and fullbright OFF, so
+      // the alias and the upload never collide in a gated frame. This knob makes them collide, on purpose.
+      static bool const fullbright = []() {
+        char const* e = getenv("STAR_RENDERTEST_FULLBRIGHT");
+        return e && *e && *e != '0';
+      }();
+      if (fullbright && m_universeClient && m_universeClient->worldClient()) {
+        m_universeClient->worldClient()->setFullBright(true);
+        Logger::info("[texowner] fullbright FORCED -- the lightMap sampler aliases a live render target and is "
+                     "about to be uploaded into");
+      }
+
+      if (quiesced)
+        Logger::info("[rendertest] world QUIESCED after {} frames -- {} entities, stable for {} -- sim {}",
+          m_renderTestFrame, entities, m_renderTestQuiesce, m_renderTestFrozen ? "FROZEN" : "RUNNING (nofreeze)");
+      else
+        // LOUD, because a hash taken from an unsettled world is a number that looks like a result and is not
+        // one. Raise STAR_RENDERTEST_LOAD; do not quietly accept the frame.
+        Logger::error("[rendertest] world did NOT settle: hit the {}-frame cap with {} entities (stable for only "
+                      "{} of {} required). The frozen state is NOT reproducible and any cross-binary hash "
+                      "comparison from this run is INVALID.",
+          m_renderTestLoad, entities, m_renderTestStable, m_renderTestQuiesce);
+    }
+    return;
+  }
+
+  // THE RB-1 OBSERVABLE. RenderOracle::read() sizes the image it returns from the target's OWN recorded size
+  // (writeFace().texture->textureSize) -- the very field the corruption overwrites. So asking the oracle how
+  // big lightingGpuUpscaled is asks the target what it thinks it is, which is exactly the question.
+  //
+  // Report it every frozen frame while the probe is armed: RED is a target that has silently become 1x1.
+  if (getenv("STAR_RENDERTEST_FULLBRIGHT") && m_renderTestSeen % 30 == 0) {
+    auto renderer = Application::renderer();
+    if (renderer->hasFrameBuffer("lightingGpuUpscaled")) {
+      auto size = renderer->oracle().read("lightingGpuUpscaled").size();
+      Logger::info("[texowner] lightingGpuUpscaled is {}x{}", size[0], size[1]);
+    }
+  }
+
+  // PHASE 2 -- SETTLE, frozen. Caches, atlases and the lighting pipeline quiesce against a static world.
+  if (m_renderTestSeen < m_renderTestWarmup) {
+    ++m_renderTestSeen;
+    if (m_renderTestSeen == m_renderTestWarmup) {
+      Logger::info("[rendertest] settled ({} frozen frames)", m_renderTestWarmup);
+      if (!m_renderTestAbKey.empty()) {
+        m_renderTestAbPhase = 0;
+        // Remember the shipped value. Configuration::set PERSISTS to storage/starbound.config on exit, so an
+        // A/B run would otherwise PIN leg B's value into the harness config and silently poison every later
+        // run. That is exactly the config-pinning trap this campaign has already been bitten by twice -- and it
+        // bit the harness itself: a `lightingGpu=true|false` A/B left CPU lighting pinned on, and the next run
+        // rendered a black world that looked exactly like the AA bug under investigation.
+        m_renderTestAbOriginal = m_root->configuration()->get(m_renderTestAbKey);
+        m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbA);
+        Logger::info("[rendertest] A/B leg A: {} = {} (will restore {} on exit)",
+          m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbOriginal.repr());
+      }
+    }
+    return;
+  }
+
+  // PHASE 3a -- A/B GATE. Against the frozen world, render leg A, then leg B, and compare byte-for-byte.
+  // Each leg gets m_renderTestWarmup frames to settle so retained caches actually refresh under the new
+  // setting (otherwise leg B would be scored on leg A's stale cache contents).
+  if (m_renderTestAbPhase >= 0) {
+    unsigned legFrame = (m_renderTestSeen - m_renderTestWarmup) % (m_renderTestWarmup + 1);
+    ++m_renderTestSeen;
+    if (legFrame < m_renderTestWarmup)
+      return;   // still settling this leg
+
+    Image frame = renderer->oracle().read("main");
+    if (frame.empty()) {
+      Logger::error("[rendertest] FAIL: oracle().read('main') returned nothing (unsized? GL error?)");
+      appController()->quit();
+      return;
+    }
+    double lum = 0.0;
+    uint64_t hash = renderTestHash(frame, &lum);
+
+    if (m_renderTestAbPhase == 0) {
+      m_renderTestAbHashA = hash;
+      m_renderTestAbFrameA = frame;
+      Logger::info("[rendertest] legA {} = {} -> hash={:016x} meanLuminance={:.6f}",
+        m_renderTestAbKey, m_renderTestAbA.repr(), hash, lum);
+      m_renderTestAbPhase = 1;
+      m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbB);
+      Logger::info("[rendertest] A/B leg B: {} = {}", m_renderTestAbKey, m_renderTestAbB.repr());
+      return;
+    }
+
+    Logger::info("[rendertest] legB {} = {} -> hash={:016x} meanLuminance={:.6f}",
+      m_renderTestAbKey, m_renderTestAbB.repr(), hash, lum);
+
+    if (hash == m_renderTestAbHashA) {
+      Logger::info("[rendertest] ===== A/B MATCH: byte-identical ({} : {} vs {}) =====",
+        m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
+    } else {
+      // Quantify the divergence. A hash mismatch alone cannot distinguish a 1-LSB rounding difference on a
+      // few soft-edge texels (expected for e.g. the premultiplied parallax cache) from a real corruption.
+      size_t differing = 0;
+      float maxAbs = 0.0f;
+      auto const* a = (float const*)m_renderTestAbFrameA.data();
+      auto const* b = (float const*)frame.data();
+      size_t px = (size_t)frame.width() * frame.height();
+      for (size_t i = 0; i < px; ++i) {
+        bool diff = false;
+        for (int c = 0; c < 3; ++c) {
+          float d = a[i * 3 + c] - b[i * 3 + c];
+          if (d != 0.0f) {
+            diff = true;
+            float ad = d < 0.0f ? -d : d;
+            if (ad > maxAbs)
+              maxAbs = ad;
+          }
+        }
+        if (diff)
+          ++differing;
+      }
+      Logger::error("[rendertest] ===== A/B DIFF: {} px ({:.4f}%) maxAbs={:.6f} ({} : {} vs {}) =====",
+        differing, 100.0 * (double)differing / (double)px, maxAbs,
+        m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
+    }
+    m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbOriginal);   // never leave the pin behind
+    appController()->quit();
+    return;
+  }
+
+  // PHASE 3b -- plain golden capture (no A/B configured).
+  unsigned index = m_renderTestSeen - m_renderTestWarmup;
+  ++m_renderTestSeen;
+
+  Image frame = renderer->oracle().read("main");
+  if (frame.empty()) {
+    // RenderOracle::read returns EMPTY (never zero-filled) on every unreadable condition, precisely so this
+    // cannot silently pass. A zero-filled frame would hash consistently and report a stable false green.
+    Logger::error("[rendertest] FAIL frame={} oracle().read('main') returned nothing (multisample? unsized? GL error?)", index);
+    appController()->quit();
+    return;
+  }
+
+  double lum = 0.0;
+  uint64_t hash = renderTestHash(frame, &lum);
+  auto const* px = (float const*)frame.data();
+
+  // State fingerprint alongside the pixel hash. If two runs disagree on the HASH, this says WHICH input
+  // drifted -- pixels alone cannot tell you whether the renderer changed or the world did.
+  auto const& sky = m_renderData.skyRenderData;
+  Logger::info("[rendertest] frame={} hash={:016x} size={}x{} meanLuminance={:.6f}"
+               " | epochTime={:.4f} dayLength={:.2f} camera=({:.4f},{:.4f}) parallaxLayers={} entities={}",
+    index, hash, frame.width(), frame.height(), lum,
+    sky.epochTime, sky.dayLength,
+    m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
+    m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
+
+  if (!m_renderTestOut.empty()) {
+    String path = strf("{}/frame_{:04d}.png", m_renderTestOut, index);
+    try {
+      // Convert the HDR float frame to 8-bit for human inspection. Read the float buffer DIRECTLY -- Image::get
+      // returns Vec4B and would misread an RGB_F image. glReadPixels fills bottom-up, so flip Y.
+      // The HASH above is taken on the raw float data; this PNG is a viewing aid and is NOT what the gate
+      // compares, so a lossy conversion here is harmless.
+      Image out(frame.size(), PixelFormat::RGB24);
+      unsigned w = frame.width(), h = frame.height();
+      for (unsigned y = 0; y < h; ++y) {
+        for (unsigned x = 0; x < w; ++x) {
+          float const* p = px + ((size_t)y * w + x) * 3;
+          auto enc = [](float v) -> uint8_t {
+            v = v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : v);
+            return (uint8_t)(v * 255.0f + 0.5f);
+          };
+          out.set(x, h - 1 - y, Vec3B(enc(p[0]), enc(p[1]), enc(p[2])));
+        }
+      }
+      out.writePng(File::open(path, IOMode::Write));
+    } catch (std::exception const& e) {
+      Logger::warn("[rendertest] could not write '{}': {}", path, outputException(e, false));
+    }
+  }
+
+  if (index + 1 >= m_renderTestFrames) {
+    Logger::info("[rendertest] DONE captured={} frames", m_renderTestFrames);
+    appController()->quit();
+  }
+}
+
 void ClientApplication::updateTitle(float dt) {
+  // Render harness: skip the menus and drop straight into the world, exactly as TitleState::StartSinglePlayer
+  // does. changeState(SinglePlayer) is what LOADS the player -- with no title-screen selection it falls back to
+  // playerUuidAt(0) and calls setError() if the storage is empty -- so it must be called unconditionally rather
+  // than gated on m_player, which is still null at this point.
+  if (m_renderTestFrames && !m_renderTestEntered) {
+    m_renderTestEntered = true;
+    Logger::info("[rendertest] entering SinglePlayer");
+    changeState(MainAppState::SinglePlayer);
+    if (m_player) {
+      Logger::info("[rendertest] player '{}' loaded", m_player->name());
+      // Enumerate the player's teleport bookmarks so a measurement can be aimed at a REAL location (a base,
+      // a planet surface) rather than only wherever the character happens to be parked. Without this the
+      // harness can only ever measure the ship -- where, as it turns out, the parallax pass costs ZERO.
+      for (auto const& b : m_player->universeMap()->teleportBookmarks())
+        Logger::info("[rendertest] bookmark: '{}'  (world={})", b.bookmarkName, printWorldId(b.target.first));
+    }
+    return;
+  }
+
   m_cinematicOverlay->update(dt);
 
   m_titleScreen->update(dt);
@@ -1137,6 +1455,30 @@ void ClientApplication::updateTitle(float dt) {
 }
 
 void ClientApplication::updateRunning(float dt) {
+  // Render harness: warp to a named teleport bookmark before measuring. Without this the harness can only ever
+  // measure wherever the character is parked -- which was the SHIP, where the parallax pass costs exactly ZERO.
+  // A whole day of parallax optimization was aimed at a pass that is not in the scene being complained about.
+  if (m_renderTestFrames && !m_renderTestWarp.empty() && !m_renderTestWarped && m_player
+      && m_universeClient && m_universeClient->worldClient() && m_universeClient->worldClient()->inWorld()) {
+    String want = m_renderTestWarp.toLower();
+    for (auto const& b : m_player->universeMap()->teleportBookmarks()) {
+      if (b.bookmarkName.toLower().contains(want)) {
+        Logger::info("[rendertest] WARPING to bookmark '{}' (world={})", b.bookmarkName, printWorldId(b.target.first));
+        m_universeClient->warpPlayer(WarpToWorld(b.target.first, b.target.second), false);
+        m_renderTestWarped = true;
+        // The destination world has to stream in from scratch, so restart the LOAD phase from here. Otherwise
+        // the freeze would land mid-load and we would measure a half-built world.
+        m_renderTestFrame = 0;
+        break;
+      }
+    }
+    if (!m_renderTestWarped) {
+      Logger::error("[rendertest] FAIL: no teleport bookmark matching '{}'", m_renderTestWarp);
+      appController()->quit();
+      return;
+    }
+  }
+
   try {
     auto& app = appController();
     auto worldClient = m_universeClient->worldClient();
@@ -1387,7 +1729,12 @@ void ClientApplication::updateRunning(float dt) {
           m_universeServer->addClient(UniverseConnection(P2PPacketSocket::open(std::move(p2pClient))));
       }
 
-      m_universeServer->setPause(m_mainInterface->escapeDialogOpen());
+      // Render harness: LOAD FIRST, THEN FREEZE. The world sim advances on wall-clock, so without a freeze two
+      // runs reach a capture frame having ticked a different number of times and the golden hash is worthless.
+      // But pausing from frame 0 does NOT work: the world never streams in, and the capture is the player alone
+      // in empty space with the entire ship missing (observed). setPause stops the world POPULATING, not just
+      // ticking. So run LOAD frames unpaused to let the world arrive, then freeze it for the rest of the run.
+      m_universeServer->setPause(m_renderTestFrames ? m_renderTestFrozen : m_mainInterface->escapeDialogOpen());
     }
 
     Vec2F aimPosition = m_player->aimPosition();

@@ -127,6 +127,87 @@ private:
   // Valid if main app state == SinglePlayer
   UniverseServerPtr m_universeServer;
 
+  // --- HEADLESS RENDER HARNESS (P-0) -------------------------------------------------------------
+  // A golden-frame regression gate. Boots straight into single-player, renders N frames offscreen, hashes
+  // the composed world frame ("main", captured BEFORE post-process and the GUI so chat/FPS/clock churn
+  // cannot poison the hash), optionally dumps PNGs, and exits.
+  //
+  // WHY IT EXISTS: the two retained-cache oracles are DIFFERENTIAL -- they build their reference by invoking
+  // the SAME draw lambda at the SAME point in the frame under the SAME ambient GL state, so they certify only
+  // "path A == path B GIVEN identical ordering and state". Every reordering, blend/target/viewport change and
+  // FBO-lifecycle event applies to BOTH sides and CANCELS EXACTLY. Dismantling the painter's algorithm (#139)
+  // IS a reordering, so it lives entirely in their null space. This hash is ABSOLUTE, not differential: it is
+  // the only gate that can see that class of failure. All five render bugs shipped on 2026-07-13 were found by
+  // human eyes or adversarial reading -- none by an automated gate. This is that gate.
+  //
+  // Driven by environment variables (deliberately NOT command-line flags: the shipped option parser dies on
+  // unknown args, and a test harness has no business widening the game's public CLI surface):
+  //   STAR_RENDERTEST_FRAMES  -- capture this many frames, then quit. Unset/0 = harness off (zero cost).
+  //   STAR_RENDERTEST_WARMUP  -- render (but do not capture) this many frames first, so world chunks, texture
+  //                              atlases and the lighting pipeline have settled. Default 120.
+  //   STAR_RENDERTEST_OUT     -- directory for PNG dumps. Unset = hash only, no images.
+  // Run offscreen with SDL_VIDEO_DRIVER=offscreen (verified: yields a real GL 4.6 core context on the actual
+  // Intel Arc GPU via Mesa/EGL, NOT a software rasterizer -- so hashes and GPU timings are both meaningful).
+  //   STAR_RENDERTEST_LOAD    -- frames rendered UNPAUSED first, so the world actually streams in. Pausing
+  //                              from frame 0 does NOT let chunks load (verified: the capture showed the player
+  //                              alone in empty space, with the whole ship missing) -- setPause stops the world
+  //                              from populating, not merely from ticking. Default 240.
+  //   STAR_RENDERTEST_WARMUP  -- frames rendered AFTER the freeze, to let caches/atlases settle. Default 60.
+  unsigned m_renderTestFrames = 0;
+  unsigned m_renderTestLoad = 240;
+  unsigned m_renderTestWarmup = 60;
+  String m_renderTestOut;
+  //   STAR_RENDERTEST_AB      -- "<configKey>=<jsonA>|<jsonB>". THE GATE. Against a FROZEN world, render with
+  //                              the key set to A, then to B, and compare the two frames byte-for-byte. Both
+  //                              renders see bit-identical world input, so any difference is attributable to
+  //                              the CODE PATH and nothing else.
+  //
+  //                              This is why it beats a cross-run golden hash: the world must be loaded
+  //                              UNPAUSED (a paused world never populates), and the number of sim ticks that
+  //                              takes depends on wall-clock -- so two RUNS freeze in slightly different
+  //                              animation states and their hashes legitimately differ. Within ONE run, frozen,
+  //                              frames are bit-identical (verified). So the comparison must live inside one
+  //                              process. Example, proving the env cache is byte-identical to the direct path:
+  //                                STAR_RENDERTEST_AB='envRefreshInterval=1|4'
+  unsigned m_renderTestFrame = 0;    // total frames since entering SinglePlayer
+  unsigned m_renderTestSeen = 0;     // frames since the freeze
+  bool m_renderTestEntered = false;
+  bool m_renderTestFrozen = false;
+
+  // THE LOAD ENDS ON QUIESCENCE, NOT ON A FRAME COUNT.
+  //
+  // It used to freeze after a fixed number of frames. But the world streams in ASYNCHRONOUSLY -- chunks and
+  // entities arrive on the server thread -- so how much had loaded after N frames depended on wall-clock and
+  // thread scheduling. Two runs of the SAME binary froze with 217 and 214 entities. That is why the cross-run
+  // frame hash "legitimately differed", and it is why we could only ever certify a refactor against the
+  // in-frame oracles, which cover env/parallax/lighting and NOT the world pass.
+  //
+  // Freezing when the entity count has been STABLE for N consecutive frames converges to the same world state
+  // regardless of machine speed -- which makes the frozen-world frame hash a valid CROSS-BINARY golden, and
+  // therefore makes every refactor certifiable, not just the oracle-covered ones.
+  //
+  //   STAR_RENDERTEST_QUIESCE -- consecutive frames the entity count must hold before freezing. Default 90.
+  //   STAR_RENDERTEST_LOAD    -- now a HARD CAP, not a target: if the world has not settled by then, we freeze
+  //                              anyway and say so LOUDLY, because a hash taken from an unsettled world is a
+  //                              number that looks like a result and is not one.
+  unsigned m_renderTestQuiesce = 90;
+  unsigned m_renderTestStable = 0;      // consecutive frames the entity count has held
+  size_t m_renderTestLastEntities = 0;
+  bool m_renderTestLoading = true;
+  String m_renderTestWarp;      // STAR_RENDERTEST_WARP=<substring of a teleport bookmark name>
+  bool m_renderTestWarped = false;
+  String m_renderTestAbKey;
+  Json m_renderTestAbA;
+  Json m_renderTestAbB;
+  Json m_renderTestAbOriginal;   // shipped value, restored on exit so the A/B never PINS a setting
+  int m_renderTestAbPhase = -1;      // -1 = no A/B; 0 = leg A settling; 1 = leg B settling
+  uint64_t m_renderTestAbHashA = 0;
+  Image m_renderTestAbFrameA;
+
+  void renderTestCapture();
+  uint64_t renderTestHash(Image const& frame, double* meanLuminance) const;
+  // -----------------------------------------------------------------------------------------------
+
   float m_cameraXOffset = 0.0f;
   float m_cameraYOffset = 0.0f;
   bool m_snapBackCameraOffset = false;
