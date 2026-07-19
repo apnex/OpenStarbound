@@ -12,6 +12,10 @@
 
 namespace Star {
 
+namespace PlantWind {
+  std::atomic<bool> serverSkip{true};   // Lever L-WIND-A; default ON, kill-switch via worldserver.config
+}
+
 float const Plant::PlantScanThreshold = 0.1f;
 
 EnumMap<Plant::RotationType> const Plant::RotationTypeNames{
@@ -721,14 +725,27 @@ float Plant::branchRotation(float xPos, float rotoffset) const {
 }
 
 void Plant::update(float dt, uint64_t) {
-  m_windTime += dt;
-  m_windTime = std::fmod(m_windTime, 628.32f);
-  m_windLevel = world()->windLevel(Vec2F(m_tilePosition));
-
   if (isMaster()) {
+    // m_windTime / m_windLevel feed ONLY branchRotation() -> Plant::render(), which
+    // the master never runs, and are not networked (absent from setupNetStates), so
+    // computing them here is a dead store (Lever L-WIND-A): a TileSectorArray tile
+    // lookup + fmod per plant per tick, wasted on the server thread. Skip it on the
+    // master; the default-ON kill-switch restores the old unconditional behavior.
+    // (Worst case if a plant were ever client-mastered: it stops swaying -- cosmetic,
+    // no desync, since the field is render-only and un-networked.)
+    if (!PlantWind::serverSkip.load(std::memory_order_relaxed)) {
+      m_windTime += dt;
+      m_windTime = std::fmod(m_windTime, 628.32f);
+      m_windLevel = world()->windLevel(Vec2F(m_tilePosition));
+    }
+
     if (m_tileDamageStatus.damaged())
       m_tileDamageStatus.recover(m_tileDamageParameters, dt);
   } else {
+    m_windTime += dt;
+    m_windTime = std::fmod(m_windTime, 628.32f);
+    m_windLevel = world()->windLevel(Vec2F(m_tilePosition));
+
     if (m_tileDamageStatus.damaged() && !m_tileDamageStatus.damageProtected()) {
       float damageEffectPercentage = m_tileDamageStatus.damageEffectPercentage();
       m_windTime += damageEffectPercentage * 10 * dt;

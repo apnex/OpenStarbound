@@ -4,6 +4,9 @@
 
 namespace Star {
 
+std::atomic<bool> EntityDormancy::enabled{false}, EntityDormancy::validate{false};
+std::atomic<uint64_t> EntityDormancy::skipped{0}, EntityDormancy::ran{0}, EntityDormancy::mismatches{0};
+
 EnumMap<ClientEntityMode> const ClientEntityModeNames{
   {ClientEntityMode::ClientSlaveOnly, "ClientSlaveOnly"},
   {ClientEntityMode::ClientMasterAllowed, "ClientMasterAllowed"},
@@ -84,6 +87,10 @@ List<LightSource> Entity::lightSources() const {
 
 List<DamageSource> Entity::damageSources() const {
   return {};
+}
+
+bool Entity::hasDamageSources() const {
+  return false;
 }
 
 void Entity::hitOther(EntityId, DamageRequest const&) {}

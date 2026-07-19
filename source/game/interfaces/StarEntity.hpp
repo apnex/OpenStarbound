@@ -1,5 +1,8 @@
 #pragma once
 
+#include <atomic>
+#include <type_traits>
+
 #include "StarCasting.hpp"
 #include "StarDamage.hpp"
 #include "StarLightSource.hpp"
@@ -11,8 +14,51 @@ STAR_CLASS(RenderCallback);
 STAR_CLASS(World);
 STAR_STRUCT(DamageNotification);
 STAR_CLASS(Entity);
+STAR_CLASS(TileEntity);
+STAR_CLASS(WireEntity);
+// Forward declarations for the fast-path downcast accessors below. These return
+// raw pointers, so an incomplete type suffices here; the concrete headers must
+// NOT be included (they include this one -> cycle).
+STAR_CLASS(Object);
+STAR_CLASS(Monster);
+STAR_CLASS(Npc);
+STAR_CLASS(Player);
+STAR_CLASS(ItemDrop);
+STAR_CLASS(Stagehand);
+STAR_CLASS(Plant);
+STAR_CLASS(PhysicsEntity);
+STAR_CLASS(ScriptedEntity);
+STAR_CLASS(InspectableEntity);
+STAR_CLASS(ChattyEntity);
+STAR_CLASS(InteractiveEntity);
 
 STAR_EXCEPTION(EntityException, StarException);
+
+// Process-global gates for the entity-dormancy awake-set skip (Arc-A Rung 1),
+// set once from worldserver.config in WorldServer::init (both default OFF, so a
+// shipped binary is byte-identical to today until a key is flipped). Kept
+// process-global rather than threaded through World because the WorldServer tick
+// loop and Entity share no back-reference; mirrors the file-static atomic
+// pattern in NetElementEarlyOut (StarNetElement.hpp).
+namespace EntityDormancy {
+  extern std::atomic<bool> enabled;   // gate the awake-set skip
+  extern std::atomic<bool> validate;  // shadow-run + assert each "dormant" tick is a no-op
+  // Telemetry counters (Task 6), mirroring NetElementEarlyOut::hits/walks. Bumped
+  // per-entity only when active(), so the shipped default-OFF path stays zero-cost.
+  //  skipped    = would-be-dormant entity-updates (!run). In enabled mode these are
+  //               actually skipped; in validate mode they still run but are the exact
+  //               set enabled mode WOULD skip -> a consistent dormancy ratio for A/B.
+  //  ran        = entity-updates that ran (run == true).
+  //  mismatches = validate-mode shadow no-op-assertion failures (cumulative; a true
+  //               no-op engine slate must not advance the net-version aggregate).
+  // WorldServer logs skipped/(skipped+ran) periodically and resets that window.
+  extern std::atomic<uint64_t> skipped;
+  extern std::atomic<uint64_t> ran;
+  extern std::atomic<uint64_t> mismatches;
+  inline bool active() {
+    return enabled.load(std::memory_order_relaxed) || validate.load(std::memory_order_relaxed);
+  }
+}
 
 // Specifies how the client should treat an entity created on the client,
 // whether it should always be sent to the server and be a slave on the client,
@@ -107,6 +153,12 @@ public:
   // All damage sources for this frame.
   virtual List<DamageSource> damageSources() const;
 
+  // Cheap conservative predicate (L-DMG-SKIP-0): MUST return true whenever
+  // damageSources() could be non-empty (a strict superset; false ONLY when provably
+  // empty). Lets DamageManager skip the per-tick damageSources() call for the
+  // statically-empty majority. Base = false (Entity::damageSources() == {}).
+  virtual bool hasDamageSources() const;
+
   // Return the damage that would result from being hit by the given damage
   // source.  Will be called on master and slave entities.  Culling based on
   // team damage and self damage will be done outside of this query.
@@ -151,6 +203,51 @@ public:
   virtual Maybe<Json> receiveMessage(ConnectionId sendingConnection, String const& message, JsonArray const& args);
 
   virtual void update(float dt, uint64_t currentStep);
+
+  // Lever Rung-1 dormancy seam. Default = always-awake (next step), so a type
+  // that does not override these behaves exactly as today.
+  // nextEngineWakeStep: the earliest step at which this entity's ENGINE update
+  //   slate needs to run again, given its own timers/animations. {} means "no
+  //   self-scheduled work — sleep until an external wake". currentStep+1 = "every
+  //   tick" (the default). The script is NOT part of this — it runs on its own
+  //   scriptDelta cadence, which an adopter folds INTO this horizon.
+  virtual Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const { return currentStep + 1; }
+  // requestWake: an external mutation point calls this to force the entity awake
+  // next tick (the WorldServer consumes m_wakeRequested). Cheap, idempotent.
+  // THREADING INVARIANT: m_wakeRequested is a plain bool, safe because all server
+  // entity mutation is serialized under WorldServerThread::m_mutex (held across the
+  // whole tick). Callers MUST hold that lock — every current wake source
+  // (interaction, wiring, receiveMessage, tile damage) runs inside the locked tick.
+  // An off-lock caller (e.g. a network-thread path) would need this made atomic.
+  void requestWake() { m_wakeRequested = true; }
+  bool takeWakeRequested() { bool w = m_wakeRequested; m_wakeRequested = false; return w; }
+
+  // Dormancy validate/shadow oracle (Task 6). The per-entity net-version aggregate
+  // (Lever #4's NetElementVersion::latestChange — the highest version at which ANY
+  // net element in this entity recorded a change). Monotonically non-decreasing; a
+  // genuine no-op engine slate does NOT advance it. In validate mode the WorldServer
+  // captures this BEFORE a would-be-dormant entity's still-run update(), then runs
+  // netStorePump() to flush deferred stores, and asserts it did not advance AFTER ->
+  // proof the skipped slate was a true no-op. {} = "this type exposes no aggregate"
+  // -> not validatable (the shadow check is skipped). The aggregate lives on the
+  // shared NetElementVersion, so a single override on the base of a type family
+  // (Object, via its m_netGroup) covers every subclass automatically — subclasses
+  // need NOT re-override this even when they adopt dormancy (ContainerObject,
+  // FarmableObject override nextEngineWakeStep but inherit this oracle unchanged).
+  // COVERAGE: because the validate loop pumps deferred stores before the after-
+  // capture, this now flags BOTH eager NetElements AND deferred-store net state
+  // written only at pump time via setNetStates() — i.e. ContainerObject item
+  // contents (m_itemsNetState) and Object orientation (m_orientationIndexNetState)
+  // ARE covered. The residual blind spot is only a genuinely NON-NETTED side effect
+  // (an outgoing entity message, a direct world-tile mutation, a spawn) from a
+  // skipped slate. These are bounded: dormancy only ever skips the ENGINE slate (the
+  // script always runs on its own cadence) and the Task-5 wake-source audit covers
+  // the external mutators. SUBTLETY: latestChange = m_version at markChanged() time,
+  // and m_version only advances when writeNetState() actually emits a delta — so an
+  // entity NOT monitored by any client may not advance latestChange on a net
+  // mutation (unmonitored => non-observable, no desync; it self-arms the moment a
+  // client attaches and writeNetState starts incrementing the version).
+  virtual Maybe<uint64_t> netVersionLatestChange() const { return {}; }
 
   virtual void render(RenderCallback* renderer);
 
@@ -204,6 +301,7 @@ private:
   Maybe<String> m_uniqueId;
   World* m_world;
   EntityDamageTeam m_team;
+  bool m_wakeRequested = true;
 };
 
 template <typename EntityT>

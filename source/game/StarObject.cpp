@@ -160,7 +160,7 @@ void Object::init(World* world, EntityId entityId, EntityMode mode) {
   // that is not loaded yet.
   if (m_orientationIndex == NPos) {
     updateOrientation();
-  } else if (auto orientation = currentOrientation()) {
+  } else if (auto const& orientation = currentOrientation()) {
     // update direction in case orientation config direction has changed
     if (orientation->directionAffinity)
       m_direction.set(*orientation->directionAffinity);
@@ -285,7 +285,7 @@ List<LightSource> Object::lightSources() const {
   List<LightSource> lights;
   lights.appendAll(m_networkedAnimator->lightSources(position() + m_animationPosition));
 
-  auto orientation = currentOrientation();
+  auto const& orientation = currentOrientation();
   if (!m_lightSourceColor.get().isClear() && orientation) {
     Color color = m_lightSourceColor.get();
     if (m_lightFlickering)
@@ -310,7 +310,7 @@ Vec2F Object::position() const {
 }
 
 RectF Object::metaBoundBox() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     // default metaboundbox extends the bounding box of the orientation's
     // spaces by one block
     return orientation->metaBoundBox.value(RectF(Vec2F(orientation->boundBox.min()) - Vec2F(1, 1), Vec2F(orientation->boundBox.max()) + Vec2F(2, 2)));
@@ -350,7 +350,7 @@ void Object::setDirection(Direction direction) {
 
 void Object::updateOrientation() {
   setOrientationIndex(m_config->findValidOrientation(world(), tilePosition(), m_direction.get()));
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (orientation->directionAffinity)
       m_direction.set(*orientation->directionAffinity);
     m_materialSpaces.set(orientation->materialSpaces);
@@ -359,7 +359,7 @@ void Object::updateOrientation() {
 }
 
 List<Vec2I> Object::anchorPositions() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     List<Vec2I> positions;
     for (auto anchor : orientation->anchors)
       positions.append(anchor.position + tilePosition());
@@ -370,19 +370,21 @@ List<Vec2I> Object::anchorPositions() const {
 }
 
 List<Vec2I> Object::spaces() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return orientation->spaces;
   else
     return {};
 }
 
-List<MaterialSpace> Object::materialSpaces() const {
+List<MaterialSpace> const& Object::materialSpaces() const {
+  // m_materialSpaces.get() already returns const&; the prior by-value return forced
+  // a full vector copy per tile-entity per tick that the sole caller discards.
   return m_materialSpaces.get();
 }
 
 List<Vec2I> Object::roots() const {
   if (m_config->rooting) {
-    if (auto orientation = currentOrientation()) {
+    if (auto const& orientation = currentOrientation()) {
       List<Vec2I> res;
       for (auto anchor : orientation->anchors)
         res.append(anchor.position);
@@ -392,29 +394,52 @@ List<Vec2I> Object::roots() const {
   return {};
 }
 
-void Object::update(float dt, uint64_t) {
+void Object::update(float dt, uint64_t currentStep) {
   if (!inWorld())
     return;
 
   if (isMaster()) {
-    m_tileDamageStatus->recover(m_config->tileDamageParameters, dt);
+    // Dormancy per-call-timer compensation.  Under server dormancy this slate is
+    // skipped on steps where nextEngineWakeStep() scheduled no work, so the
+    // per-call timers are fast-forwarded by the elapsed step gap to fire on the
+    // same ABSOLUTE step they would have without sleeping.  When dormancy is OFF
+    // (update() runs every step) gap == 1, so gapDt == dt,
+    // gap * GlobalTimestep == GlobalTimestep (the old wrapTick() default arg) and
+    // skipUpdateTicks(0) is a no-op -> every call below is byte-identical to the
+    // pre-dormancy path.
+    uint64_t gap = (m_lastEngineUpdateStep == 0) ? 1 : (currentStep - m_lastEngineUpdateStep);
+    m_lastEngineUpdateStep = currentStep;
+    float gapDt = gap * dt;
 
-    if (m_liquidCheckTimer.wrapTick())
+    // recover() is a no-op unless damaged; the horizon keeps damaged objects awake
+    // (gap == 1, gapDt == dt), so a gap > 1 is only ever folded in while recover()
+    // does nothing.
+    m_tileDamageStatus->recover(m_config->tileDamageParameters, gapDt);
+
+    // Liquid timer ticks on GlobalTimestep (matching the old wrapTick() default).
+    if (m_liquidCheckTimer.wrapTick(gap * GlobalTimestep))
       checkLiquidBroken();
 
-    if (auto orientation = currentOrientation()) {
+    if (auto const& orientation = currentOrientation()) {
       auto frame = clamp<int>(std::floor(m_animationTimer / orientation->animationCycle * orientation->frames), 0, orientation->frames - 1);
       if (m_currentFrame != frame) {
         m_currentFrame = frame;
         setImageKey("frame", toString(frame));
       }
 
-      m_animationTimer = std::fmod(m_animationTimer + dt, orientation->animationCycle);
+      // gap == 1 whenever the orientation is actually animated (frames > 1 keeps
+      // the object awake), so this is identical to advancing by dt every step.
+      m_animationTimer = std::fmod(m_animationTimer + gapDt, orientation->animationCycle);
     }
 
-    m_networkedAnimator->update(dt, nullptr);
+    // gap == 1 whenever the animator has active work (it keeps the object awake),
+    // so this is identical to advancing by dt every step.
+    m_networkedAnimator->update(gapDt, nullptr);
     m_networkedAnimator->setFlipped(direction() == Direction::Left, m_animationCenterLine);
 
+    // Account for the (gap - 1) skipped update() calls in the script cadence, then
+    // run the script iff it is cadence-due.  skipUpdateTicks(0) when gap == 1.
+    m_scriptComponent.skipUpdateTicks(static_cast<unsigned>(gap > 0 ? gap - 1 : 0));
     m_scriptComponent.update(m_scriptComponent.updateDt(dt));
 
   } else {
@@ -430,6 +455,51 @@ void Object::update(float dt, uint64_t) {
 
   if (world()->isClient())
     m_scriptedAnimator.update();
+}
+
+Maybe<uint64_t> Object::nextEngineWakeStep(uint64_t currentStep) const {
+  // Fold the earliest (min) of the live self-scheduled wake steps.  {} only when
+  // NO subsystem has self-scheduled work (the per-object dormancy signal).
+  Maybe<uint64_t> wake;
+  auto fold = [&wake](Maybe<uint64_t> const& term) {
+    if (term)
+      wake = wake ? std::min(*wake, *term) : *term;
+  };
+
+  // 1. Script cadence.  {} when the script never updates (updateDelta == 0) ->
+  //    contributes no wake; this is the per-object dormancy signal.
+  fold(m_scriptComponent.nextUpdateStep(currentStep));
+
+  // 2. Liquid check polls checkLiquidBroken() on its own cadence (ticked on
+  //    GlobalTimestep, matching the timer's tick dt).  Always live: the object
+  //    wakes every ~liquidCheckInterval and sleeps between.  max(1, ...) so a
+  //    ready timer schedules the NEXT step, never the current one.
+  fold(currentStep + std::max<uint64_t>(1, (uint64_t)std::ceil(m_liquidCheckTimer.timer / GlobalTimestep)));
+
+  // 3. Tile-damage recovery: stay awake every step while damaged (and not dead),
+  //    so recover() runs the damage down each step.
+  if (m_tileDamageStatus->damaged() && !m_tileDamageStatus->dead())
+    fold(currentStep + 1);
+
+  // 4. Orientation frame animation: live only when the orientation has > 1 frame
+  //    (frames == 1 settles on frame 0 and never changes).
+  if (auto const& orientation = currentOrientation()) {
+    if (orientation->frames > 1 && orientation->animationCycle > 0.0f)
+      fold(currentStep + 1);
+  }
+
+  // 5. NetworkedAnimator self-scheduled work (active/non-settled states or a
+  //    rotation group still approaching its target -- see
+  //    NetworkedAnimator::hasActiveAnimationWork).  Conservative: over-wake is
+  //    safe; render-only / fully-netted-and-slave-reproduced subsystems
+  //    (particle emitters, light flicker, effects, sounds) are excluded.
+  if (m_networkedAnimator->hasActiveAnimationWork())
+    fold(currentStep + 1);
+
+  // Light flicker (m_lightFlickering) and emission timers (m_emissionTimers) are
+  // render-only / discarded server-side -> no horizon term, no compensation.
+
+  return wake;
 }
 
 void Object::render(RenderCallback* renderCallback) {
@@ -475,7 +545,7 @@ bool Object::canBeDamaged() const {
 
 bool Object::checkBroken() {
   if (!m_broken && !m_unbreakable) {
-    auto orientation = currentOrientation();
+    auto const& orientation = currentOrientation();
     if (orientation) {
       if (!orientation->anchorsValid(world(), tilePosition()))
         m_broken = true;
@@ -598,11 +668,14 @@ String Object::category() const {
   return m_config->category;
 }
 
-ObjectOrientationPtr Object::currentOrientation() const {
+ObjectOrientationPtr const& Object::currentOrientation() const {
+  // Reference into construction-stable storage (the orientations list is assigned
+  // once in the ctor / is the immutable Root config list), so returning by const&
+  // does not dangle and only elides the per-call atomic shared_ptr copy.
   if (m_orientationIndex != NPos)
-    return const_cast<ObjectOrientationPtr&>(getOrientations().at(m_orientationIndex));
-  else
-    return {};
+    return getOrientations().at(m_orientationIndex);
+  static ObjectOrientationPtr const empty;
+  return empty;
 }
 
 List<Drawable> Object::cursorHintDrawables() const {
@@ -668,7 +741,7 @@ StringSet Object::turnInQuests() const {
 }
 
 Vec2F Object::questIndicatorPosition() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto pos = position() + Vec2F(orientation->boundBox.center()[0], orientation->boundBox.max()[1] + 2.5);
     if (!(orientation->boundBox.size()[0] % 2))
       pos[0] += 0.5;
@@ -685,11 +758,14 @@ Vec2F Object::questIndicatorPosition() const {
 }
 
 Maybe<Json> Object::receiveMessage(ConnectionId sendingConnection, String const& message, JsonArray const& args) {
+  // Dormancy wake (audit Rule 1): an inbound message runs the Lua handler, which
+  // may set net state or arm scriptDelta follow-up work; wake so update() runs.
+  requestWake();
   return m_scriptComponent.handleMessage(message, sendingConnection == world()->connection(), args);
 }
 
 Json Object::configValue(String const& name, Json const& def) const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return jsonMergeQueryDef(name, def, m_config->config, orientation->config, m_parameters.baseMap());
   else
     return jsonMergeQueryDef(name, def, m_config->config, m_parameters.baseMap());
@@ -821,6 +897,8 @@ Color Object::nodeColor(WireNode wireNode) const { // only output nodes determin
 }
 
 void Object::addNodeConnection(WireNode wireNode, WireConnection nodeConnection) {
+  // Dormancy wake (audit Rule 5a): wire connection topology change.
+  requestWake();
   if (wireNode.direction == WireDirection::Input) {
     if (m_inputNodes.empty()) {
       Logger::info("Tried to add wire connection to input node on object with no input nodes");
@@ -848,6 +926,8 @@ void Object::addNodeConnection(WireNode wireNode, WireConnection nodeConnection)
 }
 
 void Object::removeNodeConnection(WireNode wireNode, WireConnection nodeConnection) {
+  // Dormancy wake (audit Rule 5a): wire connection topology change.
+  requestWake();
   if (wireNode.direction == WireDirection::Input) {
     m_inputNodes.at(wireNode.nodeIndex).connections.update([&](auto& list) {
         return list.remove(nodeConnection);
@@ -861,6 +941,11 @@ void Object::removeNodeConnection(WireNode wireNode, WireConnection nodeConnecti
 }
 
 void Object::evaluate(WireCoordinator* coordinator) {
+  // Dormancy wake (audit Rule 5b): the WireProcessor drives evaluate() each
+  // stride for every wire entity (it must keep iterating dormant ones, per the
+  // §5 invariant); waking here covers downstream input-state flips and the
+  // resulting onInputNodeChange follow-up work.
+  requestWake();
   for (size_t i = 0; i < m_inputNodes.size(); ++i) {
     auto& in = m_inputNodes[i];
     bool nextState = false;
@@ -894,7 +979,7 @@ void Object::setImageKey(String const& name, String const& value) {
 
 void Object::resetEmissionTimers() {
   m_emissionTimers.clear();
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     for (size_t i = 0; i < orientation->particleEmitters.size(); i++)
       m_emissionTimers.append(GameTimer());
 }
@@ -908,7 +993,7 @@ void Object::setOrientationIndex(size_t orientationIndex) {
 }
 
 PolyF Object::volume() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     RectF box = RectF(orientation->boundBox);
     box.max()[0]++;
     box.max()[1]++;
@@ -919,7 +1004,7 @@ PolyF Object::volume() const {
 }
 
 float Object::liquidFillLevel() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return spacesLiquidFillLevel(orientation->spaces);
 
   return 0;
@@ -1136,7 +1221,7 @@ LuaCallbacks Object::makeAnimatorObjectCallbacks() {
 List<DamageSource> Object::damageSources() const {
   auto damageSources = m_damageSources.get();
 
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     Json touchDamageConfig = jsonMerge(m_config->touchDamageConfig, orientation->touchDamageConfig);
     if (!touchDamageConfig.isNull()) {
       DamageSource ds(touchDamageConfig);
@@ -1154,7 +1239,7 @@ List<PersistentStatusEffect> Object::statusEffects() const {
 }
 
 PolyF Object::statusEffectArea() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (orientation->statusEffectArea)
       return orientation->statusEffectArea.get();
   }
@@ -1178,6 +1263,9 @@ Maybe<PolyF> Object::hitPoly() const {
 }
 
 List<DamageNotification> Object::applyDamage(DamageRequest const& damage) {
+  // Dormancy wake (audit Rule 3): combat/explosion HP damage; wake so the
+  // health delta and any Kill->shouldDestroy reaping are processed.
+  requestWake();
   if (!m_config->smashable || !inWorld() || m_health.get() <= 0.0f)
     return {};
 
@@ -1207,7 +1295,7 @@ List<DamageNotification> Object::applyDamage(DamageRequest const& damage) {
 }
 
 RectF Object::interactiveBoundBox() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto rect = RectF(orientation->boundBox);
     rect.setMax(Vec2F(orientation->boundBox.xMax() + 1, orientation->boundBox.yMax() + 1));
     return rect;
@@ -1221,6 +1309,9 @@ bool Object::isInteractive() const {
 }
 
 InteractAction Object::interact(InteractRequest const& request) {
+  // Dormancy wake (audit Rule 1): runs onInteraction Lua (params, image/anim
+  // keys, m_interactive, scriptDelta timers).
+  requestWake();
   Vec2F diff = world()->geometry().diff(request.sourcePosition, position());
   auto result = m_scriptComponent.invoke<Json>(
       "onInteraction", JsonObject{{"source", JsonArray{diff[0], diff[1]}}, {"sourceId", request.sourceId}});
@@ -1240,7 +1331,7 @@ InteractAction Object::interact(InteractRequest const& request) {
 }
 
 List<Vec2I> Object::interactiveSpaces() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (auto iSpaces = orientation->interactiveSpaces)
       return *iSpaces;
   }
@@ -1248,15 +1339,19 @@ List<Vec2I> Object::interactiveSpaces() const {
 }
 
 Maybe<LuaValue> Object::callScript(String const& func, LuaVariadic<LuaValue> const& args) {
+  // Dormancy wake (audit Rule 1): runs arbitrary object Lua synchronously.
+  requestWake();
   return m_scriptComponent.invoke(func, args);
 }
 
 Maybe<LuaValue> Object::evalScript(String const& code) {
+  // Dormancy wake (audit Rule 1): runs arbitrary object Lua synchronously.
+  requestWake();
   return m_scriptComponent.eval(code);
 }
 
 Vec2F Object::mouthPosition() const {
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     auto pos = position() + Vec2F(orientation->boundBox.center()[0], orientation->boundBox.max()[1]);
     if (!(orientation->boundBox.size()[0] % 2))
       pos[0] += 0.5;
@@ -1347,7 +1442,7 @@ List<Drawable> Object::orientationDrawables(size_t orientationIndex) const {
 }
 
 EntityRenderLayer Object::renderLayer() const {
-  if (auto orientation = currentOrientation())
+  if (auto const& orientation = currentOrientation())
     return orientation->renderLayer;
   else
     return RenderLayerObject;
@@ -1361,7 +1456,7 @@ void Object::renderParticles(RenderCallback* renderCallback) {
   if (!inWorld())
     return;
 
-  if (auto orientation = currentOrientation()) {
+  if (auto const& orientation = currentOrientation()) {
     if (m_emissionTimers.size() != orientation->particleEmitters.size())
       resetEmissionTimers();
 
