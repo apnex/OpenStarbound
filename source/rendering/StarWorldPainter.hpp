@@ -110,7 +110,6 @@ private:
   // Updated every frame
 
   AssetsConstPtr m_assets;
-  RectF m_worldScreenRect;
 
   Vec2F m_previousCameraCenter;
   Vec2F m_parallaxWorldPosition;
