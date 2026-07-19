@@ -674,6 +674,7 @@ void ClientApplication::renderReload() {
   loadEffectConfig("lightingSpread");
   loadEffectConfig("lightingPoint");
   loadEffectConfig("lightingUpscale");   // R-A Form 2: bicubic upscale pass (must be registered; switchEffectConfig silently no-ops on an unregistered effect)
+  loadEffectConfig("backdropCompose");   // CM-1: merged env+parallax compose (two input textures -> one full-screen pass into "main")
 
   // define post process groups and set them to be enabled/disabled based on config
   
