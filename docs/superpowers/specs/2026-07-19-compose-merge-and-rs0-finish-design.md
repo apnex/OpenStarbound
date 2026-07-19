@@ -13,7 +13,7 @@ caches — which `BackdropPass` now does.
 ## The one-line goal
 
 Land the env+parallax **compose-merge** (CM-1); unify the lightmap **Jacobi ping-pong onto `swap()`** (R2);
-rename `GlFrameBuffer` → **`Surface`** to make the abstraction first-class (R4). Each step byte-identical
+rename `GlFrameBuffer` → **`GlSurface`** to make the abstraction first-class (R4). Each step byte-identical
 where a bit-exact result is achievable, bounded-diff where the status quo already is, and **oracle-gated**.
 
 ## Out of scope
@@ -125,12 +125,19 @@ consumers** (this + the #542 double-buffered-effect path).
 
 ---
 
-## Component 3 — R4: rename `GlFrameBuffer` → `Surface`
+## Component 3 — R4: rename `GlFrameBuffer` → `GlSurface`
 
-The Surface substance is complete; only the *name* is not first-class. Rename the struct
-`GlFrameBuffer` → `Surface` (in `StarGlRenderSurface.{hpp,cpp}`) and align the public method vocabulary to the
-RS-0 design where it maps cleanly — `allocate()` (THE allocation path), `bind(Write)` (THE bind path),
-`face(Write|Read)` (THE resolver), `swap()`. No behaviour change.
+The surface substance is complete; only the *name* is not first-class — `GlFrameBuffer` is a misnomer (the
+struct *owns* 1-2 faces, it is not a framebuffer). Rename the struct `GlFrameBuffer` → `GlSurface` (in
+`StarGlRenderSurface.{hpp,cpp}`) and align the public method vocabulary to the RS-0 design where it maps
+cleanly — `allocate()` (THE allocation path), `bind(Write)` (THE bind path), `face(Write|Read)` (THE
+resolver), `swap()`. No behaviour change.
+
+**Target is `GlSurface`, not bare `Surface`** (director, 2026-07-19): keeps the `Gl`-prefixed family
+consistency (`GlTargets`/`GlPass`/`GlEffects`/`GlTexture`/`GlLoneTexture`), stays honest that the struct is
+GL-backend-internal (lives inside `OpenGlRenderer`), avoids the `SDL_Surface` (CPU pixel buffer) collision,
+and matches the `StarGlRenderSurface` file name. Bare `Surface` is reserved for the parked upstream-track
+backend-agnostic Layer 1 (R5).
 
 **Done last**, so the rename sweeps the new CM-1/R2 code in the same pass.
 
@@ -147,7 +154,7 @@ RS-0 design where it maps cleanly — `allocate()` (THE allocation path), `bind(
    defer env compose + both-active gating → oracle-gate + adversarial verify → default-ON flag.
 2. **R2** — make `lightingGpu` doubled → rewrite `runSpread` to `swap()` → update compose/upscale to the final
    face → spread `MATCH/0` + adversarial verify.
-3. **R4** — rename `GlFrameBuffer`→`Surface` + API vocabulary → compile + all oracles unchanged.
+3. **R4** — rename `GlFrameBuffer`→`GlSurface` + API vocabulary → compile + all oracles unchanged.
 
 Each lands as its own oracle-certified commit on `render/decomposition`. Builds are E-core-pinned
 (`taskset -c 6-15 nice -n 19`), `VCPKG_ROOT=/root/vcpkg` inline, **user out of game** (`pgrep` first).
