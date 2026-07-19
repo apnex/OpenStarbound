@@ -25,8 +25,13 @@ namespace Star {
 // drop likewise calls surf.invalidate() on every retained surface.
 class RetainedSurface {
 public:
-  explicit RetainedSurface(String cacheName)
-    : m_name(std::move(cacheName)) {}
+  // initialPixelRatio is the pre-fill sentinel for the invalidation key: a value no real camera pixelRatio
+  // equals, so a freshly-constructed surface invalidates. Defaults to -1.0f (the env cache, and the robust
+  // choice); the parallax cache passes 0.0f to reproduce its EXACT pre-migration init so the extraction stays
+  // strictly byte-identical (an adversarial byte-identity check flagged that unifying both caches onto one
+  // sentinel diverged in an unreachable corner).
+  explicit RetainedSurface(String cacheName, float initialPixelRatio = -1.0f)
+    : m_name(std::move(cacheName)), m_pixelRatio(initialPixelRatio) {}
 
   // The name of the renderer framebuffer this cache draws into and composites from.
   String const& name() const { return m_name; }
@@ -63,7 +68,7 @@ private:
   String m_name;
   uint64_t m_counter = 0;
   Vec2U m_size = {0, 0};
-  float m_pixelRatio = -1.0f;
+  float m_pixelRatio;   // pre-fill sentinel set by the ctor (initialPixelRatio); recordFilled overwrites it
 };
 
 }

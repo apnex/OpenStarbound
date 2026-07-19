@@ -77,11 +77,12 @@ private:
   // key. The N-frame cadence + size/pixelRatio structural key live in the shared RetainedSurface (as for the
   // env cache); the scroll-with-camera position has no env counterpart, so it stays a loose member here.
   // Parked camera is bit-stable (StarWorldCamera dead-zone+snap) so exact-equality never fires spuriously.
-  // (The shared surface inits its pixelRatio sentinel to -1.0f; the pre-migration parallax member inited to
-  // 0.0f. Output-invariant: the content key below is a nonzero FNV hash over >=1 layer, so it forces a refresh
-  // on the FIRST cache-active frame regardless -- the pixelRatio sentinel is never the deciding term. -1.0f is
-  // also the more-robust sentinel, matching the env cache: no real camera pixelRatio equals it.)
-  RetainedSurface m_parallaxCache{"parallaxCache"};
+  // The 0.0f initial pixelRatio sentinel reproduces this cache's EXACT pre-migration init (the env cache takes
+  // the primitive's -1.0f default). Adversarial byte-identity verification flagged that unifying both caches
+  // onto one sentinel left a state divergence in an unreachable corner (zero-size target + zero-zoom + origin +
+  // content-hash 0); passing the original 0.0f keeps the migration strictly byte-identical. Hardening parallax
+  // to the stronger -1.0f sentinel, if ever wanted, is a separate deliberate change with its own gate.
+  RetainedSurface m_parallaxCache{"parallaxCache", 0.0f};
   Vec2F m_parallaxCachePosition = {0.0f, 0.0f};
   // Everything OTHER than camera/zoom/size that changes the drawn parallax image: renderParallaxLayers tints
   // each non-unlit/non-lightMapped layer with sky.environmentLight and fades it by floor(255*layer.alpha) --

@@ -69,3 +69,16 @@ TEST(RetainedSurfaceTest, CadenceAndInvalidationAreIndependent) {
   EXPECT_FALSE(s.invalidated({100, 100}, 1.0f));   // key unchanged
   EXPECT_FALSE(s.cadenceHit(4));                   // frame 1: counter advanced independently
 }
+
+TEST(RetainedSurfaceTest, InitialPixelRatioSentinelIsConfigurable) {
+  // The pre-fill pixelRatio sentinel is a per-consumer ctor argument: the env cache takes the -1.0f default,
+  // the parallax cache passes 0.0f to reproduce its exact pre-migration init. Query at the fresh {0,0} size so
+  // the size term does NOT force invalidation and the sentinel is the deciding term -- this is precisely the
+  // (unreachable in the real render, but exercised here) corner the adversarial check flagged.
+  RetainedSurface envLike("e");             // default sentinel -1.0f
+  RetainedSurface parLike("p", 0.0f);       // parallax sentinel 0.0f
+  EXPECT_TRUE(envLike.invalidated({0, 0}, 0.0f));    // 0.0f  != -1.0f -> invalidated
+  EXPECT_FALSE(envLike.invalidated({0, 0}, -1.0f));  // -1.0f == -1.0f -> sentinel matched
+  EXPECT_FALSE(parLike.invalidated({0, 0}, 0.0f));   // 0.0f  == 0.0f  -> sentinel matched (byte-identical to old)
+  EXPECT_TRUE(parLike.invalidated({0, 0}, -1.0f));   // -1.0f != 0.0f  -> invalidated
+}
