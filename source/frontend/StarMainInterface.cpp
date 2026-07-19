@@ -859,20 +859,30 @@ void MainInterface::render() {
   if (m_disableHud)
     return;
 
+  // ABLATION MASK (task #141). MainInterface::render() was measured, by whole-frame ablation on a frozen
+  // scene, at 8,282us of an 11,794us GPU frame -- SEVENTY PERCENT of the entire frame, at a base, standing
+  // still. Nothing else in this engine comes close. This mask bisects it. Bit per call, default all-on.
+  static int const mask = []() {
+    char const* e = getenv("STAR_RENDERTEST_HUD_MASK");
+    return e && *e ? (int)strtol(e, nullptr, 10) : 0x1FF;
+  }();
+
   m_guiContext->clearTextStyle();
-  renderBreath();
-  renderMessages();
-  renderMonsterHealthBar();
-  renderSpecialDamageBar();
-  renderMainBar();
-  renderDebug();
+  if (mask & 0x001) renderBreath();
+  if (mask & 0x002) renderMessages();
+  if (mask & 0x004) renderMonsterHealthBar();
+  if (mask & 0x008) renderSpecialDamageBar();
+  if (mask & 0x010) renderMainBar();
+  if (mask & 0x020) renderDebug();
 
-  RectI screenRect = RectI::withSize(Vec2I(), Vec2I(m_guiContext->windowSize()));
-  for (auto& pair : m_canvases)
-    pair.second->render(screenRect);
+  if (mask & 0x040) {
+    RectI screenRect = RectI::withSize(Vec2I(), Vec2I(m_guiContext->windowSize()));
+    for (auto& pair : m_canvases)
+      pair.second->render(screenRect);
+  }
 
-  renderWindows();
-  renderCursor();
+  if (mask & 0x080) renderWindows();
+  if (mask & 0x100) renderCursor();
 }
 
 Vec2F MainInterface::cursorWorldPosition() const {
