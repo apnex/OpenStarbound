@@ -9,6 +9,8 @@ STAR_CLASS(ChattyEntity);
 
 class ChattyEntity : public virtual Entity {
 public:
+  ChattyEntity* asChattyEntity() override { return this; }
+
   virtual Vec2F mouthPosition() const = 0;
   virtual Vec2F mouthPosition(bool) const = 0;
   virtual List<ChatAction> pullPendingChatActions() = 0;

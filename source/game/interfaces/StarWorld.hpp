@@ -66,18 +66,21 @@ public:
   virtual void forAllEntities(EntityCallback entityCallback) const = 0;
 
   // Query here is a fuzzy query based on metaBoundBox
-  virtual void forEachEntity(RectF const& boundBox, EntityCallback entityCallback) const = 0;
+  // Lever #5: callbacks/filters taken by const& (was by value) to drop a
+  // per-query std::function copy at the virtual boundary the templated
+  // EntityMap path (Lever #1) cannot inline through (Lua / damage callers).
+  virtual void forEachEntity(RectF const& boundBox, EntityCallback const& entityCallback) const = 0;
   // Fuzzy metaBoundBox query for intersecting the given line.
-  virtual void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback entityCallback) const = 0;
+  virtual void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& entityCallback) const = 0;
   // Performs action for all entities that occupies the given tile position
   // (only entity types laid out in the tile grid).
-  virtual void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> entityCallback) const = 0;
+  virtual void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& entityCallback) const = 0;
 
   // Like forEachEntity, but stops scanning when entityFilter returns true, and
   // returns the EntityPtr found, otherwise returns a null pointer.
-  virtual EntityPtr findEntity(RectF const& boundBox, EntityFilter entityFilter) const = 0;
-  virtual EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const = 0;
-  virtual EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const = 0;
+  virtual EntityPtr findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const = 0;
+  virtual EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const = 0;
+  virtual EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const = 0;
 
   // Is the given tile layer and position occupied by an entity or block?
   virtual bool tileIsOccupied(Vec2I const& pos, TileLayer layer, bool includeEphemeral = false, bool checkCollision = false) const = 0;
@@ -89,6 +92,12 @@ public:
   // polys for tiles can extend to a maximum of 1 tile outside of the natural
   // tile bounds.
   virtual void forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const = 0;
+
+  // Buffered, inlinable variant of forEachCollisionBlock: appends a CollisionBlockRef per
+  // block (real blocks point into the tile collisionCache; Null tiles -> {space, nullptr}).
+  // Refs valid only until the next tile mutation on this world thread (single-threaded);
+  // caller must consume before yielding. Order matches forEachCollisionBlock exactly.
+  virtual void getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const = 0;
 
   // Is there some connectable tile / tile based entity in this position?  If
   // tilesOnly is true, only checks to see whether that tile is a connectable
@@ -218,7 +227,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> World::query(RectF const& boundBox, EntityFilterOf<EntityT> selector) const {
   List<shared_ptr<EntityT>> list;
   forEachEntity(boundBox, [&](EntityPtr const& entity) {
-      if (auto e = as<EntityT>(entity)) {
+      if (auto e = entityCast<EntityT>(entity)) {
         if (!selector || selector(e))
           list.append(std::move(e));
       }
@@ -242,8 +251,8 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> World::lineQuery(
     Vec2F const& begin, Vec2F const& end, EntityFilterOf<EntityT> selector) const {
   List<shared_ptr<EntityT>> list;
-  forEachEntityLine(begin, end, [&](EntityPtr entity) {
-      if (auto e = as<EntityT>(std::move(entity))) {
+  forEachEntityLine(begin, end, [&](EntityPtr const& entity) {
+      if (auto e = entityCast<EntityT>(entity)) {
         if (!selector || selector(e))
           list.append(std::move(e));
       }
@@ -256,7 +265,7 @@ template <typename EntityT>
 List<shared_ptr<EntityT>> World::atTile(Vec2I const& pos) const {
   List<shared_ptr<EntityT>> list;
   forEachEntityAtTile(pos, [&](TileEntityPtr const& entity) {
-      if (auto e = as<EntityT>(entity))
+      if (auto e = entityCast<EntityT>(entity))
         list.append(std::move(e));
     });
   return list;

@@ -97,6 +97,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {});
 
   EntityType entityType() const override;
+  Player* asPlayer() override { return this; }
   ClientEntityMode clientEntityMode() const override;
 
   void init(World* world, EntityId entityId, EntityMode mode) override;
@@ -121,6 +122,7 @@ public:
   RectF collisionArea() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationStep = 0.0f, NetCompatibilityRules rules = {}) override;
 
   void enableInterpolation(float extrapolationHint = 0.0f) override;
@@ -136,6 +138,7 @@ public:
   void damagedOther(DamageNotification const& damage) override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: population ~1, Lua/tool-mutable — never skipped
 
   bool shouldDestroy() const override;
   void destroy(RenderCallback* renderCallback) override;

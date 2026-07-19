@@ -30,6 +30,7 @@ public:
   ClientEntityMode clientEntityMode() const override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0: per-source enabled flags, rare population — never skipped
   Maybe<HitType> queryHit(DamageSource const& source) const override;
   Maybe<PolyF> hitPoly() const override;
 
@@ -45,6 +46,7 @@ public:
   Vec2F velocity() const;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   void enableInterpolation(float extrapolationHint) override;

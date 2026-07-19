@@ -34,8 +34,9 @@ List<Vec2I> TileEntity::roots() const {
   return {};
 }
 
-List<MaterialSpace> TileEntity::materialSpaces() const {
-  return {};
+List<MaterialSpace> const& TileEntity::materialSpaces() const {
+  static List<MaterialSpace> const empty;
+  return empty;
 }
 
 bool TileEntity::damageTiles(List<Vec2I> const&, Vec2F const&, TileDamage const&) {

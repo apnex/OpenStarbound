@@ -47,6 +47,7 @@ public:
   ByteArray netStore(NetCompatibilityRules rules = {});
 
   EntityType entityType() const override;
+  Monster* asMonster() override { return this; }
   ClientEntityMode clientEntityMode() const override;
 
   void init(World* world, EntityId entityId, EntityMode mode) override;
@@ -63,6 +64,7 @@ public:
   RectF collisionArea() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  void netStorePump() override;
   void readNetState(ByteArray data, float interpolationTime = 0.0f, NetCompatibilityRules rules = {}) override;
 
   void enableInterpolation(float extrapolationHint) override;
@@ -83,6 +85,7 @@ public:
   List<DamageNotification> selfDamageNotifications() override;
 
   List<DamageSource> damageSources() const override;
+  bool hasDamageSources() const override { return true; } // L-DMG-SKIP-0 (exact predicate = deferred L-DMG-SKIP-2)
 
   bool shouldDie();
   void knockout();

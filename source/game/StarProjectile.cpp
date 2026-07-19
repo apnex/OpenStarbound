@@ -155,6 +155,10 @@ pair<ByteArray, uint64_t> Projectile::writeNetState(uint64_t fromVersion, NetCom
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void Projectile::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void Projectile::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

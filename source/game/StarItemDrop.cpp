@@ -198,6 +198,10 @@ pair<ByteArray, uint64_t> ItemDrop::writeNetState(uint64_t fromVersion, NetCompa
   return m_netGroup.writeNetState(fromVersion, rules);
 }
 
+void ItemDrop::netStorePump() {
+  m_netGroup.netStorePump();
+}
+
 void ItemDrop::readNetState(ByteArray data, float interpolationTime, NetCompatibilityRules rules) {
   m_netGroup.readNetState(data, interpolationTime, rules);
 }

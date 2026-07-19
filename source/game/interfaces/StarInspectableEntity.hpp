@@ -8,6 +8,8 @@ STAR_CLASS(InspectableEntity);
 
 class InspectableEntity : public virtual Entity {
 public:
+  InspectableEntity* asInspectableEntity() override { return this; }
+
   // Default implementation returns true
   virtual bool inspectable() const;
 

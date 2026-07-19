@@ -9,6 +9,7 @@ public:
   FarmableObject(ObjectConfigConstPtr config, Json const& parameters);
 
   void update(float dt, uint64_t currentStep) override;
+  Maybe<uint64_t> nextEngineWakeStep(uint64_t currentStep) const override;
 
   bool damageTiles(List<Vec2I> const& position, Vec2F const& sourcePosition, TileDamage const& tileDamage) override;
   InteractAction interact(InteractRequest const& request) override;

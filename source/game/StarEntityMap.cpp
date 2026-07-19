@@ -183,21 +183,12 @@ List<TileEntityPtr> EntityMap::entitiesAtTile(Vec2I const& pos, EntityFilterOf<T
   return values;
 }
 
-void EntityMap::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
-  m_spatialMap.forEach(m_geometry.splitRect(boundBox), callback);
-}
-
-void EntityMap::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
-  return m_spatialMap.forEach(m_geometry.splitRect(RectF::boundBoxOf(begin, end)), [&](EntityPtr const& entity) {
-      if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position())))
-        callback(entity);
-    });
-}
+// forEachEntity / forEachEntityLine are now header-defined templates (Lever #1).
 
 void EntityMap::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   RectF rect(Vec2F(pos[0], pos[1]), Vec2F(pos[0] + 1, pos[1] + 1));
   forEachEntity(rect, [&](EntityPtr const& entity) {
-      if (auto tileEntity = as<TileEntity>(entity)) {
+      if (auto tileEntity = entityCast<TileEntity>(entity)) {
         for (Vec2I space : tileEntity->spaces()) {
           if (m_geometry.equal(pos, space + tileEntity->tilePosition()))
             callback(tileEntity);
@@ -235,31 +226,12 @@ void EntityMap::forAllEntities(EntityCallback const& callback, function<bool(Ent
   }
 }
 
-EntityPtr EntityMap::findEntity(RectF const& boundBox, EntityFilter const& filter) const {
-  EntityPtr res;
-  forEachEntity(boundBox, [&filter, &res](EntityPtr const& entity) {
-      if (res)
-        return;
-      if (filter(entity))
-        res = entity;
-    });
-  return res;
-}
-
-EntityPtr EntityMap::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& filter) const {
-  return findEntity(RectF::boundBoxOf(begin, end), [&](EntityPtr const& entity) {
-      if (m_geometry.lineIntersectsRect({begin, end}, entity->metaBoundBox().translated(entity->position()))) {
-        if (filter(entity))
-          return true;
-      }
-      return false;
-    });
-}
+// findEntity / findEntityLine are now header-defined templates (Lever #1).
 
 EntityPtr EntityMap::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& filter) const {
   RectF rect(Vec2F(pos[0], pos[1]), Vec2F(pos[0] + 1, pos[1] + 1));
   return findEntity(rect, [&](EntityPtr const& entity) {
-      if (auto tileEntity = as<TileEntity>(entity)) {
+      if (auto tileEntity = entityCast<TileEntity>(entity)) {
         for (Vec2I space : tileEntity->spaces()) {
           if (m_geometry.equal(pos, space + tileEntity->tilePosition())) {
             if (filter(tileEntity))
@@ -305,9 +277,9 @@ InteractiveEntityPtr EntityMap::interactiveEntityNear(Vec2F const& pos, float ma
   double bestDistance = maxRadius + 100;
   double bestCenterDistance = maxRadius + 100;
   m_spatialMap.forEach(m_geometry.splitRect(rect), [&](EntityPtr const& entity) {
-      if (auto ie = as<InteractiveEntity>(entity)) {
+      if (auto ie = entityCast<InteractiveEntity>(entity)) {
         if (ie->isInteractive()) {
-          if (auto tileEntity = as<TileEntity>(entity)) {
+          if (auto tileEntity = entityCast<TileEntity>(entity)) {
             for (Vec2I space : tileEntity->interactiveSpaces()) {
               auto dist = m_geometry.diff(pos, centerOfTile(space + tileEntity->tilePosition())).magnitude();
               auto centerDist = m_geometry.diff(tileEntity->metaBoundBox().center() + tileEntity->position(), pos).magnitude();
@@ -338,7 +310,7 @@ InteractiveEntityPtr EntityMap::interactiveEntityNear(Vec2F const& pos, float ma
 bool EntityMap::tileIsOccupied(Vec2I const& pos, bool includeEphemeral) const {
   RectF rect(Vec2F(pos[0], pos[1]), Vec2F(pos[0] + 1, pos[1] + 1));
   return (bool)findEntity(rect, [&](EntityPtr const& entity) {
-      if (auto tileEntity = as<TileEntity>(entity)) {
+      if (auto tileEntity = entityCast<TileEntity>(entity)) {
         if (includeEphemeral || !tileEntity->ephemeral()) {
           for (Vec2I space : tileEntity->spaces()) {
             if (m_geometry.equal(pos, space + tileEntity->tilePosition())) {
