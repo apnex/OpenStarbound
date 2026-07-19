@@ -68,12 +68,22 @@ SET (star_game_tests_SOURCES
 
       StarTestUniverse.cpp
       assets_test.cpp
+      animated_part_set_test.cpp
+      drawable_cache_test.cpp
+      lighting_telemetry_test.cpp
+      lighting_spread_test.cpp
+      lighting_point_test.cpp
+      temporal_light_gate_test.cpp
+      cellular_lighting_test.cpp
       function_test.cpp
       item_test.cpp
       root_test.cpp
       server_test.cpp
+      entity_dormancy_test.cpp
+      entity_map_test.cpp
       spawn_test.cpp
       stat_test.cpp
+      status_context_test.cpp
       tile_array_test.cpp
       world_geometry_test.cpp
       universe_connection_test.cpp

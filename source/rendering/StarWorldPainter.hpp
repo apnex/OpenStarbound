@@ -6,6 +6,7 @@
 #include "StarTextPainter.hpp"
 #include "StarDrawablePainter.hpp"
 #include "StarRenderer.hpp"
+#include "StarGpuLightmapPass.hpp"
 
 namespace Star {
 
@@ -25,6 +26,11 @@ public:
   void update(float dt);
   void render(WorldRenderData& renderData, function<bool()> lightWaiter);
   void adjustLighting(WorldRenderData& renderData);
+  // Slice 4: did the GPU lightmap pass produce this frame's lightMap? The render loop
+  // feeds this back to WorldClient (setGpuLightingActive) so the lighting thread can
+  // drop the redundant CPU calculate(). False whenever GPU lighting is off, inputs are
+  // invalid, the world is fullbright, or the GPU pass fell back to CPU.
+  bool gpuLightingActive() const { return m_gpuLightingActive; }
 
 private:
   void renderParticles(WorldRenderData& renderData, Particle::Layer layer);

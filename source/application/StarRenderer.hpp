@@ -123,6 +123,21 @@ public:
 
 typedef Variant<float, int, Vec4F, Vec3F, Vec2F, bool> RenderEffectParameter;
 
+// Blend mode for the current draw target. Alpha is the engine default; Additive (dest += src)
+// and Max (dest = max(src,dest)) drive the GPU point-lighting accumulation (both order-independent
+// so they match the CPU's per-light additive / max blend).
+// PremultiplyInto: render straight-alpha source draws INTO an intermediate as premultiplied
+// (rgb = a*src + (1-a)*dst, alpha = a + (1-a)*dst_a) -- glBlendFuncSeparate. PremultipliedOver:
+// composite a premultiplied intermediate over a destination (rgb + (1-a)*dst). Together they cache an
+// alpha-blended layer (e.g. parallax) for later compositing byte-identically (premultiplied "over" is
+// associative, unlike straight "over").
+// None disables blending entirely: the fragment REPLACES the destination. Distinct from Alpha-with-alpha=1,
+// which only *behaves* like a replace by arithmetic accident (dst = src*1 + dst*0) -- and which is therefore
+// a trap for any pass that wants to write a meaningful alpha channel, because a fragment with alpha=0 would
+// blend to nothing instead of being written. It also removes a per-fragment blend op from passes that never
+// wanted one, and sidesteps the dst*0.0 = NaN hazard on a clear:false target whose contents are undefined.
+enum class BlendMode { None, Alpha, Additive, Max, PremultiplyInto, PremultipliedOver };
+
 class Renderer {
 public:
   virtual ~Renderer() = default;
@@ -142,11 +157,71 @@ public:
   // The effect config will specify named parameters and textures which can be
   // set here.
   virtual void setEffectParameter(String const& parameterName, RenderEffectParameter const& parameter) = 0;
+  // Handle-based fast path for the same-uniform hot loops (e.g. GPU point lighting): resolve the name
+  // ONCE against the current effect via getEffectParameterHandle, then set by handle each iteration,
+  // skipping the per-call name String-construct + hash + HashMap lookup. The handle is valid only while
+  // the resolving effect stays current (switchEffectConfig invalidates it) and no parameters are added.
+  // A null handle is a no-op on set (mirrors the string path's unknown-name early-out). Values pushed
+  // and the dedup early-out are identical to the string path.
+  typedef void* EffectParameterHandle;
+  virtual EffectParameterHandle getEffectParameterHandle(String const& parameterName) = 0;
+  virtual void setEffectParameter(EffectParameterHandle handle, RenderEffectParameter const& parameter) = 0;
   virtual void setEffectScriptableParameter(String const& effectName, String const& parameterName, RenderEffectParameter const& parameter) = 0;
   virtual Maybe<RenderEffectParameter> getEffectScriptableParameter(String const& effectName, String const& parameterName) = 0;
   virtual Maybe<VariantTypeIndex> getEffectScriptableParameterType(String const& effectName, String const& parameterName) = 0;
   virtual void setEffectTexture(String const& textureName, ImageView const& image) = 0;
   virtual bool switchEffectConfig(String const& name) = 0;
+
+  // Off-screen multi-pass support (e.g. GPU lighting). setRenderTarget binds the named config
+  // framebuffer as the draw target, (re)sizing its color texture to `size` and matching the
+  // viewport + screenSize uniform; an empty Maybe restores the screen target and full viewport.
+  // setEffectTextureFromTarget binds a config framebuffer's color texture to the current effect's
+  // named sampler, consuming a prior pass's output with no CPU round-trip.
+  virtual void setRenderTarget(Maybe<String> const& frameBufferId, Vec2U size = Vec2U()) = 0;
+  // Clear the currently-bound render target (see setRenderTarget) to the renderer's clear color. Used by
+  // persistent clear:false FBOs (e.g. the environment cache) to reset to the once-per-frame clear state
+  // that clear:true targets like "main" receive in startFrame.
+  virtual void clearRenderTarget(Vec4F clearColor = Vec4F(0.0f, 0.0f, 0.0f, 1.0f)) = 0;
+  // True if a config framebuffer with this id is loaded. Lets a consumer guard a setRenderTarget redirect
+  // (which silently no-ops on an absent id) so it never accidentally draws into the previously-bound target.
+  virtual bool hasFrameBuffer(String const& id) const = 0;
+  // Bumped whenever every framebuffer is destroyed and re-created with UNDEFINED content -- i.e. on any
+  // renderer config reload (the hdr and antiAliasing client options each trigger one, and both are polled
+  // every frame). A retained/persistent (clear:false) surface CANNOT see this: its own refresh key (size,
+  // camera, counter) is unchanged across the realloc, so it would happily composite undefined GPU memory.
+  // Any such consumer MUST fold this into its refresh key. Not pure: a backend that never reallocates
+  // correctly reports a constant, and is thereby never falsely invalidated.
+  virtual uint64_t frameBufferGeneration() const { return 0; }
+  // Sample srcFbo's color (bound to `effect`'s `srcSampler`) through `effect` into `dstFbo`, drawn as a
+  // full-screen quad sized to dstSize, after applying `params`. Returns false if `effect` is unregistered
+  // (caller falls back). Sets `params` explicitly so a shared passthrough effect is bleed-safe across
+  // consumers with different needs. Does NOT restore the prior effect/target (caller-specific).
+  virtual bool composite(String const& effect, String const& dstFbo, Vec2U dstSize,
+                         String const& srcSampler, String const& srcFbo,
+                         List<pair<String, RenderEffectParameter>> const& params = {}) = 0;
+  virtual void setEffectTextureFromTarget(String const& textureName, String const& frameBufferId) = 0;
+  // Alias one effect sampler to another's already-uploaded texture (no CPU re-upload). Used to feed
+  // a grid that was uploaded once (e.g. GPU lighting's emission) to a second sampler that needs the
+  // same data (the iteration-0 spread state) instead of uploading it twice.
+  virtual void setEffectTextureAlias(String const& destTextureName, String const& sourceTextureName) = 0;
+  // Upload pre-converted 16-bit half-float RGB data to an effect sampler as an RGB16F texture, halving
+  // the per-frame transfer/store vs RGB_F. Used for GPU lighting's emission grid (the pipeline's FBOs
+  // are already 16F, so no precision is lost); the float->half conversion is done off the render thread.
+  // Upload a half-float (16-bit) texture with `channels` components (3 = RGB16F, 4 = RGBA16F). One entry
+  // point rather than one per format: the RGB and R8 variants were already near-identical copies.
+  virtual void setEffectTextureHalf(String const& textureName, Vec2U size, uint16_t const* halfData, unsigned channels) = 0;
+  // Upload single-channel 8-bit data to an effect sampler as an R8 texture (sampled via .r), a third
+  // the bytes of RGB24. Used for GPU lighting's obstacle mask (a binary 0/255 flag, read as .r > 0.5).
+  virtual void setEffectTextureR8(String const& textureName, Vec2U size, uint8_t const* data) = 0;
+  // THE INSTRUMENTS (StarRenderDiagnostics.hpp). These observe the renderer rather than draw with it, so they
+  // are not part of the contract a backend must satisfy to render a frame -- they hang off it. Keeping them
+  // here as seven more virtuals meant every new diagnostic widened the surface all twelve consumers depend on;
+  // behind these two accessors, the next one widens nothing.
+  virtual GpuTimer& gpuTimer() = 0;
+  virtual RenderOracle& oracle() = 0;
+  // Set the blend mode for subsequent draws (e.g. additive/max for GPU point-light accumulation);
+  // restore to BlendMode::Alpha after. Flushes pending primitives so the mode applies cleanly.
+  virtual void setBlendMode(BlendMode mode) = 0;
 
   // Any further rendering will be scissored based on this rect, specified in
   // pixels

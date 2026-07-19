@@ -4,8 +4,77 @@
 #include "StarConfiguration.hpp"
 #include "StarAssets.hpp"
 #include "StarJsonExtra.hpp"
+#include "StarTelemetry.hpp"
+#include "StarLogging.hpp"  // LogMap (/debug HUD per-pass GPU timings, Rung 0)
+#include "StarCellularLightArray.hpp"  // spreadJacobiReference (CPU spread oracle for parity)
 
 namespace Star {
+
+// GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
+// point + cap) is calc-region sized; the CPU lightMap is the full (spread+point+cap) query-region
+// result. With point lighting now on BOTH sides this is apples-to-apples in ANY scene. Crop the
+// GPU result to the query sub-rect (offset = border on each axis) and compare per channel.
+// Tolerance allows RGBA16F + additive float-add order + the DDA-vs-Xiaolin-Wu residual: mean abs
+// <= 3/255, max <= 10/255.
+static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border,
+    ImageView const& emission, ImageView const& obstacle,
+    List<ColoredCellularLightArray::PointLight> const& lights, PointParameters const& params, unsigned iterations) {
+  static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch");
+  unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
+  Vec2U gpuSize = gpuCalc.size();
+  if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
+    return;
+
+  float const meanTol = 3.0f / 255.0f, maxTol = 10.0f / 255.0f;
+  double sumAbs = 0.0;
+  float worst = 0.0f;
+  unsigned worstX = 0, worstY = 0;
+  Vec3F worstCpu, worstGpu;
+  float const* gpuData = (float const*)gpuCalc.data();
+  for (unsigned y = 0; y < qh; ++y) {
+    for (unsigned x = 0; x < qw; ++x) {
+      Vec3F cpu = cpuQuery.get(x, y);
+      size_t g = ((size_t)(y + border) * gpuSize[0] + (x + border)) * 3;
+      Vec3F gpu(gpuData[g], gpuData[g + 1], gpuData[g + 2]);
+      for (size_t c = 0; c < 3; ++c) {
+        float e = std::fabs(cpu[c] - gpu[c]);
+        sumAbs += e;
+        if (e > worst) { worst = e; worstX = x; worstY = y; worstCpu = cpu; worstGpu = gpu; }
+      }
+    }
+  }
+  float mean = (float)(sumAbs / (qw * qh * 3));
+  if (mean > meanTol || worst > maxTol) {
+    mismatchCounter.inc(1);
+    static int warnBudget = 8;   // rate-limited; the counter carries the running total
+    if (warnBudget > 0) {
+      --warnBudget;
+      // 3-way localizer: compute the CPU reference (proven spreadJacobiReference + pointLightingReference
+      // on the SAME exported inputs) at the worst cell. production==reference but GPU differs => GLSL
+      // port bug at this geometry; reference==GPU but production differs => export/reference issue.
+      Vec3F ref(-1, -1, -1);
+      size_t w = emission.size[0], h = emission.size[1];
+      if (w == gpuSize[0] && h == gpuSize[1] && emission.size == obstacle.size) {
+        List<Vec3F> em; em.resize(w * h);
+        List<uint8_t> ob; ob.resize(w * h);
+        float const* eData = (float const*)emission.data;
+        uint8_t const* oData = (uint8_t const*)obstacle.data;
+        for (size_t x = 0; x < w; ++x)
+          for (size_t y = 0; y < h; ++y) {
+            size_t px = (y * w + x) * 3;
+            em[x * h + y] = Vec3F(eData[px], eData[px + 1], eData[px + 2]);
+            ob[x * h + y] = oData[px] > 127 ? 1 : 0;
+          }
+        auto spread = spreadJacobiReference(em, ob, w, h, SpreadParameters{params.spreadMaxAir, params.spreadMaxObstacle, params.brightnessLimit}, iterations);
+        auto full = pointLightingReference(spread, ob, lights, w, h, params);
+        ref = full[((size_t)worstX + border) * h + ((size_t)worstY + border)];
+      }
+      Logger::warn("GPU lighting full parity: mean={:.4f}/255 max={:.4f}/255 at ({},{}) cpu=({:.3f},{:.3f},{:.3f}) gpu=({:.3f},{:.3f},{:.3f}) ref=({:.3f},{:.3f},{:.3f})",
+          mean * 255.0f, worst * 255.0f, worstX, worstY,
+          worstCpu[0], worstCpu[1], worstCpu[2], worstGpu[0], worstGpu[1], worstGpu[2], ref[0], ref[1], ref[2]);
+    }
+  }
+}
 
 WorldPainter::WorldPainter() {
   m_assets = Root::singleton().assets();
@@ -242,14 +311,88 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   if (renderData.isFullbright) {
     m_renderer->setEffectTexture("lightMap", Image::filled(Vec2U(1, 1), { 255, 255, 255, 255 }, PixelFormat::RGB24));
     m_renderer->setEffectParameter("lightMapMultiplier", 1.0f);
+    // Invariant: m_lightMapBorder always matches the currently-bound lightMap. The 1x1 white
+    // texture is offset-invariant so this is defensive, but keeps the border consistent if the
+    // binding persists into a later non-fullbright frame before a fresh lighting frame arrives.
+    m_lightMapBorder = 0;
   } else {
     if (lightMapUpdated) {
       adjustLighting(renderData);
-      m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+      bool gpuLightmap = false;
+      auto config = Root::singleton().configuration();
+      if (config->get("lightingGpu").optBool().value(false) && renderData.lightingInputsValid) {
+        // Slice 3: compute the COMPLETE lightmap on the GPU (spread + per-light point + cap) from
+        // the exported emission/obstacle/point-light grids; processFull restores the world effect +
+        // binds the result as lightMap. Returns false (fall back to CPU below) if assets are missing.
+        if (!m_gpuLightmapPass)
+          m_gpuLightmapPass = make_shared<GpuLightmapPass>(m_renderer.get());
+        auto lc = m_assets->json("/lighting.config:lighting");
+        PointParameters params{
+            lc.getFloat("pointMaxAir"), lc.getFloat("pointMaxObstacle"),
+            lc.getFloat("pointObstacleBoost"),
+            config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
+            lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
+            lc.getFloat("brightnessLimit")};
+        // Auto-scale spread Jacobi iterations to the emission's peak intensity. Production's
+        // Gauss-Seidel sweep propagates fully in 2 sweeps; a parallel Jacobi needs
+        // ~ceil(maxIntensity * spreadMaxAir) steps to reach the same distance (the de-risk's K
+        // bound). A fixed K under-propagated bright (>1.0) FU spread lights -> dimmer-far-from-source
+        // cells. Scan the (small) emission for its max channel; clamp [8, lightingGpuSpreadIterations].
+        float maxEmission = 0.0f;
+        {
+          auto const& em = renderData.lightingEmission;
+          float const* ed = (float const*)em.data();
+          size_t n = (size_t)em.size()[0] * em.size()[1] * 3;
+          for (size_t i = 0; i < n; ++i)
+            maxEmission = std::max(maxEmission, ed[i]);
+        }
+        unsigned cap = config->get("lightingGpuSpreadIterations").optUInt().value(64);
+        unsigned iterations = std::min(cap, std::max(8u, (unsigned)std::ceil(maxEmission * params.spreadMaxAir)));
+        bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
+        Image gpuResult;
+        float brightnessScale = config->get("lightingGpuBrightness").optFloat().value(1.0f);
+        bool tonemap = config->get("lightingTonemap").optBool().value(false);
+        gpuLightmap = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
+            renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
+            iterations, params, brightnessScale, tonemap, shadowCompare,
+            config->get("lightingWorldUpscale").optFloat().value(1.0f), &gpuResult);
+        if (gpuLightmap) {
+          // The bound lightMap is the calc-region (border-padded) result; shift the offset so the
+          // world shader samples the query region. The border is carried in renderData from the
+          // calculator's geometry (Slice 4) -- it must NOT be reverse-derived from renderData.lightMap
+          // width, which is empty (=> a garbage offset, dark world) when the CPU calc is skipped.
+          m_lightMapBorder = renderData.lightMapBorder;
+          if (shadowCompare && gpuResult.size()[0] > 0)
+            shadowCompareFull(gpuResult, renderData.lightMap, m_lightMapBorder,
+                renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights, params, iterations);
+        }
+      }
+      if (!gpuLightmap) {
+        // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
+        if (!renderData.lightMap.empty()) {
+          static auto uploadTimer = Telemetry::timer("lighting.upload.us");
+          TelemetryScope uploadScope(uploadTimer);
+          m_renderer->setEffectTexture("lightMap", renderData.lightMap);
+          m_lightMapBorder = 0;
+        }
+        // else (Slice 4): GPU pass failed AND no CPU lightMap this frame -- the skip-calculate
+        // latch raced a transient GPU failure. Keep the previous lightMap binding for this one
+        // frame; reporting m_gpuLightingActive=false (below) re-arms the CPU path on the lighting
+        // thread, so a real lightMap returns within ~1 frame. (Empty upload would flash black.)
+      }
+      // Slice 4: report this frame's GPU outcome so the lighting thread can drop the
+      // redundant CPU calculate() once the GPU path is confirmed working.
+      m_gpuLightingActive = gpuLightmap;
     }
     m_renderer->setEffectParameter("lightMapMultiplier", m_assets->json("/rendering.config:lightMapMultiplier").toFloat());
     m_renderer->setEffectParameter("lightMapScale", Vec2F::filled(TilePixels * m_camera.pixelRatio()));
-    m_renderer->setEffectParameter("lightMapOffset", m_camera.worldToScreen(Vec2F(renderData.lightMinPosition)));
+    // m_lightMapBorder persists across non-update frames to match the persistent lightMap binding.
+    m_renderer->setEffectParameter("lightMapOffset",
+        m_camera.worldToScreen(Vec2F(renderData.lightMinPosition) - Vec2F((float)m_lightMapBorder, (float)m_lightMapBorder)));
+    m_renderer->setEffectParameter("lightmapBilinear",
+        Root::singleton().configuration()->get("lightingWorldSampleBilinear").optBool().value(false));
+    m_renderer->setEffectParameter("lightmapUpscale",
+        Root::singleton().configuration()->get("lightingWorldUpscale").optFloat().value(1.0f));
   }
 
   // Parallax layers
@@ -543,10 +686,20 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   drawDrawableSet(renderData.nametags);
   renderBars(renderData);
   renderEntitiesUntil({});
+  m_renderer->gpuTimer().end("render.pass.world.gpu_us");
 
+  m_renderer->gpuTimer().begin("render.pass.compose.gpu_us");
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0)
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
+  m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
+
+  // Rung 0: surface the per-pass GPU timings (populated only under deep telemetry) on the /debug HUD.
+  for (auto const& key : {"render.pass.environment.gpu_us", "render.pass.parallax.gpu_us",
+                          "render.pass.world.gpu_us", "render.pass.compose.gpu_us"}) {
+    if (auto us = m_renderer->gpuTimer().lastMicros(key))
+      LogMap::set(String(key), strf("{:05d}us", *us));
+  }
 
   int64_t textureTimeout = m_assets->json("/rendering.config:textureTimeout").toInt();
   m_textPainter->cleanup(textureTimeout);

@@ -13,6 +13,12 @@ namespace Star {
 
 STAR_EXCEPTION(LightmapException, StarException);
 
+// CDL highlight tonemap: identity for max-channel <= 1 (normal scenes untouched),
+// smooth rolloff of the excess above 1 toward the white-point (asymptote at `white`),
+// hue-preserving (uniform RGB scale). Replaces the proportional brightnessLimit clamp
+// when lightingTonemap is enabled. Mirrored byte-for-byte in lightingPassthrough.frag.
+Vec3F tonemapHighlights(Vec3F color, float white);
+
 class Lightmap {
 public:
   Lightmap();
@@ -146,6 +152,39 @@ public:
   void calculate(Lightmap& output);
 
   void setupImage(Image& image, PixelFormat format = PixelFormat::RGB24) const;
+
+  // Test/tooling hooks for the Jacobi spread reference (see
+  // spreadJacobiReference in StarCellularLightArray.hpp). spreadParameters()
+  // returns the spread dropoff + brightnessLimit pulled from the active config.
+  SpreadParameters spreadParameters() const;
+  // pointParameters() returns the point/spread dropoffs + brightnessLimit pulled
+  // from the active config, consumed by the point-lighting reference (see
+  // pointLightingReference in StarCellularLightArray.hpp).
+  PointParameters pointParameters() const;
+  // Runs ONLY the spread-light seeding step and copies the resulting per-cell
+  // emission (light) and obstacle grids over the full calculation region, in
+  // the array's column-major (x * height + y) layout. Mutates internal cell
+  // state (idempotent seeding); does NOT run the spread or point passes.
+  void snapshotSpreadInput(List<Vec3F>& emission, List<uint8_t>& obstacle);
+
+  // GPU-spread input export (Slice 2): seeds the spread lights into the cell
+  // grid (the pre-sweep emission state) then copies the full calculation region
+  // into upload images. 'emission' is reset to RGB_F (per-cell Vec3F light) and
+  // 'obstacle' to RGB24 with each obstacle cell 255 and air 0 (the engine has no
+  // single-channel pixel format; the GPU shader samples .r). The array's
+  // column-major (x * height + y) cell maps to image pixel (x, y). Mutates
+  // internal cell state (idempotent seeding); does NOT run the spread or point
+  // passes -- call BEFORE calculate(), which would overwrite the cells.
+  void exportSpreadInputs(Image& emission, Image& obstacle);
+
+  // GPU-point input export (Slice 3): copies the configured point lights
+  // (array-relative position, in insertion order) for the GPU per-light-quad
+  // point pass -- the same list production's calculatePointLighting consumes.
+  // 'out' is cleared first. The colored array's lights are copied directly; the
+  // monochrome array's scalar value is broadcast to all channels (mirroring
+  // exportSpreadInputs' monochrome branch). Does NOT run any lighting pass.
+  void exportPointLights(List<ColoredCellularLightArray::PointLight>& out);
+
 private:
   Json m_config;
   bool m_monochrome;

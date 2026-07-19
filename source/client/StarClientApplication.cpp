@@ -541,7 +541,11 @@ void ClientApplication::renderReload() {
   renderer->loadConfig(assets->json("/rendering/opengl.config"));
   
   loadEffectConfig("world");
-  
+  loadEffectConfig("lightingPassthrough");
+  loadEffectConfig("lightingSpread");
+  loadEffectConfig("lightingPoint");
+  loadEffectConfig("lightingUpscale");   // R-A Form 2: bicubic upscale pass (must be registered; switchEffectConfig silently no-ops on an unregistered effect)
+
   // define post process groups and set them to be enabled/disabled based on config
   
   auto config = m_root->configuration();

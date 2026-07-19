@@ -93,6 +93,38 @@ R"JSON(
 
       "monochromeLighting" : false,
 
+      "telemetryEnabled" : true,
+      "telemetryDeepTracing" : false,
+      "telemetryReportInterval" : 0,
+      "telemetryHud" : false,
+
+      "renderVboOrphan" : true,
+      "renderDrawableCache" : false,
+      "renderDrawableCacheShadowCompare" : false,
+      "renderDrawableCachePerPart" : true,
+
+      "envRefreshInterval" : 4,
+      "envOracle" : false,
+      "lightingSpreadOracle" : false,
+      "parallaxRefreshInterval" : 0,
+      "parallaxMaxDriftStepPx" : 0.75,
+      "parallaxOracle" : false,
+
+      "lightingGpu" : true,
+      "lightingGpuSpreadIterations" : 32,
+      "lightingGpuBrightness" : 1.0,
+      "lightingGpuShadowCompare" : false,
+
+      "lightingPromoteDynamic" : 0.5,
+      "lightingPromoteMinIntensity" : 0.1,
+      "lightingTonemap" : true,
+      "lightingTemporalDecouple" : true,
+      "lightingTemporalFloorMs" : 33.0,
+      "lightingWorldSampleBilinear" : false,
+      "lightingWorldUpscale" : 2.0,
+      "lightingGatherCache" : true,
+      "lightingGridSizeBucket" : 32,
+
       "safe" : {
         "alwaysAllowClipboard" : false,
         "enableImGui" : false,
