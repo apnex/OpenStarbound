@@ -18,6 +18,21 @@ BackdropPass::BackdropPass(Renderer* renderer) : m_renderer(renderer) {}
 // the startFrame clear, since the env compose was deferred) is fully overwritten. Mirrors GpuLightmapPass's
 // full-quad pattern.
 void BackdropPass::mergedCompose(Vec2U const& size) {
+  // GUARD (adversarial review, Lens 2): switchEffectConfig returns false and mutates nothing if backdropCompose
+  // is unregistered (asset missing / mod override / corrupt install). An UNCHECKED draw would then go through
+  // the still-bound "world" shader into "main" -- a garbage full-screen backdrop. Fall back to the two
+  // sequential lightingPassthrough composites (always present), byte-identical to the non-merge path. Every
+  // sibling compose site guards switchEffectConfig the same way (composite(), GpuLightmapPass).
+  if (!m_renderer->switchEffectConfig("backdropCompose")) {
+    m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_envCache.name(),
+      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+    m_renderer->setBlendMode(BlendMode::PremultipliedOver);
+    m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_parallaxCache.name(),
+      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
+    m_renderer->setBlendMode(BlendMode::Alpha);
+    m_renderer->switchEffectConfig("world");
+    return;
+  }
   if (!m_backdropMergeLogged) {
     Logger::info("[backdropmerge] engaged: env+parallax composited in one pass ({}x{})", size[0], size[1]);
     m_backdropMergeLogged = true;
@@ -30,12 +45,17 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
     m_fullQuadBuffer->set(prims);
     m_fullQuadSize = size;
   }
-  m_renderer->switchEffectConfig("backdropCompose");
   m_renderer->setEffectTextureFromTarget("envTexture", m_envCache.name());
   m_renderer->setEffectTextureFromTarget("parallaxTexture", m_parallaxCache.name());
   m_renderer->setRenderTarget(String("main"), size);
+  // Explicit full-replace (adversarial review, Lens 3): the shader writes an opaque result and today "main" holds
+  // only the startFrame clear, so any blend degenerates to a replace -- but that is an ACCIDENTAL invariant. Set
+  // None so the merged pass stays correct if a future consumer (world-band cache, #143/#145) writes "main" before
+  // the backdrop. Restore Alpha for the world layers.
+  m_renderer->setBlendMode(BlendMode::None);
   m_renderer->renderBuffer(m_fullQuadBuffer);
   m_renderer->flush();
+  m_renderer->setBlendMode(BlendMode::Alpha);
   m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
 }
 
@@ -156,6 +176,14 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // then guarantees env reaches "main" exactly once -- merged with parallax if the parallax cache is also active
     // this frame, standalone otherwise. Nothing draws into "main" between here and the parallax compose (the
     // lightmap phase only binds a texture), so deferring is order-safe.
+    //
+    // INVARIANT (adversarial review, Lens 1) -- deferring the ENTIRE backdrop across the lightmap phase makes
+    // this a contract, not just a happen-to-be-safe ordering: (1) no pass inserted between renderEnvironment and
+    // renderParallax may write "main" -- the deferred compose would overwrite it (a world-band retained cache,
+    // #143/#145, is the concrete future risk); (2) both entry points must run the same frame -- an abort between
+    // them leaves "main" on the startFrame clear, so the WHOLE backdrop (sky included) goes black, where
+    // pre-CM-1 the sky was already in "main" and only parallax was lost. Verified safe today (the lightmap phase
+    // writes only lightingGpu* and restores world/main); anything added to that window must preserve this.
     bool composeMerge = Root::singleton().configuration()->get("backdropComposeMerge", true).optBool().value(true);
     if (composeMerge) {
       m_envComposeDeferred = true;
@@ -192,8 +220,13 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // would early-out without rebinding and strand the target on envRef.
       m_renderer->setRenderTarget(String("main"));
       // In merge mode the env compose is deferred (main holds no env yet), so compare the reference against the
-      // env CACHE -- which the passthrough compose would copy to main byte-for-byte (opaque replace). Non-merge:
-      // main already holds the composited env, so compare vs main (also validates the compose into main).
+      // env CACHE. This validates the env cache FILL (cache draw == direct draw) -- NOT that env reaches "main".
+      // In merge mode env reaches "main" via the merged backdropCompose (E.rgb*(1-P.a)), whose correctness is
+      // covered by the PARALLAX oracle (its reference is env-cache + parallax-direct vs merged main). So the two
+      // oracles split the coverage: env oracle = cache fill, parallax oracle = merged compose. CAVEAT (adversarial
+      // review, Lens 4): with envOracle armed but parallaxOracle OFF, a bug in backdropCompose's env term would
+      // NOT be caught -- arm both (as the render gate does) to cover the merged compose. Non-merge: main holds the
+      // composited env, so compare vs main also validates the passthrough compose into main.
       auto d = m_renderer->oracle().compare("envRef", m_envComposeDeferred ? m_envCache.name() : String("main"));
       bool atmosphereless = renderData.skyRenderData.type == SkyType::Atmosphereless;
       if (d.first == NPos)
