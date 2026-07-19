@@ -12,6 +12,8 @@
 #include "StarStatistics.hpp"
 #include "StarInterfaceLuaBindings.hpp"
 #include "StarInput.hpp"
+#include "StarTelemetry.hpp"
+#include "StarTelemetryReporter.hpp"
 
 namespace Star {
 

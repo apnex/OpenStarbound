@@ -30,6 +30,8 @@
 #include "StarVoiceLuaBindings.hpp"
 #include "StarHttpTrustDialog.hpp"
 #include "StarMainInterfaceTypes.hpp"
+#include "StarTelemetry.hpp"
+#include "StarTelemetryReporter.hpp"
 
 #include "imgui.h"
 #include "imgui_freetype.h"
@@ -270,6 +272,10 @@ void ClientApplication::applicationInit(ApplicationControllerPtr appController) 
 
   m_voice->init();
   m_voice->setLocalSpeaker(0);
+
+  // Telemetry: apply configured gates (read-only; no game-state mutation).
+  Telemetry::setEnabled(configuration->get("telemetryEnabled", true).toBool());
+  Telemetry::setDeepEnabled(configuration->get("telemetryDeepTracing", false).toBool());
 }
 
 void ClientApplication::renderInit(RendererPtr renderer) {
@@ -427,6 +433,16 @@ void ClientApplication::update() {
   m_edgeKeyEvents.clear();
   m_input->update();
   ++m_framesSkipped;
+
+  // Telemetry: one tick mark per client update + interval-driven JSON snapshot (read-only).
+  Telemetry::markTick("client");
+  if (auto interval = m_root->configuration()->get("telemetryReportInterval", 0).toInt(); interval > 0) {
+    m_telemetryReportTimer += dt;
+    if (m_telemetryReportTimer >= (float)interval) {
+      m_telemetryReportTimer = 0.0f;
+      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""));
+    }
+  }
 }
 
 void ClientApplication::render() {
@@ -466,9 +482,26 @@ void ClientApplication::render() {
       m_worldPainter->render(m_renderData, [&]() -> bool {
         return worldClient->waitForLighting(&m_renderData);
       });
-      LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - paintStart));
-      LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - totalStart));
-      
+      // Slice 4: report the GPU lightmap outcome to the lighting thread so it can drop the
+      // redundant CPU calculate() once GPU lighting is confirmed (and re-arm it if GPU fails).
+      worldClient->setGpuLightingActive(m_worldPainter->gpuLightingActive());
+      auto painterUs = Time::monotonicMicroseconds() - paintStart;
+      LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", painterUs));
+      // Durable telemetry mirror (R-F gate): render-thread paint cost in the snapshot, not just the /debug HUD.
+      static auto painterTimer = Telemetry::timer("render.world.painter.us");
+      painterTimer.record(painterUs);
+      auto worldRenderUs = Time::monotonicMicroseconds() - totalStart;
+      LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", worldRenderUs));
+      // Telemetry: route the already-computed render delta through a timer (no extra clock read).
+      // Cache the handle in a static so the per-frame path stays lock-free (registration once).
+      static auto renderFrameTimer = Telemetry::timer("render.frame.us");
+      renderFrameTimer.record(worldRenderUs);
+
+      // Golden-frame capture (P-0). HERE, and not later: "main" now holds the composed WORLD frame, before
+      // post-process and before the GUI -- so chat, the FPS counter and the clock cannot poison the hash.
+      if (m_renderTestFrames)
+        renderTestCapture();
+
       auto size = Vec2F(renderer->screenSize());
       auto quad = renderFlatRect(RectF::withSize(size / -2, size), Vec4B::filled(0), 0.0f);
       for (auto& layer : m_postProcessLayers) {
@@ -484,10 +517,52 @@ void ClientApplication::render() {
     }
     renderer->switchEffectConfig("interface");
     auto start = Time::monotonicMicroseconds();
-    m_mainInterface->renderInWorldElements();
-    m_mainInterface->render();
-    m_cinematicOverlay->render();
-    LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
+    // GPU timer on the interface (task #141). This pass had a CPU timer but NO GPU timer, and it is a large
+    // part of the 1.8-3.5ms/frame that the whole-frame span showed was unaccounted for -- at the Lava Refinery
+    // the unattributed block is BIGGER THAN ALL THE LIGHTING COMBINED. On a static scene the entire GUI is
+    // rebuilt and re-rasterised every single frame.
+    // ABLATION HOOK (task #141). The per-pass GL_TIME_ELAPSED timers are NOT ADDITIVE -- with 12 of them their
+    // sum overshot the real frame by 5ms, because each bracket serialises the pipeline and measures its own
+    // stall. They rank passes; they do not budget them. The only trustworthy figure is the whole-frame span.
+    // So to get a pass's TRUE cost, ABLATE it and measure the frame: (span_with - span_without).
+    static bool const skipInterface = []() {
+      char const* e = getenv("STAR_RENDERTEST_NO_INTERFACE");
+      return e && *e && *e != '0';
+    }();
+    // Finer ablation, because "the GUI costs 75% of the frame" is too big a claim to leave unlocalised.
+    static int const uiMask = []() {
+      char const* e = getenv("STAR_RENDERTEST_UI_MASK");   // bit0 inWorld, bit1 mainInterface, bit2 cinematic
+      return e && *e ? (int)strtol(e, nullptr, 10) : 7;
+    }();
+    if (!skipInterface) {
+      renderer->gpuTimer().begin("render.pass.interface.gpu_us");
+      if (uiMask & 1) m_mainInterface->renderInWorldElements();
+      if (uiMask & 2) m_mainInterface->render();
+      if (uiMask & 4) m_cinematicOverlay->render();
+      renderer->gpuTimer().end("render.pass.interface.gpu_us");
+    }
+    // Task #141: the GUI had a debug-HUD string but NO telemetry timer, so its CPU cost was invisible -- and
+    // that is load-bearing right now. The whole-frame "GPU span" is a GL_TIMESTAMP delta, which includes GPU
+    // IDLE. If the HUD is CPU-bound, the GPU sits waiting and the span measures LATENCY, not GPU WORK -- which
+    // would make "the HUD costs 8.3ms of GPU" an artifact of the instrument rather than a fact about the game.
+    auto interfaceUs = Time::monotonicMicroseconds() - start;
+    static auto interfaceTimer = Telemetry::timer("render.interface.us");
+    interfaceTimer.record(interfaceUs);
+    LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", interfaceUs));
+  }
+
+  // Telemetry HUD face: curated headline skip-rates (gated; reuses the /debug LogMap, cheap counter reads).
+  if (config->get("telemetryHud", false).toBool()) {
+    auto skipState = Telemetry::counter("animator.state.merge.skipped").value();
+    auto perfState = Telemetry::counter("animator.state.merge.performed").value();
+    uint64_t totalState = skipState + perfState;
+    LogMap::set("telemetry_animator_state_skiprate",
+      strf("{:.1f}% ({}/{})", 100.0 * skipState / (totalState ? totalState : 1), skipState, totalState));
+    auto skipPart = Telemetry::counter("animator.part.merge.skipped").value();
+    auto perfPart = Telemetry::counter("animator.part.merge.performed").value();
+    uint64_t totalPart = skipPart + perfPart;
+    LogMap::set("telemetry_animator_part_skiprate",
+      strf("{:.1f}% ({}/{})", 100.0 * skipPart / (totalPart ? totalPart : 1), skipPart, totalPart));
   }
 
   if (!m_errorScreen->accepted())
