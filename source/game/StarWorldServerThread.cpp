@@ -5,6 +5,7 @@
 #include "StarLogging.hpp"
 #include "StarAssets.hpp"
 #include "StarPlayer.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -262,26 +263,37 @@ void WorldServerThread::run() {
 
 void WorldServerThread::update(WorldServerFidelity fidelity) {
   RecursiveMutexLocker locker(m_mutex);
+  Telemetry::markTick("server");
   auto unerroredClientIds = m_worldServer->clientIds();
-  for (auto clientId : unerroredClientIds) {
-    RecursiveMutexLocker queueLocker(m_queueMutex);
-    auto incomingPackets = take(m_incomingPacketQueue[clientId]);
-    queueLocker.unlock();
-    try {
-      m_worldServer->handleIncomingPackets(clientId, std::move(incomingPackets));
-    } catch (std::exception const& e) {
-      Logger::error("WorldServerThread exception caught handling incoming packets for client {}: {}",
-          clientId, outputException(e, true));
+  {
+    // Telemetry publish phase: drain + handle this tick's incoming client packets.
+    static auto t = Telemetry::timer("tick.server.publish.us");
+    TelemetryScope s(t);
+    for (auto clientId : unerroredClientIds) {
       RecursiveMutexLocker queueLocker(m_queueMutex);
-      m_outgoingPacketQueue[clientId].appendAll(m_worldServer->removeClient(clientId));
-      unerroredClientIds.remove(clientId);
+      auto incomingPackets = take(m_incomingPacketQueue[clientId]);
+      queueLocker.unlock();
+      try {
+        m_worldServer->handleIncomingPackets(clientId, std::move(incomingPackets));
+      } catch (std::exception const& e) {
+        Logger::error("WorldServerThread exception caught handling incoming packets for client {}: {}",
+            clientId, outputException(e, true));
+        RecursiveMutexLocker queueLocker(m_queueMutex);
+        m_outgoingPacketQueue[clientId].appendAll(m_worldServer->removeClient(clientId));
+        unerroredClientIds.remove(clientId);
+      }
     }
   }
 
   float dt = ServerGlobalTimestep * GlobalTimescale;
   m_worldServer->setFidelity(fidelity);
-  if (dt > 0.0f && (!m_pause || *m_pause == false))
-    m_worldServer->update(dt);
+  {
+    // Telemetry compute phase: the world simulation step (entities, physics, scripts, ...).
+    static auto t = Telemetry::timer("tick.server.compute.us");
+    TelemetryScope s(t);
+    if (dt > 0.0f && (!m_pause || *m_pause == false))
+      m_worldServer->update(dt);
+  }
 
   List<Message> messages;
   {
@@ -295,10 +307,15 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
       message.promise.fail("Message not handled by world");
   }
 
-  for (auto& clientId : unerroredClientIds) {
-    auto outgoingPackets = m_worldServer->getOutgoingPackets(clientId);
-    RecursiveMutexLocker queueLocker(m_queueMutex);
-    m_outgoingPacketQueue[clientId].appendAll(std::move(outgoingPackets));
+  {
+    // Telemetry sync phase: collect + queue this tick's outgoing client packets.
+    static auto t = Telemetry::timer("tick.server.sync.us");
+    TelemetryScope s(t);
+    for (auto& clientId : unerroredClientIds) {
+      auto outgoingPackets = m_worldServer->getOutgoingPackets(clientId);
+      RecursiveMutexLocker queueLocker(m_queueMutex);
+      m_outgoingPacketQueue[clientId].appendAll(std::move(outgoingPackets));
+    }
   }
 
   m_shouldExpire = m_worldServer->shouldExpire();

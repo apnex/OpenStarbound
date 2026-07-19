@@ -124,6 +124,16 @@ public:
 
   void update(float dt);
 
+  // Task 7: the staggered max-sleep cap in steps (config entityDormancyMaxSleepSeconds
+  // / ServerGlobalTimestep, >= 1). Exposed so tests can assert the backstop bound.
+  uint64_t dormancyMaxSleepSteps() const;
+
+  // Task 8: read-only observers of the dormancy awake-set, exposed so tests can assert
+  // the periodic stale-id prune (see update()). Pure const accessors; no runtime effect,
+  // and both are 0/false in the default-OFF build (m_awakeEntities stays empty).
+  size_t awakeEntityCount() const;
+  bool isEntityAwake(EntityId entityId) const;
+
   ConnectionId connection() const override;
   WorldGeometry geometry() const override;
   uint64_t currentStep() const override;
@@ -144,15 +154,16 @@ public:
   void addEntity(EntityPtr const& entity, EntityId entityId = NullEntityId) override;
   EntityPtr closestEntity(Vec2F const& center, float radius, EntityFilter selector = EntityFilter()) const override;
   void forAllEntities(EntityCallback entityCallback) const override;
-  void forEachEntity(RectF const& boundBox, EntityCallback callback) const override;
-  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const override;
-  void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> entityCallback) const override;
-  EntityPtr findEntity(RectF const& boundBox, EntityFilter entityFilter) const override;
-  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const override;
-  EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const override;
+  void forEachEntity(RectF const& boundBox, EntityCallback const& callback) const override;
+  void forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const override;
+  void forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& entityCallback) const override;
+  EntityPtr findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const override;
+  EntityPtr findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const override;
+  EntityPtr findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const override;
   bool tileIsOccupied(Vec2I const& pos, TileLayer layer, bool includeEphemeral = false, bool checkCollision = false) const override;
   CollisionKind tileCollisionKind(Vec2I const& pos) const override;
   void forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const override;
+  void getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const override;
   bool isTileConnectable(Vec2I const& pos, TileLayer layer, bool tilesOnly = false) const override;
   bool pointTileCollision(Vec2F const& point, CollisionSet const& collisionSet = DefaultCollisionSet) const override;
   bool lineTileCollision(Vec2F const& begin, Vec2F const& end, CollisionSet const& collisionSet = DefaultCollisionSet) const override;
@@ -227,7 +238,7 @@ public:
   List<ItemDescriptor> destroyBlock(TileLayer layer, Vec2I const& pos, bool genItems, bool destroyModFirst, bool updateNeighbors = true);
   void removeEntity(EntityId entityId, bool andDie);
 
-  void updateTileEntityTiles(TileEntityPtr const& object, bool removing = false, bool checkBreaks = true);
+  void updateTileEntityTiles(TileEntity* object, bool removing = false, bool checkBreaks = true);
 
   bool isVisibleToPlayer(RectF const& region) const;
   void activateLiquidRegion(RectI const& region);
@@ -334,8 +345,10 @@ private:
 
   TileModificationList doApplyTileModifications(TileModificationList const& modificationList, bool allowEntityOverlap, bool ignoreTileProtection = false, bool updateNeighbors = true);
 
-  // Queues pending (step based) updates to the given player
-  void queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates);
+  // Queues pending (step based) updates to the given player. monitoringRegions is the
+  // caller's already-computed clientInfo->monitoringRegions(m_entityMap) for this tick,
+  // passed in to avoid recomputing it here (Lever #10).
+  void queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates, List<RectI> const& monitoringRegions);
   void updateDamage(float dt);
 
   void updateDamagedBlocks(float dt);
@@ -375,6 +388,19 @@ private:
   UniverseSettingsPtr m_universeSettings;
 
   EntityMapPtr m_entityMap;
+  // Entity-dormancy (Arc-A Rung 1, option A "skip update() only"): these structures
+  // decide ONLY whether entity->update() runs this tick — never iteration, never
+  // reaping (the tile-entity break-check + shouldDestroy() reaping run for EVERY
+  // entity to preserve their coupling). Both are inert (and stay empty) when
+  // dormancy is OFF: m_awakeEntities is populated only when EntityDormancy::active()
+  // (addEntity gates the insert; the tick loop only adds under active()), and
+  // m_scheduledWakes is only ever written from the active() branch of the tick loop.
+  // So when OFF nothing reads or writes either, and removeEntity's single O(1)
+  // m_awakeEntities.remove() hits an empty set. Stale scheduled-wake entries from
+  // removed entities are filtered lazily at promotion (entity(id) == null -> skipped).
+  HashSet<EntityId> m_awakeEntities;                  // entities whose update() runs this tick (option A seam)
+  HashMap<uint64_t, List<EntityId>> m_scheduledWakes; // step -> entities to re-wake at that step
+  uint64_t m_dormancyMaxSleepSteps;                   // Task 7: staggered max-sleep cap, in steps (>= 1)
   ServerTileSectorArrayPtr m_tileArray;
   ServerTileGetter m_tileGetterFunction;
   WorldStoragePtr m_worldStorage;
@@ -402,6 +428,14 @@ private:
   List<CollisionBlock> m_workingCollisionBlocks;
 
   HashMap<NetCompatibilityRules, HashMap<pair<EntityId, uint64_t>, pair<ByteArray, uint64_t>>> m_netStateCache;
+  // Lever #4: master entities whose netStorePump() ran this tick — deduped so one
+  // pump feeds every netRules bucket and every client. Cleared each tick.
+  HashSet<EntityId> m_netStorePumpedThisTick;
+  // Lever #4 measurement: counts update() ticks so coverage (hits/walks) is
+  // flushed to the log roughly every few seconds while a gate is on.
+  unsigned m_netDeltaStatTick = 0;
+  // Task 6 measurement: same cadence for the entity-dormancy ratio / mismatch log.
+  unsigned m_dormancyStatTick = 0;
   OrderedHashMap<ConnectionId, shared_ptr<ClientInfo>> m_clientInfo;
 
   GameTimer m_entityUpdateTimer;

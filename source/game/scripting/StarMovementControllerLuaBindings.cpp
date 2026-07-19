@@ -6,6 +6,7 @@ namespace Star {
 
 LuaCallbacks LuaBindings::makeMovementControllerCallbacks(MovementController* movementController) {
   LuaCallbacks callbacks;
+  callbacks.reserve(42); // keep in sync with the registrations below (over/under only costs a rehash)
 
   callbacks.registerCallback(
       "parameters", [movementController]() { return movementController->parameters().toJson(); });

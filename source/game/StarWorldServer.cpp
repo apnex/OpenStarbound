@@ -1,4 +1,7 @@
 #include "StarWorldServer.hpp"
+#include "StarNetElement.hpp"
+#include "StarMovementController.hpp"
+#include "StarPlant.hpp"
 #include "StarLogging.hpp"
 #include "StarIterator.hpp"
 #include "StarDataStreamExtra.hpp"
@@ -16,6 +19,7 @@
 #include "StarItemBag.hpp"
 #include "StarPhysicsEntity.hpp"
 #include "StarProjectile.hpp"
+#include "StarDamageManager.hpp"
 #include "StarPlayer.hpp"
 #include "StarEntityFactory.hpp"
 #include "StarBiomeDatabase.hpp"
@@ -24,6 +28,7 @@
 #include "StarWarpTargetEntity.hpp"
 #include "StarUniverseSettings.hpp"
 #include "StarUniverseServerLuaBindings.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -77,6 +82,11 @@ WorldServer::~WorldServer() {
 
   m_scriptContexts.clear();
   m_spawner.uninit();
+  // Option A dormancy: clear the awake-set / scheduled-wakes alongside the other
+  // per-world transient state torn down here (they would auto-destruct with the
+  // members regardless; kept explicit to mirror m_scriptContexts.clear()).
+  m_awakeEntities.clear();
+  m_scheduledWakes.clear();
   writeMetadata();
   m_worldStorage->unloadAll(true);
 }
@@ -644,10 +654,129 @@ void WorldServer::update(float dt) {
     m_needsGlobalBreakCheck = false;
 
   List<EntityId> toRemove;
-  m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
-      entity->update(dt, m_currentStep);
 
-      if (auto tileEntity = as<TileEntity>(entity)) {
+  // Entity-dormancy (option A "skip update() only"): read the gates ONCE per tick,
+  // hoisted out of the per-entity callback (M3). dormancyActive (== enabled ||
+  // validate) drives the OFF/ON fork and all membership/scheduling bookkeeping;
+  // dormancyEnabled gates the actual update() skip. Splitting them lets validate
+  // mode (active but !enabled) run EVERY entity's update() while still tracking
+  // exactly the membership enabled mode would have acted on.
+  bool const dormancyActive = EntityDormancy::active();
+  bool const dormancyEnabled = EntityDormancy::enabled.load(std::memory_order_relaxed);
+
+  // Promote scheduled wakes due this step into the awake-set. maybeTake (NOT take —
+  // take throws on a missing key, and most ticks have no bucket for the current step).
+  if (dormancyActive) {
+    if (auto due = m_scheduledWakes.maybeTake(m_currentStep))
+      for (EntityId id : *due)
+        if (m_entityMap->entity(id))        // <-- skip stale ids from removed entities
+          m_awakeEntities.add(id);
+  }
+
+  // OPTION A INVARIANTS (see also queueUpdatePackets / m_wireProcessor->process):
+  //  (a) net-sync is DECOUPLED from update(): queueUpdatePackets iterates
+  //      monitoredEntities independently, so dormant entities are still
+  //      created/synced to clients regardless of the awake-set.
+  //  (b) the wire processor (m_wireProcessor->process(), below) is a SEPARATE
+  //      pass that keeps iterating ALL entities — intentionally NOT touched here
+  //      so wired devices keep evaluating even while their update() is skipped.
+  //  (c) the tile-entity break-check + shouldDestroy() reaping below run for
+  //      EVERY entity, dormant or not — this is what preserves the reaping /
+  //      break-check coupling for free, and why only update() is gated.
+  m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
+      if (!dormancyActive) {
+        entity->update(dt, m_currentStep); // OFF: byte-identical to the pre-dormancy path
+      } else {
+        EntityId id = entity->entityId();
+        // Consume the wake flag on EVERY visit (never short-circuited behind
+        // contains()), otherwise a set request would go stale and never fire.
+        bool requested = entity->takeWakeRequested();
+        bool awake = m_awakeEntities.contains(id);  // single membership lookup (M4)
+        bool run = requested || awake;
+
+        // Telemetry (Task 6): tally would-be-dormant (!run) vs would-run updates.
+        // Counted identically in enabled AND validate mode, so the dormancy ratio
+        // logged below measures the SAME set in both -> a clean A/B (Task 8).
+        if (run)
+          EntityDormancy::ran.fetch_add(1, std::memory_order_relaxed);
+        else
+          EntityDormancy::skipped.fetch_add(1, std::memory_order_relaxed);
+
+        // Validate/shadow mode (Task 6), the primary safety net. When validating
+        // (active but !enabled) update() runs for EVERY entity, so for a would-be-
+        // dormant one (!run) we capture its net-version aggregate BEFORE the still-
+        // run update() and assert below it did NOT advance after -> the slate that
+        // enabled mode WOULD have skipped was a genuine no-op. {} = the type exposes
+        // no aggregate (not validatable) -> shadow check skipped for it. See
+        // Entity::netVersionLatestChange for the (bounded) net-only-oracle limit.
+        Maybe<uint64_t> validateBefore;
+        if (!dormancyEnabled && !run)
+          validateBefore = entity->netVersionLatestChange();
+
+        // validate-only (dormancyActive && !dormancyEnabled) NEVER skips: it runs
+        // every entity's update() so the shadow assert later sees the real ticks.
+        if (run || !dormancyEnabled)
+          entity->update(dt, m_currentStep);
+
+        // Shadow assertion: a skipped-in-enabled-mode slate that mutated net state
+        // here is a missing-wake bug (the dormancy analogue of #4's MISMATCH).
+        if (validateBefore) {
+          // Flush deferred NetElement stores BEFORE the after-capture so their
+          // markChanged() (which the real pump only fires later in
+          // queueUpdatePackets, the client phase) is visible to the oracle NOW.
+          // Without this, deferred-store net state written only at pump time via
+          // setNetStates() — ContainerObject::m_itemsNetState (item contents),
+          // Object::m_orientationIndexNetState — would mutate AFTER this capture
+          // and before next tick's before-capture, so before == after every tick
+          // and the missed-wake bug would never be flagged. Eager NetElements
+          // (markChanged in set()) are already caught without this. Validate-mode
+          // only: this branch is the !dormancyEnabled && !run path, so the OFF
+          // path and the enabled path never reach here. The extra pump is
+          // idempotent (re-stores the current values) and the real pump still
+          // runs in queueUpdatePackets — an acceptable cost for a debug mode.
+          entity->netStorePump();
+          if (auto after = entity->netVersionLatestChange()) {
+            if (*after != *validateBefore) {
+              Logger::warn("DORMANCY MISMATCH type={} id={} latestChange {}->{}",
+                  EntityTypeNames.getRight(entity->entityType()), id, *validateBefore, *after);
+              EntityDormancy::mismatches.fetch_add(1, std::memory_order_relaxed);
+            }
+          }
+        }
+
+        // Membership/scheduling are gated on `run`, NOT on whether update() ran:
+        // a would-be-dormant entity in validate mode has run==false but still
+        // updates, and its membership must stay put so validate tracks exactly the
+        // set enabled mode would have acted on. Mutate only on transition (M4).
+        if (run) {
+          auto horizon = entity->nextEngineWakeStep(m_currentStep);
+          // Staggered max-sleep cap (Task 7 backstop): bound any indefinite ({}) or
+          // over-cap sleep so a missed wake degrades to <= maxSleep latency, never a
+          // permanent freeze. Stagger within a small window just below the cap (keyed
+          // on entityId) so cap-wakes don't all land on one tick. cappedWake is always
+          // > m_currentStep + 1 for any sane cap, so a capped entity genuinely sleeps.
+          uint64_t const cap = m_dormancyMaxSleepSteps;
+          uint64_t const staggerWindow = min<uint64_t>(cap, 64);
+          uint64_t const cappedWake = m_currentStep + cap - ((uint64_t)id % staggerWindow); // in [cur+cap-(window-1), cur+cap]
+          if (!horizon || *horizon > cappedWake) {
+            // No self-scheduled work, or a horizon past the cap -> wake at the staggered cap.
+            if (awake) m_awakeEntities.remove(id);
+            m_scheduledWakes[cappedWake].append(id);
+          } else if (*horizon > m_currentStep + 1) {
+            // Sleep until the horizon step.
+            if (awake) m_awakeEntities.remove(id);
+            m_scheduledWakes[*horizon].append(id);
+          } else {
+            // horizon <= m_currentStep + 1 -> stay awake next tick (a buggy past
+            // horizon lands here too, which is safe).
+            if (!awake) m_awakeEntities.add(id);
+          }
+        }
+      }
+
+      // OPTION A: everything below runs for EVERY entity, dormant or not — this is
+      // what preserves the reaping / break-check coupling for free. Do NOT gate it.
+      if (auto* tileEntity = entity->asTileEntity()) {
         // Only do break checks on objects if all sectors the object touches
         // *and surrounding sectors* are active.  Objects that this object
         // rests on can be up to an entire sector large in any direction.
@@ -715,16 +844,67 @@ void WorldServer::update(float dt) {
       });
   }
 
-  for (EntityId entityId : toRemove)
-    removeEntity(entityId, true);
+  {
+    // Telemetry commit phase: master-entity destruction/removal for this tick.
+    static auto t = Telemetry::timer("tick.server.commit.us");
+    TelemetryScope s(t);
+    for (EntityId entityId : toRemove)
+      removeEntity(entityId, true);
+  }
 
   bool sendRemoteUpdates = m_entityUpdateTimer.wrapTick(dt);
+  // Lever #4: pump the sky's deferred store once before the per-client loop
+  // (Sky::writeUpdate has a setNeedsStoreCallback and shares the early-out gate).
+  if (NetElementEarlyOut::active())
+    m_sky->netStorePump();
   for (auto const& pair : m_clientInfo) {
-    for (auto const& monitoredRegion : pair.second->monitoringRegions(m_entityMap))
+    // Compute this client's monitoring regions once per tick and reuse them for both the
+    // signalRegion pass and queueUpdatePackets (which used to recompute them internally).
+    // Nothing between here and that use moves entities or changes the client's tracked set
+    // (signalRegion only marks regions active), so the two computations are identical. (Lever #10)
+    auto monitoringRegions = pair.second->monitoringRegions(m_entityMap);
+    for (auto const& monitoredRegion : monitoringRegions)
       signalRegion(monitoredRegion.padded(jsonToVec2I(m_serverConfig.get("playerActiveRegionPad"))));
-    queueUpdatePackets(pair.first, sendRemoteUpdates);
+    queueUpdatePackets(pair.first, sendRemoteUpdates, monitoringRegions);
   }
   m_netStateCache.clear();
+  m_netStorePumpedThisTick.clear();
+
+  // Lever #4 measurement: while a gate is on, log the early-out coverage
+  // (hits/(hits+walks)) roughly every ~10s and reset the window. Counts are
+  // process-global (aggregate across all active server worlds); zero overhead
+  // and no log line when both gates are OFF.
+  if (NetElementEarlyOut::active() && ++m_netDeltaStatTick >= 600) {
+    m_netDeltaStatTick = 0;
+    uint64_t h = NetElementEarlyOut::hits.exchange(0, std::memory_order_relaxed);
+    uint64_t total = h + NetElementEarlyOut::walks.exchange(0, std::memory_order_relaxed);
+    if (total > 0)
+      Logger::info("netDelta early-out coverage: {}/{} entity-writes skipped ({:.1f}%) over last window",
+          h, total, 100.0 * (double)h / (double)total);
+  }
+
+  // Entity-dormancy measurement (Task 6), mirroring the Lever #4 log above: while a
+  // dormancy gate is on, log the dormancy ratio (would-be-/actually-dormant updates
+  // over the window) plus the live awake-set / total entity counts and the cumulative
+  // validate mismatch tally, then reset the window. Process-global counts; zero cost
+  // and no log line when dormancy is OFF.
+  if (dormancyActive && ++m_dormancyStatTick >= 600) {
+    m_dormancyStatTick = 0;
+    // Prune stale ids: entities can leave via paths that bypass WorldServer::removeEntity
+    // (WorldStorage sector-unload calls m_entityMap->removeEntity directly). Harmless to the
+    // tick loop (it iterates live entities + only tests contains()), and the skipped/ran
+    // ratio is unaffected (stale ids are never iterated/counted), but it's unbounded growth
+    // and skews the awake/live telemetry count. O(awake) every ~600 ticks (only while a
+    // dormancy gate is on). Robust to every current/future removal path.
+    eraseWhere(m_awakeEntities, [this](EntityId id) { return !m_entityMap->entity(id); });
+    uint64_t skipped = EntityDormancy::skipped.exchange(0, std::memory_order_relaxed);
+    uint64_t total = skipped + EntityDormancy::ran.exchange(0, std::memory_order_relaxed);
+    if (total > 0)
+      Logger::info("entity dormancy: {}/{} entity-updates {} ({:.1f}%) over last window; awake {}/{} live; validate mismatches {}",
+          skipped, total, dormancyEnabled ? "skipped" : "would-skip", 100.0 * (double)skipped / (double)total,
+          m_awakeEntities.size(), m_entityMap->size(),
+          EntityDormancy::mismatches.load(std::memory_order_relaxed));
+  }
 
   for (auto& pair : m_clientInfo)
     pair.second->pendingForward = false;
@@ -743,6 +923,18 @@ WorldGeometry WorldServer::geometry() const {
 
 uint64_t WorldServer::currentStep() const {
   return m_currentStep;
+}
+
+uint64_t WorldServer::dormancyMaxSleepSteps() const {
+  return m_dormancyMaxSleepSteps;
+}
+
+size_t WorldServer::awakeEntityCount() const {
+  return m_awakeEntities.size();
+}
+
+bool WorldServer::isEntityAwake(EntityId entityId) const {
+  return m_awakeEntities.contains(entityId);
 }
 
 MaterialId WorldServer::material(Vec2I const& pos, TileLayer layer) const {
@@ -779,7 +971,14 @@ void WorldServer::addEntity(EntityPtr const& entity, EntityId entityId) {
   entity->init(this, m_entityMap->reserveEntityId(entityId), EntityMode::Master);
   m_entityMap->addEntity(entity);
 
-  if (auto tileEntity = as<TileEntity>(entity))
+  // Option A dormancy: seed the awake-set so a freshly added entity runs its first
+  // tick. Belt-and-suspenders — the load-bearing guarantee is Entity::m_wakeRequested
+  // (default true), which makes takeWakeRequested() fire on first appearance. Gated
+  // on active() so OFF builds never populate a set nothing reads (M5).
+  if (EntityDormancy::active())
+    m_awakeEntities.add(entity->entityId());
+
+  if (auto* tileEntity = entity->asTileEntity())
     updateTileEntityTiles(tileEntity);
 }
 
@@ -791,27 +990,27 @@ void WorldServer::forAllEntities(EntityCallback callback) const {
   m_entityMap->forAllEntities(callback);
 }
 
-void WorldServer::forEachEntity(RectF const& boundBox, EntityCallback callback) const {
+void WorldServer::forEachEntity(RectF const& boundBox, EntityCallback const& callback) const {
   m_entityMap->forEachEntity(boundBox, callback);
 }
 
-void WorldServer::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback callback) const {
+void WorldServer::forEachEntityLine(Vec2F const& begin, Vec2F const& end, EntityCallback const& callback) const {
   m_entityMap->forEachEntityLine(begin, end, callback);
 }
 
-void WorldServer::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> callback) const {
+void WorldServer::forEachEntityAtTile(Vec2I const& pos, EntityCallbackOf<TileEntity> const& callback) const {
   m_entityMap->forEachEntityAtTile(pos, callback);
 }
 
-EntityPtr WorldServer::findEntity(RectF const& boundBox, EntityFilter entityFilter) const {
+EntityPtr WorldServer::findEntity(RectF const& boundBox, EntityFilter const& entityFilter) const {
   return m_entityMap->findEntity(boundBox, entityFilter);
 }
 
-EntityPtr WorldServer::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter entityFilter) const {
+EntityPtr WorldServer::findEntityLine(Vec2F const& begin, Vec2F const& end, EntityFilter const& entityFilter) const {
   return m_entityMap->findEntityLine(begin, end, entityFilter);
 }
 
-EntityPtr WorldServer::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> entityFilter) const {
+EntityPtr WorldServer::findEntityAtTile(Vec2I const& pos, EntityFilterOf<TileEntity> const& entityFilter) const {
   return m_entityMap->findEntityAtTile(pos, entityFilter);
 }
 
@@ -826,14 +1025,16 @@ CollisionKind WorldServer::tileCollisionKind(Vec2I const& pos) const {
 
 void WorldServer::forEachCollisionBlock(RectI const& region, function<void(CollisionBlock const&)> const& iterator) const {
   const_cast<WorldServer*>(this)->freshenCollision(region);
-  m_tileArray->tileEach(region, [iterator](Vec2I const& pos, ServerTile const& tile) {
-      if (tile.getCollision() == CollisionKind::Null) {
-        iterator(CollisionBlock::nullBlock(pos));
-      } else {
-        starAssert(!tile.collisionCacheDirty);
-        for (auto const& block : tile.collisionCache)
-          iterator(block);
-      }
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&iterator](Vec2I const& pos, CollisionBlock const* block) {
+      if (block) iterator(*block);
+      else iterator(CollisionBlock::nullBlock(pos));
+    });
+}
+
+void WorldServer::getCollisionBlocks(RectI const& region, List<CollisionBlockRef>& output) const {
+  const_cast<WorldServer*>(this)->freshenCollision(region);
+  WorldImpl::forEachCollisionBlock(m_tileArray, region, [&output](Vec2I const& pos, CollisionBlock const* block) {
+      output.append(CollisionBlockRef{pos, block});
     });
 }
 
@@ -1022,6 +1223,9 @@ TileDamageResult WorldServer::damageTiles(List<Vec2I> const& positions, TileLaye
             for (auto const& space : entity->spaces())
               entitySpacesSet.add(m_geometry.xwrap(entity->tilePosition() + space));
 
+            // Dormancy wake (audit Rule 3): caller-loop placement so the
+            // FarmableObject::damageTiles virtual override cannot dodge the wake.
+            entity->requestWake();
             bool broken = entity->damageTiles(entitySpacesSet.intersection(damagePositionSet).values(), sourcePosition, tileDamage);
             if (sourceEntity.isValid() && broken) {
               Maybe<String> name;
@@ -1398,6 +1602,31 @@ void WorldServer::init(bool firstTime) {
   auto liquidsDatabase = root.liquidsDatabase();
 
   m_serverConfig = assets->json("/worldserver.config");
+  // Lever #4: load the net-delta dirty-version early-out gates (process-global,
+  // default OFF). Idempotent across worlds (every world loads the same asset).
+  // Validated levers default ON (the fallback matches the canonical worldserver.config
+  // default); the validate debug-oracles stay OFF.
+  NetElementEarlyOut::enabled.store(m_serverConfig.getBool("netDeltaDirtyVersionEarlyOut", true), std::memory_order_relaxed);
+  NetElementEarlyOut::validate.store(m_serverConfig.getBool("netDeltaDirtyVersionValidate", false), std::memory_order_relaxed);
+  // Arc-A Rung 1: load the entity-dormancy awake-set gates (process-global, default ON).
+  EntityDormancy::enabled.store(m_serverConfig.getBool("entityDormancyEnabled", true), std::memory_order_relaxed);
+  EntityDormancy::validate.store(m_serverConfig.getBool("entityDormancyValidate", false), std::memory_order_relaxed);
+  // Lever L2: collision-poly arena reuse (process-global, default ON; byte-identical
+  // to OFF, kill-switch only). MovementController has no config access, so set the
+  // process-global here.
+  CollisionArena::enabled.store(m_serverConfig.getBool("collisionArenaEnabled", true), std::memory_order_relaxed);
+  // Lever L-WIND-A: skip the render-only plant-wind dead store on the server
+  // (process-global, default ON; byte-identical, kill-switch + A/B toggle).
+  PlantWind::serverSkip.store(m_serverConfig.getBool("plantWindServerSkip", true), std::memory_order_relaxed);
+  // Lever L-DMG-SKIP-0: skip the per-tick DamageManager damageSources() query for
+  // provably-empty entities (process-global, default ON; byte-equivalent, kill-switch
+  // + live A/B toggle).
+  DamageSourceSkip::enabled.store(m_serverConfig.getBool("damageSourceSkipEnabled", true), std::memory_order_relaxed);
+  // Task 7: staggered max-sleep cap. Convert the configured seconds to steps via the
+  // per-step timestep (default 1/60s -> 10s == 600 steps); clamp to >= 1 so the cap is
+  // always a genuine future step. Read here (not process-global) since it's a per-world
+  // scheduler bound, not a global gate; every world loads the same asset so it's stable.
+  m_dormancyMaxSleepSteps = max<uint64_t>(1, (uint64_t)round(m_serverConfig.getDouble("entityDormancyMaxSleepSeconds", 10.0) / ServerGlobalTimestep));
   setFidelity(WorldServerFidelity::Medium);
 
   m_worldStorage->setFloatingDungeonWorld(isFloatingDungeonWorld());
@@ -1646,7 +1875,7 @@ TileModificationList WorldServer::doApplyTileModifications(TileModificationList 
   return unapplied;
 }
 
-void WorldServer::updateTileEntityTiles(TileEntityPtr const& entity, bool removing, bool checkBreaks) {
+void WorldServer::updateTileEntityTiles(TileEntity* entity, bool removing, bool checkBreaks) {
   // This method of updating tile entity collision only works if each tile
   // entity's collision spaces are a subset of their normal spaces, and thus no
   // two tile entities can have collision spaces that overlap.
@@ -1656,7 +1885,11 @@ void WorldServer::updateTileEntityTiles(TileEntityPtr const& entity, bool removi
 
   auto& spaces = m_tileEntitySpaces[entity->entityId()];
 
-  List<MaterialSpace> newMaterialSpaces = removing ? List<MaterialSpace>() : entity->materialSpaces();
+  // L-OBJ-2: bind by const& (both arms lvalues) so the common non-removing path is a
+  // zero-copy reference into the entity's stored material spaces. Read-only below
+  // (compared at :==, iterated into a separate passedSpaces; never mutated/moved).
+  static List<MaterialSpace> const emptyMaterialSpaces;
+  List<MaterialSpace> const& newMaterialSpaces = removing ? emptyMaterialSpaces : entity->materialSpaces();
   List<Vec2I> newRoots = removing || entity->ephemeral() ? List<Vec2I>() : entity->roots();
 
   if (!removing && spaces.materials == newMaterialSpaces && spaces.roots == newRoots)
@@ -1929,7 +2162,7 @@ List<ItemDescriptor> WorldServer::destroyBlock(TileLayer layer, Vec2I const& pos
   return drops;
 }
 
-void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates) {
+void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdates, List<RectI> const& monitoringRegions) {
   auto const& clientInfo = m_clientInfo.get(clientId);
   clientInfo->outgoingPackets.append(make_shared<StepUpdatePacket>(m_currentTime));
 
@@ -1987,9 +2220,23 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
   }
   clientInfo->pendingLiquidUpdates.clear();
 
-  HashSet<EntityPtr> monitoredEntities;
-  for (auto const& monitoredRegion : clientInfo->monitoringRegions(m_entityMap))
-    monitoredEntities.addAll(m_entityMap->entityQuery(RectF(monitoredRegion)));
+  // Lever #12b: collect monitored entities as raw Entity* (no shared_ptr atomic
+  // refcount churn vs the old HashSet<EntityPtr>), deduped by sort + skip-equal.
+  // Safe because nothing for the rest of this function adds or removes entities
+  // (only serialization getters + keyed-map/packet mutations below), so the raw
+  // pointers stay valid; m_entityMap owns the entities for the whole tick.
+  List<Entity*> monitoredEntities;
+  for (auto const& monitoredRegion : monitoringRegions)
+    m_entityMap->forEachEntity(RectF(monitoredRegion), [&](EntityPtr const& entity) {
+        monitoredEntities.append(entity.get());
+      });
+  monitoredEntities.sort();
+  size_t uniqueCount = 0;
+  for (size_t i = 0; i < monitoredEntities.size(); ++i) {
+    if (uniqueCount == 0 || monitoredEntities[i] != monitoredEntities[uniqueCount - 1])
+      monitoredEntities[uniqueCount++] = monitoredEntities[i];
+  }
+  monitoredEntities.resize(uniqueCount);
 
   auto entityFactory = Root::singleton().entityFactory();
   auto outOfMonitoredRegionsEntities = HashSet<EntityId>::from(clientInfo->clientSlavesNetVersion.keys());
@@ -2012,6 +2259,11 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
     EntityId entityId = monitoredEntity->entityId();
     ConnectionId connectionId = connectionForEntity(entityId);
     if (connectionId != clientId) {
+      // Lever #4: run the deferred-store pump once per master entity per tick
+      // (before its first writeNetState, across all clients/netRules buckets) so
+      // the latestChange aggregate is authoritative for the early-out.
+      if (NetElementEarlyOut::active() && m_netStorePumpedThisTick.add(entityId))
+        monitoredEntity->netStorePump();
       auto netRules = clientInfo->clientState.netCompatibilityRules();
       if (auto version = clientInfo->clientSlavesNetVersion.ptr(entityId)) {
         if (auto updateSetPacket = updateSetPackets.value(connectionId)) {
@@ -2030,7 +2282,7 @@ void WorldServer::queueUpdatePackets(ConnectionId clientId, bool sendRemoteUpdat
         auto firstUpdate = monitoredEntity->writeNetState(0, netRules);
         clientInfo->clientSlavesNetVersion.add(entityId, firstUpdate.second);
         clientInfo->outgoingPackets.append(make_shared<EntityCreatePacket>(monitoredEntity->entityType(),
-              entityFactory->netStoreEntity(monitoredEntity, netRules), std::move(firstUpdate.first), entityId));
+              entityFactory->netStoreEntity(m_entityMap->entity(entityId), netRules), std::move(firstUpdate.first), entityId));
       }
     }
   }
@@ -2138,8 +2390,12 @@ void WorldServer::updateDamagedBlocks(float dt) {
 }
 
 void WorldServer::checkEntityBreaks(RectF const& rect) {
-  for (auto tileEntity : m_entityMap->query<TileEntity>(rect))
+  for (auto tileEntity : m_entityMap->query<TileEntity>(rect)) {
+    // Dormancy wake (audit Rule 4): a neighbor tile changed; wake so an anchor
+    // invalidation (m_broken -> shouldDestroy) is seen by the reap path.
+    tileEntity->requestWake();
     tileEntity->checkBroken();
+  }
 }
 
 void WorldServer::queueTileUpdates(Vec2I const& pos) {
@@ -2186,15 +2442,23 @@ void WorldServer::dirtyCollision(RectI const& region) {
 }
 
 void WorldServer::freshenCollision(RectI const& region) {
+  // Lever L4: the pass-1 dirty scan only READS collisionCacheDirty, so use the
+  // read-only, column-amortized tileEachColumns instead of a per-tile modifyTile
+  // (which does a full pmod + sector-hashmap lookup PER tile, ~2.34% of the exploring
+  // WST). tileEachColumns walks valid loaded columns over contiguous tile memory and
+  // -- exactly like modifyTile's null guard -- SKIPS invalid/unloaded/out-of-y-range
+  // positions (NOT the const tileEach, which substitutes the dirty-by-default
+  // m_default for invalid positions and would balloon freshenRegion). So it visits the
+  // SAME tile set; the dirty subset is identical and RectI::combine is order-
+  // independent, so freshenRegion is byte-identical. Pass 2 below still mutates via
+  // modifyTile.
   RectI freshenRegion = RectI::null();
-  for (int x = region.xMin(); x < region.xMax(); ++x) {
-    for (int y = region.yMin(); y < region.yMax(); ++y) {
-      if (auto tile = m_tileArray->modifyTile({x, y})) {
-        if (tile->collisionCacheDirty)
-          freshenRegion.combine(RectI(x, y, x + 1, y + 1));
+  m_tileArray->tileEachColumns(region, [&freshenRegion](Vec2I const& pos, auto const* column, size_t columnSize) {
+      for (size_t i = 0; i < columnSize; ++i) {
+        if (column[i].collisionCacheDirty)
+          freshenRegion.combine(RectI(pos[0], pos[1] + (int)i, pos[0] + 1, pos[1] + (int)i + 1));
       }
-    }
-  }
+    });
 
   if (!freshenRegion.isNull()) {
     for (int x = freshenRegion.xMin(); x < freshenRegion.xMax(); ++x) {
@@ -2218,11 +2482,16 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
   if (!entity)
     return;
 
-  if (auto tileEntity = as<TileEntity>(entity))
+  if (auto* tileEntity = entity->asTileEntity())
     updateTileEntityTiles(tileEntity, true);
 
   if (andDie)
     entity->destroy(nullptr);
+
+  // Lever #4: pump deferred stores so the final delta below isn't dropped by an
+  // early-out (entity is processed once here then removed, so no dedup needed).
+  if (NetElementEarlyOut::active())
+    entity->netStorePump();
 
   for (auto const& pair : m_clientInfo) {
     auto& clientInfo = pair.second;
@@ -2235,6 +2504,15 @@ void WorldServer::removeEntity(EntityId entityId, bool andDie) {
 
   m_entityMap->removeEntity(entityId);
   entity->uninit();
+
+  // Option A dormancy: drop the id from the awake-set (O(1)). Both structures are
+  // inert unless EntityDormancy is active, so this is a no-op in the default-OFF
+  // build (m_awakeEntities stays empty, the remove is a no-op).
+  m_awakeEntities.remove(entityId);
+  // NOTE: we deliberately do NOT scrub m_scheduledWakes here (it would be O(all
+  // scheduled entries) per removal). A removed entity's stale scheduled-bucket entry
+  // is filtered out at promotion time (see the tick loop) — entity() returns null for
+  // it, so it never enters m_awakeEntities. Buckets self-clean when their step is taken.
 }
 
 float WorldServer::windLevel(Vec2F const& pos) const {
