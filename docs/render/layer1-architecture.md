@@ -1,5 +1,9 @@
 # Render Layer 1 — Architecture
 
+> **Naming (R4, 2026-07-20):** the render-surface type was renamed `GlFrameBuffer` → `GlSurface` (it owns 1–2
+> faces; it is a surface, not a framebuffer). This doc uses the current name `GlSurface`; historical/upstream
+> docs retain `GlFrameBuffer`.
+
 > **This is the canonical definition of render Layer 1.** Any document that refers to "render Layer 1" —
 > [`architecture-assessment.md`](architecture-assessment.md), the unified render-surface subsystem spec
 > ([`../superpowers/specs/2026-07-14-render-surface-subsystem-design.md`](../superpowers/specs/2026-07-14-render-surface-subsystem-design.md)),
@@ -64,7 +68,7 @@ one-line responsibility contains no "and":
 
 | Component | The one fact it owns | Lives in |
 |---|---|---|
-| **`GlFrameBuffer`** | one render surface — its one or two faces, and their storage | `StarGlRenderSurface` |
+| **`GlSurface`** | one render surface — its one or two faces, and their storage | `StarGlRenderSurface` |
 | **`GlTargets`** | which surfaces exist, and the generation counter | `StarGlRenderSurface` |
 | **`GlPass`** | the bind — the coupled `(effect, target)` pair, and the flattened locations the draw path reads | `StarGlRenderSurface` |
 | **`GlEffects`** | the compiled programs and the scriptable-parameter surface | `StarGlRenderSurface` |
@@ -97,7 +101,7 @@ Layer 1 answers to two governing axioms.
   `GlPass::bindTarget` the only writer of the draw framebuffer on the draw path; `sizeFor()` the only place the
   screen→surface size rule is written.
 - **Air-Gap** — nothing reaches past a component's interface into its internals. There are **zero `friend`**
-  declarations: `GlFrameBuffer::faces`, `GlTargets::m_byId`, `GlEffects::m_byName`, and `GlPass::boundViewport`
+  declarations: `GlSurface::faces`, `GlTargets::m_byId`, `GlEffects::m_byName`, and `GlPass::boundViewport`
   are unreachable by the *compiler*, not by convention.
 - **Earned Exposure** — a component exposes only what a consumer needs. The `Renderer` interface hands its
   twelve consumers three texture methods and no way to name a framebuffer face.
@@ -134,7 +138,7 @@ is not incidental. Each choice discharges one part of the purpose.
 The decomposition follows the facts, not the file. Each component is drawn around exactly one thing that must
 have a single owner:
 
-- **`GlFrameBuffer`** owns *storage*. A surface is one or two faces; `specifyStorage` is the only writer of a
+- **`GlSurface`** owns *storage*. A surface is one or two faces; `specifyStorage` is the only writer of a
   face's descriptor, and `sizeFor()` the only writer of its size rule. Adding a face, resizing, swapping, or
   changing the format ladder is a one-site edit with a compiler-visible owner.
 - **`GlTargets`** owns *identity and lifetime* — which surfaces exist and the generation number that lets
@@ -173,7 +177,7 @@ This is the A8 ledger — the reason the bug class cannot recur, stated per inva
    calls to `destroyAll` in `loadConfig`. A3's Air-Gap *forbids* folding them into `GlTargets::destroyAll`
    (targets may not reach into effects or the pass), so this residue is by care, and it is **irreducible under
    sovereignty** — a consequence of the seal, not a shortcut left in it.
-4. **Existence *is* doubledness, and a face owns its FBO.** A `GlFrameBuffer` is `Face front; Maybe<Face> back;`
+4. **Existence *is* doubledness, and a face owns its FBO.** A `GlSurface` is `Face front; Maybe<Face> back;`
    — it has a second face iff `back` is engaged, with no separate `bool doubled` to disagree (this closed the
    `altId` bug). And a `Face` now RAIIs its framebuffer object (destructor deletes it, move hands it off, copy
    deleted), so `makeDoubled()` — which builds the second face into a LOCAL — leaks nothing even if
@@ -186,7 +190,7 @@ This is the A8 ledger — the reason the bug class cannot recur, stated per inva
    and re-specified per draw; the face records nothing about it and no longer contradicts its own GL state.
 7. **Load-time constants are derived once, at load, into fields.** `frameBuffer` / `blitFrameBuffer` /
    `frameBufferTextures` / `doubleBuffered` / the HDR bit are parsed once in `GlEffects::load` and
-   `GlFrameBuffer`'s constructor. `switchEffectConfig` re-hashes zero JSON; `specifyStorage` re-parses nothing
+   `GlSurface`'s constructor. `switchEffectConfig` re-hashes zero JSON; `specifyStorage` re-parses nothing
    per resize.
 8. **Fixed locations are resolved once, at load.** Attribute and uniform locations become `GLint` fields on
    `Effect`; `GlPass::bindEffect` is field copies, not per-bind string lookups.
@@ -220,12 +224,12 @@ Layer 1 is the bottom of a three-layer render-surface architecture:
 **A naming caution.** "Layer 1" is used in two related but non-identical senses, and this document reconciles
 them:
 
-1. **The extraction Layer 1 (this document, current code):** the *four* components `GlFrameBuffer` /
+1. **The extraction Layer 1 (this document, current code):** the *four* components `GlSurface` /
    `GlTargets` / `GlPass` / `GlEffects`. This is what exists and is certified today.
 2. **The design Layer 1 = `Surface` (forward design):** in the unified render-surface subsystem spec, "Layer 1"
-   is a single `Surface` abstraction that generalises `GlFrameBuffer` and subsumes upstream #542 declarative
+   is a single `Surface` abstraction that generalises `GlSurface` and subsumes upstream #542 declarative
    double-buffering. That spec is a *not-yet-approved forward design*; its `Surface` is the intended
-   *evolution* of extraction-Layer-1's `GlFrameBuffer`, not a synonym for the current four-component substrate.
+   *evolution* of extraction-Layer-1's `GlSurface`, not a synonym for the current four-component substrate.
 
 When a document says "Layer 1" without qualification, it means sense 1 (this substrate). The forward design
 owns the word only inside its own spec.
@@ -234,7 +238,7 @@ owns the word only inside its own spec.
 
 **A separate axis, and the verdict on that axis is DON'T SPLIT. The question is closed.**
 
-1. **Decisive:** decomposing the implementation into `GlFrameBuffer` / `GlTargets` / `GlPass` / `GlEffects`
+1. **Decisive:** decomposing the implementation into `GlSurface` / `GlTargets` / `GlPass` / `GlEffects`
    required **zero changes to `StarRenderer.hpp`**. Contract and mechanism are orthogonal. Layer 1 is the
    mechanism axis, by demonstration.
 2. **One implementer.** `OpenGlRenderer` is the only `public Renderer` in the tree. No mocks, no second backend.
@@ -272,9 +276,9 @@ translation unit (the components were extracted into `StarGlRenderSurface.*`, so
    the cache (`clearFaces` runs inside `startFrame`, which now invalidates). So no draw trusts a cache GL has
    moved out from under. *(This was a fake-green before the frame-boundary fix: it counted the write-side while
    the RB-7 invariant lives on the read-side early-out.)*
-4. **Zero `Json` in `switchEffectConfig`.** `Effect::config` and `GlFrameBuffer::config` do not exist as members.
+4. **Zero `Json` in `switchEffectConfig`.** `Effect::config` and `GlSurface::config` do not exist as members.
 5. **One allocator per side.** `glGenTextures` on a managed texture appears in exactly three functions:
-   `GlFrameBuffer::allocateFace` (`StarGlRenderSurface.cpp`), `createEmptyGlTexture` and
+   `GlSurface::allocateFace` (`StarGlRenderSurface.cpp`), `createEmptyGlTexture` and
    `GlTextureAtlasSet::createAtlasTexture` (`StarRenderer_opengl.cpp`). (The oracle's transient resolve scratch
    is diagnostic, outside the set.)
 6. **The storage-descriptor chokepoint.** *(Re-derived — see [Appendix C](#appendix-c--condition-6-why-it-was-re-derived).)*
@@ -332,7 +336,7 @@ The remaining caveats, stated rather than buried:
   borrow-trio (`adopt`/`share`/`release`, including the empty-name sibling-alias seal) and the RB-6
   storage-descriptor invariants directly. These are the first tests to exercise a Layer-1 component standalone,
   and they are only possible *because* the module is sovereign. Still NOT unit-tested: the GL-calling components
-  (`GlFrameBuffer` / `GlTargets` / `GlPass` / `GlEffects`), which allocate via direct GL calls needing a context
+  (`GlSurface` / `GlTargets` / `GlPass` / `GlEffects`), which allocate via direct GL calls needing a context
   the headless harness lacks; those remain covered by the render gate alone.
 - **Byte-identity is certified for one config of one frozen world** (AA off, HDR on). The render oracle cannot
   compare a multisample target by construction, so the AA path — RB-5's home — is verified by reasoning, not by
@@ -357,7 +361,7 @@ Layer 1 is complete, not frozen. Both faces of it are held to the same bar:
 Recorded so they are not re-proposed. Produced by a 120-agent audit in which every proposal faced three
 independent skeptics; **25 of 38 proposals died here.**
 
-- **Renaming `GlFrameBuffer` → `Surface`.** Zero bugs made impossible. The "texture-centric, not FBO-centric"
+- **Renaming `GlSurface` → `Surface`.** Zero bugs made impossible. The "texture-centric, not FBO-centric"
   claim is carried by the resolver (`writeFace()` / `readFace()`), not by the name. *(The forward design revives
   `Surface` as a genuinely new abstraction — that is a different proposal; see [§5](#5-the-layer-scheme-and-the-two-senses-of-layer-1).)*
 - **Merging `parameters` and `scriptables`.** They are a **trust boundary**: `scriptables` is the
@@ -385,7 +389,7 @@ line numbers drift.
    `setRenderTarget`'s cover `glViewport`; the screen became a representable null target.
 3. **Zero `friend`.** All three grants were dead (nobody took them) and were removed; `faces[]` / `m_byId` /
    `m_byName` became compiler-unreachable.
-4. **Both retained `Json config` members deleted.** `Effect`'s and `GlFrameBuffer`'s config Json were parsed
+4. **Both retained `Json config` members deleted.** `Effect`'s and `GlSurface`'s config Json were parsed
    once into fields; `switchEffectConfig` went zero-JSON; a malformed-config throw moved from mid-frame to load.
 5. **The framebuffer face is a completeness floor, not a sampling config.** The inert `textureFiltering` config
    reads and the four asset keys were deleted; the face stopped contradicting its own GL sampling state.

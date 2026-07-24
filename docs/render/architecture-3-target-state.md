@@ -36,7 +36,7 @@ flowchart TB
   subgraph SUB["L1 · Sovereign substrate — abstract Renderer interface / OpenGlRenderer"]
     direction LR
     GLT["✅ GlTargets"]:::done
-    GLF["✅ GlFrameBuffer"]:::done
+    GLF["✅ GlSurface"]:::done
     GLP["✅ GlPass"]:::done
     GLE["✅ GlEffects"]:::done
     GLS["✅ GlRenderSurface"]:::done
