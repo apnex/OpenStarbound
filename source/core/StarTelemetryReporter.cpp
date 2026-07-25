@@ -30,6 +30,15 @@ String TelemetryReporter::writeSnapshot(String const& dir, JsonObject meta, uint
         MetricDesc{MetricDomain::Cpu, MetricOwner::Process, MetricCadence::Call, MetricRole::Total});
       // getrusage is already cumulative; advance the counter to it rather than adding, so repeated snapshots
       // do not compound. Guarded because the counter is monotonic and a clock that went backwards would wrap.
+      //
+      // THIS READ-MODIFY-WRITE IS SAFE ONLY BECAUSE writeSnapshot IS CALLED FROM ONE THREAD. value() and inc()
+      // are each atomic, but the read-compare-advance sequence is not: two concurrent callers would both see
+      // the same `prior` and the second inc() would overcount. Both production callers reach here on the
+      // client's main thread -- ClientApplication::update's interval path, and /telemetry snapshot via
+      // MainInterface::update earlier in that same update() call. Adding a caller on any other thread (a
+      // server-side writer is the obvious one) REQUIRES replacing this with a compare-exchange or a fetch-max
+      // primitive. Written down here rather than left in a review comment, because the next contributor will
+      // read the code and not the review.
       uint64_t prior = c.value();
       if (us > prior)
         c.inc(us - prior);
