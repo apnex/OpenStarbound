@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**115 tasks** across 2 store(s): 2 in_progress, 23 pending, 90 completed
+**115 tasks** across 2 store(s): 1 in_progress, 23 pending, 91 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 114 tasks, ids 64–177
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 90.
+**Completed tasks citing no commit and no doc:** 79 of 91.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -182,7 +182,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
-| [#177](#c29c1332-177) | `c29c1332` | **active** | ENV-CHOP: ship-flight/warp backdrop is choppy — env cache has NO motion term; my parallax hypothesis was wrong | `00f575ad` | — |
+| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `0a027243` `00f575ad` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2481,48 +2481,36 @@ MUST NOT be shipped as "byte-identical" -- it changes behaviour on the error pat
 
 <a id="c29c1332-177"></a>
 
-#### #177 — ENV-CHOP: ship-flight/warp backdrop is choppy — env cache has NO motion term; my parallax hypothesis was wrong
+#### #177 — ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game
 
-status: **in_progress**
+status: **completed**
 
+- `82711412` render: write the three-term retained-cache contract where the next author will read it
+- `0a027243` docs(board): regenerate -- #177 deployed to dev, awaiting flight test [#177]
 - `00f575ad` render: give the env cache a motion term -- fixes choppy stars during ship flight and warp
 
 ```
-DIRECTOR REPORT 2026-07-25: "Moving the Ship from planet to planet or warping between systems has the stars and background unpleasantly choppy."
+CLOSED 2026-07-25. Fix 00f575ad, contract 82711412. Deployed to /home/apnex/OpenStarbound/dev (md5:a87ae44c55ec) and CONFIRMED BY THE DIRECTOR IN GAME: "ship flying appears smooth now".
 
-FIXED in 00f575ad. DEPLOYED to /home/apnex/OpenStarbound/dev 2026-07-25 via scripts/deploy-install.sh (binary + 222 asset files, --verify OK). Deployed binary md5:a87ae44c55ec. AWAITING THE DIRECTOR'S IN-GAME FLIGHT TEST -- this is the only thing that can confirm it.
+ROOT CAUSE: the env cache's refresh predicate was `envInvalidated || envCadence`, where invalidated() means ONLY "size or pixelRatio changed" (StarRetainedSurface.hpp). No motion term, no content key, no bypass. At the shipped envRefreshInterval of 4 the whole moving backdrop was resampled at 15 Hz on a 60 Hz vsync and held three frames.
 
-ROOT CAUSE. The env cache's refresh predicate was `envInvalidated || envCadence`, and invalidated() means ONLY "size or pixelRatio changed" (StarRetainedSurface.hpp:42-44). No motion term, no content key, no bypass. At the shipped envRefreshInterval of 4 the whole moving backdrop was resampled at 15 Hz on a 60 Hz vsync and held three frames.
+NUMBERS at the Director's settings (zoomLevel 3, 1080p): starAndDebrisRatio = lerp(0.0625, 2.0, 3.0) = 2.0625 px/view-unit (Star's lerp takes the interpolant FIRST -- reading it as lerp(a,b,t) gives 5.875 and a 3x-wrong estimate). Starfield moves flyMaxVelocity 5000 x starVelocityFactor 0.2 = 1000 view-units/s => ~34 px/frame vs the 0.75 px threshold = 46x over => refresh every frame in flight, effective interval 1. Before: the sky jumped ~138 px per visible update.
 
-Everything that moves in flight is Sky flying state (m_starOffset, StarSky.cpp:176-179), drawn only inside drawEnv. From shipped assets flyMaxVelocity=5000 x starVelocityFactor=0.2 => 1000 view-units/s.
+WHY IT HID: StarSky.cpp:199-203 pins starOffset/worldOffset to EXACTLY {} when not flying. The missing term is identically zero in the case everyone tests.
 
-WHY IT HID: StarSky.cpp:199-203 pins starOffset/worldOffset to EXACTLY {} when not flying, so planet-side both terms are identically zero.
+THE FIX: drift threshold (displacement since the fill, NOT a predicted rate -- world-tick data reads a 0 per-frame delta on many render frames, the trap that made parallax N flap) + a content key over NON-POSITIONAL inputs only (flash, sky colours, type, quantized skyAlpha/dayLevel, twinkle frame). envCadence stays unconditional and LAST so the frame counter does not shift.
 
-THE NUMBERS at the Director's live settings (zoomLevel 3, 1080p, vsync on, AA off):
-  starAndDebrisRatio = lerp(0.0625, 2.0, 3.0) = 2.0625 px per view-unit
-    (NB Star's lerp is lerp(offset, f0, f1) -- the FIRST arg is the interpolant, so 0.0625 is a blend
-     weight, not a floor. Getting this backwards gives 5.875 and a 3x-wrong drift estimate.)
-  drift in flight = 1000/60 * 2.0625 = ~34 px/frame, vs envMaxDriftStepPx 0.75 => 46x over threshold
-  => envMotion true EVERY frame; effective refresh interval 1; cache fully bypassed while flying
-  => engages ~22 ms into the speedup ramp
-  BEFORE: N=4 meant a redraw every 4th frame, so the sky jumped ~138 px per visible update.
+DERIVED, NOT DECLARED: no `if (flying)` check anywhere. Also covers the speedup/slowdown ramps, the arrival correction, and any future mode that moves the backdrop without moving the camera; scales with zoom and resolution for free.
 
-N IS NOT ADAPTIVE FOR THE ENV CACHE and never was -- envRefreshInterval is a flat config value (4). The adaptive 1..16 N is the PARALLAX cache, which is inert on a shipworld (zero parallax layers). Do not conflate them.
+WIN INTACT, measured: env refresh rate 25.0% of frames before AND after at 00-Ocean-Lab -- exactly the N=4 cadence, unchanged. Gate PASS (envoracle 102/102, paralloracle 20/20, spreadoracle 225/225, 0 DIFF, 0 GL errors). core_tests 251/251, game_tests 92/92.
 
-DERIVED, NOT DECLARED. There is deliberately no `if (flying)` check. A drift threshold also covers the speedup/slowdown ramps and the arrival correction (where a boolean would over- or under-trigger), any future mode that moves the backdrop without moving the camera, and scales with zoom/resolution automatically.
+KNOWN RESIDUAL, accepted: planet-side starRotation drifts ~0.46 px between refreshes at N=4/1080p, under the 0.75 threshold -- but only ~1.6x margin, so on a short-day world or at higher zoom the term will legitimately fire and env will refresh more often than N=4. Design working; small real cost there.
 
-KNOWN, SMALL, ACCEPTED: planet-side starRotation creeps at 2*pi/dayLength, ~0.46 px between refreshes at N=4 and 1080p -- under the 0.75 threshold, which is why the measured refresh rate was 25.0% before AND after. But the margin is only ~1.6x, so on a short-day world or at higher zoom the term will legitimately fire and the env cache will refresh more often than N=4. That is the design working, at a small real cost on those worlds.
+GENERALISED into the shared primitive (82711412): StarRetainedSurface.hpp now states the THREE-TERM CONTRACT -- structural (the class) + motion (caller) + content (caller) -- with both caller-side traps written down. The env cache shipped with only term 1 because nothing said there were three.
 
-IF IT IS STILL NOT SMOOTH, the knob is NOT N:
-  - envMaxDriftStepPx lower  -> stricter, more refreshes (but it is already 46x over in flight)
-  - envRefreshInterval 1     -> takes the cache out entirely, as a diagnostic
-  - if it is smoother but still faintly stepped, suspect skyRenderData refreshing only on WORLD TICKS,
-    which would cap the sky update rate below the frame rate regardless of the cache. Investigate there.
+TWO CONFIG TRAPS recorded, first one causal: envRefreshInterval's call-site fallback is 1 ("reads as off by default") while StarRootLoader ships 4 -- reasoning from the code you are reading concludes the feature is disabled. Same for parallaxMaxDriftStepPx (fallback 1.5, ships 0.75). envMaxDriftStepPx was therefore declared in StarRootLoader, not left as a fallback. Folded into memory [[config-runtime-pins-defaults]].
 
-VERIFICATION DONE OFFLINE: render gate PASS (envoracle 102/102, paralloracle 20/20, spreadoracle 225/225, 0 DIFF, 0 GL errors); env refresh rate 25.0% before and after at 00-Ocean-Lab, so the cache's win is intact; core_tests 251/251, game_tests 92/92.
-VERIFICATION IMPOSSIBLE OFFLINE: the gate freezes the world and the profile parks the character -- neither can reach a flying shipworld. See #174.
-
-MY FIRST DIAGNOSIS WAS WRONG, recorded so it is not repeated: I blamed the parallax cache's adaptive N. A shipworld has ZERO parallax layers (size-only WorldTemplate ctor => m_layout null => biome() short-circuits => setParallax never runs), so parallaxCacheActive is false in flight and that fix would have been a literal no-op. Our own tree already said so at StarClientApplication.cpp:1471-1473.
+MY FIRST DIAGNOSIS WAS WRONG: I blamed the parallax cache's adaptive N. A shipworld has ZERO parallax layers (size-only WorldTemplate ctor => m_layout null => biome() short-circuits => setParallax never runs), so parallaxCacheActive is false in flight and that fix would have been a literal no-op. Our own tree already said so at StarClientApplication.cpp:1471-1473. The four-angle investigation refuted it on independent grounds; the adjudicator also caught that a naive content key would have destroyed the cache's win.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
