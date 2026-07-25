@@ -320,6 +320,19 @@ TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
   EXPECT_FALSE(owners.get("sim").contains("total"));
 }
 
+// The lighting owner's contract had no automated guard: its denominator counts RECOMPUTES while its
+// total accumulates over FRAMES, and that mismatch is deliberate -- it is the one live instance of a
+// legitimately mixed-cadence owner, and the reason the consumer checks each metric against its OWN
+// cadence rather than the owner's ticks. Silently "fixing" it by re-scoping the Total would delete the
+// only measurement of the temporal gate's skip path. Pin it.
+TEST(Telemetry, LightingOwnerDeclaresRecomputeDenominatorAndFrameTotal) {
+  telemetrySetUp();
+  JsonObject owners = Telemetry::snapshot().getObject("owners");
+  ASSERT_TRUE(owners.contains("lighting"));
+  EXPECT_EQ(owners.get("lighting").getString("denominator"), "lighting.temporal.recomputed");
+  EXPECT_EQ(owners.get("lighting").getString("total"), "lighting.cpu.total.us");
+}
+
 TEST(Telemetry, CadenceCountNeverExceedsDenominator) {
   telemetrySetUp();
   MetricDesc total{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total};
