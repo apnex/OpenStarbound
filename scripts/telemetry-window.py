@@ -110,6 +110,54 @@ def tick_count(m):
     return m.get("count", 0) if m.get("type") == "timer" else m.get("value", 0)
 
 
+def cadence_expectation_map(owners, w):
+    """Map each cadence value to the metric that counts ticks at that cadence -- derived from the schema's
+    own data, not from a hard-coded engine key name.
+
+    An owner's declared `denominator` IS the tick-counting metric for whatever cadence its ticks are
+    declared in -- `frame` denominates in frames, `sim` in server ticks, `lighting` in recomputes -- and each
+    of those denominator metrics carries its OWN `cadence` field equal to the very unit it counts
+    (cpu.frame.total.us is cadence=frame, tick.server.seq is cadence=tick, lighting.temporal.recomputed is
+    cadence=recompute). Scanning owners for their denominators and reading each denominator's own cadence
+    back out gives the cadence -> counter mapping without this file ever naming an engine metric. `call`
+    cadence never appears here: nothing is denominated in raw calls, so it has no expectation to check
+    against, by construction.
+    """
+    out = {}
+    for spec in owners.values():
+        dn = spec.get("denominator")
+        m = w.get(dn) if dn else None
+        c = m.get("cadence") if m else None
+        if c and c not in out:
+            out[c] = dn
+    return out
+
+
+def coverage_scale(v, cadence_ticks, w):
+    """Coverage-scale a timer's windowed total up to what full observation would have summed to.
+
+    A metric's count can fall short of its cadence's tick count for two different reasons that look
+    identical from the count alone but need OPPOSITE arithmetic:
+      - SAMPLING LOSS: the work happened, the instrument missed it (an async GPU timer query that has not
+        resolved by readback time). The honest total is bigger than what got recorded -- scale it up.
+      - GENUINE GATING: the work did not happen (a refresh-gated pass skipped this tick). The honest total
+        IS what was recorded -- scaling it up would invent cost for ticks that had none.
+    The tell is the metric's own declared `cadence`. frame/tick/recompute means the work is declared to
+    happen at that cadence, so any shortfall against that cadence's tick count is sampling loss, corrected
+    by total / coverage (a no-op when coverage is 1). `call` means there is no cadence to fall short of --
+    an arbitrary number of calls per frame is not "coverage" of anything -- so it is returned unscaled.
+    Returns (scaled_total, coverage, expected); coverage/expected are None when nothing was scaled.
+    """
+    cad = v.get("cadence")
+    if cad == "call":
+        return v["total"], None, None
+    expected = tick_count(w.get(cadence_ticks.get(cad)))
+    if not expected:
+        return v["total"], None, None
+    coverage = v["count"] / expected
+    return v["total"] / coverage, coverage, expected
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("snapdir")
@@ -138,6 +186,7 @@ def main():
         return 2
 
     owners, w = b.get("owners", {}), window(a, b)
+    cadence_ticks = cadence_expectation_map(owners, w)
     meta = dict(b.get("meta", {}))
     # Environment facts the engine deliberately does not read (driver- and platform-specific sysfs paths).
     sidecar = os.path.join(args.snapdir, os.pardir, "env-sidecar.json")
@@ -168,22 +217,33 @@ def main():
               f"{'us/tick':>9} {'p50':>8} {'p99':>9}")
         print(f"  {'-'*40} {'-'*4} {'-'*7} {'-'*8} {'-'*6} {'-'*9} {'-'*8} {'-'*9}")
 
+        # Coverage-scale every row's total ONCE, up front, so the same scaled figure backs both the printed
+        # us/tick column and the closure sum below -- computing it twice would risk the two disagreeing.
+        scaled = {k: coverage_scale(v, cadence_ticks, w) for k, v in rows}
+
         for k, v in sorted(rows, key=lambda kv: -kv[1]["total"]):
-            per_tick = v["total"] / denom
-            cover = 100.0 * v["count"] / denom
+            s_total, coverage, expected = scaled[k]
+            per_tick = s_total / denom
+            # `cover` is the RAW observed fraction (count / this metric's OWN cadence expectation), never the
+            # scaled one -- it exists specifically so a reader can see that a 67%-coverage figure was scaled
+            # up, not to be hidden by the scaling. `call`-cadence metrics (no expectation) print "n/a".
+            cover_str = f"{100.0 * coverage:.0f}%" if coverage is not None else "n/a"
             p50, p50sat = percentile(v["buckets"], 0.50)
             p99, p99sat = percentile(v["buckets"], 0.99)
             # A saturated percentile landed in the unbounded top bucket, so the figure is a LOWER BOUND. Render
             # it as ">=" rather than as a number: a hitch past 65 ms printed as a plain value reads as merely
             # bad instead of unbounded, and that is exactly the case the histogram was added to expose.
-            print(f"  {k:<40} {v['domain']:>4} {v['role']:>7} {v['count']:>8} {cover:>5.0f}% "
+            print(f"  {k:<40} {v['domain']:>4} {v['role']:>7} {v['count']:>8} {cover_str:>6} "
                   f"{per_tick:>9.1f} {('>=' if p50sat else '') + f'{p50:.1f}':>8} "
                   f"{('>=' if p99sat else '') + f'{p99:.1f}':>9}")
-            # ASSERTION 2 (cadence bound): under is legitimate -- a gated pass or an async readback samples
+            # ASSERTION 2 (cadence bound): checked against THIS METRIC'S OWN cadence expectation, not the
+            # owner's ticks -- an owner's table can legitimately mix cadences (lighting.cpu.total.us is
+            # frame-cadence inside the recompute-denominated `lighting` owner), so the owner tick count is the
+            # wrong yardstick for this check. Under is legitimate -- a gated pass or an async readback samples
             # only some ticks, which the coverage column reports. Over means the span opened twice per tick.
-            if v.get("cadence") in ("frame", "tick", "recompute") and v["count"] > denom:
-                violations.append(f"{k}: count {v['count']} > denominator {denom} "
-                                  f"(declared cadence={v['cadence']}; should it be 'call'?)")
+            if v.get("cadence") in ("frame", "tick", "recompute") and expected and v["count"] > expected:
+                violations.append(f"{k}: count {v['count']} > expected {expected} for its own "
+                                  f"cadence={v['cadence']} (should it be 'call'?)")
             # ASSERTION 3 (histogram consistency): the buckets are the instrument's own checksum -- but a
             # SLACK one, not an exact one. record() bumps count first and buckets last, both relaxed and with
             # no fence, so a snapshot taken while a sampling thread is mid-record() observes a skew of up to
@@ -196,11 +256,16 @@ def main():
                 violations.append(f"{k}: histogram sum {sum(v['buckets'])} vs count {v['count']} "
                                   f"(skew {skew} > {HIST_SKEW_SLACK})")
 
-        # ASSERTION 1 (budget closure).
+        # ASSERTION 1 (budget closure). Both the whole and its parts are the COVERAGE-SCALED totals: comparing
+        # raw totals directly is exactly the mistake that produced the original 119%-of-whole error, just one
+        # level removed -- the whole and its parts do not all share the same coverage (the whole's own GPU
+        # query typically resolves on FEWER frames than its constituent per-pass queries, since it cannot
+        # complete until every part has), so summing raw parts against a raw, more-suppressed whole overstates
+        # the closure even when nothing is double-counted.
         if total_name and total_name in w:
-            whole = w[total_name]["total"]
+            whole = scaled[total_name][0] if total_name in scaled else coverage_scale(w[total_name], cadence_ticks, w)[0]
             for dom in sorted({v["domain"] for _, v in rows}):
-                parts = sum(v["total"] for _, v in rows if v["role"] == "budget" and v["domain"] == dom)
+                parts = sum(scaled[k][0] for k, v in rows if v["role"] == "budget" and v["domain"] == dom)
                 un = whole - parts
                 pct = 100.0 * parts / whole if whole else 0.0
                 print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of {whole/denom:.1f} "
