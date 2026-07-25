@@ -6,6 +6,8 @@
 #include "StarTtlCache.hpp"
 #include "StarImage.hpp"
 #include "StarImageProcessing.hpp"
+#include "StarTelemetry.hpp"
+#include "StarTime.hpp"
 
 #include "SDL3/SDL.h"
 #include "StarPlatformServices_pc.hpp"
@@ -724,44 +726,86 @@ public:
       m_updateTicker.reset();
       m_renderTicker.reset();
 
+      // THE FRAME BUDGET. cpu.frame.total.us is the denominator for owner=frame: one loop iteration IS one
+      // frame, and nothing else is. The other six are role=budget parts that close against it; whatever is
+      // left over is reported as unattributed rather than quietly absorbed.
+      //
+      // Declared here rather than at first use so the descriptors live in one readable block.
+      static auto tTotal  = Telemetry::timer("cpu.frame.total.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total});
+      static auto tInput  = Telemetry::timer("cpu.frame.input.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto tUpdate = Telemetry::timer("cpu.frame.update.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto tRender = Telemetry::timer("cpu.frame.render.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto tFinish = Telemetry::timer("cpu.frame.finish.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto tSwap   = Telemetry::timer("cpu.frame.swap.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto tIdle   = Telemetry::timer("cpu.frame.idle.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      static auto cUpdates = Telemetry::counter("cpu.frame.updates",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+
+      int64_t frameStart = Time::monotonicMicroseconds();
+
       bool quit = false;
       while (true) {
-        cleanup();
+        {
+          TelemetryScope s(tInput);
+          cleanup();
 
+          for (auto const& event : processEvents())
+            m_application->processInput(event);
 
-        for (auto const& event : processEvents())
-          m_application->processInput(event);
+          if (m_platformServices)
+            m_platformServices->update();
 
-        if (m_platformServices)
-          m_platformServices->update();
+          if (m_cursorVisible || m_platformServices->overlayActive())
+            SDL_ShowCursor();
+          else
+            SDL_HideCursor();
 
-        if (m_cursorVisible || m_platformServices->overlayActive())
-          SDL_ShowCursor();
-        else
-          SDL_HideCursor();
-
-
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-
-        int updatesBehind = max<int>(round(m_updateTicker.ticksBehind()), 1);
-        updatesBehind = min<int>(updatesBehind, m_maxFrameSkip + 1);
-        for (int i = 0; i < updatesBehind; ++i) {
-          //since frame-skipping is a thing, we have to begin a new ImGui frame here to prevent duplicate elements made by updates
-          if (i != 0)
-            ImGui::EndFrame();
-          ImGui::NewFrame();
-          m_application->update();
-          m_updateRate = m_updateTicker.tick();
+          ImGui_ImplOpenGL3_NewFrame();
+          ImGui_ImplSDL3_NewFrame();
         }
 
-        m_renderer->startFrame();
-        m_application->render();
-        m_renderer->finishFrame();
+        {
+          TelemetryScope s(tUpdate);
+          int updatesBehind = max<int>(round(m_updateTicker.ticksBehind()), 1);
+          updatesBehind = min<int>(updatesBehind, m_maxFrameSkip + 1);
+          // Frame-skip means update() runs 1..N times per frame. Without this count a CPU regression can hide
+          // as MORE SKIPPING rather than more time per frame, and the budget would look unchanged.
+          cUpdates.inc((uint64_t)updatesBehind);
+          for (int i = 0; i < updatesBehind; ++i) {
+            //since frame-skipping is a thing, we have to begin a new ImGui frame here to prevent duplicate elements made by updates
+            if (i != 0)
+              ImGui::EndFrame();
+            ImGui::NewFrame();
+            m_application->update();
+            m_updateRate = m_updateTicker.tick();
+          }
+        }
 
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(m_sdlWindow);
+        {
+          TelemetryScope s(tRender);
+          m_renderer->startFrame();
+          m_application->render();
+        }
+        {
+          TelemetryScope s(tFinish);
+          m_renderer->finishFrame();
+          ImGui::Render();
+          ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        }
+        {
+          // THE BOUND VERDICT. With vsync OFF this blocks only when the GPU queue is full, so a large value
+          // means the CPU is waiting on the GPU. With vsync ON it blocks for the frame pace instead and means
+          // something entirely different -- which is why meta.vsync is written into every snapshot.
+          TelemetryScope s(tSwap);
+          SDL_GL_SwapWindow(m_sdlWindow);
+        }
         m_renderRate = m_renderTicker.tick();
 
         if (m_quitRequested) {
@@ -780,8 +824,16 @@ public:
         }
 
         int64_t spareMilliseconds = round(m_updateTicker.spareTime() * 1000);
-        if (spareMilliseconds > 0)
+        if (spareMilliseconds > 0) {
+          TelemetryScope s(tIdle);
           Thread::sleepPrecise(spareMilliseconds);
+        }
+
+        // Closes the frame and opens the next in one clock read: the total must cover EVERYTHING, including
+        // the loop bookkeeping between the phases, or the unattributed remainder becomes meaningless.
+        int64_t now = Time::monotonicMicroseconds();
+        tTotal.record(now - frameStart);
+        frameStart = now;
       }
     } catch (std::exception const& e) {
       Logger::error("Application: exception thrown!");
