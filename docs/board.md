@@ -89,7 +89,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A measurement never taken — and NO server-thread profile exists at all since the render work began | — | — |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `35808327` | — |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -180,7 +180,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
-| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
+| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
@@ -401,37 +401,35 @@ Per windLevel investigation (wjsdj5oez). Plant::update unconditionally computes 
 
 <a id="c29c1332-84"></a>
 
-#### #84 — L-WIND-A measurement never taken — and NO server-thread profile exists at all since the render work began
+#### #84 — L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-process A/B
 
 status: **pending**
 
+- `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
+
 ```
-CONFIRMED NOT_STARTED 2026-07-25 by content audit, with a finding that is bigger than this task.
+REVISITED 2026-07-25. Half this task's premise is now false, and the other half has a sharper reason.
 
-THE LEVER IS SHIPPED AND DEFAULT-ON: source/game/StarPlant.cpp:15-16 `std::atomic<bool> serverSkip{true}`
-with the gated dead store at :735-740, declared StarPlant.hpp:17-25, loaded StarWorldServer.cpp:1621,
-documented assets/opensb/worldserver.config.patch:41. So the premise (measure a shipped lever) holds.
+RESOLVED: "NO server-thread profile exists at all" — false as of #175. Owner `sim` closes at 99.76% across 27 phases, and this task's own suggested reframe (give the server tick the #166/#168 treatment) is what shipped.
 
-THE MEASUREMENT WAS NEVER TAKEN: a recursive grep for windLevel/plantWind across harness/, docs/ and
-scripts/ returns nothing.
+STILL NOT MEASURED, and now we know exactly why. Two A/B rounds run at bookmark `explore`, lever flipped via plantWindServerSkip in assets/opensb/worldserver.config.patch (the harness loads assets/opensb as a LOOSE source, so a repo edit reaches it; restored with git checkout after each round):
 
-=== THE BIGGER FINDING ===
-**Every one of the 37 files in harness/profiles/ is a render/lighting telemetry window.** There is NO
-server-thread WST capture in the current harness at all. The older server A/B captures under /root/frackin
-(perf-dormancy-ab, perf-netdelta-ab, perf-explore) cover other levers and predate this tooling.
+  Round 1 (no fingerprint): compute.entities ON 401.3 / OFF 425.6 = "+5.7% win".
+    INVALID. Every control moved the same way -- netsync +14.5%, damage +9.4%, liquid +7.3% -- and
+    animator ops/tick (a load proxy) varied 26% across runs, correlating +0.83 with the phase under
+    test. The heaviest-load run happened to be lever-OFF. The win was the scene.
 
-That means EVERY server-side task on the board — this one, #82, #90's six sub-levers, #66, #69, #75 — is
-blocked on the same missing capability, not on its own merits. They have been sitting as "opportunistic"
-when what they actually share is that nobody can size them.
+  Round 2 (sim.entities.live armed, commit 35808327): entity count 92,93 (ON) vs 98,94 (OFF) --
+    6.5% spread, systematically higher in OFF. netsync control +20.2%, MORE than the lever's
+    apparent +11.6%. The fingerprint gate REFUSED TO CERTIFY. Correct behaviour.
 
-SUGGESTED REFRAME: rather than picking these off one at a time in-game, consider whether the server tick
-deserves the same treatment the render frame got in #166/#168 — an owner budget with contiguous phases and
-a closure oracle. `tick.server.seq`, `tick.server.compute.us`, `tick.server.publish.us`,
-`tick.server.commit.us` and `tick.server.sync.us` ALREADY EXIST (owner `sim`, seen live in every profile
-capture), but owner `sim` has NO declared total in c_ownerSpecs (StarTelemetry.cpp) — so its parts report
-unclosed and nothing can be attributed. Closing the sim budget would size all six of these tasks at once.
+THE STRUCTURAL PROBLEM, stated plainly: this lever needs PLANTS, so it can only be measured in a vegetated biome -- which is exactly where entity population is least stable run-to-run (spawning, chunk streaming). A station or outpost has a stable population and no plants. Those two requirements are in direct tension, and no number of repeated runs fixes a systematic arm-vs-arm population difference.
 
-Filed as an observation here rather than a new task; raise it with the Director before acting.
+THE WAY OUT is the render side's GATE-1 answer: an IN-PROCESS A/B. Flip PlantWind::serverSkip between two measured windows within a SINGLE run, so both arms see literally the same world, the same entities and the same tick. std::atomic<bool> already, so the flip is free and safe. That is the next step for this task and it generalises to every server lever with a runtime flag (#82's collisionArenaEnabled, #90's damageSourceSkipEnabled, etc.) -- the same shared blocker this task originally identified, one level further along.
+
+SHIPPED HERE: sim.entities.live (35808327), the sim analogue of lighting.lights.sources. It caught a false positive on its first use.
+
+DO NOT record "L-WIND-A measured at N%" anywhere. It is unmeasured. The static dead-store proof in #83 stands on its own; the magnitude does not.
 ```
 
 <a id="c29c1332-85"></a>
@@ -2423,6 +2421,7 @@ evidence that is worth more than any single lever on the board.
 
 status: **completed**
 
+- `90d8d236` docs(board): regenerate -- #175 closed, #176 filed [#175]
 - `4eb7b96c` sim: close the server-tick budget -- 27 phases, 99.76%
 
 ```
