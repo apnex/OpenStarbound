@@ -20,7 +20,16 @@ enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
 // its own thread or inline on the main thread depending on m_asyncLighting (StarWorldClient.cpp:61,574); it
 // belongs to the `Lighting` budget either way. "Which budget does this cost land in" was always the question;
 // "which thread ran it" never was.
-enum class MetricOwner : uint8_t { Unknown, Frame, Gl, Sim, Lighting, Process };
+// Count is a SENTINEL, not an owner. It exists so ownerName() can be a table with a static_assert on its
+// size, which makes "added an owner, forgot to name it" a COMPILE ERROR rather than a silent one. The
+// switch it replaced compiled clean with a case missing: -Wswitch warns, but this build has no -Werror and
+// the warning drowns in the output. That mattered more here than for the other three descriptor enums,
+// because ownerName's fallback was "unknown" -- which silently drops the metric out of its owner's budget
+// and quietly under-reports the whole. (domain/cadence/role keep their switches on purpose: their
+// fallbacks are deliberately SAFE -- cadence falls back to "call", which is unscaled and cannot inflate,
+// and role to "detail", which is excluded from sums and so under-counts rather than over-counts.)
+// Keep Count last; nothing may be added after it.
+enum class MetricOwner : uint8_t { Unknown, Frame, Gl, Sim, Lighting, Process, Count };
 
 // Which of the owner's tick counters this metric's count is checked against. NOT used to compute per-frame
 // cost -- that is always total / frames. Cadence exists so a gated pass sampling 60% of frames is reported as

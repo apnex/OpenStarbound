@@ -341,16 +341,20 @@ namespace {
     }
     return "unknown";
   }
+  // A TABLE, not a switch -- deliberately the odd one out among the four descriptor namers. The switch this
+  // replaced compiled clean with a case missing (-Wswitch warns; this build has no -Werror and the warning
+  // drowns), and its trailing fallback returned "unknown", which silently drops the metric out of its
+  // owner's budget and under-reports the whole with no signal anywhere. The static_assert below turns
+  // "added an owner, forgot to name it" into a COMPILE ERROR. Order must match the enum.
+  constexpr char const* c_ownerNames[] = {"unknown", "frame", "gl", "sim", "lighting", "process"};
+  static_assert(sizeof(c_ownerNames) / sizeof(*c_ownerNames) == (size_t)MetricOwner::Count,
+    "MetricOwner gained a value without a name in c_ownerNames -- add it, in enum order.");
+
   char const* ownerName(MetricOwner o) {
-    switch (o) {
-      case MetricOwner::Unknown: return "unknown";
-      case MetricOwner::Frame: return "frame";
-      case MetricOwner::Gl: return "gl";
-      case MetricOwner::Sim: return "sim";
-      case MetricOwner::Lighting: return "lighting";
-      case MetricOwner::Process: return "process";
-    }
-    return "unknown";
+    auto i = (size_t)o;
+    // Defensive, not expected: a descriptor built from a garbage cast. Still names it rather than indexing
+    // out of bounds, and "unknown" is the honest answer for a value the model does not define.
+    return i < (size_t)MetricOwner::Count ? c_ownerNames[i] : "unknown";
   }
   char const* cadenceName(MetricCadence c) {
     switch (c) {
