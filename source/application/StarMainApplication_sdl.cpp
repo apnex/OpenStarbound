@@ -743,8 +743,17 @@ public:
         MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
       static auto tSwap   = Telemetry::timer("cpu.frame.swap.us",
         MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+      // Cadence Call, NOT Frame -- idle is the one budget phase that fires CONDITIONALLY. The sleep runs only
+      // when spareTime() is positive, so on a frame with no headroom it genuinely does not happen.
+      //
+      // Cadence answers "how often SHOULD this have fired", and the consumer scales a metric up by 1/coverage
+      // to correct for SAMPLING loss -- work that happened but whose observation was lost, as with a GL timer
+      // query that resolves too late. Tagging idle as Frame told the consumer 3 skipped frames of 1500 were
+      // missed observations rather than genuine zeros, so it scaled the total up and pushed the frame budget
+      // to 100.1% -- parts exceeding their own whole. Call means "no expectation": neither bounds-checked nor
+      // scaled, which is exactly right for a phase whose absence is real.
       static auto tIdle   = Telemetry::timer("cpu.frame.idle.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Budget});
       static auto cUpdates = Telemetry::counter("cpu.frame.updates",
         MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
 
