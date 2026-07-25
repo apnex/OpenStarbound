@@ -489,7 +489,9 @@ void ClientApplication::update() {
     m_telemetryReportTimer += dt;
     if (m_telemetryReportTimer >= (float)interval) {
       m_telemetryReportTimer = 0.0f;
-      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""));
+      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""), JsonObject{
+        {"vsync", Json(m_root->configuration()->get("vsync", true).optBool().value(true))}
+      });
     }
   }
 }
@@ -540,7 +542,13 @@ void ClientApplication::render() {
       LogMap::set("client_render_world_client", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - clientStart));
 
       auto paintStart = Time::monotonicMicroseconds();
+      // Work versus wait. cpu.frame.render.us bills this block whether the thread was computing or blocked on
+      // the lighting thread; that is correct for frame time and useless for choosing a lever. Detail, not
+      // Budget: it is a slice of cpu.frame.render.us, not a sibling of it.
+      static auto waitLighting = Telemetry::timer("cpu.wait.lighting.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
       m_worldPainter->render(m_renderData, [&]() -> bool {
+        TelemetryScope s(waitLighting);
         return worldClient->waitForLighting(&m_renderData);
       });
       // Slice 4: report the GPU lightmap outcome to the lighting thread so it can drop the

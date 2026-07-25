@@ -644,7 +644,9 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
     return strf("telemetry interval={}", s);
   }
   if (sub == "snapshot") {
-    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""));
+    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""), JsonObject{
+      {"vsync", Json(Root::singleton().configuration()->get("vsync", true).optBool().value(true))}
+    });
     return strf("wrote {}", p);
   }
   return "usage: /telemetry [on|off|deep [off]|hud|interval <s>|snapshot]";
