@@ -918,8 +918,31 @@ print('TYPE CONFLICTS   :', tc or 'none')
 sys.exit(1 if bad or dc or tc or dom else 0)
 "
 ```
-Expected: `UNDECLARED: none`, `CONFLICTS : none`, exit 0. Any key listed here is a registration site missed in
-Task 3 or 4.
+Expected: all four lists `none`, exit 0. Any key listed is a registration site missed in Task 3 or 4.
+
+Then sanity-check the GL accounting — **and note the arithmetic, because the obvious form is wrong**:
+
+```bash
+cd /root/frackin/OpenStarbound && python3 -c "
+import json,glob
+f=sorted(glob.glob('harness/storage-perf/telemetry/*.json'))[-1]
+m=json.load(open(f))['metrics']
+span=m['render.frame.gpu_span_us']
+frames=m['render.frame.us']['count']          # every in-world frame
+parts=sum(v['total'] for v in m.values() if v['owner']=='gl' and v['role']=='budget')
+# NOT parts_total/span_total. The passes sample ~every frame; the span samples only the ~70% whose GL timer
+# query had resolved by readback time. Dividing one cumulative sum by the other compares a full-coverage
+# numerator against a partial-coverage denominator and overstates the result by ~1/coverage -- it reported
+# 115% on real data, which reads exactly like 'render.frame.gpu_span_us was mis-declared as Budget and is
+# being summed as one of its own parts'. It was not; the arithmetic was.
+pf, sf = parts/frames, span['total']/span['count']
+print(f'coverage {100*span[\"count\"]/frames:.0f}%  parts {pf:.1f} us/frame  span {sf:.1f} us/frame'
+      f'  -> {100*pf/sf:.1f}% accounted, {sf-pf:.1f} us/frame unattributed')
+"
+```
+Expected: 75–95% accounted. **Near 200% means `render.frame.gpu_span_us` really was declared `Budget`** and is
+being summed as one of its own parts — that is the failure this check exists to catch, and it is distinguishable
+from the coverage artefact above precisely because the correct arithmetic removes the artefact.
 
 - [ ] **Step 5: Commit**
 
