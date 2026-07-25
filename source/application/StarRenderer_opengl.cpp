@@ -36,14 +36,28 @@ void OpenGlRenderer::setVboOrphan(bool enabled) {
 
 
 
-/*
-static void GLAPIENTRY GlMessageCallback(GLenum, GLenum type, GLuint, GLenum, GLsizei, const GLchar* message, const void* renderer) {
-  if (type == GL_DEBUG_TYPE_ERROR) {
-    Logger::error("GL ERROR: {}", message);
-    __debugbreak();
-  }
+// KHR_debug attribution probe (#131). glGetError tells you an error HAPPENED somewhere since the last drain;
+// it never tells you WHICH call raised it, and the flag saturates, so a bisect by drain placement can only ever
+// narrow to a code region. A SYNCHRONOUS debug callback fires inside the offending driver call, so the C++ stack
+// at that moment names the call site exactly. Off by default (it forces synchronous driver behaviour and costs
+// frame time); STAR_GL_DEBUG=1 arms it.
+static bool GlDebugRequested = [](){
+  char const* e = getenv("STAR_GL_DEBUG");
+  return e && *e && *e != '0';
+}();
+
+static void GLAPIENTRY GlMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei,
+    const GLchar* message, const void*) {
+  if (type != GL_DEBUG_TYPE_ERROR)
+    return;
+  // Rate-limited: a per-frame error would otherwise write a stack trace every frame for the whole run.
+  static int budget = 8;
+  if (budget <= 0)
+    return;
+  --budget;
+  Logger::error("GL DEBUG ERROR source={:#x} id={} severity={:#x}: {}", source, id, severity, message);
+  printStack("  at");
 }
-*/
 
 
 
@@ -78,9 +92,12 @@ OpenGlRenderer::OpenGlRenderer()
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glDisable(GL_DEPTH_TEST);
-  if (GLEW_VERSION_4_3) {
-    //glEnable(GL_DEBUG_OUTPUT);
-    //glDebugMessageCallback(GlMessageCallback, this);
+  if (GLEW_VERSION_4_3 && GlDebugRequested) {
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);   // fire INSIDE the offending call, so the stack below is the truth
+    glDebugMessageCallback(GlMessageCallback, this);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    Logger::info("GL debug output ENABLED (STAR_GL_DEBUG)");
   }
 
   m_whiteTexture = createGlTexture(Image::filled({1, 1}, Vec4B(255, 255, 255, 255), PixelFormat::RGBA32),
@@ -1614,6 +1631,28 @@ auto OpenGlRenderer::createGlRenderBuffer() -> shared_ptr<GlRenderBuffer> {
 }
 
 void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F const& transformation) {
+  // An attribute location is -1 when the linker found that attribute INACTIVE -- absent from the shader, or
+  // declared and never read. That is not exotic: lightingPassthrough.vert declares all four vertex inputs and
+  // reads only vertexPosition, so three of its four locations are -1 on every fullscreen composite.
+  //
+  // The index parameter of glEnableVertexAttribArray / glVertexAttribPointer is a GLuint, so -1 arrives as
+  // 0xFFFFFFFF -- always >= GL_MAX_VERTEX_ATTRIBS -- and the call raises GL_INVALID_VALUE. Three per composite
+  // draw, every frame.
+  //
+  // Skipping is byte-identical: these are precisely the calls that were already FAILING, and therefore already
+  // doing nothing, and an inactive attribute is by definition never read by the program.
+  //
+  // Why this mattered far beyond three wasted calls: the GL error flag SATURATES -- once set, no further error
+  // is recorded until glGetError clears it. A per-frame error therefore MASKS every other GL error the engine
+  // can raise. This is what made the long-standing "OpenGL errors during shutdown" unattributable (#131) and
+  // what left the render gate's GL assertion unable to mean anything.
+  auto bindAttrib = [](GLint index, GLint size, GLenum type, GLboolean normalized, size_t offset) {
+    if (index < 0)
+      return;
+    glEnableVertexAttribArray((GLuint)index);
+    glVertexAttribPointer((GLuint)index, size, type, normalized, sizeof(GlRenderVertex), (GLvoid*)offset);
+  };
+
   for (auto const& vb : renderBuffer.vertexBuffers) {
     glUniformMatrix3fv(m_pass.vertexTransformUniform, 1, GL_TRUE, transformation.ptr());
 
@@ -1655,15 +1694,14 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 
     glBindBuffer(GL_ARRAY_BUFFER, vb.vertexBuffer);
 
-    glEnableVertexAttribArray(m_pass.positionAttribute);
-    glEnableVertexAttribArray(m_pass.texCoordAttribute);
-    glEnableVertexAttribArray(m_pass.colorAttribute);
-    glEnableVertexAttribArray(m_pass.dataAttribute);
-
-    glVertexAttribPointer(m_pass.positionAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pos));
-    glVertexAttribPointer(m_pass.texCoordAttribute, 2, GL_FLOAT, GL_FALSE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, uv));
-    glVertexAttribPointer(m_pass.colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, color));
-    glVertexAttribIPointer(m_pass.dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+    bindAttrib(m_pass.positionAttribute, 2, GL_FLOAT, GL_FALSE, offsetof(GlRenderVertex, pos));
+    bindAttrib(m_pass.texCoordAttribute, 2, GL_FLOAT, GL_FALSE, offsetof(GlRenderVertex, uv));
+    bindAttrib(m_pass.colorAttribute, 4, GL_UNSIGNED_BYTE, GL_TRUE, offsetof(GlRenderVertex, color));
+    // vertexData is an INTEGER attribute -- glVertexAttribIPointer, not the normalizing float form. Same -1 rule.
+    if (m_pass.dataAttribute >= 0) {
+      glEnableVertexAttribArray((GLuint)m_pass.dataAttribute);
+      glVertexAttribIPointer((GLuint)m_pass.dataAttribute, 1, GL_INT, sizeof(GlRenderVertex), (GLvoid*)offsetof(GlRenderVertex, pack));
+    }
 
     glDrawArrays(GL_TRIANGLES, 0, vb.vertexCount);
   }
