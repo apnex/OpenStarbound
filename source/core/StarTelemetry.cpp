@@ -21,8 +21,12 @@ struct MetricNode {
   std::atomic<int64_t> total{0};
   std::atomic<int64_t> tmin{INT64_MAX};
   std::atomic<int64_t> tmax{INT64_MIN};
-  // Timer only. Cumulative, so snapshot differencing windows them.
-  std::atomic<uint64_t> buckets[Telemetry::HistogramBuckets];
+  // Timer only. Cumulative, so snapshot differencing windows them. NOTE: sum(buckets) == count only when the
+  // sampling threads are quiescent (as they are in the unit tests) -- record() bumps count and its bucket
+  // with two separate relaxed stores, so a snapshot taken mid-record() on a live, multi-threaded timer can
+  // observe them out of order and the two can differ by up to the number of threads in flight, in EITHER
+  // direction. That is the same skew `mean` already carries; it is not a bug to chase.
+  std::atomic<uint64_t> buckets[Telemetry::HistogramBuckets] = {};
   // Rate (owner-thread writes; snapshot best-effort reads)
   std::atomic<double> rate{0.0};
   // Descriptor state. ALL of the following are guarded by Registry::mutex (written at declare/getOrCreate
@@ -33,10 +37,7 @@ struct MetricNode {
   bool declared = false;      // has `desc` been set by a declare() or a typed accessor yet?
   bool descConflict = false;  // two call sites declared this key with different descriptors
   bool typeConflict = false;  // two call sites requested this key as different MetricTypes
-  explicit MetricNode(MetricType t) : type(t) {
-    for (auto& b : buckets)
-      b.store(0, std::memory_order_relaxed);
-  }
+  explicit MetricNode(MetricType t) : type(t) {}
 };
 
 namespace {
@@ -216,11 +217,21 @@ static void atomicMax(std::atomic<int64_t>& a, int64_t v) {
   while (v > cur && !a.compare_exchange_weak(cur, v, std::memory_order_relaxed)) {}
 }
 
+// __builtin_clzll is GNU/Clang-only; MSVC (real MSVC, not clang-cl -- clang-cl already defines __clang__ and
+// takes the builtin path above) has no equivalent, so it gets the intrinsic bit-scan instead. Same split as
+// source/extern/fast_float.h:424-435 and source/extern/fmt/format.h:232-247.
+#if defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+static inline int msbIndex(uint64_t v) { unsigned long i; _BitScanReverse64(&i, v); return (int)i; }
+#else
+static inline int msbIndex(uint64_t v) { return 63 - __builtin_clzll(v); }
+#endif
+
 size_t Telemetry::histogramBucket(int64_t micros) {
   if (micros <= 0)
     return 0;
   uint64_t v = (uint64_t)micros;
-  int h = 63 - __builtin_clzll(v);              // floor(log2(v)); v > 0 so clzll is defined
+  int h = msbIndex(v);                          // floor(log2(v)); v > 0 so the bit scan is defined
   if (h >= 16)
     return HistogramBuckets - 1;                // >= 65536us: the "something went very wrong" bucket
   // The two sub-bits BELOW the msb. For h >= 2 they are already there; for h < 2 (v = 1, 2, 3) there are not

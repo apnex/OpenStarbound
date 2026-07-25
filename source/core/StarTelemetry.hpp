@@ -137,15 +137,30 @@ public:
   // mark and is NOT windowable).
   //
   // 64 buckets, HdrHistogram-style: bucket i covers [2^h * (1 + m/4), 2^h * (1 + (m+1)/4)) for h = i/4,
-  // m = i%4. That spans 1us..65535us -- a cheap pass through a visible hitch. Integer-only (one clz, a shift
-  // and a mask): this runs on the hot path, so no floating point.
+  // m = i%4 -- EXCEPT at both ends, where the formula is clamped rather than literal:
+  //   - bucket 0 also absorbs 0 and negative input (a 0us sample is real sub-microsecond work; a negative
+  //     delta is nonsense but must not index out of bounds), not just its literal [1, 1.25) range.
+  //   - bucket 63 is UNBOUNDED above -- [57344, +inf), not [57344, 65536). A consumer computing a percentile
+  //     as a bucket midpoint gets a meaningless number the moment p99 lands here, which is exactly the hitch
+  //     case this feature exists to catch, so treat bucket 63 as "at least this slow", never as a point value.
+  // Buckets 1, 2, 3, 5 and 7 are structurally unreachable (their ranges -- e.g. [1.25, 1.5) -- contain no
+  // integer microsecond value) and will read zero forever; that is expected, not a bug to go hunting for.
+  // Integer-only (one bit scan, a shift and a mask): this runs on the hot path, so no floating point.
+  //
+  // sum(buckets) == count exactly only when the sampling threads are quiescent at snapshot time (true in the
+  // unit tests). record() bumps count and its bucket with two independent relaxed stores, so a snapshot taken
+  // mid-record() on a live, multi-threaded timer can observe them out of order; the two may then differ by up
+  // to the number of threads in flight, in EITHER direction. That skew already exists in `mean` today -- it
+  // is not new here, just newly visible as two numbers that can disagree.
   static constexpr size_t HistogramBuckets = 64;
   static size_t histogramBucket(int64_t micros);
 
   // Read-only full metric tree (schema v2): {"meta": {"schema": 2}, "owners": {...}, "metrics": {key: {...}}}.
   // "owners" is a static description of each owner's denominator/total metric keys. "metrics" is a flat map
   // from dotted key to a per-metric object carrying its type, its declared descriptor (domain/owner/cadence/
-  // role), any descConflict/typeConflict flag, and its type-specific value fields.
+  // role), any descConflict/typeConflict flag, and its type-specific value fields -- Timer additionally
+  // carries "buckets" (histogramBucket() above): cumulative counts, trailing zeros trimmed, consumer
+  // zero-pads to HistogramBuckets. Purely additive; schema stays at 2.
   static Json snapshot();
 
   // Zero all metric values (tests / a measurement window). Off the hot path only.

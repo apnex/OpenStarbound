@@ -50,9 +50,21 @@ TEST(Telemetry, ResetZeroesAllMetrics) {
   telemetrySetUp();
   Telemetry::counter("test.r").inc(5);
   Telemetry::gauge("test.rg").set(9);
+  auto t = Telemetry::timer("test.rt");
+  t.record(100);
   Telemetry::reset();
   EXPECT_EQ(Telemetry::counter("test.r").value(), 0u);
   EXPECT_EQ(Telemetry::gauge("test.rg").value(), 0);
+  // reset() is telemetrySetUp() (see above), so a regression here makes the whole suite order-dependent
+  // instead of failing loudly -- a stale bucket from `100` surviving reset would silently pollute whatever
+  // this key's next test records into it.
+  t.record(4);
+  JsonArray buckets = Telemetry::snapshot().getObject("metrics").get("test.rt").getArray("buckets");
+  uint64_t sum = 0;
+  for (auto const& b : buckets)
+    sum += b.toUInt();
+  EXPECT_EQ(sum, 1u);
+  EXPECT_EQ(buckets.at(8).toUInt(), 1u);
 }
 
 TEST(Telemetry, SnapshotIsReadOnly) {
@@ -236,12 +248,26 @@ TEST(Telemetry, TimerFillsHistogramAndSumMatchesCount) {
   uint64_t sum = 0;
   for (auto const& b : buckets)
     sum += b.toUInt();
-  // The histogram is the instrument's own checksum: if it disagrees with count, a sample was lost or
-  // double-counted somewhere between record() and the snapshot.
+  // The histogram is the instrument's own checksum against count -- but only exactly, as asserted here,
+  // when the sampling thread is quiescent at snapshot time (single-threaded, as this test is). record()
+  // bumps count and its bucket with two separate relaxed stores, so on a LIVE multi-threaded timer a
+  // snapshot taken mid-record() can catch them out of order; sum and count may then differ by up to the
+  // number of threads in flight, in either direction. That is not this test's concern.
   EXPECT_EQ(sum, m.getUInt("count"));
   EXPECT_EQ(sum, 7u);
   EXPECT_EQ(buckets.at(8).toUInt(), 2u);   // the two 4us samples
   EXPECT_EQ(buckets.at(63).toUInt(), 1u);  // the 100ms sample
+}
+
+// Pins the trailing-zero trim, the one piece of genuinely new logic in snapshot()'s Timer branch and the wire
+// contract the consumer zero-pads against ("never trim" would also pass TimerFillsHistogramAndSumMatchesCount,
+// since that test's highest sample already reaches bucket 63).
+TEST(Telemetry, HistogramArrayIsTrimmedAfterHighestFilledBucket) {
+  telemetrySetUp();
+  Telemetry::timer("test.hist.trim").record(1); // bucket 0 only
+  JsonArray buckets = Telemetry::snapshot().getObject("metrics").get("test.hist.trim").getArray("buckets");
+  EXPECT_EQ(buckets.size(), 1u);
+  EXPECT_EQ(buckets.at(0).toUInt(), 1u);
 }
 
 TEST(Telemetry, HistogramIsEmptyForCounters) {
