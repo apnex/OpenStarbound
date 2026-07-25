@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**114 tasks** across 2 store(s): 1 in_progress, 23 pending, 90 completed
+**115 tasks** across 2 store(s): 2 in_progress, 23 pending, 90 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 113 tasks, ids 64–176
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 114 tasks, ids 64–177
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 105, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 106, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -89,7 +89,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `35808327` | — |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `9346f86a` `35808327` | — |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -175,13 +175,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | open | L4: the border multiplier — every O(cells) lighting phase scales 4.375x, and it is the biggest lever left | — | `board.md` |
+| [#170](#c29c1332-170) | `c29c1332` | open | L4: the border multiplier — every O(cells) lighting phase scales 4.375x, and it is the biggest lever left | `03cec1c0` `a9854185` | `board.md` |
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
+| [#177](#c29c1332-177) | `c29c1332` | **active** | ENV-CHOP: ship-flight/warp backdrop is choppy — env cache has NO motion term; my parallax hypothesis was wrong | `00f575ad` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -405,6 +406,7 @@ Per windLevel investigation (wjsdj5oez). Plant::update unconditionally computes 
 
 status: **pending**
 
+- `9346f86a` docs(board): regenerate -- #84 revisited [#84]
 - `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
 
 ```
@@ -2257,6 +2259,8 @@ Evidence: docs/superpowers/specs/2026-07-25-lighting-cpu-budget-closure-design.m
 
 status: **pending**
 
+- `03cec1c0` lighting: adaptive calculation border -- 4.375x -&gt; 3.000x, -23.6% lighting CPU
+- `a9854185` lighting: measure how much of the 48-tile border is actually used (#170 probe)
 - cited in `docs/board.md`
 
 ```
@@ -2473,6 +2477,52 @@ REACHABILITY: only on the exception path -- handleIncomingPackets throwing for a
 FIX OPTIONS: (a) collect failures into a second list and remove after the loop; (b) iterate a copy; (c) index-based loop with careful decrement. (a) is cleanest and keeps the removal ordering observable.
 
 MUST NOT be shipped as "byte-identical" -- it changes behaviour on the error path, which is the point. Wants its own commit and, ideally, a test that drives a throwing client.
+```
+
+<a id="c29c1332-177"></a>
+
+#### #177 — ENV-CHOP: ship-flight/warp backdrop is choppy — env cache has NO motion term; my parallax hypothesis was wrong
+
+status: **in_progress**
+
+- `00f575ad` render: give the env cache a motion term -- fixes choppy stars during ship flight and warp
+
+```
+DIRECTOR REPORT 2026-07-25: "Moving the Ship from planet to planet or warping between systems has the stars and background unpleasantly choppy."
+
+FIXED in 00f575ad. DEPLOYED to /home/apnex/OpenStarbound/dev 2026-07-25 via scripts/deploy-install.sh (binary + 222 asset files, --verify OK). Deployed binary md5:a87ae44c55ec. AWAITING THE DIRECTOR'S IN-GAME FLIGHT TEST -- this is the only thing that can confirm it.
+
+ROOT CAUSE. The env cache's refresh predicate was `envInvalidated || envCadence`, and invalidated() means ONLY "size or pixelRatio changed" (StarRetainedSurface.hpp:42-44). No motion term, no content key, no bypass. At the shipped envRefreshInterval of 4 the whole moving backdrop was resampled at 15 Hz on a 60 Hz vsync and held three frames.
+
+Everything that moves in flight is Sky flying state (m_starOffset, StarSky.cpp:176-179), drawn only inside drawEnv. From shipped assets flyMaxVelocity=5000 x starVelocityFactor=0.2 => 1000 view-units/s.
+
+WHY IT HID: StarSky.cpp:199-203 pins starOffset/worldOffset to EXACTLY {} when not flying, so planet-side both terms are identically zero.
+
+THE NUMBERS at the Director's live settings (zoomLevel 3, 1080p, vsync on, AA off):
+  starAndDebrisRatio = lerp(0.0625, 2.0, 3.0) = 2.0625 px per view-unit
+    (NB Star's lerp is lerp(offset, f0, f1) -- the FIRST arg is the interpolant, so 0.0625 is a blend
+     weight, not a floor. Getting this backwards gives 5.875 and a 3x-wrong drift estimate.)
+  drift in flight = 1000/60 * 2.0625 = ~34 px/frame, vs envMaxDriftStepPx 0.75 => 46x over threshold
+  => envMotion true EVERY frame; effective refresh interval 1; cache fully bypassed while flying
+  => engages ~22 ms into the speedup ramp
+  BEFORE: N=4 meant a redraw every 4th frame, so the sky jumped ~138 px per visible update.
+
+N IS NOT ADAPTIVE FOR THE ENV CACHE and never was -- envRefreshInterval is a flat config value (4). The adaptive 1..16 N is the PARALLAX cache, which is inert on a shipworld (zero parallax layers). Do not conflate them.
+
+DERIVED, NOT DECLARED. There is deliberately no `if (flying)` check. A drift threshold also covers the speedup/slowdown ramps and the arrival correction (where a boolean would over- or under-trigger), any future mode that moves the backdrop without moving the camera, and scales with zoom/resolution automatically.
+
+KNOWN, SMALL, ACCEPTED: planet-side starRotation creeps at 2*pi/dayLength, ~0.46 px between refreshes at N=4 and 1080p -- under the 0.75 threshold, which is why the measured refresh rate was 25.0% before AND after. But the margin is only ~1.6x, so on a short-day world or at higher zoom the term will legitimately fire and the env cache will refresh more often than N=4. That is the design working, at a small real cost on those worlds.
+
+IF IT IS STILL NOT SMOOTH, the knob is NOT N:
+  - envMaxDriftStepPx lower  -> stricter, more refreshes (but it is already 46x over in flight)
+  - envRefreshInterval 1     -> takes the cache out entirely, as a diagnostic
+  - if it is smoother but still faintly stepped, suspect skyRenderData refreshing only on WORLD TICKS,
+    which would cap the sky update rate below the frame rate regardless of the cache. Investigate there.
+
+VERIFICATION DONE OFFLINE: render gate PASS (envoracle 102/102, paralloracle 20/20, spreadoracle 225/225, 0 DIFF, 0 GL errors); env refresh rate 25.0% before and after at 00-Ocean-Lab, so the cache's win is intact; core_tests 251/251, game_tests 92/92.
+VERIFICATION IMPOSSIBLE OFFLINE: the gate freezes the world and the profile parks the character -- neither can reach a flying shipworld. See #174.
+
+MY FIRST DIAGNOSIS WAS WRONG, recorded so it is not repeated: I blamed the parallax cache's adaptive N. A shipworld has ZERO parallax layers (size-only WorldTemplate ctor => m_layout null => biome() short-circuits => setParallax never runs), so parallaxCacheActive is false in flight and that fix would have been a literal no-op. Our own tree already said so at StarClientApplication.cpp:1471-1473.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
