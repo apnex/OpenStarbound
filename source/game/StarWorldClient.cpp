@@ -2194,6 +2194,58 @@ void WorldClient::lightingCalc() {
     prepLocker.unlock();
     lightSourceCounter.inc(lights.size());
 
+    // #170 MEASUREMENT PROBE -- how much of the border is actually used.
+    //
+    // CellularLightArray::borderCells() pads the calculation region by ceil(max(spreadMaxAir,
+    // pointMaxAir)) = ceil(max(32, 48)) = 48 tiles on every side. That turns a 128x64 query into a
+    // 224x160 calculation, and EVERY O(cells) phase in this budget pays the 4.375x.
+    //
+    // But 48 is the reach of a light at FULL intensity 1.0 -- the worst case the config can express, not
+    // the worst case a scene contains. A light of intensity i reaches i*pointMaxAir. So the border that
+    // would actually suffice is ceil(maxIntensity * pointMaxAir), and the gap between that and 48 is the
+    // size of this lever. Publish the max so the gap can be MEASURED rather than assumed; the arithmetic
+    // stays outside the engine so no config read is added to the hot path.
+    //
+    // x1000 because gauges are integers. Measured BEFORE the promote step below, so this is the source
+    // truth: promotion converts Spread->Point without changing any intensity.
+    // TWO gauges, because the naive one answers the wrong question. Max intensity alone measured 0.823
+    // at three different worlds -- identical to three decimals, i.e. one ubiquitous source (the player's
+    // own light) setting it everywhere. But a light at the CENTRE of the query region needs no border at
+    // all: the border exists so lights OUTSIDE the region can reach in, and so off-region geometry can
+    // shadow inward. What actually drives the requirement is, for each light that is outside, how far
+    // outside it is -- and only for those whose reach still carries them in.
+    //
+    //   required border = max{ d_i : d_i < i_i * pointMaxAir }
+    //     d_i = Chebyshev distance from the query rect out to light i (0 when inside)
+    //     i_i = that light's intensity
+    static auto maxIntensityGauge = Telemetry::gauge("lighting.lights.max_intensity_x1000",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    static auto borderNeededGauge = Telemetry::gauge("lighting.border.needed",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    float maxIntensity = 0.0f;
+    int borderNeeded = 0;
+    float const pointMaxAir = 48.0f;   // probe-local mirror of /lighting.config:lighting.pointMaxAir
+    for (auto const& l : lights) {
+      float intensity = l.color.sum() / 3.0f;
+      maxIntensity = max(maxIntensity, intensity);
+      // Chebyshev distance from the query rect out to the light; 0 when it is inside.
+      float dx = max(0.0f, max((float)lightRange.xMin() - l.position[0], l.position[0] - (float)lightRange.xMax()));
+      float dy = max(0.0f, max((float)lightRange.yMin() - l.position[1], l.position[1] - (float)lightRange.yMax()));
+      float d = max(dx, dy);
+      if (d < intensity * pointMaxAir)
+        borderNeeded = max(borderNeeded, (int)ceil(d));
+    }
+    // RUNNING MAXIMA, not last-value. A gauge holds whatever was written last, so reading one after a
+    // window gives the FINAL recompute's requirement -- which is not a bound and cannot size a border
+    // that must never under-serve. The first pass of this probe made exactly that mistake. Track the
+    // high-water mark instead; single-threaded on the lighting path, so plain statics suffice.
+    static float s_maxIntensitySeen = 0.0f;
+    static int s_borderNeededSeen = 0;
+    s_maxIntensitySeen = max(s_maxIntensitySeen, maxIntensity);
+    s_borderNeededSeen = max(s_borderNeededSeen, borderNeeded);
+    maxIntensityGauge.set((int64_t)(s_maxIntensitySeen * 1000.0f));
+    borderNeededGauge.set((int64_t)s_borderNeededSeen);
+
     // CDL (lightingPromoteDynamic): promote static fill (Spread) lights to dynamic by a fraction
     // p in [0,1] -- (1-p) soft spread + p full directional point. p=0 off (Spread unchanged,
     // byte-identical); p~0.15 ~= the old hybrid; p=1 full Point (the mod's look). Gated on lightingGpu:
