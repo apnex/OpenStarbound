@@ -1,6 +1,7 @@
 #include "StarTelemetry.hpp"
 #include "StarThread.hpp"
 #include "StarTime.hpp"
+#include "StarLogging.hpp"
 
 #include <atomic>
 #include <limits>
@@ -22,6 +23,9 @@ struct MetricNode {
   std::atomic<int64_t> tmax{INT64_MIN};
   // Rate (owner-thread writes; snapshot best-effort reads)
   std::atomic<double> rate{0.0};
+  MetricDesc desc;                    // guarded by Registry::mutex (written at declare, read at snapshot)
+  bool declared = false;              // ditto
+  std::atomic<bool> descConflict{false};  // two call sites declared the same key differently
   explicit MetricNode(MetricType t) : type(t) {}
 };
 
@@ -47,6 +51,29 @@ namespace {
       MetricNode* raw = node.get();
       nodes[key] = std::move(node);
       return raw;
+    }
+
+    // First declaration wins. A conflicting second one is a BUG in the call sites, not a runtime condition to
+    // paper over: it means two places disagree about what the metric means. Flag it loudly and keep the first
+    // so the data stays self-consistent; the telemetry self-test asserts none survive.
+    void declare(String const& key, MetricType type, MetricDesc const& desc) {
+      MutexLocker locker(mutex);
+      auto it = nodes.find(key);
+      MetricNode* n;
+      if (it == nodes.end()) {
+        auto node = std::make_unique<MetricNode>(type);
+        n = node.get();
+        nodes[key] = std::move(node);
+      } else {
+        n = it->second.get();
+      }
+      if (!n->declared) {
+        n->desc = desc;
+        n->declared = true;
+      } else if (n->desc != desc) {
+        n->descConflict.store(true, std::memory_order_relaxed);
+        Logger::warn("Telemetry: '{}' declared twice with different descriptors -- keeping the first", key);
+      }
     }
   };
 }
@@ -122,6 +149,35 @@ TelemetryRate Telemetry::rate(String const& key) {
   return TelemetryRate(registry().getOrCreate(key, MetricType::Rate));
 }
 
+TelemetryCounter Telemetry::counter(String const& key, MetricDesc const& desc) {
+  registry().declare(key, MetricType::Counter, desc);
+  return counter(key);
+}
+TelemetryGauge Telemetry::gauge(String const& key, MetricDesc const& desc) {
+  registry().declare(key, MetricType::Gauge, desc);
+  return gauge(key);
+}
+TelemetryTimer Telemetry::timer(String const& key, MetricDesc const& desc) {
+  registry().declare(key, MetricType::Timer, desc);
+  return timer(key);
+}
+TelemetryRate Telemetry::rate(String const& key, MetricDesc const& desc) {
+  registry().declare(key, MetricType::Rate, desc);
+  return rate(key);
+}
+
+void Telemetry::declare(String const& key, MetricDesc const& desc) {
+  // Type is only used when the key does not exist yet; a declare-first key is a Timer by default and is
+  // corrected by the first typed accessor call. Every declare() caller in the tree declares a timer.
+  registry().declare(key, MetricType::Timer, desc);
+}
+
+MetricDesc Telemetry::describe(String const& key) {
+  MutexLocker locker(registry().mutex);
+  auto it = registry().nodes.find(key);
+  return it == registry().nodes.end() ? MetricDesc{} : it->second->desc;
+}
+
 bool Telemetry::enabled() { return registry().enabled.load(std::memory_order_relaxed); }
 void Telemetry::setEnabled(bool e) { registry().enabled.store(e, std::memory_order_relaxed); }
 
@@ -142,37 +198,99 @@ void Telemetry::markTick(String const& threadTag) {
   seq.inc();
 }
 
+namespace {
+  char const* domainName(MetricDomain d) { return d == MetricDomain::Gpu ? "gpu" : "cpu"; }
+  char const* ownerName(MetricOwner o) {
+    switch (o) {
+      case MetricOwner::Frame: return "frame";
+      case MetricOwner::Gl: return "gl";
+      case MetricOwner::Sim: return "sim";
+      case MetricOwner::Lighting: return "lighting";
+      case MetricOwner::Process: return "process";
+      default: return "unknown";
+    }
+  }
+  char const* cadenceName(MetricCadence c) {
+    switch (c) {
+      case MetricCadence::Frame: return "frame";
+      case MetricCadence::Tick: return "tick";
+      case MetricCadence::Recompute: return "recompute";
+      default: return "call";
+    }
+  }
+  char const* roleName(MetricRole r) {
+    switch (r) {
+      case MetricRole::Total: return "total";
+      case MetricRole::Budget: return "budget";
+      default: return "detail";
+    }
+  }
+  char const* typeName(MetricType t) {
+    switch (t) {
+      case MetricType::Counter: return "counter";
+      case MetricType::Gauge: return "gauge";
+      case MetricType::Timer: return "timer";
+      default: return "rate";
+    }
+  }
+
+  // An owner's DENOMINATOR counts its ticks; its TOTAL is the whole that role=budget parts close against.
+  // These are different questions and conflating them is how a consumer ends up dividing GPU pass costs by the
+  // GPU span's own sample count. For `frame` they are the same metric read two ways (count vs sum); for `gl`
+  // they are different metrics entirely -- GPU work is COUNTED per frame but its WHOLE is the GPU frame span.
+  // An owner with no total reports its parts unclosed rather than inventing a whole.
+  struct OwnerSpec { MetricOwner owner; char const* denominator; char const* total; };
+  constexpr OwnerSpec c_ownerSpecs[] = {
+    {MetricOwner::Frame,    "cpu.frame.total.us",           "cpu.frame.total.us"},
+    {MetricOwner::Gl,       "cpu.frame.total.us",           "render.frame.gpu_span_us"},
+    {MetricOwner::Sim,      "tick.server.seq",              nullptr},
+    {MetricOwner::Lighting, "lighting.temporal.recomputed", "lighting.cpu.total.us"},
+  };
+}
+
 Json Telemetry::snapshot() {
-  JsonObject counters;
-  JsonObject gauges;
-  JsonObject timers;
-  JsonObject rates;
+  JsonObject metrics;
   MutexLocker locker(registry().mutex);
   for (auto const& pair : registry().nodes) {
     MetricNode* n = pair.second.get();
+    JsonObject m{
+      {"type", Json(String(typeName(n->type)))},
+      {"domain", Json(String(domainName(n->desc.domain)))},
+      {"owner", Json(String(ownerName(n->desc.owner)))},
+      {"cadence", Json(String(cadenceName(n->desc.cadence)))},
+      {"role", Json(String(roleName(n->desc.role)))},
+      {"descConflict", Json(n->descConflict.load(std::memory_order_relaxed))}
+    };
     if (n->type == MetricType::Counter) {
-      counters[pair.first] = Json((uint64_t)n->counter.load(std::memory_order_relaxed));
+      m["value"] = Json((uint64_t)n->counter.load(std::memory_order_relaxed));
     } else if (n->type == MetricType::Gauge) {
-      gauges[pair.first] = Json((int64_t)n->gauge.load(std::memory_order_relaxed));
+      m["value"] = Json((int64_t)n->gauge.load(std::memory_order_relaxed));
     } else if (n->type == MetricType::Timer) {
       uint64_t c = n->count.load(std::memory_order_relaxed);
       int64_t tot = n->total.load(std::memory_order_relaxed);
-      int64_t mn = c ? n->tmin.load(std::memory_order_relaxed) : 0;
-      int64_t mx = c ? n->tmax.load(std::memory_order_relaxed) : 0;
-      timers[pair.first] = JsonObject{
-        {"count", Json((uint64_t)c)}, {"total", Json((int64_t)tot)},
-        {"mean", Json((int64_t)(c ? tot / (int64_t)c : 0))},
-        {"min", Json((int64_t)mn)}, {"max", Json((int64_t)mx)}
-      };
-    } else if (n->type == MetricType::Rate) {
-      rates[pair.first] = Json(n->rate.load(std::memory_order_relaxed));
+      m["count"] = Json((uint64_t)c);
+      m["total"] = Json((int64_t)tot);
+      m["mean"] = Json((int64_t)(c ? tot / (int64_t)c : 0));
+      m["min"] = Json((int64_t)(c ? n->tmin.load(std::memory_order_relaxed) : 0));
+      m["max"] = Json((int64_t)(c ? n->tmax.load(std::memory_order_relaxed) : 0));
+    } else {
+      m["value"] = Json(n->rate.load(std::memory_order_relaxed));
     }
+    metrics[pair.first] = std::move(m);
   }
+
+  JsonObject owners;
+  for (auto const& spec : c_ownerSpecs) {
+    JsonObject o;
+    if (spec.denominator) o["denominator"] = Json(String(spec.denominator));
+    if (spec.total) o["total"] = Json(String(spec.total));
+    owners[String(ownerName(spec.owner))] = std::move(o);
+  }
+
   return JsonObject{
-    {"counters", std::move(counters)},
-    {"gauges", std::move(gauges)},
-    {"timers", std::move(timers)},
-    {"rates", std::move(rates)}
+    {"meta", JsonObject{{"schema", Json((uint64_t)2)}}},
+    {"owners", std::move(owners)},
+    {"metrics", std::move(metrics)}
   };
 }
 

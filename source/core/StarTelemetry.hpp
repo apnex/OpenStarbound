@@ -8,6 +8,44 @@ namespace Star {
 
 struct MetricNode; // defined in the .cpp
 
+// WHAT A METRIC IS, declared once at registration and never inferred at sample time.
+//
+// Inference is not merely inconvenient here, it is WRONG: GPU query results are read back and recorded by the
+// MAIN thread roughly three frames after the GPU did the work (StarRenderer_opengl.cpp:1050-1067), so stamping
+// the recording thread -- the obvious design -- would label every GPU sample as CPU/main. Declaration is both
+// correct and cheaper, costing nothing on the sampling path.
+enum class MetricDomain : uint8_t { Cpu, Gpu };
+
+// The LOGICAL budget a sample belongs to -- deliberately not an OS thread. WorldClient::lightingCalc() runs on
+// its own thread or inline on the main thread depending on m_asyncLighting (StarWorldClient.cpp:61,574); it
+// belongs to the `Lighting` budget either way. "Which budget does this cost land in" was always the question;
+// "which thread ran it" never was.
+enum class MetricOwner : uint8_t { Unknown, Frame, Gl, Sim, Lighting, Process };
+
+// Which of the owner's tick counters this metric's count is checked against. NOT used to compute per-frame
+// cost -- that is always total / frames. Cadence exists so a gated pass sampling 60% of frames is reported as
+// 60% COVERAGE rather than mistaken for a metric that is 40% broken.
+enum class MetricCadence : uint8_t { Call, Frame, Tick, Recompute };
+
+// Whether this metric is a whole, a part of a whole, or neither.
+//   Total  -- IS the owner's whole; excluded from the sum of parts.
+//   Budget -- a part; sums with its siblings and must close against the owner's Total.
+//   Detail -- nested inside a Budget part; never summed. render.frame.us and render.interface.us both nest
+//             inside cpu.frame.render.us, so summing all three would double-count.
+enum class MetricRole : uint8_t { Detail, Budget, Total };
+
+struct MetricDesc {
+  MetricDomain domain = MetricDomain::Cpu;
+  MetricOwner owner = MetricOwner::Unknown;
+  MetricCadence cadence = MetricCadence::Call;
+  MetricRole role = MetricRole::Detail;
+};
+
+inline bool operator==(MetricDesc const& a, MetricDesc const& b) {
+  return a.domain == b.domain && a.owner == b.owner && a.cadence == b.cadence && a.role == b.role;
+}
+inline bool operator!=(MetricDesc const& a, MetricDesc const& b) { return !(a == b); }
+
 // Cheap value handles. Hold a stable MetricNode* (see registry storage). Lock-free relaxed ops.
 class TelemetryCounter {
 public:
@@ -68,6 +106,18 @@ public:
   static TelemetryGauge gauge(String const& key);
   static TelemetryTimer timer(String const& key);
   static TelemetryRate rate(String const& key);
+
+  // Same, but also declaring what the metric IS. Prefer these at static registration sites.
+  static TelemetryCounter counter(String const& key, MetricDesc const& desc);
+  static TelemetryGauge gauge(String const& key, MetricDesc const& desc);
+  static TelemetryTimer timer(String const& key, MetricDesc const& desc);
+  static TelemetryRate rate(String const& key, MetricDesc const& desc);
+
+  // Declare without taking a handle. For keys whose VALUE is recorded somewhere other than where their
+  // meaning is known -- GPU pass timers are begun by the render passes but recorded generically inside
+  // OpenGlRenderer, and markTick() builds its key with strf.
+  static void declare(String const& key, MetricDesc const& desc);
+  static MetricDesc describe(String const& key);
 
   // Master cheap-counter gate (default true). Instrumentation may check this to skip work,
   // but inc/set are already nearly free, so checking is optional.

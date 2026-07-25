@@ -41,8 +41,9 @@ TEST(Telemetry, SnapshotEmitsCountersAndGaugesBuckets) {
   Telemetry::counter("test.counter.x").inc(7);
   Telemetry::gauge("test.gauge.y").set(42);
   Json snap = Telemetry::snapshot();
-  EXPECT_EQ(snap.getObject("counters").get("test.counter.x").toUInt(), 7u);
-  EXPECT_EQ(snap.getObject("gauges").get("test.gauge.y").toInt(), 42);
+  EXPECT_EQ(snap.getObject("metrics").get("test.counter.x").getUInt("value"), 7u);
+  EXPECT_EQ(snap.getObject("metrics").get("test.gauge.y").getInt("value"), 42);
+  EXPECT_EQ(snap.get("meta").getUInt("schema"), 2u);
 }
 
 TEST(Telemetry, ResetZeroesAllMetrics) {
@@ -69,7 +70,7 @@ TEST(Telemetry, TimerRecordsCountTotalMinMax) {
   t.record(50);
   t.record(150);
   Json snap = Telemetry::snapshot();
-  Json tj = snap.getObject("timers").get("test.timer");
+  Json tj = snap.getObject("metrics").get("test.timer");
   EXPECT_EQ(tj.getUInt("count"), 3u);
   EXPECT_EQ(tj.getInt("total"), 300);
   EXPECT_EQ(tj.getInt("min"), 50);
@@ -84,14 +85,14 @@ TEST(Telemetry, DeepScopeRecordsOnlyWhenDeepEnabled) {
     auto t = Telemetry::timer("test.deep");
     TelemetryScope s(t);
   } // no record when deep disabled
-  EXPECT_EQ(Telemetry::snapshot().getObject("timers").get("test.deep").getUInt("count"), 0u);
+  EXPECT_EQ(Telemetry::snapshot().getObject("metrics").get("test.deep").getUInt("count"), 0u);
 
   Telemetry::setDeepEnabled(true);
   {
     auto t = Telemetry::timer("test.deep");
     TelemetryScope s(t);
   }
-  EXPECT_GE(Telemetry::snapshot().getObject("timers").get("test.deep").getUInt("count"), 1u);
+  EXPECT_GE(Telemetry::snapshot().getObject("metrics").get("test.deep").getUInt("count"), 1u);
   Telemetry::setDeepEnabled(false);
 }
 
@@ -120,7 +121,40 @@ TEST(Telemetry, ReporterWritesSnapshotJsonFile) {
   String path = TelemetryReporter::writeSnapshot(dir); // returns the file path written
   ASSERT_TRUE(File::exists(path));
   Json read = Json::parse(File::readFileString(path));
-  EXPECT_EQ(read.getObject("counters").get("test.report.c").toUInt(), 5u);
+  EXPECT_EQ(read.getObject("metrics").get("test.report.c").getUInt("value"), 5u);
   File::remove(path);
   File::removeDirectoryRecursive(dir);
+}
+
+TEST(Telemetry, DeclareAttachesDescriptorAndIsIdempotent) {
+  telemetrySetUp();
+  MetricDesc d{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::declare("test.desc.a", d);
+  // Re-declaring with the SAME descriptor is a no-op, not an error: a metric registered from three
+  // call sites (render.drawable.parts.rebuilt is registered from three) must declare consistently.
+  Telemetry::declare("test.desc.a", d);
+  EXPECT_EQ(Telemetry::describe("test.desc.a"), d);
+}
+
+TEST(Telemetry, FirstDeclarationWinsAndMismatchIsRecorded) {
+  telemetrySetUp();
+  MetricDesc gpu{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
+  MetricDesc cpu{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::declare("test.desc.b", gpu);
+  Telemetry::declare("test.desc.b", cpu);   // conflicting -- first wins, conflict is recorded
+  EXPECT_EQ(Telemetry::describe("test.desc.b"), gpu);
+  EXPECT_TRUE(Telemetry::snapshot().getObject("metrics").get("test.desc.b").getBool("descConflict"));
+}
+
+TEST(Telemetry, UndeclaredMetricIsOwnerUnknown) {
+  telemetrySetUp();
+  Telemetry::counter("test.desc.undeclared").inc();
+  EXPECT_EQ(Telemetry::describe("test.desc.undeclared").owner, MetricOwner::Unknown);
+}
+
+TEST(Telemetry, TypedAccessorOverloadDeclaresInline) {
+  telemetrySetUp();
+  MetricDesc d{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::timer("test.desc.c", d).record(10);
+  EXPECT_EQ(Telemetry::describe("test.desc.c"), d);
 }
