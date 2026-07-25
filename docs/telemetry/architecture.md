@@ -370,6 +370,23 @@ descriptor from the act that establishes what it describes** (here, `begin()`), 
 *relation* between two gauges over a magic number — `calc.cells > cells` catches both the staleness and the
 wrong-region bug, and cannot rot.
 
+**A SATURATING signal masks everything behind it — and `glGetError` is one.** Per the GL spec, once an error
+flag is set no further error is recorded until `glGetError` clears it. A *single* per-frame error therefore
+hides every other GL error the engine can raise, for the whole run. That is exactly what happened (#131): three
+`GL_INVALID_VALUE`s per composite draw — `renderGlBuffer` feeding the `-1` of an INACTIVE vertex attribute into
+a `GLuint` index parameter — meant the render gate's GL check could never mean anything, and left the
+long-standing "OpenGL errors during shutdown" line unattributable. **Drain a saturating signal at every phase
+boundary you want to attribute to, and drain it unconditionally** — this one sat behind `if (DebugEnabled)` =
+`!NDEBUG`, dead-code-eliminated from every release build.
+
+**`glGetError` cannot localise; a synchronous KHR_debug callback can.** `glGetError` says only *an error
+happened somewhere since the last drain*, so bisecting by drain placement narrows to a code region and then
+stops — and with rate-limited logging the bisect can even mis-read *which* region, because the log budget is
+consumed by whichever drain reaches it first. `glDebugMessageCallback` + `GL_DEBUG_OUTPUT_SYNCHRONOUS` fires
+*inside* the offending driver call, so a stack dump names the call site and the driver names the parameter:
+`GL_INVALID_VALUE in glEnableVertexAttribArray(index)`. Shipped opt-in as `STAR_GL_DEBUG=1`
+(`source/application/StarRenderer_opengl.cpp`). **Reach for it first, not last.**
+
 ---
 
 ## 8. The self-test
