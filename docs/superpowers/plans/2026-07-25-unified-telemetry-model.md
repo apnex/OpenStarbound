@@ -488,6 +488,10 @@ TEST(Telemetry, HistogramBucketBoundaries) {
   // h is floor(log2(v)) and m is the two bits below the MSB, so the index is exact and integer-only.
   EXPECT_EQ(Telemetry::histogramBucket(0), 0u);     // clamped: a 0us sample is real (sub-microsecond work)
   EXPECT_EQ(Telemetry::histogramBucket(1), 0u);     // 2^0 * 1.00
+  // 2 and 3 are the h<2 cases: fewer than two bits exist below the msb, so the index is synthesised by a LEFT
+  // shift. Getting this wrong is undefined behaviour (a negative right-shift count), not just a wrong bucket.
+  EXPECT_EQ(Telemetry::histogramBucket(2), 4u);     // h=1, m=0
+  EXPECT_EQ(Telemetry::histogramBucket(3), 6u);     // h=1, m=2
   EXPECT_EQ(Telemetry::histogramBucket(4), 8u);     // h=2, m=0 -> 4*2+0
   EXPECT_EQ(Telemetry::histogramBucket(5), 9u);     // h=2, m=1  (5 = 0b101)
   EXPECT_EQ(Telemetry::histogramBucket(6), 10u);    // h=2, m=2  (6 = 0b110)
@@ -571,22 +575,34 @@ Add the bucket function, above `void TelemetryTimer::record`:
 
 ```cpp
 size_t Telemetry::histogramBucket(int64_t micros) {
-  if (micros <= 1)
+  if (micros <= 0)
     return 0;
   uint64_t v = (uint64_t)micros;
-  int h = 63 - __builtin_clzll(v);              // floor(log2(v))
+  int h = 63 - __builtin_clzll(v);              // floor(log2(v)); v > 0 so clzll is defined
   if (h >= 16)
     return HistogramBuckets - 1;                // >= 65536us: the "something went very wrong" bucket
-  uint64_t m = (v >> (h - 2)) & 0x3u;           // the two bits below the MSB; h >= 1 here, and h >= 2
-  if (h < 2)                                    // 2us and 3us: no room for two sub-bits below the MSB
-    m = (v >> h) & 0x3u;
+  // The two sub-bits BELOW the msb. For h >= 2 they are already there; for h < 2 (v = 1, 2, 3) there are not
+  // two bits to take, so shift LEFT to synthesise them. Selecting the branch before shifting matters: a right
+  // shift by (h - 2) with h < 2 is a negative shift count and therefore undefined behaviour, not merely wrong.
+  uint64_t m = h >= 2 ? ((v >> (h - 2)) & 0x3u) : ((v << (2 - h)) & 0x3u);
   return (size_t)(h * 4 + m);
 }
 ```
 
-**Note on `h < 2`:** for `v = 2` (h=1) and `v = 3` (h=1) there is only one bit below the MSB, so `h - 2` would
-shift by a negative amount — undefined behaviour. The branch keeps those samples in buckets 4 and 5 rather
-than reading off the end of the value.
+**Verify the boundaries by hand before trusting the test** — this function is the basis of every percentile
+the campaign will quote:
+
+| µs | h | m | bucket | covers |
+|---|---|---|---|---|
+| 0 or negative | — | — | 0 | clamped; a 0 µs sample is real (sub-microsecond work) |
+| 1 | 0 | `(1<<2)&3 = 0` | 0 | [1.00, 1.25) |
+| 2 | 1 | `(2<<1)&3 = 0` | 4 | [2.00, 2.50) |
+| 3 | 1 | `(3<<1)&3 = 2` | 6 | [3.00, 3.50) |
+| 4 | 2 | `(4>>0)&3 = 0` | 8 | [4, 5) |
+| 7 | 2 | `(7>>0)&3 = 3` | 11 | [7, 8) |
+| 8 | 3 | `(8>>1)&3 = 0` | 12 | [8, 10) |
+| 65535 | 15 | `(65535>>13)&3 = 3` | 63 | top in-range bucket |
+| 1000000 | 19 | — | 63 | clamped |
 
 In `TelemetryTimer::record`, add the bucket increment:
 
