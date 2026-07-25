@@ -45,8 +45,33 @@ TEST(LightingTelemetry, PhaseTimersAndCountsPopulate) {
   EXPECT_GT(timerCount("lighting.cpu.post.us"), 0u);
   EXPECT_EQ(Telemetry::counter("lighting.lights.spread").value(), 1u);
   EXPECT_EQ(Telemetry::counter("lighting.lights.point").value(), 1u);
+  // The calculation region is the query region padded by borderCells() on all four sides, so it is
+  // strictly larger. Asserting the RELATION (not a magic number) is what catches a gauge that has gone
+  // stale or is reporting the wrong region -- the defect that hid a 4.375x factor from every per-cell
+  // figure in the campaign.
   EXPECT_GT(Telemetry::gauge("lighting.cells").value(), 0);
+  EXPECT_GT(Telemetry::gauge("lighting.calc.cells").value(),
+            Telemetry::gauge("lighting.cells").value());
   Telemetry::setDeepEnabled(false);
+  Telemetry::setEnabled(false);
+}
+
+// The regression guard for the stale-gauge defect: in the shipping GPU config calculate() is skipped
+// entirely, so a gauge set inside calculate() reports whatever the last pre-latch frame left behind.
+// begin() is the act that establishes both regions, so begin() is where they must be published.
+TEST(LightingTelemetry, CellGaugesArePublishedByBeginNotCalculate) {
+  Telemetry::reset();
+  Telemetry::setEnabled(true);
+
+  CellularLightingCalculator calc;
+  calc.setParameters(lightingConfig());
+  calc.setMonochrome(false);
+  calc.begin(RectI::withSize(Vec2I(0, 0), Vec2I(32, 24)));
+  // NOTE: no calculate() call -- this is the GPU-lighting path.
+
+  EXPECT_EQ(Telemetry::gauge("lighting.cells").value(), 32 * 24);
+  EXPECT_GT(Telemetry::gauge("lighting.calc.cells").value(), 32 * 24);
+
   Telemetry::setEnabled(false);
 }
 

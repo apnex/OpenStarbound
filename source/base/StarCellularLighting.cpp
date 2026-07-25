@@ -90,6 +90,17 @@ void CellularLightingCalculator::setParameters(Json const& config) {
 }
 
 void CellularLightingCalculator::begin(RectI const& queryRegion) {
+  // The scaling-law denominators for every O(cells) phase in the lighting pipeline. They are published
+  // HERE, by the act that establishes both regions, and deliberately NOT inside calculate(): calculate()
+  // is skipped whenever GPU lighting is latched active (StarWorldClient.cpp skipCpuCalc), so a gauge set
+  // there freezes at whatever the pre-latch load frames left behind. The two are different quantities and
+  // conflating them cost the campaign a 4.375x error: the output lightmap is the QUERY region, but every
+  // export/convert/fill loop runs over the border-padded CALCULATION region.
+  static auto cellsGauge = Telemetry::gauge("lighting.cells",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+  static auto calcCellsGauge = Telemetry::gauge("lighting.calc.cells",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+
   m_queryRegion = queryRegion;
   if (m_monochrome) {
     m_calculationRegion = RectI(queryRegion).padded((int)m_lightArray.right().borderCells());
@@ -98,6 +109,9 @@ void CellularLightingCalculator::begin(RectI const& queryRegion) {
     m_calculationRegion = RectI(queryRegion).padded((int)m_lightArray.left().borderCells());
     m_lightArray.left().begin(m_calculationRegion.width(), m_calculationRegion.height());
   }
+
+  cellsGauge.set((int64_t)m_queryRegion.width() * (int64_t)m_queryRegion.height());
+  calcCellsGauge.set((int64_t)m_calculationRegion.width() * (int64_t)m_calculationRegion.height());
 }
 
 RectI CellularLightingCalculator::calculationRegion() const {
@@ -162,12 +176,9 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
     m_lightArray.left().calculate(arrayMin[0], arrayMin[1], arrayMax[0], arrayMax[1]);
 
   // 'post' phase: output copy + brightness cap. Timer records only under deep
-  // tracing (TelemetryScope gates itself); the gauge is set unconditionally.
+  // tracing (TelemetryScope gates itself). The cell gauges live in begin() -- see the note there.
   static auto postTimer = Telemetry::timer("lighting.cpu.post.us",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
-  static auto cellsGauge = Telemetry::gauge("lighting.cells",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
-  cellsGauge.set(int64_t((arrayMax[0] - arrayMin[0]) * (arrayMax[1] - arrayMin[1])));
   TelemetryScope postScope(postTimer);
 
   output = Lightmap(arrayMax[0] - arrayMin[0], arrayMax[1] - arrayMin[1]);
