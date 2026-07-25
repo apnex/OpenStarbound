@@ -43,8 +43,23 @@ done
 grep -hoE "\[(envoracle|paralloracle|spreadoracle)\] (diff|DIFF)=[^ ]* [^ ]*" "$LOG" | sort -u | head -3 | sed 's/^/    ! /'
 
 echo "=== GL errors ==="
-grep -oE "GL error summary.*" "$LOG" | tail -2 | sed 's/^/  /'
-grep -cE "GL_INVALID" "$LOG" | sed 's/^/  GL_INVALID lines: /'
+# This block used to COUNT and PRINT without asserting -- it happily printed "GL_INVALID lines: 0" for
+# weeks and would have printed a non-zero count just as happily, with the verdict still PASS. Same defect
+# class as the oracle-vocabulary trap: a check that reports but does not gate is not a gate.
+#
+# Match every GL error the renderer can name (StarRenderer_opengl.cpp logGlErrorSummary), not just
+# GL_INVALID* -- GL_OUT_OF_MEMORY and the stack errors were being counted as clean.
+glerr=$(grep -cE "GL_INVALID|GL_OUT_OF_MEMORY|GL_STACK_(UNDER|OVER)FLOW|<UNRECOGNIZED GL ERROR>" "$LOG" || true)
+printf "  GL error lines: %-6s" "$glerr"
+if [ "$glerr" -ne 0 ]; then
+  echo "  <-- FAIL"
+  pass=0
+  # Which drain caught them tells you WHERE: "this frame" is in-frame, "destroying effects/targets" is
+  # teardown, "setting effect config" is load. Show the distinct prefixes rather than a raw count.
+  grep -oE "OpenGL errors [a-z ]+" "$LOG" | sort | uniq -c | sed 's/^/    ! /'
+else
+  echo "  ok"
+fi
 
 if grep -q "RENDERTEST_AB" "$LOG"; then
   echo "=== in-process A/B ==="

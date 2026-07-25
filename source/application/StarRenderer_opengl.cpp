@@ -98,10 +98,19 @@ OpenGlRenderer::OpenGlRenderer()
 }
 
 OpenGlRenderer::~OpenGlRenderer() {
+  // Drained SEPARATELY so a teardown error names which half raised it. One summary after both could only
+  // ever say "shutdown", which is what made the long-standing GL_INVALID_VALUE unattributable.
+  //
+  // Note the two halves differ in what they can even raise: of every GL call reachable from destroyAll,
+  // glDeleteProgram is the ONLY one that can produce GL_INVALID_VALUE -- glDeleteTextures,
+  // glDeleteFramebuffers and glDeleteBuffers all silently ignore names that are not live objects, and
+  // glDeleteProgram(0) is ignored too. So an error attributed to the effects half points at a program id
+  // that was never a program; one attributed to targets points somewhere unexpected entirely.
   m_effects.destroyAll();
+  logGlErrorSummary("OpenGL errors destroying effects");
 
   m_targets.destroyAll();
-  logGlErrorSummary("OpenGL errors during shutdown");
+  logGlErrorSummary("OpenGL errors destroying targets");
 }
 
 String OpenGlRenderer::rendererId() const {
@@ -1144,8 +1153,16 @@ void OpenGlRenderer::finishFrame() {
     m_frameSpanOpen = false;
   }
 
-  if (DebugEnabled)
-    logGlErrorSummary("OpenGL errors this frame");
+  // UNCONDITIONAL, deliberately. This was `if (DebugEnabled)`, and DebugEnabled is !NDEBUG -- so in every
+  // build we ship, profile or gate it is constexpr false and this whole branch is dead-code eliminated.
+  // The result: the ONLY drains in a release run were renderer init, setEffectConfig and shutdown, so an
+  // error raised anywhere in a session accumulated silently and surfaced at exit as an unattributable
+  // "OpenGL errors during shutdown". Debug-gating a diagnostic guarantees it is absent exactly where
+  // problems are actually found -- in release, on the Director's machine.
+  //
+  // The cost is one glGetError per frame. That is a driver state read, NOT a sync point (contrast
+  // glFinish), against the thousands of GL calls this frame already issued. It is free.
+  logGlErrorSummary("OpenGL errors this frame");
 }
 
 OpenGlRenderer::GlTextureAtlasSet::GlTextureAtlasSet(unsigned atlasNumCells)
@@ -1430,30 +1447,55 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
 }
 
 bool OpenGlRenderer::logGlErrorSummary(String prefix) {
-  if (GLenum error = glGetError()) {
+  // EVERY drained error also increments a COUNTER, not just a log line. A log line needs a human to read
+  // it; a counter rides in every telemetry capture, is windowable to the run that introduced it, and lets
+  // the gate ASSERT zero. cadence=Call because errors are exceptional -- they are not per-anything, so
+  // there is no tick count to be a fraction of, and Call is returned unscaled by the consumer.
+  static auto glErrors = Telemetry::counter("render.gl.errors",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+
+  // RATE LIMIT. Now that this is drained every frame rather than only at shutdown, a persistent error
+  // would emit two log lines per frame forever -- burying everything else in the log, which is the exact
+  // failure that made the shutdown-only report useless in the first place. Log the first few in full,
+  // then go quiet and let the counter carry the signal.
+  static int loggedBursts = 0;
+  constexpr int MaxLoggedBursts = 16;
+
+  GLenum error = glGetError();
+  if (!error)
+    return false;
+
+  bool quiet = loggedBursts >= MaxLoggedBursts;
+  if (!quiet) {
+    ++loggedBursts;
     Logger::error("{}: ", prefix);
-    do {
-      if (error == GL_INVALID_ENUM) {
-        Logger::error("GL_INVALID_ENUM");
-      } else if (error == GL_INVALID_VALUE) {
-        Logger::error("GL_INVALID_VALUE");
-      } else if (error == GL_INVALID_OPERATION) {
-        Logger::error("GL_INVALID_OPERATION");
-      } else if (error == GL_INVALID_FRAMEBUFFER_OPERATION) {
-        Logger::error("GL_INVALID_FRAMEBUFFER_OPERATION");
-      } else if (error == GL_OUT_OF_MEMORY) {
-        Logger::error("GL_OUT_OF_MEMORY");
-      } else if (error == GL_STACK_UNDERFLOW) {
-        Logger::error("GL_STACK_UNDERFLOW");
-      } else if (error == GL_STACK_OVERFLOW) {
-        Logger::error("GL_STACK_OVERFLOW");
-      } else {
-        Logger::error("<UNRECOGNIZED GL ERROR>");
-      }
-    } while ((error = glGetError()));
-    return true;
   }
-  return false;
+  do {
+    glErrors.inc(1);
+    if (quiet)
+      continue;
+    if (error == GL_INVALID_ENUM) {
+      Logger::error("GL_INVALID_ENUM");
+    } else if (error == GL_INVALID_VALUE) {
+      Logger::error("GL_INVALID_VALUE");
+    } else if (error == GL_INVALID_OPERATION) {
+      Logger::error("GL_INVALID_OPERATION");
+    } else if (error == GL_INVALID_FRAMEBUFFER_OPERATION) {
+      Logger::error("GL_INVALID_FRAMEBUFFER_OPERATION");
+    } else if (error == GL_OUT_OF_MEMORY) {
+      Logger::error("GL_OUT_OF_MEMORY");
+    } else if (error == GL_STACK_UNDERFLOW) {
+      Logger::error("GL_STACK_UNDERFLOW");
+    } else if (error == GL_STACK_OVERFLOW) {
+      Logger::error("GL_STACK_OVERFLOW");
+    } else {
+      Logger::error("<UNRECOGNIZED GL ERROR>");
+    }
+  } while ((error = glGetError()));
+
+  if (!quiet && loggedBursts == MaxLoggedBursts)
+    Logger::error("(further GL error reports suppressed -- render.gl.errors keeps counting)");
+  return true;
 }
 
 GLint OpenGlRenderer::uploadTextureImage(PixelFormat pixelFormat, Vec2U size, uint8_t const* data, GlLoneTexture* record) {
