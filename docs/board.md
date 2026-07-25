@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**117 tasks** across 2 store(s): 1 in_progress, 25 pending, 91 completed
+**117 tasks** across 2 store(s): 1 in_progress, 23 pending, 93 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 116 tasks, ids 64–179
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 106, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 108, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 91.
+**Completed tasks citing no commit and no doc:** 79 of 93.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -183,8 +183,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
-| [#178](#c29c1332-178) | `c29c1332` | open | GATE-STALE: render-gate.sh certifies a binary that was never rebuilt (audit A5/delta[2]) | — | — |
-| [#179](#c29c1332-179) | `c29c1332` | open | DOC-DRIFT: architecture-3 states counts the tree contradicts; mechanise G3 (audit A4/delta[9]) | — | — |
+| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
+| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `c89be289` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2528,36 +2528,72 @@ MY FIRST DIAGNOSIS WAS WRONG: I blamed the parallax cache's adaptive N. A shipwo
 
 <a id="c29c1332-178"></a>
 
-#### #178 — GATE-STALE: render-gate.sh certifies a binary that was never rebuilt (audit A5/delta[2])
+#### #178 — GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce)
 
-status: **pending**
+status: **completed**
+
+- `2643b1ce` render: the gate can no longer certify a binary that was never built
 
 ```
-THE DEFECT the M7 axiom audit named as the base-layer instrument failure that silently invalidates every certification above it. `scripts/render-gate.sh:24` asserts only `[ "$LOG" -nt "$BIN" ]`. After a FAILED build the binary never moves, so a freshly-deleted-and-rewritten log is trivially newer and the gate prints GATE: PASS against stale code. This fired TWICE in one session (recorded in commit 1e46f71c) and was caught only by a human checking mtimes by hand. Every byte-identity claim in the render campaign inherits that hole.
+FIXED AND PUSHED 2026-07-26, commit 2643b1ce on `integration`.
 
-Commit 1e46f71c says the defect was "filed as a follow-up rather than fixed here". It was not filed -- the audit verified no task, no board row, no amended memory rule existed. This task IS that filing, opened late.
+The gate asserted one thing about freshness -- log newer than binary -- which a FAILED BUILD satisfies
+trivially. It now asks both questions, and the source-side check runs BEFORE the game boots:
+  1. did the BUILD happen?  the binary is newer than every source under source/ (source/test pruned,
+     since that builds the test binaries not the game). dist/ IS the CMake runtime output dir
+     (source/CMakeLists.txt:574), so the binary's mtime is its link time, not a copy's.
+  2. did the RUN happen?    the pre-existing log-newer-than-binary check.
+The verdict line now names the binary and its timestamp. No override -- an escape hatch here is the defect.
 
-FIX (audit delta[2], guardrail G8): assert the BINARY is newer than its newest source, not merely that the log is newer than the binary. Check BEFORE the run so a stale binary fails in milliseconds instead of after a 30-frame GPU run. Name the offending files so the failure is actionable.
+VERIFIED BY CONSTRUCTION, both directions (audit closeout hook 3):
+  * clean tree     -> "certifying dist/starbound (2026-07-25 22:14:43)", GATE: PASS,
+                      envoracle 100/100, paralloracle 20/20, spreadoracle 206/206, 0 GL errors
+  * touched source -> "REFUSING TO CERTIFY", names StarWorldPass.cpp, exit 1 in 4ms, game never launched
 
-CLOSEOUT (audit hook 3): verify by CONSTRUCTION, not assertion -- touch a source file, run the gate, confirm it REFUSES. Then amend the render-harness memory rule from "the log is newer than the binary" to "the BINARY is newer than its sources AND the log is newer than the binary".
+Memory node [[render-harness]] amended: the standing rule said only "assert log -nt binary" and that half
+-assertion is what let this through. It now states both directions with the failure mode written out.
+
+RESIDUAL, deliberately not done: this is an mtime check, not a content check. A build-id embedded by CMake
+and asserted by the gate (the audit's alternative for delta[2]) is stronger and needs a rebuild to land;
+mtime closes the actual observed hole -- a failed build leaving the binary untouched -- with no C++ change.
 ```
 
 <a id="c29c1332-179"></a>
 
-#### #179 — DOC-DRIFT: architecture-3 states counts the tree contradicts; mechanise G3 (audit A4/delta[9])
+#### #179 — DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289)
 
-status: **pending**
+status: **completed**
+
+- `c89be289` docs(render): generate the Air-Gap counts into the doc, and gate them
 
 ```
-`docs/render/architecture-3-target-state.md` at HEAD states current-state numbers the tree contradicts: "now 296" (measured 318), "427 -> 119-line render()" (measured 141: StarWorldPainter.cpp:172-313), BackdropPass "7 singleton reads" and "the worst offender" (measured 0 since 1e46f71c), WorldPass "2 singleton reads" (correct today, will drift).
+FIXED AND PUSHED 2026-07-26, commit c89be289 on `integration`.
 
-A cold agent reading HEAD is told to pay down 7 reads in BackdropPass that no longer exist -- and #137 carries the same dead number. The correction written on 2026-07-25 to fix hand-typed counts introduced a fresh wrong one.
+Four wrong current-state numbers removed from docs/render/architecture-3-target-state.md: "now 296"
+(tree 318), "427 -> 119-line render()" (tree 141), BackdropPass "7 singleton reads" and "the worst
+offender" (tree 0 since 1e46f71c). Compliance matrix re-scored: BackdropPass contract (2) clean,
+contract (1) still unmet -- BackdropInput/LightingInput/WorldInput verified absent from the tree.
 
-FIX, per audit guardrail G3 ("no document may state a number render-inventory.py can measure -- either generate it or delete it"):
-  1. Delete every CURRENT-STATE count from the prose and the mermaid node labels. HISTORICAL numbers (876, 112, 427, the 8th read) stay -- they are past-state narrative the instrument cannot measure and cannot go stale.
-  2. Re-score the Air-Gap compliance matrix: BackdropPass contract (2) is now clean.
-  3. GENERATE the coupling residual into a marker-delimited block via a new `render-inventory.py --inject`.
-  4. MECHANISE it: `--check` + a `render_docs_fresh` ctest carrying the NoAssets label, so the block cannot silently rot again. Deliberately excludes line counts -- gating on those would redden CI on every render commit, the zero-tolerance failure mode the audit warned about in tension 1.
+THE MECHANISM, because measuring beside the doc had already failed: render-inventory.py grew
+--residual / --inject FILE / --check FILE, writing the coupling residual into a marker block inside the
+doc, and `render_docs_fresh` (ctest, LABELS NoAssets) fails CI when the block and the tree disagree.
+Paths resolve against the repo, not the cwd, since ctest runs from the build dir.
+
+The block carries COUPLING COUNTS ONLY, never line counts -- gating those would redden CI on every render
+commit, the zero-tolerance failure mode the render_layering ratchet already decided against. It reports
+metered-vs-total, which makes the audit's delta[7] permanently visible: the ratchet meters 3 files and
+most of the residual sits in WorldPainter and the painters, which no gate touches.
+
+Every number left in the file is HISTORICAL (876, 112, 427, the 8th read) -- past states no instrument can
+measure and no drift can falsify. The rule is written into the doc's own header.
+
+VERIFIED BOTH DIRECTIONS: ctest -L NoAssets 5/5; a copy with the total edited 17 -> 14 makes --check exit 1
+with a unified diff and the remedy. All three script gates then re-run from a PRISTINE CLONE of HEAD --
+layer1_layering, render_layering, render_docs_fresh all exit 0 -- so the claim is about what shipped, not
+about my working tree. (core_tests and render_surface_tests were verified locally; no C++ changed in
+either commit, so their result is unaffected. A full pristine BUILD is still the open half of audit G1.)
+
+#137 corrected -- it quoted the same dead count -- and docs/board.md regenerated.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
