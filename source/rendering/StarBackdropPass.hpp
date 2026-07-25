@@ -85,6 +85,23 @@ private:
   // orbiterAndPlanetRatio), so a zoom alters the cached image at an unchanged screen size -- hence
   // pixelRatio is part of the key, not just size. Bookkeeping owned by RetainedSurface (StarRetainedSurface.hpp).
   RetainedSurface m_envCache{"envCache"};
+  // WHAT THE CACHED ENV IMAGE WAS DRAWN AT. The refresh predicate used to be `invalidated || cadence`,
+  // and invalidated() means only "size or pixelRatio changed" -- so the env cache had NO MOTION TERM AT
+  // ALL. That is harmless planet-side, where StarSky pins starOffset/worldOffset to exactly {} (not
+  // merely small), which is why it went unnoticed. During ship flight and system warp the starfield
+  // translates ~1000 view-units/s and the whole backdrop was resampled at 60/N Hz, teleporting hundreds
+  // of pixels per visible update.
+  //
+  // These record the drawn-at state so accumulated drift SINCE THE FILL can be measured. Staleness, not
+  // a predicted rate: skyRenderData refreshes only on WORLD TICKS, so a per-frame delta reads 0 on many
+  // render frames -- the same trap that made the parallax cache's N flap every frame (see the warning in
+  // renderParallax). Displacement since the fill is monotone across skipped ticks, needs no fps or
+  // velocity assumption, and covers any future mode that moves the backdrop without moving the camera.
+  Vec2F m_envCacheStarOffset = {0.0f, 0.0f};
+  float m_envCacheStarRotation = 0.0f;
+  Vec2F m_envCacheWorldOffset = {0.0f, 0.0f};
+  float m_envCacheWorldRotation = 0.0f;
+  uint64_t m_envCacheContentKey = 0;
 
   // Parallax retained-cache (SP-2): like the env cache, but the source scrolls with the camera, so the
   // refresh gate adds a camera-position term (+ content, below) on top of the shared size/pixelRatio(zoom)

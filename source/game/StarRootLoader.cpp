@@ -105,6 +105,16 @@ R"JSON(
       "renderDrawableCachePerPart" : true,
 
       "envRefreshInterval" : 4,
+      // The env cache's perceptual bound, and the counterpart of parallaxMaxDriftStepPx below: refresh
+      // as soon as the backdrop has drifted this many screen pixels since the cached image was drawn,
+      // instead of waiting out the N-frame cadence.
+      //
+      // DECLARED HERE ON PURPOSE. envRefreshInterval read as "off by default" to anyone who looked at
+      // the in-source fallback of 1 in StarBackdropPass.cpp, while the value that actually ships is the
+      // 4 above -- which is how a cache with no motion term at all survived to reach the Director as
+      // choppy stars during warp. A tuning constant that exists only as a call-site fallback is a
+      // constant nobody can find.
+      "envMaxDriftStepPx" : 0.75,
       "envOracle" : false,
       "lightingSpreadOracle" : false,
       "parallaxRefreshInterval" : 0,

@@ -154,7 +154,52 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // even when the modulo test was skipped. Folding it into `envInvalidated || cadenceHit(...)` would stop
     // advancing the counter on invalidation frames and silently shift the N-cadence phase afterwards.
     bool envCadence = m_envCache.cadenceHit(envRefreshInterval);
-    bool refreshEnv = envInvalidated || envCadence;
+
+    // THE MOTION TERM THE ENV CACHE NEVER HAD. `invalidated()` covers only size and pixelRatio, so
+    // before this the predicate could not tell a static planet sky from a warp: during ship flight the
+    // entire moving backdrop was resampled at 60/N Hz and held, teleporting hundreds of pixels per
+    // visible update. Planet-side StarSky pins starOffset/worldOffset to EXACTLY {} and both translation
+    // terms are identically zero, which is why the defect hid for so long -- and why adding this costs
+    // those frames nothing.
+    //
+    // Bound the on-screen STEP, exactly as the parallax cache bounds its own with parallaxMaxDriftStepPx.
+    // Rotations convert to pixels via the view half-diagonal, which is the displacement of the
+    // worst-placed star on screen, so the bound is conservative rather than average.
+    auto const& envSky = renderData.skyRenderData;
+    float envHalfDiagPx = 0.5f * Vec2F(camera.screenSize()).magnitude();
+    float envDriftPx = max(
+        (envSky.starOffset - m_envCacheStarOffset).magnitude() * starAndDebrisRatio
+          + fabsf(constrainAngle(envSky.starRotation - m_envCacheStarRotation)) * envHalfDiagPx,
+        (envSky.worldOffset - m_envCacheWorldOffset).magnitude() * orbiterAndPlanetRatio
+          + fabsf(constrainAngle(envSky.worldRotation - m_envCacheWorldRotation)) * envHalfDiagPx);
+    float envMaxStepPx = Root::singleton().configuration()->get("envMaxDriftStepPx", 0.75f).optFloat().value(0.75f);
+    bool envMotion = envDriftPx > envMaxStepPx;
+
+    // CONTENT KEY -- only what changes the image WITHOUT moving it. Deliberately NOT a hash of the raw
+    // sky fields: starOffset/worldOffset change every frame in flight, so hashing them would refresh
+    // every frame and delete the cache's entire win. Motion is the drift term's job; this covers the
+    // rest -- the hyperspace flash (which was itself fading in N-frame steps), the sky colours, the sky
+    // type, and the star twinkle frame, which advances on whole epochTime seconds.
+    uint64_t envContentKey = 1469598103934665603ull;
+    {
+      auto mix = [&envContentKey](uint64_t v) { envContentKey = (envContentKey ^ v) * 1099511628211ull; };
+      auto mixColor = [&mix](Color const& c) { Vec4B v = c.toRgba(); mix(v[0]); mix(v[1]); mix(v[2]); mix(v[3]); };
+      mixColor(envSky.flashColor);
+      mixColor(envSky.mainSkyColor);
+      mixColor(envSky.topRectColor);
+      mixColor(envSky.bottomRectColor);
+      mixColor(envSky.environmentLight);
+      mix((uint64_t)envSky.type);
+      mix((uint64_t)(unsigned)floor(255.0f * envSky.skyAlpha));
+      mix((uint64_t)(unsigned)floor(255.0f * envSky.dayLevel));
+      mix((uint64_t)(int64_t)envSky.epochTime);   // star twinkle advances on whole seconds
+    }
+    bool envContentChanged = envContentKey != m_envCacheContentKey;
+
+    // envCadence STAYS the last operand and is still evaluated unconditionally above, so the frame
+    // counter advances exactly as before and the N-cadence phase does not shift. It remains the ceiling
+    // on staleness for anything that drifts below the per-frame threshold but accumulates.
+    bool refreshEnv = envInvalidated || envMotion || envContentChanged || envCadence;
     (refreshEnv ? envRefreshed : envSkipped).inc(1);
     m_envRefreshedThisFrame = refreshEnv;
 
@@ -172,6 +217,14 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // render target moved, so the draws are otherwise identical to the direct path.
       drawEnv();
       m_envCache.recordFilled(envScreenSize, envPixelRatio);
+      // Record WHAT WAS DRAWN, beside the record of THAT it was drawn. Drift is measured from here, so
+      // these must be written by the act that fills the cache and nowhere else -- the same discipline
+      // that the descriptor-beside-the-spec rule exists for.
+      m_envCacheStarOffset = envSky.starOffset;
+      m_envCacheStarRotation = envSky.starRotation;
+      m_envCacheWorldOffset = envSky.worldOffset;
+      m_envCacheWorldRotation = envSky.worldRotation;
+      m_envCacheContentKey = envContentKey;
     }
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
 
