@@ -242,7 +242,7 @@ private:
   public:
     explicit GlGpuTimer(function<void()> flushPending);
 
-    void begin(String const& name) override;
+    void begin(String const& name, MetricDesc const& desc) override;
     void end(String const& name) override;
     Maybe<int64_t> lastMicros(String const& name) const override;
 

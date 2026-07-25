@@ -598,14 +598,8 @@ void ClientApplication::render() {
       return e && *e ? (int)strtol(e, nullptr, 10) : 7;
     }();
     if (!skipInterface) {
-      // skipInterface is a debug env var (off by default), not persisted config, so unlike the
-      // parallax/environment cases this single site is safe: no live session can get stuck skipping it.
-      [[maybe_unused]] static bool const interfaceGpuDesc = [] {
-        Telemetry::declare("render.pass.interface.gpu_us",
-          MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-        return true;
-      }();
-      renderer->gpuTimer().begin("render.pass.interface.gpu_us");
+      renderer->gpuTimer().begin("render.pass.interface.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
       if (uiMask & 1) m_mainInterface->renderInWorldElements();
       if (uiMask & 2) m_mainInterface->render();
       if (uiMask & 4) m_cinematicOverlay->render();

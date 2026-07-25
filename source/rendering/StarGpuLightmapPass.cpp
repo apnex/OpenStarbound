@@ -67,12 +67,8 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // Owner=Gl (GPU work inside the GPU frame, closes against render.frame.gpu_span_us) but
   // cadence=Recompute: this fires per lightmap recompute, not per frame, so its COUNT is checked
   // against recomputes, not frames. Same for point/compose/upscale below.
-  [[maybe_unused]] static bool const spreadGpuDesc = [] {
-    Telemetry::declare("lighting.gpu.spread.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
-    return true;
-  }();
-  m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us");
+  m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
   if (packedEmission) {
     m_emissionRGBA.resize(texels * 4);
     for (size_t i = 0; i < texels; ++i) {
@@ -163,12 +159,8 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
-    [[maybe_unused]] static bool const pointGpuDesc = [] {
-      Telemetry::declare("lighting.gpu.point.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
-      return true;
-    }();
-    m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us");
+    m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
@@ -232,12 +224,8 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
-  [[maybe_unused]] static bool const composeGpuDesc = [] {
-    Telemetry::declare("lighting.gpu.compose.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
-    return true;
-  }();
-  m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us");
+  m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
      {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
@@ -255,12 +243,8 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // effect as a (bilinear) upscale -- the bug that made Form 2's first build show stepped shadow edges.
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
-    [[maybe_unused]] static bool const upscaleGpuDesc = [] {
-      Telemetry::declare("lighting.gpu.upscale.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
-      return true;
-    }();
-    m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us");
+    m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
     m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));

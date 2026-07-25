@@ -44,15 +44,15 @@ void WorldPass::adjustLighting(WorldRenderData& renderData) {
 }
 
 void WorldPass::renderWorld(WorldCamera const& camera, WorldRenderData& renderData) {
-  // Declared here, not where the value lands: the value is recorded generically inside OpenGlRenderer
-  // (Telemetry::timer(name).record(...), ~3 frames after the GPU did the work), which has no idea what
-  // "render.pass.world.gpu_us" means. This pass is the one place that does.
-  [[maybe_unused]] static bool const gpuDesc = [] {
-    Telemetry::declare("render.pass.world.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-    return true;
-  }();
-  m_renderer->gpuTimer().begin("render.pass.world.gpu_us");
+  // The descriptor travels WITH begin(), not separately: the value is recorded generically inside
+  // OpenGlRenderer (Telemetry::timer(name, desc).record(...), ~3 frames after the GPU did the work, at
+  // GlGpuTimer::begin's own readback), which has no idea what "render.pass.world.gpu_us" MEANS. This pass
+  // is the one place that does, so it supplies the meaning at the call that starts the timing -- the same
+  // call that must happen for the metric to exist at all. That makes an undeclared GPU metric
+  // unrepresentable: there is no longer a separate declare statement that a branch or a config flag could
+  // route around.
+  m_renderer->gpuTimer().begin("render.pass.world.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : renderData.entityDrawables) {
     for (auto& p : ed.layers)

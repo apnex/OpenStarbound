@@ -3,6 +3,7 @@
 #include "StarImage.hpp"
 #include "StarMaybe.hpp"
 #include "StarString.hpp"
+#include "StarTelemetry.hpp"
 #include "StarVector.hpp"
 
 namespace Star {
@@ -22,11 +23,18 @@ namespace Star {
 // SHIPPED, DEFAULT-ON telemetry -- the per-pass numbers behind /telemetry and the debug HUD. This one is
 // permanent. Note the spans cannot nest (GL_TIME_ELAPSED cannot), so begin() while another is open is a
 // no-op, not a lie.
+//
+// begin() TAKES THE DESCRIPTOR. GPU values are recorded generically, three frames later, by code
+// (OpenGlRenderer) that cannot know what a pass means -- so unlike a CPU Telemetry::timer() handle, there is
+// no declaration site that naturally dominates the recording site. Requiring the desc at begin() closes that
+// gap structurally: a timing cannot be started without it, so an undeclared GPU metric is unrepresentable,
+// and a multi-site key just repeats the same desc at each call rather than needing one declaration proven to
+// dominate every site.
 class GpuTimer {
 public:
   virtual ~GpuTimer() = default;
 
-  virtual void begin(String const& name) = 0;
+  virtual void begin(String const& name, MetricDesc const& desc) = 0;
   virtual void end(String const& name) = 0;
   // Last value read back for `name`, or nothing if none has landed yet. Results arrive ~3 frames late by
   // design: reading them sooner would stall the pipeline, and an instrument that changes what it measures is

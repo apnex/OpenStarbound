@@ -268,12 +268,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
   m_worldPass->renderWorld(m_camera, renderData);
 
-  [[maybe_unused]] static bool const gpuDesc = [] {
-    Telemetry::declare("render.pass.compose.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-    return true;
-  }();
-  m_renderer->gpuTimer().begin("render.pass.compose.gpu_us");
+  m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0)
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));

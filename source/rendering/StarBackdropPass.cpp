@@ -131,17 +131,11 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // never sampled. envCache is single-sample, so rendering into it and sampling it back is valid under AA.
   // The gate was a symptom patch that outlived its symptom, and it was silently costing every AA player the
   // whole env-cache lever.
-  // Placed above the branch below so one declaration dominates both begin() sites (see StarWorldPass.cpp
-  // for why declaration lives at the pass and not where the value is recorded).
-  [[maybe_unused]] static bool const envGpuDesc = [] {
-    Telemetry::declare("render.pass.environment.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-    return true;
-  }();
   bool envCacheActive = (envRefreshInterval > 1 || envOracle);
   if (!envCacheActive) {
     m_envCache.invalidate();
-    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     drawEnv();
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
   } else {
@@ -164,7 +158,8 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     (refreshEnv ? envRefreshed : envSkipped).inc(1);
     m_envRefreshedThisFrame = refreshEnv;
 
-    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     if (refreshEnv) {
       // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
       // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
@@ -202,16 +197,8 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
       // mutations of the shared effect can't bleed in -- no forked config needed.
       //
-      // Declared here (one of two begin() sites for this key -- the CM-1 reconcile site in renderParallax
-      // below is the other). This branch only runs when backdropComposeMerge=false; that config defaults to
-      // true, so in a default session the OTHER site is the one that actually declares it. Both declare
-      // identically so whichever config is live, the key is never left undeclared.
-      [[maybe_unused]] static bool const envComposeGpuDesc = [] {
-        Telemetry::declare("render.pass.environment.compose.gpu_us",
-          MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-        return true;
-      }();
-      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
+      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
       m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
         {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
       m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
@@ -400,16 +387,6 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       && (parallaxRefreshInterval > 1 || parallaxOracle)
       && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
 
-  // Hoisted above the branch below (like render.pass.environment.gpu_us above) so one declaration
-  // dominates BOTH begin() sites. It must not sit inside `if (!parallaxCacheActive)`: with
-  // parallaxOracle on, parallaxParked is bypassed and parallaxCacheActive can be true from frame 1,
-  // so the direct-path branch -- and a declare living only inside it -- would never run.
-  [[maybe_unused]] static bool const parallaxGpuDesc = [] {
-    Telemetry::declare("render.pass.parallax.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-    return true;
-  }();
-
   static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
   static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped",
@@ -428,24 +405,16 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // now, standalone, so env still reaches "main" exactly once before the direct parallax draws over it. Same
     // passthrough the deferred env compose would have used; env stays byte-identical.
     if (m_envComposeDeferred) {
-      // Declared here TOO, identically to renderEnvironment's else-branch site above: the two begin() sites
-      // live in DIFFERENT functions gated by the same backdropComposeMerge flag, so no single declare
-      // dominates both -- and since the flag defaults to true, THIS is the site a default session actually
-      // takes. (Contrast render.pass.parallax.gpu_us, whose two begin() sites both live in renderParallax and
-      // so share a dominator -- its single declare sits above their branch, near the top of that function.)
-      [[maybe_unused]] static bool const envComposeGpuDescReconcile = [] {
-        Telemetry::declare("render.pass.environment.compose.gpu_us",
-          MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-        return true;
-      }();
-      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us");
+      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
       m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_envCache.name(),
         {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
       m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
       m_renderer->switchEffectConfig("world");
       m_envComposeDeferred = false;
     }
-    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     drawParallax();
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
   } else {
@@ -482,7 +451,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     }
     (refreshParallax ? parallaxRefreshedCtr : parallaxSkippedCtr).inc(1);
 
-    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     if (refreshParallax) {
       m_renderer->setRenderTarget(m_parallaxCache.name(), parallaxScreenSize);
       m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
@@ -523,12 +493,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // Composite into "main" every frame. CM-1: if the env compose was deferred, do the MERGED pass (env opaque
     // base + parallax premultiplied-over, one full-screen quad via backdropCompose); otherwise the standard
     // premultiplied-over parallax composite over the env already sitting in main.
-    [[maybe_unused]] static bool const parallaxComposeGpuDesc = [] {
-      Telemetry::declare("render.pass.parallax.compose.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-      return true;
-    }();
-    m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us");
+    m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     if (m_envComposeDeferred) {
       mergedCompose(parallaxScreenSize);
       m_envComposeDeferred = false;
