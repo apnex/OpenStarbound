@@ -41,39 +41,20 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 105 — **40 dangling** across 23 tasks.
+**Commit ids cited in task text:** 105, of which **37 resolve to nothing** in either repository.
 
-A dangling id is one the task cites that resolves to no commit on any branch. These are
-almost entirely pre-2026-07-19: the branch reorg rewrote history, so content survived and
-ids did not. The citation still *reads* as though it resolves, which is the hazard — acting
-on one produced the "implementation lost, rebuild it" conclusion about work that had
-shipped. Re-anchor them to the live equivalent, found by commit *message*, not by id.
+That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
-| Task | Dangling ids |
-|-----:|:-------------|
-| [#109](#c29c1332-109) | `a322c611` |
-| [#117](#c29c1332-117) | `5b130e4` |
-| [#118](#c29c1332-118) | `9d2e0fa0` `f4e43e72` |
-| [#125](#c29c1332-125) | `8d9cb4b` |
-| [#126](#c29c1332-126) | `649e2965` |
-| [#128](#c29c1332-128) | `e68355d9` |
-| [#134](#c29c1332-134) | `e39c36c5` `2f47a6e` `3f63085` |
-| [#136](#c29c1332-136) | `8bf7777` `ba54397f` |
-| [#141](#c29c1332-141) | `e17f9b5c` |
-| [#142](#c29c1332-142) | `df159908` `cb1332ce` `392377d7` |
-| [#144](#c29c1332-144) | `854b4b7f` `f5f8b76c` `3b01c4ca` |
-| [#147](#c29c1332-147) | `6d2856c2` `5d7a09d7` |
-| [#149](#c29c1332-149) | `bc7732673` |
-| [#150](#c29c1332-150) | `ef1ed43cf` |
-| [#151](#c29c1332-151) | `ffd176e2a` |
-| [#152](#c29c1332-152) | `fbbad028f` |
-| [#153](#c29c1332-153) | `8e05b0882` `171c97e1` `6458816a` `1b0f0923f5677022` |
-| [#154](#c29c1332-154) | `c1d4d0533` `c6ffbdc3d` `c05be20bf` |
-| [#155](#c29c1332-155) | `4fcf71033` |
-| [#157](#c29c1332-157) | `a1ec80598` |
-| [#158](#c29c1332-158) | `91bed0d2a` `f46500f90` |
-| [#159](#c29c1332-159) | `b74937721` `d05f21682` `e30c21c4d` |
-| [#160](#c29c1332-160) | `c6ffbdc3` |
+- **22** — re-anchored to a live commit
+- **9** — a deployed-binary MD5, never a commit
+- **3** — an A/B render frame hash, never a commit
+- **3** — dead, with no live equivalent that could be defended
+
+**Unexplained ids: 0.**  ✅ Every dead id has a recorded meaning.
+
+**A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
+
+Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
 **Completed tasks citing no commit and no doc:** 79 of 89.
 
@@ -155,7 +136,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#128](#c29c1332-128) | `c29c1332` | done | Lighting GPU-pass dispatch CPU lever (~13% render-thread frame CPU) | — | — |
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
 | [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
-| [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
+| [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
 | [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
 | [#133](#c29c1332-133) | `c29c1332` | open | Render-target/FBO hardening: the PRIZE (RetainedSurface) shipped; items 1+2 unverified, re-scope | — | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
@@ -1047,6 +1028,7 @@ Sovereign apnex_ fork of the scan/print/dup capability (BiaB 729460427 + MiaB 72
 
 status: **completed**
 
+- `e02d4484` docs(board): self-check the board -- dangling commit ids and missing evidence
 - `ba0d22ef` docs: make the task board durable -- generated docs/board.md + exporter
 - `84203421` docs(telemetry): record the two #131 traps -- saturating glGetError, and KHR_debug for localisation [#131]
 - `32b8f849` render: fix the per-frame GL_INVALID_VALUE -- inactive vertex attributes

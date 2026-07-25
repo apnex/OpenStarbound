@@ -64,6 +64,29 @@ SHA_LIKE = re.compile(r"\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b")
 # first attempt at this check reported two uuid fragments as dangling commits. Blank uuids out
 # first: a rule, not a blocklist of the fragments that happened to bite.
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
+# Not every hex run is a commit. The board also records BINARY MD5s (which deploy was running when a
+# measurement was taken) and RENDER FRAME HASHES from the A/B harness. 12 of the first 40 ids this
+# check flagged were of that kind and had never been commits.
+#
+# The obvious fix -- look for "md5"/"binary"/"hash" NEAR the hex -- was measured and REJECTED. Swept
+# over every window from 0 to 95 characters there is no safe setting: at +/-10 it catches 4 of the 12,
+# and every window that catches more also hides REAL dangling commits (8bf7777, cb1332ce, 8e05b0882
+# each sit within a few words of an unrelated "binary" or "hash"). An integrity check that can
+# silently hide a broken reference is worse than one that is merely noisy, so the heuristic is gone.
+#
+# Instead the CITATION FORMAT is normalised and matched exactly: a non-commit hash is written
+# `md5:df159908` or `framehash:1b0f0923f5677022` in the task text. That is a rule over a format we
+# control rather than a guess about prose, and it cannot mistake a commit for a checksum.
+NON_COMMIT_PREFIX = re.compile(r"(?:md5|framehash|binary-md5)\s*[:=]\s*$", re.I)
+# The board cites commits in TWO repositories: this one, and the notes/design repo where specs and
+# plans live. Three ids were reported dangling purely because the check only ever looked in one of
+# them. Silently skipped when absent -- on another machine this file is the copy that travels and
+# the sibling repo may not exist.
+RELATED_REPOS = [pathlib.Path("/root/kubebound")]
+# Hand-curated, reviewed, version-controlled: what each cited hex string ACTUALLY is. Task
+# descriptions are left untouched -- they are the historical record -- and this is the interpretation
+# laid beside them. An id listed here is explained; the number that must stay at zero is UNEXPLAINED.
+ANCHORS = REPO / "docs" / "board-anchors.json"
 
 STATUS_ORDER = {"in_progress": 0, "pending": 1, "completed": 2}
 
@@ -141,32 +164,53 @@ def dangling_index(stores_data):
     Resolution is one `git cat-file --batch-check` for every candidate at once, not one subprocess
     per sha.
     """
-    cited = {}
+    cited, noncommit = {}, {}
     for _, tasks in stores_data:
         for t in tasks:
             text = strip_uuids(str(t.get("subject", "")) + " " + str(t.get("description", "")))
-            found = list(dict.fromkeys(SHA_LIKE.findall(text)))
-            if found:
-                cited[str(t["id"])] = found
+            keep, skip = [], []
+            for m in SHA_LIKE.finditer(text):
+                prefix = text[max(0, m.start() - 24): m.start()]
+                (skip if NON_COMMIT_PREFIX.search(prefix) else keep).append(m.group(0))
+            if keep:
+                cited[str(t["id"])] = list(dict.fromkeys(keep))
+            if skip:
+                noncommit[str(t["id"])] = list(dict.fromkeys(skip))
 
     candidates = sorted({s for v in cited.values() for s in v})
     if not candidates:
-        return {}, 0
+        return {}, 0, noncommit
 
-    try:
-        proc = subprocess.run(["git", "-C", str(REPO), "cat-file", "--batch-check"],
-                              input="".join(f"{s}^{{commit}}\n" for s in candidates),
-                              capture_output=True, text=True)
-    except FileNotFoundError:
-        return {}, 0
-    # One output line per input line, in order: "<sha> commit <size>" or "<query> missing".
     alive = set()
-    for s, line in zip(candidates, proc.stdout.splitlines()):
-        if " missing" not in line and " ambiguous" not in line:
-            alive.add(s)
+    for repo in [REPO, *RELATED_REPOS]:
+        if not (repo / ".git").exists() and not repo.is_dir():
+            continue
+        todo = [s for s in candidates if s not in alive]
+        if not todo:
+            break
+        try:
+            proc = subprocess.run(["git", "-C", str(repo), "cat-file", "--batch-check"],
+                                  input="".join(f"{s}^{{commit}}\n" for s in todo),
+                                  capture_output=True, text=True)
+        except FileNotFoundError:
+            continue
+        # One output line per input line, in order: "<sha> commit <size>" or "<query> missing".
+        for s, line in zip(todo, proc.stdout.splitlines()):
+            if " missing" not in line and " ambiguous" not in line:
+                alive.add(s)
+
+    anchors = {}
+    if ANCHORS.exists():
+        try:
+            anchors = json.loads(ANCHORS.read_text()).get("anchors", {})
+        except json.JSONDecodeError:
+            anchors = {}
 
     dead = {tid: [s for s in shas if s not in alive] for tid, shas in cited.items()}
-    return {k: v for k, v in dead.items() if v}, len(candidates)
+    dead = {k: v for k, v in dead.items() if v}
+    unexplained = {tid: [s for s in shas if s not in anchors] for tid, shas in dead.items()}
+    return ({k: v for k, v in unexplained.items() if v}, len(candidates), noncommit,
+            dead, anchors)
 
 
 def doc_index():
@@ -212,7 +256,7 @@ def fence_for(text):
     return "`" * max(3, longest + 1)
 
 
-def render(stores_data, commits, doccites, dangling, cited_total):
+def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dead_all, anchors):
     L = []
     A = L.append
 
@@ -269,21 +313,56 @@ def render(stores_data, commits, doccites, dangling, cited_total):
     A("someone has to go and discover. It is the same discipline as the render oracles: a check that")
     A("reports but does not surface is not a check.")
     A("")
-    dead_n = sum(len(v) for v in dangling.values())
-    A(f"**Commit ids cited in task text:** {cited_total} — "
-      + (f"**{dead_n} dangling** across {len(dangling)} tasks." if dead_n else "all resolve. ✅"))
+    dead_n = sum(len(v) for v in dead_all.values())
+    unex_n = sum(len(v) for v in dangling.values())
+    kinds = {}
+    for sha in {s for v in dead_all.values() for s in v}:
+        k = anchors.get(sha, {}).get("kind", "unexplained")
+        kinds[k] = kinds.get(k, 0) + 1
+
+    A(f"**Commit ids cited in task text:** {cited_total}, of which **{dead_n} resolve to nothing** "
+      f"in either repository.")
+    A("")
+    if dead_n:
+        A("That is expected and mostly harmless: TWO history rewrites destroyed these ids while "
+          "preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one "
+          "around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What "
+          "matters is not that an id is dead but whether anyone can still say what it *was*. "
+          "`docs/board-anchors.json` answers that, id by id:")
+        A("")
+        for k, label in (("commit", "re-anchored to a live commit"),
+                         ("md5", "a deployed-binary MD5, never a commit"),
+                         ("framehash", "an A/B render frame hash, never a commit"),
+                         ("unresolvable", "dead, with no live equivalent that could be defended"),
+                         ("unexplained", "NOT YET INVESTIGATED")):
+            if kinds.get(k):
+                A(f"- **{kinds[k]}** — {label}")
+        A("")
+    A(f"**Unexplained ids: {unex_n}.**" + ("  ✅ Every dead id has a recorded meaning."
+      if not unex_n else "  ← investigate these; they are citations nobody can resolve."))
     A("")
     if dangling:
-        A("A dangling id is one the task cites that resolves to no commit on any branch. These are")
-        A("almost entirely pre-2026-07-19: the branch reorg rewrote history, so content survived and")
-        A("ids did not. The citation still *reads* as though it resolves, which is the hazard — acting")
-        A("on one produced the \"implementation lost, rebuild it\" conclusion about work that had")
-        A("shipped. Re-anchor them to the live equivalent, found by commit *message*, not by id.")
-        A("")
-        A("| Task | Dangling ids |")
-        A("|-----:|:-------------|")
+        A("| Task | Unexplained ids |")
+        A("|-----:|:----------------|")
         for tid in sorted(dangling, key=lambda x: int(x) if x.isdigit() else 1 << 30):
             A(f"| [#{tid}](#c29c1332-{tid}) | " + " ".join(f"`{s}`" for s in dangling[tid]) + " |")
+        A("")
+
+    offint = sum(1 for v in anchors.values() if v.get("kind") == "commit" and v.get("onIntegration") is False)
+    if offint:
+        A(f"**A caveat the anchors carry, and the reason they are not just a lookup table:** {offint} of "
+          "the re-anchored commits are *not ancestors of* `integration`. They survive only on "
+          "`dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one "
+          "squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a "
+          "second way, and each anchor records the HEAD carrier as well.")
+        A("")
+    aud = sum(1 for v in anchors.values() if v.get("audited"))
+    over = sum(1 for v in anchors.values() if v.get("upheld") is False)
+    if aud:
+        A(f"Mappings resting on message-matching rather than a direct id link were sent to an "
+          f"adversarial auditor instructed to refute them: **{aud} audited, {over} overturned** to "
+          "`unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking "
+          "and points at the wrong commit, which is the exact failure this file exists to remove.")
         A("")
 
     comp = [t for _, ts in stores_data for t in ts if t.get("status") == "completed"]
@@ -400,8 +479,9 @@ def main():
         print("Every store was empty; refusing to write an empty board.", file=sys.stderr)
         return 2
 
-    dangling, cited_total = dangling_index(stores_data)
-    text = render(stores_data, commit_index(), doc_index(), dangling, cited_total)
+    dangling, cited_total, noncommit, dead_all, anchors = dangling_index(stores_data)
+    text = render(stores_data, commit_index(), doc_index(), dangling, cited_total, noncommit,
+                  dead_all, anchors)
 
     if args.check:
         current = OUT.read_text() if OUT.exists() else ""
