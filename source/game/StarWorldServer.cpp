@@ -665,6 +665,26 @@ namespace {
   static TelemetryTimer const tcCommit         = simComputePart("tick.server.commit.us");
   static TelemetryTimer const tcNetSync        = simComputePart("tick.server.compute.netsync.us");
   static TelemetryTimer const tcEpilogue       = simComputePart("tick.server.compute.epilogue.us");
+
+  // THE SIM SCENE FINGERPRINT -- owner `sim`'s answer to `lighting.lights.sources`.
+  //
+  // An A/B on a sim phase is only valid if both arms saw the SAME WORLD, and until now nothing in the
+  // sim budget tracked that. It bit immediately: the first attempt at the L-WIND-A measurement (#84)
+  // produced a clean-looking +5.7% on tick.server.compute.entities.us that dissolved on inspection --
+  // scene load varied 26% between runs and correlated +0.83 with the very phase under test, and the
+  // single heaviest run happened to land in the lever-OFF arm. The apparent win was the scene, not the
+  // lever.
+  //
+  // Same lesson as `calc.cells` vs `lights.sources` on the lighting side, and the same rule: PIN THE
+  // LOCATION, THEN ASSERT THE FINGERPRINT MATCHES ACROSS THE PAIR BEFORE BELIEVING ANY DELTA. A phase
+  // that moved when nothing touched it is the tell that the comparison changed, not the code.
+  //
+  // Published from the epilogue, which is where the count is already read for the LogMap line -- the
+  // act that establishes it. It is inside the pause-gated function, so on a fully paused capture it
+  // holds its last value; that is honest here in a way it was not for `lighting.cells`, because a
+  // world that is not ticking is not gaining or losing entities either.
+  static TelemetryGauge gEntitiesLive = Telemetry::gauge("sim.entities.live",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Detail});
 }
 
 void WorldServer::update(float dt) {
@@ -1012,6 +1032,7 @@ void WorldServer::update(float dt) {
 
   m_expiryTimer.tick(dt);
 
+  gEntitiesLive.set((int64_t)m_entityMap->size());
   LogMap::set(strf("server_{}_entities", m_worldId), strf("{} in {} sectors", m_entityMap->size(), m_tileArray->loadedSectorCount()));
   LogMap::set(strf("server_{}_time", m_worldId), strf("age = {:4.2f}, day = {:4.2f}/{:4.2f}s", epochTime(), timeOfDay(), dayLength()));
   LogMap::set(strf("server_{}_active_liquid", m_worldId), m_liquidEngine->activeCells());
