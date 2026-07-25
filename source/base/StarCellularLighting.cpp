@@ -268,8 +268,9 @@ void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obst
   unsigned width = (unsigned)m_calculationRegion.width();
   unsigned height = (unsigned)m_calculationRegion.height();
 
-  // RGB_F float emission for the GPU spread; RGB24 obstacle mask (no
-  // single-channel format exists, the shader reads .r). reset() zero-fills.
+  // RGB_F float emission for the GPU spread; RGB24 obstacle mask (no single-channel format exists, the
+  // shader reads .r). NOTE: Image::reset does NOT zero-fill on a same-size call -- it early-outs. The loop
+  // below writes every pixel, so that is correct and deliberate; do not add a clear back.
   emission.reset(width, height, PixelFormat::RGB_F);
   obstacle.reset(width, height, PixelFormat::RGB24);
 

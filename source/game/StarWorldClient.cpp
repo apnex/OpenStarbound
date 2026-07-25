@@ -2285,15 +2285,26 @@ void WorldClient::lightingCalc() {
   {
     TelemetryScope publishScope(publishTimer);
     MutexLocker mapLocker(m_lightMapMutex);
+    // SWAP the five GPU buffers, not move. Moving leaves the pending ones empty (Image::operator=(Image&&)
+    // takes the source's data AND its dimensions; vector move leaves capacity 0), so next recompute every
+    // reset()/resize() below misses its same-size early-out and re-allocates + ZERO-FILLS ~788 KB that is
+    // then immediately overwritten in full. Swapping hands last frame's correctly-sized buffers back.
+    //
+    // m_lightMap KEEPS its move -- do NOT swap it. It is the one buffer that is not rewritten every
+    // recompute: calculate() is skipped in GPU mode, so m_pendingLightMap stays empty, and moving is what
+    // makes m_lightMap empty too. That emptiness is load-bearing -- see the lightMapBorder note in the
+    // export phase: WorldPainter must not reverse-derive the border from a CPU lightMap width, and an
+    // empty map is how the GPU path signals "there is no CPU lightmap this frame". A swap would hand it
+    // stale non-empty data from two frames ago and the world would render against the wrong geometry.
     m_lightMinPosition = lightRange.min();
     m_lightMap = std::move(m_pendingLightMap);
     m_lightingInputsValid = lightingGpu;
     if (lightingGpu) {
-      m_lightingEmission = std::move(m_pendingLightingEmission);
-      m_lightingObstacle = std::move(m_pendingLightingObstacle);
-      m_lightingPointLights = std::move(m_pendingLightingPointLights);
-      m_lightingEmissionHalf = std::move(m_pendingLightingEmissionHalf);
-      m_lightingObstacleR8 = std::move(m_pendingLightingObstacleR8);
+      std::swap(m_lightingEmission, m_pendingLightingEmission);
+      std::swap(m_lightingObstacle, m_pendingLightingObstacle);
+      std::swap(m_lightingPointLights, m_pendingLightingPointLights);
+      std::swap(m_lightingEmissionHalf, m_pendingLightingEmissionHalf);
+      std::swap(m_lightingObstacleR8, m_pendingLightingObstacleR8);
       m_lightingBorder = lightMapBorder;
     }
   }
