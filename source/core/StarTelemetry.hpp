@@ -14,7 +14,7 @@ struct MetricNode; // defined in the .cpp
 // MAIN thread roughly three frames after the GPU did the work (StarRenderer_opengl.cpp:1050-1067), so stamping
 // the recording thread -- the obvious design -- would label every GPU sample as CPU/main. Declaration is both
 // correct and cheaper, costing nothing on the sampling path.
-enum class MetricDomain : uint8_t { Cpu, Gpu };
+enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
 
 // The LOGICAL budget a sample belongs to -- deliberately not an OS thread. WorldClient::lightingCalc() runs on
 // its own thread or inline on the main thread depending on m_asyncLighting (StarWorldClient.cpp:61,574); it
@@ -35,7 +35,7 @@ enum class MetricCadence : uint8_t { Call, Frame, Tick, Recompute };
 enum class MetricRole : uint8_t { Detail, Budget, Total };
 
 struct MetricDesc {
-  MetricDomain domain = MetricDomain::Cpu;
+  MetricDomain domain = MetricDomain::Unknown;
   MetricOwner owner = MetricOwner::Unknown;
   MetricCadence cadence = MetricCadence::Call;
   MetricRole role = MetricRole::Detail;
@@ -117,6 +117,7 @@ public:
   // meaning is known -- GPU pass timers are begun by the render passes but recorded generically inside
   // OpenGlRenderer, and markTick() builds its key with strf.
   static void declare(String const& key, MetricDesc const& desc);
+  // Off the hot path: takes the registry mutex (every other Telemetry read accessor is lock-free relaxed).
   static MetricDesc describe(String const& key);
 
   // Master cheap-counter gate (default true). Instrumentation may check this to skip work,
@@ -129,7 +130,10 @@ public:
 
   static void markTick(String const& threadTag); // bumps tick.<threadTag>.seq
 
-  // Read-only full metric tree. Buckets: "counters", "gauges", "timers", "rates".
+  // Read-only full metric tree (schema v2): {"meta": {"schema": 2}, "owners": {...}, "metrics": {key: {...}}}.
+  // "owners" is a static description of each owner's denominator/total metric keys. "metrics" is a flat map
+  // from dotted key to a per-metric object carrying its type, its declared descriptor (domain/owner/cadence/
+  // role), any descConflict/typeConflict flag, and its type-specific value fields.
   static Json snapshot();
 
   // Zero all metric values (tests / a measurement window). Off the hot path only.

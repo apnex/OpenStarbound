@@ -43,7 +43,7 @@ TEST(TelemetryServerTick, PhaseTimersPopulateUnderDeepTracing) {
   ASSERT_FALSE(worldThread->serverErrorOccurred());
 
   Json snap = Telemetry::snapshot();
-  Json timers = snap.getObject("timers");
+  Json timers = snap.getObject("metrics");
   EXPECT_GE(timers.get("tick.server.publish.us").getUInt("count"), 1u);
   EXPECT_GE(timers.get("tick.server.compute.us").getUInt("count"), 1u);
   EXPECT_GE(timers.get("tick.server.commit.us").getUInt("count"), 1u);

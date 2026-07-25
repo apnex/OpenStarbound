@@ -23,13 +23,45 @@ struct MetricNode {
   std::atomic<int64_t> tmax{INT64_MIN};
   // Rate (owner-thread writes; snapshot best-effort reads)
   std::atomic<double> rate{0.0};
-  MetricDesc desc;                    // guarded by Registry::mutex (written at declare, read at snapshot)
-  bool declared = false;              // ditto
-  std::atomic<bool> descConflict{false};  // two call sites declared the same key differently
+  // Descriptor state. ALL of the following are guarded by Registry::mutex (written at declare/getOrCreate
+  // time, read at snapshot/describe time) -- unlike the value fields above, none of this is on the lock-free
+  // hot path, so plain (non-atomic) fields are correct and, unlike std::atomic<bool>, don't mislead a future
+  // reader into thinking this is touched outside the lock.
+  MetricDesc desc;
+  bool declared = false;      // has `desc` been set by a declare() or a typed accessor yet?
+  bool descConflict = false;  // two call sites declared this key with different descriptors
+  bool typeConflict = false;  // two call sites requested this key as different MetricTypes
   explicit MetricNode(MetricType t) : type(t) {}
 };
 
 namespace {
+  // First declaration wins. A conflicting second one is a BUG in the call sites, not a runtime condition to
+  // paper over: it means two places disagree about what the metric means. Flag it (the caller logs, since
+  // this runs under Registry::mutex and must not) and keep the first so the data stays self-consistent; the
+  // telemetry self-test asserts none survive. Returns true iff a NEW conflict was just flagged.
+  bool applyDesc(MetricNode& n, MetricDesc const& desc) {
+    if (!n.declared) {
+      n.desc = desc;
+      n.declared = true;
+      return false;
+    } else if (n.desc != desc) {
+      n.descConflict = true;
+      return true;
+    }
+    return false;
+  }
+
+  // A descriptor declared for a key with no MetricNode yet -- nothing has been sampled, so there is no type
+  // to attach it to. Held here until the first counter/gauge/timer/rate call creates the node (with its real
+  // MetricType) and adopts it. This is what keeps declare() from ever having to guess a MetricType: guessing
+  // (the previous design) silently mistyped any key declared before its first sample, e.g. the planned
+  // `declare(key, desc); seq = counter(key);` in markTick would have made a Timer out of what is actually a
+  // Counter, and the counter's value would never appear in the snapshot.
+  struct PendingDesc {
+    MetricDesc desc;
+    bool conflict = false;
+  };
+
   // Registry storage: a node-based StableHashMap (std::unordered_map). Two independent
   // guarantees keep raw MetricNode* handles valid for the life of the registry: the map's
   // element nodes never move on rehash (node-based), and the heap-allocated MetricNode the
@@ -39,40 +71,102 @@ namespace {
   struct Registry {
     Mutex mutex;
     StableHashMap<String, std::unique_ptr<MetricNode>> nodes;
+    StableHashMap<String, PendingDesc> pendingDescs;  // declared but not yet sampled; guarded by mutex
     std::atomic<bool> enabled{true};
     std::atomic<bool> deepEnabled{false};
 
     MetricNode* getOrCreate(String const& key, MetricType type) {
+      bool descConflictNow, typeConflictNow;
+      MetricNode* n = getOrCreateInner(key, type, MetricDesc{}, /* hasDesc */ false, descConflictNow, typeConflictNow);
+      logConflicts(key, descConflictNow, typeConflictNow);
+      return n;
+    }
+
+    // Combined declare + getOrCreate for the typed accessor overloads (Telemetry::counter(key, desc), etc.):
+    // one lock acquisition instead of declare() followed by getOrCreate().
+    MetricNode* getOrCreateDeclared(String const& key, MetricType type, MetricDesc const& desc) {
+      bool descConflictNow, typeConflictNow;
+      MetricNode* n = getOrCreateInner(key, type, desc, /* hasDesc */ true, descConflictNow, typeConflictNow);
+      logConflicts(key, descConflictNow, typeConflictNow);
+      return n;
+    }
+
+    // Declares WITHOUT creating a node -- see PendingDesc above. Does not log; the caller does, after
+    // this returns, so Logger::warn never runs while `mutex` is held.
+    void declare(String const& key, MetricDesc const& desc) {
+      bool conflictNow = false;
+      {
+        MutexLocker locker(mutex);
+        auto it = nodes.find(key);
+        if (it != nodes.end()) {
+          conflictNow = applyDesc(*it->second, desc);
+        } else {
+          auto pit = pendingDescs.find(key);
+          if (pit == pendingDescs.end()) {
+            pendingDescs[key] = PendingDesc{desc, false};
+          } else if (pit->second.desc != desc) {
+            pit->second.conflict = true;
+            conflictNow = true;
+          }
+        }
+      }
+      if (conflictNow)
+        Logger::warn("Telemetry: '{}' declared twice with different descriptors -- keeping the first", key);
+    }
+
+    MetricDesc describe(String const& key) {
       MutexLocker locker(mutex);
       auto it = nodes.find(key);
       if (it != nodes.end())
-        return it->second.get();
-      auto node = std::make_unique<MetricNode>(type);
-      MetricNode* raw = node.get();
-      nodes[key] = std::move(node);
-      return raw;
+        return it->second->desc;
+      auto pit = pendingDescs.find(key);
+      if (pit != pendingDescs.end())
+        return pit->second.desc;
+      return MetricDesc{};
     }
 
-    // First declaration wins. A conflicting second one is a BUG in the call sites, not a runtime condition to
-    // paper over: it means two places disagree about what the metric means. Flag it loudly and keep the first
-    // so the data stays self-consistent; the telemetry self-test asserts none survive.
-    void declare(String const& key, MetricType type, MetricDesc const& desc) {
+  private:
+    // Shared body of getOrCreate/getOrCreateDeclared. Finds or creates the node (adopting any pending
+    // descriptor on creation), then -- if hasDesc -- applies `desc` to it exactly as declare() would to an
+    // existing node; a pending descriptor just adopted still counts as "already declared", so a `desc` that
+    // disagrees with it is correctly flagged as a conflict rather than silently overwriting it.
+    MetricNode* getOrCreateInner(String const& key, MetricType type, MetricDesc const& desc, bool hasDesc,
+                                  bool& descConflictNow, bool& typeConflictNow) {
+      descConflictNow = false;
+      typeConflictNow = false;
       MutexLocker locker(mutex);
-      auto it = nodes.find(key);
       MetricNode* n;
-      if (it == nodes.end()) {
+      auto it = nodes.find(key);
+      if (it != nodes.end()) {
+        n = it->second.get();
+        if (n->type != type && !n->typeConflict) {
+          n->typeConflict = true;
+          typeConflictNow = true;
+        }
+      } else {
         auto node = std::make_unique<MetricNode>(type);
         n = node.get();
+        auto pit = pendingDescs.find(key);
+        if (pit != pendingDescs.end()) {
+          n->desc = pit->second.desc;
+          n->declared = true;
+          n->descConflict = pit->second.conflict;
+          pendingDescs.erase(pit);
+        }
         nodes[key] = std::move(node);
-      } else {
-        n = it->second.get();
       }
-      if (!n->declared) {
-        n->desc = desc;
-        n->declared = true;
-      } else if (n->desc != desc) {
-        n->descConflict.store(true, std::memory_order_relaxed);
+      if (hasDesc)
+        descConflictNow = applyDesc(*n, desc);
+      return n;
+    }
+
+    void logConflicts(String const& key, bool descConflictNow, bool typeConflictNow) {
+      if (descConflictNow)
         Logger::warn("Telemetry: '{}' declared twice with different descriptors -- keeping the first", key);
+      if (typeConflictNow) {
+        Logger::error(
+            "Telemetry: '{}' requested as a different metric type than it was first registered as -- keeping the original type",
+            key);
       }
     }
   };
@@ -150,32 +244,27 @@ TelemetryRate Telemetry::rate(String const& key) {
 }
 
 TelemetryCounter Telemetry::counter(String const& key, MetricDesc const& desc) {
-  registry().declare(key, MetricType::Counter, desc);
-  return counter(key);
+  return TelemetryCounter(registry().getOrCreateDeclared(key, MetricType::Counter, desc));
 }
 TelemetryGauge Telemetry::gauge(String const& key, MetricDesc const& desc) {
-  registry().declare(key, MetricType::Gauge, desc);
-  return gauge(key);
+  return TelemetryGauge(registry().getOrCreateDeclared(key, MetricType::Gauge, desc));
 }
 TelemetryTimer Telemetry::timer(String const& key, MetricDesc const& desc) {
-  registry().declare(key, MetricType::Timer, desc);
-  return timer(key);
+  return TelemetryTimer(registry().getOrCreateDeclared(key, MetricType::Timer, desc));
 }
 TelemetryRate Telemetry::rate(String const& key, MetricDesc const& desc) {
-  registry().declare(key, MetricType::Rate, desc);
-  return rate(key);
+  return TelemetryRate(registry().getOrCreateDeclared(key, MetricType::Rate, desc));
 }
 
 void Telemetry::declare(String const& key, MetricDesc const& desc) {
-  // Type is only used when the key does not exist yet; a declare-first key is a Timer by default and is
-  // corrected by the first typed accessor call. Every declare() caller in the tree declares a timer.
-  registry().declare(key, MetricType::Timer, desc);
+  // Declares WITHOUT creating a node and WITHOUT guessing a MetricType. If `key` has no node yet, the
+  // descriptor is held pending (Registry::pendingDescs) until the first counter/gauge/timer/rate call
+  // creates the node with its real type and adopts it.
+  registry().declare(key, desc);
 }
 
 MetricDesc Telemetry::describe(String const& key) {
-  MutexLocker locker(registry().mutex);
-  auto it = registry().nodes.find(key);
-  return it == registry().nodes.end() ? MetricDesc{} : it->second->desc;
+  return registry().describe(key);
 }
 
 bool Telemetry::enabled() { return registry().enabled.load(std::memory_order_relaxed); }
@@ -199,31 +288,47 @@ void Telemetry::markTick(String const& threadTag) {
 }
 
 namespace {
-  char const* domainName(MetricDomain d) { return d == MetricDomain::Gpu ? "gpu" : "cpu"; }
+  // These four switches deliberately have NO `default:`. -Wswitch (part of -Wall, on for this project) then
+  // flags any enumerator added to MetricDomain/MetricOwner/MetricCadence/MetricRole in the future that isn't
+  // also added here -- catching a forgotten JSON name at compile time instead of silently serializing the
+  // new value as e.g. "unknown"/"call"/"detail". The trailing return after each switch exists only to satisfy
+  // -Wreturn-type for the technically-reachable (but never actually occurring in correct code) case of an
+  // enum value outside its declared set; it is not a substitute for handling a real enumerator.
+  char const* domainName(MetricDomain d) {
+    switch (d) {
+      case MetricDomain::Unknown: return "unknown";
+      case MetricDomain::Cpu: return "cpu";
+      case MetricDomain::Gpu: return "gpu";
+    }
+    return "unknown";
+  }
   char const* ownerName(MetricOwner o) {
     switch (o) {
+      case MetricOwner::Unknown: return "unknown";
       case MetricOwner::Frame: return "frame";
       case MetricOwner::Gl: return "gl";
       case MetricOwner::Sim: return "sim";
       case MetricOwner::Lighting: return "lighting";
       case MetricOwner::Process: return "process";
-      default: return "unknown";
     }
+    return "unknown";
   }
   char const* cadenceName(MetricCadence c) {
     switch (c) {
+      case MetricCadence::Call: return "call";
       case MetricCadence::Frame: return "frame";
       case MetricCadence::Tick: return "tick";
       case MetricCadence::Recompute: return "recompute";
-      default: return "call";
     }
+    return "call";
   }
   char const* roleName(MetricRole r) {
     switch (r) {
-      case MetricRole::Total: return "total";
+      case MetricRole::Detail: return "detail";
       case MetricRole::Budget: return "budget";
-      default: return "detail";
+      case MetricRole::Total: return "total";
     }
+    return "detail";
   }
   char const* typeName(MetricType t) {
     switch (t) {
@@ -239,6 +344,12 @@ namespace {
   // GPU span's own sample count. For `frame` they are the same metric read two ways (count vs sum); for `gl`
   // they are different metrics entirely -- GPU work is COUNTED per frame but its WHOLE is the GPU frame span.
   // An owner with no total reports its parts unclosed rather than inventing a whole.
+  //
+  // Only owners that bear a budget get a row here: Process and Unknown are absent on purpose, meaning "not a
+  // budget-bearing owner" -- there is no denominator/total to report for either. The four metric keys named
+  // below (cpu.frame.total.us, render.frame.gpu_span_us, tick.server.seq, lighting.temporal.recomputed,
+  // lighting.cpu.total.us) do not exist as of this commit; this table is a static description of the intended
+  // shape, not a lookup that must resolve today, and later tasks are what actually register those keys.
   struct OwnerSpec { MetricOwner owner; char const* denominator; char const* total; };
   constexpr OwnerSpec c_ownerSpecs[] = {
     {MetricOwner::Frame,    "cpu.frame.total.us",           "cpu.frame.total.us"},
@@ -259,7 +370,8 @@ Json Telemetry::snapshot() {
       {"owner", Json(String(ownerName(n->desc.owner)))},
       {"cadence", Json(String(cadenceName(n->desc.cadence)))},
       {"role", Json(String(roleName(n->desc.role)))},
-      {"descConflict", Json(n->descConflict.load(std::memory_order_relaxed))}
+      {"descConflict", Json(n->descConflict)},
+      {"typeConflict", Json(n->typeConflict)}
     };
     if (n->type == MetricType::Counter) {
       m["value"] = Json((uint64_t)n->counter.load(std::memory_order_relaxed));
@@ -305,6 +417,11 @@ void Telemetry::reset() {
     n->tmin.store(INT64_MAX, std::memory_order_relaxed);
     n->tmax.store(INT64_MIN, std::memory_order_relaxed);
     n->rate.store(0.0, std::memory_order_relaxed);
+    // Conflict flags are diagnostic state about a measurement WINDOW, like the values above, not about the
+    // metric's declared shape (desc/declared are left alone): a conflict flagged before reset() must not
+    // haunt every snapshot for the rest of the process.
+    n->descConflict = false;
+    n->typeConflict = false;
   }
 }
 

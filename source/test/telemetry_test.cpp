@@ -143,6 +143,10 @@ TEST(Telemetry, FirstDeclarationWinsAndMismatchIsRecorded) {
   Telemetry::declare("test.desc.b", gpu);
   Telemetry::declare("test.desc.b", cpu);   // conflicting -- first wins, conflict is recorded
   EXPECT_EQ(Telemetry::describe("test.desc.b"), gpu);
+  // Nothing has been sampled yet, so the key has no node and correctly does not appear in the snapshot
+  // (declare() only ever creates a PENDING descriptor -- see StarTelemetry.cpp). Materialize the node via
+  // an accessor, as any real caller eventually would, to observe the conflict flag on the wire.
+  Telemetry::counter("test.desc.b");
   EXPECT_TRUE(Telemetry::snapshot().getObject("metrics").get("test.desc.b").getBool("descConflict"));
 }
 
@@ -157,4 +161,48 @@ TEST(Telemetry, TypedAccessorOverloadDeclaresInline) {
   MetricDesc d{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget};
   Telemetry::timer("test.desc.c", d).record(10);
   EXPECT_EQ(Telemetry::describe("test.desc.c"), d);
+}
+
+// Regression for the exact sequence markTick() uses: declare() first against a key with no node yet (held
+// pending, since declare() must never guess a MetricType), then a TYPED accessor creates the node. Before
+// the fix, declare() created the node itself and guessed MetricType::Timer; a subsequent counter() handed
+// back that wrongly-typed node, and inc() wrote to a field snapshot() never reads for a Timer -- the
+// counter's value was permanently invisible in the JSON.
+TEST(Telemetry, DeclareThenTypedAccessorProducesTheDeclaredType) {
+  telemetrySetUp();
+  MetricDesc d{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Total};
+  Telemetry::declare("test.desc.seq", d);
+  Telemetry::counter("test.desc.seq").inc(3);
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.seq");
+  EXPECT_EQ(m.getString("type"), "counter");
+  EXPECT_EQ(m.getUInt("value"), 3u);
+  EXPECT_EQ(Telemetry::describe("test.desc.seq"), d);
+}
+
+// Nothing else asserts the descriptor->JSON string mapping; transposing two returns in ownerName/roleName
+// would pass the rest of the suite silently. Exercises the GPU domain and a non-frame owner (gl) as well.
+TEST(Telemetry, SnapshotSerializesDescriptorFieldNames) {
+  telemetrySetUp();
+  MetricDesc gpu{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::timer("test.desc.names", gpu).record(5);
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.names");
+  EXPECT_EQ(m.getString("type"), "timer");
+  EXPECT_EQ(m.getString("domain"), "gpu");
+  EXPECT_EQ(m.getString("owner"), "gl");
+  EXPECT_EQ(m.getString("cadence"), "frame");
+  EXPECT_EQ(m.getString("role"), "budget");
+}
+
+// Defense-in-depth added alongside the declare()/pendingDescs fix: two call sites requesting the same key
+// as different MetricTypes is a genuine bug (not the desc-conflict case above), and must be flagged rather
+// than silently letting the second accessor's writes land in fields the first type's snapshot branch never
+// reads.
+TEST(Telemetry, MismatchedAccessorTypeIsFlaggedNotSilent) {
+  telemetrySetUp();
+  Telemetry::counter("test.desc.typeconflict").inc(1);
+  Telemetry::timer("test.desc.typeconflict").record(5); // wrong type for the same key
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.typeconflict");
+  EXPECT_TRUE(m.getBool("typeConflict"));
+  EXPECT_EQ(m.getString("type"), "counter"); // the first type registered wins
+  EXPECT_EQ(m.getUInt("value"), 1u);         // unaffected by the timer.record() call
 }

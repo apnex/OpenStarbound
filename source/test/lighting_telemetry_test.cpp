@@ -20,7 +20,7 @@ Json lightingConfig() {
 // first makes the snapshot lookup safe even before instrumentation exists.
 uint64_t timerCount(String const& key) {
   Telemetry::timer(key);
-  return Telemetry::snapshot().getObject("timers").get(key).getUInt("count");
+  return Telemetry::snapshot().getObject("metrics").get(key).getUInt("count");
 }
 
 } // namespace
