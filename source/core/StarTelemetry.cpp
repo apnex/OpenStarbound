@@ -21,6 +21,8 @@ struct MetricNode {
   std::atomic<int64_t> total{0};
   std::atomic<int64_t> tmin{INT64_MAX};
   std::atomic<int64_t> tmax{INT64_MIN};
+  // Timer only. Cumulative, so snapshot differencing windows them.
+  std::atomic<uint64_t> buckets[Telemetry::HistogramBuckets];
   // Rate (owner-thread writes; snapshot best-effort reads)
   std::atomic<double> rate{0.0};
   // Descriptor state. ALL of the following are guarded by Registry::mutex (written at declare/getOrCreate
@@ -31,7 +33,10 @@ struct MetricNode {
   bool declared = false;      // has `desc` been set by a declare() or a typed accessor yet?
   bool descConflict = false;  // two call sites declared this key with different descriptors
   bool typeConflict = false;  // two call sites requested this key as different MetricTypes
-  explicit MetricNode(MetricType t) : type(t) {}
+  explicit MetricNode(MetricType t) : type(t) {
+    for (auto& b : buckets)
+      b.store(0, std::memory_order_relaxed);
+  }
 };
 
 namespace {
@@ -211,12 +216,27 @@ static void atomicMax(std::atomic<int64_t>& a, int64_t v) {
   while (v > cur && !a.compare_exchange_weak(cur, v, std::memory_order_relaxed)) {}
 }
 
+size_t Telemetry::histogramBucket(int64_t micros) {
+  if (micros <= 0)
+    return 0;
+  uint64_t v = (uint64_t)micros;
+  int h = 63 - __builtin_clzll(v);              // floor(log2(v)); v > 0 so clzll is defined
+  if (h >= 16)
+    return HistogramBuckets - 1;                // >= 65536us: the "something went very wrong" bucket
+  // The two sub-bits BELOW the msb. For h >= 2 they are already there; for h < 2 (v = 1, 2, 3) there are not
+  // two bits to take, so shift LEFT to synthesise them. Selecting the branch before shifting matters: a right
+  // shift by (h - 2) with h < 2 is a negative shift count and therefore undefined behaviour, not merely wrong.
+  uint64_t m = h >= 2 ? ((v >> (h - 2)) & 0x3u) : ((v << (2 - h)) & 0x3u);
+  return (size_t)(h * 4 + m);
+}
+
 void TelemetryTimer::record(int64_t micros) {
   if (!m_node) return;
   m_node->count.fetch_add(1, std::memory_order_relaxed);
   m_node->total.fetch_add(micros, std::memory_order_relaxed);
   atomicMin(m_node->tmin, micros);
   atomicMax(m_node->tmax, micros);
+  m_node->buckets[Telemetry::histogramBucket(micros)].fetch_add(1, std::memory_order_relaxed);
 }
 
 void TelemetryRate::set(double r) {
@@ -385,6 +405,16 @@ Json Telemetry::snapshot() {
       m["mean"] = Json((int64_t)(c ? tot / (int64_t)c : 0));
       m["min"] = Json((int64_t)(c ? n->tmin.load(std::memory_order_relaxed) : 0));
       m["max"] = Json((int64_t)(c ? n->tmax.load(std::memory_order_relaxed) : 0));
+      // Emitted trimmed of trailing zeros: a 64-entry array per timer, mostly zeros, would triple the
+      // snapshot for no information. The consumer zero-pads.
+      size_t last = 0;
+      for (size_t i = 0; i < HistogramBuckets; ++i)
+        if (n->buckets[i].load(std::memory_order_relaxed))
+          last = i + 1;
+      JsonArray buckets;
+      for (size_t i = 0; i < last; ++i)
+        buckets.append(Json((uint64_t)n->buckets[i].load(std::memory_order_relaxed)));
+      m["buckets"] = Json(std::move(buckets));
     } else {
       m["value"] = Json(n->rate.load(std::memory_order_relaxed));
     }
@@ -416,6 +446,8 @@ void Telemetry::reset() {
     n->total.store(0, std::memory_order_relaxed);
     n->tmin.store(INT64_MAX, std::memory_order_relaxed);
     n->tmax.store(INT64_MIN, std::memory_order_relaxed);
+    for (auto& b : n->buckets)
+      b.store(0, std::memory_order_relaxed);
     n->rate.store(0.0, std::memory_order_relaxed);
     // Conflict flags are diagnostic state about a measurement WINDOW, like the values above, not about the
     // metric's declared shape (desc/declared are left alone): a conflict flagged before reset() must not

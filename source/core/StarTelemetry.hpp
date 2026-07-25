@@ -130,6 +130,18 @@ public:
 
   static void markTick(String const& threadTag); // bumps tick.<threadTag>.seq
 
+  // Timers carry a histogram so the TAIL is visible, not just the mean. Every hard bug in this project has
+  // been episodic -- flicker, hitching -- and a lever that improves mean frame time while doubling p99 reads
+  // as a clean win against means alone. Buckets are cumulative counters, so differencing two snapshots windows
+  // them, which is what makes p99 and a windowed max exist at all (the `max` field is a run-long high-water
+  // mark and is NOT windowable).
+  //
+  // 64 buckets, HdrHistogram-style: bucket i covers [2^h * (1 + m/4), 2^h * (1 + (m+1)/4)) for h = i/4,
+  // m = i%4. That spans 1us..65535us -- a cheap pass through a visible hitch. Integer-only (one clz, a shift
+  // and a mask): this runs on the hot path, so no floating point.
+  static constexpr size_t HistogramBuckets = 64;
+  static size_t histogramBucket(int64_t micros);
+
   // Read-only full metric tree (schema v2): {"meta": {"schema": 2}, "owners": {...}, "metrics": {key: {...}}}.
   // "owners" is a static description of each owner's denominator/total metric keys. "metrics" is a flat map
   // from dotted key to a per-metric object carrying its type, its declared descriptor (domain/owner/cadence/

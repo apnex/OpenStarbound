@@ -206,3 +206,46 @@ TEST(Telemetry, MismatchedAccessorTypeIsFlaggedNotSilent) {
   EXPECT_EQ(m.getString("type"), "counter"); // the first type registered wins
   EXPECT_EQ(m.getUInt("value"), 1u);         // unaffected by the timer.record() call
 }
+
+TEST(Telemetry, HistogramBucketBoundaries) {
+  // Bucket i covers [2^h * (1 + m/4), 2^h * (1 + (m+1)/4)) for h = i/4, m = i%4.
+  // h is floor(log2(v)) and m is the two bits below the MSB, so the index is exact and integer-only.
+  EXPECT_EQ(Telemetry::histogramBucket(0), 0u);     // clamped: a 0us sample is real (sub-microsecond work)
+  EXPECT_EQ(Telemetry::histogramBucket(1), 0u);     // 2^0 * 1.00
+  // 2 and 3 are the h<2 cases: fewer than two bits exist below the msb, so the index is synthesised by a LEFT
+  // shift. Getting this wrong is undefined behaviour (a negative right-shift count), not just a wrong bucket.
+  EXPECT_EQ(Telemetry::histogramBucket(2), 4u);     // h=1, m=0
+  EXPECT_EQ(Telemetry::histogramBucket(3), 6u);     // h=1, m=2
+  EXPECT_EQ(Telemetry::histogramBucket(4), 8u);     // h=2, m=0 -> 4*2+0
+  EXPECT_EQ(Telemetry::histogramBucket(5), 9u);     // h=2, m=1  (5 = 0b101)
+  EXPECT_EQ(Telemetry::histogramBucket(6), 10u);    // h=2, m=2  (6 = 0b110)
+  EXPECT_EQ(Telemetry::histogramBucket(7), 11u);    // h=2, m=3  (7 = 0b111)
+  EXPECT_EQ(Telemetry::histogramBucket(8), 12u);    // h=3, m=0
+  EXPECT_EQ(Telemetry::histogramBucket(65535), 63u);   // top of range
+  EXPECT_EQ(Telemetry::histogramBucket(1000000), 63u); // a 1-second frame clamps into the top bucket
+  EXPECT_EQ(Telemetry::histogramBucket(-5), 0u);       // a negative delta is nonsense; do not index OOB
+}
+
+TEST(Telemetry, TimerFillsHistogramAndSumMatchesCount) {
+  telemetrySetUp();
+  auto t = Telemetry::timer("test.hist");
+  for (int64_t v : {1, 4, 4, 5, 8, 100, 100000})
+    t.record(v);
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.hist");
+  JsonArray buckets = m.getArray("buckets");
+  uint64_t sum = 0;
+  for (auto const& b : buckets)
+    sum += b.toUInt();
+  // The histogram is the instrument's own checksum: if it disagrees with count, a sample was lost or
+  // double-counted somewhere between record() and the snapshot.
+  EXPECT_EQ(sum, m.getUInt("count"));
+  EXPECT_EQ(sum, 7u);
+  EXPECT_EQ(buckets.at(8).toUInt(), 2u);   // the two 4us samples
+  EXPECT_EQ(buckets.at(63).toUInt(), 1u);  // the 100ms sample
+}
+
+TEST(Telemetry, HistogramIsEmptyForCounters) {
+  telemetrySetUp();
+  Telemetry::counter("test.hist.counter").inc();
+  EXPECT_FALSE(Telemetry::snapshot().getObject("metrics").get("test.hist.counter").contains("buckets"));
+}
