@@ -218,12 +218,46 @@ those sysfs paths are driver- and platform-specific and a game engine has no bus
 Both boot offscreen on the **real** GPU — SDL3's `offscreen` driver yields GL 4.6 core on the Intel Arc via
 Mesa/EGL, not llvmpipe. The axis is **frozen vs live**, not offscreen vs windowed.
 
-**Measured resolution** (two identical back-to-back 60 s runs): whole-frame GPU span **0.59%**, spread pass
-**0.73%**, parallax compose **0.79%**, world pass **2.9%** (it carries the entity churn), spread µs/call
-**0.07%**.
+### Resolution — and it is NOT uniform across metrics
 
-**Compare adjacent legs only.** Back-to-back pairs agree to <1%; runs minutes apart drift ~7% on thermal state
-and differing sim content. An A/B is valid; today's absolute against last week's is not.
+Two identical **back-to-back** 60 s runs: whole-frame GPU span **0.59%**, spread pass **0.73%**, parallax
+compose **0.79%**, world pass **2.9%**, spread µs/call **0.07%**.
+
+But an **A-B-A replicate** (45 s legs, A and A2 two runs apart with a full restart between) shows the drift is
+far larger for some metrics, and it is *not* the same for CPU and GPU:
+
+| metric | replication error (A vs A2) | resolvable? |
+|---|---:|---|
+| `lighting.gpu.spread.gpu_us` | 2.2% | yes |
+| `render.pass.world.gpu_us` | 0.2% | yes |
+| `render.frame.gpu_span_us` | 1.5% | only for effects ≳5% |
+| `render.pass.environment.gpu_us` | 5.4% | marginal |
+| `render.pass.parallax.gpu_us` | 20.6% | **no** — the pass is ~30 µs, mostly noise |
+| `cpu.frame.render.us` | **9.7%** | marginal |
+| `cpu.frame.update.us` | **10.3%** | **no** |
+
+**CPU metrics drift ~10% between non-adjacent runs — an order of magnitude worse than the GPU passes.** The
+sim is live and its work varies even when the scene *content* counters (particles, lights, drawables, flushes)
+all match within ±3%. Matching content is **not** evidence that CPU timings are comparable.
+
+**Protocol, therefore:**
+- **Compare adjacent legs only.** Runs minutes apart drift ~7% on thermal state and sim content.
+- **Any CPU claim needs an A-B-A replicate.** Report the effect against the *measured replication error*, not
+  against the back-to-back GPU noise floor. A single A→B pair is sufficient for a large GPU-pass effect and is
+  **not** sufficient for CPU.
+- This was learned the hard way on 2026-07-25: a spread-iteration A/B appeared to show a 16.6% CPU render win,
+  which the A-B-A revealed as ~10% drift. The claim was retracted before it reached a decision.
+
+### A per-pass GPU win does not imply a frame win
+
+The same A/B: halving `lightingGpuSpreadIterations` cut `lighting.gpu.spread.gpu_us` by **45.3%** (replication
+error 2.2% — unambiguous), and simultaneously made `render.pass.world.gpu_us` **12.4% slower** (replication
+error 0.2% — also unambiguous). `render.frame.gpu_span_us` did not move beyond its own drift.
+
+`GL_TIME_ELAPSED` brackets are **not additive**: each forces a sync, and shortening one pass redistributes
+stalls into its neighbours. So per-pass µs is a diagnostic for *where* work is, not a currency you can bank.
+**The whole-frame span is the only GPU number a lever's value should be argued from** — and on this lever it
+says there is no frame-level win to bank.
 
 **Cannot do: input injection.** The camera is stationary at a teleport bookmark, so any lever whose cost
 appears only in motion — parallax moving-camera bypass, scroll-shift/texture-upload, traversal, combat — is
