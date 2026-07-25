@@ -1543,9 +1543,11 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
   // Slice 4: a lighting frame is "ready to consume" when either the CPU lightMap is
   // fresh (CPU mode / first GPU frame / shadow-compare) OR fresh GPU inputs were
   // exported (skip-calculate GPU mode, where m_lightMap is intentionally empty).
-  // m_lightingEmission is moved out below, so !empty() is a fresh-once signal -- the
-  // same consume-once mechanic m_lightMap uses.
-  if (renderData && (!m_lightMap.empty() || (m_lightingInputsValid && !m_lightingEmission.empty()))) {
+  // Freshness of the GPU inputs is the explicit m_lightingInputsFresh flag (set on publish, cleared
+  // below on consume, both under m_lightMapMutex) -- NOT the emptiness of m_lightingEmission. The
+  // buffers are swapped back rather than moved out now, so they stay non-empty across a consume and
+  // emptiness no longer carries any signal for them. (m_lightMap still uses the consume-once move.)
+  if (renderData && (!m_lightMap.empty() || (m_lightingInputsValid && m_lightingInputsFresh))) {
     // Preview-tile light injection patches the CPU lightMap so client-predicted (pre-server-confirm)
     // block placement lights up instantly. Known limitation (Slice 4): in skip-calculate GPU mode
     // m_lightMap is intentionally empty, so this patch is unavailable -- a placed block's light
@@ -1566,13 +1568,20 @@ bool WorldClient::waitForLighting(WorldRenderData* renderData) {
     // Travel the GPU-spread inputs alongside the lightmap when present.
     renderData->lightingInputsValid = m_lightingInputsValid;
     if (m_lightingInputsValid) {
-      renderData->lightingEmission = std::move(m_lightingEmission);
-      renderData->lightingObstacle = std::move(m_lightingObstacle);
-      renderData->lightingPointLights = std::move(m_lightingPointLights);
-      renderData->lightingEmissionHalf = std::move(m_lightingEmissionHalf);
-      renderData->lightingObstacleR8 = std::move(m_lightingObstacleR8);
+      // SWAP, not move. Moving emptied these, which is what forced lightingCalc to re-allocate and
+      // zero-fill ~788 KB every recompute; swapping hands renderData's previous (correctly-sized)
+      // allocations back so reset()/resize() hit their same-size early-outs. Safe because the lighting
+      // thread rewrites every one of them in full before the next publish, and because the render thread
+      // has finished with the buffers it is handing back -- they were last frame's renderData, already
+      // consumed by the painter before this frame's waitForLighting runs.
+      std::swap(renderData->lightingEmission, m_lightingEmission);
+      std::swap(renderData->lightingObstacle, m_lightingObstacle);
+      std::swap(renderData->lightingPointLights, m_lightingPointLights);
+      std::swap(renderData->lightingEmissionHalf, m_lightingEmissionHalf);
+      std::swap(renderData->lightingObstacleR8, m_lightingObstacleR8);
       renderData->lightMapBorder = m_lightingBorder;
     }
+    m_lightingInputsFresh = false;
     return true;
   }
   return false;
@@ -2306,6 +2315,7 @@ void WorldClient::lightingCalc() {
       std::swap(m_lightingEmissionHalf, m_pendingLightingEmissionHalf);
       std::swap(m_lightingObstacleR8, m_pendingLightingObstacleR8);
       m_lightingBorder = lightMapBorder;
+      m_lightingInputsFresh = true;
     }
   }
 }

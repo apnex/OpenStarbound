@@ -340,6 +340,13 @@ private:
   List<ColoredCellularLightArray::PointLight> m_pendingLightingPointLights;
   List<ColoredCellularLightArray::PointLight> m_lightingPointLights;
   bool m_lightingInputsValid = false;
+  // Freshness of the published GPU-lighting inputs, explicit rather than inferred from emptiness.
+  // It USED to be inferred: waitForLighting moved the buffers out, so !m_lightingEmission.empty() meant
+  // "not yet consumed". That coupling is what forced the buffers to be emptied on every consume, which in
+  // turn made every recompute re-allocate and zero-fill ~788 KB it was about to overwrite in full. With
+  // the flag, consume can SWAP the buffers back instead of moving them away, and the ring keeps its
+  // allocations. Written and read only under m_lightMapMutex.
+  bool m_lightingInputsFresh = false;
   // GPU lightmap border (cells) = calc-vs-query region padding, computed from the calculator's
   // geometry and published alongside the GPU inputs for waitForLighting to travel into renderData.
   int m_lightingBorder = 0;
