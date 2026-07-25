@@ -1480,6 +1480,10 @@ import sys
 
 SCHEMA = 2
 BUCKETS = 64
+# Tolerated skew between a timer's histogram sum and its count. The engine has four sampling threads at most
+# (main, server, lighting, and the GL readback path), each able to be mid-record() at either snapshot endpoint;
+# 16 is that with generous headroom, and still orders of magnitude below any real sample loss.
+HIST_SKEW_SLACK = 16
 
 
 def load(path):
@@ -1488,28 +1492,41 @@ def load(path):
 
 
 def bucket_bounds(i):
-    """Lower and upper microsecond bound of histogram bucket i (see Telemetry::histogramBucket)."""
+    """Lower and upper microsecond bound of histogram bucket i (see Telemetry::histogramBucket).
+
+    BOTH ENDS ARE CLAMPS, not ranges. Bucket 0 absorbs 0 and any negative sample; bucket 63 is UNBOUNDED
+    ABOVE -- [57344, inf), not [57344, 65536). Treating 63 as a closed range is not a rounding error, it
+    silently caps every hitch at 65 ms, which is precisely the case histograms were added to see: a 200 ms
+    stall would be reported as ~65 ms and read as merely bad rather than catastrophic.
+    """
     h, m = divmod(i, 4)
     lo = (2 ** h) * (1 + m / 4)
-    hi = (2 ** h) * (1 + (m + 1) / 4)
-    return lo, hi
+    if i == BUCKETS - 1:
+        return lo, float("inf")
+    return lo, (2 ** h) * (1 + (m + 1) / 4)
 
 
 def percentile(buckets, q):
-    """Estimate the q-th percentile (0..1) from windowed bucket counts, interpolating within the bucket."""
+    """Estimate the q-th percentile (0..1) from windowed bucket counts, interpolating within the bucket.
+
+    Returns (value, saturated). `saturated` is True when the percentile falls in the unbounded top bucket, in
+    which case the value is a LOWER BOUND and must be rendered as such -- reporting a midpoint of an infinite
+    interval would be inventing a number.
+    """
     total = sum(buckets)
     if not total:
-        return 0.0
+        return 0.0, False
     target, seen = q * total, 0
     for i, c in enumerate(buckets):
         if not c:
             continue
         if seen + c >= target:
             lo, hi = bucket_bounds(i)
-            frac = (target - seen) / c
-            return lo + (hi - lo) * frac
+            if hi == float("inf"):
+                return lo, True
+            return lo + (hi - lo) * ((target - seen) / c), False
         seen += c
-    return bucket_bounds(len(buckets) - 1)[1]
+    return bucket_bounds(BUCKETS - 1)[0], True
 
 
 def window(a, b):
@@ -1590,18 +1607,30 @@ def main():
         for k, v in sorted(rows, key=lambda kv: -kv[1]["total"]):
             per_tick = v["total"] / denom
             cover = 100.0 * v["count"] / denom
-            p50 = percentile(v["buckets"], 0.50)
-            p99 = percentile(v["buckets"], 0.99)
+            p50, p50sat = percentile(v["buckets"], 0.50)
+            p99, p99sat = percentile(v["buckets"], 0.99)
+            # A saturated percentile landed in the unbounded top bucket, so the figure is a LOWER BOUND. Render
+            # it as ">=" rather than as a number: a hitch past 65 ms printed as a plain value reads as merely
+            # bad instead of unbounded, and that is exactly the case the histogram was added to expose.
             print(f"  {k:<40} {v['domain']:>4} {v['role']:>7} {v['count']:>8} {cover:>5.0f}% "
-                  f"{per_tick:>9.1f} {p50:>8.1f} {p99:>9.1f}")
+                  f"{per_tick:>9.1f} {('>=' if p50sat else '') + f'{p50:.1f}':>8} "
+                  f"{('>=' if p99sat else '') + f'{p99:.1f}':>9}")
             # ASSERTION 2 (cadence bound): under is legitimate -- a gated pass or an async readback samples
             # only some ticks, which the coverage column reports. Over means the span opened twice per tick.
             if v.get("cadence") in ("frame", "tick", "recompute") and v["count"] > denom:
                 violations.append(f"{k}: count {v['count']} > denominator {denom} "
                                   f"(declared cadence={v['cadence']}; should it be 'call'?)")
-            # ASSERTION 3 (histogram consistency): the buckets are the instrument's own checksum.
-            if sum(v["buckets"]) != v["count"]:
-                violations.append(f"{k}: histogram sum {sum(v['buckets'])} != count {v['count']}")
+            # ASSERTION 3 (histogram consistency): the buckets are the instrument's own checksum -- but a
+            # SLACK one, not an exact one. record() bumps count first and buckets last, both relaxed and with
+            # no fence, so a snapshot taken while a sampling thread is mid-record() observes a skew of up to
+            # one per in-flight thread, in EITHER direction (relaxed stores to different locations may be
+            # observed out of order). Two snapshot endpoints double that. Asserting exact equality here would
+            # fire on correct data and train the reader to ignore the oracle -- which is the failure this
+            # whole subsystem exists to prevent. A real loss is orders of magnitude larger than the slack.
+            skew = abs(sum(v["buckets"]) - v["count"])
+            if skew > HIST_SKEW_SLACK:
+                violations.append(f"{k}: histogram sum {sum(v['buckets'])} vs count {v['count']} "
+                                  f"(skew {skew} > {HIST_SKEW_SLACK})")
 
         # ASSERTION 1 (budget closure).
         if total_name and total_name in w:
@@ -1632,10 +1661,14 @@ def main():
             verdict = f"CPU-BOUND (idle {ip:.0f}us, swap {sp:.0f}us -- no headroom, not waiting on GPU)"
         else:
             verdict = f"HEADROOM ({100*ip/tot['mean']:.0f}% idle)"
+        p50, p50sat = percentile(tot["buckets"], 0.50)
+        p99, p99sat = percentile(tot["buckets"], 0.99)
         print(f"  VERDICT: {verdict}")
-        print(f"  frame: mean {tot['mean']:.0f}us  p50 {percentile(tot['buckets'],0.50):.0f}us  "
-              f"p99 {percentile(tot['buckets'],0.99):.0f}us  "
-              f"-> {1e6/tot['mean']:.0f} fps mean")
+        print(f"  frame: mean {tot['mean']:.0f}us  p50 {'>=' if p50sat else ''}{p50:.0f}us  "
+              f"p99 {'>=' if p99sat else ''}{p99:.0f}us  -> {1e6/tot['mean']:.0f} fps mean")
+        if p99sat:
+            print("         !! p99 is in the unbounded top bucket (>=57ms): the frame is hitching, and the "
+                  "histogram cannot say how badly. Capture a per-frame trace if this persists.")
 
     if violations:
         print("\n  !! ORACLE VIOLATIONS -- do not quote these numbers:")
