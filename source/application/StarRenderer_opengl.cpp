@@ -1062,8 +1062,17 @@ void OpenGlRenderer::startFrame() {
         GLuint64 t0 = 0, t1 = 0;
         glGetQueryObjectui64v(ring.begins[slot], GL_QUERY_RESULT, &t0);
         glGetQueryObjectui64v(ring.ends[slot], GL_QUERY_RESULT, &t1);
-        if (t1 > t0)
+        if (t1 > t0) {
+          // role=Total, not Budget: this span IS the Gl owner's whole (every pass, the interface
+          // render, the clears and the final blit -- see the comment at the end of finishFrame()), so
+          // it is excluded from the sum of parts rather than counted as one of its own parts.
+          [[maybe_unused]] static bool const spanGpuDesc = [] {
+            Telemetry::declare("render.frame.gpu_span_us",
+              MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Total});
+            return true;
+          }();
           Telemetry::timer("render.frame.gpu_span_us").record((int64_t)((t1 - t0) / 1000));
+        }
       }
       ring.issued[slot] = false;
     }
@@ -1077,6 +1086,15 @@ void OpenGlRenderer::startFrame() {
 
   // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
+  //
+  // Declared here, next to the pass that owns it; the value is recorded generically inside
+  // OpenGlRenderer's GlGpuTimer (Telemetry::timer(name).record(...), ~3 frames after the GPU did the
+  // work), which has no idea what any given key means.
+  [[maybe_unused]] static bool const clearGpuDesc = [] {
+    Telemetry::declare("render.frame.clear.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    return true;
+  }();
   m_gpuTimer.begin("render.frame.clear.gpu_us");
 
   // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for the raw face ids.
@@ -1627,6 +1645,13 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 // them in the timer: at 2560x1440 RGBA16F, MSAA-resolving when antiAliasing is on, this blit is not free, and
 // it was part of the 1.8-3.5ms/frame the whole-frame span proved was unaccounted for (task #141).
 void OpenGlRenderer::blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt) {
+  // Declared here, next to the pass that owns it; see the clear timer's declaration in startFrame()
+  // for the full rationale (recorded generically inside GlGpuTimer, which cannot know what this key means).
+  [[maybe_unused]] static bool const blitGpuDesc = [] {
+    Telemetry::declare("render.frame.blit.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    return true;
+  }();
   m_gpuTimer.begin("render.frame.blit.gpu_us");
 
   auto& size = m_screenSize;

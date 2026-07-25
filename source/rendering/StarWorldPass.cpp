@@ -6,6 +6,7 @@
 #include "StarWorldCamera.hpp"
 #include "StarAnimation.hpp"
 #include "StarRandom.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -43,6 +44,14 @@ void WorldPass::adjustLighting(WorldRenderData& renderData) {
 }
 
 void WorldPass::renderWorld(WorldCamera const& camera, WorldRenderData& renderData) {
+  // Declared here, not where the value lands: the value is recorded generically inside OpenGlRenderer
+  // (Telemetry::timer(name).record(...), ~3 frames after the GPU did the work), which has no idea what
+  // "render.pass.world.gpu_us" means. This pass is the one place that does.
+  [[maybe_unused]] static bool const gpuDesc = [] {
+    Telemetry::declare("render.pass.world.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    return true;
+  }();
   m_renderer->gpuTimer().begin("render.pass.world.gpu_us");
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : renderData.entityDrawables) {

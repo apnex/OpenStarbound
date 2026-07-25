@@ -598,6 +598,13 @@ void ClientApplication::render() {
       return e && *e ? (int)strtol(e, nullptr, 10) : 7;
     }();
     if (!skipInterface) {
+      // Declared here, next to the pass that owns it; the value is recorded generically inside
+      // OpenGlRenderer, which has no idea what this key means.
+      [[maybe_unused]] static bool const interfaceGpuDesc = [] {
+        Telemetry::declare("render.pass.interface.gpu_us",
+          MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+        return true;
+      }();
       renderer->gpuTimer().begin("render.pass.interface.gpu_us");
       if (uiMask & 1) m_mainInterface->renderInWorldElements();
       if (uiMask & 2) m_mainInterface->render();
