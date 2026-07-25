@@ -17,6 +17,21 @@ BackdropPass::BackdropPass(Renderer* renderer) : m_renderer(renderer) {}
 // is irrelevant -- the shader writes the full opaque result and env covers every pixel, so "main" (still on
 // the startFrame clear, since the env compose was deferred) is fully overwritten. Mirrors GpuLightmapPass's
 // full-quad pattern.
+namespace {
+  // THE SAME FIVE UNIFORMS, WRITTEN SIX TIMES. This parameter block appeared verbatim at every
+  // lightingPassthrough composite in this file -- the merged-compose fallback pair, the standalone env
+  // compose, the deferred env compose, the oracle reference, and the parallax compose -- differing only
+  // in preserveAlpha. Six copies of a shader's uniform contract is five chances for one to drift, and a
+  // drifted brightnessLimit is a silently wrong sky rather than a crash.
+  //
+  // preserveAlpha is the ONLY real axis: the env cache is opaque and replaces, the parallax cache is
+  // PREMULTIPLIED and blends over it, so it must keep its alpha.
+  List<pair<String, RenderEffectParameter>> passthroughParams(bool preserveAlpha) {
+    return {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f},
+            {"tonemap", false}, {"preserveAlpha", preserveAlpha}};
+  }
+}
+
 void BackdropPass::mergedCompose(Vec2U const& size) {
   // GUARD (adversarial review, Lens 2): switchEffectConfig returns false and mutates nothing if backdropCompose
   // is unregistered (asset missing / mod override / corrupt install). An UNCHECKED draw would then go through
@@ -25,10 +40,10 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
   // sibling compose site guards switchEffectConfig the same way (composite(), GpuLightmapPass).
   if (!m_renderer->switchEffectConfig("backdropCompose")) {
     m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_envCache.name(),
-      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+      passthroughParams(false));
     m_renderer->setBlendMode(BlendMode::PremultipliedOver);
     m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_parallaxCache.name(),
-      {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
+      passthroughParams(true));
     m_renderer->setBlendMode(BlendMode::Alpha);
     m_renderer->switchEffectConfig("world");
     return;
@@ -180,20 +195,17 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // every frame and delete the cache's entire win. Motion is the drift term's job; this covers the
     // rest -- the hyperspace flash (which was itself fading in N-frame steps), the sky colours, the sky
     // type, and the star twinkle frame, which advances on whole epochTime seconds.
-    uint64_t envContentKey = 1469598103934665603ull;
-    {
-      auto mix = [&envContentKey](uint64_t v) { envContentKey = (envContentKey ^ v) * 1099511628211ull; };
-      auto mixColor = [&mix](Color const& c) { Vec4B v = c.toRgba(); mix(v[0]); mix(v[1]); mix(v[2]); mix(v[3]); };
-      mixColor(envSky.flashColor);
-      mixColor(envSky.mainSkyColor);
-      mixColor(envSky.topRectColor);
-      mixColor(envSky.bottomRectColor);
-      mixColor(envSky.environmentLight);
-      mix((uint64_t)envSky.type);
-      mix((uint64_t)(unsigned)floor(255.0f * envSky.skyAlpha));
-      mix((uint64_t)(unsigned)floor(255.0f * envSky.dayLevel));
-      mix((uint64_t)(int64_t)envSky.epochTime);   // star twinkle advances on whole seconds
-    }
+    ContentKey envKey;
+    envKey.mix(envSky.flashColor.toRgba());
+    envKey.mix(envSky.mainSkyColor.toRgba());
+    envKey.mix(envSky.topRectColor.toRgba());
+    envKey.mix(envSky.bottomRectColor.toRgba());
+    envKey.mix(envSky.environmentLight.toRgba());
+    envKey.mix((uint64_t)envSky.type);
+    envKey.mixQuantized(envSky.skyAlpha);
+    envKey.mixQuantized(envSky.dayLevel);
+    envKey.mix((uint64_t)(int64_t)envSky.epochTime);   // star twinkle advances on whole seconds
+    uint64_t envContentKey = envKey.value();
     bool envContentChanged = envContentKey != m_envCacheContentKey;
 
     // envCadence STAYS the last operand and is still evaluated unconditionally above, so the frame
@@ -263,7 +275,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
         MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
       m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
-        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+        passthroughParams(false));
       m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
       m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
     }
@@ -400,17 +412,12 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // the draw itself consumes, so the key moves iff the rendered image would.
   // (epochTime drift is deliberately absent: amortizing it over N frames is the whole point of the cache, and
   //  N is derived from it.)
-  uint64_t parallaxContentKey = 1469598103934665603ull;
-  {
-    auto mix = [&parallaxContentKey](uint64_t v) {
-      parallaxContentKey = (parallaxContentKey ^ v) * 1099511628211ull;
-    };
-    Vec3B envLight = renderData.skyRenderData.environmentLight.toRgb();
-    mix(envLight[0]); mix(envLight[1]); mix(envLight[2]);
-    mix(renderData.parallaxLayers.size());
-    for (auto const& layer : renderData.parallaxLayers)
-      mix((uint64_t)(unsigned)floor(255.0f * layer.alpha));
-  }
+  ContentKey parallaxKey;
+  parallaxKey.mix(renderData.skyRenderData.environmentLight.toRgb());
+  parallaxKey.mix(renderData.parallaxLayers.size());
+  for (auto const& layer : renderData.parallaxLayers)
+    parallaxKey.mixQuantized(layer.alpha);
+  uint64_t parallaxContentKey = parallaxKey.value();
 
   // IS THE CAMERA MOVING RIGHT NOW? (vs. "does the cache hold a different position", which is a staleness
   // question and stays true on the first parked frame.)
@@ -481,7 +488,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
         MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
       m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_envCache.name(),
-        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+        passthroughParams(false));
       m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
       m_renderer->switchEffectConfig("world");
       m_envComposeDeferred = false;
@@ -555,7 +562,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       // to <=1 LSB (the same premult double-rounding the parallax cache already carries).
       m_renderer->composite("lightingPassthrough", "parallaxRef", parallaxScreenSize, "inputTexture",
         m_envComposeDeferred ? m_envCache.name() : String("main"),
-        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", false}});
+        passthroughParams(false));
       m_renderer->switchEffectConfig("world");                        // world effect (binds main)
       m_renderer->setRenderTarget(String("parallaxRef"), parallaxScreenSize);   // -> parallaxRef, effect stays "world"
       m_renderer->setBlendMode(BlendMode::Alpha);
@@ -577,7 +584,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     } else {
       m_renderer->setBlendMode(BlendMode::PremultipliedOver);
       m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_parallaxCache.name(),
-        {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f}, {"tonemap", false}, {"preserveAlpha", true}});
+        passthroughParams(true));
       m_renderer->setBlendMode(BlendMode::Alpha);
       m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
     }

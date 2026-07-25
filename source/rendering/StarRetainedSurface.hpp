@@ -44,6 +44,34 @@ namespace Star {
 // A consumer whose cache is bypassed that frame (direct path) calls surf.invalidate() so the next
 // entry force-refreshes instead of compositing stale content; the shared framebuffer-generation
 // drop likewise calls surf.invalidate() on every retained surface.
+// L2's SECOND TERM. The three-term contract above says a cache needs structural + motion + content, and
+// this class used to supply only the first -- while the content key was hand-written TWICE inside its own
+// single consumer, with the same two FNV-1a constants copied out by eye (BackdropPass's env key and
+// parallax key). The header's own stated justification for extracting RetainedSurface was that the
+// decision state had been "hand-rolled twice"; the identical duplication had simply moved down a level.
+//
+// DELIBERATELY TAKES Vec4B/Vec3B, NOT Color. L2's sovereignty is not a slogan -- it is a build fact: this
+// header includes only StarString.hpp and StarVector.hpp, which is what lets retained_surface_test link
+// against core alone and run off the GPU. Accepting Color would drag StarColor.hpp across the seam for a
+// four-byte conversion the caller can do itself. The quantisers are here because rounding is exactly
+// where two hand-written keys drift apart.
+class ContentKey {
+public:
+  void mix(uint64_t v) { m_hash = (m_hash ^ v) * 1099511628211ull; }
+  void mix(Vec4B const& v) { mix(v[0]); mix(v[1]); mix(v[2]); mix(v[3]); }
+  void mix(Vec3B const& v) { mix(v[0]); mix(v[1]); mix(v[2]); }
+
+  // Hash the QUANTISED value the draw itself consumes, so the key moves iff the rendered image would.
+  // A raw float would move on every tick of a slow fade and refresh the cache for a sub-LSB change.
+  void mixQuantized(float v, float scale = 255.0f) { mix((uint64_t)(unsigned)floor(scale * v)); }
+
+  uint64_t value() const { return m_hash; }
+  bool changedFrom(uint64_t previous) const { return m_hash != previous; }
+
+private:
+  uint64_t m_hash = 1469598103934665603ull;   // FNV-1a offset basis
+};
+
 class RetainedSurface {
 public:
   // initialPixelRatio is the pre-fill sentinel for the invalidation key: a value no real camera pixelRatio
