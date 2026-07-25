@@ -59,8 +59,40 @@ Four fields, declared once when a metric is registered:
 |---|---|---|
 | `domain` | `cpu` \| `gpu` | Which resource was consumed. Never addable across values. Replaces the `.gpu_us` suffix convention. |
 | `owner` | `frame` \| `sim` \| `lighting` \| `gl` \| `process` | Which **logical budget** the sample belongs to. |
-| `cadence` | `frame` \| `tick` \| `recompute` \| `call` | Which of the owner's tick counters this metric's `count` should be checked against. Not used for the per-frame share, which is always `total ÷ frames`. |
+| `cadence` | `frame` \| `tick` \| `recompute` \| `call` | How often this metric **should** have fired. Both a bounds check **and** load-bearing arithmetic — see below. |
 | `role` | `total` \| `budget` \| `detail` | `total` **is** the owner's whole; `budget` parts close against it; `detail` hangs off a budget part and is never summed. |
+
+### Why `cadence` is arithmetic, not just a check
+
+The first draft treated `cadence` as a bounds assertion and said the per-frame share "is always `total ÷ frames`".
+That is wrong, and the consumer's own oracle caught it on its first real run — GL parts summed to **122%** of the
+whole. A `count` below the expected tick count has **two different causes that need opposite arithmetic**:
+
+- **Sampling loss** — the work *happened*, we failed to observe it. `render.frame.gpu_span_us` fires every
+  frame, but its GL timer query resolves asynchronously and only ~67% of readings land. Dividing its total by
+  *all* frames understates it by exactly the miss rate.
+- **Genuine gating** — the work *did not happen*. A refresh-gated pass that skips a frame contributes nothing
+  to that frame, so `total ÷ frames` is its true per-frame contribution.
+
+Normalising both the same way suppressed the *whole* more than its *parts*, because the whole's coverage
+(67%) was worse than its parts' (67–94%). The unified rule:
+
+```
+expected       = tick count for THIS metric's own cadence   (not the owner's)
+coverage       = count / expected
+per_owner_tick = (total / coverage) / owner_ticks
+```
+
+Scaling by `1/coverage` lifts the observed sum to what a complete observation would have summed to; a
+fully-observed metric has coverage 1 and is unchanged. Applied to the same capture, GL closure goes
+**122.2% → 97.0%**. The `coverage` column continues to report the **raw** fraction, so a reader can always see
+that a 67%-coverage figure was scaled.
+
+This is what made `cadence` load-bearing rather than decorative. It also means a metric may legitimately carry
+a cadence **different from its owner's** natural tick: `lighting.cpu.total.us` measures the whole
+`lightingCalc()` call, which happens per *frame*, while its parts (`gather`/`spread`/`point`/`post`) sit inside
+the temporal gate and fire per *recompute*. The owner's `denominator` sets the table's **unit**; each metric's
+`cadence` sets its **own** expectation.
 
 ### Why `owner` is logical, not a physical thread
 
