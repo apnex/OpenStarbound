@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**115 tasks** across 2 store(s): 1 in_progress, 23 pending, 91 completed
+**117 tasks** across 2 store(s): 1 in_progress, 25 pending, 91 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 114 tasks, ids 64–177
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 116 tasks, ids 64–179
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -142,7 +142,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1 CODE MERGED into integration — blocked ONLY on the Director's in-game visual check | `4e95c50c` | — |
-| [#137](#c29c1332-137) | `c29c1332` | open | P-2 residual: the passes ARE extracted — what is left is the Air-Gap contract (7+2 singleton reads, no DTOs) | — | — |
+| [#137](#c29c1332-137) | `c29c1332` | open | P-2 residual: the passes ARE extracted — what is left is the Air-Gap INPUT seam (DTOs) + the unmetered residual | `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | open | P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing | — | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
@@ -182,7 +182,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
-| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `0a027243` `00f575ad` | — |
+| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
+| [#178](#c29c1332-178) | `c29c1332` | open | GATE-STALE: render-gate.sh certifies a binary that was never rebuilt (audit A5/delta[2]) | — | — |
+| [#179](#c29c1332-179) | `c29c1332` | open | DOC-DRIFT: architecture-3 states counts the tree contradicts; mechanise G3 (audit A4/delta[9]) | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1213,47 +1215,57 @@ DESIGNED TO BE DELETED: if P-3 (#138) lands, the bypass and the whole parallax c
 
 <a id="c29c1332-137"></a>
 
-#### #137 — P-2 residual: the passes ARE extracted — what is left is the Air-Gap contract (7+2 singleton reads, no DTOs)
+#### #137 — P-2 residual: the passes ARE extracted — what is left is the Air-Gap INPUT seam (DTOs) + the unmetered residual
 
 status: **pending**
 
+- `da0125b2` fix(render): commit the lint body and doc that aba06048 CLAIMED and did not contain
+- `1e46f71c` render(L3): close the Air-Gap seam for BackdropPass -- 8 singleton reads to 0
+- `af9d54a9` render(L2): finish Layer 2 in code -- one content key, one compose parameter block
+- `aba06048` render: make the architecture gates actually run, and ratchet the L3 residual
+
 ```
-RE-SCOPED 2026-07-25 by content audit at c9b2b024. The extraction half is DONE; stop treating the
-existence of StarBackdropPass.*/StarWorldPass.* as either completion OR as nothing.
+RE-SCOPED 2026-07-25 by content audit; CORRECTED 2026-07-26 after the M7 axiom audit found this task and
+the architecture doc both quoting a count the tree had already contradicted. The extraction half is DONE;
+stop treating the existence of StarBackdropPass.*/StarWorldPass.* as either completion OR as nothing.
+
+NO COUNTS ARE RESTATED HERE. They live in the generated block in
+docs/render/architecture-3-target-state.md and come from `scripts/render-inventory.py`; the
+`render_docs_fresh` ctest fails CI when they drift. Restating one here is how this task came to assert
+"BackdropPass 7 reads" against a tree measuring 0 -- and a cold agent read it as work to do.
 
 === LANDED (do not redo) ===
-Extraction and thinning both shipped. WorldPainter::render() is 119 lines (StarWorldPainter.cpp) against
-the recorded 427 — no cache gates, no adaptive-N maths, no oracle dual-run logic left in it, only call
-sites (m_backdropPass->renderEnvironment, ->renderParallax, m_worldPass->renderWorld). BackdropPass is
-sovereign in OWNERSHIP, not a pass-through: it holds both retained caches, the cross-surface arbiter,
-adaptive-N and the CM-1 merged compose, and carries its own telemetry (render.pass.environment.gpu_us,
-render.cache.env.*, render.cache.parallax.*). WorldPass likewise carries real logic (renderParticles,
-renderBars, drawEntityLayer, its own GPU timer). LightmapPass 'tighten' shipped: explicit LightmapResult
-consumed via WorldPainter::runGpuLightmapPass.
-Rail steps 3/4/5 are therefore complete; docs/render/architecture-3-target-state.md was updated to match
-(commit 69df7475).
+Extraction and thinning both shipped. WorldPainter::render() no longer holds cache gates, adaptive-N maths
+or oracle dual-run logic -- only call sites (m_backdropPass->renderEnvironment, ->renderParallax,
+m_worldPass->renderWorld). BackdropPass is sovereign in OWNERSHIP, not a pass-through: it holds both
+retained caches, the cross-surface arbiter, adaptive-N and the CM-1 merged compose, and carries its own
+telemetry. WorldPass likewise carries real logic. LightmapPass 'tighten' shipped: explicit LightmapResult
+consumed via WorldPainter::runGpuLightmapPass. Rail steps 3/4/5 are complete.
 
-=== THE ACTUAL RESIDUAL — countable ===
-The L3 Air-Gap contract, which is what makes a pass independently BUILDABLE and is why the clean
-per-layer branches still cannot be regenerated from the trunk:
+CONTRACT (2) IS CLOSED FOR BackdropPass (1e46f71c): the reads moved out to WorldPainter as BackdropParams,
+resolved PER FRAME at the composition root -- deliberately NOT constructor injection, which would freeze
+the live-tunable knobs (/rendercache envrefresh) the campaign uses to A/B itself. The Director-approved
+design spec still prescribes constructor injection and needs a correction banner (audit delta[10]).
 
- 1. INPUT SEAM — `git grep BackdropInput|WorldInput|LightingInput -- source/` returns ZERO. Both drawing
-    passes still take the fat, MUTABLE WorldRenderData& (StarBackdropPass.hpp:44,50; StarWorldPass.hpp:35-38).
-    NOTE: LightmapPass already satisfies this IN SUBSTANCE — processFull takes sliced ImageView/List
-    params, not the fat struct — so for that pass the DTO is a naming convention, NOT outstanding work.
- 2. CONFIG/ASSET INJECTION — Root::singleton() inside pass bodies: BackdropPass 7 reads, WorldPass 2,
-    GpuLightmapPass 0. Hoist to constructor injection. That is the whole of contract 2 and it is small.
+=== THE ACTUAL RESIDUAL ===
+ 1. INPUT SEAM -- `git grep BackdropInput|WorldInput|LightingInput -- source/` still returns ZERO. Both
+    drawing passes take the fat, MUTABLE WorldRenderData&. LightmapPass already satisfies this IN
+    SUBSTANCE (processFull takes sliced ImageView/List params), so for that pass the DTO is a naming
+    convention, NOT outstanding work. WorldPass additionally CONSUMES its input (std::move) without
+    declaring it -- audit delta[13].
+ 2. THE UNMETERED RESIDUAL. The ratchet meters 3 files; most reads sit in WorldPainter and the painters,
+    which no gate touches. Closing the Air-Gap MOVES reads to the composition root, so the metric is
+    satisfiable by relocation -- extend the ceilings to the orchestrator and painters BEFORE paying down
+    further, or the number goes green while the coupling stands (audit delta[7]).
  3. Cosmetic: rename GpuLightmapPass -> LightmapPass to match the design docs.
- 4. Declare the residual couplings the audit flagged as (a)/(c) rather than leaving them implicit.
 
-Also NOT part of this task, recorded so it is not confused with it: the lightmap DISPATCH PROLOGUE
-(config reads, PointParameters assembly, the O(cells) auto-K emission scan, shadowCompareFull) still
-lives in WorldPainter rather than the pass — see docs/render/architecture-2 row 4, now marked amber. And
-the rendertest pass-ablation mask in WorldPainter is deliberate instrumentation from #141, not undone work.
+Also NOT part of this task: the lightmap DISPATCH PROLOGUE (config reads, PointParameters assembly, the
+O(cells) auto-K emission scan, shadowCompareFull) still lives in WorldPainter -- see architecture-2 row 4.
+The rendertest pass-ablation mask is deliberate instrumentation from #141, not undone work.
 
-BLOCKS #138 and #139. Also note #136's oracle-gap finding: the existing pixel oracles are DIFFERENTIAL
-and provably cannot catch refresh-key omissions, FBO lifecycle or ambient-GL-state bugs, so a GL-state
-assertion pass (now the whole of #139's Phase 1) should land before further code motion here.
+BLOCKS #138 and #139. GUARDRAIL G9 from the audit: no BackdropPass split and no L3 boundary change until
+#174 lands -- the only correctness evidence is a harness whose camera never moves, so it is structurally
+blind to the paths a split would move.
 ```
 
 <a id="c29c1332-138"></a>
@@ -2485,6 +2497,7 @@ MUST NOT be shipped as "byte-identical" -- it changes behaviour on the error pat
 
 status: **completed**
 
+- `1014c3b2` docs(board): regenerate -- #177 closed, confirmed in game [#177]
 - `82711412` render: write the three-term retained-cache contract where the next author will read it
 - `0a027243` docs(board): regenerate -- #177 deployed to dev, awaiting flight test [#177]
 - `00f575ad` render: give the env cache a motion term -- fixes choppy stars during ship flight and warp
@@ -2511,6 +2524,40 @@ GENERALISED into the shared primitive (82711412): StarRetainedSurface.hpp now st
 TWO CONFIG TRAPS recorded, first one causal: envRefreshInterval's call-site fallback is 1 ("reads as off by default") while StarRootLoader ships 4 -- reasoning from the code you are reading concludes the feature is disabled. Same for parallaxMaxDriftStepPx (fallback 1.5, ships 0.75). envMaxDriftStepPx was therefore declared in StarRootLoader, not left as a fallback. Folded into memory [[config-runtime-pins-defaults]].
 
 MY FIRST DIAGNOSIS WAS WRONG: I blamed the parallax cache's adaptive N. A shipworld has ZERO parallax layers (size-only WorldTemplate ctor => m_layout null => biome() short-circuits => setParallax never runs), so parallaxCacheActive is false in flight and that fix would have been a literal no-op. Our own tree already said so at StarClientApplication.cpp:1471-1473. The four-angle investigation refuted it on independent grounds; the adjudicator also caught that a naive content key would have destroyed the cache's win.
+```
+
+<a id="c29c1332-178"></a>
+
+#### #178 — GATE-STALE: render-gate.sh certifies a binary that was never rebuilt (audit A5/delta[2])
+
+status: **pending**
+
+```
+THE DEFECT the M7 axiom audit named as the base-layer instrument failure that silently invalidates every certification above it. `scripts/render-gate.sh:24` asserts only `[ "$LOG" -nt "$BIN" ]`. After a FAILED build the binary never moves, so a freshly-deleted-and-rewritten log is trivially newer and the gate prints GATE: PASS against stale code. This fired TWICE in one session (recorded in commit 1e46f71c) and was caught only by a human checking mtimes by hand. Every byte-identity claim in the render campaign inherits that hole.
+
+Commit 1e46f71c says the defect was "filed as a follow-up rather than fixed here". It was not filed -- the audit verified no task, no board row, no amended memory rule existed. This task IS that filing, opened late.
+
+FIX (audit delta[2], guardrail G8): assert the BINARY is newer than its newest source, not merely that the log is newer than the binary. Check BEFORE the run so a stale binary fails in milliseconds instead of after a 30-frame GPU run. Name the offending files so the failure is actionable.
+
+CLOSEOUT (audit hook 3): verify by CONSTRUCTION, not assertion -- touch a source file, run the gate, confirm it REFUSES. Then amend the render-harness memory rule from "the log is newer than the binary" to "the BINARY is newer than its sources AND the log is newer than the binary".
+```
+
+<a id="c29c1332-179"></a>
+
+#### #179 — DOC-DRIFT: architecture-3 states counts the tree contradicts; mechanise G3 (audit A4/delta[9])
+
+status: **pending**
+
+```
+`docs/render/architecture-3-target-state.md` at HEAD states current-state numbers the tree contradicts: "now 296" (measured 318), "427 -> 119-line render()" (measured 141: StarWorldPainter.cpp:172-313), BackdropPass "7 singleton reads" and "the worst offender" (measured 0 since 1e46f71c), WorldPass "2 singleton reads" (correct today, will drift).
+
+A cold agent reading HEAD is told to pay down 7 reads in BackdropPass that no longer exist -- and #137 carries the same dead number. The correction written on 2026-07-25 to fix hand-typed counts introduced a fresh wrong one.
+
+FIX, per audit guardrail G3 ("no document may state a number render-inventory.py can measure -- either generate it or delete it"):
+  1. Delete every CURRENT-STATE count from the prose and the mermaid node labels. HISTORICAL numbers (876, 112, 427, the 8th read) stay -- they are past-state narrative the instrument cannot measure and cannot go stale.
+  2. Re-score the Air-Gap compliance matrix: BackdropPass contract (2) is now clean.
+  3. GENERATE the coupling residual into a marker-delimited block via a new `render-inventory.py --inject`.
+  4. MECHANISE it: `--check` + a `render_docs_fresh` ctest carrying the NoAssets label, so the block cannot silently rot again. Deliberately excludes line counts -- gating on those would redden CI on every render commit, the zero-tolerance failure mode the audit warned about in tension 1.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

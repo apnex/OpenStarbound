@@ -21,12 +21,30 @@ WHAT IT MEASURES
   * cross-layer includes -- the check a real layering lint would make
   * test coverage per layer
 
+GENERATING INTO THE DOC, NOT JUST BESIDE IT
+-------------------------------------------
+Printing a table a human then copies into a doc is the same defect one indirection out: the copy is a
+hand-typed number the moment it is pasted, and it drifted again within a day of this script existing --
+the target-state doc claimed BackdropPass held 7 `Root::singleton()` reads while the tree measured 0.
+So `--inject` writes the residual straight between markers in the doc and `--check` fails if the doc
+and the tree disagree. `render_docs_fresh` runs `--check` in CI.
+
+The injected block deliberately carries NO LINE COUNTS. Gating on those would redden CI on every render
+commit, which is the zero-tolerance failure this campaign already decided against for `render_layering`
+-- a gate people route around is worse than no gate. What it carries is the COUPLING residual, which is
+directional: a wrong line count is cosmetic, a wrong singleton count sends the next author to pay down
+work that does not exist.
+
 Usage:
     scripts/render-inventory.py            # markdown to stdout, for embedding in docs/render/
     scripts/render-inventory.py --json     # machine-readable
+    scripts/render-inventory.py --residual # just the generated block
+    scripts/render-inventory.py --inject FILE   # rewrite the block inside FILE
+    scripts/render-inventory.py --check  FILE   # exit 1 if FILE's block disagrees with the tree
 """
 
 import argparse
+import difflib
 import json
 import pathlib
 import re
@@ -89,9 +107,95 @@ def lines(p):
         return 0
 
 
+MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/render-inventory.py --inject -->"
+MARK_END = "<!-- END GENERATED -->"
+
+# The `render_layering` ctest's per-file ceilings, read from the registration rather than restated here.
+# Restating them would recreate the exact drift this script exists to delete -- and the gap between what
+# is METERED and what merely EXISTS is the finding worth surfacing: closing the Air-Gap moves reads to
+# the composition root, so a ratchet that meters only the passes is satisfiable by relocation.
+CEILING = re.compile(r"(source/rendering/\w+\.cpp)=(\d+)")
+
+
+def ceilings():
+    p = REPO / "source/test/CMakeLists.txt"
+    if not p.exists():
+        return {}
+    return {pathlib.Path(f).name: int(n) for f, n in CEILING.findall(p.read_text(errors="replace"))}
+
+
+def residual_block(report, unassigned):
+    """The generated block: coupling residual only. No line counts -- see the module docstring."""
+    caps = ceilings()
+    out = [MARK_BEGIN, ""]
+    out.append("**Air-Gap residual — every `Root::singleton()` read in the render subsystem, measured "
+               "from the tree.** Regenerate with `scripts/render-inventory.py --inject "
+               "docs/render/architecture-3-target-state.md`; `render_docs_fresh` fails CI if this block "
+               "and the tree disagree.")
+    out.append("")
+    out.append("| layer | reads | of those, metered by a gate |")
+    out.append("|:------|------:|----------------------------:|")
+    tot = met = 0
+    for L in report:
+        fs = [f for f in L["files"] if not f.get("missing")]
+        r = sum(f["singletonReads"] for f in fs)
+        m = sum(f["singletonReads"] for f in fs if pathlib.Path(f["file"]).name in caps)
+        tot += r
+        met += m
+        out.append(f"| {L['layer']} | {r} | {m} |")
+    out.append(f"| **total** | **{tot}** | **{met}** |")
+    out.append("")
+
+    rows = []
+    for L in report:
+        for f in L["files"]:
+            if f.get("missing"):
+                continue
+            name = pathlib.Path(f["file"]).name
+            if f["singletonReads"] == 0 and name not in caps:
+                continue
+            cap = caps.get(name)
+            rows.append(f"| `{name}` | {L['layer']} | {f['singletonReads']} | "
+                        f"{cap if cap is not None else '— not metered'} |")
+    if rows:
+        out.append("Files that carry a read, plus every file the ratchet holds at a ceiling:")
+        out.append("")
+        out.append("| file | layer | reads | `render_layering` ceiling |")
+        out.append("|:-----|:------|------:|--------------------------:|")
+        out.extend(rows)
+        out.append("")
+    if unassigned:
+        out.append("**Unclaimed by the layer table** (`source/rendering/`): "
+                   + ", ".join(f"`{u}`" for u in unassigned)
+                   + " — a layering question nobody has answered.")
+        out.append("")
+    out.append(MARK_END)
+    return "\n".join(out)
+
+
+def doc_path(arg):
+    """Resolve relative to the REPO, not the cwd -- ctest runs this from the build directory."""
+    p = pathlib.Path(arg)
+    return p if p.is_absolute() else REPO / p
+
+
+def splice(path, block):
+    """Return (old_block, new_text) for FILE, or raise if the markers are absent/malformed."""
+    text = path.read_text(errors="replace")
+    i, j = text.find(MARK_BEGIN), text.find(MARK_END)
+    if i < 0 or j < 0 or j < i:
+        raise SystemExit(f"{path}: markers not found. Add a block delimited by:\n"
+                         f"  {MARK_BEGIN}\n  {MARK_END}")
+    j += len(MARK_END)
+    return text[i:j], text[:i] + block + text[j:]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--residual", action="store_true", help="print just the generated block")
+    ap.add_argument("--inject", metavar="FILE", help="rewrite the generated block inside FILE")
+    ap.add_argument("--check", metavar="FILE", help="exit 1 if FILE's block disagrees with the tree")
     args = ap.parse_args()
 
     # Map every assigned file to its layer, so cross-layer includes can be resolved by basename.
@@ -134,6 +238,38 @@ def main():
     if args.json:
         json.dump({"layers": report, "unassigned": unassigned, "tests": tests}, sys.stdout, indent=1)
         return 0
+
+    block = residual_block(report, unassigned)
+
+    if args.residual:
+        print(block)
+        return 0
+
+    if args.inject:
+        path = doc_path(args.inject)
+        old, new = splice(path, block)
+        if old == block:
+            print(f"{args.inject}: already current")
+            return 0
+        path.write_text(new)
+        print(f"{args.inject}: regenerated")
+        return 0
+
+    if args.check:
+        path = doc_path(args.check)
+        old, _ = splice(path, block)
+        if old == block:
+            print(f"{args.check}: generated block matches the tree")
+            return 0
+        # An actionable failure names the remedy. This gate has exactly one.
+        print(f"STALE: {args.check} disagrees with the tree.\n")
+        sys.stdout.writelines(difflib.unified_diff(
+            old.splitlines(True), block.splitlines(True),
+            fromfile=f"{args.check} (committed)", tofile="measured from the tree"))
+        print(f"\nFix: scripts/render-inventory.py --inject {args.check}")
+        print("Then read the diff before committing it -- a changed count is an architectural event,")
+        print("not a formatting one. A read that MOVED rather than went away is still a read.")
+        return 1
 
     out = []
     out.append("| layer | lines | files | `Root::singleton()` | direct GL | telemetry handles |")

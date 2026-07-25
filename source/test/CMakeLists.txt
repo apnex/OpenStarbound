@@ -127,6 +127,26 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #   BackdropPass  8 -> 0  (#137: BackdropParams resolved at the boundary by WorldPainter)
 #   WorldPass     2        the remaining residual; same treatment, not yet done
 #   LightmapPass  0        clean since extraction -- though BOUGHT by WorldPainter doing its reads
+#
+# THE RATCHET METERS 3 FILES OF 17 RESIDUAL READS. Closing the Air-Gap MOVES reads to the composition
+# root, so this ceiling set is satisfiable by relocation -- which is exactly the move that took
+# BackdropPass from 8 to 0, into a WorldPainter no gate touches. Extending the ceilings to the
+# orchestrator and painters is filed as the next step; until then read render_docs_fresh's generated
+# table, which reports metered-vs-total so the gap cannot be mistaken for compliance.
+
+# DOC-FRESHNESS GATE (#179). The architecture doc's Air-Gap counts are GENERATED into a marker block by
+# `scripts/render-inventory.py --inject`; this asserts the COMMITTED block still matches the tree.
+#
+# Measuring beside the doc was not enough. render-inventory.py already existed and printed correct
+# numbers while the doc went on asserting that BackdropPass held 7 Root::singleton() reads against a
+# tree measuring 0 -- because a measurement a human pastes is hand-typed again the instant it lands. A
+# cold agent reading that doc is sent to pay down work that does not exist.
+#
+# It gates the COUPLING residual only, never line counts. Line counts churn on every commit, so gating
+# them would redden CI constantly -- the zero-tolerance failure mode the render_layering ratchet above
+# exists to avoid. A wrong line count is cosmetic; a wrong singleton count is directional.
+ADD_TEST (NAME render_docs_fresh COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/render-inventory.py
+          --check docs/render/architecture-3-target-state.md)
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
 # (no GL context). The two module TUs are compiled directly here -- they are sovereign (zero refs to
@@ -166,5 +186,5 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 #
 # ADD THE LABEL WHENEVER YOU ADD AN ASSET-FREE TEST. A gate nobody runs is worse than no gate, because
 # the docs go on citing it.
-SET_TESTS_PROPERTIES(core_tests layer1_layering render_surface_tests render_layering PROPERTIES
-                     LABELS "NoAssets")
+SET_TESTS_PROPERTIES(core_tests layer1_layering render_surface_tests render_layering render_docs_fresh
+                     PROPERTIES LABELS "NoAssets")
