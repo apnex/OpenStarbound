@@ -69,6 +69,8 @@ and fix it, do not proceed.**
 | `source/client/StarClientApplication.cpp` | Client render/update; existing render timers | Modify — declarations + `cpu.wait.lighting.us` |
 | ~10 further `source/**` files | Existing metric registration sites | Modify — one-line declarations only |
 | `source/test/telemetry_test.cpp` | The instrument's oracle | Modify — descriptor, histogram, closure, cadence tests |
+| `source/test/lighting_telemetry_test.cpp`, `source/test/server_test.cpp` | `game_tests` consumers of the snapshot | Modify — read `metrics`, not the removed `timers` bucket |
+| `docs/telemetry/architecture.md` | The subsystem's own architecture document | **Create** — Task 9 Step 6 |
 | `scripts/telemetry-window.py` | Snapshot consumer: windows, closes, reports percentiles | Rewrite — schema v2, owner-aware, percentile columns |
 | `scripts/render-profile.sh` | Live profile runner | Modify — pass vsync state through to `meta` |
 
@@ -145,7 +147,11 @@ In `source/core/StarTelemetry.hpp`, immediately after `struct MetricNode; // def
 // MAIN thread roughly three frames after the GPU did the work (StarRenderer_opengl.cpp:1050-1067), so stamping
 // the recording thread -- the obvious design -- would label every GPU sample as CPU/main. Declaration is both
 // correct and cheaper, costing nothing on the sampling path.
-enum class MetricDomain : uint8_t { Cpu, Gpu };
+// `Unknown` is the zero value and the default DELIBERATELY. A default of `Cpu` would be a confident lie: until
+// the GPU pass timers are declared (Task 4) they would emit "domain":"cpu", which is exactly the mislabelling
+// this design exists to prevent, arriving by another route. "Not yet declared" must be visible in the data,
+// never silently plausible.
+enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
 
 // The LOGICAL budget a sample belongs to -- deliberately not an OS thread. WorldClient::lightingCalc() runs on
 // its own thread or inline on the main thread depending on m_asyncLighting (StarWorldClient.cpp:61,574); it
@@ -166,7 +172,7 @@ enum class MetricCadence : uint8_t { Call, Frame, Tick, Recompute };
 enum class MetricRole : uint8_t { Detail, Budget, Total };
 
 struct MetricDesc {
-  MetricDomain domain = MetricDomain::Cpu;
+  MetricDomain domain = MetricDomain::Unknown;
   MetricOwner owner = MetricOwner::Unknown;
   MetricCadence cadence = MetricCadence::Call;
   MetricRole role = MetricRole::Detail;
@@ -390,7 +396,25 @@ Json Telemetry::snapshot() {
 
 - [ ] **Step 8: Fix the pre-existing tests that read the old schema**
 
-Four existing tests read `counters`/`gauges`/`timers`. Update them in `source/test/telemetry_test.cpp`:
+**There are SIX, in THREE files — and two of them are in `game_tests`, not `core_tests`.** `Json::get` throws
+`JsonException` on a missing key, and a v2 snapshot has no `"timers"` bucket, so these do not fail gracefully.
+Because Step 9 only builds and runs `core_tests`, the two `game_tests` ones stay invisible until Task 9's full
+sweep. Fix all three files here:
+
+- `source/test/lighting_telemetry_test.cpp:23` — `snapshot().getObject("timers").get(key).getUInt("count")`
+- `source/test/server_test.cpp:46` — `Json timers = snap.getObject("timers");`
+
+Both become `getObject("metrics")` with the same shape as the `telemetry_test.cpp` migrations below. After
+fixing, prove it:
+
+```bash
+cd /root/frackin/OpenStarbound && \
+VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target game_tests -j 8 && \
+./scripts/game-tests.sh
+```
+Expected: 91/91 PASS.
+
+Then the four in `source/test/telemetry_test.cpp`:
 
 ```cpp
 TEST(Telemetry, SnapshotEmitsCountersAndGaugesBuckets) {
@@ -727,6 +751,17 @@ fail the build if one survives.
                                               : MetricOwner::Unknown;
     declare(key, MetricDesc{MetricDomain::Cpu, owner, MetricCadence::Tick, MetricRole::Detail});
     seq = counter(key);
+```
+
+**This declare-then-`counter()` sequence is the exact case that made Task 1's `declare()` parking behaviour
+mandatory.** An earlier draft had `declare()` create the node itself, defaulting it to a Timer — which
+`getOrCreate` would then hand back to `counter()` unchanged, so `inc()` wrote `node->counter` while
+`snapshot()` read the timer fields and emitted a confident zero. `tick.server.seq` is the declared
+**denominator** for owner `sim`, so every `sim` per-tick figure would have been divided by nothing. Verify
+after this step that it is genuinely a counter:
+
+```bash
+cd /root/frackin/OpenStarbound && taskset -c 6-15 dist/core_tests --gtest_filter='Telemetry.*Tick*'
 ```
 
 - [ ] **Step 3: Build everything**
@@ -1735,6 +1770,77 @@ json.dump(d,open(p,'w'),indent=2,sort_keys=True); print('restored')
 " && git status --short && git log --oneline -8
 ```
 Expected: clean tree (`harness/` is gitignored), eight new commits from this plan.
+
+- [ ] **Step 6: Write the subsystem architecture document**
+
+**Create:** `docs/telemetry/architecture.md`
+
+Telemetry is a **sovereign, fork-owned subsystem** — verified 2026-07-25: `origin/main` (our mirror of upstream
+OpenStarbound) contains no telemetry files whatsoever, and the first commit is our own `fd9e398c` of
+2026-06-08. It is not vanilla, it is not upstream, and it is deliberately not upstreamable: it exists to serve
+this fork's performance campaign. Vanilla's only instrument is `LogMap` (`StarLogging.hpp`, which *is*
+upstream) — ephemeral on-screen debug text, one string per key, overwritten every frame.
+
+`docs/render/` has five architecture documents. Telemetry — now the instrument every performance decision in
+this campaign rests on — has none. This closes that.
+
+Write the document with exactly these sections:
+
+1. **What this is, and what it is not.** Sovereign and fork-owned, with the provenance evidence above. The
+   division of labour with `LogMap`: LogMap answers *"what is it right now"* on screen, Telemetry answers
+   *"what did it cost over this window"* to a file. Both are kept; neither replaces the other.
+2. **The metric model.** The four declared fields (`domain`, `owner`, `cadence`, `role`), each with the reason
+   it exists rather than only its meaning. State the load-bearing constraint plainly: **identity is declared at
+   registration, never inferred at sample time**, because GPU results are recorded by the main thread ~3 frames
+   after the GPU did the work, so stamping the recording thread would label every GPU sample CPU. State why
+   `owner` is a logical budget rather than an OS thread (`m_asyncLighting` moves `lightingCalc()` between
+   threads at runtime; the budget does not move).
+3. **Owners: denominator vs total.** The table from the spec, and why they are two different things — `frame`
+   reads one metric two ways, `gl` uses two different metrics because GPU work is *counted* per frame but its
+   *whole* is the GPU frame span. Note that an owner with no declared total reports its parts unclosed rather
+   than inventing a whole.
+4. **The threading contract.** Which state is lock-free relaxed (the value ops: counter/gauge/timer/rate) and
+   which is mutex-guarded (registration, declaration, snapshot, reset). State the handle-stability guarantee
+   and why it holds (node-based `StableHashMap` plus heap-allocated address-stable nodes). State that
+   `describe()` takes the mutex and is off the hot path.
+5. **Wire format.** The schema-v2 JSON shape — `meta`, `owners`, `metrics` — with a short real example. Say
+   that the consumer is required to know nothing about the engine: it reads owners and descriptors, never
+   pattern-matches metric names. Name the two consumers (`TelemetryReporter`, `scripts/telemetry-window.py`)
+   and note the `/telemetry` HUD is not one of them (it reads counters by name).
+6. **The two instruments and when each applies.** `scripts/render-gate.sh` (frozen world, byte-identical A/B,
+   answers *"is it identical?"*) versus `scripts/render-profile.sh` (sim running, ~1% GPU-load A/B, answers
+   *"is it faster?"*). Include the measured resolution figures and the standing rule: **compare adjacent legs
+   only** — back-to-back runs agree to <1%, runs minutes apart drift ~7%.
+7. **Traps, with the evidence.** Each of these cost real time and must not be rediscovered:
+   the 119%-of-the-whole denominator error (dividing by the gpu_span *sample* count, which covers only ~67% of
+   frames, instead of the frame count); `max` being a run-long high-water mark and therefore **not**
+   windowable, which is why histograms exist; the `declare()`-guesses-a-type defect (C1) that would have made
+   `tick.server.seq` a permanently-zero timer while it was serving as owner `sim`'s denominator; and quiescence
+   being a frozen-world concept that never fires with the sim running.
+8. **The self-test.** What the oracle asserts (budget closure, cadence bound, histogram consistency, no
+   descriptor conflicts) and where it lives (`source/test/telemetry_test.cpp` plus the assertions
+   `telemetry-window.py` runs on real data). State the asymmetric cadence rule and why: `count ≤ denominator`,
+   because *under* is legitimate coverage and *over* is always a bug.
+9. **Deliberately out of scope**, with the reason for each: per-frame time-series, memory/allocation axis,
+   per-thread budgets for `sim` and `lighting` (evidence-gated), and input injection for the harness.
+
+Keep it to the register of `docs/render/layer1-architecture.md` — dense, evidence-led, no filler. Cite
+`file:line` for every claim about code.
+
+```bash
+cd /root/frackin/OpenStarbound && mkdir -p docs/telemetry && \
+git add docs/telemetry/architecture.md && \
+git commit -m "docs: telemetry subsystem architecture
+
+Telemetry is sovereign and fork-owned -- origin/main has no telemetry files at all,
+and the first commit is ours (fd9e398c, 2026-06-08). Vanilla's only instrument is
+LogMap: ephemeral on-screen text, overwritten every frame. Both are kept; they
+answer different questions.
+
+docs/render/ has five architecture documents and telemetry had none, despite now
+being the instrument every performance decision rests on. This closes that, and
+records the traps with their evidence so they are not rediscovered."
+```
 
 ---
 
