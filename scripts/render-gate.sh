@@ -12,7 +12,33 @@ cd /root/frackin/OpenStarbound
 BIN=dist/starbound
 LOG=harness/logs/starbound.log
 
-# A stale log reads exactly like a passing one. Refuse to certify against a binary the log predates.
+# THE STALENESS GUARD, AND IT WAS ALREADY WRONG ONCE. It used to assert one thing only -- that the log
+# is newer than the binary -- which a FAILED BUILD satisfies trivially: the compile errors out, the
+# binary never moves, this script deletes the log and writes a fresh one, and the gate certifies code
+# that was never compiled. That fired TWICE in one session (1e46f71c) and was caught by a human reading
+# mtimes by hand, not by the gate. Every byte-identity claim made through here inherits that hole. #178
+#
+# Two questions, and the honest gate has to ask both:
+#   1. did the BUILD happen?   the binary is newer than every source it is built from
+#   2. did the RUN happen?     the log is newer than the binary
+#
+# (1) runs FIRST, before the game boots, so a stale binary costs milliseconds instead of a 30-frame GPU
+# run. There is deliberately no override: an escape hatch here is the defect.
+[ -x "$BIN" ] || { echo "REFUSING TO CERTIFY: no executable at $BIN."; exit 1; }
+
+# dist/ IS the CMake runtime output directory (source/CMakeLists.txt:574), so $BIN's mtime is its link
+# time -- not a copy's. source/test is pruned: it builds the test binaries, not the game.
+stale=$(find source -path source/test -prune -o -type f \
+          \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name 'CMakeLists.txt' \) \
+          -newer "$BIN" -print 2>/dev/null | sort | head -20)
+if [ -n "$stale" ]; then
+  echo "REFUSING TO CERTIFY: these sources are newer than $BIN -- the build never ran, or it FAILED:"
+  echo "$stale" | sed 's/^/    /'
+  echo "  Rebuild, CONFIRM THE LINK SUCCEEDED, then re-run. A failed build leaves the binary untouched,"
+  echo "  so everything this gate would then tell you is a fact about the PREVIOUS binary."
+  exit 1
+fi
+
 [ -f "$LOG" ] && rm -f "$LOG"
 
 env "$@" \
@@ -25,6 +51,10 @@ if [ ! "$LOG" -nt "$BIN" ]; then
   echo "REFUSING TO CERTIFY: log is not newer than the binary -- the run did not happen."
   exit 1
 fi
+
+# Name the binary that was certified. A verdict that does not say what it certified is a verdict
+# somebody will later attach to a different binary.
+echo "certifying $BIN  ($(date -r "$BIN" '+%Y-%m-%d %H:%M:%S'))"
 
 echo "=== oracles ==="
 # The three oracles do NOT share a vocabulary. envoracle/spreadoracle say MATCH; paralloracle says
