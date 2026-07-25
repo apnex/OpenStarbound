@@ -854,6 +854,12 @@ so they close against `render.frame.gpu_span_us` like every other pass — but t
 not per frame, so their count must be checked against recomputes. Owner answers "what whole do I belong to";
 cadence answers "how often should I have fired". Per-frame cost is `total ÷ frames` regardless of either.
 
+> **SUPERSEDED by `315adcc2` (task #167).** The `Telemetry::declare()` + `gpuTimer().begin(key)` idiom shown
+> below is **gone**. `GpuTimer::begin` now takes the `MetricDesc` directly, so the descriptor arrives with the
+> call that starts the timing and all 15 declare-blocks were deleted (−59 lines). The reachability analysis
+> below is retained as the *reason* the contract changed — it is the record of why a free-floating declare in
+> per-frame control flow was the wrong mechanism. **Do not write the pattern shown below.**
+
 **A DECLARE INSIDE A CONFIG-GATED BRANCH IS NOT A DECLARATION.** This bit twice while implementing this task,
 both times the same way, and it is invisible to both verification runs:
 

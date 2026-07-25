@@ -26,10 +26,21 @@ namespace Star {
 //
 // begin() TAKES THE DESCRIPTOR. GPU values are recorded generically, three frames later, by code
 // (OpenGlRenderer) that cannot know what a pass means -- so unlike a CPU Telemetry::timer() handle, there is
-// no declaration site that naturally dominates the recording site. Requiring the desc at begin() closes that
-// gap structurally: a timing cannot be started without it, so an undeclared GPU metric is unrepresentable,
-// and a multi-site key just repeats the same desc at each call rather than needing one declaration proven to
-// dominate every site.
+// no declaration site that naturally dominates the recording site. The previous design put a free-floating
+// Telemetry::declare() near each begin(), which made declaration a STATEMENT IN PER-FRAME CONTROL FLOW: it
+// produced three undeclared metrics in one task, twice because the declare sat in a branch a config flag
+// switches off (backdropComposeMerge, parallaxOracle) and so never ran.
+//
+// Requiring the desc here closes that structurally. A timing CANNOT BE STARTED without one, so a metric can no
+// longer be left undeclared by a branch that does not run, and a multi-site key just repeats the same desc at
+// each call rather than needing one declaration proven to dominate every site. (It is still possible to pass
+// `{}` on purpose and get owner=Unknown -- omission is impossible, deliberate vagueness is not. The profile
+// check's UNDECLARED line catches that.)
+//
+// The desc is spelled out in full at every call rather than hidden behind shape constants like
+// `GpuFrameBudget`. Deliberate: cadence and role are exactly the fields that have been mis-set historically,
+// and reading `Recompute` in place tells you the count is checked against recomputes rather than frames. The
+// cost is that two sites of one key could drift apart -- that is DETECTED (descConflict), not silent.
 class GpuTimer {
 public:
   virtual ~GpuTimer() = default;
