@@ -1703,8 +1703,23 @@ def main():
                                       f"-- the instrumentation is missing a phase")
         print()
 
-    # The bound verdict, from the data rather than from the reader's memory of which run this was.
+    # THE HEADLINE CPU NUMBER IS BUSY, NOT TOTAL.
+    #
+    # The main loop is PACED: Thread::sleepPrecise(m_updateTicker.spareTime()) runs even with vsync off, so
+    # cpu.frame.total.us measures the frame PACE, not the frame COST. Measured 2026-07-25 on the first real
+    # budget capture: total 16393 us/frame of which idle was 10619 -- 65% of the frame is sleep.
+    #
+    # That makes total useless as an A/B metric until a regression exceeds the entire idle reserve. A +1 ms CPU
+    # regression moves busy 5774 -> 6774 and idle 10619 -> 9619, and total reads 16393 BOTH TIMES: the A/B
+    # reports NO CHANGE for a real, shipped regression. Quote busy. Report total only as the pace it is.
     tot, swap, idle = w.get("cpu.frame.total.us"), w.get("cpu.frame.swap.us"), w.get("cpu.frame.idle.us")
+    if tot:
+        # idle records ONLY on frames that actually slept, so its count < total's. Normalise by the frame
+        # count, not idle's own count -- the same denominator trap that has already fired three times here.
+        idle_pf = (idle["total"] / tot["count"]) if (idle and tot["count"]) else 0.0
+        busy = tot["mean"] - idle_pf
+        print(f"  CPU busy: {busy:.0f}us/frame of a {tot['mean']:.0f}us pace "
+              f"({100.0 * busy / tot['mean']:.0f}% utilised) -- BUSY is the A/B metric, total is the pacer")
     if tot and swap:
         sp, ip = swap["mean"], (idle["mean"] if idle else 0.0)
         if meta.get("vsync"):
@@ -1980,6 +1995,11 @@ Write the document with exactly these sections:
      verification runs do not jointly cover*: the gate runs oracle-on but checks only oracle diffs, the profile
      check runs oracle-off. Rule: declare at a **dominator** when one exists, at every site when it does not,
      and never inside a config-switchable branch.
+   - **`cpu.frame.total.us` is the PACE, not the cost.** `Thread::sleepPrecise(m_updateTicker.spareTime())`
+     runs even with vsync off, so the loop is paced regardless. Measured on the first real budget capture:
+     total 16393 µs/frame of which **idle was 10619 — 65% of the frame is sleep**. A +1 ms CPU regression
+     therefore moves busy 5774→6774 and idle 10619→9619 while **total reads 16393 both times**: an A/B on
+     total reports NO CHANGE for a real regression. **Quote `busy = total − idle`.** Total is the pacer.
    - **Quiescence is a frozen-world concept** and never fires with the sim running.
 8. **The self-test.** What the oracle asserts (budget closure, cadence bound, histogram consistency, no
    descriptor conflicts) and where it lives (`source/test/telemetry_test.cpp` plus the assertions
