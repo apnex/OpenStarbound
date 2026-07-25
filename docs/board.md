@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**113 tasks** across 2 store(s): 2 in_progress, 22 pending, 89 completed
+**114 tasks** across 2 store(s): 1 in_progress, 23 pending, 90 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 112 tasks, ids 64–175
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 113 tasks, ids 64–176
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 89.
+**Completed tasks citing no commit and no doc:** 79 of 90.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -180,7 +180,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
-| [#175](#c29c1332-175) | `c29c1332` | **active** | SIM-1: close the server-tick budget — owner `sim` has NO total and one phase holds 98.4% | — | — |
+| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
+| [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2418,64 +2419,61 @@ evidence that is worth more than any single lever on the board.
 
 <a id="c29c1332-175"></a>
 
-#### #175 — SIM-1: close the server-tick budget — owner `sim` has NO total and one phase holds 98.4%
+#### #175 — SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65%
 
-status: **in_progress**
+status: **completed**
+
+- `4eb7b96c` sim: close the server-tick budget -- 27 phases, 99.76%
 
 ```
-Director-approved 2026-07-25 as P0 tooling: telemetry parity between client/render and server/sim. Target
-is a PROPERLY CLOSED SIM BUDGET (not the fully-modular self-registering model — that was considered and
-deferred; revisit only if several more budget-bearing subsystems appear).
+CLOSED 2026-07-25, commit 4eb7b96c (pushed to origin/integration).
 
-=== THE GAP, measured from the Director's own play capture (2283 server ticks) ===
-  owner        parts  total   biggest phase
-  frame          5     YES    --
-  gl            13     YES    --
-  lighting       9     YES    gather 57%
-  sim            4     NONE   tick.server.compute.us 3260 us/tick = 98.4%
+Owner `sim` had a denominator and NO TOTAL -- parts with no whole. tick.server.compute.us sat at 98.4% of the four parts that existed, which was the ABSENCE of an attribution, not one.
 
-  tick.server.compute.us   3260.2 us/tick   <-- the god-phase
-  tick.server.publish.us     52.6
-  tick.server.commit.us       1.4
-  tick.server.sync.us         0.5
-c_ownerSpecs (StarTelemetry.cpp) declares {Sim, "tick.server.seq", nullptr} -- denominator but NO total,
-so the parts report unclosed and nothing can be attributed. This is worse than lighting's pre-#168 state:
-lighting was 47.6% accounted but at least had gather broken out; sim has one undifferentiated 3.3ms phase.
+MEASURED at 00-Ocean-Lab over 4807 ticks: closure 99.76%, 5.4 us/tick unattributed across 27 contiguous Budget parts. Independently recomputed from the raw JSON, not taken from the tool's own summary line.
+  compute.entities  1483.4 us/tick  65.2%   <- the real dominant phase
+  compute.netsync    220.9           9.7%
+  compute.liquid     192.9           8.5%
+  compute.wiring     119.2           5.2%
+  compute.prologue    50.6           2.2%
+  compute.damage      43.5           1.9%
+  publish             34.1           1.5%
 
-=== WHY IT MATTERS BEYOND TIDINESS ===
-SIX board tasks are blocked on the same missing capability, not on their own merits: #66 (collision/force
-early-out), #69 (spatial-hash sector sweep), #75 (Lua proto-cache dense workload), #82 (collision arena
-A/B), #84 (plant-wind win), #90 (six damage/object sub-levers). None can be SIZED today. Closing this
-budget sizes all six at once.
+DIRECTOR DECISIONS (both taken, genuinely confirmed after a spurious auto-answer was caught and discarded):
+  1. Name all six lock acquisitions as parts -> busy = total - blocked is recoverable. Measured 0.74 us/tick (0.03%) single-player; the instrument is there for multiplayer.
+  2. Land all 27 at once -> avoids the transient Budget->Detail->Budget flip on tick.server.commit.us that the two-tier plan required.
 
-=== WHAT IS ALREADY IN PLACE (cheaper than it looks) ===
- - The capture works. tick.server.* appears in EVERY profile snapshot; render-profile.sh needs no change.
-   (An earlier note in #84 said "no server-thread capture exists" -- that referred to perf-record call
-   graphs, not telemetry. Corrected.)
- - The model works, hard-tested: #168 drove it through nine phases and it found six real defects.
- - MetricOwner is now safe to extend -- adding an owner without naming it is a compile error (1834fef4).
+THE TOTAL IS BUSY W.R.T. PACING, NOT BLOCKING. It wraps the run() loop body minus the pacing sleep; the sleep is the last statement and the body has one control-flow path, so it is excluded structurally. But six locks live inside it. An earlier draft asserted "busy by construction" -- wrong, and a critic caught it.
 
-=== SHAPE OF THE WORK (a #168-shaped arc) ===
- 1. Give owner `sim` a TOTAL wrapping the whole server tick, so the four existing parts can close.
- 2. Decompose tick.server.compute.us into CONTIGUOUS, EXHAUSTIVE phases -- entity update, liquid,
-    collision/movement, damage, Lua/scripting, net, whatever the code actually shows. Same discipline as
-    #168: contiguous so closure is exact, one scaling law per phase, and CONDITIONAL PHASES WRAP THEIR
-    `if` so no phase is ever coverage-scaled.
- 3. Record the scaling-law denominators (entity count? tile count? active-sector count?) the way
-    lighting.calc.cells / lighting.lights.sources were -- and note the trap #168 found: a gauge set inside
-    a skipped path reports a stale value forever, and calc.cells vs cells was wrong by 4.375x.
- 4. Verify: closure >=97% on a live capture, every part at 100% coverage, gate PASS, both suites green.
+FOLDED IN, pre-existing: Telemetry::markTick moved from inside update() (after the mutex) to the first statement of the run() loop body. Two phases used to close before the denominator incremented, so the consumer's count<=denominator assertion fired on correct data -- and DID, in local captures branchless.json / harnesstest.json. New capture: zero violations.
 
-=== OPEN DESIGN QUESTIONS for the brainstorm ===
- - What IS the sim whole? The server tick is paced (like the frame), so is there an idle/sleep component
-   that makes total-vs-busy the same trap as cpu.frame.total.us? #168's hardest-won lesson was that the
-   frame TOTAL is the PACE, not the cost. Check before choosing the total.
- - Does sim want SUB-OWNERS (SimEntity / SimLiquid / SimLua) or just phases under one owner? Sub-owners
-   need multiple totals, which the model cannot represent (see #171) -- so prefer phases unless the
-   evidence demands otherwise.
- - The server tick runs on its own thread(s). Confirm the threading contract before adding scopes; the
-   TelemetryScope RMW has a documented thread-affinity invariant.
-Related: #171 (multi-total limit), #174 (harness movement), #84/#66/#69/#75/#82/#90 (the blocked six).
+STRUCTURAL: the 16 compute parts are cadence=Call with FILE-SCOPE handles. WorldServer::update is entered only when dt>0 && !paused, and a block-scope static inside a never-entered function never REGISTERS -- the metric would be absent rather than zero, and absent reads as "no such phase". tick.server.compute.us demoted Budget -> Detail (it is their parent).
+
+ADVERSARIALLY REVIEWED BEFORE IMPLEMENTATION: 3 critics, 2 FATALs, both fixed. Verified: core_tests 251/251, game_tests 92/92, render gate PASS. telemetry_test's OwnersDeclareDenominatorAndTotal updated -- it pinned "sim must not invent a total"; sim now MEASURES one.
+
+SPUN OUT: #176 (publish-phase iterator invalidation, pre-existing UB, deliberately not fixed here).
+STILL OPEN elsewhere: SystemWorldServerThread has zero telemetry, so "sim closed at 99.76%" means the WORLD tick, not all server CPU. Do not let that claim drift.
+```
+
+<a id="c29c1332-176"></a>
+
+#### #176 — SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB)
+
+status: **pending**
+
+```
+FOUND during #175 (adversarial critic, confirmed against the tree). Deliberately NOT fixed there: instrumenting a bug is not fixing it, and folding a behaviour change into a byte-identical telemetry change would bury it.
+
+source/game/StarWorldServerThread.cpp, WorldServerThread::update, publish phase:
+  for (auto clientId : unerroredClientIds) { ... catch { ... unerroredClientIds.remove(clientId); } }
+
+The catch block calls List::remove on the very container the range-for is iterating. Star's List is a std::vector wrapper (source/core/StarList.hpp), so remove() invalidates the iterator and the loop continues on a dangling one. Undefined behaviour.
+
+REACHABILITY: only on the exception path -- handleIncomingPackets throwing for a client. Rare but not unreachable; that catch exists because it happens. Note the list is now ALSO read by the sync phase later in the same tick, so a corrupted list has a second consumer.
+
+FIX OPTIONS: (a) collect failures into a second list and remove after the loop; (b) iterate a copy; (c) index-based loop with careful decrement. (a) is cleanest and keeps the removal ordering observable.
+
+MUST NOT be shipped as "byte-identical" -- it changes behaviour on the error path, which is the point. Wants its own commit and, ideally, a test that drives a throwing client.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
