@@ -149,6 +149,40 @@ times the whole `lightingCalc()` call, which happens per *frame*, while its part
 and fire per *recompute*. The owner's denominator sets the table's **unit**; each metric's cadence sets its
 **own** expectation.
 
+### The `lighting` owner: how a frame-cadence total closes against recompute-cadence parts
+
+`lighting` is the only owner whose total and denominator differ in cadence, and it is the worked example for
+the rule above. `lighting.cpu.total.us` opens *before* the temporal gate, so it accrues on every frame
+including the ~26% the gate skips. Its parts sit *after* the gate and fire per recompute. Two Totals per owner
+are **not representable** (`StarTelemetry.cpp`'s owner table is keyed by owner name — a second row silently
+overwrites the first, and the consumer unpacks `total` as a scalar), so the closure is made exact instead by
+giving the pre-gate work its own **frame-cadence Budget part**:
+
+```
+whole = R·T_recompute + S·T_skip
+parts = R·(recompute parts) + S·prologue        R = recomputes, S = gate skips
+```
+
+`coverage_scale` scales each part against *its own* cadence, so the mixed-cadence parts list closes against the
+frame-cadence whole exactly. Measured: **99.6% accounted, 1.8 µs/recompute unattributed** (from 47.6% before
+the phases existed), with every part at 100% coverage.
+
+| phase | cadence | scaling law |
+|---|---|---|
+| `lighting.cpu.prologue.us` | **frame** | O(lights) — the temporal gate's signature sort; the only part paid on skipped frames |
+| `lighting.cpu.params.us` | recompute | O(1) — asset lookup + JSON compose |
+| `lighting.cpu.begin.us` | recompute | O(calcCells) — the cell-grid fill |
+| `lighting.cpu.gather.us` | recompute | O(calcCells) |
+| `lighting.cpu.lights.us` | recompute | **O(lights)** |
+| `lighting.cpu.export.us` | recompute | O(calcCells) |
+| `lighting.cpu.convert.us` | recompute | O(calcCells·3) |
+| `lighting.cpu.calculate.us` | recompute | O(calcCells·passes) — ≈0 when GPU lighting is latched |
+| `lighting.cpu.publish.us` | recompute | O(cells) + lock wait |
+
+The denominators for those laws are `lighting.calc.cells` (the border-padded **calculation** region) and
+`lighting.lights.sources`. Do not use `lighting.cells` for a per-cell figure — it is the **query** region, and
+the calculation region is 4.375× larger at a 128×64 query window.
+
 ---
 
 ## 4. The threading contract
@@ -301,6 +335,30 @@ with no fence, so a live snapshot skews by up to one per in-flight thread, **in 
 exact equality fires on correct data.
 
 **Quiescence is a frozen-world concept** and never fires with the sim running.
+
+**A conditional phase must WRAP its `if`, not sit inside it.** Three phases in `lightingCalc()` run under a
+condition (`export`/`convert` under `lightingGpu`, `calculate` under `!skipCpuCalc`). A scope placed *inside*
+the branch fires only when the branch is taken, so at `cadence=Recompute` the consumer reads the shortfall as
+sampling loss and scales the total up — inventing cost for work that never happened. Placed *around* the `if`,
+the phase fires every recompute, reports 100% coverage, and simply records ≈0 when the branch is skipped. Cost:
+one predictable branch test. Benefit: **owner `lighting` is coverage-scale-free end to end**, so any coverage
+below 100% is a real signal rather than something a reader must interpret. `cadence=Call` is the alternative
+and is correct, but it prints `n/a` coverage and leaves the arithmetic to the reader.
+
+Five metrics had the inverse of this wrong — declared at a cadence they never fire at. `lighting.gpu.cpu_cost.us`
+and `lighting.upload.us` were `Frame` but fire only inside `if (lightMapUpdated)`: at 1099 of 1500 frames the
+consumer scaled them **up by 1.36×**, so the printed figure was 458 µs/frame against an actual 336 — wrong in
+live output, not merely latent. `lighting.cpu.{spread,point,post}.us` were `Recompute` but only run when the CPU
+calc runs, which the shipping GPU config skips: a single self-healing CPU frame inside a window would have given
+`count=1` against ~1100 expected and inflated them **~1100×**.
+
+**A gauge set inside a skipped code path reports a stale value forever.** `lighting.cells` was set inside
+`calculate()`, which GPU lighting skips entirely, so it froze at whatever the pre-latch load frames left behind.
+It also reported the **query** region while every O(cells) loop runs over the border-padded **calculation**
+region — 4.375× larger. It was the denominator for every per-cell figure in the campaign. **Publish a
+descriptor from the act that establishes what it describes** (here, `begin()`), and prefer asserting a
+*relation* between two gauges over a magic number — `calc.cells > cells` catches both the staleness and the
+wrong-region bug, and cannot rot.
 
 ---
 
