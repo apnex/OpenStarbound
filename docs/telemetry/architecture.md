@@ -1,0 +1,317 @@
+# Telemetry — subsystem architecture
+
+**Status:** current as of 2026-07-25. Companion to `docs/render/`, which documents the rendering layers this
+instrument measures.
+
+---
+
+## 1. What this is, and what it is not
+
+Telemetry is a **sovereign, fork-owned subsystem**. It is not vanilla Starbound and it is not upstream
+OpenStarbound.
+
+Verified 2026-07-25: `origin/main` — our mirror of upstream — contains **no telemetry files whatsoever** in
+`source/core/`. The first commit is our own `fd9e398c` (2026-06-08, *"feat(telemetry): substrate registry +
+Counter/Gauge + snapshot + reset"*), from the GPU-ladder Rung 0 work. Fourteen commits, all ours.
+
+It is also **deliberately not upstreamable**. Unlike the render-surface work — where fixes are drafted for
+upstream in `docs/upstream/` — this exists to serve this fork's performance campaign. That is freedom, not a
+loss: no API-compatibility constraint, no divergence pressure, and a schema break costs us almost nothing
+because we own every consumer.
+
+### The division of labour with `LogMap`
+
+Vanilla's only instrument is `LogMap` (`source/core/StarLogging.hpp`, which **is** upstream). Both are kept,
+because they answer different questions:
+
+| | `LogMap` (vanilla) | `Telemetry` (ours) |
+|---|---|---|
+| answers | *what is it right now* | *what did it cost over this window* |
+| shape | one string per key, overwritten every frame | count / total / min / max / histogram, cumulative |
+| destination | the on-screen debug HUD | a JSON file a script can difference |
+| survives the frame | no | yes |
+
+The render code still writes to both. Do not collapse them.
+
+### Where it lives
+
+| file | responsibility | lines |
+|---|---|---|
+| `source/core/StarTelemetry.hpp` | public contract: handles, `MetricDesc`, declaration | 176 |
+| `source/core/StarTelemetry.cpp` | registry, lock-free value ops, snapshot, owner table | 486 |
+| `source/core/StarTelemetryReporter.cpp` | JSON artifact face; process-CPU sample; `meta` merge | 60 |
+| `source/test/telemetry_test.cpp` | the instrument's own oracle | 356 |
+| `scripts/telemetry-window.py` | the only real consumer: windows, closes, reports percentiles | 332 |
+| `scripts/render-profile.sh` | the live instrument (see §6) | 148 |
+| `scripts/render-gate.sh` | the frozen instrument (see §6) | 55 |
+
+`source/application/StarRenderDiagnostics.hpp` is **not** part of this subsystem — it is the renderer's own
+instruments contract (`GpuTimer`, `RenderOracle`). `GpuTimer` is a *producer* that feeds telemetry; telemetry
+is the *sink*. That header exists because these were once seven virtuals on the `Renderer` contract itself,
+which forced every backend to implement a pixel differ in order to draw a triangle.
+
+---
+
+## 2. The metric model
+
+Every metric declares four fields. **Identity is declared at registration, never inferred at sample time.**
+
+| field | values | meaning |
+|---|---|---|
+| `domain` | `Unknown` \| `Cpu` \| `Gpu` | which resource was consumed |
+| `owner` | `Unknown` \| `Frame` \| `Gl` \| `Sim` \| `Lighting` \| `Process` | which **logical budget** it belongs to |
+| `cadence` | `Call` \| `Frame` \| `Tick` \| `Recompute` | how often it **should** have fired |
+| `role` | `Detail` \| `Budget` \| `Total` | whole, part of a whole, or neither |
+
+`source/core/StarTelemetry.hpp:17,23,28,35,37`.
+
+### Why declaration, not inference
+
+Inference is not merely awkward here — it is **wrong**. GPU query results are read back and recorded by the
+**main thread**, roughly three frames after the GPU did the work (`source/application/StarRenderer_opengl.cpp`,
+the readback inside `GlGpuTimer::begin`). A thread-local scheme — the obvious design — would label every GPU
+sample as CPU. Declaration is both correct and cheaper: it costs nothing on the sampling path.
+
+### Why `owner` is a logical budget, not an OS thread
+
+`WorldClient::lightingCalc()` runs on its own thread or **inline on the main thread** depending on
+`m_asyncLighting` (`source/game/StarWorldClient.cpp:61`, `:574`). It belongs to the `Lighting` budget either
+way. *Which budget does this cost land in* was always the question; *which thread ran it* never was.
+
+### Why `Unknown` is the zero value of `domain` and `owner`
+
+A default of `Cpu` would be a confident lie for any not-yet-declared GPU metric — exactly the mislabelling the
+design exists to prevent, arriving by another route. **"Not yet declared" must be visible in the data, never
+silently plausible.**
+
+### Why `role` has three values
+
+`Total` **is** the owner's whole and is excluded from the sum of parts. `Budget` parts sum and must close
+against it. `Detail` nests inside a Budget part and is never summed — `render.frame.us`,
+`render.interface.us` and `render.world.painter.us` all sit *inside* `cpu.frame.render.us`, so summing them as
+siblings would double-count.
+
+### Declaration must not create a node
+
+`Telemetry::declare()` (`source/core/StarTelemetry.cpp:102`) **parks** the descriptor in `pendingDescs`
+(`:80`) until the first typed accessor creates the node with the *real* type, which then adopts it.
+
+The obvious implementation — create the node as a `Timer` and let the first accessor "correct" it — does not
+work, because `getOrCreate` returns an existing node **without checking the requested type**. `declare()` then
+`counter()` would yield a Timer node wrapped in a counter handle: `inc()` writes `node->counter` while
+`snapshot()` dispatches on `type == Timer` and emits count/total/mean/min/max, **all zero**. That is not
+hypothetical — `markTick` does exactly declare-then-counter on `tick.server.seq`, which is the declared
+**denominator** for owner `sim`. A consumer dividing by a confident zero is the worst failure this subsystem
+can have.
+
+`typeConflict` (`:39`) is the defence-in-depth: two call sites requesting one key as different `MetricType`s
+is a bug, and is now flagged rather than silent.
+
+---
+
+## 3. Owners declare a denominator *and* a total
+
+These are different questions and conflating them is how a consumer divides GPU pass costs by the GPU span's
+own sample count. The **denominator** counts the owner's ticks; the **total** is the whole that `role=Budget`
+parts close against. `source/core/StarTelemetry.cpp:394`.
+
+| owner | denominator (ticks) | total (the whole) |
+|---|---|---|
+| `frame` | `cpu.frame.total.us` (count) | `cpu.frame.total.us` (sum) |
+| `gl` | `cpu.frame.total.us` (count) | `render.frame.gpu_span_us` (sum) |
+| `sim` | `tick.server.seq` | — |
+| `lighting` | `lighting.temporal.recomputed` | `lighting.cpu.total.us` (sum) |
+
+For `frame` they are one metric read two ways. For `gl` they are **different metrics entirely** — GPU work is
+*counted* per frame but its *whole* is the GPU frame span. An owner with no declared total reports its parts
+unclosed rather than inventing a whole. `process` and `unknown` are absent on purpose: not budget-bearing.
+
+### Cadence is arithmetic, not just a bounds check
+
+A `count` below the expected tick count has **two causes needing opposite arithmetic**:
+
+- **Sampling loss** — the work *happened*, we failed to observe it. `render.frame.gpu_span_us` fires every
+  frame but its GL query resolves asynchronously, so only ~67% of readings land.
+- **Genuine gating** — the work *did not happen*. A refresh-gated pass contributes nothing to a skipped frame.
+
+```
+expected       = tick count for THIS metric's own cadence   (not the owner's)
+coverage       = count / expected
+per_owner_tick = (total / coverage) / owner_ticks
+```
+
+Treating both the same way suppressed the *whole* more than its *parts* and produced a GL closure of **122%**.
+With the rule above, the same capture reads **97.0%**. The consumer reports the **raw** coverage fraction, so a
+scaled figure is always visible as scaled.
+
+A metric may legitimately carry a cadence **different from its owner's** natural tick: `lighting.cpu.total.us`
+times the whole `lightingCalc()` call, which happens per *frame*, while its parts sit inside the temporal gate
+and fire per *recompute*. The owner's denominator sets the table's **unit**; each metric's cadence sets its
+**own** expectation.
+
+---
+
+## 4. The threading contract
+
+| state | discipline |
+|---|---|
+| counter / gauge / timer / rate **values** | lock-free, `std::memory_order_relaxed` |
+| registration, declaration, `snapshot()`, `reset()` | guarded by `Registry::mutex` |
+| `desc`, `declared`, `descConflict`, `typeConflict` | plain (non-atomic) — **only** touched under that mutex |
+| `describe()` | takes the mutex; **off the hot path** |
+
+**Handle stability is unconditional.** `MetricNode*` handles stay valid because the registry is a node-based
+`StableHashMap` (elements never move on rehash) *and* each node is a heap-allocated `unique_ptr` (address-stable
+regardless of the map). Either alone would suffice; together it is unconditional.
+
+`Logger` calls never happen while holding the registry mutex — a conflict is captured inside the critical
+section and logged after it closes.
+
+**`TelemetryScope` reads the clock only when `Telemetry::deepEnabled()`.** With deep tracing off — the shipping
+default — each scope is one relaxed atomic load and a stack store. That is what makes six scopes acceptable in
+the game's main loop.
+
+### The one documented RMW
+
+`TelemetryReporter::writeSnapshot`'s `getrusage` block does `value()` → compare → `inc(delta)`. Each op is
+atomic; the *sequence* is not. It is safe **only** because both production callers reach it on the client's
+main thread. Adding a caller on any other thread requires a compare-exchange or fetch-max. This is written down
+at the code, not left in a review.
+
+---
+
+## 5. Wire format (schema 2)
+
+```json
+{ "meta":    { "schema": 2, "vsync": false },
+  "owners":  { "frame": { "denominator": "cpu.frame.total.us", "total": "cpu.frame.total.us" }, ... },
+  "metrics": { "<key>": { "type","domain","owner","cadence","role","descConflict","typeConflict",
+                          "count","total","mean","min","max","buckets":[...] } } }
+```
+
+One flat `metrics` map replaced the four type-keyed buckets, so CPU and GPU are described **identically**.
+`buckets` is emitted trimmed of trailing zeros; the consumer zero-pads.
+
+**The consumer is required to know nothing about the engine.** It reads `owners` and each metric's descriptor.
+It must never pattern-match metric names — the pre-v2 consumer discriminated GPU metrics by the `.gpu_us`
+filename suffix and hard-coded which metric counted frames, and got the denominator wrong.
+
+Consumers: `TelemetryReporter` (writer) and `scripts/telemetry-window.py` (reader). The `/telemetry` HUD is
+**not** one — it reads counters by name and is unaffected by schema changes.
+
+Environment facts go in `meta` (read once, describe the run); measurements go in `metrics` (windowed by the
+generic differencing path). GPU clock and package temperature are sampled by the **harness**, not the engine —
+those sysfs paths are driver- and platform-specific and a game engine has no business scraping them.
+
+---
+
+## 6. Two instruments, and when each applies
+
+| | `scripts/render-gate.sh` | `scripts/render-profile.sh` |
+|---|---|---|
+| world | **frozen** | **running** |
+| answers | *is it identical?* | *is it faster?* |
+| A/B | in-process, two legs, one run | two runs, `--set` flipped between |
+| resolves | 1 pixel / 1 LSB | ~1% GPU load |
+| Director needed | no | no |
+
+Both boot offscreen on the **real** GPU — SDL3's `offscreen` driver yields GL 4.6 core on the Intel Arc via
+Mesa/EGL, not llvmpipe. The axis is **frozen vs live**, not offscreen vs windowed.
+
+**Measured resolution** (two identical back-to-back 60 s runs): whole-frame GPU span **0.59%**, spread pass
+**0.73%**, parallax compose **0.79%**, world pass **2.9%** (it carries the entity churn), spread µs/call
+**0.07%**.
+
+**Compare adjacent legs only.** Back-to-back pairs agree to <1%; runs minutes apart drift ~7% on thermal state
+and differing sim content. An A/B is valid; today's absolute against last week's is not.
+
+**Cannot do: input injection.** The camera is stationary at a teleport bookmark, so any lever whose cost
+appears only in motion — parallax moving-camera bypass, scroll-shift/texture-upload, traversal, combat — is
+unreachable and still needs the Director in the chair.
+
+---
+
+## 7. Traps, with the evidence
+
+Every one of these cost real time on 2026-07-25. They are recorded so they are not rediscovered.
+
+**The denominator trap — it fired THREE times in one day.**
+1. In `telemetry-window.py`: per-frame figures inflated ~1.5×, parts summing to **119% of the whole**, from
+   dividing by the `gpu_span` *sample* count (~70% coverage) instead of the frame count.
+2. As the `declare()`-guesses-a-type defect.
+3. In the verification snippet written *specifically to catch that class of error* — **115%**, from dividing a
+   full-coverage cumulative sum by a partial-coverage one.
+
+> **Normalise per tick first. Never cumulative-sum over cumulative-sum.**
+
+**`max` is a run-long high-water mark and is NOT windowable.** This is the entire reason histograms exist.
+
+**A declare inside a config-gated branch is not a declaration.** It bit twice: `environment.compose` in the
+`backdropComposeMerge == false` branch (defaults off); `parallax.gpu_us` inside `if (!parallaxCacheActive)`,
+which never runs when `parallaxOracle` is on — and the render gate's own config has it on. **The blind spot was
+precisely the intersection the two verification runs do not jointly cover**: the gate runs oracle-on but checks
+only oracle diffs; the profile check runs oracle-off. *Now structurally impossible* — `GpuTimer::begin` takes
+the descriptor (`source/application/StarRenderDiagnostics.hpp:48`), so a timing cannot be started without one.
+
+**`cpu.frame.total.us` is the PACE, not the cost.** `Thread::sleepPrecise(spareTime)` runs even with vsync off.
+Measured: total 16393 µs/frame of which **idle was 10619 — 65% of the frame is sleep**. A +1 ms regression moves
+busy 5774→6774 and idle 10619→9619 while total reads 16393 **both times**: an A/B on total reports **NO CHANGE**
+for a real regression. **Quote `busy = total − idle`.**
+
+**Bucket 63 is unbounded above** — `[57344, ∞)`, not `[57344, 65536)`. Interpolating a midpoint inside it caps
+every hitch at 65 ms, which is exactly the case histograms exist to expose. A percentile landing there is a
+**lower bound** and renders as `>=`.
+
+**The histogram checksum is SLACK, not exact.** `record()` bumps `count` first and `buckets` last, both relaxed
+with no fence, so a live snapshot skews by up to one per in-flight thread, **in either direction**. Asserting
+exact equality fires on correct data.
+
+**Quiescence is a frozen-world concept** and never fires with the sim running.
+
+---
+
+## 8. The self-test
+
+The renderer has oracles that fail loudly. This subsystem now has its own — because two measurement errors in
+this arc were exactly the class an oracle catches.
+
+**Unit** (`source/test/telemetry_test.cpp`, 25 tests): budget closure; owner denominator-vs-total; the cadence
+bound; declare-after-registration; histogram bucket boundaries and sum-vs-count; descriptor round-trip and
+first-declaration-wins; the type-guess regression.
+
+**On real data** (`scripts/telemetry-window.py`): budget closure, cadence bound and histogram consistency run
+against every windowed capture, and the tool **exits non-zero** on a violation rather than printing a plausible
+number.
+
+### The cadence rule is deliberately asymmetric
+
+`count ≤ expected`. **Under is legitimate** — a gated pass or an async readback observes only some ticks, which
+is what coverage reports. **Over is always a bug**: the span was opened twice per tick and the metric should
+have been declared `cadence=Call`. A symmetric "count ≈ expected" would flag every gated pass in the tree as
+broken.
+
+### Why there is no "no conflicts among declared metrics" unit test
+
+An earlier draft had one. It was removed for two independent reasons: `core_tests` links `star_core` and never
+registers the *client's* metrics, so it would iterate a handful of `test.*` keys while appearing to guard the
+~62 real ones; and `reset()` clears the conflict flags, so `telemetrySetUp()` guaranteed it passed before it
+was evaluated.
+
+**An oracle that cannot fail is worse than no oracle**, because it teaches you to ignore it — the same family
+as the unarmed pixel oracle that once grepped as `DIFF=0`. The real conflict check runs against live captures.
+
+---
+
+## 9. Deliberately out of scope
+
+- **Per-frame time series.** Powerful for episodic problems, but histograms cover most of that need at a
+  fraction of the build. Earn it when a specific episodic bug demands it.
+- **Memory / allocation axis.** Render levers do trade time for churn, but that is a separate arc.
+- **Per-thread budgets for `sim` and `lighting`.** The model supports them; the metrics are deferred until a
+  lever shows *"frame time didn't move but process CPU dropped"* — the evidence that earns them.
+- **Attributing the residual unattributed GPU.** A finding to chase, not a telemetry feature.
+- **Input injection** for the harness. The reason motion-dependent levers remain out of reach (§6).
+
+---
+
+Related: `docs/render/layer1-architecture.md`, `docs/superpowers/specs/2026-07-25-unified-telemetry-model-design.md`.
