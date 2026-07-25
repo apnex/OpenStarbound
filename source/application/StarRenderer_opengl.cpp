@@ -1086,7 +1086,6 @@ void OpenGlRenderer::startFrame() {
 
   // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
-  //
   [[maybe_unused]] static bool const clearGpuDesc = [] {
     Telemetry::declare("render.frame.clear.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});

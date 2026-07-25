@@ -131,7 +131,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // never sampled. envCache is single-sample, so rendering into it and sampling it back is valid under AA.
   // The gate was a symptom patch that outlived its symptom, and it was silently costing every AA player the
   // whole env-cache lever.
-  // Hoisted above the branch below so one declaration dominates both begin() sites (see StarWorldPass.cpp
+  // Placed above the branch below so one declaration dominates both begin() sites (see StarWorldPass.cpp
   // for why declaration lives at the pass and not where the value is recorded).
   [[maybe_unused]] static bool const envGpuDesc = [] {
     Telemetry::declare("render.pass.environment.gpu_us",
@@ -431,8 +431,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       // Declared here TOO, identically to renderEnvironment's else-branch site above: the two begin() sites
       // live in DIFFERENT functions gated by the same backdropComposeMerge flag, so no single declare
       // dominates both -- and since the flag defaults to true, THIS is the site a default session actually
-      // takes. (Contrast render.pass.parallax.gpu_us below, whose two sites share a function and so could
-      // be -- and now are -- hoisted to one dominating declare instead.)
+      // takes. (Contrast render.pass.parallax.gpu_us, whose two begin() sites both live in renderParallax and
+      // so share a dominator -- its single declare sits above their branch, near the top of that function.)
       [[maybe_unused]] static bool const envComposeGpuDescReconcile = [] {
         Telemetry::declare("render.pass.environment.compose.gpu_us",
           MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
