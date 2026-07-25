@@ -1986,27 +1986,72 @@ void WorldClient::lightingCalc() {
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Frame, MetricRole::Total});
   static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
-
-  MutexLocker prepLocker(m_lightMapPrepMutex);
-  if (!m_pendingLightReady.load())
-    return;
-  TelemetryScope totalScope(totalTimer);
-  m_pendingLightReady = false;
-  RectI lightRange = m_pendingLightRange;
-  List<LightSource> lights = std::move(m_pendingLights);
-  List<std::pair<Vec2F, Vec3F>> particleLights = std::move(m_pendingParticleLights);
-  auto& root = Root::singleton();
-  auto configuration = root.configuration();
-
-  // --- Temporal lighting decoupling: skip this recompute when the scene is calm (only flicker /
-  // particle-motion / ambient changed) and we are between the floor cadence; nothing is republished, so
-  // the render thread reuses the previously-published lightmap. Off (flag off / floorMs<=0) => recompute
-  // every frame (byte-identical). Flicker-tolerant: the activity signature ignores light colour. ---
+  // The phases below are CONTIGUOUS and EXHAUSTIVE across the body of this function: every microsecond
+  // between totalScope opening and the closing brace lands in exactly one of them. That is what makes the
+  // closure exact rather than approximate. If you add a statement here, it goes INSIDE a phase.
+  //
+  // prologue is the only Frame-cadence part. It covers the work paid on EVERY frame, including the ones
+  // the temporal gate skips -- which is precisely why lighting.cpu.total.us can stay Frame-cadence while
+  // everything else is Recompute: the consumer scales each part against its OWN cadence, so a mixed-cadence
+  // parts list closes against a frame-cadence whole exactly. (Two Totals per owner are not representable:
+  // StarTelemetry.cpp's owner table is keyed by owner name and the last row wins.)
+  static auto prologueTimer = Telemetry::timer("lighting.cpu.prologue.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Frame, MetricRole::Budget});
+  static auto paramsTimer = Telemetry::timer("lighting.cpu.params.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  static auto beginTimer = Telemetry::timer("lighting.cpu.begin.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  static auto lightsTimer = Telemetry::timer("lighting.cpu.lights.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  static auto exportTimer = Telemetry::timer("lighting.cpu.export.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  static auto convertTimer = Telemetry::timer("lighting.cpu.convert.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  // Named 'calculate', not 'calc': lighting.cpu.calc.{ran,skipped} already exist as counters and the
+  // prefix collision reads as a type conflict even though it is not one.
+  static auto calculateTimer = Telemetry::timer("lighting.cpu.calculate.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  // Includes the m_lightMapMutex acquisition, not just the moves. waitForLighting() holds that mutex
+  // across a preview-tile patch loop on the render thread, so the wait is real and can stall -- but it is
+  // genuine wall-clock cost on the lighting thread and must be inside a part for closure to hold. A fat
+  // number here means CONTENTION, which is a different lever from anything else in this budget.
+  static auto publishTimer = Telemetry::timer("lighting.cpu.publish.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  // The true O(lights) denominator. lighting.lights.{spread,point} count ADDS, and a promoted light adds
+  // one of each, so neither is the source count.
+  static auto lightSourceCounter = Telemetry::counter("lighting.lights.sources",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto temporalRecomputed = Telemetry::counter("lighting.temporal.recomputed",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+
+  MutexLocker prepLocker(m_lightMapPrepMutex);
+  if (!m_pendingLightReady.load())
+    return;
+  auto& root = Root::singleton();
+  TelemetryScope totalScope(totalTimer);
+
+  // Declared out here because they must outlive the prologue block; assigned inside it so the prologue
+  // phase actually covers the moves and the config fetch.
+  RectI lightRange;
+  List<LightSource> lights;
+  List<std::pair<Vec2F, Vec3F>> particleLights;
+  ConfigurationPtr configuration;
   {
+    TelemetryScope prologueScope(prologueTimer);
+    m_pendingLightReady = false;
+    lightRange = m_pendingLightRange;
+    lights = std::move(m_pendingLights);
+    particleLights = std::move(m_pendingParticleLights);
+    configuration = root.configuration();
+
+    // --- Temporal lighting decoupling: skip this recompute when the scene is calm (only flicker /
+    // particle-motion / ambient changed) and we are between the floor cadence; nothing is republished, so
+    // the render thread reuses the previously-published lightmap. Off (flag off / floorMs<=0) => recompute
+    // every frame (byte-identical). Flicker-tolerant: the activity signature ignores light colour.
+    // NOTE this whole block, including signatureOf's allocate-and-std::sort over every light, runs on
+    // EVERY frame -- it is the cost the prologue phase exists to measure. ---
     bool temporalEnabled = configuration->get("lightingTemporalDecouple").optBool().value(true);
     double temporalFloorMs = configuration->get("lightingTemporalFloorMs", 33.0).toDouble();
     int64_t nowMs = Time::monotonicMilliseconds();
@@ -2015,17 +2060,32 @@ void WorldClient::lightingCalc() {
     if (!TemporalLightingGate::shouldRecompute(
             m_temporalBaseline, temporalEnabled, temporalFloorMs, epoch, lightRange, sig, nowMs)) {
       temporalSkipped.inc(1);
-      return; // calm -> reuse the previously-published lightmap (prepLocker releases on return)
+      return; // calm -> reuse the previously-published lightmap (both scopes close via RAII)
     }
     temporalRecomputed.inc(1);
     m_temporalBaseline = {true, epoch, lightRange, std::move(sig), nowMs};
   }
 
-  bool newLighting = configuration->get("newLighting").optBool().value(true);
-  bool monochrome = configuration->get("monochromeLighting").toBool();
-  m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
-  m_lightingCalculator.setMonochrome(monochrome);
-  m_lightingCalculator.begin(lightRange);
+  // lightingGpu and lightingGpuShadowCompare are read HERE, once, rather than again further down. Two
+  // benefits: it closes the gap between the lights and export phases (contiguity), and it removes a real
+  // latent inconsistency -- lightingGpu was read at two points with the whole gather between them, so a
+  // mid-function /command-set flip could pair a promote decision with the opposite export decision.
+  bool newLighting = false;
+  bool lightingGpu = false;
+  bool shadowCompare = false;
+  {
+    TelemetryScope paramsScope(paramsTimer);
+    newLighting = configuration->get("newLighting").optBool().value(true);
+    bool monochrome = configuration->get("monochromeLighting").toBool();
+    lightingGpu = configuration->get("lightingGpu").optBool().value(false);
+    shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
+    m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
+    m_lightingCalculator.setMonochrome(monochrome);
+  }
+  {
+    TelemetryScope beginScope(beginTimer);
+    m_lightingCalculator.begin(lightRange);
+  }
   {
     TelemetryScope gatherScope(gatherTimer);
     // A1: when lightingGatherCache is on, reuse the per-frame-invariant stable grid across frames --
@@ -2075,92 +2135,111 @@ void WorldClient::lightingCalc() {
     }
   }
 
-  prepLocker.unlock();
+  {
+    TelemetryScope lightsScope(lightsTimer);
+    prepLocker.unlock();
+    lightSourceCounter.inc(lights.size());
 
-  // CDL (lightingPromoteDynamic): promote static fill (Spread) lights to dynamic by a fraction
-  // p in [0,1] -- (1-p) soft spread + p full directional point. p=0 off (Spread unchanged,
-  // byte-identical); p~0.15 ~= the old hybrid; p=1 full Point (the mod's look). Gated on lightingGpu:
-  // in confirmed GPU mode the CPU calculate() below is skipped, so this feeds the GPU point pass
-  // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
-  // are untouched -- no double-promote.
-  float promoteFraction = 0.0f;
-  float promoteMinIntensity = 0.0f;
-  if (configuration->get("lightingGpu").optBool().value(false)) {
-    // Read defensively: an interim build persisted this key as a bool, so coerce bool->fraction
-    // (true=>0.5, false=>0) rather than throwing toFloat() on a type-mismatched persisted value.
-    Json pd = configuration->get("lightingPromoteDynamic");
-    promoteFraction = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
-    // Floor below which a Spread light is NOT promoted to a dynamic point: ultra-dim fill lights
-    // (e.g. item drops at 20/255 ~= 0.078) gain nothing from sharp point rendering and flicker on a
-    // jittery emitter -> keep them soft spreads. 0 disables the floor (promote everything).
-    promoteMinIntensity = configuration->get("lightingPromoteMinIntensity", 0.1f).toFloat();
-  }
-  promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
+    // CDL (lightingPromoteDynamic): promote static fill (Spread) lights to dynamic by a fraction
+    // p in [0,1] -- (1-p) soft spread + p full directional point. p=0 off (Spread unchanged,
+    // byte-identical); p~0.15 ~= the old hybrid; p=1 full Point (the mod's look). Gated on lightingGpu:
+    // in confirmed GPU mode the CPU calculate() below is skipped, so this feeds the GPU point pass
+    // without flooding the CPU raycast. Non-Spread lights (already Point/PointAsSpread, incl. mod-set)
+    // are untouched -- no double-promote.
+    float promoteFraction = 0.0f;
+    float promoteMinIntensity = 0.0f;
+    if (lightingGpu) {
+      // Read defensively: an interim build persisted this key as a bool, so coerce bool->fraction
+      // (true=>0.5, false=>0) rather than throwing toFloat() on a type-mismatched persisted value.
+      Json pd = configuration->get("lightingPromoteDynamic");
+      promoteFraction = pd.isType(Json::Type::Bool) ? (pd.toBool() ? 0.5f : 0.0f) : pd.optFloat().value(0.0f);
+      // Floor below which a Spread light is NOT promoted to a dynamic point: ultra-dim fill lights
+      // (e.g. item drops at 20/255 ~= 0.078) gain nothing from sharp point rendering and flicker on a
+      // jittery emitter -> keep them soft spreads. 0 disables the floor (promote everything).
+      promoteMinIntensity = configuration->get("lightingPromoteMinIntensity", 0.1f).toFloat();
+    }
+    promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
 
-  for (auto const& light : lights) {
-    Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
-    // Promote only "feature" Spread lights: skip the floor (item-drop-class fill) -> pure spread.
-    bool promote = promoteFraction > 0.0f && light.color.max() >= promoteMinIntensity;
-    if (light.type == LightType::Spread && promote) {
-      if (promoteFraction < 1.0f)
-        m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
-      m_lightingCalculator.addPointLight(position, light.color * promoteFraction, light.pointBeam, light.beamAngle, light.beamAmbience);
-    } else if (light.type == LightType::Spread) {
-      m_lightingCalculator.addSpreadLight(position, light.color);
-    } else {
-      if (light.type == LightType::PointAsSpread) {
-        if (!newLighting)
-          m_lightingCalculator.addSpreadLight(position, light.color);
-        else { // hybrid (used for auto-converted object lights) - 85% spread, 15% point (* .15 is applied in the calculation code)
-          m_lightingCalculator.addSpreadLight(position, light.color * 0.85f);
-          m_lightingCalculator.addPointLight(position, light.color, light.pointBeam, light.beamAngle, light.beamAmbience, true);
-        }
+    for (auto const& light : lights) {
+      Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
+      // Promote only "feature" Spread lights: skip the floor (item-drop-class fill) -> pure spread.
+      bool promote = promoteFraction > 0.0f && light.color.max() >= promoteMinIntensity;
+      if (light.type == LightType::Spread && promote) {
+        if (promoteFraction < 1.0f)
+          m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
+        m_lightingCalculator.addPointLight(position, light.color * promoteFraction, light.pointBeam, light.beamAngle, light.beamAmbience);
+      } else if (light.type == LightType::Spread) {
+        m_lightingCalculator.addSpreadLight(position, light.color);
       } else {
-        m_lightingCalculator.addPointLight(position, light.color, light.pointBeam, light.beamAngle, light.beamAmbience);
+        if (light.type == LightType::PointAsSpread) {
+          if (!newLighting)
+            m_lightingCalculator.addSpreadLight(position, light.color);
+          else { // hybrid (used for auto-converted object lights) - 85% spread, 15% point (* .15 is applied in the calculation code)
+            m_lightingCalculator.addSpreadLight(position, light.color * 0.85f);
+            m_lightingCalculator.addPointLight(position, light.color, light.pointBeam, light.beamAngle, light.beamAmbience, true);
+          }
+        } else {
+          m_lightingCalculator.addPointLight(position, light.color, light.pointBeam, light.beamAngle, light.beamAmbience);
+        }
       }
     }
-  }
 
-  for (auto const& lightPair : particleLights) {
-    Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), lightPair.first);
-    m_lightingCalculator.addSpreadLight(position, lightPair.second);
-  }
-
-  // GPU lighting (Slice 2/3): when the lightingGpu flag is on, export the seeded
-  // emission + obstacle grids and the point-light list for the GPU passes.
-  // exportSpreadInputs must run BEFORE calculate(), which overwrites the cells with
-  // the spread result.
-  bool lightingGpu = configuration->get("lightingGpu").optBool().value(false);
-  bool shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
-  int lightMapBorder = 0;
-  if (lightingGpu) {
-    m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
-    m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
-    // Border (cells) between the calc-region-sized GPU result and the query region the world shader
-    // samples. calculationRegion == queryRegion(lightRange).padded(borderCells), so this is exactly
-    // borderCells. Computed here from the calculator's geometry and carried in renderData; WorldPainter
-    // must NOT reverse-derive it from the CPU lightMap width, which is empty when the CPU calc is skipped.
-    lightMapBorder = ((int)m_lightingCalculator.calculationRegion().width() - (int)lightRange.width()) / 2;
-    // Convert the RGB_F emission grid to 16-bit half-floats HERE (lighting thread, idle) so the render
-    // thread uploads RGB16F -- half the per-frame transfer/store. No precision loss (the spread FBOs
-    // are already 16F). The RGB_F emission is still kept for the auto-K scan + shadow-compare reference.
-    {
-      float const* ef = (float const*)m_pendingLightingEmission.data();
-      size_t n = (size_t)m_pendingLightingEmission.size()[0] * m_pendingLightingEmission.size()[1] * 3;
-      m_pendingLightingEmissionHalf.resize(n);
-      uint16_t* hf = m_pendingLightingEmissionHalf.ptr();
-      for (size_t i = 0; i < n; ++i)
-        hf[i] = floatToHalf(ef[i]);
+    for (auto const& lightPair : particleLights) {
+      Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), lightPair.first);
+      m_lightingCalculator.addSpreadLight(position, lightPair.second);
     }
-    // Extract the obstacle mask's R channel (RGB24 0/255) into a single-channel R8 buffer so the GPU
-    // upload is R8 (a third the bytes); the shaders already read obstacle as .r.
-    {
-      uint8_t const* ob = (uint8_t const*)m_pendingLightingObstacle.data();
-      size_t cells = (size_t)m_pendingLightingObstacle.size()[0] * m_pendingLightingObstacle.size()[1];
-      m_pendingLightingObstacleR8.resize(cells);
-      uint8_t* r8 = m_pendingLightingObstacleR8.ptr();
-      for (size_t i = 0; i < cells; ++i)
-        r8[i] = ob[i * 3];   // R channel of each RGB24 texel
+  }
+
+  // GPU lighting (Slice 2/3): when the lightingGpu flag is on, export the seeded emission + obstacle
+  // grids and the point-light list for the GPU passes. exportSpreadInputs must run BEFORE calculate(),
+  // which overwrites the cells with the spread result.
+  //
+  // Both scopes ENCLOSE their `if` rather than sitting inside it. A scope inside the branch would have to
+  // be Cadence::Call to stop coverage_scale inflating it when GPU lighting is off; enclosing it means the
+  // phase fires on every recompute, reports 100% coverage, and simply records ~0 when the branch is not
+  // taken. That keeps the whole owner free of coverage scaling, which is where this campaign's arithmetic
+  // errors have repeatedly come from. Cost: one predictable branch test.
+  //
+  // export and convert are separate phases because they have DIFFERENT scaling laws and different levers:
+  // export is a cache-hostile transposing scatter over the calc region, convert is a compute-bound
+  // per-element conversion over 3x that count.
+  int lightMapBorder = 0;
+  {
+    TelemetryScope exportScope(exportTimer);
+    if (lightingGpu) {
+      m_lightingCalculator.exportSpreadInputs(m_pendingLightingEmission, m_pendingLightingObstacle);
+      m_lightingCalculator.exportPointLights(m_pendingLightingPointLights);
+      // Border (cells) between the calc-region-sized GPU result and the query region the world shader
+      // samples. calculationRegion == queryRegion(lightRange).padded(borderCells), so this is exactly
+      // borderCells. Computed here from the calculator's geometry and carried in renderData; WorldPainter
+      // must NOT reverse-derive it from the CPU lightMap width, which is empty when the CPU calc is skipped.
+      lightMapBorder = ((int)m_lightingCalculator.calculationRegion().width() - (int)lightRange.width()) / 2;
+    }
+  }
+  {
+    TelemetryScope convertScope(convertTimer);
+    if (lightingGpu) {
+      // Convert the RGB_F emission grid to 16-bit half-floats HERE (lighting thread, idle) so the render
+      // thread uploads RGB16F -- half the per-frame transfer/store. No precision loss (the spread FBOs
+      // are already 16F). The RGB_F emission is still kept for the auto-K scan + shadow-compare reference.
+      {
+        float const* ef = (float const*)m_pendingLightingEmission.data();
+        size_t n = (size_t)m_pendingLightingEmission.size()[0] * m_pendingLightingEmission.size()[1] * 3;
+        m_pendingLightingEmissionHalf.resize(n);
+        uint16_t* hf = m_pendingLightingEmissionHalf.ptr();
+        for (size_t i = 0; i < n; ++i)
+          hf[i] = floatToHalf(ef[i]);
+      }
+      // Extract the obstacle mask's R channel (RGB24 0/255) into a single-channel R8 buffer so the GPU
+      // upload is R8 (a third the bytes); the shaders already read obstacle as .r.
+      {
+        uint8_t const* ob = (uint8_t const*)m_pendingLightingObstacle.data();
+        size_t cells = (size_t)m_pendingLightingObstacle.size()[0] * m_pendingLightingObstacle.size()[1];
+        m_pendingLightingObstacleR8.resize(cells);
+        uint8_t* r8 = m_pendingLightingObstacleR8.ptr();
+        for (size_t i = 0; i < cells; ++i)
+          r8[i] = ob[i * 3];   // R channel of each RGB24 texel
+      }
     }
   }
 
@@ -2176,14 +2255,18 @@ void WorldClient::lightingCalc() {
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
-  bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
-  if (skipCpuCalc) {
-    calcSkipped.inc(1);
-  } else {
-    m_lightingCalculator.calculate(m_pendingLightMap);
-    calcRan.inc(1);
+  {
+    TelemetryScope calculateScope(calculateTimer);
+    bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
+    if (skipCpuCalc) {
+      calcSkipped.inc(1);
+    } else {
+      m_lightingCalculator.calculate(m_pendingLightMap);
+      calcRan.inc(1);
+    }
   }
   {
+    TelemetryScope publishScope(publishTimer);
     MutexLocker mapLocker(m_lightMapMutex);
     m_lightMinPosition = lightRange.min();
     m_lightMap = std::move(m_pendingLightMap);
