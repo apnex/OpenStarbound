@@ -12,8 +12,12 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
     PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult,
     int lightMapBorder) {
+  // Cadence::Call, not Frame: processFull is reached only inside `if (lightMapUpdated)`
+  // (StarWorldPainter.cpp), so it fires on lightmap-publish frames, not every frame. Declared Frame it
+  // measured 1099 of 1500 frames -- 73% coverage -- and the consumer scaled the total UP by 1.36x,
+  // inventing cost for frames the pass genuinely did not run on. Reported 458 us/frame; actual 336.
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights",

@@ -238,8 +238,10 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         m_lightMapBorder = lm.border;
       } else if (!renderData.lightMap.empty()) {
         // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
+        // Cadence::Call: doubly conditional -- inside `if (lightMapUpdated)` AND only on the CPU-lightMap
+        // fallback path. Same defect as lighting.gpu.cpu_cost.us; see the note there.
         static auto uploadTimer = Telemetry::timer("lighting.upload.us",
-          MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
         TelemetryScope uploadScope(uploadTimer);
         m_renderer->setEffectTexture("lightMap", renderData.lightMap);
         m_lightMapBorder = 0;

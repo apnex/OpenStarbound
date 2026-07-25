@@ -177,8 +177,10 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
 
   // 'post' phase: output copy + brightness cap. Timer records only under deep
   // tracing (TelemetryScope gates itself). The cell gauges live in begin() -- see the note there.
+  // Call/Detail for the same two reasons as spread/point (StarCellularLightArray.hpp): conditional on
+  // calculate() running, and it will nest inside lighting.cpu.calculate.us.
   static auto postTimer = Telemetry::timer("lighting.cpu.post.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
   TelemetryScope postScope(postTimer);
 
   output = Lightmap(arrayMax[0] - arrayMin[0], arrayMax[1] - arrayMin[1]);

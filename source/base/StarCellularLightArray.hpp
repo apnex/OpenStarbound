@@ -392,14 +392,22 @@ void CellularLightArray<LightTraits>::calculate(size_t xMin, size_t yMin, size_t
   // node per key. Timers record only under deep tracing (TelemetryScope gates itself).
   setSpreadLightingPoints();
   {
+    // Cadence::Call, Role::Detail -- BOTH deliberate.
+    //   Call: this phase runs only when the CPU calculate() runs, which the shipping GPU config skips.
+    //     Declared Recompute, a single self-healing CPU frame inside a window gives count=1 against
+    //     ~1100 expected, and the consumer's coverage_scale divides by 0.0009 -- inflating this timer
+    //     ~1100x and firing "parts exceed the whole" on entirely correct data. Absence here is the
+    //     branch not being taken, not a lost sample.
+    //   Detail: this will nest inside lighting.cpu.calculate.us, the Budget part added by the phase
+    //     instrumentation. Summing both would double-count.
     static auto spreadTimer = Telemetry::timer("lighting.cpu.spread.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
     TelemetryScope scope(spreadTimer);
     calculateLightSpread(xMin, yMin, xMax, yMax);
   }
   {
     static auto pointTimer = Telemetry::timer("lighting.cpu.point.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
     TelemetryScope scope(pointTimer);
     calculatePointLighting(xMin, yMin, xMax, yMax);
   }
