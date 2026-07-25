@@ -109,8 +109,31 @@ grep -hE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" \
 # snapshots yields the post-load window regardless -- but keeping the load-phase files would let --first/--last
 # silently select a window that straddles it.
 rm -f "$SNAPDIR"/*.json
+
+# Environment sidecar: GPU clock and package temperature bracketing the window. The ~7% drift between distant
+# profile runs is currently explained as "thermal state", which is a guess; this makes it checkable. Sampled
+# here rather than in the engine because these paths are driver- and platform-specific.
+read_gpu_mhz() {
+  cat /sys/class/drm/card*/gt_cur_freq_mhz 2>/dev/null | head -1 ||
+  cat /sys/class/drm/card*/device/tile0/gt0/freq0/cur_freq 2>/dev/null | head -1 ||
+  echo null
+}
+read_pkg_temp() {
+  for h in /sys/class/hwmon/hwmon*; do
+    [ "$(cat "$h/name" 2>/dev/null)" = "coretemp" ] || continue
+    t=$(cat "$h/temp1_input" 2>/dev/null) && { echo $((t / 1000)); return; }
+  done
+  echo null
+}
+GPU_START=$(read_gpu_mhz); TEMP_START=$(read_pkg_temp)
+
 echo "  measuring for ${SECONDS_TO_RUN}s..."
 sleep "$SECONDS_TO_RUN"
+
+cat > "$SNAPDIR/../env-sidecar.json" <<EOF
+{ "gpuClockMhzStart": ${GPU_START:-null}, "gpuClockMhzEnd": $(read_gpu_mhz),
+  "packageTempCStart": ${TEMP_START:-null}, "packageTempCEnd": $(read_pkg_temp) }
+EOF
 
 kill -TERM $PID 2>/dev/null
 for _ in $(seq 1 20); do kill -0 $PID 2>/dev/null || break; sleep 1; done
