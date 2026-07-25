@@ -210,7 +210,29 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   // Sky/environment backdrop: the FBO-generation drop + the env retained cache (N-cadence refresh) + the
   // per-frame compose into "main". renderEnvironment records whether it refreshed, for the parallax arbiter.
-  m_backdropPass->renderEnvironment(m_camera, renderData, *m_environmentPainter, ablateEnv);
+  // AIR-GAP CONTRACT (2). Resolve the backdrop pass's config HERE, at the composition root, and hand it a
+  // value -- the pass no longer reaches into Root at all. Resolved PER FRAME rather than at construction
+  // because every one of these is live-tunable mid-session (`/rendercache envrefresh`, `/rendercache
+  // parallaxrefresh`, the antiAliasing option the client polls each frame); freezing them in the
+  // constructor, which is what the target-state doc originally prescribed, would have silently broken the
+  // console knobs this campaign uses to A/B its own levers.
+  //
+  // The fallbacks are reproduced EXACTLY as the pass used to read them, including
+  // parallaxMaxDriftStepPx's 1.5f -- which never fires, because StarRootLoader ships 0.75. Keeping it
+  // makes this move byte-identical rather than byte-identical-plus-one-quiet-change; correcting it is a
+  // separate decision, not a refactor's business.
+  auto backdropConfig = Root::singleton().configuration();
+  BackdropParams backdropParams{
+      (unsigned)backdropConfig->get("envRefreshInterval", 1).optUInt().value(1),
+      backdropConfig->get("envOracle", false).optBool().value(false),
+      backdropConfig->get("envMaxDriftStepPx", 0.75f).optFloat().value(0.75f),
+      backdropConfig->get("backdropComposeMerge", true).optBool().value(true),
+      backdropConfig->get("antiAliasing").optBool().value(false),
+      backdropConfig->get("parallaxOracle", false).optBool().value(false),
+      (unsigned)backdropConfig->get("parallaxRefreshInterval", 0).optUInt().value(0),
+      backdropConfig->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f)};
+
+  m_backdropPass->renderEnvironment(m_camera, renderData, *m_environmentPainter, backdropParams, ablateEnv);
 
   m_renderer->flush();
 
@@ -265,7 +287,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   }
 
   // Parallax layers (env-cache-coupled backdrop: owns the parallax retained cache + the cross-surface arbiter).
-  m_backdropPass->renderParallax(m_camera, renderData, *m_environmentPainter, ablateParallax);
+  m_backdropPass->renderParallax(m_camera, renderData, *m_environmentPainter, backdropParams, ablateParallax);
 
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
   m_worldPass->renderWorld(m_camera, renderData);

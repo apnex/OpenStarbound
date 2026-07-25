@@ -75,7 +75,7 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
 }
 
 void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData,
-    EnvironmentPainter& envPainter, bool ablateEnv) {
+    EnvironmentPainter& envPainter, BackdropParams const& params, bool ablateEnv) {
   // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
   // antiAliasing client options EVERY frame) destroys and re-creates every framebuffer with UNDEFINED
   // content. Our retained clear:false caches cannot see that: their keys (size, camera, counter) are all
@@ -91,6 +91,31 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // Did the env cache do its heavy redraw this frame? Read by the parallax refresh arbiter (renderParallax),
   // which defers a purely time-gated parallax refresh off any frame env is already redrawing on.
   m_envRefreshedThisFrame = false;
+
+  // CLAUSE (2) OF THE TWO-ENTRY-POINT CONTRACT, NOW CHECKED INSTEAD OF ASSERTED IN PROSE.
+  //
+  // If the deferred flag is STILL set on entry, the previous frame set it and renderParallax never ran to
+  // consume it -- exactly the abort the invariant below warns about, whose symptom is the WHOLE backdrop
+  // going black rather than merely losing the parallax. Until now that contract lived only as a comment,
+  // so the failure would have arrived as a bug report about a black sky with nothing in the log.
+  //
+  // DETECT AND RECOVER, rather than assert. A hard failure would turn a mod-induced or refactor-induced
+  // ordering mistake into a crash, and the recovery is trivially correct: falling through to the reset
+  // below makes this frame composite env into "main" directly, which is the pre-CM-1 behaviour and is
+  // always safe.
+  if (m_envComposeDeferred) {
+    static int warnBudget = 4;   // rate-limited; a broken caller would otherwise log every frame
+    if (warnBudget > 0) {
+      --warnBudget;
+      Logger::error("[backdrop] the env compose was deferred and renderParallax never ran to issue it -- "
+                    "the backdrop would have gone black. Recovering by compositing env directly this "
+                    "frame. Both entry points must run on the same frame (BackdropPass clause 2).");
+    }
+    static auto recoveries = Telemetry::counter("render.backdrop.compose_recovered",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+    recoveries.inc(1);
+  }
+
   // CM-1: reset each frame; set true below iff the env cache is active AND the merge is enabled, in which case
   // the env->main compose is DEFERRED to renderParallax. The direct env path (cache off) never defers.
   m_envComposeDeferred = false;
@@ -107,10 +132,10 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // bit-identical to the direct-into-main path it replaces. Live: /rendercache envrefresh <N>.
   Vec2U envScreenSize = m_renderer->screenSize();
   float envPixelRatio = camera.pixelRatio();
-  unsigned envRefreshInterval = Root::singleton().configuration()->get("envRefreshInterval", 1).optUInt().value(1);
+  unsigned envRefreshInterval = params.envRefreshInterval;
   if (envRefreshInterval < 1)
     envRefreshInterval = 1;
-  bool envOracle = Root::singleton().configuration()->get("envOracle", false).optBool().value(false);
+  bool envOracle = params.envOracle;
   // NB: the oracles' reference surfaces (envRef, parallaxRef) are marked devOnly and are only ALLOCATED while
   // an oracle is armed -- ClientApplication::render does that before the frame starts, because it reloads the
   // framebuffer set and must not run mid-frame. Both oracle paths below are already guarded by hasFrameBuffer,
@@ -187,7 +212,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
           + fabsf(constrainAngle(envSky.starRotation - m_envCacheStarRotation)) * envHalfDiagPx,
         (envSky.worldOffset - m_envCacheWorldOffset).magnitude() * orbiterAndPlanetRatio
           + fabsf(constrainAngle(envSky.worldRotation - m_envCacheWorldRotation)) * envHalfDiagPx);
-    float envMaxStepPx = Root::singleton().configuration()->get("envMaxDriftStepPx", 0.75f).optFloat().value(0.75f);
+    float envMaxStepPx = params.envMaxDriftStepPx;
     bool envMotion = envDriftPx > envMaxStepPx;
 
     // CONTENT KEY -- only what changes the image WITHOUT moving it. Deliberately NOT a hash of the raw
@@ -251,9 +276,15 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // renderParallax may write "main" -- the deferred compose would overwrite it (a world-band retained cache,
     // #143/#145, is the concrete future risk); (2) both entry points must run the same frame -- an abort between
     // them leaves "main" on the startFrame clear, so the WHOLE backdrop (sky included) goes black, where
-    // pre-CM-1 the sky was already in "main" and only parallax was lost. Verified safe today (the lightmap phase
-    // writes only lightingGpu* and restores world/main); anything added to that window must preserve this.
-    bool composeMerge = Root::singleton().configuration()->get("backdropComposeMerge", true).optBool().value(true);
+    // pre-CM-1 the sky was already in "main" and only parallax was lost.
+    //
+    // CLAUSE (2) IS NOW MACHINE-CHECKED, at the top of this function: a deferred flag still set on entry means
+    // the previous frame never issued the compose, and we log + recover to the direct path
+    // (render.backdrop.compose_recovered). CLAUSE (1) IS STILL BY CARE and cannot be checked here -- the
+    // Renderer exposes no notion of "who last wrote this target", so proving nothing writes "main" in the
+    // window would need renderer-side support. Verified safe today (the lightmap phase writes only
+    // lightingGpu* and restores world/main); anything added to that window must preserve it BY REVIEW.
+    bool composeMerge = params.composeMerge;
     if (composeMerge) {
       m_envComposeDeferred = true;
     } else {
@@ -321,7 +352,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
 }
 
 void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& renderData,
-    EnvironmentPainter& envPainter, bool ablateParallax) {
+    EnvironmentPainter& envPainter, BackdropParams const& params, bool ablateParallax) {
   auto parallaxDelta = camera.worldGeometry().diff(camera.centerWorldPosition(), m_previousCameraCenter);
   if (parallaxDelta.magnitude() > 10)
     m_parallaxWorldPosition = camera.centerWorldPosition();
@@ -340,9 +371,9 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // visually identical. N<=1 with the oracle off takes the direct (bit-exact) path. Live: /rendercache parallaxrefresh <N>.
   bool parallaxHasLayers = !renderData.parallaxLayers.empty();
   Vec2U parallaxScreenSize = m_renderer->screenSize();
-  bool parallaxAntiAliasing = Root::singleton().configuration()->get("antiAliasing").optBool().value(false);
+  bool parallaxAntiAliasing = params.antiAliasing;
   float parallaxPixelRatio = camera.pixelRatio();
-  bool parallaxOracle = Root::singleton().configuration()->get("parallaxOracle", false).optBool().value(false);
+  bool parallaxOracle = params.parallaxOracle;
 
   // CONTENT-ADAPTIVE refresh interval. What the eye catches in a cached parallax is the per-refresh
   // positional STEP of its FASTEST-drifting layer: renderParallaxLayers scrolls each layer by
@@ -351,8 +382,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // ones a small N -- instead of forcing the worst world's limit on every world. Snap DOWN to a validated
   // rung {1,2,4,8,16} (conservative). Config parallaxRefreshInterval: 0 = ADAPTIVE (default), 1 = off/direct,
   // >1 = manual fixed N. Threshold tunable via parallaxMaxDriftStepPx.
-  unsigned parallaxRefreshCfg = Root::singleton().configuration()->get("parallaxRefreshInterval", 0).optUInt().value(0);
-  float parallaxMaxStepPx = Root::singleton().configuration()->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f);
+  unsigned parallaxRefreshCfg = params.parallaxRefreshInterval;
+  float parallaxMaxStepPx = params.parallaxMaxDriftStepPx;
 
   // The drift rate is a property of the CONTENT, not of frame-to-frame tick jitter. A layer's screen offset
   // is speed * (epochTime / dayLength) * pixelRatio and epochTime advances ~1s per real second, so

@@ -18,6 +18,35 @@ STAR_CLASS(BackdropPass);
 //
 // The EnvironmentPainter (the actual draw engine for sky/parallax) is passed in by reference; this pass owns
 // only the caching/compose/arbiter decision state, not the painter.
+// AIR-GAP CONTRACT (2): THE PASS'S CONFIG, RESOLVED AT THE BOUNDARY.
+//
+// These eight knobs used to be read inside the pass body via Root::singleton(), which is the
+// reach-into-the-world coupling the decomposition exists to remove: it makes the pass impossible to
+// exercise without a Root, and impossible to reason about without knowing what a global might return.
+// WorldPainter -- the composition root, which is ALLOWED to know about Root -- now fills this per frame
+// and hands the pass a value. The pass becomes a pure function of its parameters.
+//
+// RESOLVED PER FRAME AT THE BOUNDARY, NOT INJECTED AT CONSTRUCTION, and the distinction is load-bearing.
+// The target-state doc prescribed constructor injection; that would have SHIPPED A REGRESSION, because
+// every one of these is live-tunable mid-session (`/rendercache envrefresh`, `/rendercache
+// parallaxrefresh`, the antiAliasing client option polled every frame). Freezing them at construction
+// would silently break the console knobs the campaign has been using to A/B its own levers.
+//
+// This is the same shape WorldPainter already uses for GpuLightmapPass, which is why that pass scores a
+// clean sheet -- a fact worth stating plainly, since it means the clean sheet was BOUGHT by the
+// orchestrator doing the reads rather than earned by the pass avoiding them. The honest measure is "pass
+// bodies are pure functions of their parameters", which this makes true for BackdropPass too.
+struct BackdropParams {
+  unsigned envRefreshInterval = 1;
+  bool envOracle = false;
+  float envMaxDriftStepPx = 0.75f;
+  bool composeMerge = true;
+  bool antiAliasing = false;
+  bool parallaxOracle = false;
+  unsigned parallaxRefreshInterval = 0;
+  float parallaxMaxDriftStepPx = 0.75f;
+};
+
 class BackdropPass {
 public:
   explicit BackdropPass(Renderer* renderer);
@@ -42,13 +71,13 @@ public:
   // the env cache refreshed this frame, for the parallax arbiter in renderParallax(). ablateEnv suppresses the
   // draws for the rendertest pass-ablation harness.
   void renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData, EnvironmentPainter& envPainter,
-      bool ablateEnv);
+      BackdropParams const& params, bool ablateEnv);
 
   // Draw + compose the parallax layers over "main" via the parallaxCache retained surface. Updates the parallax
   // world position from camera drift; applies the moving-camera bypass, the AA gate, content-adaptive N, and
   // the cross-surface arbiter. ablateParallax suppresses the draws for the rendertest harness.
   void renderParallax(WorldCamera const& camera, WorldRenderData& renderData, EnvironmentPainter& envPainter,
-      bool ablateParallax);
+      BackdropParams const& params, bool ablateParallax);
 
 private:
   // CM-1: one full-screen pass sampling BOTH caches into "main" (env opaque base + parallax premultiplied-
