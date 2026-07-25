@@ -49,13 +49,24 @@ flowchart TB
 
 | # | Concern (fused in the monolith) | Target module | Status |
 |---|---|---|---|
-| ① | frame orchestration + camera | `WorldPainter` (thin) | 🔨 step 5 |
+| ① | frame orchestration + camera | `WorldPainter` (thin) | ✅ step 5 — `render()` 427 → 119 lines |
 | ② | env cache | `BackdropPass` — owns a `RetainedSurface` | ✅ primitive extracted (1a–1d) |
 | ③ | parallax cache | `BackdropPass` — owns a `RetainedSurface` | ✅ primitive extracted (1a–1d) |
-| ④ | GPU-lightmap dispatch | `LightmapPass` — explicit `LightmapResult` | ✅ step 2 |
-| ⑤ | world layers | `WorldPass` (game-coupled, accepted) | 🔨 step 4 |
-| ⑥ | lighting param plumbing | `WorldPass` / `WorldPainter` | 🔨 step 4–5 |
-| ⑦ | compose plumbing | `BackdropPass` — **compose-merge lever lands here** | 🔨 step 3 |
+| ④ | GPU-lightmap dispatch | `LightmapPass` — explicit `LightmapResult` | 🟡 result tightened; **dispatch prologue still in `WorldPainter`** |
+| ⑤ | world layers | `WorldPass` (game-coupled, accepted) | ✅ step 4 |
+| ⑥ | lighting param plumbing | `WorldPass` / `WorldPainter` | 🟡 passes extracted; the plumbing itself still spans both |
+| ⑦ | compose plumbing | `BackdropPass` — **compose-merge lever lands here** | ✅ step 3 — CM-1 landed |
+
+> **Status column audited 2026-07-25 against tree content at `c9b2b024`.** The *before* picture above
+> (870-line file, 589-line `render()`) is correctly pinned to branch point `75d29067` and is not a claim
+> about HEAD — leave it as the dated snapshot it is.
+>
+> Row ④ is deliberately 🟡, not ✅: the *tighten* shipped (explicit `LightmapResult`), but the dispatch itself
+> — config reads, `PointParameters` assembly, the O(cells) auto-K emission scan, `shadowCompareFull` — still
+> lives in `WorldPainter`, not in the pass.
+>
+> **Extraction is not the Air-Gap contract.** Every pass above is extracted; none is fully contract-compliant.
+> See the [compliance matrix](architecture-3-target-state.md#air-gap-compliance--measured-from-the-tree).
 
 ## Why this middle panel matters most
 
