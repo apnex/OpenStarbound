@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**113 tasks** across 2 store(s): 1 in_progress, 23 pending, 89 completed
+**113 tasks** across 2 store(s): 2 in_progress, 22 pending, 89 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 112 tasks, ids 64–175
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -180,7 +180,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
-| [#175](#c29c1332-175) | `c29c1332` | open | SIM-1: close the server-tick budget — owner `sim` has NO total and one phase holds 98.4% | — | — |
+| [#175](#c29c1332-175) | `c29c1332` | **active** | SIM-1: close the server-tick budget — owner `sim` has NO total and one phase holds 98.4% | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2420,7 +2420,7 @@ evidence that is worth more than any single lever on the board.
 
 #### #175 — SIM-1: close the server-tick budget — owner `sim` has NO total and one phase holds 98.4%
 
-status: **pending**
+status: **in_progress**
 
 ```
 Director-approved 2026-07-25 as P0 tooling: telemetry parity between client/render and server/sim. Target

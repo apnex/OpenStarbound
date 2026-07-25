@@ -316,8 +316,12 @@ TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
   EXPECT_EQ(owners.get("frame").getString("total"), "cpu.frame.total.us");
   EXPECT_EQ(owners.get("gl").getString("denominator"), "cpu.frame.total.us");
   EXPECT_EQ(owners.get("gl").getString("total"), "render.frame.gpu_span_us");
-  // `sim` has no measured whole; it must not invent one.
-  EXPECT_FALSE(owners.get("sim").contains("total"));
+  // `sim` HAD no measured whole, and this line used to assert it must not invent one. #175 gave it a real
+  // one -- tick.server.total.us wraps the server loop body minus the pacing sleep -- so the assertion
+  // inverts. The principle the original comment was protecting is unchanged and worth restating: an owner
+  // must not declare a total it does not MEASURE. This one is measured.
+  EXPECT_EQ(owners.get("sim").getString("denominator"), "tick.server.seq");
+  EXPECT_EQ(owners.get("sim").getString("total"), "tick.server.total.us");
 }
 
 // The lighting owner's contract had no automated guard: its denominator counts RECOMPUTES while its

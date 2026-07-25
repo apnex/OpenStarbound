@@ -392,14 +392,21 @@ namespace {
   // Only owners that bear a budget get a row here: Process and Unknown are absent on purpose, meaning "not a
   // budget-bearing owner" -- there is no denominator/total to report for either.
   //
-  // All FIVE metric keys named below are now REGISTERED and load-bearing (this comment previously said "four"
+  // All SIX metric keys named below are now REGISTERED and load-bearing (this comment previously said "four"
   // -- while listing five -- and claimed they did not exist yet; both were true when written and neither is
   // true now):
   //   cpu.frame.total.us            StarMainApplication_sdl.cpp
   //   render.frame.gpu_span_us      StarRenderer_opengl.cpp
-  //   tick.server.seq               asserted live in source/test/telemetry_test.cpp
+  //   tick.server.seq               StarWorldServerThread.cpp (markTick at the head of the run() loop body)
+  //   tick.server.total.us          StarWorldServerThread.cpp
   //   lighting.temporal.recomputed  StarWorldClient.cpp
   //   lighting.cpu.total.us         StarWorldClient.cpp
+  //
+  // `sim` HELD A DENOMINATOR AND NO TOTAL until #175: it had parts and no whole, so nothing it measured could
+  // be closed or attributed and one phase sat at 98.4% of the four that existed. Note what the total is NOT --
+  // it wraps the server loop body minus the pacing sleep, so it is busy with respect to PACING but includes
+  // blocked time. Six lock acquisitions live inside it, each named tick.server.lock.*, so a reader wanting
+  // pure work computes busy = total - blocked rather than trusting the total to be it.
   // The last two are the denominator and total behind the lighting owner's measured closure, so do not read
   // this table as aspirational. It remains a STATIC DESCRIPTION rather than a lookup -- nothing here resolves
   // a key at runtime, and a typo would silently drop an owner's whole table (telemetry-window.py skips an
@@ -408,7 +415,7 @@ namespace {
   constexpr OwnerSpec c_ownerSpecs[] = {
     {MetricOwner::Frame,    "cpu.frame.total.us",           "cpu.frame.total.us"},
     {MetricOwner::Gl,       "cpu.frame.total.us",           "render.frame.gpu_span_us"},
-    {MetricOwner::Sim,      "tick.server.seq",              nullptr},
+    {MetricOwner::Sim,      "tick.server.seq",              "tick.server.total.us"},
     {MetricOwner::Lighting, "lighting.temporal.recomputed", "lighting.cpu.total.us"},
   };
 }

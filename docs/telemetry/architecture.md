@@ -119,12 +119,42 @@ parts close against. `source/core/StarTelemetry.cpp:394`.
 |---|---|---|
 | `frame` | `cpu.frame.total.us` (count) | `cpu.frame.total.us` (sum) |
 | `gl` | `cpu.frame.total.us` (count) | `render.frame.gpu_span_us` (sum) |
-| `sim` | `tick.server.seq` | — |
+| `sim` | `tick.server.seq` | `tick.server.total.us` (sum) |
 | `lighting` | `lighting.temporal.recomputed` | `lighting.cpu.total.us` (sum) |
 
 For `frame` they are one metric read two ways. For `gl` they are **different metrics entirely** — GPU work is
 *counted* per frame but its *whole* is the GPU frame span. An owner with no declared total reports its parts
 unclosed rather than inventing a whole. `process` and `unknown` are absent on purpose: not budget-bearing.
+
+### The `sim` owner: what its total is, and what it is not
+
+`sim` had a denominator and **no total** until #175 — parts with no whole, so nothing it measured could be
+closed and `tick.server.compute.us` sat at 98.4% of the four parts that existed. That figure was never an
+attribution; it was the absence of one.
+
+`tick.server.total.us` wraps the `WorldServerThread::run()` loop body **minus the pacing sleep**. Two properties
+follow, and the second is the one people get wrong:
+
+- **The sleep is excluded structurally, not by subtraction.** It is the last statement of the loop body and the
+  body has exactly one control-flow path, so the scope simply closes before it. This avoids the
+  `cpu.frame.total.us` trap on the client side, where the total is 65% sleep and an A/B on it reports no change
+  for a real regression.
+- **It is busy with respect to PACING, not with respect to BLOCKING.** Six lock acquisitions live inside it.
+  Each is named `tick.server.lock.*`, so `busy = total − blocked` is recoverable, but the total itself is
+  busy+blocked and must be read that way. An earlier draft of this design asserted the total was "busy by
+  construction"; that was wrong, and on a contended multiplayer server it would be wrong by a lot.
+
+`tick.server.lock.us` is a **latency** metric, not a cost metric. `readChunks`/`unloadAll` hold `m_mutex` across
+another thread's disk work, so one acquisition can run for seconds — its p99 says how long the world stopped
+ticking, not how much CPU anything used.
+
+The 27 Budget parts partition the total exactly once. The sixteen inside `WorldServer::update` are `cadence=Call`
+and their handles are declared at **file scope**: that function is entered only when `dt > 0 && !paused`, and a
+block-scope static inside a function that is never entered does not merely go unrecorded — it never *registers*,
+so the metric would be absent from the snapshot rather than present with a zero. Absent reads as "no such
+phase". Measured at `00-Ocean-Lab`, 4807 ticks: **closure 99.76%**, 5.4 µs/tick unattributed, with
+`compute.entities` at 1483 µs/tick (65.2%), `netsync` 9.7%, `liquid` 8.5%, `wiring` 5.2%, and all six locks
+together 0.74 µs/tick (0.03%) in single-player.
 
 ### Cadence is arithmetic, not just a bounds check
 

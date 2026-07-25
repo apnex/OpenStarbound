@@ -630,47 +630,99 @@ float WorldServer::expiryTime() {
   return m_expiryTimer.timer;
 }
 
+namespace {
+  // OWNER `sim`'s COMPUTE PARTS -- the sixteen Budget phases that partition WorldServer::update.
+  //
+  // DECLARED AT FILE SCOPE, NOT AS BLOCK STATICS, and that is not a style preference. This function is
+  // entered only when `dt > 0.0f && !paused` (StarWorldServerThread.cpp). A block-scope static inside
+  // it does not merely go un-recorded on a paused tick -- it never REGISTERS AT ALL, so a capture
+  // taken across a pause would find these metrics ABSENT from the snapshot rather than present with a
+  // zero, and absent reads as "this phase does not exist" rather than "this phase did no work". File
+  // scope registers them at static-init unconditionally. Safe to do at static-init: Telemetry's
+  // registry is a function-local static, constructed on first use.
+  //
+  // cadence=Call, NOT Tick. They genuinely do not fire on a paused tick, and under a Tick declaration
+  // the consumer reads that shortfall as SAMPLING loss and scales every one of them up -- at which
+  // point the parts exceed the whole. The price is the count==denominator oracle, which cannot check
+  // Call-cadence metrics; the closure percentage is what guards these instead.
+  TelemetryTimer simComputePart(char const* key) {
+    return Telemetry::timer(key,
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Budget});
+  }
+  static TelemetryTimer const tcPrologue       = simComputePart("tick.server.compute.prologue.us");
+  static TelemetryTimer const tcWake           = simComputePart("tick.server.compute.wake.us");
+  static TelemetryTimer const tcEntities       = simComputePart("tick.server.compute.entities.us");
+  static TelemetryTimer const tcScripts        = simComputePart("tick.server.compute.scripts.us");
+  static TelemetryTimer const tcDamage         = simComputePart("tick.server.compute.damage.us");
+  static TelemetryTimer const tcWiring         = simComputePart("tick.server.compute.wiring.us");
+  static TelemetryTimer const tcSky            = simComputePart("tick.server.compute.sky.us");
+  static TelemetryTimer const tcClientRegions  = simComputePart("tick.server.compute.clientregions.us");
+  static TelemetryTimer const tcWeather        = simComputePart("tick.server.compute.weather.us");
+  static TelemetryTimer const tcLiquid         = simComputePart("tick.server.compute.liquid.us");
+  static TelemetryTimer const tcFallingBlocks  = simComputePart("tick.server.compute.fallingblocks.us");
+  static TelemetryTimer const tcBlockDamage    = simComputePart("tick.server.compute.blockdamage.us");
+  static TelemetryTimer const tcStorage        = simComputePart("tick.server.compute.storage.us");
+  static TelemetryTimer const tcCommit         = simComputePart("tick.server.commit.us");
+  static TelemetryTimer const tcNetSync        = simComputePart("tick.server.compute.netsync.us");
+  static TelemetryTimer const tcEpilogue       = simComputePart("tick.server.compute.epilogue.us");
+}
+
 void WorldServer::update(float dt) {
-  m_currentTime += dt;
-  ++m_currentStep;
-  for (auto const& pair : m_clientInfo)
-    pair.second->interpolationTracker.update(m_currentTime);
-
-  List<WorldAction> triggeredActions;
-  eraseWhere(m_timers, [&triggeredActions, dt](pair<float, WorldAction>& timer) {
-      if ((timer.first -= dt) <= 0) {
-        triggeredActions.append(timer.second);
-        return true;
-      }
-      return false;
-    });
-  for (auto const& action : triggeredActions)
-    action(this);
-
-  m_spawner.update(dt);
-
-  bool doBreakChecks = m_tileEntityBreakCheckTimer.wrapTick(m_currentTime) && m_needsGlobalBreakCheck;
-  if (doBreakChecks)
-    m_needsGlobalBreakCheck = false;
-
+  // Hoisted out of the phase scopes below purely so those scopes can exist. `dormancyActive` and
+  // `dormancyEnabled` lose their `const` in the process -- the alternative was to leave their
+  // initialisation outside every phase, which would open a contiguity gap, and an exhaustive
+  // partition is worth more here than two const qualifiers.
+  bool doBreakChecks = false;
   List<EntityId> toRemove;
+  bool dormancyActive = false;
+  bool dormancyEnabled = false;
+  List<RectI> clientWindows;
+  List<RectI> clientMonitoringRegions;
 
-  // Entity-dormancy (option A "skip update() only"): read the gates ONCE per tick,
-  // hoisted out of the per-entity callback (M3). dormancyActive (== enabled ||
-  // validate) drives the OFF/ON fork and all membership/scheduling bookkeeping;
-  // dormancyEnabled gates the actual update() skip. Splitting them lets validate
-  // mode (active but !enabled) run EVERY entity's update() while still tracking
-  // exactly the membership enabled mode would have acted on.
-  bool const dormancyActive = EntityDormancy::active();
-  bool const dormancyEnabled = EntityDormancy::enabled.load(std::memory_order_relaxed);
+  {
+    TelemetryScope s(tcPrologue);
+    m_currentTime += dt;
+    ++m_currentStep;
+    for (auto const& pair : m_clientInfo)
+      pair.second->interpolationTracker.update(m_currentTime);
 
-  // Promote scheduled wakes due this step into the awake-set. maybeTake (NOT take —
-  // take throws on a missing key, and most ticks have no bucket for the current step).
-  if (dormancyActive) {
-    if (auto due = m_scheduledWakes.maybeTake(m_currentStep))
-      for (EntityId id : *due)
-        if (m_entityMap->entity(id))        // <-- skip stale ids from removed entities
-          m_awakeEntities.add(id);
+    List<WorldAction> triggeredActions;
+    eraseWhere(m_timers, [&triggeredActions, dt](pair<float, WorldAction>& timer) {
+        if ((timer.first -= dt) <= 0) {
+          triggeredActions.append(timer.second);
+          return true;
+        }
+        return false;
+      });
+    for (auto const& action : triggeredActions)
+      action(this);
+
+    m_spawner.update(dt);
+  }
+
+  {
+    TelemetryScope s(tcWake);
+    doBreakChecks = m_tileEntityBreakCheckTimer.wrapTick(m_currentTime) && m_needsGlobalBreakCheck;
+    if (doBreakChecks)
+      m_needsGlobalBreakCheck = false;
+
+    // Entity-dormancy (option A "skip update() only"): read the gates ONCE per tick,
+    // hoisted out of the per-entity callback (M3). dormancyActive (== enabled ||
+    // validate) drives the OFF/ON fork and all membership/scheduling bookkeeping;
+    // dormancyEnabled gates the actual update() skip. Splitting them lets validate
+    // mode (active but !enabled) run EVERY entity's update() while still tracking
+    // exactly the membership enabled mode would have acted on.
+    dormancyActive = EntityDormancy::active();
+    dormancyEnabled = EntityDormancy::enabled.load(std::memory_order_relaxed);
+
+    // Promote scheduled wakes due this step into the awake-set. maybeTake (NOT take —
+    // take throws on a missing key, and most ticks have no bucket for the current step).
+    if (dormancyActive) {
+      if (auto due = m_scheduledWakes.maybeTake(m_currentStep))
+        for (EntityId id : *due)
+          if (m_entityMap->entity(id))        // <-- skip stale ids from removed entities
+            m_awakeEntities.add(id);
+    }
   }
 
   // OPTION A INVARIANTS (see also queueUpdatePackets / m_wireProcessor->process):
@@ -683,6 +735,10 @@ void WorldServer::update(float dt) {
   //  (c) the tile-entity break-check + shouldDestroy() reaping below run for
   //      EVERY entity, dormant or not — this is what preserves the reaping /
   //      break-check coupling for free, and why only update() is gated.
+  // The dominant phase: expected to carry the large majority of the tick, and the reason `compute`
+  // reading 98.4% was an attribution failure rather than an attribution.
+  {
+  TelemetryScope sEntities(tcEntities);
   m_entityMap->updateAllEntities([&](EntityPtr const& entity) {
       if (!dormancyActive) {
         entity->update(dt, m_currentStep); // OFF: byte-identical to the pre-dormancy path
@@ -790,41 +846,75 @@ void WorldServer::update(float dt) {
     }, [](EntityPtr const& a, EntityPtr const& b) {
       return a->entityType() < b->entityType();
     });
-
-  for (auto& pair : m_scriptContexts)
-    pair.second->update(pair.second->updateDt(dt));
-
-  updateDamage(dt);
-  if (shouldRunThisStep("wiringUpdate"))
-    m_wireProcessor->process();
-
-  m_sky->update(dt);
-
-  List<RectI> clientWindows;
-  List<RectI> clientMonitoringRegions;
-  for (auto const& pair : m_clientInfo) {
-    clientWindows.append(pair.second->clientState.window());
-    for (auto const& region : pair.second->monitoringRegions(m_entityMap))
-      clientMonitoringRegions.appendAll(m_geometry.splitRect(region));
   }
 
-  m_weather.setClientVisibleRegions(clientWindows);
-  m_weather.update(dt);
-  for (auto projectile : m_weather.pullNewProjectiles())
-    addEntity(std::move(projectile));
-
-  if (shouldRunThisStep("liquidUpdate")) {
-    m_liquidEngine->setProcessingLimit(m_fidelityConfig.optUInt("liquidEngineBackgroundProcessingLimit"));
-    m_liquidEngine->setNoProcessingLimitRegions(clientMonitoringRegions);
-    m_liquidEngine->update();
+  // From here to the end of the function every phase WRAPS its `if` rather than sitting inside it.
+  // shouldRunThisStep() is a fidelity-driven cadence gate, so a scope placed inside the branch would
+  // fire on only a fraction of ticks; these are cadence=Call so they would not be scaled up, but they
+  // WOULD silently vanish from any window in which the gate never fired -- and an absent row reads as
+  // "no such phase", not "this phase did nothing". Outside the branch each records ~0 instead.
+  {
+    TelemetryScope s(tcScripts);
+    for (auto& pair : m_scriptContexts)
+      pair.second->update(pair.second->updateDt(dt));
   }
 
-  if (shouldRunThisStep("fallingBlocksUpdate"))
-    m_fallingBlocksAgent->update();
+  {
+    TelemetryScope s(tcDamage);
+    updateDamage(dt);
+  }
 
-  if (auto delta = shouldRunThisStep("blockDamageUpdate"))
-    updateDamagedBlocks(*delta * dt);
+  {
+    TelemetryScope s(tcWiring);
+    if (shouldRunThisStep("wiringUpdate"))
+      m_wireProcessor->process();
+  }
 
+  {
+    TelemetryScope s(tcSky);
+    m_sky->update(dt);
+  }
+
+  {
+    TelemetryScope s(tcClientRegions);
+    for (auto const& pair : m_clientInfo) {
+      clientWindows.append(pair.second->clientState.window());
+      for (auto const& region : pair.second->monitoringRegions(m_entityMap))
+        clientMonitoringRegions.appendAll(m_geometry.splitRect(region));
+    }
+  }
+
+  {
+    TelemetryScope s(tcWeather);
+    m_weather.setClientVisibleRegions(clientWindows);
+    m_weather.update(dt);
+    for (auto projectile : m_weather.pullNewProjectiles())
+      addEntity(std::move(projectile));
+  }
+
+  {
+    TelemetryScope s(tcLiquid);
+    if (shouldRunThisStep("liquidUpdate")) {
+      m_liquidEngine->setProcessingLimit(m_fidelityConfig.optUInt("liquidEngineBackgroundProcessingLimit"));
+      m_liquidEngine->setNoProcessingLimitRegions(clientMonitoringRegions);
+      m_liquidEngine->update();
+    }
+  }
+
+  {
+    TelemetryScope s(tcFallingBlocks);
+    if (shouldRunThisStep("fallingBlocksUpdate"))
+      m_fallingBlocksAgent->update();
+  }
+
+  {
+    TelemetryScope s(tcBlockDamage);
+    if (auto delta = shouldRunThisStep("blockDamageUpdate"))
+      updateDamagedBlocks(*delta * dt);
+  }
+
+  {
+  TelemetryScope sStorage(tcStorage);
   if (auto delta = shouldRunThisStep("worldStorageTick"))
     m_worldStorage->tick(*delta * GlobalTimestep, &m_worldId);
 
@@ -843,16 +933,23 @@ void WorldServer::update(float dt) {
         return distanceToClosestPlayer(a) < distanceToClosestPlayer(b);
       });
   }
+  }
 
   {
     // Telemetry commit phase: master-entity destruction/removal for this tick.
-    static auto t = Telemetry::timer("tick.server.commit.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
-    TelemetryScope s(t);
+    //
+    // CADENCE CHANGED Tick -> Call, and the handle moved to file scope with its fifteen siblings. It
+    // was declared Tick while living inside this runtime-gated function, which is the same
+    // conditional-phase defect the lighting budget carried: on a window containing paused ticks the
+    // consumer scaled it up against an unscaled Tick-cadence denominator. role stays Budget -- it is a
+    // sibling of the other fifteen compute parts, not a parent of them.
+    TelemetryScope s(tcCommit);
     for (EntityId entityId : toRemove)
       removeEntity(entityId, true);
   }
 
+  {
+  TelemetryScope sNetSync(tcNetSync);
   bool sendRemoteUpdates = m_entityUpdateTimer.wrapTick(dt);
   // Lever #4: pump the sky's deferred store once before the per-client loop
   // (Sky::writeUpdate has a setNeedsStoreCallback and shares the early-out gate).
@@ -870,7 +967,10 @@ void WorldServer::update(float dt) {
   }
   m_netStateCache.clear();
   m_netStorePumpedThisTick.clear();
+  }
 
+  {
+  TelemetryScope sEpilogue(tcEpilogue);
   // Lever #4 measurement: while a gate is on, log the early-out coverage
   // (hits/(hits+walks)) roughly every ~10s and reset the window. Counts are
   // process-global (aggregate across all active server worlds); zero overhead
@@ -916,6 +1016,7 @@ void WorldServer::update(float dt) {
   LogMap::set(strf("server_{}_time", m_worldId), strf("age = {:4.2f}, day = {:4.2f}/{:4.2f}s", epochTime(), timeOfDay(), dayLength()));
   LogMap::set(strf("server_{}_active_liquid", m_worldId), m_liquidEngine->activeCells());
   LogMap::set(strf("server_{}_lua_mem", m_worldId), m_luaRoot->luaMemoryUsage());
+  }
 }
 
 WorldGeometry WorldServer::geometry() const {
