@@ -326,12 +326,13 @@ void Telemetry::markTick(String const& threadTag) {
 }
 
 namespace {
-  // These four switches deliberately have NO `default:`. -Wswitch (part of -Wall, on for this project) then
-  // flags any enumerator added to MetricDomain/MetricOwner/MetricCadence/MetricRole in the future that isn't
-  // also added here -- catching a forgotten JSON name at compile time instead of silently serializing the
-  // new value as e.g. "unknown"/"call"/"detail". The trailing return after each switch exists only to satisfy
-  // -Wreturn-type for the technically-reachable (but never actually occurring in correct code) case of an
-  // enum value outside its declared set; it is not a substitute for handling a real enumerator.
+  // These five switches deliberately have NO `default:`. -Wswitch (part of -Wall, on for this project) then
+  // flags any enumerator added to MetricDomain/MetricOwner/MetricCadence/MetricRole/MetricType in the future
+  // that isn't also added here -- catching a forgotten JSON name at compile time instead of silently
+  // serializing the new value as e.g. "unknown"/"call"/"detail"/"counter". The trailing return after each
+  // switch exists only to satisfy -Wreturn-type for the technically-reachable (but never actually occurring in
+  // correct code) case of an enum value outside its declared set; it is not a substitute for handling a real
+  // enumerator.
   char const* domainName(MetricDomain d) {
     switch (d) {
       case MetricDomain::Unknown: return "unknown";
@@ -373,8 +374,9 @@ namespace {
       case MetricType::Counter: return "counter";
       case MetricType::Gauge: return "gauge";
       case MetricType::Timer: return "timer";
-      default: return "rate";
+      case MetricType::Rate: return "rate";
     }
+    return "counter";
   }
 
   // An owner's DENOMINATOR counts its ticks; its TOTAL is the whole that role=budget parts close against.
@@ -433,7 +435,7 @@ Json Telemetry::snapshot() {
       for (size_t i = 0; i < last; ++i)
         buckets.append(Json((uint64_t)n->buckets[i].load(std::memory_order_relaxed)));
       m["buckets"] = Json(std::move(buckets));
-    } else {
+    } else if (n->type == MetricType::Rate) {
       m["value"] = Json(n->rate.load(std::memory_order_relaxed));
     }
     metrics[pair.first] = std::move(m);
@@ -473,6 +475,12 @@ void Telemetry::reset() {
     n->descConflict = false;
     n->typeConflict = false;
   }
+  // A conflict flagged in pendingDescs (declare() called twice with different descriptors for a key with no
+  // node yet) is the same kind of window state as descConflict/typeConflict above -- clear it too, or a
+  // pre-reset conflict would survive reset() and land on the node the moment it's later created. The pending
+  // descriptor itself is left alone, exactly like node desc/declared above: it is structural, not window state.
+  for (auto& p : registry().pendingDescs)
+    p.second.conflict = false;
 }
 
 }

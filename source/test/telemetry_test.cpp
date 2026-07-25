@@ -275,3 +275,82 @@ TEST(Telemetry, HistogramIsEmptyForCounters) {
   Telemetry::counter("test.hist.counter").inc();
   EXPECT_FALSE(Telemetry::snapshot().getObject("metrics").get("test.hist.counter").contains("buckets"));
 }
+
+// THE INSTRUMENT'S ORACLE. The renderer has oracles that fail loudly; telemetry had none, and two measurement
+// errors in this arc were exactly the class an oracle catches -- a parts-sum of 119% of the whole, and a
+// metric divided by the wrong denominator. These are those errors as failing tests.
+
+TEST(Telemetry, BudgetPartsCloseAgainstOwnerTotal) {
+  telemetrySetUp();
+  MetricDesc total{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total};
+  MetricDesc part{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget};
+  MetricDesc detail{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail};
+
+  Telemetry::timer("test.budget.total.us", total).record(1000);
+  Telemetry::timer("test.budget.input.us", part).record(200);
+  Telemetry::timer("test.budget.render.us", part).record(600);
+  // A Detail metric nests INSIDE a Budget part. If closure counted it, the parts would exceed the whole --
+  // which is exactly the double-count the role field exists to prevent.
+  Telemetry::timer("test.budget.nested.us", detail).record(550);
+
+  JsonObject metrics = Telemetry::snapshot().getObject("metrics");
+  int64_t parts = 0;
+  for (auto const& kv : metrics) {
+    Json m = kv.second;
+    if (m.getString("type") == "timer" && m.getString("owner") == "frame"
+        && m.getString("domain") == "cpu" && m.getString("role") == "budget")
+      parts += m.getInt("total");
+  }
+  int64_t whole = metrics.get("test.budget.total.us").getInt("total");
+  EXPECT_EQ(parts, 800);
+  EXPECT_LE(parts, whole);
+  EXPECT_GE(whole - parts, 0);
+}
+
+TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
+  telemetrySetUp();
+  JsonObject owners = Telemetry::snapshot().getObject("owners");
+  // These are DIFFERENT questions: the denominator counts ticks, the total is the whole parts close against.
+  // For `gl` they are different metrics -- GPU work is counted per frame but its whole is the GPU frame span.
+  EXPECT_EQ(owners.get("frame").getString("denominator"), "cpu.frame.total.us");
+  EXPECT_EQ(owners.get("frame").getString("total"), "cpu.frame.total.us");
+  EXPECT_EQ(owners.get("gl").getString("denominator"), "cpu.frame.total.us");
+  EXPECT_EQ(owners.get("gl").getString("total"), "render.frame.gpu_span_us");
+  // `sim` has no measured whole; it must not invent one.
+  EXPECT_FALSE(owners.get("sim").contains("total"));
+}
+
+TEST(Telemetry, CadenceCountNeverExceedsDenominator) {
+  telemetrySetUp();
+  MetricDesc total{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total};
+  MetricDesc part{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget};
+  auto frames = Telemetry::timer("test.cadence.total.us", total);
+  auto gated = Telemetry::timer("test.cadence.gated.us", part);
+  for (int i = 0; i < 10; ++i)
+    frames.record(1000);
+  for (int i = 0; i < 6; ++i)   // a refresh-gated pass fires on only some frames
+    gated.record(100);
+
+  JsonObject metrics = Telemetry::snapshot().getObject("metrics");
+  uint64_t denom = metrics.get("test.cadence.total.us").getUInt("count");
+  uint64_t count = metrics.get("test.cadence.gated.us").getUInt("count");
+  // UNDER is legitimate and expected -- a gated pass or an async GPU readback samples only some frames, which
+  // is what the coverage figure reports. OVER is always a bug: the span was opened twice in one frame and the
+  // metric should have been declared cadence=Call. A symmetric "count ~= denominator" assertion would flag
+  // every gated pass in the tree as broken.
+  EXPECT_LE(count, denom);
+  EXPECT_EQ(count, 6u);
+  EXPECT_EQ(denom, 10u);
+}
+
+// A DECLARATION AFTER REGISTRATION must still land. OpenGlRenderer may register a GPU key generically on an
+// earlier frame than the pass that describes it, so accessor-first is a normal ordering, not an edge case.
+TEST(Telemetry, DeclareAfterRegistrationStillApplies) {
+  telemetrySetUp();
+  Telemetry::timer("test.late.decl").record(5);          // registered with no descriptor
+  EXPECT_EQ(Telemetry::describe("test.late.decl").owner, MetricOwner::Unknown);
+  MetricDesc d{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::declare("test.late.decl", d);               // ...declared afterwards
+  EXPECT_EQ(Telemetry::describe("test.late.decl"), d);
+  EXPECT_EQ(Telemetry::snapshot().getObject("metrics").get("test.late.decl").getString("domain"), "gpu");
+}
