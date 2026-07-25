@@ -1975,8 +1975,15 @@ void WorldClient::applyStableToCells() {
 void WorldClient::lightingCalc() {
   // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
   // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
+  // totalScope opens after the m_pendingLightReady early-out below, but that guard passes on nearly every
+  // frame in a live sim -- the real gate (recompute vs skip) is the temporal-decoupling check further down,
+  // AFTER this scope has already started timing. So this metric genuinely measures a per-FRAME cost (the
+  // whole lightingCalc call, including frames the temporal gate skips the expensive part on), not a
+  // per-recompute one. gatherTimer below stays Recompute: it sits inside the gate and only fires when a
+  // recompute actually happens (confirmed 2026-07-25: its windowed count matched lighting.temporal.recomputed
+  // exactly, while totalTimer's matched cpu.frame.total.us's frame count exactly).
   static auto totalTimer = Telemetry::timer("lighting.cpu.total.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Total});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Frame, MetricRole::Total});
   static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
 
