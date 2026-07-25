@@ -278,11 +278,15 @@ void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obst
   Vec3B const obstacleByte(255, 255, 255);
   Vec3B const airByte(0, 0, 0);
 
-  // Cell index x * height + y (array column-major) -> image pixel (x, y).
+  // Cell index x*height+y (array column-major) -> image pixel (x, y) (row-major). The loops iterate in
+  // DESTINATION order (y outer) so the image writes are sequential; the cell reads take the stride
+  // instead. That is the right way round -- the writes carry a read-for-ownership cost the reads do not,
+  // and the cell array prefetches cleanly. Iterating in source order made every single store land on a
+  // different cache line, across a ~538 KB working set swept 5-6 times per call.
   if (m_monochrome) {
     m_lightArray.right().seedSpreadLights();
-    for (unsigned x = 0; x < width; ++x) {
-      for (unsigned y = 0; y < height; ++y) {
+    for (unsigned y = 0; y < height; ++y) {
+      for (unsigned x = 0; x < width; ++x) {
         auto const& cell = m_lightArray.right().cellAtIndex((size_t)x * height + y);
         size_t pixel = ((size_t)y * width + x) * 3;
         emissionData[pixel] = emissionData[pixel + 1] = emissionData[pixel + 2] = cell.light;
@@ -291,8 +295,8 @@ void CellularLightingCalculator::exportSpreadInputs(Image& emission, Image& obst
     }
   } else {
     m_lightArray.left().seedSpreadLights();
-    for (unsigned x = 0; x < width; ++x) {
-      for (unsigned y = 0; y < height; ++y) {
+    for (unsigned y = 0; y < height; ++y) {
+      for (unsigned x = 0; x < width; ++x) {
         auto const& cell = m_lightArray.left().cellAtIndex((size_t)x * height + y);
         size_t pixel = ((size_t)y * width + x) * 3;
         emissionData[pixel] = cell.light[0];
