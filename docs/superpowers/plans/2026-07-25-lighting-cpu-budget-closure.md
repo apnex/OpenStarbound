@@ -96,7 +96,7 @@ TEST(LightingTelemetry, CellGaugesArePublishedByBeginNotCalculate) {
 ```bash
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target game_tests -j 8
-./dist/game_tests --gtest_filter='LightingTelemetry.*'
+(cd dist && ./game_tests --gtest_filter='LightingTelemetry.*')
 ```
 Expected: `CellGaugesArePublishedByBeginNotCalculate` FAILS (`lighting.calc.cells` is 0, and `lighting.cells` is 0 because `calculate()` was never called).
 
@@ -152,7 +152,7 @@ Leave `postTimer` and `TelemetryScope postScope(postTimer);` exactly as they are
 
 ```bash
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target game_tests -j 8
-./dist/game_tests --gtest_filter='LightingTelemetry.*'
+(cd dist && ./game_tests --gtest_filter='LightingTelemetry.*')
 ```
 Expected: PASS, 3 tests.
 
@@ -232,8 +232,8 @@ In `source/rendering/StarWorldPainter.cpp:241-242`, change `MetricCadence::Frame
 pgrep -x starbound >/dev/null && { echo "DIRECTOR IN GAME -- STOP"; exit 1; }
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target core_tests game_tests -j 8
-./dist/core_tests
-./dist/game_tests
+(cd dist && ./core_tests)
+(cd dist && ./game_tests)
 ```
 Expected: all green. `lighting_telemetry_test.cpp:43-45` asserts `count > 0` for spread/point/post; those tests drive `CellularLightingCalculator` directly and are unaffected by a descriptor change.
 
@@ -566,8 +566,8 @@ Expected: all three oracles report `ran>0`, `pass>0`, `DIFF=0`, `SKIPPED=0`, and
 - [ ] **Step 9: Run both test suites**
 
 ```bash
-./dist/core_tests
-./dist/game_tests
+(cd dist && ./core_tests)
+(cd dist && ./game_tests)
 ```
 Expected: all green.
 
@@ -635,7 +635,7 @@ TEST(Telemetry, LightingOwnerDeclaresRecomputeDenominatorAndFrameTotal) {
 ```bash
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target core_tests -j 8
-./dist/core_tests --gtest_filter='Telemetry.*'
+(cd dist && ./core_tests --gtest_filter='Telemetry.*')
 ```
 Expected: PASS. If the assertion names do not match, read `c_ownerSpecs` in `source/core/StarTelemetry.cpp` and use the literal strings from there — do not change the table to match the test.
 
@@ -768,7 +768,7 @@ Find where `WorldClient` responds to a Root reload (search for `m_lightingCalcul
 pgrep -x starbound >/dev/null && { echo "DIRECTOR IN GAME -- STOP"; exit 1; }
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target starbound core_tests game_tests -j 8
-scripts/render-gate.sh && ./dist/core_tests && ./dist/game_tests
+scripts/render-gate.sh && (cd dist && ./core_tests) && (cd dist && ./game_tests)
 ```
 Expected: gate PASS (3/3 oracles, DIFF=0), tests green.
 
@@ -848,7 +848,7 @@ In `source/base/StarCellularLighting.cpp:258-259`, replace `// RGB_F float emiss
 pgrep -x starbound >/dev/null && { echo "DIRECTOR IN GAME -- STOP"; exit 1; }
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target starbound core_tests game_tests -j 8
-scripts/render-gate.sh && ./dist/core_tests && ./dist/game_tests
+scripts/render-gate.sh && (cd dist && ./core_tests) && (cd dist && ./game_tests)
 ```
 Expected: gate PASS. A DIFF here means a consumer *did* rely on cleared content — revert and go per-site.
 
@@ -925,7 +925,7 @@ Update the `// Cell index x * height + y (array column-major) -> image pixel (x,
 pgrep -x starbound >/dev/null && { echo "DIRECTOR IN GAME -- STOP"; exit 1; }
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target starbound core_tests game_tests -j 8
-scripts/render-gate.sh && ./dist/core_tests && ./dist/game_tests
+scripts/render-gate.sh && (cd dist && ./core_tests) && (cd dist && ./game_tests)
 ```
 Expected: gate PASS — same output bytes, different traversal order.
 
@@ -1047,7 +1047,7 @@ Expected: `mismatches: 0`. **If this reports any mismatch, stop** — fix the br
 pgrep -x starbound >/dev/null && { echo "DIRECTOR IN GAME -- STOP"; exit 1; }
 cd /root/frackin/OpenStarbound
 VCPKG_ROOT=/root/vcpkg taskset -c 6-15 nice -n 19 cmake --build build/linux-release-clang --target starbound core_tests game_tests -j 8
-scripts/render-gate.sh && ./dist/core_tests && ./dist/game_tests
+scripts/render-gate.sh && (cd dist && ./core_tests) && (cd dist && ./game_tests)
 ```
 
 - [ ] **Step 4: Commit**
