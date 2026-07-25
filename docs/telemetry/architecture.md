@@ -352,6 +352,16 @@ live output, not merely latent. `lighting.cpu.{spread,point,post}.us` were `Reco
 calc runs, which the shipping GPU config skips: a single self-healing CPU frame inside a window would have given
 `count=1` against ~1100 expected and inflated them **~1100×**.
 
+**`calc.cells` is NOT a scene fingerprint — `lights.sources` is.** A live A/B is only valid if both captures
+saw the same scene, and the harness player's position **persists between runs**, so consecutive captures are
+not automatically at the same place. `lighting.calc.cells` looks like the natural comparability check and is
+useless for it: it is set by the query window and grid bucketing, so it reads an identical 35840 at wildly
+different locations. Using it as the check let an invalid A/B through — baseline at 82.6 lights/recompute
+against an "after" at 30.0, where `lighting.cpu.gather.us` fell **73% on code that was never touched**.
+`lighting.lights.sources` is the metric that actually tracks scene load. **Pin the location with `--warp` to a
+real bookmark, and assert `lights.sources` matches across the pair before believing any delta.** A phase that
+moved when nothing touched it is the tell that the comparison, not the code, is what changed.
+
 **A gauge set inside a skipped code path reports a stale value forever.** `lighting.cells` was set inside
 `calculate()`, which GPU lighting skips entirely, so it froze at whatever the pre-latch load frames left behind.
 It also reported the **query** region while every O(cells) loop runs over the border-padded **calculation**
