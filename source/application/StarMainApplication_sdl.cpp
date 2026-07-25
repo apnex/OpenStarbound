@@ -800,13 +800,20 @@ public:
         {
           TelemetryScope s(tRender);
           m_renderer->startFrame();
+          OpenGlRenderer::logGlErrorSummary("OpenGL errors in startFrame");
           m_application->render();
+          OpenGlRenderer::logGlErrorSummary("OpenGL errors in application render");
         }
         {
           TelemetryScope s(tFinish);
           m_renderer->finishFrame();
           ImGui::Render();
           ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+          // THE TRUE END OF THE FRAME. finishFrame() drains BEFORE ImGui draws, so anything ImGui raises
+          // survives into the next frame and is reported against it -- the GL error flag persists until
+          // read. Draining here too keeps attribution honest and names ImGui separately when it is the
+          // source. The renderer cannot do this itself: it does not own this ordering.
+          OpenGlRenderer::logGlErrorSummary("OpenGL errors in imgui");
         }
         {
           // THE BOUND VERDICT. With vsync OFF this blocks only when the GPU queue is full, so a large value

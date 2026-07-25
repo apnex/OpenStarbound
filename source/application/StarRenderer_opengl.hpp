@@ -74,6 +74,12 @@ public:
   void startFrame();
   void finishFrame();
 
+  // PUBLIC because the renderer does not own the whole frame. ImGui renders AFTER finishFrame() (see
+  // StarMainApplication_sdl), so anything it raises is invisible to the renderer's own end-of-frame drain
+  // and gets mis-attributed to the NEXT frame -- the GL error flag persists until read. Whoever owns the
+  // frame ordering must be able to drain at the true end of it. Returns true if any error was drained.
+  static bool logGlErrorSummary(String prefix);
+
 private:
   struct GlTextureAtlasSet : public TextureAtlasSet<GLuint> {
   public:
@@ -171,7 +177,6 @@ private:
   
 
 
-  static bool logGlErrorSummary(String prefix);
   // Specifies an image's storage AND records the descriptor on `record` (if given), in the same call as the
   // glTexImage2D -- so an effect-image spec cannot leave the descriptor unwritten. The raw-GLuint atlas caller
   // passes record=nullptr (no descriptor). Still returns the internal format for callers that want it.
