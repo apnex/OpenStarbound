@@ -854,6 +854,31 @@ so they close against `render.frame.gpu_span_us` like every other pass — but t
 not per frame, so their count must be checked against recomputes. Owner answers "what whole do I belong to";
 cadence answers "how often should I have fired". Per-frame cost is `total ÷ frames` regardless of either.
 
+**A DECLARE INSIDE A CONFIG-GATED BRANCH IS NOT A DECLARATION.** This bit twice while implementing this task,
+both times the same way, and it is invisible to both verification runs:
+
+- `render.pass.environment.compose.gpu_us` was first declared only at its textually-first `begin()`, which sits
+  in the `backdropComposeMerge == false` branch — and that config **defaults to true**, so the declare was dead
+  code in every default session.
+- `render.pass.parallax.gpu_us` was first declared inside `if (!parallaxCacheActive)`. Default sessions are
+  safe by luck (`m_parallaxStillFrames` starts at 0 and the park threshold is 2, so frame 1 always takes the
+  direct path) — but with `parallaxOracle` on, `parallaxCacheActive` collapses to just `parallaxHasLayers`,
+  true from frame 1, and the direct branch never runs. `harness/storage/starbound.config` — the render gate's
+  own config — has `parallaxOracle: true`.
+
+Neither verification catches it: the render gate runs the oracle-on config but only checks oracle diffs, not
+declarations; the profile check runs `storage-perf`, where the oracle is off and the direct path is guaranteed.
+**The blind spot is exactly the intersection the two runs do not cover.**
+
+So, for every key with more than one `begin()` site:
+- If a single site **dominates** all the others (same function, above the branch), declare there — one
+  declaration, provably unconditional. `render.pass.environment.gpu_us` does this correctly at
+  `StarBackdropPass.cpp:138`, and `render.pass.parallax.gpu_us` must too.
+- If the sites are in **different functions** with no dominator (`environment.compose` is in
+  `renderEnvironment` and `renderParallax`), declare identically at each. Declaration is idempotent; identical
+  descriptors raise no conflict.
+- Never declare inside a branch that a config flag can switch off.
+
 Worked example — `source/rendering/StarWorldPass.cpp:46`:
 
 ```cpp
@@ -1930,12 +1955,26 @@ Write the document with exactly these sections:
    answers *"is it identical?"*) versus `scripts/render-profile.sh` (sim running, ~1% GPU-load A/B, answers
    *"is it faster?"*). Include the measured resolution figures and the standing rule: **compare adjacent legs
    only** — back-to-back runs agree to <1%, runs minutes apart drift ~7%.
-7. **Traps, with the evidence.** Each of these cost real time and must not be rediscovered:
-   the 119%-of-the-whole denominator error (dividing by the gpu_span *sample* count, which covers only ~67% of
-   frames, instead of the frame count); `max` being a run-long high-water mark and therefore **not**
-   windowable, which is why histograms exist; the `declare()`-guesses-a-type defect (C1) that would have made
-   `tick.server.seq` a permanently-zero timer while it was serving as owner `sim`'s denominator; and quiescence
-   being a frozen-world concept that never fires with the sim running.
+7. **Traps, with the evidence.** Each of these cost real time on 2026-07-25 and must not be rediscovered:
+
+   - **The denominator trap — it fired THREE separate times in one day.** Once in `telemetry-window.py`
+     (per-frame figures inflated ~1.5×, parts summing to **119% of the whole**, from dividing by the gpu_span
+     *sample* count — which covers only ~70% of frames — instead of the frame count). Once as the Task 1 C1
+     defect. And once in the verification snippet written specifically to catch that class of error, which
+     reported **115%** by dividing a full-coverage cumulative sum by a partial-coverage one. Record the correct
+     form and make it the only form used: **normalise per frame first, never cumulative-sum over
+     cumulative-sum.**
+   - **`max` is a run-long high-water mark and is NOT windowable.** This is the entire reason histograms exist.
+   - **`declare()` must not guess a type** (C1): it would have made `tick.server.seq` a permanently-zero
+     *timer* while that key was serving as owner `sim`'s **denominator**.
+   - **A declare inside a config-gated branch is not a declaration.** It bit twice in Task 4
+     (`environment.compose` in the `backdropComposeMerge == false` branch, which defaults off;
+     `parallax.gpu_us` inside `if (!parallaxCacheActive)`, which never runs when `parallaxOracle` is on — and
+     the render gate's own config has it on). The blind spot is *precisely the intersection the two
+     verification runs do not jointly cover*: the gate runs oracle-on but checks only oracle diffs, the profile
+     check runs oracle-off. Rule: declare at a **dominator** when one exists, at every site when it does not,
+     and never inside a config-switchable branch.
+   - **Quiescence is a frozen-world concept** and never fires with the sim running.
 8. **The self-test.** What the oracle asserts (budget closure, cadence bound, histogram consistency, no
    descriptor conflicts) and where it lives (`source/test/telemetry_test.cpp` plus the assertions
    `telemetry-window.py` runs on real data). State the asymmetric cadence rule and why: `count ≤ denominator`,
