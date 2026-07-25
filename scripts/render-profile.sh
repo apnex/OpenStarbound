@@ -48,13 +48,52 @@ done
 BIN=dist/starbound
 BOOT="$PWD/harness/sbinit-perf.config"
 SNAPDIR="$PWD/harness/storage-perf/telemetry"
+# The game writes here unconditionally (logDirectory in sbinit-perf.config), so the live name is fixed. Each
+# run's log is ARCHIVED under its label on the way out -- see archive_log. Overwriting it in place cost a real
+# post-mortem once: a capture behaved differently from its predecessor and the predecessor's log was already
+# gone, so the discrepancy could not be explained and had to be recorded as unresolved.
 LOG="$PWD/harness/logs-perf/starbound.log"
+ARCHIVE="$PWD/harness/logs-perf/archive"
+# Cache of the teleport bookmarks seen on the last successful load, so --warp can be validated BEFORE paying
+# for a world load. Refreshed every run; the engine is the authority, this is only a fast pre-flight.
+BOOKMARKS="$PWD/harness/logs-perf/bookmarks.txt"
 
 [ -x "$BIN" ] || { echo "no $BIN -- build first"; exit 1; }
 
+mkdir -p "$PWD/harness/logs-perf" "$ARCHIVE"
+
+# Preserve the log of whatever ran last under its own name. Called on every exit path that has a log worth
+# keeping -- including the failure paths, which are the ones you actually want to read afterwards.
+archive_log() {
+  [ -f "$LOG" ] || return 0
+  command cp "$LOG" "$ARCHIVE/${1:-run}-$(date +%Y%m%d-%H%M%S).log" 2>/dev/null || true
+}
+
+# --warp PRE-FLIGHT. The engine matches case-insensitively and asks whether the BOOKMARK CONTAINS THE QUERY
+# (StarClientApplication.cpp: b.bookmarkName.toLower().contains(want)) -- NOT the other way round. So --warp
+# 'exploring' does not match a bookmark named 'explore', which is exactly the typo that burned three full
+# 120s captures: the client loaded the world, failed the lookup, quit, and the script reported the generic
+# "client exited during load". Mirror the engine's rule here and fail in milliseconds with the real list.
+if [ -n "$WARP" ] && [ -s "$BOOKMARKS" ]; then
+  want=$(printf '%s' "$WARP" | tr '[:upper:]' '[:lower:]')
+  hits=$(tr '[:upper:]' '[:lower:]' < "$BOOKMARKS" | grep -cF -- "$want" || true)
+  if [ "$hits" -eq 0 ]; then
+    echo "FAIL: no teleport bookmark contains '$WARP' (matching is case-insensitive substring)."
+    echo "  known bookmarks (from the last successful load):"
+    sed 's/^/    /' "$BOOKMARKS"
+    echo "  If you have added a bookmark since, delete $BOOKMARKS and re-run to refresh the cache."
+    exit 2
+  fi
+  if [ "$hits" -gt 1 ]; then
+    echo "WARNING: '$WARP' matches $hits bookmarks; the engine takes the FIRST in its own iteration order,"
+    echo "         so the destination is not pinned. Narrow the string to make the capture reproducible:"
+    tr '[:upper:]' '[:lower:]' < "$BOOKMARKS" | grep -F -- "$want" | sed 's/^/    /'
+  fi
+fi
+
 # A stale snapshot reads exactly like a fresh one, and the windowing arithmetic below cannot tell them apart.
-rm -rf "$SNAPDIR" "$LOG"
-mkdir -p "$PWD/harness/logs-perf"
+rm -rf "$SNAPDIR"
+rm -f "$LOG"
 
 # Apply --set BEFORE launch. Configuration::set persists to storage/starbound.config on exit, so the previous
 # run's value is sitting in the file -- an A/B that only sets the key on one leg silently inherits it on the
@@ -100,10 +139,36 @@ PID=$!
 for _ in $(seq 1 180); do
   sleep 1
   grep -qE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" 2>/dev/null && break
-  kill -0 $PID 2>/dev/null || { echo "client exited during load -- see $LOG"; exit 1; }
+  kill -0 $PID 2>/dev/null || {
+    # "client exited during load" is true but useless on its own -- it reads like a crash. The commonest cause
+    # by far is a --warp that matched nothing, which the engine reports and then quits cleanly. Name it.
+    if grep -q "no teleport bookmark matching" "$LOG" 2>/dev/null; then
+      echo "FAIL: --warp '$WARP' matched no teleport bookmark. The client loaded the world, could not find it,"
+      echo "      and quit. Matching is case-insensitive and asks whether the BOOKMARK CONTAINS THE QUERY."
+      echo "  available bookmarks:"
+      grep -o "bookmark: '[^']*'" "$LOG" | sed "s/bookmark: //" | sort -u | sed 's/^/    /'
+    else
+      echo "client exited during load -- see $LOG"
+    fi
+    archive_log "$LABEL-FAILED"
+    exit 1
+  }
 done
 grep -hE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" \
   | sed 's/^/  /;s/The frozen state is NOT reproducible.*/(expected in a live run -- nothing here is hashed.)/'
+
+# Refresh the pre-flight cache from what this load actually saw. The engine is the authority; this only lets
+# the NEXT run reject a bad --warp in milliseconds instead of after a full world load.
+grep -o "bookmark: '[^']*'" "$LOG" 2>/dev/null | sed "s/bookmark: '//;s/'$//" | sort -u > "$BOOKMARKS.tmp" || true
+[ -s "$BOOKMARKS.tmp" ] && command mv "$BOOKMARKS.tmp" "$BOOKMARKS" || rm -f "$BOOKMARKS.tmp"
+
+# Pin what was actually measured. A capture whose location is not recorded cannot be compared to another one
+# later -- and the harness player's position PERSISTS between runs, so "no --warp" does not mean "the ship".
+if grep -q "rendertest\] WARPING to bookmark" "$LOG" 2>/dev/null; then
+  grep -o "rendertest\] WARPING to bookmark.*" "$LOG" | sed 's/^/  /' | head -1
+else
+  echo "  location: NOT PINNED (no --warp) -- wherever the harness player was left by the previous run."
+fi
 
 # Discard every snapshot taken during load. The values inside are cumulative, so differencing two POST-load
 # snapshots yields the post-load window regardless -- but keeping the load-phase files would let --first/--last
@@ -139,6 +204,9 @@ kill -TERM $PID 2>/dev/null
 for _ in $(seq 1 20); do kill -0 $PID 2>/dev/null || break; sleep 1; done
 kill -KILL $PID 2>/dev/null || true
 wait $PID 2>/dev/null || true
+
+# Keep this run's log under its own label before anything else can overwrite it.
+archive_log "$LABEL"
 
 n=$(ls "$SNAPDIR"/*.json 2>/dev/null | wc -l)
 echo "  $n telemetry snapshots -> $SNAPDIR"
