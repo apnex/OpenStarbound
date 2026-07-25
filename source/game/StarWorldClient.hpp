@@ -381,11 +381,19 @@ private:
   uint64_t m_gatherEpoch = 0;
   bool m_gatherValid = false;
 
-  // Lighting-thread-private cache for the calculator's parameter Json. The composed value depends only on
-  // newLighting and monochrome, but it was rebuilt every recompute: an Assets::json lookup under the
-  // GLOBAL assets mutex (plus a freshen() clock write under that lock), a Json::set that deep-copies the
-  // whole config object, and 7 string-keyed lookups inside setParameters. Measured 7.8 us/recompute.
-  bool m_lightingParamsValid = false;
+  // Cache for the calculator's parameter Json. The composed value depends only on newLighting and
+  // monochrome, but it was rebuilt every recompute: an Assets::json lookup under the GLOBAL assets mutex
+  // (plus a freshen() clock write under that lock), a Json::set that deep-copies the whole config object,
+  // and 7 string-keyed lookups inside setParameters. Measured 7.8 us/recompute.
+  //
+  // m_lightingParamsValid is ATOMIC because it is the one field here that is NOT lighting-thread-private:
+  // initWorld clears it from the main thread, and clearWorld does not stop or join the lighting thread, so
+  // a world hop can land that store while lightingCalc is mid-flight. A lost store is not benign -- it
+  // would leave the cache claiming valid while initWorld has already set the parameters WITHOUT the
+  // "pointAdditive" override lightingCalc composes in, silently dropping pointAdditive until newLighting
+  // or monochrome next changes. The other two are only ever touched under a valid==false guard on the
+  // lighting thread. (Relaxed is sufficient: the flag guards a recompute decision, not a data handoff.)
+  atomic<bool> m_lightingParamsValid = false;
   bool m_lightingParamsNewLighting = false;
   bool m_lightingParamsMonochrome = false;
   // /reload (and hot-reload) re-reads /lighting.config from disk without changing newLighting or

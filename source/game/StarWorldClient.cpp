@@ -2087,14 +2087,14 @@ void WorldClient::lightingCalc() {
     // An asset reload re-reads /lighting.config without touching newLighting or monochrome, so the value
     // comparison below cannot see it. Pull the reload tracker (atomic exchange) and drop the cache.
     if (m_lightingParamsReloadTracker && m_lightingParamsReloadTracker->pullTriggered())
-      m_lightingParamsValid = false;
+      m_lightingParamsValid.store(false, std::memory_order_relaxed);
     // Recompose only when an input actually changed. setParameters/setMonochrome are idempotent, so
     // skipping them when nothing changed is byte-identical.
-    if (!m_lightingParamsValid || newLighting != m_lightingParamsNewLighting
+    if (!m_lightingParamsValid.load(std::memory_order_relaxed) || newLighting != m_lightingParamsNewLighting
         || monochrome != m_lightingParamsMonochrome) {
       m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
       m_lightingCalculator.setMonochrome(monochrome);
-      m_lightingParamsValid = true;
+      m_lightingParamsValid.store(true, std::memory_order_relaxed);
       m_lightingParamsNewLighting = newLighting;
       m_lightingParamsMonochrome = monochrome;
     }
@@ -2374,7 +2374,8 @@ void WorldClient::initWorld(WorldStartPacket const& startPacket) {
   // These two calls reconfigure the calculator behind lightingCalc's parameter cache -- and note they set
   // the parameters WITHOUT the "pointAdditive" override lightingCalc composes in. Drop the cache so the
   // first recompute in the new world re-composes rather than trusting a stale hit from the previous one.
-  m_lightingParamsValid = false;
+  // This is the MAIN thread and clearWorld does not stop the lighting thread, hence the atomic.
+  m_lightingParamsValid.store(false, std::memory_order_relaxed);
   m_lightingCalculator.setMonochrome(Root::singleton().configuration()->get("monochromeLighting").toBool());
   m_lightingCalculator.setParameters(assets->json("/lighting.config:lighting"));
   m_lightIntensityCalculator.setParameters(assets->json("/lighting.config:intensity"));
