@@ -25,11 +25,15 @@ when. A file that churns on every run trains you to ignore its diffs.
 Usage:
     scripts/board-export.py                 # write docs/board.md
     scripts/board-export.py --check         # exit 1 if docs/board.md is stale
+    scripts/board-export.py --store <dir>   # export one specific store
 
 --check is for LOCAL use (a pre-commit habit), deliberately not wired into CI: a CI machine has no
 task store, so the check could only ever report "no store found". The board is machine-local by
 nature; this file is the copy that travels.
-    scripts/board-export.py --store <dir>   # export one specific store
+
+The output carries an Integrity section that self-checks two things the board cannot police on its
+own: commit ids cited in task text that no longer resolve (the 2026-07-19 reorg rewrote history, so
+content survived and ids did not), and completed tasks carrying no evidence at all.
 """
 
 import argparse
@@ -51,6 +55,15 @@ COMMIT_STAMP = re.compile(r"\[#(\d+)\]")
 # and an upstream issue cited in another task's description. Only the explicit "task #NNN" form is
 # safe to resolve automatically.
 DOC_CITATION = re.compile(r"task #(\d+)")
+
+# A hex run that could be an abbreviated commit id. Requiring BOTH a digit and a letter rejects pure
+# numbers ("1500 frames", "2026") and pure-alpha words ("added", "decade") that are otherwise valid
+# hex. UUIDs are removed from the text before this runs -- see strip_uuids.
+SHA_LIKE = re.compile(r"\b(?=[0-9a-f]*[0-9])(?=[0-9a-f]*[a-f])[0-9a-f]{7,40}\b")
+# Session-store uuids appear in task text and their groups are hex of exactly the right length. The
+# first attempt at this check reported two uuid fragments as dangling commits. Blank uuids out
+# first: a rule, not a blocklist of the fragments that happened to bite.
+UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b")
 
 STATUS_ORDER = {"in_progress": 0, "pending": 1, "completed": 2}
 
@@ -112,6 +125,50 @@ def commit_index():
     return idx
 
 
+def strip_uuids(text):
+    return UUID.sub(" ", text)
+
+
+def dangling_index(stores_data):
+    """task id -> [sha, ...] that the task cites but that resolve to no commit in any branch.
+
+    WHY THIS IS A REAL CHECK AND NOT PEDANTRY. The 2026-07-19 reorg rewrote history: the fork was
+    reconstructed as clean branches off a clean upstream base. Content survived, ids did not. A task
+    description saying "SHIPPED (4fcf71033)" then reads as though it resolves while pointing at
+    nothing -- and acting on such a citation has already produced two wrong conclusions here, one of
+    them "implementation lost, rebuild it" about work that had in fact shipped.
+
+    Resolution is one `git cat-file --batch-check` for every candidate at once, not one subprocess
+    per sha.
+    """
+    cited = {}
+    for _, tasks in stores_data:
+        for t in tasks:
+            text = strip_uuids(str(t.get("subject", "")) + " " + str(t.get("description", "")))
+            found = list(dict.fromkeys(SHA_LIKE.findall(text)))
+            if found:
+                cited[str(t["id"])] = found
+
+    candidates = sorted({s for v in cited.values() for s in v})
+    if not candidates:
+        return {}, 0
+
+    try:
+        proc = subprocess.run(["git", "-C", str(REPO), "cat-file", "--batch-check"],
+                              input="".join(f"{s}^{{commit}}\n" for s in candidates),
+                              capture_output=True, text=True)
+    except FileNotFoundError:
+        return {}, 0
+    # One output line per input line, in order: "<sha> commit <size>" or "<query> missing".
+    alive = set()
+    for s, line in zip(candidates, proc.stdout.splitlines()):
+        if " missing" not in line and " ambiguous" not in line:
+            alive.add(s)
+
+    dead = {tid: [s for s in shas if s not in alive] for tid, shas in cited.items()}
+    return {k: v for k, v in dead.items() if v}, len(candidates)
+
+
 def doc_index():
     """task id -> sorted list of repo-relative doc paths using the explicit 'task #NNN' form."""
     idx = {}
@@ -155,7 +212,7 @@ def fence_for(text):
     return "`" * max(3, longest + 1)
 
 
-def render(stores_data, commits, doccites):
+def render(stores_data, commits, doccites, dangling, cited_total):
     L = []
     A = L.append
 
@@ -203,6 +260,40 @@ def render(stores_data, commits, doccites):
         A(f"- `{store.name}` — {len(tasks)} tasks, ids "
           f"{min(int(t['id']) for t in tasks if str(t['id']).isdigit())}"
           f"–{max(int(t['id']) for t in tasks if str(t['id']).isdigit())}")
+    A("")
+    A("---")
+    A("")
+    A("## Integrity")
+    A("")
+    A("A self-check, so the drift this file exists to prevent is *visible* rather than something")
+    A("someone has to go and discover. It is the same discipline as the render oracles: a check that")
+    A("reports but does not surface is not a check.")
+    A("")
+    dead_n = sum(len(v) for v in dangling.values())
+    A(f"**Commit ids cited in task text:** {cited_total} — "
+      + (f"**{dead_n} dangling** across {len(dangling)} tasks." if dead_n else "all resolve. ✅"))
+    A("")
+    if dangling:
+        A("A dangling id is one the task cites that resolves to no commit on any branch. These are")
+        A("almost entirely pre-2026-07-19: the branch reorg rewrote history, so content survived and")
+        A("ids did not. The citation still *reads* as though it resolves, which is the hazard — acting")
+        A("on one produced the \"implementation lost, rebuild it\" conclusion about work that had")
+        A("shipped. Re-anchor them to the live equivalent, found by commit *message*, not by id.")
+        A("")
+        A("| Task | Dangling ids |")
+        A("|-----:|:-------------|")
+        for tid in sorted(dangling, key=lambda x: int(x) if x.isdigit() else 1 << 30):
+            A(f"| [#{tid}](#c29c1332-{tid}) | " + " ".join(f"`{s}`" for s in dangling[tid]) + " |")
+        A("")
+
+    comp = [t for _, ts in stores_data for t in ts if t.get("status") == "completed"]
+    noev = [t for t in comp if not commits.get(str(t["id"])) and not doccites.get(str(t["id"]))]
+    A(f"**Completed tasks citing no commit and no doc:** {len(noev)} of {len(comp)}.")
+    A("")
+    A("Not a defect count. Much of this campaign's completed work was *investigation* whose")
+    A("deliverable was a conclusion — \"determinism-locked, DEFER\" is a finished task that correctly")
+    A("touches no code. The number is worth watching only for tasks whose text claims code shipped;")
+    A("those should carry a `[#NNN]` stamp, and from the stamping convention onward they do.")
     A("")
     A("---")
     A("")
@@ -309,7 +400,8 @@ def main():
         print("Every store was empty; refusing to write an empty board.", file=sys.stderr)
         return 2
 
-    text = render(stores_data, commit_index(), doc_index())
+    dangling, cited_total = dangling_index(stores_data)
+    text = render(stores_data, commit_index(), doc_index(), dangling, cited_total)
 
     if args.check:
         current = OUT.read_text() if OUT.exists() else ""
