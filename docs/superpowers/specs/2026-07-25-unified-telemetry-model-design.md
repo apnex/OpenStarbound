@@ -107,7 +107,7 @@ Owner `frame`, domain `cpu`, cadence `frame`, role `budget`, mapped onto `StarMa
 | `cpu.frame.input.us` | `cleanup` + `processEvents` + `processInput` + `platformServices->update` + ImGui `NewFrame` |
 | `cpu.frame.update.us` | the whole `updatesBehind` loop — every client sim tick this frame |
 | `cpu.frame.render.us` | `startFrame` + `application->render()` |
-| `cpu.frame.finish.us` | `finishFrame()` — GL flush + blit |
+| `cpu.frame.finish.us` | `finishFrame()` — GL flush + blit — **and** `ImGui::Render()` + `RenderDrawData` |
 | `cpu.frame.swap.us` | `SDL_GL_SwapWindow` — **the bound verdict** |
 | `cpu.frame.idle.us` | `sleepPrecise(spareTime)` — headroom |
 
