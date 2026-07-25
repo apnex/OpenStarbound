@@ -131,9 +131,8 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // never sampled. envCache is single-sample, so rendering into it and sampling it back is valid under AA.
   // The gate was a symptom patch that outlived its symptom, and it was silently costing every AA player the
   // whole env-cache lever.
-  // Declared once here (the first of two begin() sites for this key, see renderEnvironment's cache
-  // branch below) -- the value itself is recorded generically inside OpenGlRenderer, which has no idea
-  // what "render.pass.environment.gpu_us" means; this pass does.
+  // Hoisted above the branch below so one declaration dominates both begin() sites (see StarWorldPass.cpp
+  // for why declaration lives at the pass and not where the value is recorded).
   [[maybe_unused]] static bool const envGpuDesc = [] {
     Telemetry::declare("render.pass.environment.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
@@ -401,6 +400,16 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       && (parallaxRefreshInterval > 1 || parallaxOracle)
       && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
 
+  // Hoisted above the branch below (like render.pass.environment.gpu_us above) so one declaration
+  // dominates BOTH begin() sites. It must not sit inside `if (!parallaxCacheActive)`: with
+  // parallaxOracle on, parallaxParked is bypassed and parallaxCacheActive can be true from frame 1,
+  // so the direct-path branch -- and a declare living only inside it -- would never run.
+  [[maybe_unused]] static bool const parallaxGpuDesc = [] {
+    Telemetry::declare("render.pass.parallax.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    return true;
+  }();
+
   static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
   static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped",
@@ -419,12 +428,11 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // now, standalone, so env still reaches "main" exactly once before the direct parallax draws over it. Same
     // passthrough the deferred env compose would have used; env stays byte-identical.
     if (m_envComposeDeferred) {
-      // Declared here TOO (identical descriptor to renderEnvironment's else-branch site above) --
-      // backdropComposeMerge defaults to true, which makes THIS the site that actually executes in a
-      // default-config session; the other site is live only when a player/mod sets the flag false. Either
-      // site declaring first is correct (declare() on an already-created-but-undeclared node still applies),
-      // but only one of the two runs in a given config, so both must declare to guarantee the key is never
-      // left unknown.
+      // Declared here TOO, identically to renderEnvironment's else-branch site above: the two begin() sites
+      // live in DIFFERENT functions gated by the same backdropComposeMerge flag, so no single declare
+      // dominates both -- and since the flag defaults to true, THIS is the site a default session actually
+      // takes. (Contrast render.pass.parallax.gpu_us below, whose two sites share a function and so could
+      // be -- and now are -- hoisted to one dominating declare instead.)
       [[maybe_unused]] static bool const envComposeGpuDescReconcile = [] {
         Telemetry::declare("render.pass.environment.compose.gpu_us",
           MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
@@ -437,14 +445,6 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       m_renderer->switchEffectConfig("world");
       m_envComposeDeferred = false;
     }
-    // Declared once here (the first of two begin() sites for this key -- the cache-active branch below is
-    // the other); the value is recorded generically inside OpenGlRenderer, which has no idea what this
-    // key means.
-    [[maybe_unused]] static bool const parallaxGpuDesc = [] {
-      Telemetry::declare("render.pass.parallax.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
-      return true;
-    }();
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us");
     drawParallax();
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
@@ -523,8 +523,6 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // Composite into "main" every frame. CM-1: if the env compose was deferred, do the MERGED pass (env opaque
     // base + parallax premultiplied-over, one full-screen quad via backdropCompose); otherwise the standard
     // premultiplied-over parallax composite over the env already sitting in main.
-    // Declared here, next to the pass that owns it; the value is recorded generically inside
-    // OpenGlRenderer, which has no idea what this key means.
     [[maybe_unused]] static bool const parallaxComposeGpuDesc = [] {
       Telemetry::declare("render.pass.parallax.compose.gpu_us",
         MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});

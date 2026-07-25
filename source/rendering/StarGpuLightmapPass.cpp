@@ -64,10 +64,9 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   size_t const texels = (size_t)size[0] * size[1];
   bool const packedEmission = emissionHalf.size() == texels * 3 && obstacleR8.size() == texels;
 
-  // Declared here, next to the pass that owns it; the value is recorded generically inside
-  // OpenGlRenderer, which has no idea what this key means. Owner=Gl (GPU work inside the GPU frame,
-  // closes against render.frame.gpu_span_us) but cadence=Recompute (fires per lightmap recompute,
-  // not per frame -- its COUNT is checked against recomputes, not frames).
+  // Owner=Gl (GPU work inside the GPU frame, closes against render.frame.gpu_span_us) but
+  // cadence=Recompute: this fires per lightmap recompute, not per frame, so its COUNT is checked
+  // against recomputes, not frames. Same for point/compose/upscale below.
   [[maybe_unused]] static bool const spreadGpuDesc = [] {
     Telemetry::declare("lighting.gpu.spread.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
@@ -164,8 +163,6 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
-    // Declared here, next to the pass that owns it. Owner=Gl / cadence=Recompute -- see the spread
-    // pass's declaration above for the full rationale.
     [[maybe_unused]] static bool const pointGpuDesc = [] {
       Telemetry::declare("lighting.gpu.point.gpu_us",
         MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
@@ -235,8 +232,6 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
-  // Declared here, next to the pass that owns it. Owner=Gl / cadence=Recompute -- see the spread
-  // pass's declaration above for the full rationale.
   [[maybe_unused]] static bool const composeGpuDesc = [] {
     Telemetry::declare("lighting.gpu.compose.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
@@ -260,8 +255,6 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // effect as a (bilinear) upscale -- the bug that made Form 2's first build show stepped shadow edges.
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
-    // Declared here, next to the pass that owns it. Owner=Gl / cadence=Recompute -- see the spread
-    // pass's declaration above for the full rationale.
     [[maybe_unused]] static bool const upscaleGpuDesc = [] {
       Telemetry::declare("lighting.gpu.upscale.gpu_us",
         MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});

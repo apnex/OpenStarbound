@@ -268,8 +268,6 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
   m_worldPass->renderWorld(m_camera, renderData);
 
-  // Declared here, next to the pass that owns it -- the value is recorded generically inside
-  // OpenGlRenderer, which cannot know what this key means.
   [[maybe_unused]] static bool const gpuDesc = [] {
     Telemetry::declare("render.pass.compose.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});

@@ -598,8 +598,8 @@ void ClientApplication::render() {
       return e && *e ? (int)strtol(e, nullptr, 10) : 7;
     }();
     if (!skipInterface) {
-      // Declared here, next to the pass that owns it; the value is recorded generically inside
-      // OpenGlRenderer, which has no idea what this key means.
+      // skipInterface is a debug env var (off by default), not persisted config, so unlike the
+      // parallax/environment cases this single site is safe: no live session can get stuck skipping it.
       [[maybe_unused]] static bool const interfaceGpuDesc = [] {
         Telemetry::declare("render.pass.interface.gpu_us",
           MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
