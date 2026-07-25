@@ -105,7 +105,8 @@ RectI CellularLightingCalculator::calculationRegion() const {
 }
 
 void CellularLightingCalculator::addSpreadLight(Vec2F const& position, Vec3F const& light) {
-  static auto spreadLightCounter = Telemetry::counter("lighting.lights.spread");
+  static auto spreadLightCounter = Telemetry::counter("lighting.lights.spread",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   spreadLightCounter.inc();
   Vec2F arrayPosition = position - Vec2F(m_calculationRegion.min());
   if (m_monochrome)
@@ -115,7 +116,8 @@ void CellularLightingCalculator::addSpreadLight(Vec2F const& position, Vec3F con
 }
 
 void CellularLightingCalculator::addPointLight(Vec2F const& position, Vec3F const& light, float beam, float beamAngle, float beamAmbience, bool asSpread) {
-  static auto pointLightCounter = Telemetry::counter("lighting.lights.point");
+  static auto pointLightCounter = Telemetry::counter("lighting.lights.point",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   pointLightCounter.inc();
   Vec2F arrayPosition = position - Vec2F(m_calculationRegion.min());
   if (m_monochrome)
@@ -161,8 +163,10 @@ void CellularLightingCalculator::calculate(Lightmap& output) {
 
   // 'post' phase: output copy + brightness cap. Timer records only under deep
   // tracing (TelemetryScope gates itself); the gauge is set unconditionally.
-  static auto postTimer = Telemetry::timer("lighting.cpu.post.us");
-  static auto cellsGauge = Telemetry::gauge("lighting.cells");
+  static auto postTimer = Telemetry::timer("lighting.cpu.post.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
+  static auto cellsGauge = Telemetry::gauge("lighting.cells",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
   cellsGauge.set(int64_t((arrayMax[0] - arrayMin[0]) * (arrayMax[1] - arrayMin[1])));
   TelemetryScope postScope(postTimer);
 

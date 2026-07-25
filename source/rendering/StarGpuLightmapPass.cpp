@@ -12,9 +12,12 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
     PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult,
     int lightMapBorder) {
-  static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us");
-  static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes");
-  static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights");
+  static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+  static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   TelemetryScope cpuCostScope(cpuCostTimer);
 
   Vec2U size = emission.size;

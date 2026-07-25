@@ -739,7 +739,8 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
   renderData.particles = &m_particles->particles();
   LogMap::set("client_render_particle_count", renderData.particles->size());
   // Durable telemetry mirror (R-F gate): particle count in the snapshot, not just the /debug HUD.
-  static auto particleCountGauge = Telemetry::gauge("render.particle.count");
+  static auto particleCountGauge = Telemetry::gauge("render.particle.count",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
   particleCountGauge.set((int64_t)renderData.particles->size());
 
   renderData.skyRenderData = m_sky->renderData();
@@ -1974,8 +1975,10 @@ void WorldClient::applyStableToCells() {
 void WorldClient::lightingCalc() {
   // Phase timers (deep-gated; TelemetryScope records only under deep tracing). The total
   // scope begins AFTER the early-out so no-op wakeups (no pending light) are not timed.
-  static auto totalTimer = Telemetry::timer("lighting.cpu.total.us");
-  static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us");
+  static auto totalTimer = Telemetry::timer("lighting.cpu.total.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Total});
+  static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
 
   MutexLocker prepLocker(m_lightMapPrepMutex);
   if (!m_pendingLightReady.load())
@@ -1992,8 +1995,10 @@ void WorldClient::lightingCalc() {
   // particle-motion / ambient changed) and we are between the floor cadence; nothing is republished, so
   // the render thread reuses the previously-published lightmap. Off (flag off / floorMs<=0) => recompute
   // every frame (byte-identical). Flicker-tolerant: the activity signature ignores light colour. ---
-  static auto temporalRecomputed = Telemetry::counter("lighting.temporal.recomputed");
-  static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped");
+  static auto temporalRecomputed = Telemetry::counter("lighting.temporal.recomputed",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   {
     bool temporalEnabled = configuration->get("lightingTemporalDecouple").optBool().value(true);
     double temporalFloorMs = configuration->get("lightingTemporalFloorMs", 33.0).toDouble();
@@ -2160,8 +2165,10 @@ void WorldClient::lightingCalc() {
   //    m_lightMap exists for the fallback; if a later GPU frame fails, the render thread
   //    reports false and the CPU path re-arms within ~1 frame (self-healing).
   //  - !shadowCompare: shadow-compare keeps the CPU lightMap as the parity reference.
-  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran");
-  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped");
+  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
   if (skipCpuCalc) {
     calcSkipped.inc(1);

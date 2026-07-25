@@ -143,8 +143,10 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // with the size term: drawEnv scales stars/debris/orbiters by camera pixelRatio (starAndDebrisRatio /
     // orbiterAndPlanetRatio above), so a ZOOM change alters the cached image at an unchanged screen size --
     // without it, zooming left the sky stale until the counter next came round.
-    static auto envRefreshed = Telemetry::counter("render.cache.env.refreshed");
-    static auto envSkipped = Telemetry::counter("render.cache.env.skipped");
+    static auto envRefreshed = Telemetry::counter("render.cache.env.refreshed",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+    static auto envSkipped = Telemetry::counter("render.cache.env.skipped",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
     bool envInvalidated = m_envCache.invalidated(envScreenSize, envPixelRatio);
     // cadenceHit is called UNCONDITIONALLY (not short-circuited behind envInvalidated) so the frame counter
     // advances every active frame -- exactly the old separate `++m_envRefreshCounter;` statement, which ran
@@ -381,9 +383,12 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
       && (parallaxRefreshInterval > 1 || parallaxOracle)
       && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
 
-  static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed");
-  static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped");
-  static auto parallaxBypassedCtr = Telemetry::counter("render.cache.parallax.bypassed_moving");
+  static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+  static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+  static auto parallaxBypassedCtr = Telemetry::counter("render.cache.parallax.bypassed_moving",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
 
   if (!parallaxCacheActive) {
     // Direct path (byte-identical stock parallax->main): camera moving, AA on, N<=1 oracle-off, or no layers.

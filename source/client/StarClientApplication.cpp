@@ -549,13 +549,15 @@ void ClientApplication::render() {
       auto painterUs = Time::monotonicMicroseconds() - paintStart;
       LogMap::set("client_render_world_painter", strf(u8"{:05d}\u00b5s", painterUs));
       // Durable telemetry mirror (R-F gate): render-thread paint cost in the snapshot, not just the /debug HUD.
-      static auto painterTimer = Telemetry::timer("render.world.painter.us");
+      static auto painterTimer = Telemetry::timer("render.world.painter.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
       painterTimer.record(painterUs);
       auto worldRenderUs = Time::monotonicMicroseconds() - totalStart;
       LogMap::set("client_render_world_total", strf(u8"{:05d}\u00b5s", worldRenderUs));
       // Telemetry: route the already-computed render delta through a timer (no extra clock read).
       // Cache the handle in a static so the per-frame path stays lock-free (registration once).
-      static auto renderFrameTimer = Telemetry::timer("render.frame.us");
+      static auto renderFrameTimer = Telemetry::timer("render.frame.us",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
       renderFrameTimer.record(worldRenderUs);
 
       // Golden-frame capture (P-0). HERE, and not later: "main" now holds the composed WORLD frame, before
@@ -607,7 +609,8 @@ void ClientApplication::render() {
     // IDLE. If the HUD is CPU-bound, the GPU sits waiting and the span measures LATENCY, not GPU WORK -- which
     // would make "the HUD costs 8.3ms of GPU" an artifact of the instrument rather than a fact about the game.
     auto interfaceUs = Time::monotonicMicroseconds() - start;
-    static auto interfaceTimer = Telemetry::timer("render.interface.us");
+    static auto interfaceTimer = Telemetry::timer("render.interface.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
     interfaceTimer.record(interfaceUs);
     LogMap::set("client_render_interface", strf(u8"{:05d}\u00b5s", interfaceUs));
   }

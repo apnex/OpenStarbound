@@ -946,9 +946,12 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
     // Re-key reason attribution (diagnostics): which key component moved --
     // renderVersion (0) vs generation (1) vs the local-transform hash (2).  A
     // cold/invalid cache counts toward all reasons.
-    static auto s_rekeyVersionCounter = Telemetry::counter("render.drawable.cache.rekey.version");
-    static auto s_rekeyGenerationCounter = Telemetry::counter("render.drawable.cache.rekey.generation");
-    static auto s_rekeyLocalTransformCounter = Telemetry::counter("render.drawable.cache.rekey.localtransform");
+    static auto s_rekeyVersionCounter = Telemetry::counter("render.drawable.cache.rekey.version",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    static auto s_rekeyGenerationCounter = Telemetry::counter("render.drawable.cache.rekey.generation",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    static auto s_rekeyLocalTransformCounter = Telemetry::counter("render.drawable.cache.rekey.localtransform",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
     if (!m_staticCacheValid || std::get<0>(m_staticCacheKey) != std::get<0>(key))
       s_rekeyVersionCounter.inc();
     if (!m_staticCacheValid || std::get<1>(m_staticCacheKey) != std::get<1>(key))
@@ -967,8 +970,10 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   // increments): "cached" counts static parts served from the cache, "rebuilt"
   // counts parts built (LIVE parts here every call, static parts inside
   // rebuildStaticCache).
-  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
-  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
 
   List<pair<Drawable, float>> drawables;
   drawables.reserve(partCount + drawableCount);
@@ -1024,11 +1029,13 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
 
 void NetworkedAnimator::rebuildStaticCache(List<tuple<AnimatedPartSet::ActivePartInformation const*, String const*, float>> const& parts,
     tuple<uint64_t, uint64_t, uint64_t> const& key) const {
-  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   // rebuilt.rekey counts ONLY the static-part builds done here (re-key churn);
   // the live-part build site in drawablesWithZLevel increments plain rebuilt
   // only, so rebuilt - rebuilt.rekey = genuinely-live part builds.
-  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   m_staticCache.clear();
   List<Directives> baseProcessingDirectives;
   HashMap<String, String> animationTags;
@@ -1082,9 +1089,12 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevelPerPart(Vec2F 
   uint64_t rv = m_renderVersion;
   uint64_t lth = localTransformHash();
 
-  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached");
-  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt");
-  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey");
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_rebuiltRekeyCounter = Telemetry::counter("render.drawable.parts.rebuilt.rekey",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
 
   List<pair<Drawable, float>> drawables;
   drawables.reserve(partCount + drawableCount);
@@ -1192,7 +1202,8 @@ namespace {
 void NetworkedAnimator::shadowCompare(List<pair<Drawable, float>> const& cached,
     List<pair<Drawable, float>> const& rebuilt,
     List<pair<size_t, String const*>> const& partStarts) const {
-  static auto s_mismatchCounter = Telemetry::counter("render.drawable.cache.shadowMismatch");
+  static auto s_mismatchCounter = Telemetry::counter("render.drawable.cache.shadowMismatch",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
 
   auto partNameAt = [&](size_t index) -> String {
     String const* name = nullptr;
@@ -2293,7 +2304,8 @@ bool NetworkedAnimator::partIsStaticCacheableStructural(String const& partName) 
   // Counts structural walks, i.e. memo MISSES -- the direct 'partition work'
   // signal for the cache A/B.  Cache-path only: rebuildStaticCache is the
   // sole engine caller (static-handle idiom: registration/lookup once).
-  static auto s_partitionScansCounter = Telemetry::counter("render.drawable.partition.scans");
+  static auto s_partitionScansCounter = Telemetry::counter("render.drawable.partition.scans",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   s_partitionScansCounter.inc();
 
   // A part is static-cacheable iff it AND its whole anchorPart chain have: no

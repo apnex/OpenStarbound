@@ -312,7 +312,14 @@ void Telemetry::markTick(String const& threadTag) {
   thread_local TelemetryCounter seq;
   thread_local bool initialized = false;
   if (!initialized) {
-    seq = counter(strf("tick.{}.seq", threadTag));
+    String key = strf("tick.{}.seq", threadTag);
+    // The tag names the tick thread; map it to the logical budget that thread drives. An unrecognised tag is
+    // left Unknown rather than guessed -- a wrong owner is worse than an absent one.
+    MetricOwner owner = threadTag == "server" ? MetricOwner::Sim
+                      : threadTag == "client" ? MetricOwner::Frame
+                                              : MetricOwner::Unknown;
+    declare(key, MetricDesc{MetricDomain::Cpu, owner, MetricCadence::Tick, MetricRole::Detail});
+    seq = counter(key);
     initialized = true;
   }
   seq.inc();

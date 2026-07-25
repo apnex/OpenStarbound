@@ -19,7 +19,8 @@ namespace Star {
 static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border,
     ImageView const& emission, ImageView const& obstacle,
     List<ColoredCellularLightArray::PointLight> const& lights, PointParameters const& params, unsigned iterations) {
-  static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch");
+  static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
   Vec2U gpuSize = gpuCalc.size();
   if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
@@ -237,7 +238,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         m_lightMapBorder = lm.border;
       } else if (!renderData.lightMap.empty()) {
         // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
-        static auto uploadTimer = Telemetry::timer("lighting.upload.us");
+        static auto uploadTimer = Telemetry::timer("lighting.upload.us",
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
         TelemetryScope uploadScope(uploadTimer);
         m_renderer->setEffectTexture("lightMap", renderData.lightMap);
         m_lightMapBorder = 0;

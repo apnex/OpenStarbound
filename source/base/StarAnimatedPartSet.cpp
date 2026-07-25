@@ -285,8 +285,10 @@ AnimatedPartSet::AnimationMode AnimatedPartSet::stringToAnimationMode(String con
 }
 
 void AnimatedPartSet::freshenActiveState(StateType& stateType) {
-  static auto cPerformed = Telemetry::counter("animator.state.merge.performed");
-  static auto cSkipped = Telemetry::counter("animator.state.merge.skipped");
+  static auto cPerformed = Telemetry::counter("animator.state.merge.performed",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  static auto cSkipped = Telemetry::counter("animator.state.merge.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
   auto const& state = *stateType.activeStatePointer;
   auto& activeState = stateType.activeState;
 
@@ -346,9 +348,12 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
 }
 
 void AnimatedPartSet::freshenActivePart(Part& part) {
-  static auto cPerformed = Telemetry::counter("animator.part.merge.performed");
-  static auto cSkipped = Telemetry::counter("animator.part.merge.skipped");
-  static auto cTransform = Telemetry::counter("animator.part.transform.applied");
+  static auto cPerformed = Telemetry::counter("animator.part.merge.performed",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  static auto cSkipped = Telemetry::counter("animator.part.merge.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  static auto cTransform = Telemetry::counter("animator.part.transform.applied",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
   auto& activePart = part.activePart;
 
   // (a) ALWAYS: find the highest-priority enabled state type with a matching partState.

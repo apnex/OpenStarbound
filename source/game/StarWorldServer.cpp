@@ -846,7 +846,8 @@ void WorldServer::update(float dt) {
 
   {
     // Telemetry commit phase: master-entity destruction/removal for this tick.
-    static auto t = Telemetry::timer("tick.server.commit.us");
+    static auto t = Telemetry::timer("tick.server.commit.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
     TelemetryScope s(t);
     for (EntityId entityId : toRemove)
       removeEntity(entityId, true);

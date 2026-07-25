@@ -392,12 +392,14 @@ void CellularLightArray<LightTraits>::calculate(size_t xMin, size_t yMin, size_t
   // node per key. Timers record only under deep tracing (TelemetryScope gates itself).
   setSpreadLightingPoints();
   {
-    static auto spreadTimer = Telemetry::timer("lighting.cpu.spread.us");
+    static auto spreadTimer = Telemetry::timer("lighting.cpu.spread.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
     TelemetryScope scope(spreadTimer);
     calculateLightSpread(xMin, yMin, xMax, yMax);
   }
   {
-    static auto pointTimer = Telemetry::timer("lighting.cpu.point.us");
+    static auto pointTimer = Telemetry::timer("lighting.cpu.point.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
     TelemetryScope scope(pointTimer);
     calculatePointLighting(xMin, yMin, xMax, yMax);
   }

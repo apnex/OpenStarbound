@@ -267,7 +267,8 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
   auto unerroredClientIds = m_worldServer->clientIds();
   {
     // Telemetry publish phase: drain + handle this tick's incoming client packets.
-    static auto t = Telemetry::timer("tick.server.publish.us");
+    static auto t = Telemetry::timer("tick.server.publish.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
     TelemetryScope s(t);
     for (auto clientId : unerroredClientIds) {
       RecursiveMutexLocker queueLocker(m_queueMutex);
@@ -289,7 +290,8 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
   m_worldServer->setFidelity(fidelity);
   {
     // Telemetry compute phase: the world simulation step (entities, physics, scripts, ...).
-    static auto t = Telemetry::timer("tick.server.compute.us");
+    static auto t = Telemetry::timer("tick.server.compute.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
     TelemetryScope s(t);
     if (dt > 0.0f && (!m_pause || *m_pause == false))
       m_worldServer->update(dt);
@@ -309,7 +311,8 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
 
   {
     // Telemetry sync phase: collect + queue this tick's outgoing client packets.
-    static auto t = Telemetry::timer("tick.server.sync.us");
+    static auto t = Telemetry::timer("tick.server.sync.us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
     TelemetryScope s(t);
     for (auto& clientId : unerroredClientIds) {
       auto outgoingPackets = m_worldServer->getOutgoingPackets(clientId);
