@@ -59,8 +59,8 @@ Four fields, declared once when a metric is registered:
 |---|---|---|
 | `domain` | `cpu` \| `gpu` | Which resource was consumed. Never addable across values. Replaces the `.gpu_us` suffix convention. |
 | `owner` | `frame` \| `sim` \| `lighting` \| `gl` \| `process` | Which **logical budget** the sample belongs to. |
-| `cadence` | `frame` \| `tick` \| `recompute` \| `call` | What the metric is *per* — the denominator, in the data. |
-| `role` | `budget` \| `detail` | Whether the metric participates in its owner's sum-to-total closure. |
+| `cadence` | `frame` \| `tick` \| `recompute` \| `call` | Which of the owner's tick counters this metric's `count` should be checked against. Not used for the per-frame share, which is always `total ÷ frames`. |
+| `role` | `total` \| `budget` \| `detail` | `total` **is** the owner's whole; `budget` parts close against it; `detail` hangs off a budget part and is never summed. |
 
 ### Why `owner` is logical, not a physical thread
 
@@ -77,17 +77,22 @@ owner's closure check; `role=detail` metrics hang off them for attribution. Toda
 every `.gpu_us` metric and avoids double-counting only by the accident that `GL_TIME_ELAPSED` cannot nest —
 on the CPU side the nesting is real and immediate.
 
-### Owners declare their denominator
+### Owners declare a denominator *and* a total
 
-Each owner names the metric that counts its ticks:
+These are two different things, and conflating them is a bug waiting to happen. The **denominator** counts the
+owner's ticks (how many frames happened). The **total** is the whole that `role=budget` parts must close
+against. For owner `frame` they happen to be the same metric read two ways; for owner `gl` they are different
+metrics entirely — GPU work is *counted* per frame but its *whole* is the GPU frame span.
 
-| owner | denominator | notes |
+| owner | denominator (count of ticks) | total (the whole) |
 |---|---|---|
-| `frame` | `cpu.frame.total.us` (count) | main-loop iterations = frames |
-| `gl` | `cpu.frame.total.us` (count) | GPU work is per frame; coverage < 100% is expected and now visible |
-| `sim` | `tick.server.seq` | server thread |
-| `lighting` | `lighting.temporal.recomputed` | recomputes, not frames |
-| `process` | — | cumulative; windowed by differencing |
+| `frame` | `cpu.frame.total.us` (count) | `cpu.frame.total.us` (sum) |
+| `gl` | `cpu.frame.total.us` (count) | `render.frame.gpu_span_us` (sum) |
+| `sim` | `tick.server.seq` | — (no measured whole; parts reported unclosed) |
+| `lighting` | `lighting.temporal.recomputed` | `lighting.cpu.total.us` (sum) |
+| `process` | — | — (cumulative; windowed by differencing) |
+
+An owner with no declared total reports its parts without a closure check rather than inventing one.
 
 A consumer groups by owner, divides by that owner's own denominator, and **structurally cannot** produce a
 cross-thread or cross-domain sum. The 119% error becomes unrepresentable rather than merely documented.
@@ -129,9 +134,13 @@ Environment facts go in `meta` (they describe the run, and are read once at snap
 - **`meta.vsync`** — `swap.us` means *GPU backpressure* with vsync off and *frame pacing* with vsync on. Same
   metric, opposite meanings. Putting vsync in the data lets the consumer resolve it instead of the reader
   having to remember which run this was.
-- **`meta.gpuClockMhz`, `meta.packageTempC`** — sampled at snapshot-write time. The measured ~7% drift between
-  distant profile runs is currently explained as "thermal state and differing sim content", which is a guess;
-  with clocks in the data it becomes an answer.
+- **GPU clock and package temperature** — sampled by the **harness**, not the engine, and merged by the
+  consumer. The measured ~7% drift between distant profile runs is currently explained as "thermal state and
+  differing sim content", which is a guess; with clocks alongside the window it becomes an answer. These live
+  outside the engine deliberately: the paths are Linux- and driver-specific (`/sys/class/drm/card*/…` differs
+  between the i915 and xe drivers, `/sys/class/hwmon/…` differs by platform), and a game engine has no
+  business growing sysfs-scraping for a profiling convenience. `render-profile.sh` writes a
+  `env-sidecar.json` next to the snapshots; `telemetry-window.py` merges it into the reported `meta`.
 - **`cpu.process.total_us`** — a *metric* (counter, domain `cpu`, owner `process`, role `budget`), not a meta
   field: cumulative process CPU across all threads (`getrusage(RUSAGE_SELF)`), refreshed at snapshot-write
   time. As a counter it is differenced by the same generic windowing path as everything else, yielding core-µs
@@ -147,16 +156,21 @@ Derived by the consumer, not hard-coded in the engine:
 
 ## 4. Distribution
 
-Every timer carries a **histogram**: 64 log-spaced buckets, quarter-power-of-two spacing.
+Every timer carries a **histogram**: 64 buckets, HdrHistogram-style — octave plus two sub-bits.
 
-- Bucket index: `i = clamp(floor(4 · log2(µs)), 0, 63)`, covering 1 µs → 2^16 µs ≈ 65 ms — the right range for
-  frame timing, from a cheap pass to a visible hitch.
+- Bucket index: `i = 4·floor(log2(µs)) + (the two bits below the MSB)`, clamped to `[0, 63]`. Bucket `i`
+  covers `[2^h · (1 + m/4), 2^h · (1 + (m+1)/4))` for `h = i/4`, `m = i%4`. That spans 1 µs → 65535 µs ≈ 65 ms:
+  the right range for frame timing, from a cheap pass to a visible hitch. Anything ≥ 65536 µs lands in the top
+  bucket, which is exactly the "something went very wrong" signal.
+- **Integer-only, no floating point**: one `__builtin_clzll` plus a shift and mask. This matters because it
+  runs on the hot path.
 - Storage: 64 × `uint64` per timer ≈ 512 B; at ~40 timers ≈ 20 KB total.
-- Cost: one relaxed atomic increment plus a `bit_width`-based index, ~2 ns, and gated behind
+- Cost: one relaxed atomic increment plus the index computation, ~2 ns, gated behind
   `Telemetry::deepEnabled()` like every other timer sample.
 - Buckets are cumulative counters, so **differencing two snapshots windows them** — which makes p50/p95/p99/
-  p99.9 windowable, and makes a windowed `max` available as the highest non-empty bucket. Quarter-power
-  spacing gives ~±9% percentile resolution: ample to detect "p99 doubled", which is the question being asked.
+  p99.9 windowable, and makes a windowed `max` available as the highest non-empty bucket.
+- Resolution: bucket width is at worst 25% (at the bottom of an octave) and 14% at the top, so a percentile
+  estimate is accurate to ≤ ±12.5%. Ample to detect "p99 doubled", which is the question being asked.
 
 This is the change that most improves what can be reasoned about. Without it, no smoothness claim about any
 lever is supportable — only an average one.
