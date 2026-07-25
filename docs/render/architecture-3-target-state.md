@@ -119,17 +119,30 @@ Each contract is *simultaneously* the Air-Gap axiom fix **and** the compile-inde
 
 ### Air-Gap compliance — measured from the tree
 
-Counts are from `c9b2b024`, and this table is the reason the rail's ticks are not the whole story: **every pass is extracted; none is fully contract-compliant.**
+**The counts are no longer written here, and that is the finding.** This table used to state them inline, pinned to a commit — and it was wrong within a day of being written: it said `BackdropPass` had **7** `Root::singleton()` reads when the tree had **8**. Nothing could have caught it, because a hand-typed number in a document has no relationship to the code it describes. Two sources of truth reliably produce one stale one.
+
+The numbers now come from two places that cannot drift from the tree:
+
+- **`scripts/render-inventory.py`** *measures* them, per file and per layer.
+- **the `render_layering` ctest** *enforces* a ceiling on them, and it runs in CI. It is a **ratchet, not a prohibition**: set at today's counts so the residual cannot grow silently, and lowered as the pay-down lands.
+
+What stays here is the part a script cannot measure — the *shape* of each pass's compliance:
 
 | pass | ① sliced input | ② no `Root::singleton` | ③ own telemetry | ④ explicit output |
 |---|---|---|---|---|
-| `LightmapPass` (`StarGpuLightmapPass`) | ✅ takes `ImageView`/`List` params | ✅ **0** | ✅ 3 handles | ✅ `LightmapResult` |
-| `BackdropPass` | ❌ takes `WorldRenderData&` | ❌ **7** | ✅ 5 handles | n/a — draws to main FB |
-| `WorldPass` | ❌ takes `WorldRenderData&` | ❌ **2** | 🟡 1 handle | n/a — draws to main FB |
+| `LightmapPass` (`StarGpuLightmapPass`) | ✅ takes `ImageView`/`List` params | ✅ clean | 🟡 function-local statics | ✅ `LightmapResult` |
+| `BackdropPass` | ❌ takes `WorldRenderData&` | ❌ the worst offender | 🟡 function-local statics | n/a — draws to main FB |
+| `WorldPass` | ❌ **consumes** `WorldRenderData&` (`std::move`) | ❌ small residual | ✅ descriptor travels with `begin()` | n/a — draws to main FB |
 
 **`BackdropInput` / `LightingInput` / `WorldInput` do not exist anywhere in the tree.** Contract ① is therefore unstarted as a *named type* — but `LightmapPass` already satisfies it **in substance** by taking sliced `ImageView`/`List` parameters rather than the fat struct, so for that pass the DTO is a naming convention, not outstanding work. Do not re-open it as a task.
 
-The remaining work behind contract ② is small and countable: **7 `Root::singleton()` reads in `BackdropPass`, 2 in `WorldPass`**, to be hoisted to constructor injection. That is the concrete residual of #137 — not "extract the passes", which is done.
+Three corrections to earlier readings of this matrix, each found by checking the tree rather than the doc:
+
+- **`LightmapPass`'s clean sheet is bought, not earned.** `WorldPainter` performs six lighting config reads, an assets JSON read and an O(cells) scan *on the pass's behalf* before calling it. That is the right shape — resolve at the composition root — but it means a per-file count is gameable by relocation. The honest metric is "pass bodies are pure functions of their parameters", not a global tally.
+- **Contract ③ was scored backwards.** No pass owns a telemetry handle; all use function-local statics. `WorldPass` was marked amber while holding the *strongest* design in the tree — its descriptor travels with `begin()`, which is better than the contract as written. The contract is wrong, not the code, and enforcing it as stated would push the codebase away from its best pattern. Handle ownership here is cosmetic conformance.
+- **Contract ② says "injected at construction", and that prescription would ship a regression.** These knobs are live-tunable mid-session (`/rendercache envrefresh`), so construction-time injection would freeze them. The correct target is a per-frame params struct resolved **at the boundary** — exactly what `WorldPainter` already does for the lightmap pass.
+
+**Enforce before paying down.** The residual has been *growing*, and the growth came from a correct fix: `BackdropPass`'s 8th read arrived with #177, which fixed a defect visible in game (choppy stars during ship flight). A zero-tolerance gate would have scored that fix as a violation and invited someone to route around the gate. A ratchet lets it land while making the *next* author edit a number in `source/test/CMakeLists.txt` — which is precisely the moment to ask whether the value belongs in a params struct.
 
 Contract ④ is marked n/a rather than ❌ for the two drawing passes on purpose: they render into the main framebuffer, so there is no value to hand back. The contract exists to kill *implicit* hand-off through mutated GL state, and `LightmapPass` was the only pass that had one.
 

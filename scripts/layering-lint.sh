@@ -1,39 +1,67 @@
 #!/bin/bash
-# LAYER-1 LAYERING LINT.
+# THE LAYERING LINT. One instrument, two registrations.
 #
-# The render-surface module (StarGlRenderSurface.{hpp,cpp}, StarGlTexturePrimitives.{hpp,cpp}) is a SOVEREIGN
-# module with a real OUTSIDE: it must not name OpenGlRenderer in CODE. Comments are allowed -- they narrate the
-# history ("lifted out of OpenGlRenderer", "once carried friend class OpenGlRenderer"). A code reference (a
-# forward-decl `class OpenGlRenderer;`, an `OpenGlRenderer::` use, a `friend class OpenGlRenderer`) would reopen
-# the reach-into-the-renderer coupling the extraction closed.
+# It answers a single question: does a set of files name a forbidden symbol IN CODE, more often than an
+# agreed ceiling? Comments are allowed and deliberately so -- they narrate history ("lifted out of
+# OpenGlRenderer") and prose about a symbol is not coupling to it. // line-comments, /* */ blocks and
+# "string literals" are blanked (newlines preserved, so line numbers stay exact) before matching.
 #
-# This converts the comparative assessment's "zero code references to OpenGlRenderer" snapshot (C-IV-1) into a
-# build-time GUARANTEE (backlog item 3). Registered as the `layer1_layering` ctest; fails the build if a code
-# reference reappears. The check strips // line-comments, /* */ block-comments, and "string literals" before
-# matching, so only genuine code triggers it.
+# TWO CALLERS TODAY:
+#
+#   layer1_layering   needle OpenGlRenderer, ceiling 0, over the sovereign L1 render-surface module.
+#                     A code reference -- a forward decl, an OpenGlRenderer:: use, a friend declaration --
+#                     would reopen the reach-into-the-renderer coupling the extraction closed.
+#
+#   render_layering   needle Root::singleton, per-file ceilings, over the L3 passes. THIS ONE RATCHETS
+#                     RATHER THAN FORBIDS, and that is a deliberate design choice, not a compromise.
+#
+# WHY A RATCHET AND NOT ZERO. The L3 Air-Gap residual has been GROWING: the 8th singleton read in
+# BackdropPass was added by a CORRECT bug fix (#177, the env cache had no motion term and the Director
+# saw choppy stars in flight). A zero-tolerance gate would have scored that fix as a violation and
+# invited someone to route around it. A ceiling set at today's counts cannot stop the debt existing, but
+# it stops the debt GROWING SILENTLY -- the next author who needs a ninth read must edit a number in this
+# file, which is exactly the moment to ask whether the value belongs in a params struct instead. Lower
+# the ceilings as the pay-down lands; never raise one without saying why.
+#
+# USAGE
+#   layering-lint.sh                                  # L1 defaults: OpenGlRenderer, ceiling 0
+#   layering-lint.sh --needle SYM  path[=MAX] ...     # MAX defaults to 0
+#
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT" || exit 2
 
-FILES=(
+NEEDLE="OpenGlRenderer"
+SPECS=(
   source/application/StarGlRenderSurface.hpp
   source/application/StarGlRenderSurface.cpp
   source/application/StarGlTexturePrimitives.hpp
   source/application/StarGlTexturePrimitives.cpp
 )
-# Allow an explicit file list override (used by tests of the lint itself).
-[ "$#" -gt 0 ] && FILES=("$@")
 
-python3 - "OpenGlRenderer" "${FILES[@]}" <<'PY'
+if [ "$#" -gt 0 ]; then
+  if [ "$1" = "--needle" ]; then
+    NEEDLE="$2"; shift 2
+  fi
+  [ "$#" -gt 0 ] && SPECS=("$@")
+fi
+
+python3 - "$NEEDLE" "${SPECS[@]}" <<'PY'
 import sys
 needle = sys.argv[1]
 files = sys.argv[2:]
-violations = []
-for path in files:
+# Each spec is "path" (ceiling 0) or "path=MAX".
+specs = []
+for a in files:
+    path, _, cap = a.partition("=")
+    specs.append((path, int(cap) if cap else 0))
+
+counts, sites = {}, {}
+for path, cap in specs:
     try:
         src = open(path).read()
     except OSError as e:
-        print("layer1-layering: cannot read %s (%s)" % (path, e))
+        print("layering-lint: cannot read %s (%s)" % (path, e))
         sys.exit(2)
     # Emit a code-only copy with comments/strings blanked but newlines preserved, so line numbers are exact.
     out = []
@@ -68,16 +96,26 @@ for path in files:
                 out.append("\n")
             i += 1; continue
     code = "".join(out)
-    for lineno, line in enumerate(code.split("\n"), 1):
-        if needle in line:
-            violations.append((path, lineno, line.strip()))
+    hits = [(lineno, line.strip()) for lineno, line in enumerate(code.split("\n"), 1) if needle in line]
+    counts[path] = len(hits)
+    sites[path] = hits
 
-if violations:
-    print("LAYER-1 LAYERING VIOLATION: the sovereign render-surface module must not name %s in code." % needle)
-    print("(Comments are fine; this caught a real code reference. Route through the Renderer interface instead.)")
-    for path, lineno, text in violations:
-        print("  %s:%d: %s" % (path, lineno, text))
+over = [(path, cap) for path, cap in specs if counts[path] > cap]
+if over:
+    print("LAYERING CEILING EXCEEDED for %s" % needle)
+    print("A ceiling is not a licence -- it is a ratchet. If this rose because the value genuinely has to")
+    print("be read here, that is the moment to ask whether it belongs in a params struct resolved at the")
+    print("boundary instead. If it must stand, raise the number in source/test/CMakeLists.txt and say why.")
+    for path, cap in over:
+        print("  %s: %d references, ceiling %d" % (path, counts[path], cap))
+        for lineno, text in sites[path]:
+            print("      %s:%d: %s" % (path, lineno, text))
     sys.exit(1)
 
-print("layer1-layering: OK -- %d module files name %s only in comments." % (len(files), needle))
+total = sum(counts.values())
+caps = sum(cap for _, cap in specs)
+slack = caps - total
+print("layering-lint: OK -- %s appears %d time(s) in code across %d file(s), ceiling %d.%s"
+      % (needle, total, len(specs), caps,
+         ("  %d BELOW ceiling -- lower it." % slack) if slack > 0 else ""))
 PY
