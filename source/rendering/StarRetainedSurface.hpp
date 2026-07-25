@@ -16,8 +16,29 @@ namespace Star {
 // content-key), because it has no env counterpart to dedup against. Keeping the GL out makes this
 // unit-testable off the GPU and makes the byte-identical migration a pure relocation of state.
 //
+// THE THREE-TERM CONTRACT. `invalidated()` here is only the STRUCTURAL key. A correct retained cache
+// needs all three of the following, and this class supplies exactly one of them:
+//
+//   1. STRUCTURAL  (here)    -- size, pixelRatio. The cached image is the wrong SHAPE.
+//   2. MOTION      (caller)  -- the source moved on screen since the fill. Bound the per-refresh STEP in
+//                               PIXELS against a perceptual threshold, measured as displacement SINCE THE
+//                               FILL rather than as a predicted rate: sky/world data refreshes on WORLD
+//                               TICKS, so a per-frame delta reads 0 on many render frames (that is what
+//                               made the parallax cache's adaptive N flap every frame). Staleness is
+//                               monotone across skipped ticks and needs no fps or velocity assumption.
+//   3. CONTENT     (caller)  -- the image changed WITHOUT moving. Hash only the non-positional inputs;
+//                               hashing positional ones refreshes every frame while the source moves and
+//                               deletes the cache's entire reason to exist.
+//
+// SHIPPING WITH ONLY (1) AND THE CADENCE IS A REAL DEFECT, NOT A THEORETICAL ONE. The env cache did
+// exactly that and reached the Director as visibly choppy stars during ship flight and system warp: with
+// no motion term it resampled a backdrop moving ~34 px/frame at 60/N Hz, so the sky teleported ~138 px
+// per visible update. It hid for so long because planet-side StarSky pins starOffset/worldOffset to
+// EXACTLY {} -- the term it was missing is identically zero in the case everyone tests. Fixed in #177;
+// see BackdropPass::renderEnvironment for the worked example of (2) and (3).
+//
 // Usage per active frame:
-//   bool refresh = surf.invalidated(size, pixelRatio) || surf.cadenceHit(refreshInterval);
+//   bool refresh = surf.invalidated(size, pixelRatio) || motion || contentChanged || surf.cadenceHit(N);
 //   if (refresh) { /* setRenderTarget(surf.name(), size); clear; draw; ... */ surf.recordFilled(size, pixelRatio); }
 //   /* composite surf.name() into the target */
 // A consumer whose cache is bypassed that frame (direct path) calls surf.invalidate() so the next
