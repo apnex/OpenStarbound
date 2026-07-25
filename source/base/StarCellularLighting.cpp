@@ -89,7 +89,7 @@ void CellularLightingCalculator::setParameters(Json const& config) {
       );
 }
 
-void CellularLightingCalculator::begin(RectI const& queryRegion) {
+void CellularLightingCalculator::begin(RectI const& queryRegion, Maybe<unsigned> pointBorderNeeded) {
   // The scaling-law denominators for every O(cells) phase in the lighting pipeline. They are published
   // HERE, by the act that establishes both regions, and deliberately NOT inside calculate(): calculate()
   // is skipped whenever GPU lighting is latched active (StarWorldClient.cpp skipCpuCalc), so a gauge set
@@ -102,11 +102,25 @@ void CellularLightingCalculator::begin(RectI const& queryRegion) {
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
 
   m_queryRegion = queryRegion;
+  // ADAPTIVE BORDER (#170). `full` is the historic unconditional padding, ceil(max(spreadMaxAir,
+  // pointMaxAir)). `floorCells` is the part of it no scene can adapt away: ambient light propagating
+  // inward from the region boundary, which is a property of the boundary rather than of any light.
+  //
+  // Clamping BETWEEN them is what makes this safe. An adaptive value can only ever SHRINK the region,
+  // never grow it, so a caller that computes `pointBorderNeeded` badly degrades to exactly today's
+  // behaviour instead of producing an under-sized region and dark edges.
+  auto adaptedBorder = [&pointBorderNeeded](size_t full, size_t floorCells) -> int {
+    if (!pointBorderNeeded)
+      return (int)full;
+    return (int)clamp<size_t>((size_t)*pointBorderNeeded, floorCells, full);
+  };
   if (m_monochrome) {
-    m_calculationRegion = RectI(queryRegion).padded((int)m_lightArray.right().borderCells());
+    m_calculationRegion = RectI(queryRegion).padded(
+        adaptedBorder(m_lightArray.right().borderCells(), m_lightArray.right().spreadBorderCells()));
     m_lightArray.right().begin(m_calculationRegion.width(), m_calculationRegion.height());
   } else {
-    m_calculationRegion = RectI(queryRegion).padded((int)m_lightArray.left().borderCells());
+    m_calculationRegion = RectI(queryRegion).padded(
+        adaptedBorder(m_lightArray.left().borderCells(), m_lightArray.left().spreadBorderCells()));
     m_lightArray.left().begin(m_calculationRegion.width(), m_calculationRegion.height());
   }
 

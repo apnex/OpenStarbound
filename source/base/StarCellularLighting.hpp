@@ -129,8 +129,22 @@ public:
 
   void setParameters(Json const& config);
 
-  // Call 'begin' to start a calculation for the given region
-  void begin(RectI const& queryRegion);
+  // Call 'begin' to start a calculation for the given region.
+  //
+  // ADAPTIVE BORDER (#170). The calculation region is the query region padded by borderCells(), which is
+  // ceil(max(spreadMaxAir, pointMaxAir)) = 48 on shipped config -- turning a 128x64 query into a 224x160
+  // calculation, a 4.375x multiplier every O(cells) phase pays. 48 is the reach of a point light at
+  // intensity 1.0: the worst case the CONFIG can express, not the worst case a SCENE contains. Measured
+  // across four bookmarks the point requirement was 20-28.
+  //
+  // Pass `pointBorderNeeded` -- max over lights of the distance from the query rect out to a light that
+  // can still reach in -- and the border is clamped into [spreadBorderCells(), borderCells()]. The floor
+  // is not negotiable: ambient light propagates inward from the boundary by spreadMaxAir regardless of
+  // what lights exist. The ceiling means this can only ever SHRINK the region, never grow it, so no
+  // caller can be made wrong by passing a bad value -- worst case it does what it does today.
+  //
+  // Omit the argument for the static, unconditional border.
+  void begin(RectI const& queryRegion, Maybe<unsigned> pointBorderNeeded = {});
 
   // Once begin is called, this will return the region that could possibly
   // affect the target calculation region.  All lighting values should be set

@@ -66,6 +66,8 @@ public:
   // The border around the target lighting array where initial lighting / light
   // source data is required.  Based on parameters.
   size_t borderCells() const;
+  // The spread-only component of borderCells(): the structural floor under the adaptive border (#170).
+  size_t spreadBorderCells() const;
 
   // Begin a new calculation, setting internal storage to new width and height
   // (if these are the same as last time this is cheap).  Always clears all
@@ -307,6 +309,21 @@ void CellularLightArray<LightTraits>::setParameters(unsigned spreadPasses, float
 template <typename LightTraits>
 size_t CellularLightArray<LightTraits>::borderCells() const {
   return (size_t)ceil(max(0.0f, max(m_spreadMaxAir, m_pointMaxAir)));
+}
+
+template <typename LightTraits>
+size_t CellularLightArray<LightTraits>::spreadBorderCells() const {
+  // The STRUCTURAL floor under the adaptive border (#170). borderCells() above is the max of two
+  // independent requirements, and only one of them is a property of the lights present:
+  //
+  //   pointMaxAir  is how far a point light at intensity 1.0 reaches. A scene containing no such light
+  //                does not need that much padding, and measured scenes need 20-28 of the shipped 48.
+  //   spreadMaxAir is how far AMBIENT light propagates inward from the region boundary. That is not a
+  //                property of any particular light -- it is a property of the boundary itself, so it
+  //                holds no matter what the scene contains and can never be adapted away.
+  //
+  // Hence: adaptive border = clamp(point requirement, spreadBorderCells(), borderCells()).
+  return (size_t)ceil(max(0.0f, m_spreadMaxAir));
 }
 
 template <typename LightTraits>
