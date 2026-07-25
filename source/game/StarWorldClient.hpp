@@ -5,6 +5,7 @@
 #include "StarWorldRenderData.hpp"
 #include "StarAmbient.hpp"
 #include "StarCellularLighting.hpp"
+#include "StarListener.hpp"
 #include "StarTemporalLightingGate.hpp"
 #include "StarWeather.hpp"
 #include "StarInterpolationTracker.hpp"
@@ -379,6 +380,20 @@ private:
   Vec2I m_gatherDims = Vec2I();
   uint64_t m_gatherEpoch = 0;
   bool m_gatherValid = false;
+
+  // Lighting-thread-private cache for the calculator's parameter Json. The composed value depends only on
+  // newLighting and monochrome, but it was rebuilt every recompute: an Assets::json lookup under the
+  // GLOBAL assets mutex (plus a freshen() clock write under that lock), a Json::set that deep-copies the
+  // whole config object, and 7 string-keyed lookups inside setParameters. Measured 7.8 us/recompute.
+  bool m_lightingParamsValid = false;
+  bool m_lightingParamsNewLighting = false;
+  bool m_lightingParamsMonochrome = false;
+  // /reload (and hot-reload) re-reads /lighting.config from disk without changing newLighting or
+  // monochrome, so the value comparison above cannot see it. Root fires this tracker on every reload;
+  // lightingCalc pulls it (atomic exchange) and drops the cache. WorldClient has no other reload hook --
+  // initWorld is a world-START handler, not a reload handler -- so without this a /reload would be
+  // silently inert for lighting parameters, which the uncached code path did honour.
+  TrackerListenerPtr m_lightingParamsReloadTracker;
 
   SkyPtr m_sky;
 

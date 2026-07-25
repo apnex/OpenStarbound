@@ -55,6 +55,11 @@ WorldClient::WorldClient(PlayerPtr mainPlayer, LuaRootPtr luaRoot) {
 
   m_clientConfig = assets->json("/client.config");
 
+  // lightingCalc caches the composed calculator parameters instead of re-reading /lighting.config every
+  // recompute; this is how an asset reload reaches that cache. Root holds it weakly, so it dies with us.
+  m_lightingParamsReloadTracker = make_shared<TrackerListener>();
+  root.registerReloadListener(m_lightingParamsReloadTracker);
+
   m_currentStep = 0;
   m_currentTime = 0;
   m_fullBright = false;
@@ -2079,8 +2084,20 @@ void WorldClient::lightingCalc() {
     bool monochrome = configuration->get("monochromeLighting").toBool();
     lightingGpu = configuration->get("lightingGpu").optBool().value(false);
     shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
-    m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
-    m_lightingCalculator.setMonochrome(monochrome);
+    // An asset reload re-reads /lighting.config without touching newLighting or monochrome, so the value
+    // comparison below cannot see it. Pull the reload tracker (atomic exchange) and drop the cache.
+    if (m_lightingParamsReloadTracker && m_lightingParamsReloadTracker->pullTriggered())
+      m_lightingParamsValid = false;
+    // Recompose only when an input actually changed. setParameters/setMonochrome are idempotent, so
+    // skipping them when nothing changed is byte-identical.
+    if (!m_lightingParamsValid || newLighting != m_lightingParamsNewLighting
+        || monochrome != m_lightingParamsMonochrome) {
+      m_lightingCalculator.setParameters(root.assets()->json("/lighting.config:lighting").set("pointAdditive", newLighting));
+      m_lightingCalculator.setMonochrome(monochrome);
+      m_lightingParamsValid = true;
+      m_lightingParamsNewLighting = newLighting;
+      m_lightingParamsMonochrome = monochrome;
+    }
   }
   {
     TelemetryScope beginScope(beginTimer);
@@ -2354,6 +2371,10 @@ void WorldClient::initWorld(WorldStartPacket const& startPacket) {
     });
   m_weather.readUpdate(startPacket.weatherData, m_clientState.netCompatibilityRules());
 
+  // These two calls reconfigure the calculator behind lightingCalc's parameter cache -- and note they set
+  // the parameters WITHOUT the "pointAdditive" override lightingCalc composes in. Drop the cache so the
+  // first recompute in the new world re-composes rather than trusting a stale hit from the previous one.
+  m_lightingParamsValid = false;
   m_lightingCalculator.setMonochrome(Root::singleton().configuration()->get("monochromeLighting").toBool());
   m_lightingCalculator.setParameters(assets->json("/lighting.config:lighting"));
   m_lightIntensityCalculator.setParameters(assets->json("/lighting.config:intensity"));
