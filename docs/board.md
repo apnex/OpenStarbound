@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**117 tasks** across 2 store(s): 1 in_progress, 23 pending, 93 completed
+**128 tasks** across 2 store(s): 1 in_progress, 33 pending, 94 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 116 tasks, ids 64–179
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 127 tasks, ids 64–190
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 108, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 110, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 93.
+**Completed tasks citing no commit and no doc:** 79 of 94.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -141,7 +141,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#133](#c29c1332-133) | `c29c1332` | open | Render-target/FBO hardening: the PRIZE (RetainedSurface) shipped; items 1+2 unverified, re-scope | — | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
-| [#136](#c29c1332-136) | `c29c1332` | open | P-1 CODE MERGED into integration — blocked ONLY on the Director's in-game visual check | `4e95c50c` | — |
+| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
 | [#137](#c29c1332-137) | `c29c1332` | open | P-2 residual: the passes ARE extracted — what is left is the Air-Gap INPUT seam (DTOs) + the unmetered residual | `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | open | P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing | — | — |
@@ -175,16 +175,27 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | open | L4: the border multiplier — every O(cells) lighting phase scales 4.375x, and it is the biggest lever left | `03cec1c0` `a9854185` | `board.md` |
+| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive calculation border shipped — 4.375x -&gt; 3.000x, -23.6% lighting CPU (03cec1c0) | `03cec1c0` `a9854185` | `board.md` |
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
-| [#174](#c29c1332-174) | `c29c1332` | open | P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline | — | — |
+| [#174](#c29c1332-174) | `c29c1332` | open | P-0b: motion-driven harness — NOW A HARD GATE on L3 pay-down (audit delta[8], guardrail G9) | — | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
 | [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
-| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `c89be289` | — |
+| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `7c0e8340` `c89be289` | — |
+| [#180](#c29c1332-180) | `c29c1332` | open | AX-A7: BackdropPass clause-2 "recovery" does not recover in the shipped config (audit delta[4]) | — | — |
+| [#181](#c29c1332-181) | `c29c1332` | open | AX-A1-COUNTERS: contract-violation counters are unobserved and the warn budgets never reset (audit delta[5]+[16]) | — | — |
+| [#182](#c29c1332-182) | `c29c1332` | open | AX-A14: ContentKey ships with zero tests beside a sibling with nine (audit delta[6]) | — | — |
+| [#183](#c29c1332-183) | `c29c1332` | open | AX-A3-RATCHET: extend the render_layering ceilings to the orchestrator and painters (audit delta[7]) | — | — |
+| [#184](#c29c1332-184) | `c29c1332` | open | AX-A3-WORLDPASS: renderWorld destructively consumes an input the header calls a reference (audit delta[13]) | — | — |
+| [#185](#c29c1332-185) | `c29c1332` | open | AX-A2-CONFIG: render behaviour is declared in four competing places; newLighting in none (audit delta[14]) | — | — |
+| [#186](#c29c1332-186) | `c29c1332` | open | AX-A3-TIDY: dead includes, a duplicated compose call site, and a false build claim in L2 (audit delta[17]) | — | — |
+| [#187](#c29c1332-187) | `c29c1332` | open | AX-A6: mechanise the NoAssets label rule -- it is currently a shouting comment (audit delta[15]) | — | — |
+| [#188](#c29c1332-188) | `c29c1332` | open | AX-A4-SPEC: the approved design spec still prescribes constructor injection, a known regression (audit delta[10]) | — | — |
+| [#189](#c29c1332-189) | `c29c1332` | open | AX-A12: docs/render/ has six files, no index, and the two doc chains never cross-link (audit delta[11]) | — | — |
+| [#190](#c29c1332-190) | `c29c1332` | open | AX-A8-PRISTINE: prove the FULL gate set from a pristine checkout, not just the script gates (audit delta[1], guardrail… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1167,7 +1178,7 @@ Related: #136 (the P-1 bugs in this same gate, code merged, awaiting the Directo
 
 <a id="c29c1332-136"></a>
 
-#### #136 — P-1 CODE MERGED into integration — blocked ONLY on the Director's in-game visual check
+#### #136 — P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12])
 
 status: **pending**
 
@@ -1175,6 +1186,10 @@ status: **pending**
 
 ```
 STATUS CORRECTED 2026-07-25. This was marked in_progress as though code work remained. It does not: the code is in `integration` and shipping.
+
+RE-SCOPED 2026-07-26 by the M7 axiom audit (A13 Director Intent Amplification, delta[12]). Shipped work was
+parked on the Director's eyeballs for two items the substrate already decides -- and the Director is the
+one non-scalable resource in this campaign, so that is measurable throughput lost.
 
 VERIFIED PRESENT IN integration (2026-07-25):
   frameBufferGeneration        source/application/StarGlRenderSurface.hpp
@@ -1185,19 +1200,25 @@ It survived the 2026-07-19 branch reorg into the trunk. (The original branch fix
 still exists on origin, but its commit 8bf7777 and the binary sha ba54397f no longer resolve -- SHAs
 shifted in the history purge. Resolve by message, not by SHA.)
 
-ALSO: as of 2026-07-25 the current integration build (c9b2b024) is DEPLOYED to /home/apnex/OpenStarbound/dev,
-which is the install the Director actually plays. So the fixes are live and checkable right now.
+ALSO: the current integration build is DEPLOYED to /home/apnex/OpenStarbound/dev, which is the install the
+Director actually plays. So the fixes are live and checkable right now.
 
-WHAT REMAINS IS PURELY THE DIRECTOR'S VISUAL GATE (Claude cannot perform these -- they are perceptual):
+=== WHAT ACTUALLY REMAINS ON THE DIRECTOR (perceptual, Claude cannot perform these) ===
   (a) baseline: sky + parallax look normal
-  (b) ZOOM in/out -> sky updates immediately (was stale: the env key omitted pixelRatio)
   (c) toggle HDR and/or antiAliasing in options -> NO garbage flash in the backdrop (was: composited
       undefined GPU memory for up to N frames after any FBO realloc)
   (d) walk around -> parallax normal (now on the direct/vanilla path while moving)
   (e) walk across a biome boundary -> parallax crossfades smoothly, does not freeze (was: the parallax
       key omitted the tint/alpha content the crossfade animates)
-  (f) /telemetry snapshot x2 -> render.cache.parallax.{refreshed,skipped,bypassed_moving} gives the
-      parked-vs-moving split, which sizes everything downstream. Claude reads these logs.
+
+=== CLOSED WITHOUT THE DIRECTOR ===
+  (b) ZOOM -> sky updates immediately. CLOSED AS SUBSTRATE-DECIDED: the root cause was the env key omitting
+      pixelRatio, and source/test/retained_surface_test.cpp:22-28 now asserts that exact pixelRatio
+      invariant OFF-GPU, in core_tests, in CI. A passing unit test asserting the invariant outranks an
+      eyeball check of the same invariant.
+  (f) /telemetry snapshot x2 for the parked-vs-moving split. CONVERTED, not closed: it becomes the counters
+      oracle specified in #174 (refreshed+skipped+bypassed == frame count, bypassed_moving > 0). A
+      counter-reading is something the substrate can do; it should never have been on the Director.
 
 ORACLE GAP (still open, feeds P-2 #137): none of the four bugs were catchable by the existing oracles.
 Both are DIFFERENTIAL -- reference and cache-under-test share the same draw lambda at the same frame
@@ -2267,30 +2288,30 @@ Evidence: docs/superpowers/specs/2026-07-25-lighting-cpu-budget-closure-design.m
 
 <a id="c29c1332-170"></a>
 
-#### #170 — L4: the border multiplier — every O(cells) lighting phase scales 4.375x, and it is the biggest lever left
+#### #170 — L4 DONE: adaptive calculation border shipped — 4.375x -&gt; 3.000x, -23.6% lighting CPU (03cec1c0)
 
-status: **pending**
+status: **completed**
 
 - `03cec1c0` lighting: adaptive calculation border -- 4.375x -&gt; 3.000x, -23.6% lighting CPU
 - `a9854185` lighting: measure how much of the 48-tile border is actually used (#170 probe)
 - cited in `docs/board.md`
 
 ```
-DEFERRED FROM #168. Bigger than L0-L3 combined, and architectural rather than local.
+SHIPPED 2026-07-25, commits a9854185 (probe) + 03cec1c0 (lever). Default ON via
+`lightingAdaptiveBorder` kill-switch (StarWorldClient.cpp:2154-2156).
 
-Every O(cells) phase in lightingCalc() runs over the CALCULATION region, not the query region. begin() pads the query region by borderCells() on all four sides (StarCellularLighting.cpp:92-101), and borderCells() = ceil(max(spreadMaxAir, pointMaxAir)) (StarCellularLightArray.hpp:307-310). The shipped /lighting.config:lighting gives spreadMaxAir=32, pointMaxAir=48 -> border 48 -> +96 per axis.
+Direction 1 landed: the border is now computed per-recompute and clamped to
+[spreadBorderCells(), borderCells()], so it can only ever SHRINK from the old fixed 48. Measured
+4.375x -> 3.000x calc/visible cells, -23.6% lighting CPU, and PIXEL-IDENTICAL -- the feared quality
+change did not materialise because the trimmed border carried no in-travelling light at the measured
+locations.
 
-MEASURED LIVE: lighting.calc.cells = 35840 against lighting.cells = 8192. Exactly 4.375x, confirmed across every capture on 2026-07-25.
+RESIDUAL, not a blocker: 3.000x is still 3x the visible region. Direction 2 from the original scoping --
+export only the sub-region the GPU world shader actually samples, rather than the full calc region -- is
+untouched and is the remaining structural cut. It needs the quality comparison, not byte-identity.
 
-So begin's fill, exportSpreadInputs, the fp16 convert and the R8 extraction all pay 4.375x what the visible output needs. Post-lever those still total ~163 us/recompute of a 465 us budget. Halving the border would move ALL of them at once -- no single local optimisation reaches that.
-
-TWO DIRECTIONS, both needing design:
- 1) Shrink the border. It exists so spread light can travel in from off-query cells. Is 48 (driven by pointMaxAir) actually required now that the GPU point pass draws point lights directly rather than raycasting them through the cell grid? If the CPU border only needs to cover SPREAD travel (32), that is already 224x160 -> 192x128 = 24576 cells, a 31% cut. If the GPU can be seeded with a smaller margin still, more.
- 2) Export only the sub-region the GPU actually samples. The world shader samples the query region plus the shader's own filter margin, not the full calc region -- the rest is scaffolding for the CPU spread that the GPU config skips entirely.
-
-VERIFICATION: this changes the lighting result (a smaller border means less in-travelling light), so byte-identity does not apply. Needs the spreadoracle-style quality comparison, and a visual check at a location with strong off-screen light sources.
-
-GATE #161 ON THIS. #161 (Jacobi lightmap-spread) targets the GPU spread iterations, but the CPU-side cost that feeds it scales with this border, and so does the GPU pass's own texture size. Choosing a Jacobi lever before knowing whether the region is about to shrink 30-50% is choosing against a moving target.
+#161 (Jacobi lightmap-spread) WAS GATED ON THIS AND IS NOW UNGATED: the region has stopped moving, so a
+Jacobi lever is no longer choosing against a moving target.
 ```
 
 <a id="c29c1332-171"></a>
@@ -2379,7 +2400,7 @@ inside WorldPainter's orchestration. Independent of the lighting work (#169/#170
 
 <a id="c29c1332-174"></a>
 
-#### #174 — P-0b: drive the harness with CHARACTER MOVEMENT — everything gated on camera motion is currently unverifiable offline
+#### #174 — P-0b: motion-driven harness — NOW A HARD GATE on L3 pay-down (audit delta[8], guardrail G9)
 
 status: **pending**
 
@@ -2388,6 +2409,21 @@ FILED 2026-07-25, Director-approved. Prompted by a correction the Director made:
 defect was one "only real play could expose" and that the harness "structurally cannot reach" it. Both
 were WRONG. The harness has never been driven with movement; that is a gap in how we drive it, not a
 limit of what it can do. The distinction matters — one is a gap to close, the other is an excuse.
+
+=== ESCALATED 2026-07-26 BY THE M7 AXIOM AUDIT (A9 Chaos-Validated Deployment, delta[8]) ===
+This is no longer just the highest-value capability item; it is a SEQUENCING GATE.
+
+GUARDRAIL G9, binding: NO BackdropPass split and NO L3 boundary change until this lands. Splitting a pass
+whose only correctness evidence is structurally blind to the paths being moved trades a Law-of-One
+violation for a Foundation-of-Sand risk. A8 (prove the lower layer before you move it) outranks A3 (Law of
+One) here. This is a RECORDED DEVIATION WITH A TRIGGER -- this task -- not a standing excuse: when it
+lands, the split is authorised.
+
+The audit also priced the existing gap, from evidence rather than assertion: the sim<->production delta
+already produced (1) a WRONG MEASUREMENT -- owner `gl` at 118.4%, parts exceeding the whole by 1279 us/tick
+-- and (2) a defect that reached the Director in play (#177, choppy stars during ship flight). That is
+Happy-Path Brittleness by the charter's own name, with the defect filed and no fix. Scope confirmed by knob
+inventory: there is no WALK, no ZOOM and no AA toggle in the harness today.
 
 === THE PIECES ALREADY EXIST ===
   Player::setMoveVector(Vec2F)            source/game/StarPlayer.hpp:159
@@ -2401,6 +2437,10 @@ So: a STAR_RENDERTEST_WALK driving setMoveVector on a deterministic cycle (walk 
 walk left N, pause) is a handful of lines next to the existing warp block. Deterministic and repeatable,
 which is strictly BETTER than a human remembering to walk — same reason the warp exists.
 
+SCOPE PER THE AUDIT: WALK is the minimum, but ZOOM and an AA/HDR toggle knob belong in the same change --
+they are the other two motion-class regimes with zero offline coverage, and #136's (b) and (c) are parked
+on the Director's eyes for exactly them.
+
 === WHAT IS CURRENTLY UNVERIFIABLE OFFLINE ===
 Everything conditional on camera motion, which is most of the retained-surface family:
   - the parallax MOVING-CAMERA BYPASS (P-1 #136 fix #4 — the one that stopped a strict regression)
@@ -2409,6 +2449,7 @@ Everything conditional on camera motion, which is most of the retained-surface f
   - ParkFrames hysteresis and the still<->moving transition
   - the A2 SCROLL-SHIFT path in the retained cache — only runs when the anchor moves
   - adaptive-N, which derives from drift
+  - #177's ENTIRE regime: the env cache's motion term has no offline coverage at all
 That covers large parts of #135, #136, #138 and the whole retained-cache family.
 
 === WHY THIS IS P-0 CLASS, NOT A NICE-TO-HAVE ===
@@ -2423,10 +2464,11 @@ evidence that is worth more than any single lever on the board.
  - It interacts with the FREEZE: the gate freezes the world for byte-identity. A moving harness is for the
    PROFILE (NOFREEZE) instrument and for a new motion-aware oracle, not for the frozen gate. Decide
    deliberately which of the two it serves before building — they have different contracts (#140's note).
- - Consider asserting the cache counters as an oracle: after a scripted walk, render.cache.parallax.
-   bypassed_moving MUST be > 0 and refreshed+skipped+bypassed MUST equal the frame count. That turns the
-   motion path from "exercised" into "gated". The Director's session gave 1448+690+70 = 2208 exactly, so
-   the invariant is already known to hold.
+ - THE COUNTERS ORACLE IS THE DELIVERABLE, not just the movement: after a scripted walk,
+   render.cache.parallax.bypassed_moving MUST be > 0 and refreshed+skipped+bypassed MUST equal the frame
+   count. That turns the motion path from "exercised" into "gated", and it also retires #136 item (f),
+   which is a counter-reading the substrate can do. The Director's session gave 1448+690+70 = 2208
+   exactly, so the invariant is already known to hold.
  - Sequence AFTER #139's Phase 1(b) GL-state assertion pass if both are wanted, since a moving harness
    will generate exactly the ambient-state churn that assertion is designed to catch.
 ```
@@ -2564,6 +2606,7 @@ mtime closes the actual observed hole -- a failed build leaving the binary untou
 
 status: **completed**
 
+- `7c0e8340` docs(board): regenerate -- #178 and #179 closed, #137 corrected [#179]
 - `c89be289` docs(render): generate the Air-Gap counts into the doc, and gate them
 
 ```
@@ -2594,6 +2637,365 @@ about my working tree. (core_tests and render_surface_tests were verified locall
 either commit, so their result is unaffected. A full pristine BUILD is still the open half of audit G1.)
 
 #137 corrected -- it quoted the same dead count -- and docs/board.md regenerated.
+```
+
+<a id="c29c1332-180"></a>
+
+#### #180 — AX-A7: BackdropPass clause-2 "recovery" does not recover in the shipped config (audit delta[4])
+
+status: **pending**
+
+```
+VERIFIED IN THE TREE 2026-07-26, not inherited from the audit.
+
+StarBackdropPass.cpp:106-118 detects a still-set deferral flag on entry, logs an error whose text is
+"Recovering by compositing env directly this frame", bumps render.backdrop.compose_recovered, and falls
+through to the unconditional reset at :121. But :288-289 is `if (composeMerge) m_envComposeDeferred = true;`
+-- and `backdropComposeMerge` SHIPS TRUE. With the env cache active the same frame re-defers. The logged
+sentence describes an action not taken.
+
+CONSEQUENCE: a throw recurring between the two entry points keeps the whole backdrop black indefinitely
+while the log claims recovery -- and then goes silent after four frames, because the warn budget at :107
+is a function-local static with process lifetime (see AX-A1-COUNTERS).
+
+SEVERITY MEDIUM, not high: the fault is currently unreachable -- single caller, ordering verified -- so
+this is a latent lie in a recovery path, not a live defect.
+
+FIX, either is acceptable:
+  (a) make the recovery real -- force composeMerge=false for the recovering frame only, so the frame
+      genuinely composites env into main directly (the pre-CM-1 path, always safe); or
+  (b) correct the log line to say detection with recovery deferred to the next frame.
+(a) is the honest one and matches what the comment at :103-105 claims the design is.
+
+CLOSEOUT (audit hook 4): confirm by reading the shipped-default path that the frame actually composites
+env to main. Do NOT accept "the code has an if" as proof.
+
+Blocked by nothing. Small. Keep the detection and the counter -- both are genuinely valuable.
+```
+
+<a id="c29c1332-181"></a>
+
+#### #181 — AX-A1-COUNTERS: contract-violation counters are unobserved and the warn budgets never reset (audit delta[5]+[16])
+
+status: **pending**
+
+```
+Two halves of the same Hidden-State finding, both verified in the tree 2026-07-26.
+
+(1) NOBODY READS THE COUNTER. `render.backdrop.compose_recovered` appears in exactly two places, both
+inside StarBackdropPass.cpp (:114 registration, :283 a comment). Zero scripts, zero tests, zero docs --
+grepped. A contract violation the code deliberately survives is observable only by someone who already
+suspects it. render-gate.sh's own comment states the rule this breaks: "a check that reports but does not
+gate is not a gate."
+  FIX: assert it in render-gate.sh's verdict block (guardrail G6). Any counter that signals a contract
+  violation belongs in the verdict, or it is not a signal.
+
+(2) THE WARN BUDGETS ARE PROCESS-LIFETIME. StarBackdropPass.cpp:107 `static int warnBudget = 4`. A burst
+of four buys session-long silence -- including across world re-entry, where the operator would most
+expect a fresh diagnosis.
+  FIX: reset on world entry; invalidateCaches() is the natural hook.
+
+(3) REGISTRATION IS CONDITIONAL. The telemetry counters are function-local statics inside conditional
+blocks, so a path never taken yields an ABSENT key in snapshot() -- which a consumer differencing two
+snapshots cannot distinguish from ZERO. compose_recovered is the worst case: by construction it did not
+exist until the fault first fired.
+  FIX: hoist the registrations to unconditional registration at pass construction. Same bug class as the
+  block-scope-statics-never-REGISTER trap already recorded in the telemetry work.
+
+Small, unblocked, and (3) is the one that makes the other two trustworthy.
+```
+
+<a id="c29c1332-182"></a>
+
+#### #182 — AX-A14: ContentKey ships with zero tests beside a sibling with nine (audit delta[6])
+
+status: **pending**
+
+```
+ContentKey landed in StarRetainedSurface.hpp -- L2, the one render file CI actually executes -- with nine
+sibling tests in retained_surface_test.cpp and zero of its own.
+
+Its ENTIRE STATED JUSTIFICATION is that hand-written keys drift: "the quantisers are here because rounding
+is exactly where two hand-written keys drift apart". An untested quantiser is the failure it was built to
+prevent. `(uint64_t)(unsigned)floor(scale * v)` on a negative input is undefined-ish narrowing nobody has
+exercised, and a drifted quantiser's symptom is a SILENTLY WRONG SKY, not a crash -- the cache returns a
+stale frame because two different scenes hashed equal.
+
+ADD TO source/test/retained_surface_test.cpp (already in core_tests, already NoAssets-labelled):
+  * determinism -- same inputs, same key, across two instances
+  * order-sensitivity -- mix(a) then mix(b) != mix(b) then mix(a)
+  * quantisation boundary at scale 255 -- 0.0, 1.0, and the value either side of a bucket edge
+  * Vec3B vs Vec4B distinctness -- the same rgb must not collide across the two overloads
+  * out-of-range: values below 0 and above 1, which is the untested narrowing
+
+Guardrail G5 from the audit generalises this: no new retained surface, cache or key primitive ships
+without off-GPU unit coverage of its invalidation terms. ContentKey is the standing counter-example.
+
+Small, unblocked, pure TDD, no GPU needed.
+```
+
+<a id="c29c1332-183"></a>
+
+#### #183 — AX-A3-RATCHET: extend the render_layering ceilings to the orchestrator and painters (audit delta[7])
+
+status: **pending**
+
+```
+THE METRIC IS SATISFIABLE BY RELOCATION AND HAS ALREADY BEEN SATISFIED THAT WAY ONCE.
+
+Measured by scripts/render-inventory.py and now published in the generated block of
+docs/render/architecture-3-target-state.md: 17 Root::singleton() reads across the render subsystem, of
+which the render_layering ratchet meters 2. BackdropPass went 8 -> 0 by MOVING its reads into
+StarWorldPainter.cpp -- which is correct architecture (resolve at the composition root) and completely
+unmetered. The painters, at 1810 lines, are the growth surface and no gate touches them.
+
+So the ratchet currently rewards the move and then stops watching. Extend it to today's counts -- read
+them from the generated block, do not hand-type them here -- covering StarWorldPainter.cpp,
+StarTilePainter.cpp, StarTextPainter.cpp, StarEnvironmentPainter.cpp, StarDrawablePainter.cpp.
+
+GUARDRAIL G4: once the orchestrator and painters carry ceilings, RELOCATING a read counts against the
+RECEIVING file. Relocation is not a route to green.
+
+Do this BEFORE further Air-Gap pay-down. Paying down against the metered two while the unmetered fifteen
+are free to grow optimises the number rather than the architecture.
+
+Add a RATCHET LOG entry stating the ceilings and the date. Verify render-inventory.py and layering-lint.sh
+agree on every metered file -- they use DIFFERENT comment-stripping strategies, so confirm, do not assume
+(audit closeout hook 6).
+
+Small-to-medium, unblocked, and it is the honest prerequisite for #137.
+```
+
+<a id="c29c1332-184"></a>
+
+#### #184 — AX-A3-WORLDPASS: renderWorld destructively consumes an input the header calls a reference (audit delta[13])
+
+status: **pending**
+
+```
+VERIFIED IN THE TREE 2026-07-26. StarWorldPass.hpp:37 declares
+`void renderWorld(WorldCamera const& camera, WorldRenderData& renderData);` -- a plain mutable reference,
+read as an input. StarWorldPass.cpp:57-60 then does:
+
+    for (auto& ed : renderData.entityDrawables)
+      for (auto& p : ed.layers)
+        entityDrawables[p.first].append({ed.highlightEffect, std::move(p.second)});
+
+It MOVES the per-entity layer lists out of the caller's struct. After renderWorld returns, renderData's
+entity drawables are hollowed -- outer containers intact, inner Lists empty.
+
+WHY IT MATTERS RATHER THAN BEING A CURIOSITY: the rendertest state fingerprint already reads m_renderData
+AFTER render. It survives today only because it reads outer .size(), which the move leaves intact.
+Extending it to hash nametag or overlay CONTENT -- the obvious next step for its stated purpose -- yields
+a stable, WRONG fingerprint that claims the inputs matched when they were consumed. A diagnostic that lies
+is worse than no diagnostic, and this one would lie in exactly the direction that hides a real difference.
+
+FIX, cheapest first:
+  (a) one line at StarWorldPass.hpp:37 declaring the consumption; or
+  (b) take WorldRenderData&& ; or
+  (c) rename to consumeAndRenderWorld.
+(a) is enough today. (b)/(c) make it unrepresentable and are the right move if the DTO seam (#137) lands.
+
+Note this is also the reason contract (1) for WorldPass is scored "CONSUMES" rather than merely "takes the
+fat struct" in the architecture doc's compliance matrix.
+
+Small, unblocked.
+```
+
+<a id="c29c1332-185"></a>
+
+#### #185 — AX-A2-CONFIG: render behaviour is declared in four competing places; newLighting in none (audit delta[14])
+
+status: **pending**
+
+```
+VERIFIED 2026-07-26. The asset-side spec is genuinely isomorphic -- opengl.config and effects/*.config are
+parsed at runtime and mod-overridable. The C++ side is not: a render knob's value can come from
+StarRootLoader defaults, a call-site literal, storage/starbound.config, or nowhere at all, with NO
+authority rule between them.
+
+CONFIRMED DIVERGENCES (defaults vs call-site fallback literals):
+  * envRefreshInterval    ships 4    against a WorldPainter fallback of 1
+  * parallaxMaxDriftStepPx ships 0.75 against a call-site 1.5f  -- KNOWINGLY preserved for byte-identity
+  * lightingWorldUpscale  ships 2.0  against 1.0f
+  * newLighting           read and written, and EXPOSED AS A GRAPHICS-MENU CHECKBOX
+                          (assets/opensb/interface/windowconfig/graphicsmenu.config.patch.lua:62-63)
+                          -- declared in no default block anywhere.
+
+THE FALLBACKS ARE REACHABLE, NOT DEAD. Configuration::set with a null value ERASES the key, and the A/B
+restore path can pass null with a null captured original. Once erased, the call-site literal becomes
+authoritative for the rest of the session. This is the same family as the already-recorded trap that
+storage/starbound.config pins any /command-set value and silently overrides shipped defaults -- which
+disabled the env cache for hours.
+
+OPERATOR-VISIBLE CONSEQUENCE: /rendercache status can report the parallax cache "off" (reading fallback 1)
+while the render path runs adaptive (fallback 0). The console lies to the Director.
+
+FIX:
+  1. Declare newLighting in a default block.
+  2. Route render config reads through ONE accessor that falls back to Configuration::getDefault(key)
+     rather than to a hand-typed call-site literal. That makes the default block the single authority and
+     deletes the whole divergence class.
+  3. parallaxMaxDriftStepPx's divergence is deliberate (byte-identity); correct it as its own labelled
+     change, not folded into this.
+
+Medium. Unblocked. Touches the config path, so byte-identity verification applies.
+```
+
+<a id="c29c1332-186"></a>
+
+#### #186 — AX-A3-TIDY: dead includes, a duplicated compose call site, and a false build claim in L2 (audit delta[17])
+
+status: **pending**
+
+```
+Three small items, each with a reason to exist beyond tidiness.
+
+(1) DEAD INCLUDES. StarBackdropPass.cpp:2-3 still includes StarRoot.hpp and StarConfiguration.hpp. Every
+Root::singleton() read left that file in 1e46f71c; the includes did not. They keep a dependency edge alive
+that the needle-based lint CANNOT see -- render_layering greps for "Root::singleton", so a file can be
+architecturally re-coupled through an include while measuring 0. Delete them; the compile proves it.
+
+(2) DUPLICATED STANDALONE-COMPOSE CALL SITES. The same standalone env-compose sequence appears twice in
+StarBackdropPass.cpp (the renderEnvironment path and the renderParallax CM-1 reconcile path). Fold into one
+helper. This is the same duplication-of-a-decision that ContentKey was extracted to kill one level down --
+BackdropParams already did it for the six config blocks; this is the leftover.
+
+(3) THE L2 BOUNDARY IS DEFENDED BY A CLAIM THAT IS FALSE. StarRetainedSurface.hpp says accepting Color
+"would drag StarColor.hpp across the seam" and that including only StarString/StarVector "is what lets
+retained_surface_test link against core alone". VERIFIED: StarColor.hpp lives in source/core/ -- including
+it would NOT break the core-only link. The real fence is not naming StarRenderer.hpp (source/application),
+which is what layer1_layering actually enforces.
+  The Vec4B/Vec3B choice is still correct; the JUSTIFICATION is wrong, and a boundary defended by a false
+  build claim invites the next author to test the claim, find it false, and conclude the boundary is soft.
+  Correct the comment to name the real fence.
+
+All three small, unblocked, no behaviour change. (1) and (2) are byte-identical; (3) is a comment.
+```
+
+<a id="c29c1332-187"></a>
+
+#### #187 — AX-A6: mechanise the NoAssets label rule -- it is currently a shouting comment (audit delta[15])
+
+status: **pending**
+
+```
+Every testPreset in source/CMakePresets.json inherits `base`, which filters to LABELS NoAssets, and
+.github/workflows/build.yml drives ctest through those presets. So a registered test WITHOUT the label is
+SILENTLY SKIPPED by every CI job -- it exists, it passes locally under a bare ctest, and it guards nothing.
+
+That is not hypothetical: it is what left BOTH Layer-1 architecture gates dormant from creation. They were
+cited in docs as standing lints while never having executed in CI once.
+
+The rule is currently enforced by a large comment in source/test/CMakeLists.txt asking the next author to
+remember. That is prompt-only enforcement of a deterministic rule -- M7's named failure mode, whose
+correction is "mechanize or file a primitive follow-up".
+
+FIX: a small ctest that parses the registered test names and asserts every test not on an explicit
+assets-required allowlist carries the NoAssets label. The allowlist is the architectural statement (today:
+game_tests), so adding to it is a deliberate act rather than an omission.
+
+RELATED OPEN QUESTION worth resolving in the same pass (audit closeout hook 1): does an ADD_TEST whose
+COMMAND is a .sh or .py file actually execute on the windows-latest runner? If it does not, layer1_layering,
+render_layering and render_docs_fresh are all green-by-absence on one of six jobs and the label wiring
+bought nothing there. Check before claiming the gate set is proven.
+
+Small, unblocked.
+```
+
+<a id="c29c1332-188"></a>
+
+#### #188 — AX-A4-SPEC: the approved design spec still prescribes constructor injection, a known regression (audit delta[10])
+
+status: **pending**
+
+```
+docs/superpowers/specs/2026-07-19-render-decomposition-design.md §3 prescribes constructor injection for
+the Air-Gap config contract, and claims each pass owns its metric handles. Both were overturned by
+implementation, on evidence, and CORRECTLY:
+
+  * Constructor injection would FREEZE eight live-tunable knobs mid-session -- /rendercache envrefresh and
+    friends -- which are the console levers the campaign uses to A/B itself. The implementation resolves a
+    per-frame BackdropParams at the composition root instead (StarBackdropPass.hpp), which is the same
+    Air-Gap property without the regression.
+  * No pass owns a telemetry handle; all use function-local statics. WorldPass in fact holds the STRONGEST
+    design in the tree -- its descriptor travels with begin() -- which is better than the contract as
+    written. The contract is wrong, not the code.
+
+THE PROBLEM IS PURELY THE RECORD. The retraction exists only downstream, in the implementation's comments
+and in architecture-3. An agent that opens the Director-approved authority document and follows it will
+implement constructor injection and silently freeze the console levers -- reintroducing precisely the
+regression the implementation refused.
+
+FIX: correction banner on §3 retracting both prescriptions and pointing at the implementation, with the
+one-sentence reason for each.
+
+GUARDRAIL G10, which is the generalisation and matters more than this instance: when an implementation
+overrides a Director-approved design prescription on evidence, THE AUTHORITY DOCUMENT IS CORRECTED IN THE
+SAME CHANGE. An override that lives only downstream is a trap for whoever reads the authority next.
+
+Small. Documentation only, but it is the authority document, so it outranks most of the code items here.
+```
+
+<a id="c29c1332-189"></a>
+
+#### #189 — AX-A12: docs/render/ has six files, no index, and the two doc chains never cross-link (audit delta[11])
+
+status: **pending**
+
+```
+Six files, ~1384 lines, no entry point, and the architecture-N chain and layer1-architecture.md reference
+each other ZERO times (verified by grep). A cold agent's reading order is therefore arbitrary -- and the
+arbitrary order routes through whichever doc happens to be stale.
+
+That is not a theoretical navigation complaint: it is the mechanism that converts a stale prescription into
+a wrong action. The audit's A4 finding (the design spec still prescribing constructor injection) and this
+one compose -- an agent lands on the authority doc first because nothing tells it not to.
+
+FIX: docs/render/README.md, ~30 lines:
+  * each file's ROLE -- canonical / point-in-time snapshot / narrative panel
+  * each file's FRESHNESS BASIS -- generator-backed (and by which script) vs hand-written, and last verified
+  * a reading order for someone arriving cold
+  * cross-links: architecture-3 <-> layer1-architecture.md
+
+Also fix while here: layer1-vs-vanilla-assessment.md still says RetainedSurface "is not built". It is built,
+tested off-GPU in core_tests, and has two consumers.
+
+EXPLICITLY REJECTED by the audit and NOT part of this: adding a repo-root CLAUDE.md. That was a repo-wide
+tooling preference proposed on subsystem evidence with no failure traced to it -- struck as scope creep.
+The README survives because a concrete failure path was traced through its absence.
+
+Small, unblocked.
+```
+
+<a id="c29c1332-190"></a>
+
+#### #190 — AX-A8-PRISTINE: prove the FULL gate set from a pristine checkout, not just the script gates (audit delta[1], guardrail G1)
+
+status: **pending**
+
+```
+PARTIALLY DONE 2026-07-26. The three script gates -- layer1_layering, render_layering, render_docs_fresh --
+were re-run from a pristine `git clone` of HEAD (c89be289) and all exit 0. That half is closed.
+
+THE OPEN HALF: core_tests and render_surface_tests have only ever been verified from a working tree. They
+are compiled targets, so proving them from a pristine checkout means clone -> configure -> BUILD -> ctest.
+Today the argument that they are fine is an INFERENCE (no C++ changed in the doc/gate commits, so their
+behaviour is unchanged) -- sound, but an inference is not the evidence guardrail G1 asks for.
+
+WHY THIS IS A STANDING ITEM AND NOT A ONE-OFF: the claim "CI gate set 4/4" was originally producible ONLY
+from a dirty tree, and nothing at the time distinguished "the gates pass" from "the gates pass on this
+workstation with two uncommitted files". Origin was red for two commits while every local test passed.
+
+DO: clone HEAD to a scratch dir, configure with the linux-release-clang preset, build the test targets
+E-CORE PINNED (taskset -c 6-15 nice -n 19 ... -j 8, Director out of game), run ctest -L NoAssets, paste the
+output. Confirm every gate RAN and PASSED -- not skipped, not exit 2.
+
+ALSO CHECK (audit closeout hook 1): whether an ADD_TEST whose COMMAND is a .sh/.py executes at all on the
+windows-latest runner. If it does not, all three script gates are green-by-absence on one of six jobs.
+Overlaps AX-A6 (#187); do it in whichever lands first.
+
+Costs one full build. Worth batching with the next build window rather than run standalone.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
