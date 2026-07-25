@@ -891,11 +891,15 @@ import json,glob,sys
 f=sorted(glob.glob('harness/storage-perf/telemetry/*.json'))[-1]
 d=json.load(open(f))
 bad=[k for k,v in d['metrics'].items() if v['owner']=='unknown']
-conf=[k for k,v in d['metrics'].items() if v.get('descConflict')]
+dc=[k for k,v in d['metrics'].items() if v.get('descConflict')]
+tc=[k for k,v in d['metrics'].items() if v.get('typeConflict')]
+dom=[k for k,v in d['metrics'].items() if v['domain']=='unknown']
 print('schema', d['meta']['schema'], '| metrics', len(d['metrics']))
-print('UNDECLARED:', bad or 'none')
-print('CONFLICTS :', conf or 'none')
-sys.exit(1 if bad or conf else 0)
+print('UNDECLARED owner :', bad or 'none')
+print('UNDECLARED domain:', dom or 'none')
+print('DESC CONFLICTS   :', dc or 'none')
+print('TYPE CONFLICTS   :', tc or 'none')
+sys.exit(1 if bad or dc or tc or dom else 0)
 "
 ```
 Expected: `UNDECLARED: none`, `CONFLICTS : none`, exit 0. Any key listed here is a registration site missed in
@@ -1350,15 +1354,58 @@ TEST(Telemetry, CadenceCountNeverExceedsDenominator) {
   EXPECT_EQ(denom, 10u);
 }
 
-TEST(Telemetry, NoDescriptorConflictsAmongDeclaredMetrics) {
+// A DECLARATION AFTER REGISTRATION must still land. The GPU passes declare next to their begin() call, but
+// OpenGlRenderer may already have registered the key generically on an earlier frame -- so the accessor-first
+// ordering is the normal one for every .gpu_us metric, not an edge case.
+TEST(Telemetry, DeclareAfterRegistrationStillApplies) {
   telemetrySetUp();
-  Json metrics = Telemetry::snapshot().getObject("metrics");
-  for (auto const& kv : metrics)
-    EXPECT_FALSE(kv.second.getBool("descConflict")) << "conflicting declarations for " << kv.first.utf8();
+  Telemetry::timer("test.late.decl").record(5);          // registered with no descriptor
+  EXPECT_EQ(Telemetry::describe("test.late.decl").owner, MetricOwner::Unknown);
+  MetricDesc d{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
+  Telemetry::declare("test.late.decl", d);               // ...declared afterwards
+  EXPECT_EQ(Telemetry::describe("test.late.decl"), d);
+  EXPECT_EQ(Telemetry::snapshot().getObject("metrics").get("test.late.decl").getString("domain"), "gpu");
 }
 ```
 
-- [ ] **Step 2: Build and run**
+**THE CONFLICT ORACLE DOES NOT LIVE HERE — deliberately.** An earlier draft of this plan put a
+`NoDescriptorConflictsAmongDeclaredMetrics` test in this file, iterating the snapshot and asserting no metric
+carries `descConflict`. It was removed for two independent reasons, both of which make it worse than useless:
+
+1. **`core_tests` never registers the game's metrics.** It links `star_core` and exercises the telemetry
+   primitive; `render.pass.world.gpu_us` and friends are registered by the *client*, which this binary does not
+   run. So the test would iterate a handful of `test.*` keys and pass — while saying nothing whatsoever about
+   the ~46 real declarations it appears to be guarding.
+2. **`reset()` clears the conflict flags**, so `telemetrySetUp()` guarantees the assertion passes before it is
+   even evaluated. It could never fail.
+
+An oracle that cannot fail is precisely the confidently-wrong signal this whole subsystem exists to prevent —
+the same family as the unarmed pixel oracle that once greped as `DIFF=0`. The **mechanism** is already tested
+(`FirstDeclarationWinsAndMismatchIsRecorded` for descriptors, the type-conflict test for types). The **real**
+conflict oracle must run against a snapshot captured from a real client run, where the actual declarations
+exist: that is Task 4 Step 4's `UNDECLARED`/`CONFLICTS` check and the violation reporting in
+`telemetry-window.py` (Task 8). Both must additionally check `typeConflict`, not just `descConflict`.
+
+- [ ] **Step 2: Two loose ends from the Task 1 re-review**
+
+**N2 — `reset()`'s comment does not match what it does.** `reset()` iterates `nodes` only, so a conflict
+already parked in `pendingDescs` survives and is adopted onto the node when the key is later registered — while
+the comment claims a pre-reset conflict "must not haunt every snapshot". Make the code match the comment by
+also clearing the pending conflict bits (keep the descriptors themselves — those are structural, not window
+state, exactly as node `desc`/`declared` are deliberately not reset):
+
+```cpp
+  for (auto& p : pendingDescs)
+    p.second.conflict = false;
+```
+
+**N3 — `typeName()` still has a `default:`, and `snapshot()`'s value dispatch ends in a bare `else`.** Both sit
+three lines below the comment declaring these switches exhaustive on purpose, and both would silently
+serialise a future fifth `MetricType` as a rate. Make `typeName()` exhaustive with no `default:` like its four
+neighbours, and turn the final `else` in the value dispatch into `else if (n->type == MetricType::Rate)` so a
+new type produces a visibly absent value rather than a plausible wrong one.
+
+- [ ] **Step 3: Build and run**
 
 ```bash
 cd /root/frackin/OpenStarbound && \
@@ -1367,11 +1414,11 @@ taskset -c 6-15 dist/core_tests --gtest_filter='Telemetry.*'
 ```
 Expected: all PASS.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 cd /root/frackin/OpenStarbound && \
-git add source/test/telemetry_test.cpp && \
+git add source/test/telemetry_test.cpp source/core/StarTelemetry.cpp && \
 git commit -m "telemetry: the instrument gets the oracle the renderer already has
 
 Budget closure, owner denominator-vs-total, cadence bound and descriptor-conflict
