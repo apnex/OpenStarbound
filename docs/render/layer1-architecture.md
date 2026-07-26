@@ -69,8 +69,8 @@ in which the bug class cannot recur" is the whole goal.
 
 ### In Layer 1
 
-Four sovereign components plus one shared texture primitive. Each is the **single owner of one fact**, and each
-one-line responsibility contains no "and":
+Four sovereign components, one shared texture primitive, and two abstract seams the GL backend implements.
+Each is the **single owner of one fact**, and each one-line responsibility contains no "and":
 
 | Component | The one fact it owns | Lives in |
 |---|---|---|
@@ -79,6 +79,22 @@ one-line responsibility contains no "and":
 | **`GlPass`** | the bind — the coupled `(effect, target)` pair, and the flattened locations the draw path reads | `StarGlRenderSurface` |
 | **`GlEffects`** | the compiled programs and the scriptable-parameter surface | `StarGlRenderSurface` |
 | **`GlLoneTexture`** | the storage descriptor (`textureSize` + `internalFormat`) of a standalone texture | `StarGlTexturePrimitives` |
+| **`TextureAtlasSet`** | where a texture lives inside an atlas, independent of any graphics API | `StarTextureAtlas` |
+| **`GpuTimer` / `RenderOracle`** | the GPU-side measurement seam the backend implements | `StarRenderDiagnostics` |
+
+**The last two rows joined on 2026-07-26**, and the reason is worth recording because it is the second
+instance of one failure. Both were in the build, claimed by no layer, and therefore invisible to every
+count `render-inventory.py` produced — the identical situation #137 found for three helpers in
+`source/rendering`. They survived a second time because the instrument's unassigned-file check only ever
+globbed `source/rendering`, the directory the *first* instance was found in. It now covers
+`source/application` too, via an explicit partition of that mixed directory into render and not-render,
+so a third instance is reported rather than absorbed.
+
+Claiming them moves L1 from 3796 to 4291 lines and moves **no** coupling metric at all: both carry zero
+`Root::singleton()` reads, zero GL calls and zero telemetry handles, so the Air-Gap residual is still 17.
+`StarRenderDiagnostics` does name `OpenGlRenderer` and `Telemetry::`, but only in comments explaining
+what it deliberately does *not* depend on — which is why both instruments strip before they grep. Both
+files are now inside the `layer1_layering` fence, so it holds six files rather than four.
 
 ### Explicitly NOT Layer 1
 

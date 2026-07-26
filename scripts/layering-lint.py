@@ -50,6 +50,14 @@ DEFAULT_SPECS = [
     "source/application/StarGlRenderSurface.cpp",
     "source/application/StarGlTexturePrimitives.hpp",
     "source/application/StarGlTexturePrimitives.cpp",
+    # Added 2026-07-26 alongside the layer-table claim. These two declare the abstract types the GL
+    # backend IMPLEMENTS -- TextureAtlasSet, GpuTimer, RenderOracle -- so they are on the sovereign side
+    # of the fence by construction, and holding them to it costs nothing today while making a future
+    # back-reference a build failure rather than a review comment. StarRenderDiagnostics.hpp names
+    # OpenGlRenderer exactly once, in a comment explaining what it deliberately does NOT depend on; the
+    # stripper below removes it, which is the entire reason this lint strips before it greps.
+    "source/application/StarTextureAtlas.hpp",
+    "source/application/StarRenderDiagnostics.hpp",
 ]
 
 

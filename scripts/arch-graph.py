@@ -390,10 +390,15 @@ def render_classes():
     Measured rather than listed, because the one that matters -- `TilePainter : public TileDrawer` --
     is a render class inheriting a game class across a library boundary, and a hand-maintained list
     would lose the second one the day someone adds it."""
-    layer_of, rep_of = {}, {}
+    layer_of, rep_of, layer_dirs = {}, {}, {}
     for name, _purpose, files in RENDER_LAYERS:
         for rel in files:
             layer_of[pathlib.Path(rel).name] = name
+            # Which directory a layer LIVES in, measured from the table rather than assumed. This is the
+            # question a reader of the treemap cannot answer: L1 is in source/application at tier 2,
+            # below the simulation, while L2/L3 are in source/rendering at tier 4, above it. The render
+            # decomposition is not contiguous in the tier lattice and no directory-shaped diagram says so.
+            layer_dirs.setdefault(name, set()).add(rel.split("/")[1])
 
     homes = class_homes()
     classes, inherits, decls_by_file = {}, [], {}
@@ -418,7 +423,7 @@ def render_classes():
         stem = pathlib.Path(f).stem
         want = stem[4:] if stem.startswith("Star") else stem
         rep_of[f] = want if want in decls else (decls[0] if decls else want)
-    return classes, inherits, rep_of, layer_of, homes
+    return classes, inherits, rep_of, layer_of, homes, layer_dirs
 
 
 def cross_layer_edges(rep_of, layer_of):
@@ -709,9 +714,16 @@ def d_taxonomy(m):
 
 def d_renderclasses(m):
     """9. Render layers and the one inheritance edge that crosses a library."""
-    classes, inherits, _rep, _layer_of, _homes = m["render"]
+    classes, inherits, _rep, _layer_of, _homes, layer_dirs = m["render"]
     edges, over = m["classedges"]
     ns = re.compile(r"[^A-Za-z0-9]+")
+
+    def label(layer):
+        """Namespace label carries the OWNING LIBRARY, because the layer name alone does not say where
+        the code is and a reader coming from the mass treemap will assume `rendering`. L1 is not there."""
+        dirs = "_".join("star_" + d for d in sorted(layer_dirs.get(layer, ())))
+        return ns.sub("_", "%s in %s" % (layer, dirs)).strip("_")
+
 
     # Only classes that participate in a drawn edge are placed. L1 alone declares thirty-one types, most
     # of them vertex PODs and ring buffers with no relationship to show, and drawing them turns the one
@@ -729,7 +741,7 @@ def d_renderclasses(m):
         omitted += [(name, c) for c in members if c not in involved]
         if not shown:
             continue
-        out.append("  namespace %s {" % ns.sub("_", name).strip("_"))
+        out.append("  namespace %s {" % label(name))
         for c in shown:
             out.append("    class %s" % c)
             placed.add(c)

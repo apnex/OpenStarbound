@@ -422,6 +422,19 @@ treemap-beta
 `game` is **44% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
 <!-- END GENERATED: mass -->
 
+**Read these as directories, not layers — they are not the same partition.** The load-bearing example
+is the render decomposition. `source/rendering` is exactly L2 + L3 passes + L3 orchestrator + painters,
+every file claimed and nothing else in it. But **L1, the GL-owning substrate, is not in that box at
+all** — it lives in `source/application`, a different box in a *lower* tier, and one that is only about
+half render: the rest is the SDL main loop and the Steam platform services.
+
+So the render decomposition's own layers are **not contiguous in the tier lattice**. L1 sits *below*
+`game`; L2 and L3 sit *above* it. That is correct rather than broken — L1 is a GL substrate that must
+not see the simulation, while an L3 pass must consume `WorldRenderData`, which is a game type. But it
+means "the render subsystem" is not a place in the tree. It is a duty spanning two directories on
+opposite sides of the simulation, which is exactly why it needs the hand-built instruments named at the
+end of §1, and why §10 labels every layer with the library it actually lives in.
+
 `game` is the structural problem this document exists to name. It is a single directory with a single
 grant list and no sub-`CMakeLists.txt`, which means **no boundary inside it is enforceable by test 1**.
 Its natural clusters are legible in the filenames — entities and items, world simulation, universe and
@@ -552,7 +565,7 @@ The only place in this document where inheritance is the actual relationship, so
 ```mermaid
 classDiagram
   direction LR
-  namespace L1_substrate {
+  namespace L1_substrate_in_star_application {
     class GlGpuTimer
     class GlGroupedTexture
     class GlLoneTexture
@@ -562,35 +575,34 @@ classDiagram
     class GlTexture
     class GlTextureAtlasSet
     class GlTextureGroup
+    class GpuTimer
     class OpenGlRenderer
     class RenderBuffer
+    class RenderOracle
     class Renderer
     class Texture
+    class TextureAtlasSet
+    class TextureEntry
     class TextureGroup
   }
-  namespace L2_primitives {
+  namespace L2_primitives_in_star_rendering {
     class RetainedSurface
   }
-  namespace L3_passes {
+  namespace L3_passes_in_star_rendering {
     class BackdropPass
     class GpuLightmapPass
     class WorldPass
   }
-  namespace L3_orchestrator {
+  namespace L3_orchestrator_in_star_rendering {
     class WorldPainter
   }
-  namespace painters_pre_decomposition {
+  namespace painters_pre_decomposition_in_star_rendering {
     class AssetTextureGroup
     class DrawablePainter
     class EnvironmentPainter
     class FontTextureGroup
     class TextPainter
     class TilePainter
-  }
-  namespace star_application {
-    class GpuTimer
-    class RenderOracle
-    class TextureAtlasSet
   }
   namespace star_core {
     class RefCounter
@@ -609,6 +621,7 @@ classDiagram
   TextureGroup <|-- GlTextureGroup
   Renderer <|-- OpenGlRenderer
   RefCounter <|-- Texture
+  Texture <|-- TextureEntry
   TileDrawer <|-- TilePainter
   AssetTextureGroup ..> Renderer
   BackdropPass ..> EnvironmentPainter
@@ -635,7 +648,7 @@ classDiagram
 
 `classDiagram` earns its place here and nowhere else in this document, because inheritance is the actual relationship rather than a metaphor for one. `<|--` is inheritance; `..>` is a compile-time dependency between render layers, drawn between each file's representative class.
 
-**26 declared types are not drawn** because they participate in no edge -- vertex PODs, parameter structs and ring buffers. They are listed rather than dropped: L1 substrate: `Effect`, `EffectParameter`, `EffectTexture`, `Face`, `FrameSpanRing`, `GlEffects`, `GlPackedVertexData`, `GlPass`, `GlRenderVertex`, `GlTargets`, `GlVertexBuffer`, `GlVertexBufferTexture`, `RenderPoly`, `RenderQuad`, `RenderTriangle`, `RenderVertex`, `Ring`; L2 primitives: `ContentKey`; L3 passes: `BackdropParams`, `Input`, `LightmapParams`, `LightmapResult`; painters (pre-decomposition): `GlyphTexture`, `LiquidInfo`, `TextPositioning`, `TextureKeyHash`.
+**28 declared types are not drawn** because they participate in no edge -- vertex PODs, parameter structs and ring buffers. They are listed rather than dropped: L1 substrate: `AtlasPlacement`, `Effect`, `EffectParameter`, `EffectTexture`, `Face`, `FrameSpanRing`, `GlEffects`, `GlPackedVertexData`, `GlPass`, `GlRenderVertex`, `GlTargets`, `GlVertexBuffer`, `GlVertexBufferTexture`, `RenderPoly`, `RenderQuad`, `RenderTriangle`, `RenderVertex`, `Ring`, `TextureAtlas`; L2 primitives: `ContentKey`; L3 passes: `BackdropParams`, `Input`, `LightmapParams`, `LightmapResult`; painters (pre-decomposition): `GlyphTexture`, `LiquidInfo`, `TextPositioning`, `TextureKeyHash`.
 
 Every inheritance edge in the render tree, and where the base class lives:
 
@@ -652,9 +665,10 @@ Every inheritance edge in the render tree, and where the base class lives:
 | `GlTextureGroup` | `TextureGroup` | L1 substrate | `star_application` | internal |
 | `OpenGlRenderer` | `Renderer` | L1 substrate | `star_application` | internal |
 | `Texture` | `RefCounter` | L1 substrate | `star_core` | foundation base -- intended use |
+| `TextureEntry` | `Texture` | L1 substrate | `star_application` | internal |
 | `TilePainter` | `TileDrawer` | painters (pre-decomposition) | `star_game` | **leaves the render subsystem for the simulation** |
 
-Of 12 inheritance edges, 9 stay inside the render libraries, 2 take a base from a foundation library (`RefCounter` and friends -- that is what foundations are for), and **1 leaves the subsystem entirely**: `TilePainter : TileDrawer` (`star_game`). That last one is why `WorldPass` cannot finish its input DTO and why the client has no headless expression -- a render class whose base is a simulation class cannot be compiled without the simulation.
+Of 13 inheritance edges, 10 stay inside the render libraries, 2 take a base from a foundation library (`RefCounter` and friends -- that is what foundations are for), and **1 leaves the subsystem entirely**: `TilePainter : TileDrawer` (`star_game`). That last one is why `WorldPass` cannot finish its input DTO and why the client has no headless expression -- a render class whose base is a simulation class cannot be compiled without the simulation.
 <!-- END GENERATED: renderclasses -->
 
 ---

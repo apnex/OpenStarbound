@@ -68,11 +68,30 @@ LAYERS = [
     # doc defines L1 as "abstract Renderer interface / OpenGlRenderer" -- the interface IS the seam the
     # whole decomposition is measured against, and layer1_layering enforces that L2 never names it. Its
     # absence is why the published artifacts' L1 total and this instrument's disagreed by exactly 340.
+    # THE LAST TWO WERE UNCLAIMED UNTIL 2026-07-26, and by exactly the mechanism #137 found for the three
+    # texture/type helpers in source/rendering: in the build, in no layer, and therefore invisible to every
+    # count this instrument produces. They were missed a second time because the unassigned-file check
+    # below only ever looked at source/rendering -- the directory where the FIRST instance was found. The
+    # check now covers source/application too, which is the only reason a third instance would be caught.
+    #
+    # Both are L1 by duty, measured rather than asserted:
+    #   StarTextureAtlas       418 lines. Declares TextureAtlasSet, which GlTextureAtlasSet inherits.
+    #                          Sole consumer in the tree: StarRenderer_opengl.hpp.
+    #   StarRenderDiagnostics   77 lines. Declares GpuTimer and RenderOracle, which GlGpuTimer and
+    #                          GlRenderOracle inherit. Consumers: StarRenderer.hpp, StarRenderer_opengl.hpp.
+    #
+    # Claiming them moves L1 from 3796 to 4291 lines and moves NO coupling metric at all: zero
+    # Root::singleton() reads, zero GL calls, zero telemetry handles, so the gated residual block is
+    # byte-unchanged and 17 is still 17. StarRenderDiagnostics does name Telemetry:: and OpenGlRenderer,
+    # but only in comments explaining what it deliberately does not depend on -- code_only() removes both,
+    # which is the same reason that stripper exists at all. The coupling did not appear; the table simply
+    # started looking.
     ("L1 substrate", "the GL-owning layer: the abstract seam, surfaces, texture primitives, the backend", [
         "source/application/StarRenderer.hpp", "source/application/StarRenderer.cpp",
         "source/application/StarGlRenderSurface.hpp", "source/application/StarGlRenderSurface.cpp",
         "source/application/StarGlTexturePrimitives.hpp", "source/application/StarGlTexturePrimitives.cpp",
         "source/application/StarRenderer_opengl.hpp", "source/application/StarRenderer_opengl.cpp",
+        "source/application/StarTextureAtlas.hpp", "source/application/StarRenderDiagnostics.hpp",
     ]),
     ("L2 primitives", "pass-agnostic building blocks; no Renderer, no GL, testable off the GPU", [
         "source/rendering/StarRetainedSurface.hpp",
@@ -369,9 +388,31 @@ def main():
                        "lines": sum(e["lines"] for e in entries), "files": entries})
 
     # Anything in the render dirs the table does not claim.
+    #
+    # BOTH DIRECTORIES, NOT JUST source/rendering. This check existed to force the layering question that
+    # #137 answered for three unclaimed helpers -- and then missed StarTextureAtlas and
+    # StarRenderDiagnostics for weeks because it only ever globbed the directory the first instance was
+    # found in. A check scoped to where the last bug was is a check that finds the last bug.
+    #
+    # source/application is a MIXED directory: half of it is L1, half is the SDL main loop and the Steam
+    # platform services. So it cannot simply be globbed -- it needs the partition below, which is an
+    # architectural statement in the same sense LAYERS is. Every Star* file in either directory must be
+    # claimed by a layer OR named here as explicitly-not-render; a new file that is neither is reported.
+    # That is the point: adding a file to source/application should force the question "is this render?"
+    APPLICATION_NON_RENDER = {
+        "StarApplication.cpp", "StarApplication.hpp", "StarApplicationController.hpp",
+        "StarMainApplication.hpp", "StarMainApplication_sdl.cpp",
+        "StarPlatformServices_pc.cpp", "StarPlatformServices_pc.hpp",
+        "StarP2PNetworkingService_pc.cpp", "StarP2PNetworkingService_pc.hpp",
+        "StarDesktopService_pc_steam.cpp", "StarDesktopService_pc_steam.hpp",
+        "StarStatisticsService_pc_steam.cpp", "StarStatisticsService_pc_steam.hpp",
+        "StarUserGeneratedContentService_pc_steam.cpp", "StarUserGeneratedContentService_pc_steam.hpp",
+    }
     assigned = {pathlib.Path(f).name for _, _, fs in LAYERS for f in fs}
     unassigned = sorted(p.name for p in (REPO / "source/rendering").glob("Star*")
                         if p.name not in assigned)
+    unassigned += sorted("application/" + p.name for p in (REPO / "source/application").glob("Star*")
+                         if p.name not in assigned and p.name not in APPLICATION_NON_RENDER)
 
     tests = sorted(p.name for p in (REPO / "source/test").glob("*.cpp")
                    if any(k in p.name for k in ("render", "surface", "lighting")))
