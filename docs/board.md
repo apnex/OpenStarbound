@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**136 tasks** across 2 store(s): 1 in_progress, 22 pending, 113 completed
+**137 tasks** across 2 store(s): 1 in_progress, 23 pending, 113 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 135 tasks, ids 64–198
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 136 tasks, ids 64–199
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 128, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 129, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -196,7 +196,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
 | [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
 | [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `b2ac6c27` | — |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | — |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
@@ -204,6 +204,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
+| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3050,6 +3051,7 @@ Costs one full build. Worth batching with the next build window rather than run 
 
 status: **pending**
 
+- `334bc38d` tools: measure the game&lt;-&gt;render boundary before anyone moves it
 - `b2ac6c27` render: EntityDrawables moves out of the header the slice exists to avoid
 
 ```
@@ -3229,6 +3231,50 @@ that answers "do not build this" is a success.
 SEQUENCING: behind #174 (motion harness, guardrail G9) like all other render code motion, and the survey
 should use the new GL-state audit from #139 -- depth state is exactly the ambient-state class it now
 watches.
+```
+
+<a id="c29c1332-199"></a>
+
+#### #199 — HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost
+
+status: **pending**
+
+```
+FILED 2026-07-26 from the boundary inventory (334bc38d, docs/render/game-render-boundary.md). Director's
+framing: "the game server is already headless -- it's the Client that doesn't have a headless version or a
+clean boundary to express one."
+
+WHAT IS ALREADY TRUE, so nobody re-litigates it: starbound_server links star_extern + star_core + star_base
++ star_game and no render library, CI ships it, and ZERO files in source/game name Renderer/OpenGl/GL_/glew.
+RenderCallback is an abstract sink the game layer defines and the render layer implements. The dependency
+arrow is correct. This task is NOT about making headless possible.
+
+THE MEASURED BLOCKER (regenerate with scripts/boundary-inventory.py):
+  push-sink + frame-model vocabulary   213 across 51 files
+    of which in view-by-duty files     136  -- already view code in the sim library; wants MOVING
+    residue in genuine sim code         77  -- wants PAYING DOWN
+  appearance vocabulary (Drawable)     495  -- EXCLUDED from the ceiling on purpose; an entity describing
+                                              its own appearance is a legitimate game-layer duty
+
+So the headless-client cost is ~77 references, not 708. The ratchet (boundary_ratchet, ceiling 213 in
+source/test/CMakeLists.txt) stops it growing while the decision is pending.
+
+THREE CANDIDATE SHAPES, undecided:
+ (a) MOVE the view-by-duty files (TileDrawer, WorldRenderData, EntityRendering*, Drawable) into a
+     star_view object library that star_rendering links and starbound_server does not. Biggest structural
+     win; also the biggest change, and it is the full game-layer refactor the Director has deferred.
+ (b) GATE the client's view production -- WorldClient stops building WorldRenderData when no renderer is
+     attached. Smallest change that actually yields a headless client, and it is what a bot/CI client
+     needs. Does not reduce the 213.
+ (c) NULL-SINK -- keep everything, run the client with a RenderCallback implementation that discards.
+     Cheapest, proves the interface is honest, yields no compile-time or binary-size benefit.
+
+Lean: (b) first, because it delivers the capability and would give the SIM work a deterministic headless
+test rig it currently lacks (see #191's finding that the world body has no cross-run reproducible hash).
+(a) only if the ratchet shows the boundary is actually degrading.
+
+RELATED: #191 blocker 1 is the first concrete instance -- TilePainter (render) INHERITS from TileDrawer
+(game), so slicing it requires deciding (a) for at least that file.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
