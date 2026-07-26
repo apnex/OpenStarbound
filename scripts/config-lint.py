@@ -120,7 +120,11 @@ def main():
             if not fn.endswith((".cpp", ".hpp")):
                 continue
             full = os.path.join(dirpath, fn)
-            rel = os.path.relpath(full, REPO)
+            # Normalised for the same reason boundary-inventory.py's game_files() is, though here it is
+            # cosmetic rather than load-bearing: `rel` only ever reaches the undeclared-key report, so a
+            # native separator could not change the verdict. Kept consistent so the next reader does not
+            # have to work out which of the two idioms is the safe one.
+            rel = os.path.relpath(full, REPO).replace(os.sep, "/")
             try:
                 src = open(full, encoding="utf-8", errors="replace").read()
             except OSError:

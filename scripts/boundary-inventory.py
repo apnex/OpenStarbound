@@ -102,7 +102,14 @@ def game_files():
         for fn in sorted(filenames):
             if fn.endswith((".hpp", ".cpp")):
                 p = pathlib.Path(dirpath) / fn
-                out.append(str(p.relative_to(REPO)))
+                # as_posix(), NOT str(). str() stringifies with the NATIVE separator, so on Windows
+                # every key here became `source\game\Star*.cpp` while VIEW_BY_DUTY below is written
+                # with forward slashes. Nothing matched: the view-by-duty total reported 0 instead of
+                # 136 and all twenty table rows flipped to "sim", so --check saw a 46-line diff and
+                # boundary_fresh was RED on windows-latest from the day it was registered while
+                # passing on the four unix jobs. A measurement that depends on which machine ran it
+                # is not a measurement.
+                out.append(p.relative_to(REPO).as_posix())
     return sorted(out)
 
 
