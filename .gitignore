@@ -51,3 +51,6 @@ _deps
 # Headless render harness (P-0): a LOCAL install holding a COPY of the save so the live world can
 # never be touched. 545MB of world data -- regenerate it, never version it.
 harness/
+
+# Byproduct of boundary-inventory.py importing layering-lint.py via importlib (#199).
+scripts/__pycache__/
