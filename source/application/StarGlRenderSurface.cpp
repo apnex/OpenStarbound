@@ -580,6 +580,34 @@ void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
 
   glUniform2f(screenSizeUniform, screenSize[0], screenSize[1]);
 
+  // EACH SAMPLER'S SIZE UNIFORM IS A FUNCTION OF THE TEXTURE BOUND TO IT, and this is where that becomes
+  // true rather than merely usually true (#133 item 3).
+  //
+  // It used to be written only by whoever CHANGED a sampler: setEffectTexture, setEffectTextureFromTarget
+  // and setEffectTextureAlias each upload it, and switchEffectConfig's frameBufferTextures loop uploads it
+  // once, guarded on `undefined`. Nothing wrote it when the TEXTURE changed underneath a sampler that was
+  // not re-bound -- and that happens on every renderer config reload: GlTargets destroys and rebuilds every
+  // surface, then GlEffects::rebindBorrows re-points each borrowed sampler at the new face. rebindBorrows
+  // cannot upload a uniform even in principle: it is not the pass, it has no program bound, and glUniform
+  // writes into whichever program is current. So a sampler that survived a realloc kept its PRE-realloc
+  // dimensions while sampling a correctly re-pointed, possibly differently sized, texture.
+  //
+  // LATENT IN-TREE TODAY, AND VERIFIED SO RATHER THAN ASSUMED: no shipped effect declares
+  // frameBufferTextures (that path is mod-facing), every in-tree sampler carrying a size uniform is
+  // re-bound per use by one of the three setters, and the two lighting targets that are sampled through one
+  // have a fixed overrideSize, so a realloc does not change their dimensions. It stops being latent the
+  // moment a SCREEN-SIZED target is sampled through a size uniform without a per-frame re-bind -- which is
+  // precisely the shape the retained-cache family already has for everything else.
+  //
+  // A handful of glUniform2f per effect switch, and the whole staleness class stops being representable.
+  for (auto& entry : effect.textures) {
+    EffectTexture& tex = entry.second;
+    if (tex.textureSizeUniform != -1 && tex.hasStorage()) {
+      Vec2U texSize = tex.texture()->glTextureSize();
+      glUniform2f(tex.textureSizeUniform, (float)texSize[0], (float)texSize[1]);
+    }
+  }
+
   // Scriptable parameters live on the CPU until a bind. This is that bind: the only path by which a value a
   // script set on an unbound effect reaches the GPU.
   //
