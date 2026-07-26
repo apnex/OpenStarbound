@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**136 tasks** across 2 store(s): 1 in_progress, 23 pending, 112 completed
+**136 tasks** across 2 store(s): 1 in_progress, 22 pending, 113 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 135 tasks, ids 64–198
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 112.
+**Completed tasks citing no commit and no doc:** 79 of 113.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -179,7 +179,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
-| [#174](#c29c1332-174) | `c29c1332` | open | P-0b: motion-driven harness — NOW A HARD GATE on L3 pay-down (audit delta[8], guardrail G9) | — | — |
+| [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
@@ -2425,77 +2425,50 @@ inside WorldPainter's orchestration. Independent of the lighting work (#169/#170
 
 <a id="c29c1332-174"></a>
 
-#### #174 — P-0b: motion-driven harness — NOW A HARD GATE on L3 pay-down (audit delta[8], guardrail G9)
+#### #174 — P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised
 
-status: **pending**
+status: **completed**
+
+- `7ce03361` harness: the motion gate -- a scripted walk, and a counters oracle that reads it
 
 ```
-FILED 2026-07-25, Director-approved. Prompted by a correction the Director made: I claimed a telemetry
-defect was one "only real play could expose" and that the harness "structurally cannot reach" it. Both
-were WRONG. The harness has never been driven with movement; that is a gap in how we drive it, not a
-limit of what it can do. The distinction matters — one is a gap to close, the other is an excuse.
+BUILT 2026-07-26, commit 7ce03361. GUARDRAIL G9 IS NOW SATISFIED: the BackdropPass split and L3 boundary
+change are authorised.
 
-=== ESCALATED 2026-07-26 BY THE M7 AXIOM AUDIT (A9 Chaos-Validated Deployment, delta[8]) ===
-This is no longer just the highest-value capability item; it is a SEQUENCING GATE.
+DECISION THIS TASK DEMANDED, made explicitly: the walk serves the NOFREEZE instrument and a new COUNTERS
+oracle, NOT the frozen byte-identity gate. A frozen world does not tick, so the player cannot move in it at
+all. STAR_RENDERTEST_WALK therefore implies NOFREEZE itself.
 
-GUARDRAIL G9, binding: NO BackdropPass split and NO L3 boundary change until this lands. Splitting a pass
-whose only correctness evidence is structurally blind to the paths being moved trades a Law-of-One
-violation for a Foundation-of-Sand risk. A8 (prove the lower layer before you move it) outranks A3 (Law of
-One) here. This is a RECORDED DEVIATION WITH A TRIGGER -- this task -- not a standing excuse: when it
-lands, the split is authorised.
+SHIPPED: three frame-counted knobs (WALK right/pause/left/pause, TOGGLE flips a client option and rebuilds
+every framebuffer, ZOOM steps zoomLevel), the counters oracle, config capture/restore, and
+scripts/render-motion.sh as the front door.
 
-The audit also priced the existing gap, from evidence rather than assertion: the sim<->production delta
-already produced (1) a WRONG MEASUREMENT -- owner `gl` at 118.4%, parts exceeding the whole by 1279 us/tick
--- and (2) a defect that reached the Director in play (#177, choppy stars during ship flight). That is
-Happy-Path Brittleness by the charter's own name, with the defect filed and no fix. Scope confirmed by knob
-inventory: there is no WALK, no ZOOM and no AA toggle in the harness today.
+THE COUNTERS ORACLE, which is the deliverable rather than the movement: refreshed + skipped +
+bypassed_moving partition the parallax pass's frames, and bypassed_moving > 0 was structurally unreachable
+before this existed. Retires #136 item (f).
 
-=== THE PIECES ALREADY EXIST ===
-  Player::setMoveVector(Vec2F)            source/game/StarPlayer.hpp:159
-  Player::moveLeft/Right/Up/Down          source/game/StarPlayer.hpp, driven from
-                                          source/client/StarClientApplication.cpp:1577-1583
-  the harness already holds m_player and already COMMANDS it — STAR_RENDERTEST_WARP calls warpPlayer in
-  updateRunning, which is the same seam a move belongs in
-  render-profile.sh already runs STAR_RENDERTEST_NOFREEZE=1, so the sim is live and movement takes effect
+THE FIRST RUN FAILED AND WAS RIGHT TO -- worth keeping. bypassed_moving=0. The player WAS moving,
+deterministically (2146.000 -> 2155.684 -> 2156.775 -> 2147.091, identical every cycle). Cause: I ran
+against harness/storage/ (the byte-identity gate's config) where parallaxOracle=true and BackdropPass
+deliberately pins the cache path -- "oracle must stay on the cache path to gate it" -- so the bypass can
+NEVER engage there. render-motion.sh hardcodes harness/sbinit-perf.config and the reason is written down.
 
-So: a STAR_RENDERTEST_WALK driving setMoveVector on a deterministic cycle (walk right N frames, pause,
-walk left N, pause) is a handful of lines next to the existing warp block. Deterministic and repeatable,
-which is strictly BETTER than a human remembering to walk — same reason the warp exists.
+VERIFIED BOTH DIRECTIONS on hardware:
+  render-motion.sh        MOTION GATE: PASS, exit 0
+     walk legs 23, distinct player positions 14
+     refreshed=17 skipped=121 bypassed_moving=213
+     gl-state desyncs 0 UNDER MOTION + AA REALLOC (the churn #139's audit was built for)
+     GL errors 0; antiAliasing restored to false, not pinned
+  STAR_RENDERTEST_WALK=0  MOTION GATE: FAIL, exit 1 (0 distinct positions, no verdict)
+Frozen gate unaffected: PASS, 100/20/212 oracles, DIFF=0. NoAssets 6/6.
 
-SCOPE PER THE AUDIT: WALK is the minimum, but ZOOM and an AA/HDR toggle knob belong in the same change --
-they are the other two motion-class regimes with zero offline coverage, and #136's (b) and (c) are parked
-on the Director's eyes for exactly them.
+STILL NOT COVERED, and named rather than implied: this gates COUNTERS, not pixels. There is still no
+motion-aware PIXEL oracle, so a change that moves drawing logic on a motion path is certified only for arm
+selection and ambient GL state, not for what it draws. That is the residual, and it is the same gap as the
+world body's missing pixel oracle in #191.
 
-=== WHAT IS CURRENTLY UNVERIFIABLE OFFLINE ===
-Everything conditional on camera motion, which is most of the retained-surface family:
-  - the parallax MOVING-CAMERA BYPASS (P-1 #136 fix #4 — the one that stopped a strict regression)
-  - the two compose arms (env standalone vs merged parallax) — a real defect that reached the Director's
-    machine and was only caught because he walked around and I read the counters afterwards (4e95c50c)
-  - ParkFrames hysteresis and the still<->moving transition
-  - the A2 SCROLL-SHIFT path in the retained cache — only runs when the anchor moves
-  - adaptive-N, which derives from drift
-  - #177's ENTIRE regime: the env cache's motion term has no offline coverage at all
-That covers large parts of #135, #136, #138 and the whole retained-cache family.
-
-=== WHY THIS IS P-0 CLASS, NOT A NICE-TO-HAVE ===
-#140 (P-0, the headless harness) is what made unattended verification possible and is the backbone of the
-campaign. This is the same kind of capability investment: it converts a whole class of bug from
-"discovered by luck, in production, by the Director" into "caught by the gate before commit". On today's
-evidence that is worth more than any single lever on the board.
-
-=== DESIGN NOTES ===
- - Determinism first: the walk cycle must be frame-counted, not wall-clock, or the golden-frame hash and
-   the A/B legs stop being comparable. Same discipline as pinSkyEpochTime.
- - It interacts with the FREEZE: the gate freezes the world for byte-identity. A moving harness is for the
-   PROFILE (NOFREEZE) instrument and for a new motion-aware oracle, not for the frozen gate. Decide
-   deliberately which of the two it serves before building — they have different contracts (#140's note).
- - THE COUNTERS ORACLE IS THE DELIVERABLE, not just the movement: after a scripted walk,
-   render.cache.parallax.bypassed_moving MUST be > 0 and refreshed+skipped+bypassed MUST equal the frame
-   count. That turns the motion path from "exercised" into "gated", and it also retires #136 item (f),
-   which is a counter-reading the substrate can do. The Director's session gave 1448+690+70 = 2208
-   exactly, so the invariant is already known to hold.
- - Sequence AFTER #139's Phase 1(b) GL-state assertion pass if both are wanted, since a moving harness
-   will generate exactly the ambient-state churn that assertion is designed to catch.
+UNBLOCKS: #191 (WorldPass contract 1), the BackdropPass split, and large parts of #135, #136 and #138.</description>
+<parameter name="activeForm">Building the motion-driven harness
 ```
 
 <a id="c29c1332-175"></a>
