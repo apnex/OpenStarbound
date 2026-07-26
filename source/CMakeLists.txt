@@ -553,6 +553,17 @@ if(STAR_BUILD_GUI)
     set(STAR_EXT_GUI_LIBS ${STAR_EXT_GUI_LIBS} "-framework CoreAudio")
   endif()
 
+  # The window/GL toolkit, WITHOUT the optional platform social services appended below. Unit tests that
+  # exercise GUI-layer code link this, not the full STAR_EXT_GUI_LIBS.
+  #
+  # This is not tidiness. render_surface_tests -- the standalone coverage for the SOVEREIGN Layer-1
+  # render-surface module -- linked the full set, which on a STAR_ENABLE_STEAM_INTEGRATION=ON build drags
+  # in libsteam_api. That library is staged next to dist/starbound and nowhere else, so on both macOS CI
+  # jobs the test binary died before main(): `dyld: Library not loaded: @loader_path/libsteam_api.dylib`,
+  # Subprocess aborted in 0.01s, every run. A module whose entire claim is that it depends on nothing
+  # above it should not fail to start for want of a social SDK.
+  set(STAR_EXT_GUI_LIBS_CORE ${STAR_EXT_GUI_LIBS})
+
   if(STAR_ENABLE_STEAM_INTEGRATION)
     find_package(SteamApi REQUIRED)
     include_directories(SYSTEM ${STEAM_API_INCLUDE_DIR})
@@ -563,6 +574,21 @@ if(STAR_BUILD_GUI)
     find_package(DiscordApi REQUIRED)
     set(STAR_EXT_GUI_LIBS ${STAR_EXT_GUI_LIBS} ${DISCORD_API_LIBRARY})
   endif()
+
+  # The split above is only worth having if it stays true, and it is invisible to anyone building with
+  # both integrations OFF -- which is every developer who does not own a Steam SDK, and every CI job but
+  # macOS and Windows. A snapshot taken one line lower, or an append aimed at the wrong variable, would
+  # reintroduce the macOS launch failure and nobody would see it locally. So assert it here.
+  foreach(star_gui_lib IN LISTS STAR_EXT_GUI_LIBS_CORE)
+    string(TOLOWER "${star_gui_lib}" star_gui_lib_lower)
+    if(star_gui_lib_lower MATCHES "steam|discord")
+      message(FATAL_ERROR
+        "STAR_EXT_GUI_LIBS_CORE contains a platform-services library (${star_gui_lib}). It is the "
+        "window/GL toolkit ONLY -- unit tests link it and cannot stage the accompanying shared library "
+        "next to themselves, so they abort before main(). Append to STAR_EXT_GUI_LIBS instead, and keep "
+        "the CORE snapshot above the integration blocks.")
+    endif()
+  endforeach()
 endif()
 
 # Set basic build flags, include all the relevant source directories, based on

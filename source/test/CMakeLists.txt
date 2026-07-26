@@ -99,9 +99,38 @@ ADD_EXECUTABLE (game_tests
 TARGET_LINK_LIBRARIES (game_tests ${STAR_EXT_LIBS})
 ADD_TEST (NAME game_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/game_tests)
 
+# NAME THE INTERPRETER. NEVER RELY ON A SHEBANG FOR ANYTHING CTEST RUNS (#192).
+#
+# The three script gates below were registered as `COMMAND <path>/foo.sh`. That works on Linux and macOS
+# and is DEAD ON ARRIVAL on Windows: ctest starts a test with CreateProcess, which honours neither `#!`
+# nor PATHEXT/file associations, so a .sh -- and equally a .py -- named directly as COMMAND cannot start.
+# On windows-latest all three reported `***Not Run`, every run, for weeks. They were registered, they
+# carried the NoAssets label, the preset filtered them IN, and they guarded nothing; ctest scores Not Run
+# as FAILED, so they also reddened that job unconditionally. The label was doing its job. The COMMAND
+# could not start. This is the same claim-vs-enforcement gap the gates themselves exist to close, one
+# level up -- and it was found by mechanising the label rule (#187), not by anyone reading CI.
+#
+# layering-lint was ported bash -> python for this (scripts/layering-lint.py, output-identical on both
+# the pass and fail paths, verified before landing). Python3 is the one interpreter present on all six
+# CI images, and naming ${Python3_EXECUTABLE} explicitly is what makes the gate portable.
+find_package(Python3 COMPONENTS Interpreter)
+
+if(NOT Python3_Interpreter_FOUND)
+  # LOUD, NOT SILENT. Dropping the registrations here would recreate the exact defect above: a gate that
+  # does not exist reads identically to a gate that passes. One red test naming the cause is the honest
+  # state, and it does not block configuring or building.
+  message(WARNING
+    "python3 was not found: the render architecture gates (layer1_layering, render_layering, "
+    "render_docs_fresh) cannot run. A placeholder test is registered in their place so this is visible "
+    "in ctest output rather than silently absent.")
+  ADD_TEST (NAME render_gates_unavailable
+            COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/gates-need-python.cmake)
+else()
+
 # Layer-1 architecture gate: the sovereign render-surface module must not name OpenGlRenderer in code.
-# Self-locating shell+python lint, no build artifact needed. See scripts/layering-lint.sh.
-ADD_TEST (NAME layer1_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.sh)
+# Self-locating python lint, no build artifact needed. See scripts/layering-lint.py.
+ADD_TEST (NAME layer1_layering COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py)
 
 # LAYER-3 AIR-GAP RATCHET. Same instrument, different needle and a per-file CEILING rather than zero.
 #
@@ -130,7 +159,8 @@ ADD_TEST (NAME layer1_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 # into the orchestrator counts against the orchestrator. That is the whole point: the next author who
 # relocates one has to edit a number here and say why -- exactly the moment to ask whether the value
 # belongs in a params struct resolved at the boundary instead.
-ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.sh
+ADD_TEST (NAME render_layering COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
           --needle "Root::singleton"
           source/rendering/StarBackdropPass.cpp=0
           source/rendering/StarWorldPass.cpp=0
@@ -169,7 +199,7 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #               AnchorTypes        0      PROHIBITION -- type vocabulary, clean
 #
 # EVERY REMAINING READ IS METERED. Cross-checked before landing: scripts/render-inventory.py and
-# layering-lint.sh use DIFFERENT comment-stripping strategies (a python regex pass vs the lint's own),
+# layering-lint.py use DIFFERENT comment-stripping strategies (a python regex pass vs the lint's own),
 # so agreement was CONFIRMED rather than assumed -- both report 15 across the five files added here,
 # plus the 2 already metered. If you add a render file, add it here too, or the total silently drifts
 # from the generated table in docs/render/architecture-3-target-state.md.
@@ -185,8 +215,11 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 # It gates the COUPLING residual only, never line counts. Line counts churn on every commit, so gating
 # them would redden CI constantly -- the zero-tolerance failure mode the render_layering ratchet above
 # exists to avoid. A wrong line count is cosmetic; a wrong singleton count is directional.
-ADD_TEST (NAME render_docs_fresh COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/render-inventory.py
+ADD_TEST (NAME render_docs_fresh COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/render-inventory.py
           --check docs/render/architecture-3-target-state.md)
+
+endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
 # (no GL context). The two module TUs are compiled directly here -- they are sovereign (zero refs to
@@ -203,7 +236,7 @@ ADD_EXECUTABLE (render_surface_tests
   $<TARGET_OBJECTS:star_extern> $<TARGET_OBJECTS:star_core> $<TARGET_OBJECTS:star_base>
   ${star_render_surface_tests_SOURCES})
 TARGET_INCLUDE_DIRECTORIES (render_surface_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../application)
-TARGET_LINK_LIBRARIES (render_surface_tests ${STAR_EXT_LIBS} ${STAR_EXT_GUI_LIBS})
+TARGET_LINK_LIBRARIES (render_surface_tests ${STAR_EXT_LIBS} ${STAR_EXT_GUI_LIBS_CORE})
 ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/render_surface_tests)
 
 # THE `NoAssets` LABEL IS NOT DECORATION -- IT IS WHETHER THE TEST RUNS IN CI AT ALL.
@@ -215,16 +248,76 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 #
 # That is exactly what had happened to the two Layer-1 architecture gates. `layer1_layering` calls
 # itself a "standing lint" that "fails the build if a code reference reappears"
-# (scripts/layering-lint.sh, docs/render/layer1-architecture.md) and `render_surface_tests` is the
+# (scripts/layering-lint.py, docs/render/layer1-architecture.md) and `render_surface_tests` is the
 # only standalone unit coverage the sovereign L1 module has -- and NEITHER had ever executed in CI. The
 # accidental consequence was that retained_surface_test, which happens to live inside core_tests, was the
 # ONLY render-architecture check CI actually ran.
 #
-# Both qualify honestly: layer1_layering is a self-locating shell+python grep over source files, and
-# render_surface_tests constructs Layer-1 components with NO GL context and NO assets (it links the GUI
-# libs but never calls into them). Verified passing before being added here.
+# Both qualify honestly: layer1_layering is a self-locating python grep over source files, and
+# render_surface_tests constructs Layer-1 components with NO GL context and NO assets. Verified passing
+# before being added here.
+SET (star_noassets_tests core_tests render_surface_tests)
+IF (Python3_Interpreter_FOUND)
+  LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh)
+ELSE ()
+  LIST (APPEND star_noassets_tests render_gates_unavailable)
+ENDIF ()
+SET_TESTS_PROPERTIES(${star_noassets_tests} PROPERTIES LABELS "NoAssets")
+
+# ...AND THE PARAGRAPH ABOVE USED TO END WITH "ADD THE LABEL WHENEVER YOU ADD AN ASSET-FREE TEST",
+# WHICH IS A REQUEST, NOT A RULE (#187). A rule nothing checks is indistinguishable from a rule nobody
+# follows -- which is precisely the finding that produced the paragraph in the first place. So the two
+# halves of the mechanism are now asserted here, at configure time, where they cannot be skipped:
 #
-# ADD THE LABEL WHENEVER YOU ADD AN ASSET-FREE TEST. A gate nobody runs is worse than no gate, because
-# the docs go on citing it.
-SET_TESTS_PROPERTIES(core_tests layer1_layering render_surface_tests render_layering render_docs_fresh
-                     PROPERTIES LABELS "NoAssets")
+#   (1) every registered test carries the label, unless it is on a named allowlist of tests that
+#       genuinely need assets and are therefore knowingly absent from CI;
+#   (2) the `base` testPreset still filters on exactly that label -- because if someone renames or
+#       retypes the filter, every labelled test silently stops running and CI goes GREEN while
+#       executing nothing. Removing the filter is loud (game_tests would run and fail for want of
+#       assets); MIS-typing it is silent, and silence is the failure mode worth gating.
+#
+# Configure-time rather than another ctest: this catches the mistake before a build, needs no
+# interpreter, and cannot itself be Not-Run. It sees the tests registered in THIS directory, which is
+# every test the project has; a test added elsewhere would need this check extended to it.
+SET (star_tests_needing_assets game_tests)  # game_tests boots a universe from assets/ -- cannot run in CI
+GET_PROPERTY (star_registered_tests DIRECTORY PROPERTY TESTS)
+SET (star_tests_missing_label "")
+FOREACH (star_t IN LISTS star_registered_tests)
+  IF (NOT star_t IN_LIST star_tests_needing_assets)
+    GET_TEST_PROPERTY (${star_t} LABELS star_t_labels)
+    IF (NOT "NoAssets" IN_LIST star_t_labels)
+      LIST (APPEND star_tests_missing_label ${star_t})
+    ENDIF ()
+  ENDIF ()
+ENDFOREACH ()
+IF (star_tests_missing_label)
+  MESSAGE (FATAL_ERROR
+    "These tests are registered without the NoAssets label: ${star_tests_missing_label}\n"
+    "Every testPreset in source/CMakePresets.json inherits `base`, which filters to LABELS NoAssets, and "
+    ".github/workflows/build.yml drives ctest through those presets -- so an unlabelled test is skipped "
+    "by ALL SIX CI jobs. It exists, it passes under a bare local `ctest`, and it guards nothing.\n"
+    "Either add it to star_noassets_tests above, or -- if it genuinely needs assets/ and therefore "
+    "cannot run in CI -- add it to star_tests_needing_assets and accept that CI will never execute it.")
+ENDIF ()
+
+FILE (READ ${CMAKE_CURRENT_SOURCE_DIR}/../CMakePresets.json star_presets_json)
+STRING (JSON star_preset_count ERROR_VARIABLE star_presets_err LENGTH "${star_presets_json}" testPresets)
+IF (star_presets_err)
+  MESSAGE (FATAL_ERROR "Cannot read testPresets from source/CMakePresets.json: ${star_presets_err}")
+ENDIF ()
+SET (star_base_filter_label "")
+MATH (EXPR star_preset_last "${star_preset_count} - 1")
+FOREACH (star_i RANGE ${star_preset_last})
+  STRING (JSON star_preset_name GET "${star_presets_json}" testPresets ${star_i} name)
+  IF (star_preset_name STREQUAL "base")
+    STRING (JSON star_base_filter_label ERROR_VARIABLE star_filter_err
+            GET "${star_presets_json}" testPresets ${star_i} filter include label)
+  ENDIF ()
+ENDFOREACH ()
+IF (NOT star_base_filter_label STREQUAL "NoAssets")
+  MESSAGE (FATAL_ERROR
+    "The `base` testPreset in source/CMakePresets.json no longer filters on the NoAssets label "
+    "(found: '${star_base_filter_label}'). Every other testPreset inherits it, so this one string decides "
+    "what all six CI jobs execute. If it does not match the label applied above, CI runs NOTHING and "
+    "reports success. Fix the preset, or change both sides together.")
+ENDIF ()
