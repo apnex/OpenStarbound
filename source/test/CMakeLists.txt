@@ -263,6 +263,18 @@ ADD_TEST (NAME boundary_fresh COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/boundary-inventory.py
           --check docs/render/game-render-boundary.md)
 
+# The whole-system boundary document: nine generated Mermaid diagrams, every number in them measured from
+# the tree. Same rule as render_docs_fresh and boundary_fresh, applied one altitude up -- a hand-drawn
+# architecture diagram in this repository has never survived a week, and a diagram is worse than a table
+# because its wrongness is not even legible as a number.
+#
+# This gate ALSO fails on two conditions the generator refuses to draw through: duplicate header basenames
+# (include attribution resolves by basename, so a collision silently mis-attributes edges) and a tier table
+# that contradicts the grants.
+ADD_TEST (NAME arch_graph_fresh COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/arch-graph.py
+          --check docs/architecture/system-boundaries.md)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -303,7 +315,7 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
-                                   boundary_ratchet boundary_fresh)
+                                   boundary_ratchet boundary_fresh arch_graph_fresh)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

@@ -2,12 +2,15 @@
 #
 # build.yml -- which is where these gates otherwise run, as ctest tests -- triggers only on changes under
 # assets/, source/, toolchains/ or triplets/. That filter is right for a six-job multi-platform compile and
-# exactly wrong for these four checks, because their INPUTS live in the two trees the filter excludes:
+# exactly wrong for every check below, because their INPUTS live in the two trees the filter excludes:
 #
-#   render_docs_fresh  reads docs/render/architecture-3-target-state.md   -> docs/**
+#   render_docs_fresh  reads docs/render/architecture-3-target-state.md    -> docs/**
+#   boundary_fresh     reads docs/render/game-render-boundary.md           -> docs/**
+#   arch_graph_fresh   reads docs/architecture/system-boundaries.md        -> docs/**
 #   layer1_layering    is  scripts/layering-lint.py                        -> scripts/**
 #   render_layering    is  the same script, different needle               -> scripts/**
 #   config_declared    is  scripts/config-lint.py                          -> scripts/**
+#   boundary_ratchet   is  scripts/boundary-inventory.py                   -> scripts/**
 #
 # So the gates were blind to commits in precisely the trees they police: a doc-only commit could not fail
 # the doc-drift gate, and editing an instrument could not fail the instrument. 8781759c -- the docs/render
@@ -64,3 +67,9 @@ jobs:
 
       - name: boundary_fresh -- the boundary doc's generated numbers match the tree
         run: python3 scripts/boundary-inventory.py --check docs/render/game-render-boundary.md
+
+      # Nine generated Mermaid diagrams, one altitude up from the render docs. Also fails on duplicate
+      # header basenames and on a tier table that contradicts the grants -- the two conditions under
+      # which the generator would draw something confidently wrong.
+      - name: arch_graph_fresh -- the system-boundary diagrams match the tree
+        run: python3 scripts/arch-graph.py --check docs/architecture/system-boundaries.md

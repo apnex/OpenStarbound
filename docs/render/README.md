@@ -49,6 +49,13 @@ again the instant it lands. Hence `--inject` and the CI gate.
 
 ## Related, outside this directory
 
+- **`docs/architecture/system-boundaries.md` — read this FIRST if you are new.** It is the whole-system
+  map: the six top-level parts, the compile-enforced tier lattice, and the four tests that decide whether
+  a boundary is real. Everything in *this* directory describes one tier of one of those six parts. It
+  also carries the finding that reframes the L1 work: `source/application` reads zero globals because its
+  grant list cannot see `Root`, so L1's sovereignty is the narrower, hand-enforced claim about an
+  *internal* split — which is exactly why `layering-lint.py` has to exist.
+
 - `docs/superpowers/specs/2026-07-19-render-decomposition-design.md` — the **Director-approved design
   authority** for the decomposition. §3 carries a correction banner (2026-07-26): its constructor-injection
   prescription is retracted, because implementing it would freeze the live-tunable console knobs.

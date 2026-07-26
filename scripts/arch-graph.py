@@ -1,0 +1,903 @@
+#!/usr/bin/env python3
+"""THE SYSTEM-BOUNDARY GRAPH GENERATOR.
+
+It answers, from the tree, the question `docs/architecture/system-boundaries.md` asks: what are this
+system's primary boundaries, and what evidence says so?
+
+WHY THIS EXISTS AS AN INSTRUMENT AND NOT A HAND-DRAWN DIAGRAM
+-------------------------------------------------------------
+Every architecture diagram in this repository that was hand-drawn has been wrong within a week. The
+2026-07-19 render set was a picture of the INTENT on the day of the reorg. The target-state doc claimed
+BackdropPass held 7 `Root::singleton()` reads against a tree measuring 0, within a day of being written.
+That is why `render-inventory.py --inject` exists, and why `docs/render/README.md` carries the rule:
+
+    No document may state a current-state number that an instrument can measure.
+
+A Mermaid edge labelled `675` is such a number. So are node sizes, tier memberships, binary compositions
+and singleton counts. All of them are generated here and written between markers; `--check` fails CI if
+the document and the tree disagree.
+
+ONE DIAGRAM IS DELIBERATELY NOT GENERATED. The determination-method flowchart in that document contains
+no measurable fact -- it is the reasoning that picks the instruments, not an output of them. It is
+hand-authored, has no marker, and that is correct rather than an omission.
+
+WHAT IT MEASURES, AND FROM WHERE
+--------------------------------
+  * GRANTED VISIBILITY -- each source directory's `INCLUDE_DIRECTORIES` block. This is the authority.
+    A `#include` of a header outside the grant is a hard compile error, not a lint, which is why the
+    cross-directory include graph is acyclic: a cycle is unbuildable. Everything else here is arithmetic
+    over that fact.
+  * USED EDGES -- actual `#include` directives, resolved to the owning directory by header basename.
+  * SEVERABILITY -- which object libraries each declared executable links. Commented-out targets are
+    stripped first; the tree carries several.
+  * REACH -- `Root::singleton()` per directory. Note this is partly a CONSEQUENCE of the grants: `Root`
+    lives in `source/game`, so core/base/application read zero because they cannot see it, not because
+    they are virtuous. The document says so; do not read the zero as an achievement.
+  * MASS -- files and lines per directory.
+  * CROSS-CUTTING CONCERNS -- vocabulary that spans tiers and therefore has no directory to live in.
+    These are the subsystems the directory-shaped tests structurally cannot see.
+  * RENDER LAYERS -- imported from render-inventory.py, not restated. Two copies of the layer table
+    would drift and the two instruments would disagree about what L1 is.
+
+Usage:
+    scripts/arch-graph.py                  # every block, to stdout, with its marker key
+    scripts/arch-graph.py --facts          # machine-readable JSON
+    scripts/arch-graph.py --inject FILE    # write every generated block into the document
+    scripts/arch-graph.py --check  FILE    # exit 1 if any block in the document is stale
+"""
+
+import functools
+import importlib.util
+import json
+import os
+import pathlib
+import re
+import sys
+
+REPO = pathlib.Path(__file__).resolve().parent.parent
+
+
+def _load(name, filename):
+    spec = importlib.util.spec_from_file_location(name, REPO / "scripts" / filename)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# BORROWED, NOT COPIED -- the same rule boundary-inventory.py follows. layering-lint owns the comment
+# stripper and render-inventory owns the render layer table; a second copy of either would drift, and the
+# two gates would then disagree about what they are measuring. The hyphens in the filenames are why this
+# is importlib and not an import statement.
+_layering = _load("layering_lint", "layering-lint.py")
+_inventory = _load("render_inventory", "render-inventory.py")
+strip_code = _layering.strip_comments_and_strings
+RENDER_LAYERS = _inventory.LAYERS
+
+# ---------------------------------------------------------------------------------------------------
+# ARCHITECTURAL STATEMENTS. Everything below this line that is not measured is declared here, in one
+# place, so that a reader can see the judgement calls separately from the arithmetic.
+# ---------------------------------------------------------------------------------------------------
+
+# Tier assignment. This is the one editorial claim in the structural diagrams, and the measurement can
+# contradict it: `application` is granted only core+platform, so it is a SIBLING of base at tier 2, not
+# a member of the presentation stack it is always drawn inside. If a future grant list moves a directory,
+# `--check` will not catch it -- but assert_tiers_match_grants() below will.
+TIERS = [
+    ("T0 vendored", ["extern"]),
+    ("T1 language", ["core"]),
+    ("T2 services", ["base", "platform", "application"]),
+    ("T3 simulation", ["game"]),
+    ("T4 presentation", ["rendering", "windowing", "frontend"]),
+    ("T5 shells", ["client", "server"]),
+]
+DIRS = [d for _t, ds in TIERS for d in ds]
+TIER_OF = {d: t for t, ds in TIERS for d in ds}
+
+# Edge classification. The threshold is on FILES TOUCHED, not include count, because files predict the
+# work of severing an edge and include count does not: `windowing -> rendering` is 3 includes but only 1
+# file, which is an afternoon; `windowing -> base` is 19 includes across 17 files, which is not.
+THIN_MAX_FILES = 9
+
+# The six top-level parts of the system. Only one of them is the engine, and four of the other five are
+# invisible to any tool that only reads source/. The counts are measured; the taxonomy is the claim.
+TOP_LEVEL = [
+    ("Engine", "source/", "the C++ tree -- a compile-enforced tier lattice"),
+    ("Content", "assets/", "separately versioned, loaded at runtime, ships in both directions"),
+    ("Protocol", "net + save", "a compatibility surface spanning core and game, with no directory"),
+    ("Toolchain", "cmake/vcpkg", "decides which binaries exist at all"),
+    ("Instruments", "scripts/ + tests", "what makes the other boundaries enforceable rather than stated"),
+    ("Governance", "docs/", "where a boundary is declared before it is enforced"),
+]
+
+# CROSS-CUTTING CONCERNS -- real subsystems with no directory. The first three tests in the document are
+# all directory-shaped and structurally cannot see these; they are found by reading duty, which is why
+# the vocabulary is declared rather than discovered.
+CROSS_CUTTING = [
+    ("Scripting", r"\bLua(Engine|Root|Context|Callbacks|Value|Converters|Bindings)\b",
+     "Lua VM is 4 files in core; the binding surface is spread across six directories"),
+    ("Protocol", r"\b(NetElement|DataStream|Packet)\w*\b",
+     "wire format and save format, versioned independently of the code that reads them"),
+    ("Telemetry", r"\bTelemetry::(timer|counter|gauge)\b",
+     "the measurement substrate the perf campaign runs on"),
+    ("Assets", r"\b(Assets|AssetPath|AssetSource)\b",
+     "loader in base, consumed everywhere, content lives outside the tree entirely"),
+]
+
+# Cross-layer dependency edges in the render class diagram are capped so the picture stays readable. The
+# cap is REPORTED rather than silently applied -- a truncated diagram that looks complete is the same
+# defect class as a ratchet that meters three of seventeen sites (#183).
+MAX_CLASS_EDGES = 24
+
+SINGLETON = re.compile(r"Root::singleton\(\)")
+INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.M)
+SRC_EXT = (".cpp", ".hpp", ".h", ".c")
+HDR_EXT = (".hpp", ".h")
+
+MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/arch-graph.py#%s -->"
+MARK_END = "<!-- END GENERATED: %s -->"
+
+
+# ---------------------------------------------------------------------------------------------------
+# MEASUREMENT
+# ---------------------------------------------------------------------------------------------------
+
+@functools.lru_cache(maxsize=None)
+def read(path):
+    """Memoized. Seven measurement passes walk the same ~900 files, and re-reading them each time cost
+    this gate five seconds against the other script gates' one. The cache is keyed on the path object,
+    which is safe here because the script measures a fixed tree and never writes back to source/.
+
+    encoding="utf-8" is pinned deliberately: Python's text mode defaults to the LOCALE encoding, which
+    is cp1252 on the windows-latest CI image, and a doc full of em dashes decodes there as mojibake --
+    so --check would compare a fresh block against a corrupted copy of itself and report drift that does
+    not exist. That is #192, and it cost a red CI to learn once already."""
+    try:
+        return path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+@functools.lru_cache(maxsize=None)
+def code(path):
+    """Comments and string literals stripped, memoized. Stripping is not optional: render-inventory.py's
+    first run reported a "direct GL call" in an L3 pass that turned out to be a comment explaining why
+    the pass does NOT make it. An instrument that cannot tell code from commentary about code will
+    manufacture exactly the findings it was built to detect."""
+    return strip_code(read(path))
+
+
+@functools.lru_cache(maxsize=None)
+def files_in(d):
+    p = REPO / "source" / d
+    if not p.is_dir():
+        return ()
+    return tuple(sorted(f for f in os.listdir(p) if f.endswith(SRC_EXT)))
+
+
+def cmake_head(d):
+    """The INCLUDE_DIRECTORIES block, which is the grant declaration and therefore the authority."""
+    text = read(REPO / "source" / d / "CMakeLists.txt")
+    m = re.search(r"INCLUDE_DIRECTORIES\s*\((.*?)\)", text, re.S | re.I)
+    return m.group(1) if m else ""
+
+
+def grants():
+    out = {}
+    for d in DIRS:
+        found = {m.lower() for m in re.findall(r"STAR_([A-Z]+)_INCLUDES", cmake_head(d))}
+        out[d] = {x for x in found if x in DIRS and x != d}
+    return out
+
+
+def owner_map():
+    """Header basename -> owning directory, plus any collisions, which would mis-attribute silently."""
+    owner, dupes = {}, {}
+    for d in DIRS:
+        for f in files_in(d):
+            if f.endswith(HDR_EXT):
+                if f in owner:
+                    dupes.setdefault(f, [owner[f]]).append(d)
+                else:
+                    owner[f] = d
+    return owner, dupes
+
+
+def uses():
+    """Used include edges: (consumer, provider) -> (include count, distinct consumer files)."""
+    owner, _dupes = owner_map()
+    counts, filesets = {}, {}
+    for d in DIRS:
+        for f in files_in(d):
+            src = read(REPO / "source" / d / f)
+            for inc in INCLUDE.findall(src):
+                o = owner.get(os.path.basename(inc))
+                if o and o != d:
+                    counts[(d, o)] = counts.get((d, o), 0) + 1
+                    filesets.setdefault((d, o), set()).add(f)
+    return {k: (v, len(filesets[k])) for k, v in counts.items()}
+
+
+def reduce_transitively(g):
+    """The Hasse diagram of the grant partial order.
+
+    Grant lists are cumulative -- `game` names core AND base AND platform -- so the raw graph has ~45
+    edges and no shape. The reduction has ~11 and IS the shape: in particular it shows that base and
+    platform+application are incomparable branches at tier 2 that only join at rendering, which is the
+    finding that `application` is not a presentation library."""
+    out = {}
+    for a, targets in g.items():
+        keep = set()
+        for b in targets:
+            if not any(b in g.get(c, ()) for c in targets if c != b):
+                keep.add(b)
+        out[a] = keep
+    return out
+
+
+def sizes():
+    out = {}
+    for d in DIRS:
+        fs = files_in(d)
+        n = sum(len(read(REPO / "source" / d / f).splitlines()) for f in fs)
+        out[d] = (len(fs), n)
+    return out
+
+
+def reach():
+    out = {}
+    for d in DIRS:
+        refs = touched = 0
+        for f in files_in(d):
+            n = len(SINGLETON.findall(code(REPO / "source" / d / f)))
+            if n:
+                refs += n
+                touched += 1
+        out[d] = (touched, refs)
+    return out
+
+
+def binaries():
+    """Declared executables and the object libraries each links.
+
+    Two things this must get right, both learned by getting them wrong. Commented-out targets are
+    stripped first -- source/utility/CMakeLists.txt carries seven, and counting those as shipping
+    artifacts would overstate severability by a third. And the argument list is found by MATCHING
+    PARENTHESES, not by a regex: most ADD_EXECUTABLE blocks close inline (`...RESOURCES})`) rather
+    than on their own line, so a `^\\s*\\)` terminator silently skipped all but one target and then
+    over-captured into the next command."""
+    out = {}
+    head = re.compile(r"\bADD_EXECUTABLE\s*\(", re.I)
+    for cm in sorted((REPO / "source").glob("*/CMakeLists.txt")):
+        live = "\n".join(l for l in read(cm).splitlines() if not l.lstrip().startswith("#"))
+        for m in head.finditer(live):
+            depth, i = 1, m.end()
+            while i < len(live) and depth:
+                depth += (live[i] == "(") - (live[i] == ")")
+                i += 1
+            body = live[m.end():i - 1]
+            name = body.split(None, 1)[0] if body.split() else None
+            if name:
+                out[name] = frozenset(re.findall(r"TARGET_OBJECTS:star_(\w+)", body))
+    return out
+
+
+def crosscut():
+    out = {}
+    for name, pattern, _why in CROSS_CUTTING:
+        rx = re.compile(pattern)
+        per = {}
+        for d in DIRS:
+            n = sum(1 for f in files_in(d) if rx.search(code(REPO / "source" / d / f)))
+            if n:
+                per[d] = n
+        out[name] = per
+    return out
+
+
+def system_parts():
+    """Counts for the six top-level parts. Every one is measured; the taxonomy above is the claim."""
+    src_files = sum(len(files_in(d)) for d in DIRS)
+    src_lines = sum(sizes()[d][1] for d in DIRS)
+    assets = list((REPO / "assets").rglob("*")) if (REPO / "assets").is_dir() else []
+    asset_files = [p for p in assets if p.is_file()]
+    proto = crosscut().get("Protocol", {})
+    toolchain = (list((REPO / "cmake").glob("*.cmake")) + list((REPO / "toolchains").rglob("*"))
+                 + list((REPO / "triplets").rglob("*")) + list(REPO.glob("CMakePresets.json"))
+                 + list((REPO / "source").rglob("CMakeLists.txt")))
+    scripts = [p for p in (REPO / "scripts").iterdir()
+               if p.is_file() and p.suffix in (".py", ".sh")] if (REPO / "scripts").is_dir() else []
+    ctests = len(re.findall(r"ADD_TEST", read(REPO / "source" / "test" / "CMakeLists.txt"), re.I))
+    ci = len(re.findall(r"^\s+- name:", read(REPO / ".github" / "workflows" / "gates.yml"), re.M))
+    docs = list((REPO / "docs").rglob("*.md")) if (REPO / "docs").is_dir() else []
+    return {
+        "Engine": ["%d files" % src_files, "%d lines" % src_lines, "%d tiers" % len(TIERS)],
+        "Content": ["%d files in tree" % len(asset_files),
+                    "%d lua" % sum(1 for p in asset_files if p.suffix == ".lua"),
+                    "vanilla pak is external"],
+        "Protocol": ["%d files name it" % sum(proto.values()),
+                     "spans %d directories" % len(proto), "no directory of its own"],
+        "Toolchain": ["%d build files" % len([p for p in toolchain if p.is_file()]),
+                      "%d declared binaries" % len(binaries())],
+        "Instruments": ["%d scripts" % len(scripts), "%d ctest gates" % ctests, "%d CI gates" % ci],
+        "Governance": ["%d markdown documents" % len(docs)],
+    }
+
+
+# Bases that are not ours. `enable_shared_from_this` is std; without this filter it is reported as a
+# class of unknown home and then flagged as a library-boundary crossing -- a manufactured finding of
+# exactly the kind render-inventory.py's comment stripper exists to prevent.
+EXTERNAL_BASES = {"enable_shared_from_this", "true_type", "false_type", "exception", "runtime_error"}
+
+# FOUNDATION LIBRARIES. Inheriting a base from one of these is not a finding: `RefCounter` lives in core
+# because everything is meant to use it, and `GlSurface : RefCounter` is the intended use. Reporting that
+# beside `TilePainter : TileDrawer` would make the one real finding a third of a list instead of the
+# whole of it -- the same dilution a ratchet suffers when it meters sites nobody is going to change.
+FOUNDATION = {"extern", "core", "base", "platform"}
+
+DECL = re.compile(r"^[ \t]*(?:class|struct)\s+(\w+)\s*(?::\s*([^{;]+))?\{", re.M)
+
+
+def split_bases(spec):
+    """Split a base-clause on commas at angle-bracket depth zero, and strip access specifiers and
+    template arguments. `enable_shared_from_this<GlTextureGroup>, public TextureGroup` is two bases,
+    and a naive split on the first token loses the second -- which is the real one."""
+    out, depth, cur = [], 0, ""
+    for ch in spec:
+        if ch == "<":
+            depth += 1
+        elif ch == ">":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    out.append(cur)
+    names = []
+    for part in out:
+        part = re.sub(r"\b(public|private|protected|virtual)\b", " ", part)
+        part = re.sub(r"<.*?>", "", part, flags=re.S).strip()
+        part = part.split("::")[-1].strip()
+        if re.fullmatch(r"\w+", part or ""):
+            names.append(part)
+    return names
+
+
+def declarations_in(path):
+    """(class name, [base names]) for every class or struct declared in a file, nested included."""
+    return [(m.group(1), split_bases(m.group(2) or "")) for m in DECL.finditer(code(path))]
+
+
+def class_homes():
+    """class name -> owning directory, measured from declarations across the whole tree.
+
+    This exists because the obvious shortcut is wrong: resolving a base class by looking for
+    `Star<Base>.hpp` fails for every class declared inside another class's header -- Texture, GpuTimer,
+    RenderBuffer, RenderOracle and TextureAtlasSet all live inside StarRenderer.hpp. The first run of
+    this script resolved all five to "unknown" and then reported them as crossing a library boundary:
+    eleven false positives around the one real finding."""
+    home = {}
+    for d in DIRS:
+        for f in files_in(d):
+            for cls, _bases in declarations_in(REPO / "source" / d / f):
+                home.setdefault(cls, d)
+    return home
+
+
+def render_classes():
+    """Classes per render layer, and every inheritance edge in the render tree.
+
+    Measured rather than listed, because the one that matters -- `TilePainter : public TileDrawer` --
+    is a render class inheriting a game class across a library boundary, and a hand-maintained list
+    would lose the second one the day someone adds it."""
+    layer_of, rep_of = {}, {}
+    for name, _purpose, files in RENDER_LAYERS:
+        for rel in files:
+            layer_of[pathlib.Path(rel).name] = name
+
+    homes = class_homes()
+    classes, inherits, decls_by_file = {}, [], {}
+    for d in ("application", "rendering"):
+        for f in files_in(d):
+            if not f.endswith(HDR_EXT) or f not in layer_of:
+                continue
+            layer = layer_of[f]
+            decls = declarations_in(REPO / "source" / d / f)
+            decls_by_file[f] = [c for c, _b in decls]
+            for cls, bases in decls:
+                classes.setdefault(layer, set()).add(cls)
+                for base in bases:
+                    if base in EXTERNAL_BASES:
+                        continue
+                    inherits.append((cls, base, layer, homes.get(base, "external")))
+
+    # REPRESENTATIVE CLASS PER FILE, for the include-derived dependency edges. Preference order:
+    # the class named after the file, else the first declared. Stated because it is a heuristic --
+    # StarGlRenderSurface.hpp declares no `GlRenderSurface`, and its representative is `GlSurface`.
+    for f, decls in decls_by_file.items():
+        stem = pathlib.Path(f).stem
+        want = stem[4:] if stem.startswith("Star") else stem
+        rep_of[f] = want if want in decls else (decls[0] if decls else want)
+    return classes, inherits, rep_of, layer_of, homes
+
+
+def cross_layer_edges(rep_of, layer_of):
+    """Include edges between render layers, lifted to representative classes."""
+    seen, over = set(), 0
+    for d in ("application", "rendering"):
+        for f in files_in(d):
+            if f not in layer_of or f not in rep_of:
+                continue
+            for inc in INCLUDE.findall(read(REPO / "source" / d / f)):
+                b = os.path.basename(inc)
+                if b in layer_of and layer_of[b] != layer_of[f] and rep_of.get(b) != rep_of[f]:
+                    edge = (rep_of[f], rep_of.get(b, b))
+                    if edge in seen:
+                        continue
+                    if len(seen) < MAX_CLASS_EDGES:
+                        seen.add(edge)
+                    else:
+                        over += 1
+    return sorted(seen), over
+
+
+def assert_tiers_match_grants(g):
+    """TIERS is editorial; the grants are not. If a directory's grants ever contradict its declared tier,
+    say so loudly rather than drawing a diagram that is wrong in a way nobody can see."""
+    order = {t: i for i, (t, _ds) in enumerate(TIERS)}
+    bad = []
+    for a, targets in g.items():
+        for b in targets:
+            if order[TIER_OF[b]] > order[TIER_OF[a]]:
+                bad.append("%s (%s) is granted %s (%s) -- a grant pointing UP a tier"
+                           % (a, TIER_OF[a], b, TIER_OF[b]))
+    return bad
+
+
+# ---------------------------------------------------------------------------------------------------
+# DIAGRAMS
+# ---------------------------------------------------------------------------------------------------
+
+def heat_class(refs):
+    if refs == 0:
+        return "clean"
+    if refs < 50:
+        return "warm"
+    if refs < 250:
+        return "hot"
+    return "blaze"
+
+
+def d_lattice(m):
+    """1. The grant lattice -- what the compiler permits, transitively reduced."""
+    red = reduce_transitively(m["grants"])
+    out = ["```mermaid", "flowchart TD"]
+    for tier, ds in TIERS:
+        present = [d for d in ds if d in m["sizes"]]
+        if not present:
+            continue
+        out.append('  subgraph %s["%s"]' % (tier.split()[0], tier))
+        out.append("    direction LR")
+        for d in present:
+            touched, refs = m["reach"][d]
+            out.append('    %s["%s<br/><small>%d files · %s lines · Root×%d</small>"]'
+                       % (d, d, m["sizes"][d][0], "{:,}".format(m["sizes"][d][1]), refs))
+        out.append("  end")
+    for a in DIRS:
+        for b in sorted(red.get(a, ())):
+            out.append("  %s --> %s" % (a, b))
+    out.append("  classDef clean fill:#1b4332,stroke:#2d6a4f,color:#d8f3dc")
+    out.append("  classDef warm  fill:#5c4d1e,stroke:#8a7420,color:#fff3bf")
+    out.append("  classDef hot   fill:#7f3e12,stroke:#b5561b,color:#ffe8d6")
+    out.append("  classDef blaze fill:#7a1420,stroke:#c1121f,color:#ffe5e5")
+    for bucket in ("clean", "warm", "hot", "blaze"):
+        members = [d for d in DIRS if heat_class(m["reach"][d][1]) == bucket]
+        if members:
+            out.append("  class %s %s" % (",".join(members), bucket))
+    out.append("```")
+    out.append("")
+    out.append("Arrows point from consumer to provider and are **transitively reduced** -- `game` is "
+               "granted `core` directly, but the edge is implied through `base` and drawing it adds no "
+               "information. Node fill is `Root::singleton()` density: green is zero, red is over 250.")
+    return "\n".join(out)
+
+
+def d_grantuse(m):
+    """2. Granted vs spent -- the three-state edge."""
+    use = m["uses"]
+    unused = thin = heavy = 0
+    out = ["```mermaid", "flowchart LR"]
+    for a in DIRS:
+        for b in sorted(m["grants"].get(a, ())):
+            if b == "extern":
+                continue
+            incs, nfiles = use.get((a, b), (0, 0))
+            if nfiles == 0:
+                out.append("  %s -.->|0| %s" % (a, b))
+                unused += 1
+            elif nfiles <= THIN_MAX_FILES:
+                out.append("  %s -->|%d in %d| %s" % (a, incs, nfiles, b))
+                thin += 1
+            else:
+                out.append("  %s ==>|%d in %d| %s" % (a, incs, nfiles, b))
+                heavy += 1
+    out.append("```")
+    out.append("")
+    out.append("Edge labels are `includes in files`. **Dotted** is a granted permission spent zero "
+               "times -- %d of them, free to revoke. **Solid** is thin: used in %d files or fewer, a "
+               "bounded cut. **Thick** is load-bearing. Counts: %d unused, %d thin, %d load-bearing. "
+               "Grants of `extern` are omitted -- all are unused, because `extern` is reached through "
+               "`core`." % (unused, THIN_MAX_FILES, unused, thin, heavy))
+    out.append("")
+    out.append("| edge | includes | files | state |")
+    out.append("|:-----|---------:|------:|:------|")
+    rows = []
+    for a in DIRS:
+        for b in sorted(m["grants"].get(a, ())):
+            if b == "extern":
+                continue
+            incs, nfiles = use.get((a, b), (0, 0))
+            state = ("UNUSED -- revocable" if nfiles == 0
+                     else "thin" if nfiles <= THIN_MAX_FILES else "load-bearing")
+            rows.append((nfiles, incs, "| `%s → %s` | %d | %d | %s |" % (a, b, incs, nfiles, state)))
+    for _f, _i, row in sorted(rows):
+        out.append(row)
+    return "\n".join(out)
+
+
+def d_sankey(m):
+    """3. Weighted coupling."""
+    out = ["```mermaid", "sankey-beta", ""]
+    for (a, b), (incs, _f) in sorted(m["uses"].items(), key=lambda kv: -kv[1][0]):
+        out.append("%s,%s,%d" % (a, b, incs))
+    out.append("```")
+    out.append("")
+    out.append("**Magnitude only -- this is not a flow.** Sankey implies conservation and include "
+               "counts do not conserve: `game → core` at %d and `base → core` at %d do not \"arrive "
+               "at\" core in any meaningful sense. It is here because it is the only form that shows "
+               "the dynamic range the three-state diagram above deliberately flattens."
+               % (m["uses"].get(("game", "core"), (0, 0))[0],
+                  m["uses"].get(("base", "core"), (0, 0))[0]))
+    return "\n".join(out)
+
+
+def d_shells(m):
+    """4. Severability shells."""
+    bins = m["binaries"]
+    shells = {}
+    for name, libs in bins.items():
+        shells.setdefault(libs, []).append(name)
+    ordered = sorted(shells.items(), key=lambda kv: len(kv[0]))
+    out = ["```mermaid", "flowchart TD"]
+    prev = None
+    for i, (libs, names) in enumerate(ordered):
+        label = " + ".join(sorted(libs))
+        out.append('  subgraph S%d["shell %d — %s"]' % (i, i, label))
+        out.append("    direction LR")
+        for n in sorted(names):
+            out.append('    %s(["%s"])' % (n, n))
+        out.append("  end")
+        if prev is not None:
+            out.append("  S%d -.->|adds %s| S%d"
+                       % (prev, ", ".join(sorted(set(libs) - set(ordered[prev][0]))) or "nothing", i))
+        prev = i
+    out.append("```")
+    out.append("")
+    nested = all(set(ordered[i][0]) <= set(ordered[i + 1][0]) for i in range(len(ordered) - 1))
+    out.append("%d declared executables fall into **%d distinct link sets**, and %s. Each shell is what "
+               "ships without everything below it: the existence of `starbound_server` is the proof "
+               "that game↔presentation is a primary boundary, and nothing in this tree proves any "
+               "boundary *within* presentation, because those four libraries appear together in "
+               "exactly one binary."
+               % (len(bins), len(ordered),
+                  "they are **strictly nested**" if nested
+                  else "they are **not strictly nested** -- see the exceptions above"))
+    return "\n".join(out)
+
+
+def d_mass(m):
+    """5. Mass."""
+    out = ["```mermaid", "treemap-beta", '"source/"']
+    for tier, ds in TIERS:
+        present = [(d, m["sizes"][d][1]) for d in ds if m["sizes"].get(d, (0, 0))[1]]
+        if not present:
+            continue
+        out.append('    "%s"' % tier)
+        for d, n in sorted(present, key=lambda kv: -kv[1]):
+            out.append('        "%s": %d' % (d, n))
+    out.append("```")
+    out.append("")
+    total = sum(m["sizes"][d][1] for d in DIRS)
+    game = m["sizes"]["game"][1]
+    out.append("`treemap-beta` is a beta diagram type; the table is the drift-proof fallback and "
+               "carries the same numbers.")
+    out.append("")
+    out.append("| tier | directory | files | lines | share |")
+    out.append("|:-----|:----------|------:|------:|------:|")
+    for tier, ds in TIERS:
+        for d in ds:
+            f, n = m["sizes"].get(d, (0, 0))
+            if n:
+                out.append("| %s | `%s` | %d | %s | %.1f%% |"
+                           % (tier, d, f, "{:,}".format(n), 100.0 * n / total))
+    out.append("")
+    out.append("`game` is **%.0f%% of the engine in one directory** -- one grant list, no "
+               "sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce."
+               % (100.0 * game / total))
+    return "\n".join(out)
+
+
+def d_reach(m):
+    """6. God-object reach."""
+    vals = [(d, m["reach"][d][1]) for d in DIRS if d != "extern"]
+    top = max(v for _d, v in vals) if vals else 0
+    step = max(100, ((top // 700) + 1) * 100)
+    out = ["```mermaid", "xychart-beta",
+           '    title "Root::singleton() reads per directory"',
+           "    x-axis [%s]" % ", ".join(d for d, _v in vals),
+           '    y-axis "references" 0 --> %d' % (((top // step) + 1) * step),
+           "    bar [%s]" % ", ".join(str(v) for _d, v in vals),
+           "```", ""]
+    zeros = [d for d, v in vals if v == 0]
+    out.append("**Read the zeros carefully.** `Root` lives in `source/game`. %s read zero because they "
+               "are not granted `game` and therefore *cannot see it* -- that is a consequence of the "
+               "grant list, not a property anyone earned. The render campaign's L1 sovereignty is a "
+               "different and narrower claim: an *internal* split of `source/application` that no "
+               "compiler checks and `layering-lint.py` does." % ", ".join("`%s`" % d for d in zeros))
+    out.append("")
+    out.append("| directory | files reading Root | references |")
+    out.append("|:----------|-------------------:|-----------:|")
+    for d, v in sorted(vals, key=lambda kv: -kv[1]):
+        out.append("| `%s` | %d | %d |" % (d, m["reach"][d][0], v))
+    return "\n".join(out)
+
+
+def d_crosscut(m):
+    """7. Cross-cutting subsystems."""
+    cc = m["crosscut"]
+    out = ["```mermaid", "flowchart TB"]
+    for tier, ds in TIERS:
+        present = [d for d in ds if d in m["sizes"] and m["sizes"][d][0]]
+        if not present:
+            continue
+        out.append('  subgraph %s["%s"]' % (tier.split()[0], tier))
+        out.append("    direction LR")
+        for d in present:
+            out.append("    %s" % d)
+        out.append("  end")
+    elided = 0
+    for i, (name, _pat, _why) in enumerate(CROSS_CUTTING):
+        per = cc.get(name, {})
+        out.append('  X%d{{"%s"}}' % (i, name))
+        for d, n in sorted(per.items(), key=lambda kv: -kv[1]):
+            if n >= 2:
+                out.append("  X%d -.->|%d| %s" % (i, n, d))
+            else:
+                elided += 1
+    out.append("  classDef cc fill:#3a2d5c,stroke:#7b5ea7,color:#e8e0f5")
+    out.append("  class %s cc" % ",".join("X%d" % i for i in range(len(CROSS_CUTTING))))
+    out.append("```")
+    out.append("")
+    out.append("Edge labels are files naming the concern. Single-file touches are elided (%d of them) "
+               "to keep the picture legible." % elided)
+    out.append("")
+    out.append("| concern | files | directories | tiers | why it has no home |")
+    out.append("|:--------|------:|------------:|------:|:-------------------|")
+    for name, _pat, why in CROSS_CUTTING:
+        per = cc.get(name, {})
+        tiers = {TIER_OF[d] for d in per}
+        out.append("| **%s** | %d | %d | %d of %d | %s |"
+                   % (name, sum(per.values()), len(per), len(tiers), len(TIERS), why))
+    return "\n".join(out)
+
+
+def d_taxonomy(m):
+    """8. The six top-level system parts."""
+    parts = m["parts"]
+    out = ["```mermaid", "mindmap", "  root((OpenStarbound))"]
+    for name, where, _why in TOP_LEVEL:
+        out.append("    %s" % name)
+        out.append("      %s" % where)
+        for leaf in parts.get(name, []):
+            out.append("      %s" % leaf)
+    out.append("```")
+    out.append("")
+    out.append("A mindmap because this genuinely is a tree: six independent children of one root with "
+               "no cross-links. Five of the six are invisible to any tool that only reads `source/`.")
+    return "\n".join(out)
+
+
+def d_renderclasses(m):
+    """9. Render layers and the one inheritance edge that crosses a library."""
+    classes, inherits, _rep, _layer_of, _homes = m["render"]
+    edges, over = m["classedges"]
+    ns = re.compile(r"[^A-Za-z0-9]+")
+
+    # Only classes that participate in a drawn edge are placed. L1 alone declares thirty-one types, most
+    # of them vertex PODs and ring buffers with no relationship to show, and drawing them turns the one
+    # informative picture in this document into a wall. What is omitted is counted and listed below the
+    # diagram rather than dropped silently.
+    inherits = sorted(set(inherits))
+    involved = ({c for c, _p, _l, _h in inherits} | {p for _c, p, _l, _h in inherits}
+                | {a for a, _b in edges} | {b for _a, b in edges})
+    omitted = []
+    placed = set()
+    out = ["```mermaid", "classDiagram", "  direction LR"]
+    for name, _purpose, _files in RENDER_LAYERS:
+        members = sorted(classes.get(name, ()))
+        shown = [c for c in members if c in involved]
+        omitted += [(name, c) for c in members if c not in involved]
+        if not shown:
+            continue
+        out.append("  namespace %s {" % ns.sub("_", name).strip("_"))
+        for c in shown:
+            out.append("    class %s" % c)
+            placed.add(c)
+        out.append("  }")
+
+    # Bases declared OUTSIDE the render tree, grouped by the library that owns them. This grouping is
+    # the finding: anything appearing under star_game is a render class inheriting a simulation class.
+    foreign = {}
+    for _c, parent, _l, home in inherits:
+        if parent not in placed:
+            foreign.setdefault(home, set()).add(parent)
+    for home in sorted(foreign):
+        out.append("  namespace star_%s {" % home)
+        for p in sorted(foreign[home]):
+            out.append("    class %s" % p)
+        out.append("  }")
+
+    for child, parent, _layer, _home in inherits:
+        out.append("  %s <|-- %s" % (parent, child))
+    for a, b in edges:
+        out.append("  %s ..> %s" % (a, b))
+    out.append("```")
+    out.append("")
+    out.append("`classDiagram` earns its place here and nowhere else in this document, because "
+               "inheritance is the actual relationship rather than a metaphor for one. `<|--` is "
+               "inheritance; `..>` is a compile-time dependency between render layers, drawn between "
+               "each file's representative class.")
+    if omitted:
+        by_layer = {}
+        for layer, c in omitted:
+            by_layer.setdefault(layer, []).append(c)
+        out.append("")
+        out.append("**%d declared types are not drawn** because they participate in no edge -- vertex "
+                   "PODs, parameter structs and ring buffers. They are listed rather than dropped: %s."
+                   % (len(omitted), "; ".join("%s: %s" % (l, ", ".join("`%s`" % c for c in sorted(cs)))
+                                              for l, cs in sorted(by_layer.items()))))
+    if over:
+        out.append("")
+        out.append("**%d cross-layer dependency edges are not drawn** (cap %d). The cap is stated "
+                   "rather than applied silently." % (over, MAX_CLASS_EDGES))
+    out.append("")
+    crossing = [(c, p, l, h) for c, p, l, h in inherits
+                if h not in ("application", "rendering", "external") and h not in FOUNDATION]
+    foundation = [(c, p, l, h) for c, p, l, h in inherits if h in FOUNDATION]
+    out.append("Every inheritance edge in the render tree, and where the base class lives:")
+    out.append("")
+    out.append("| child | inherits | child's layer | base declared in | verdict |")
+    out.append("|:------|:---------|:--------------|:-----------------|:--------|")
+    for row in inherits:
+        child, parent, layer, home = row
+        if row in crossing:
+            verdict = "**leaves the render subsystem for the simulation**"
+        elif row in foundation:
+            verdict = "foundation base -- intended use"
+        else:
+            verdict = "internal"
+        out.append("| `%s` | `%s` | %s | `star_%s` | %s |" % (child, parent, layer, home, verdict))
+    out.append("")
+    if crossing:
+        out.append("Of %d inheritance edges, %d stay inside the render libraries, %d take a base from "
+                   "a foundation library (`RefCounter` and friends -- that is what foundations are "
+                   "for), and **%d leaves the subsystem entirely**: %s. That last one is why "
+                   "`WorldPass` cannot finish its input DTO and why the client has no headless "
+                   "expression -- a render class whose base is a simulation class cannot be "
+                   "compiled without the simulation."
+                   % (len(inherits), len(inherits) - len(crossing) - len(foundation), len(foundation),
+                      len(crossing),
+                      ", ".join("`%s : %s` (`star_%s`)" % (c, p, h) for c, p, _l, h in crossing)))
+    else:
+        out.append("**No inheritance edge leaves the render libraries.**")
+    return "\n".join(out)
+
+
+DIAGRAMS = [
+    ("lattice", d_lattice),
+    ("grantuse", d_grantuse),
+    ("sankey", d_sankey),
+    ("shells", d_shells),
+    ("mass", d_mass),
+    ("reach", d_reach),
+    ("crosscut", d_crosscut),
+    ("taxonomy", d_taxonomy),
+    ("renderclasses", d_renderclasses),
+]
+
+
+# ---------------------------------------------------------------------------------------------------
+# DRIVER
+# ---------------------------------------------------------------------------------------------------
+
+def measure():
+    owner, dupes = owner_map()
+    render = render_classes()
+    return {
+        "grants": grants(), "uses": uses(), "sizes": sizes(), "reach": reach(),
+        "binaries": binaries(), "crosscut": crosscut(), "parts": system_parts(),
+        "render": render, "classedges": cross_layer_edges(render[2], render[3]),
+        "owner": owner, "dupes": dupes,
+    }
+
+
+def blocks(m):
+    return [(key, fn(m)) for key, fn in DIAGRAMS]
+
+
+def inject(arg, m, check_only):
+    path = pathlib.Path(arg)
+    path = path if path.is_absolute() else REPO / path
+    text = read(path)
+    if not text:
+        print("arch-graph: cannot read %s" % arg)
+        return 2
+    new = text
+    for key, block in blocks(m):
+        begin, end = MARK_BEGIN % key, MARK_END % key
+        if begin not in new or end not in new:
+            print("arch-graph: %s has no marker pair for '%s'" % (arg, key))
+            return 2
+        head, rest = new.split(begin, 1)
+        _old, tail = rest.split(end, 1)
+        new = "%s%s\n%s\n%s%s" % (head, begin, block, end, tail)
+    if check_only:
+        if new != text:
+            stale = [k for k, b in blocks(m) if b not in text]
+            print("%s: generated blocks are STALE (%s) -- rerun "
+                  "`scripts/arch-graph.py --inject %s`" % (arg, ", ".join(stale) or "whitespace", arg))
+            return 1
+        print("%s: all %d generated blocks match the tree" % (arg, len(DIAGRAMS)))
+        return 0
+    path.write_text(new, encoding="utf-8", newline="\n")
+    print("%s: %d generated blocks updated" % (arg, len(DIAGRAMS)))
+    return 0
+
+
+def main(argv):
+    m = measure()
+    if m["dupes"]:
+        print("arch-graph: AMBIGUOUS HEADER BASENAMES -- include attribution is unreliable:")
+        for f, ds in sorted(m["dupes"].items()):
+            print("  %s in %s" % (f, ", ".join(ds)))
+        return 2
+    bad = assert_tiers_match_grants(m["grants"])
+    if bad:
+        print("arch-graph: TIER TABLE CONTRADICTS THE GRANTS -- fix TIERS, do not draw this:")
+        for b in bad:
+            print("  %s" % b)
+        return 2
+    if argv and argv[0] == "--facts":
+        print(json.dumps({
+            "grants": {k: sorted(v) for k, v in m["grants"].items()},
+            "uses": {"%s->%s" % k: {"includes": v[0], "files": v[1]} for k, v in m["uses"].items()},
+            "sizes": {k: {"files": v[0], "lines": v[1]} for k, v in m["sizes"].items()},
+            "reach": {k: {"files": v[0], "refs": v[1]} for k, v in m["reach"].items()},
+            "binaries": {k: sorted(v) for k, v in m["binaries"].items()},
+            "crosscut": m["crosscut"], "parts": m["parts"],
+        }, indent=2, sort_keys=True))
+        return 0
+    if argv and argv[0] in ("--inject", "--check"):
+        if len(argv) < 2:
+            print("arch-graph: %s needs a file" % argv[0])
+            return 2
+        return inject(argv[1], m, argv[0] == "--check")
+    for key, block in blocks(m):
+        print("### %s\n" % key)
+        print(block)
+        print()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
