@@ -53,6 +53,13 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 
+# EVERY read_text/write_text BELOW PINS encoding="utf-8", AND THAT IS NOT DEFENSIVE STYLE (#192).
+# Python's text mode defaults to the LOCALE encoding, which is cp1252 on the windows-latest CI image. The
+# architecture doc is full of em dashes; there they decoded as mojibake, so --check compared a freshly
+# generated block against a corrupted copy of itself, and render_docs_fresh failed on that job and only
+# that job -- a gate reporting doc drift that did not exist. The write pins newline="\n" as well, so
+# --inject run on Windows cannot rewrite the marker block with CRLF and manufacture the drift for real.
+
 # THE LAYER TABLE IS THE ARCHITECTURAL STATEMENT. Everything else here is arithmetic over it. A file
 # that matches nothing is reported as UNASSIGNED rather than silently bucketed -- an unassigned render
 # file is either a layering question nobody has answered or a new file whose author had no map.
@@ -126,7 +133,7 @@ def code_only(text):
 
 def lines(p):
     try:
-        return len(p.read_text(errors="replace").splitlines())
+        return len(p.read_text(encoding="utf-8", errors="replace").splitlines())
     except OSError:
         return 0
 
@@ -145,7 +152,7 @@ def ceilings():
     p = REPO / "source/test/CMakeLists.txt"
     if not p.exists():
         return {}
-    return {pathlib.Path(f).name: int(n) for f, n in CEILING.findall(p.read_text(errors="replace"))}
+    return {pathlib.Path(f).name: int(n) for f, n in CEILING.findall(p.read_text(encoding="utf-8", errors="replace"))}
 
 
 def residual_block(report, unassigned):
@@ -251,7 +258,7 @@ def function_extent(rel, signature):
     p = REPO / rel
     if not p.exists():
         return None
-    lines = p.read_text(errors="replace").splitlines()
+    lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
     start = next((i for i, l in enumerate(lines) if l.startswith(signature)), None)
     if start is None:
         return None
@@ -313,7 +320,7 @@ def doc_path(arg):
 
 def splice(path, block):
     """Return (old_block, new_text) for FILE, or raise if the markers are absent/malformed."""
-    text = path.read_text(errors="replace")
+    text = path.read_text(encoding="utf-8", errors="replace")
     i, j = text.find(MARK_BEGIN), text.find(MARK_END)
     if i < 0 or j < 0 or j < i:
         raise SystemExit(f"{path}: markers not found. Add a block delimited by:\n"
@@ -346,7 +353,7 @@ def main():
             if not p.exists():
                 entries.append({"file": rel, "lines": 0, "missing": True})
                 continue
-            raw = p.read_text(errors="replace")
+            raw = p.read_text(encoding="utf-8", errors="replace")
             text = code_only(raw)
             deps = sorted({owner[i.split("/")[-1]] for i in INCLUDE.findall(text)
                            if i.split("/")[-1] in owner and owner[i.split("/")[-1]] != name})
@@ -391,7 +398,7 @@ def main():
         if old == block:
             print(f"{args.inject}: already current")
             return 0
-        path.write_text(new)
+        path.write_text(new, encoding="utf-8", newline="\n")
         print(f"{args.inject}: regenerated")
         return 0
 

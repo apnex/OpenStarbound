@@ -30,15 +30,25 @@ namespace {
 
 // A control-flow throw+catch+discard must not pay for backtrace RESOLUTION.
 //
-// THIS USED TO BE AN ABSOLUTE BOUND -- `EXPECT_LT(usPer, 15.0)` -- and 15.0 was measured on one Linux
-// workstation. On windows-latest it read 491.03 and failed core_tests on every CI run (#194). The
-// regression was not present there; the number simply does not travel. Windows captures a raw backtrace
-// through dbghelp, which is globally serialised and orders of magnitude slower than Linux's fast unwind,
-// so an absolute microsecond ceiling measures THE MACHINE, not the property under test.
+// THIS TOOK TWO GOES, AND THE SECOND ONE IS THE INTERESTING FAILURE.
 //
-// The property we actually care about is comparative: discarding must be far cheaper than resolving. A
-// ratio cancels the machine out. Same lesson as the render oracles -- a differential comparison survives
-// a change of hardware, an absolute threshold does not.
+// It began as an absolute bound -- `EXPECT_LT(usPer, 15.0)` -- measured on one Linux workstation. On
+// windows-latest it read 491.03 and failed core_tests on every run (#194); the regression was not
+// present, the number simply does not travel. So it became a RATIO, on the reasoning that resolution
+// dwarfs capture and a ratio cancels the machine out. Windows then failed the other way: resolve 755.97
+// vs discard 496.48, a ratio of 1.5.
+//
+// The ratio was not mis-tuned. It was pointed at code that does not exist there. StarException has TWO
+// implementations -- StarException_unix.cpp captures with cpptrace::generate_raw_trace() and resolves
+// lazily in the print lambda, which is the fix this test guards; StarException_windows.cpp uses
+// captureStack() (StackWalk64) in the ctor and SymFromAddr at print time, and has ALWAYS been lazy. It
+// never had the bug. Worse for a timing test, its costs are inverted: the stack walk dominates and
+// symbolisation adds only ~50%, so no threshold can separate "captured" from "captured and resolved"
+// above the noise of a shared runner.
+//
+// So the assertion is scoped to the implementation it guards, and on every other platform the test
+// GTEST_SKIPs with a reason. Skipping is the honest state here and it is REPORTED as skipped -- what
+// this project does not tolerate is an assertion that silently evaluates to nothing.
 TEST(ExceptionPerf, ThrowCatchDiscardDoesNotResolve) {
   volatile size_t sink = 0;
 
@@ -65,6 +75,13 @@ TEST(ExceptionPerf, ThrowCatchDiscardDoesNotResolve) {
   std::printf("[ExceptionPerf] discard %.2f us (N=%d), resolve %.2f us (N=%d), resolve/discard = %.1fx\n",
               discardUs, kDiscard, resolveUs, kResolve, resolveUs / discardUs);
 
+#ifndef STAR_SYSTEM_FAMILY_UNIX
+  GTEST_SKIP() << "guards the cpptrace lazy-resolve path in StarException_unix.cpp, which is not the "
+                  "implementation compiled here. StarException_windows.cpp captures with StackWalk64 in "
+                  "the ctor and symbolises at print time -- always lazy, never had this bug -- and its "
+                  "capture cost dominates symbolisation, so no timing ratio separates the two states "
+                  "above runner noise. Numbers above are informational.";
+#else
   // WHERE 4.0 COMES FROM -- BOTH ENDS MEASURED, not reasoned about (this workstation, 2026-07-26):
   //   fixed (lazy ctor):                   1.90us vs 605.88us  =  318.2x   passes, with 80x to spare
   //   injected (discard body resolves):  206.26us vs 601.88us  =    2.9x   fails, as it must
@@ -77,6 +94,7 @@ TEST(ExceptionPerf, ThrowCatchDiscardDoesNotResolve) {
   EXPECT_GT(resolveUs, discardUs * 4.0)
       << "throw+catch+discard costs within 4x of throw+catch+resolve. That is what it costs when "
          "StarException resolves its backtrace eagerly in the constructor instead of lazily on demand.";
+#endif
 }
 
 // Lazy capture must NOT lose the backtrace: a full-stacktrace print still resolves to frames.
