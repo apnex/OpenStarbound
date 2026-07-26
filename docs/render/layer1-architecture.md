@@ -4,6 +4,12 @@
 > faces; it is a surface, not a framebuffer). This doc uses the current name `GlSurface`; historical/upstream
 > docs retain `GlFrameBuffer`.
 
+> **Where this sits:** start from the [📇 index](README.md). This document is canonical for the L1 substrate —
+> everything *behind* the abstract `Renderer` seam. The L2 primitive and the L3 passes that sit *on* that seam
+> are described by [`architecture-3-target-state.md`](architecture-3-target-state.md), whose Air-Gap table is
+> generated from the tree and CI-gated. The two chains were written six weeks apart and referenced each other
+> zero times until 2026-07-26; where they disagree, the instruments win — see [the audit](axiom-alignment-audit.md).
+
 > **This is the canonical definition of render Layer 1.** Any document that refers to "render Layer 1" —
 > [`architecture-assessment.md`](architecture-assessment.md), the unified render-surface subsystem spec
 > ([`../superpowers/specs/2026-07-14-render-surface-subsystem-design.md`](../superpowers/specs/2026-07-14-render-surface-subsystem-design.md)),

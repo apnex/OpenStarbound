@@ -55,6 +55,38 @@ coming second consumer and `LightmapPass`'s `lightingRef` a latent third (Earned
 
 ## 3. The Air-Gap contracts — the buildability spine
 
+> ### ⚠ CORRECTION, 2026-07-26 — read this before implementing anything below
+>
+> This section is the **authority document** for the Air-Gap contracts, and it is now partly wrong. It is
+> corrected here rather than rewritten, so the record of what was approved survives beside what shipped.
+> Guardrail **G10** (`docs/render/axiom-alignment-audit.md`): when an implementation overrides an approved
+> prescription on evidence, the authority document is corrected in the same change. That did not happen at
+> the time — this is the repair, a week late, and the delay is the finding.
+>
+> **RETRACTED — "resolved once and handed to each pass … makes passes constructible in isolation."**
+> Resolving config at *construction* would ship a regression. All eight backdrop knobs are live-tunable
+> mid-session (`/rendercache envrefresh`, `/rendercache parallaxrefresh`, the antiAliasing client option
+> polled every frame); freezing them at construction silently breaks the console levers this campaign uses
+> to A/B its own work. **What shipped is a per-frame params struct resolved at the boundary** —
+> `BackdropParams`, then `LightmapParams` — which has the same Air-Gap property, the pass being a pure
+> function of its parameters, without the regression. See `StarBackdropPass.hpp`.
+>
+> **WRONG WHEN WRITTEN — "per-pass telemetry handles … (LightmapPass already does — the model)."**
+> LightmapPass did not. It used function-local statics, as did every other pass; there was no model to
+> copy. The contract was also scored backwards in review: `WorldPass` was marked deficient while holding
+> the *strongest* design in the tree — its descriptor travels with `begin()`, making an undeclared metric
+> unrepresentable, which is better than handle-ownership as written here. As of `472fd263` `BackdropPass`
+> genuinely owns its six counters, registered at construction — not to satisfy this sentence, but because
+> conditional lazy registration made ABSENT indistinguishable from ZERO.
+>
+> **AFFIRMED — "const-ref views / lightweight slices, never per-frame copies."** This was right, and the
+> implementation honoured it: `BackdropPass::Input` is two const references, `WorldPass::Input` six
+> references passed by value. No per-frame copy was added anywhere.
+>
+> **STILL UNBUILT:** `LightingInput` as a named type (LightmapPass satisfies it in substance, with sliced
+> `ImageView`/`List` parameters), and `WorldPass` shedding `StarWorldRenderData.hpp` — blocked on
+> `TilePainter` and on `EntityDrawables` being defined *inside* that header (#191).
+
 The three blockers become interfaces, and the deepest one becomes an explicit value:
 
 - **Per-pass input DTOs** — `LightingInput` / `BackdropInput` / `WorldInput`, sliced from `WorldRenderData` by the

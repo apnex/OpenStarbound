@@ -26,6 +26,11 @@
 
 **Panel 3 of 3:** [🕰️ vanilla baseline](architecture-1-vanilla-baseline.md) → [🧱 accreted monolith](architecture-2-accreted-monolith.md) → 🏗️ decomposed target (here).
 
+**Where this sits:** start from the [📇 index](README.md). The L1 substrate beneath these passes has its own
+canonical document, [`layer1-architecture.md`](layer1-architecture.md) — this file stops at the `Renderer`
+seam and does not describe what is behind it. What is *wrong* with the current state, and which guardrails
+constrain the next change, is in the [🔍 axiom audit](axiom-alignment-audit.md).
+
 ---
 
 ## View 1 — Layered structure & ownership
