@@ -57,7 +57,12 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 # that matches nothing is reported as UNASSIGNED rather than silently bucketed -- an unassigned render
 # file is either a layering question nobody has answered or a new file whose author had no map.
 LAYERS = [
-    ("L1 substrate", "the GL-owning layer: surfaces, texture primitives, the OpenGL backend", [
+    # The abstract Renderer interface belongs here and was MISSING until 2026-07-26. Every architecture
+    # doc defines L1 as "abstract Renderer interface / OpenGlRenderer" -- the interface IS the seam the
+    # whole decomposition is measured against, and layer1_layering enforces that L2 never names it. Its
+    # absence is why the published artifacts' L1 total and this instrument's disagreed by exactly 340.
+    ("L1 substrate", "the GL-owning layer: the abstract seam, surfaces, texture primitives, the backend", [
+        "source/application/StarRenderer.hpp", "source/application/StarRenderer.cpp",
         "source/application/StarGlRenderSurface.hpp", "source/application/StarGlRenderSurface.cpp",
         "source/application/StarGlTexturePrimitives.hpp", "source/application/StarGlTexturePrimitives.cpp",
         "source/application/StarRenderer_opengl.hpp", "source/application/StarRenderer_opengl.cpp",
@@ -173,6 +178,114 @@ def residual_block(report, unassigned):
     return "\n".join(out)
 
 
+# ---------------------------------------------------------------------------------------------------
+# ARTIFACT FACTS. The published artifacts (claude.ai) quote per-module hpp/impl/total line counts and
+# group percentages. They CANNOT run this script and no gate reaches them, so on 2026-07-26 all four
+# current-state panels were found stale -- every number CORRECT when written and decayed since (verified
+# by re-measuring their own cited commit 872244f8: 291/116/411/74, all exact). Understated growth,
+# overstated completion.
+#
+# `--facts` is the answer that is actually available off-repo: a refresh becomes "run this, paste, diff"
+# instead of "retype from memory". It emits provenance (commit + commit date, never wall-clock) so a
+# reader can see the vintage without trusting the prose.
+ARTIFACT_GROUPS = [
+    ("Orchestrator", [
+        ("WorldPainter", "source/rendering/StarWorldPainter.hpp", "source/rendering/StarWorldPainter.cpp"),
+    ]),
+    ("L3 passes", [
+        ("BackdropPass", "source/rendering/StarBackdropPass.hpp", "source/rendering/StarBackdropPass.cpp"),
+        ("LightmapPass (`GpuLightmapPass`)", "source/rendering/StarGpuLightmapPass.hpp",
+         "source/rendering/StarGpuLightmapPass.cpp"),
+        ("WorldPass", "source/rendering/StarWorldPass.hpp", "source/rendering/StarWorldPass.cpp"),
+    ]),
+    # RetainedSurface is header-only; its "impl" column is the off-GPU test suite, as the artifact says.
+    ("L2 primitive", [
+        ("RetainedSurface", "source/rendering/StarRetainedSurface.hpp", "source/test/retained_surface_test.cpp"),
+    ]),
+    ("Draw painters", [
+        ("TextPainter", "source/rendering/StarTextPainter.hpp", "source/rendering/StarTextPainter.cpp"),
+        ("EnvironmentPainter", "source/rendering/StarEnvironmentPainter.hpp",
+         "source/rendering/StarEnvironmentPainter.cpp"),
+        ("TilePainter", "source/rendering/StarTilePainter.hpp", "source/rendering/StarTilePainter.cpp"),
+        ("DrawablePainter", "source/rendering/StarDrawablePainter.hpp", "source/rendering/StarDrawablePainter.cpp"),
+    ]),
+    ("L1 substrate", [
+        ("OpenGlRenderer", "source/application/StarRenderer_opengl.hpp",
+         "source/application/StarRenderer_opengl.cpp"),
+        ("`StarGlRenderSurface` — GL* structs", "source/application/StarGlRenderSurface.hpp",
+         "source/application/StarGlRenderSurface.cpp"),
+        ("Renderer interface", "source/application/StarRenderer.hpp", "source/application/StarRenderer.cpp"),
+        ("GlTexturePrimitives", "source/application/StarGlTexturePrimitives.hpp",
+         "source/application/StarGlTexturePrimitives.cpp"),
+    ]),
+]
+
+# Function-level extents the artifacts cite. Brace-counted from column 0 -- style-dependent on purpose:
+# this codebase closes top-level functions with a bare `}`, and a real parser would be a lie about how
+# much rigour is here. If the style ever changes this returns None rather than a wrong number.
+ARTIFACT_FUNCTIONS = [
+    ("WorldPainter::render()", "source/rendering/StarWorldPainter.cpp", "void WorldPainter::render("),
+]
+
+
+def function_extent(rel, signature):
+    p = REPO / rel
+    if not p.exists():
+        return None
+    lines = p.read_text(errors="replace").splitlines()
+    start = next((i for i, l in enumerate(lines) if l.startswith(signature)), None)
+    if start is None:
+        return None
+    for j in range(start + 1, len(lines)):
+        if lines[j] == "}":
+            return {"file": rel, "first": start + 1, "last": j + 1, "lines": j - start + 1}
+    return None
+
+
+def provenance():
+    def git(*a):
+        try:
+            r = subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True)
+            return r.stdout.strip() if r.returncode == 0 else "?"
+        except OSError:
+            return "?"
+    # Committer date, not wall-clock: two runs at the same commit must produce the same bytes.
+    return git("rev-parse", "--short", "HEAD"), git("log", "-1", "--format=%cs")
+
+
+def facts_block(caps):
+    sha, date = provenance()
+    out = [f"<!-- generated by scripts/render-inventory.py --facts at {sha} ({date}) -->", ""]
+    out.append(f"**Measured at `{sha}` ({date})** by `scripts/render-inventory.py --facts`. "
+               "Every number below is generated; none is typed by hand.")
+    out.append("")
+    out.append("| Group | Module | `.hpp` | impl | **total** |")
+    out.append("|:------|:-------|-------:|-----:|----------:|")
+    grand, group_totals = 0, []
+    for group, mods in ARTIFACT_GROUPS:
+        gt, first = 0, True
+        for name, hpp, impl in mods:
+            h, i = lines(REPO / hpp), lines(REPO / impl)
+            gt += h + i
+            out.append(f"| {group if first else ''} | {name} | {h} | {i} | **{h + i}** |")
+            first = False
+        group_totals.append((group, gt))
+        grand += gt
+    out.append(f"| **total** | | | | **{grand}** |")
+    out.append("")
+    out.append("Distribution: " + " · ".join(
+        f"{g} **{t * 100 // grand}%** ({t:,})" for g, t in group_totals))
+    out.append("")
+    for label, rel, sig in ARTIFACT_FUNCTIONS:
+        e = function_extent(rel, sig)
+        out.append(f"`{label}` — **{e['lines']} lines** ({rel}:{e['first']}-{e['last']})" if e
+                   else f"`{label}` — UNMEASURABLE (signature not found; style changed?)")
+    out.append("")
+    out.append("Air-Gap residual — `Root::singleton()` reads, and which are metered by `render_layering`:")
+    out.append("")
+    return out, grand
+
+
 def doc_path(arg):
     """Resolve relative to the REPO, not the cwd -- ctest runs this from the build directory."""
     p = pathlib.Path(arg)
@@ -194,6 +307,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--residual", action="store_true", help="print just the generated block")
+    ap.add_argument("--facts", action="store_true",
+                    help="per-module line counts + provenance, for refreshing the published artifacts")
     ap.add_argument("--inject", metavar="FILE", help="rewrite the generated block inside FILE")
     ap.add_argument("--check", metavar="FILE", help="exit 1 if FILE's block disagrees with the tree")
     args = ap.parse_args()
@@ -242,6 +357,12 @@ def main():
     block = residual_block(report, unassigned)
 
     if args.residual:
+        print(block)
+        return 0
+
+    if args.facts:
+        head, _ = facts_block(ceilings())
+        print("\n".join(head))
         print(block)
         return 0
 
