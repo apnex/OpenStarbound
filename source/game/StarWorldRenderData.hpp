@@ -14,11 +14,9 @@
 
 namespace Star {
 
-struct EntityDrawables {
-  EntityHighlightEffect highlightEffect;
-  Map<EntityRenderLayer, List<Drawable>> layers;
-};
-
+// EntityDrawables MOVED to StarEntityRenderingTypes.hpp (#191) -- which this header already includes, so
+// every existing consumer of WorldRenderData.hpp still sees it and no include had to change. See the note
+// at its new home for why the location matters.
 
 struct WorldRenderData {
   void clear();

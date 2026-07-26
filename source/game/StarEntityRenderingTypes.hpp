@@ -83,4 +83,18 @@ struct EntityHighlightEffect {
   float level = 0.0f;
 };
 
+// MOVED HERE FROM StarWorldRenderData.hpp (#191). It is built from exactly the two things this header
+// already declares -- EntityHighlightEffect above and EntityRenderLayer at the top -- so this is where it
+// always belonged; it sat in WorldRenderData.hpp only because that is where its first consumer lived.
+//
+// THE LOCATION IS LOAD-BEARING, not tidiness. WorldRenderData.hpp is the fat header the L3 decomposition
+// exists to escape: 35 members and eleven transitive includes. While EntityDrawables was DEFINED inside it,
+// any signature naming EntityDrawables dragged the whole thing in -- so WorldPass::Input could not shed it
+// even in principle, and contract (1) was unfinishable for a reason that had nothing to do with WorldPass.
+// A type a sliced interface must name cannot live inside the header the slice exists to avoid.
+struct EntityDrawables {
+  EntityHighlightEffect highlightEffect;
+  Map<EntityRenderLayer, List<Drawable>> layers;
+};
+
 }
