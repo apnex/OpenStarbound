@@ -103,7 +103,7 @@ void BackdropPass::composeEnvStandalone(Vec2U const& size) {
   m_renderer->switchEffectConfig("world");
 }
 
-void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData,
+void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     EnvironmentPainter& envPainter, BackdropParams const& params, bool ablateEnv) {
   // A renderer config reload (setMainHDR / setMultiSampling -- ClientApplication polls the hdr and
   // antiAliasing client options EVERY frame) destroys and re-creates every framebuffer with UNDEFINED
@@ -175,15 +175,15 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   // make the oracle lie. Draws into whatever render target / effect is currently bound.
   auto drawEnv = [&]() {
     if (ablateEnv) return;
-    envPainter.renderStars(starAndDebrisRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
-    envPainter.renderDebrisFields(starAndDebrisRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
-    if (renderData.skyRenderData.type != SkyType::Atmosphereless)
-      envPainter.renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
-    envPainter.renderPlanetHorizon(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
-    envPainter.renderSky(Vec2F(camera.screenSize()), renderData.skyRenderData);
-    envPainter.renderFrontOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
-    if (renderData.skyRenderData.type == SkyType::Atmosphereless)
-      envPainter.renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), renderData.skyRenderData);
+    envPainter.renderStars(starAndDebrisRatio, Vec2F(camera.screenSize()), in.sky);
+    envPainter.renderDebrisFields(starAndDebrisRatio, Vec2F(camera.screenSize()), in.sky);
+    if (in.sky.type != SkyType::Atmosphereless)
+      envPainter.renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), in.sky);
+    envPainter.renderPlanetHorizon(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), in.sky);
+    envPainter.renderSky(Vec2F(camera.screenSize()), in.sky);
+    envPainter.renderFrontOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), in.sky);
+    if (in.sky.type == SkyType::Atmosphereless)
+      envPainter.renderBackOrbiters(orbiterAndPlanetRatio, Vec2F(camera.screenSize()), in.sky);
   };
 
   // Direct path (byte-identical stock env->main) when the cache is effectively off: envRefreshInterval<=1
@@ -234,7 +234,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
     // Bound the on-screen STEP, exactly as the parallax cache bounds its own with parallaxMaxDriftStepPx.
     // Rotations convert to pixels via the view half-diagonal, which is the displacement of the
     // worst-placed star on screen, so the bound is conservative rather than average.
-    auto const& envSky = renderData.skyRenderData;
+    auto const& envSky = in.sky;
     float envHalfDiagPx = 0.5f * Vec2F(camera.screenSize()).magnitude();
     float envDriftPx = max(
         (envSky.starOffset - m_envCacheStarOffset).magnitude() * starAndDebrisRatio
@@ -354,7 +354,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // NOT be caught -- arm both (as the render gate does) to cover the merged compose. Non-merge: main holds the
       // composited env, so compare vs main also validates the passthrough compose into main.
       auto d = m_renderer->oracle().compare("envRef", m_envComposeDeferred ? m_envCache.name() : String("main"));
-      bool atmosphereless = renderData.skyRenderData.type == SkyType::Atmosphereless;
+      bool atmosphereless = in.sky.type == SkyType::Atmosphereless;
       if (d.first == NPos)
         Logger::info("[envoracle] SKIPPED (absent fbo or size mismatch) N={} atmosphereless={}", envRefreshInterval, atmosphereless);
       else if (d.first == 0)
@@ -365,7 +365,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
   }
 }
 
-void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& renderData,
+void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     EnvironmentPainter& envPainter, BackdropParams const& params, bool ablateParallax) {
   auto parallaxDelta = camera.worldGeometry().diff(camera.centerWorldPosition(), m_previousCameraCenter);
   if (parallaxDelta.magnitude() > 10)
@@ -383,7 +383,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // quantizing the premultiplied intermediate before the composite double-rounds the a*c term vs a single-pass
   // direct blend, so partial-alpha (soft-edge) texels differ by <=1 ULP (fp16) / <=1/255 (RGB8): sub-perceptual,
   // visually identical. N<=1 with the oracle off takes the direct (bit-exact) path. Live: /rendercache parallaxrefresh <N>.
-  bool parallaxHasLayers = !renderData.parallaxLayers.empty();
+  bool parallaxHasLayers = !in.parallaxLayers.empty();
   Vec2U parallaxScreenSize = m_renderer->screenSize();
   bool parallaxAntiAliasing = params.antiAliasing;
   float parallaxPixelRatio = camera.pixelRatio();
@@ -405,12 +405,12 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // (Do NOT derive this from a per-frame epochTime DELTA: skyRenderData only refreshes on WORLD TICKS, so
   //  that delta is exactly 0 on many render frames -- which made N flap between the static default and the
   //  real value every frame.)
-  double parallaxDayLength = (double)renderData.skyRenderData.dayLength;
+  double parallaxDayLength = (double)in.sky.dayLength;
   unsigned parallaxAutoN = 16;       // static content: only the very slow day/night tint needs refreshing
   float parallaxMaxDriftPx = 0.0f;   // fastest layer's screen-pixel drift per frame
   bool parallaxAnimated = false;
   if (parallaxDayLength > 0.0) {
-    for (auto const& layer : renderData.parallaxLayers) {
+    for (auto const& layer : in.parallaxLayers) {
       float sx = layer.speed[0] < 0.0f ? -layer.speed[0] : layer.speed[0];
       float sy = layer.speed[1] < 0.0f ? -layer.speed[1] : layer.speed[1];
       float s = sx > sy ? sx : sy;
@@ -438,7 +438,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   if (parallaxRefreshInterval != m_lastLoggedParallaxN) {
     Logger::info("[parallaxauto] N={} (cfg={}) driftPx/frame={:.5f} stepThresh={:.2f} layers={} animated={}",
       parallaxRefreshInterval, parallaxRefreshCfg, parallaxMaxDriftPx, parallaxMaxStepPx,
-      renderData.parallaxLayers.size(), parallaxAnimated);
+      in.parallaxLayers.size(), parallaxAnimated);
     m_lastLoggedParallaxN = parallaxRefreshInterval;
   }
 
@@ -446,7 +446,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   auto drawParallax = [&]() {
     if (ablateParallax) return;
     if (parallaxHasLayers)
-      envPainter.renderParallaxLayers(m_parallaxWorldPosition, camera, renderData.parallaxLayers, renderData.skyRenderData);
+      envPainter.renderParallaxLayers(m_parallaxWorldPosition, camera, in.parallaxLayers, in.sky);
   };
 
   // CONTENT KEY -- everything OTHER than camera/zoom/size that changes the drawn image, and none of which was
@@ -458,9 +458,9 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
   // (epochTime drift is deliberately absent: amortizing it over N frames is the whole point of the cache, and
   //  N is derived from it.)
   ContentKey parallaxKey;
-  parallaxKey.mix(renderData.skyRenderData.environmentLight.toRgb());
-  parallaxKey.mix(renderData.parallaxLayers.size());
-  for (auto const& layer : renderData.parallaxLayers)
+  parallaxKey.mix(in.sky.environmentLight.toRgb());
+  parallaxKey.mix(in.parallaxLayers.size());
+  for (auto const& layer : in.parallaxLayers)
     parallaxKey.mixQuantized(layer.alpha);
   uint64_t parallaxContentKey = parallaxKey.value();
 

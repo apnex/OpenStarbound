@@ -1,6 +1,11 @@
 #pragma once
 
-#include "StarWorldRenderData.hpp"
+// AIR-GAP CONTRACT (1). StarWorldRenderData.hpp is DELIBERATELY ABSENT: it drags in eleven headers --
+// StarEntity, StarWorldTiles, StarCellularLighting, StarThread, StarParticle and the rest of the sim
+// vocabulary -- and this pass needs exactly two of them. That is the whole buildability argument made
+// concrete: a pass that includes the fat struct cannot compile without the world it draws.
+#include "StarSkyRenderData.hpp"
+#include "StarParallax.hpp"
 #include "StarEnvironmentPainter.hpp"
 #include "StarRenderer.hpp"
 #include "StarRetainedSurface.hpp"
@@ -66,17 +71,32 @@ public:
   // hold world A's sky for up to N-1 frames. (Parallax self-heals via its content key + camera position.)
   void invalidateCaches() { m_envCache.invalidate(); m_parallaxCache.invalidate(); }
 
+  // AIR-GAP CONTRACT (1) FOR THIS PASS: a sliced const view of the frame, not the frame.
+  //
+  // BackdropPass reads exactly two members of WorldRenderData -- skyRenderData and parallaxLayers -- and
+  // writes neither. Measured, not assumed. Taking the fat struct therefore bought nothing but a
+  // dependency on the entire simulation snapshot, and the eleven headers behind it.
+  //
+  // A view of const references, not a copy: these are per-call, live for the duration of the call, and
+  // copying a parallax layer list per frame to satisfy a contract would be the contract costing more than
+  // the coupling it removes. Reference members make that explicit -- this type cannot be stored, and is
+  // not meant to be.
+  struct Input {
+    SkyRenderData const& sky;
+    List<ParallaxLayer> const& parallaxLayers;
+  };
+
   // Draw + compose the environment (sky/stars/debris/orbiters) into "main" via the envCache retained surface,
   // refreshing it on the envRefreshInterval cadence / on resize / zoom / FBO-generation drop. Records whether
   // the env cache refreshed this frame, for the parallax arbiter in renderParallax(). ablateEnv suppresses the
   // draws for the rendertest pass-ablation harness.
-  void renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData, EnvironmentPainter& envPainter,
+  void renderEnvironment(WorldCamera const& camera, Input const& in, EnvironmentPainter& envPainter,
       BackdropParams const& params, bool ablateEnv);
 
   // Draw + compose the parallax layers over "main" via the parallaxCache retained surface. Updates the parallax
   // world position from camera drift; applies the moving-camera bypass, the AA gate, content-adaptive N, and
   // the cross-surface arbiter. ablateParallax suppresses the draws for the rendertest harness.
-  void renderParallax(WorldCamera const& camera, WorldRenderData& renderData, EnvironmentPainter& envPainter,
+  void renderParallax(WorldCamera const& camera, Input const& in, EnvironmentPainter& envPainter,
       BackdropParams const& params, bool ablateParallax);
 
 private:

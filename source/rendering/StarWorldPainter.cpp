@@ -241,7 +241,11 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       (unsigned)backdropConfig->get("parallaxRefreshInterval", 0).optUInt().value(0),
       backdropConfig->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f)};
 
-  m_backdropPass->renderEnvironment(m_camera, renderData, *m_environmentPainter, backdropParams, ablateEnv);
+  // THE SLICE. The orchestrator holds the fat struct; the pass gets the two members it actually reads.
+  // Built at both call sites rather than hoisted to a local, so the slice is visible where the hand-off
+  // happens -- if a third member is ever needed, it has to be added HERE, in the open.
+  m_backdropPass->renderEnvironment(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
+      *m_environmentPainter, backdropParams, ablateEnv);
 
   m_renderer->flush();
 
@@ -296,7 +300,8 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   }
 
   // Parallax layers (env-cache-coupled backdrop: owns the parallax retained cache + the cross-surface arbiter).
-  m_backdropPass->renderParallax(m_camera, renderData, *m_environmentPainter, backdropParams, ablateParallax);
+  m_backdropPass->renderParallax(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
+      *m_environmentPainter, backdropParams, ablateParallax);
 
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
   m_worldPass->renderWorld(m_camera, renderData);
