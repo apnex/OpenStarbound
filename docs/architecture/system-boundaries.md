@@ -197,7 +197,49 @@ no directory anywhere and no owner — see §11.
 
 ---
 
-## 3. The grant lattice — what the compiler permits
+## 3. The engine on disk, and the grant lattice over it
+
+Everything below is about relationships between directories — edges, tiers, layers. This is the one
+view of plain **containment**, and it comes first because the rest of the document is unreadable
+without knowing what the directories actually are.
+
+<!-- BEGIN GENERATED: scripts/arch-graph.py#tree -->
+```
+source/
+├── extern/        T0    18 files   19,243 lines
+│   ├── curve25519/        vendored — excluded from every count here
+│   ├── fmt/               vendored — excluded from every count here
+│   └── lua/               vendored — excluded from every count here
+├── core/          T1   216 files   56,149 lines
+│   └── scripting/            2 files      258 lines
+├── base/          T2    29 files    7,380 lines
+│   └── scripting/            2 files       55 lines
+├── platform/      T2     4 files      142 lines
+├── application/   T2    25 files    7,372 lines
+│   └── discord/           vendored — excluded from every count here
+├── game/          T3   500 files  115,233 lines
+│   ├── interfaces/          47 files    3,123 lines
+│   ├── items/               30 files    4,070 lines
+│   ├── objects/             10 files    1,285 lines
+│   ├── scripting/           49 files    9,773 lines
+│   └── terrain/             26 files      980 lines
+├── rendering/     T4    23 files    4,413 lines
+├── windowing/     T4    61 files    9,646 lines
+├── frontend/      T4   102 files   16,861 lines
+├── client/        T5     4 files    2,383 lines
+└── server/        T5     7 files      783 lines
+```
+
+Depth two, directories only — a listing of 989 files would be noise. Counts are recursive and include subdirectories. **7 subdirectories hold real source and are easy to miss**: that is not hypothetical, `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. The vendored rows are marked because excluding them is a declared decision (`VENDORED_SUBTREES`), not an accident of not looking.
+<!-- END GENERATED: tree -->
+
+Two things are worth noticing before the edges. **`game/scripting` is the largest subdirectory in the
+tree** — the Lua binding surface, which §11 identifies as a subsystem with no home, is not a handful of
+files but a substantial body of code hiding one level down. And the tree is where the *shape* of the
+`game` problem becomes concrete: five subdirectories, all inside one grant list, none of them a
+boundary.
+
+### What the compiler permits
 
 This is test 1, drawn. Arrows are granted visibility, transitively reduced.
 

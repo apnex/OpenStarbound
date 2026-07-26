@@ -662,6 +662,59 @@ def heat_class(refs):
     return "blaze"
 
 
+def subdirs(d):
+    """Immediate subdirectories of source/<d> that hold source files, with counts, and whether the
+    recursive scan excludes them as vendored."""
+    root = REPO / "source" / d
+    if not root.is_dir():
+        return []
+    out = []
+    for sub in sorted(p for p in root.iterdir() if p.is_dir()):
+        rel = "%s/%s" % (d, sub.name)
+        vendored = any(rel == v or rel.startswith(v + "/") for v in VENDORED_SUBTREES)
+        files = lines = 0
+        for dirpath, _dn, fns in os.walk(sub):
+            for fn in fns:
+                if fn.endswith(SRC_EXT):
+                    files += 1
+                    lines += len(read(pathlib.Path(dirpath) / fn).splitlines())
+        if files:
+            out.append((sub.name, files, lines, vendored))
+    return out
+
+
+def d_tree(m):
+    """3. The engine's shape on disk -- the one view that shows containment rather than relationships."""
+    sizes_ = m["sizes"]
+    rows = []
+    for tier, ds in TIERS:
+        for d in ds:
+            if d not in sizes_:
+                continue
+            rows.append((d, tier.split()[0], sizes_[d], subdirs(d)))
+    out = ["```", "source/"]
+    for i, (d, tier, (files, nlines), subs) in enumerate(rows):
+        last_dir = i == len(rows) - 1
+        out.append("%s %-14s %-3s %4d files  %7s lines"
+                   % ("└──" if last_dir else "├──", d + "/", tier, files, "{:,}".format(nlines)))
+        stem = "    " if last_dir else "│   "
+        for j, (name, sf, sl, vendored) in enumerate(subs):
+            branch = "└──" if j == len(subs) - 1 else "├──"
+            note = ("%4d files  %7s lines" % (sf, "{:,}".format(sl)) if not vendored
+                    else "vendored — excluded from every count here")
+            out.append("%s%s %-14s     %s" % (stem, branch, name + "/", note))
+    out.append("```")
+    out.append("")
+    total_sub = sum(1 for _d, _t, _s, subs in rows for s in subs if not s[3])
+    out.append("Depth two, directories only — a listing of 989 files would be noise. Counts are "
+               "recursive and include subdirectories. **%d subdirectories hold real source and are easy "
+               "to miss**: that is not hypothetical, `arch-graph.py` walked past every one of them until "
+               "2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number "
+               "this document published. The vendored rows are marked because excluding them is a "
+               "declared decision (`VENDORED_SUBTREES`), not an accident of not looking." % total_sub)
+    return "\n".join(out)
+
+
 def d_lattice(m):
     """1. The grant lattice -- what the compiler permits, transitively reduced."""
     red = reduce_transitively(m["grants"])
@@ -1064,6 +1117,7 @@ def d_renderclasses(m):
 
 
 DIAGRAMS = [
+    ("tree", d_tree),
     ("lattice", d_lattice),
     ("grantuse", d_grantuse),
     ("shape", d_shape),
