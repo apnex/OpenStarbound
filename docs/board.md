@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 129, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 130, of which **38 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -49,8 +49,13 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
+- **1** — NOT YET INVESTIGATED
 
-**Unexplained ids: 0.**  ✅ Every dead id has a recorded meaning.
+**Unexplained ids: 1.**  ← investigate these; they are citations nobody can resolve.
+
+| Task | Unexplained ids |
+|-----:|:----------------|
+| [#199](#c29c1332-199) | `555c692b` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
@@ -204,7 +209,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
-| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost | `f7609bb7` | — |
+| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3056,39 +3061,48 @@ status: **pending**
 
 ```
 BLOCKER 2 -- DONE 2026-07-26, b2ac6c27. EntityDrawables moved from StarWorldRenderData.hpp to
-StarEntityRenderingTypes.hpp, where both of its dependencies (EntityHighlightEffect, EntityRenderLayer)
-already live and which WorldRenderData.hpp already includes -- so no include changed anywhere and every
-consumer still sees it. Verified: build clean, frozen gate PASS (89/20/207 oracles, DIFF=0, 0 GL errors,
-0 gl-state desyncs), NoAssets 6/6, game_tests 92/92.
+StarEntityRenderingTypes.hpp, where both its dependencies already live and which WorldRenderData.hpp already
+includes, so no include changed and every consumer still sees it.
 
-BLOCKER 1 -- RE-SCOPED. This task said "It uses THREE members of thirty-five ... Slicing it is a small
-change by member count." THE MEMBER COUNT IS RIGHT AND THE SIZING IS WRONG, found by trying:
+BLOCKER 1 -- SLICE FULLY CHARACTERISED 2026-07-26. The task's original sizing ("THREE members of thirty-five
+... a small change by member count") is wrong in three separate ways, all found by measuring:
 
-  TilePainter's bodies touch exactly 3 members directly (geometry, lightMap, lightMinPosition -- all
-  three DIFFERENT types, so a mis-wire is a compile error, not a silent pixel change).
+(1) THE UNION IS 5 MEMBERS, NOT 3, and it spans two classes in two libraries.
+      TileDrawer  (star_game)      reads geometry x4, tileMinPosition x2, tiles x4
+      TilePainter (star_rendering) reads geometry x3, lightMap x3, lightMinPosition x2
+      union = geometry, tileMinPosition, tiles, lightMap, lightMinPosition  (5 of 35)
+    TilePainter : public TileDrawer -- inheritance across the library boundary, not a call -- so the
+    inherited forEachRenderTile(WorldRenderData const&) is part of TilePainter's own surface.
 
-  BUT adjustLighting / setup / terrainChunkHash / liquidChunkHash all reach the rest of WorldRenderData
-  through TileDrawer::forEachRenderTile(WorldRenderData const&, ...) -- source/game/StarTileDrawer.hpp:39
-  -- which internally reads `tiles` and `tileMinPosition`. TilePainter cannot be sliced without slicing
-  TileDrawer, and TileDrawer is a GAME-layer class: 12 WorldRenderData references across
-  StarTileDrawer.hpp/.cpp, plus a third consumer in source/game/items/StarMaterialItem.cpp.
+(2) TILEDRAWER OWNS A WorldRenderData BY VALUE, and this is the real blocker.
+      WorldRenderData m_tempRenderData;  +  Mutex m_tempRenderDataMutex;
+      WorldRenderData& renderData();  MutexLocker lockRenderData();
+    StarMaterialItem.cpp:349-366 uses it as a SCRATCH BUFFER: locks it, sets geometry to WorldGeometry(3,3),
+    resizes/fills a 3x3 tiles array, writes one RenderTile, and calls produceTerrainDrawables to draw a
+    placement preview. A reference-slice cannot serve that -- scratch needs real STORAGE for `tiles`.
+    So the slice is really an EXTRACTION: a `TileRenderData` value type owning {geometry, tileMinPosition,
+    tiles} that WorldRenderData then CONTAINS rather than duplicates, plus a read-only view for the lighting
+    members. That is a type-level change to a game-layer struct with 35 members, not a signature rewrite.
 
-So the real change is: a slice type + TilePainter's 7 signatures + TileDrawer's 12 references + a
-game-side item consumer. That crosses out of the render subsystem into the game layer, which is a
-different decision from the one this task described, and it should be taken deliberately rather than
-smuggled in behind a header move.
+(3) IT IS NOT SAFE-BY-CONSTRUCTION, correcting an earlier claim of mine on this task.
+    TilePainter's three members have three distinct types, so a mis-wire there IS a compile error. The UNION
+    does not have that property: tileMinPosition and lightMinPosition are BOTH Vec2I. Swapping them compiles
+    silently and produces wrong tile lighting -- precisely the silent pixel change the missing world-body
+    oracle cannot catch (see the verification note below).
+    MITIGATION AVAILABLE: source/core/StarStrongTypedef.hpp already provides strong_typedef. Giving the two
+    positions distinct types converts the one silent failure mode into a compile error and restores
+    safe-by-construction. Do this FIRST if the slice proceeds.
 
-VERIFICATION GAP, now characterised rather than just named. The golden full-frame hash CANNOT serve as
-the world-body oracle: measured 2026-07-26, the same frozen scene with an IDENTICAL state fingerprint
-(epochTime, dayLength, camera, parallaxLayers=1, entities=213) produces a different hash every run --
-stable within a run, different across runs, and NOT ASLR (3 runs under setarch -R gave 3 distinct
-hashes). #153 already reached this conclusion by a different route ("in-process A/B of two code paths,
-not a golden hash"); this re-derived it with numbers. Making the world body reproducible means pinning
-entity animation phase at freeze, which is its own project.
+VERIFICATION GAP, measured not just named: the golden full-frame hash CANNOT serve as the world-body oracle.
+Same frozen scene, IDENTICAL state fingerprint (epochTime, dayLength, camera, parallaxLayers=1,
+entities=213), different hash every run -- stable within a run, different across runs, and NOT ASLR (3 runs
+under setarch -R gave 3 distinct hashes). #153 reached the same conclusion by another route. Making the world
+body reproducible means pinning entity animation phase at freeze; its own project.
 
-NEXT ACTION: decide blocker 1 as its own scoped piece of work -- slice TileDrawer + TilePainter together,
-or leave WorldPass holding the fat include and close contract (1) as partial-by-design. Do not attempt it
-under the current evidence without deciding which.
+NEXT ACTION: this is a game-layer type extraction, and the Director has deferred the game-layer refactor.
+Sequence it behind #199's boundary ratchet showing whether the boundary is actually degrading. If it does
+proceed: strong_typedef the two Vec2I positions first, extract TileRenderData second, re-point MaterialItem's
+scratch third, and only then slice the signatures.
 ```
 
 <a id="c29c1332-192"></a>
@@ -3235,48 +3249,53 @@ watches.
 
 <a id="c29c1332-199"></a>
 
-#### #199 — HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost
+#### #199 — HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort
 
 status: **pending**
 
 - `f7609bb7` game: the client can stop producing the view without stopping the world
 
 ```
-FILED 2026-07-26 from the boundary inventory (334bc38d, docs/render/game-render-boundary.md). Director's
-framing: "the game server is already headless -- it's the Client that doesn't have a headless version or a
-clean boundary to express one."
+STATUS 2026-07-26: Director scoped this OUT for now. "Building a full headless playable system is an
+engineering effort unto its own right." One piece landed; the rest is not started and is not queued.
 
-WHAT IS ALREADY TRUE, so nobody re-litigates it: starbound_server links star_extern + star_core + star_base
-+ star_game and no render library, CI ships it, and ZERO files in source/game name Renderer/OpenGl/GL_/glew.
-RenderCallback is an abstract sink the game layer defines and the render layer implements. The dependency
-arrow is correct. This task is NOT about making headless possible.
+WHAT LANDED (f7609bb7) -- and it is narrower than "option (b) shipped" suggests:
+  ClientRenderCallback gained `wantView`; the two VIEW sinks (addDrawable, addOverheadBar) discard when
+  false. WorldClient gained setHeadless()/headless() and skips the per-entity view assembly wholesale.
+  Verified on hardware: the scripted walk still moved the player deterministically (8226.800 -> 8236.483
+  -> 8237.573) while captured frames reported entityDrawables = 0.
 
-THE MEASURED BLOCKER (regenerate with scripts/boundary-inventory.py):
-  push-sink + frame-model vocabulary   213 across 51 files
-    of which in view-by-duty files     136  -- already view code in the sim library; wants MOVING
-    residue in genuine sim code         77  -- wants PAYING DOWN
-  appearance vocabulary (Drawable)     495  -- EXCLUDED from the ceiling on purpose; an entity describing
-                                              its own appearance is a legitimate game-layer duty
+WHAT IT DOES NOT DO, recorded because the commit title reads stronger than the change:
+  * It ran in the FULL client binary (links star_rendering / star_application / star_windowing /
+    star_frontend) with a LIVE GL context under SDL_VIDEO_DRIVER=offscreen. The log shows it creating
+    lightingGpu, lightingGpuB, envCache and parallaxCache. The renderer was alive throughout.
+  * `entities=0` meant zero ENTITY drawables. Tiles, backdrop, parallax and the lightmap all still
+    rendered.
+  * It used the harness save (harness/storage-perf/player/555c692b...), not the Director's live install,
+    and the "movement" was a frame-counted scripted walk, not interactive play.
+  * Lighting was deliberately NOT gated -- addLightSource is a view sink, but the lighting thread has its
+    own lifecycle and waitForLighting participates in frame timing.
 
-So the headless-client cost is ~77 references, not 708. The ratchet (boundary_ratchet, ceiling 213 in
-source/test/CMakeLists.txt) stops it growing while the decision is pending.
+THE VALUE THAT SURVIVES, independent of whether headless is ever finished: the finding that
+`entity->render(&callback)` is NOT a view function. It is the entity's per-frame EMIT, and RenderCallback
+carries two duties across six sinks -- addDrawable/addOverheadBar/addLightSource are VIEW, while
+addParticle is SIM, addAudio is AUDIO and addTilePreview is UI. Skipping the CALL changes the world;
+skipping the SINK does not. That is why the seam is at the sink, and it is the honest answer to "why does
+the client have no headless expression".
 
-THREE CANDIDATE SHAPES, undecided:
- (a) MOVE the view-by-duty files (TileDrawer, WorldRenderData, EntityRendering*, Drawable) into a
-     star_view object library that star_rendering links and starbound_server does not. Biggest structural
-     win; also the biggest change, and it is the full game-layer refactor the Director has deferred.
- (b) GATE the client's view production -- WorldClient stops building WorldRenderData when no renderer is
-     attached. Smallest change that actually yields a headless client, and it is what a bot/CI client
-     needs. Does not reduce the 213.
- (c) NULL-SINK -- keep everything, run the client with a RenderCallback implementation that discards.
-     Cheapest, proves the interface is honest, yields no compile-time or binary-size benefit.
+WHAT A REAL HEADLESS CLIENT WOULD ADDITIONALLY NEED (none started):
+  1. A starbound_headless target linking star_extern + star_core + star_base + star_game only, the way
+     starbound_server already does.
+  2. No GL context at all -- today it needs a working GL implementation even offscreen and would not start
+     on a GPU-less machine.
+  3. The rest of the view gated: tiles (the TileDrawer/TilePainter knot, #191), backdrop, parallax,
+     lighting.
+  4. A frame loop that does not assume a renderer -- ClientApplication drives everything through
+     Application::renderer().
 
-Lean: (b) first, because it delivers the capability and would give the SIM work a deterministic headless
-test rig it currently lacks (see #191's finding that the world body has no cross-run reproducible hash).
-(a) only if the ratchet shows the boundary is actually degrading.
-
-RELATED: #191 blocker 1 is the first concrete instance -- TilePainter (render) INHERITS from TileDrawer
-(game), so slicing it requires deciding (a) for at least that file.
+STILL LIVE AND CHEAP: the boundary_ratchet (ceiling 213) keeps the game layer's push-sink surface from
+growing while this is parked. That is the part worth keeping warm -- it costs nothing and it means the
+decision can be revisited from data rather than from memory.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
