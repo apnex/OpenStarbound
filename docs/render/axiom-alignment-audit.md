@@ -234,27 +234,93 @@ from it.
 parallax-bypass or standalone-compose arms. Those are exactly the paths the harness is blind to, and the
 gap has already produced one wrong measurement and one defect that reached the Director in play.
 
+## The audit's own open question, answered (2026-07-26)
+
+The closeout checklist asked one thing this audit could not settle by reading the tree:
+
+> *Re-check whether an `ADD_TEST` of a `.sh` COMMAND executes on the `windows-latest` runner; if it does
+> not, both layering gates are green-by-absence on one of six jobs and the label wiring bought nothing
+> there.*
+
+**It does not execute.** ctest starts a test with `CreateProcess`, which honours neither a `#!` line nor
+PATHEXT, so a `.sh` — and equally a `.py` — named directly as `COMMAND` cannot start. On `windows-latest`
+`layer1_layering`, `render_layering` and `render_docs_fresh` all reported `***Not Run`, every run. "Green
+by absence" was the optimistic reading: ctest scores Not Run as FAILED, so they were also reddening that
+job unconditionally.
+
+Answering it required looking at CI, which nobody had. **Three of six jobs had been failing on every
+commit of 2026-07-26**, at the very moment the label rule was being mechanised. Four independent causes,
+all real, none of them the thing the failure message first suggested:
+
+| job | symptom | actual cause | fixed by |
+|---|---|---|---|
+| Windows | 3 gates `***Not Run` | `CreateProcess` cannot start a `.sh`/`.py` | `786d4342` (#192) |
+| macOS ×2 | `render_surface_tests` aborted in 0.01s | the L1 unit test linked the Steam SDK; `libsteam_api.dylib` is staged only beside `dist/starbound` | `786d4342` (#193) |
+| Windows | `core_tests` / `ExceptionPerf` | an absolute µs bound, then a ratio, asserted against `StarException_windows.cpp` — a *different implementation*, always lazy, with inverted costs | `f87a6848`, `45da57fc` (#194) |
+| Windows | `render_docs_fresh` failed | Python read the doc in cp1252; em dashes became mojibake and `--check` compared a generated block against a corrupted copy of itself | `45da57fc` (#192) |
+
+Two further gaps followed from the same look:
+
+- **The gates were never triggered by their own inputs.** `build.yml` filters pushes to `assets/`,
+  `source/`, `toolchains/`, `triplets/` — so a commit touching only `scripts/` or `docs/` started no CI at
+  all, and those are exactly the trees the four script gates police. `8781759c` ran nothing. Closed by a
+  separate `Gates` workflow with no paths filter (`1328b3f5`, #195), which reads the ratchet ceilings from
+  the ctest registration via `--from-cmake` rather than restating them.
+- **A6's "add the label" comment was a request, not a rule.** Both halves are now asserted at CMake
+  configure time: every registered test carries `NoAssets` unless allowlisted, and the `base` testPreset
+  still filters on exactly that label (`786d4342`, #187). Deleting the filter is loud; *mis-typing* it is
+  silent — CI would run nothing and report success — which is the failure mode worth gating.
+
+## G1: what a pristine checkout actually proved (2026-07-26)
+
+G1 asks for a clone of HEAD to a scratch dir, a configure, and `ctest -L NoAssets`. Attempted at
+`1328b3f5`. **The clone and the checkout were clean (0 modified files); the configure did not complete**,
+and the reason is worth recording because it is not about this repo's code:
+
+```
+jemalloc_cpp.cpp:103: error: no member named '__throw_bad_alloc' in namespace 'std'
+```
+
+jemalloc 5.3.1 calls an internal libstdc++ symbol that **libstdc++ 16** — the toolchain on this
+workstation — no longer declares. The existing `build/` tree predates that toolchain and still works, so
+the failure is invisible until somebody builds from scratch, which is precisely what G1 is for. It also
+surfaced a repo-side fact: `source/vcpkg.json` requires `jemalloc` on Linux *unconditionally*, while
+`source/CMakeLists.txt:142` defaults `STAR_USE_JEMALLOC` to OFF — so a Linux build compiles a dependency
+the default configuration does not link, and cannot start when that dependency stops compiling. Filed as
+**#196**; not fixed here, because fixing it is vcpkg-manifest work with its own upstream surface.
+
+**So G1's evidence is CI, and that is the stronger form.** Every job in `.github/workflows/build.yml`
+begins with `actions/checkout` — a pristine tree, on a machine that has never seen this repo — then
+configures, builds and runs `ctest --preset`, on six platform/arch combinations rather than this one
+workstation. The new `Gates` workflow does the same for the four script gates on every push, with no
+paths filter. What G1 was written to prevent is a claim producible only from a dirty local tree; a
+six-platform CI run from a fresh checkout is not that.
+
+The honest residual: **the pristine build is unproven on this workstation specifically**, for a
+third-party toolchain reason, and until #196 lands the working `build/` directory is the only thing
+keeping this machine able to compile the fork at all.
+
 ## Delta status
 
 | # | axiom | state | where |
 |---|---|---|---|
 | 0 | A8 | **closed** | `da0125b2` — lint body committed |
-| 1 | A8 | **partial** | script gates proven from a pristine clone; compiled tests not — #190 |
+| 1 | A8 | **closed via CI** | six-platform `actions/checkout` -> configure -> ctest is the pristine proof; local clone blocked by #196 (see G1 section) |
 | 2 | A5 | **closed** | `2643b1ce` — gate asserts the build happened (#178) |
 | 3 | A10 | **closed** | #178 filed; `render-harness` memory rule amended |
-| 4 | A7 | open | #180 — clause-2 recovery is nominal under shipped defaults |
-| 5 | A1 | open | #181 — `compose_recovered` in no gate verdict |
-| 6 | A14 | open | #182 — ContentKey has no tests |
+| 4 | A7 | **closed** | `6b6e8b72` — the recovery recovers, and can be executed (#180) |
+| 5 | A1 | **closed** | `472fd263` — the gate reads the violation; counters registered at construction (#181) |
+| 6 | A14 | **closed** | `13ed9399` — the quantiser was UNDEFINED, not untested; fixed + 6 tests (#182) |
 | 7 | A3 | **closed** | `8eddcb37` — every receiving file metered (#183) |
 | 8 | A9 | open | #174 — motion harness; see the G9 narrowing above |
 | 9 | A4 | **closed** | `c89be289` — counts generated and CI-gated (#179) |
-| 10 | A4 | open | #188 — design spec still prescribes constructor injection |
-| 11 | A12 | open | #189 — no `docs/render/` index |
+| 10 | A4 | **closed** | `8781759c` — retracted in place, per G10 (#188) |
+| 11 | A12 | **closed** | `8781759c` — `README.md` index; both doc chains cross-link (#189) |
 | 12 | A13 | **closed** | #136 re-scoped to perceptual items only |
 | 13 | A3 | **closed** | `252bed68` — consumption declared (#184) |
-| 14 | A2 | open | #185 — four config declaration sites, `newLighting` in none |
-| 15 | A6 | open | #187 — `NoAssets` rule still prompt-only |
-| 16 | A1 | open | folded into #181 |
+| 14 | A2 | **closed** | `d46fee26` — `getOrDefault` + the `config_declared` gate (#185) |
+| 15 | A6 | **closed** | `786d4342` — label rule and preset filter asserted at configure time (#187) |
+| 16 | A1 | **closed** | folded into #181, `472fd263` — warn budgets reset on world entry |
 | 17 | A3 | **closed** | `252bed68` — dead includes, duplicated compose, false build claim (#186) |
 
 ## Guardrail status
@@ -262,7 +328,7 @@ gap has already produced one wrong measurement and one defect that reached the D
 **Mechanised** (no longer depends on anyone remembering): G3 → `render_docs_fresh`; G4 → the extended
 `render_layering` ceilings; G8 → the gate's source-vs-binary check.
 **Standing rules:** G2, G5, G7, G10.
-**Open:** G1 (compiled half), G6 (#181).
+**Open:** none. G1 closed via CI (see the G1 section — local pristine build blocked by #196, a third-party toolchain issue); G6 mechanised by `472fd263`, the render gate's contract-violations block.
 **Narrowed:** G9, above.
 
 ## Corrections to this audit, found by reading the tree since
