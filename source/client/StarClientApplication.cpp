@@ -79,7 +79,6 @@ Json const AdditionalDefaultConfiguration = Json::parseJson(R"JSON(
       "fullscreen" : false,
       "borderless" : false,
       "maximized" : true,
-      "antiAliasing" : false,
       "hdr": true,
       "zoomLevel" : 3.0,
       "cameraSpeedFactor" : 1.0,
@@ -502,9 +501,9 @@ void ClientApplication::render() {
   auto assets = m_root->assets();
   auto& renderer = Application::renderer();
 
-  renderer->setMultiSampling(config->get("antiAliasing").optBool().value(false) ? 4 : 0);
-  renderer->setMainHDR(config->get("hdr").optBool().value(true));
-  renderer->setVboOrphan(config->get("renderVboOrphan").optBool().value(true));
+  renderer->setMultiSampling(config->getOrDefault("antiAliasing").toBool() ? 4 : 0);
+  renderer->setMainHDR(config->getOrDefault("hdr").toBool());
+  renderer->setVboOrphan(config->getOrDefault("renderVboOrphan").toBool());
   // Like setMainHDR/setMultiSampling above, this reloads the whole framebuffer set when it changes, so it
   // belongs HERE -- before the frame starts -- and not at the point of use inside WorldPainter::render, which
   // would destroy and recreate every framebuffer (including the bound "main") in the middle of a frame.
@@ -1227,7 +1226,15 @@ void ClientApplication::renderTestCapture() {
         // run. That is exactly the config-pinning trap this campaign has already been bitten by twice -- and it
         // bit the harness itself: a `lightingGpu=true|false` A/B left CPU lighting pinned on, and the next run
         // rendered a black world that looked exactly like the AA bug under investigation.
-        m_renderTestAbOriginal = m_root->configuration()->get(m_renderTestAbKey);
+        //
+        // getOrDefault, NOT get (#185). `get` returns a NULL Json for an absent key, and writing null back
+        // through Configuration::set does not restore the key -- it ERASES it, and the erase persists on
+        // exit. So an A/B on any key the tree failed to declare would silently strip that key from the
+        // harness config forever, after which whatever literal the call site typed became the authority
+        // for every later run. Not hypothetical: newLighting was undeclared until this change, and an
+        // enable/disable knob is exactly what an A/B targets. Reading the declared default means the
+        // restore always writes a real value back.
+        m_renderTestAbOriginal = m_root->configuration()->getOrDefault(m_renderTestAbKey);
         m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbA);
         Logger::info("[rendertest] A/B leg A: {} = {} (will restore {} on exit)",
           m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbOriginal.repr());

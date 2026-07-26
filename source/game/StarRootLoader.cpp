@@ -99,6 +99,25 @@ R"JSON(
       "telemetryReportInterval" : 0,
       "telemetryHud" : false,
 
+      // 2026-07-26 (#185). Defaults are jsonMerge'd from THREE blocks -- this one, the client's
+      // AdditionalDefaultConfiguration, and bootconfig's -- and call-site literals act as a fourth,
+      // unwritten one. Both keys below now live here, in the block that the game layer and every test
+      // Root see, because that is where their readers are.
+      //
+      // newLighting was declared in NONE of the three. Undeclared is strictly worse than a wrong default:
+      // the key is absent from the config, Configuration::get(key) returns null, and the render A/B
+      // harness restores that null on exit -- which ERASES the key and persists the erase. It is read by
+      // StarWorldClient (lighting calc) and StarWorldPainter (pointAdditive); both are below the client.
+      //
+      // antiAliasing MOVED here from StarClientApplication's block. It was declared once and correctly,
+      // but one layer too high: StarWorldPainter reads it to build BackdropParams, and the rendering
+      // layer must not depend on a key that only exists when the client application supplied it.
+      //
+      // Both values are the ones every call site already agreed on, so this changes no behaviour today.
+      // It makes the agreement a fact of the tree rather than a coincidence.
+      "antiAliasing" : false,
+      "newLighting" : true,
+
       "renderVboOrphan" : true,
       "renderDrawableCache" : false,
       "renderDrawableCacheShadowCompare" : false,

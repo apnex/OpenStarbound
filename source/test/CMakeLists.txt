@@ -219,6 +219,21 @@ ADD_TEST (NAME render_docs_fresh COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/render-inventory.py
           --check docs/render/architecture-3-target-state.md)
 
+# CONFIG DECLARATION GATE (#185). Every key read through Configuration::getOrDefault must have a declared
+# default in one of the default blocks.
+#
+# getOrDefault exists so that a knob has ONE declaration -- the default block -- instead of one per call
+# site. Its callers therefore consume the value with a bare .toBool()/.toFloat()/.toUInt() and no second
+# literal, which is the whole point and which is also why an undeclared key must fail the BUILD rather
+# than throw in the render path at runtime.
+#
+# The rule this replaces was not written down anywhere, and five render keys had a shipped default that
+# disagreed with the literal typed at the call site (lightingGpu true/false, lightingGpuSpreadIterations
+# 32/64, lightingTonemap true/false, lightingWorldUpscale 2.0/1.0, envRefreshInterval 4 against a
+# `/rendercache status` readout of 1). `newLighting` was declared in none of the three blocks at all.
+ADD_TEST (NAME config_declared COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/config-lint.py)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -258,7 +273,7 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 # before being added here.
 SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
-  LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh)
+  LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

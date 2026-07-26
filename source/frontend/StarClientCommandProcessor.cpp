@@ -661,14 +661,14 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
   String const usage = "usage: /rendercache cache [on|off|perpart on|off|shadow on|off|status] | envrefresh <N> | envoracle on|off | parallaxrefresh <N> | paralloracle on|off";
   auto status = [&]() {
     return strf("render cache: enabled={} perPart={} shadowCompare={} envRefreshInterval={} envOracle={} parallaxRefreshInterval={} parallaxOracle={} backdropComposeMerge={}",
-      cfg->get("renderDrawableCache", false).toBool(),
-      cfg->get("renderDrawableCachePerPart", false).toBool(),
-      cfg->get("renderDrawableCacheShadowCompare", false).toBool(),
-      cfg->get("envRefreshInterval", 1).toUInt(),
-      cfg->get("envOracle", false).toBool(),
-      cfg->get("parallaxRefreshInterval", 1).toUInt(),
-      cfg->get("parallaxOracle", false).toBool(),
-      cfg->get("backdropComposeMerge", true).toBool());
+      cfg->getOrDefault("renderDrawableCache").toBool(),
+      cfg->getOrDefault("renderDrawableCachePerPart").toBool(),
+      cfg->getOrDefault("renderDrawableCacheShadowCompare").toBool(),
+      cfg->getOrDefault("envRefreshInterval").toUInt(),
+      cfg->getOrDefault("envOracle").toBool(),
+      cfg->getOrDefault("parallaxRefreshInterval").toUInt(),
+      cfg->getOrDefault("parallaxOracle").toBool(),
+      cfg->getOrDefault("backdropComposeMerge").toBool());
   };
 
   if (!args.empty() && args.at(0) == "envrefresh") {
@@ -681,7 +681,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
         return "usage: /rendercache envrefresh <N>  (N >= 1; 1 = every frame = current behavior)";
       cfg->set("envRefreshInterval", *n);
     }
-    return strf("render cache envRefreshInterval={}", cfg->get("envRefreshInterval", 1).toUInt());
+    return strf("render cache envRefreshInterval={}", cfg->getOrDefault("envRefreshInterval").toUInt());
   }
 
   if (!args.empty() && args.at(0) == "envoracle") {
@@ -691,8 +691,8 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
     // (glReadPixels stalls). At N=1 a MATCH proves the cache path is bit-identical to the direct path.
     if (args.size() >= 2)
       cfg->set("envOracle", args.at(1) == "on");
-    bool on = cfg->get("envOracle", false).toBool();
-    if (on && cfg->get("antiAliasing").optBool().value(false))
+    bool on = cfg->getOrDefault("envOracle").toBool();
+    if (on && cfg->getOrDefault("antiAliasing").toBool())
       return "render cache envOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off (disable AA in graphics settings), otherwise no [envoracle] lines are emitted";
     return strf("render cache envOracle={}", on);
   }
@@ -707,7 +707,7 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
         return "usage: /rendercache parallaxrefresh <N>  (0 = ADAPTIVE, auto-derived per world [default]; 1 = off/direct; >1 = manual fixed N)";
       cfg->set("parallaxRefreshInterval", *n);
     }
-    unsigned pn = cfg->get("parallaxRefreshInterval", 0).toUInt();
+    unsigned pn = cfg->getOrDefault("parallaxRefreshInterval").toUInt();
     return strf("render cache parallaxRefreshInterval={}{}", pn, pn == 0 ? " (ADAPTIVE -- auto per world; see [parallaxauto] in the log)" : (pn == 1 ? " (off/direct)" : " (manual)"));
   }
 
@@ -717,8 +717,8 @@ String ClientCommandProcessor::renderCache(String const& argumentsString) {
     // DIFF/MATCH. At N=1 a MATCH proves the premultiplied cache path is bit-identical. AA-off only.
     if (args.size() >= 2)
       cfg->set("parallaxOracle", args.at(1) == "on");
-    bool on = cfg->get("parallaxOracle", false).toBool();
-    if (on && cfg->get("antiAliasing").optBool().value(false))
+    bool on = cfg->getOrDefault("parallaxOracle").toBool();
+    if (on && cfg->getOrDefault("antiAliasing").toBool())
       return "render cache parallaxOracle=true -- NOTE: antiAliasing is ON; the oracle runs only with AA off";
     return strf("render cache parallaxOracle={}", on);
   }

@@ -2117,10 +2117,10 @@ void WorldClient::lightingCalc() {
   bool shadowCompare = false;
   {
     TelemetryScope paramsScope(paramsTimer);
-    newLighting = configuration->get("newLighting").optBool().value(true);
-    bool monochrome = configuration->get("monochromeLighting").toBool();
-    lightingGpu = configuration->get("lightingGpu").optBool().value(false);
-    shadowCompare = configuration->get("lightingGpuShadowCompare").optBool().value(false);
+    newLighting = configuration->getOrDefault("newLighting").toBool();
+    bool monochrome = configuration->getOrDefault("monochromeLighting").toBool();
+    lightingGpu = configuration->getOrDefault("lightingGpu").toBool();
+    shadowCompare = configuration->getOrDefault("lightingGpuShadowCompare").toBool();
     // An asset reload re-reads /lighting.config without touching newLighting or monochrome, so the value
     // comparison below cannot see it. Pull the reload tracker (atomic exchange) and drop the cache.
     if (m_lightingParamsReloadTracker && m_lightingParamsReloadTracker->pullTriggered())

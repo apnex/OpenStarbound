@@ -24,6 +24,12 @@ public:
   Json getDefault(String const& key) const;
   Json getDefaultPath(String const& path) const;
 
+  // Read a key, falling back to the value DECLARED in the default configuration rather than to a literal
+  // typed at the call site. Prefer this over get(key, someLiteral) for anything that has a declared
+  // default -- see the note in StarConfiguration.cpp for what those literals were costing.
+  Json getOrDefault(String const& key) const;
+  Json getOrDefaultPath(String const& path) const;
+
   void set(String const& key, Json const& value);
   void setPath(String const& path, Json const& value);
 

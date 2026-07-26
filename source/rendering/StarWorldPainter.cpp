@@ -129,7 +129,7 @@ void WorldPainter::update(float dt) {
 
 LightmapResult WorldPainter::runGpuLightmapPass(WorldRenderData& renderData) {
   auto config = Root::singleton().configuration();
-  if (!(config->get("lightingGpu").optBool().value(false) && renderData.lightingInputsValid))
+  if (!(config->getOrDefault("lightingGpu").toBool() && renderData.lightingInputsValid))
     return {};   // GPU lighting off / inputs invalid -> caller uses the CPU lightMap
   // Slice 3: compute the COMPLETE lightmap on the GPU (spread + per-light point + cap) from the exported
   // emission/obstacle/point-light grids; processFull restores the world effect + binds the result as lightMap,
@@ -150,16 +150,16 @@ LightmapResult WorldPainter::runGpuLightmapPass(WorldRenderData& renderData) {
       PointParameters{
           lc.getFloat("pointMaxAir"), lc.getFloat("pointMaxObstacle"),
           lc.getFloat("pointObstacleBoost"),
-          config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
+          config->getOrDefault("newLighting").toBool(),   // pointAdditive (matches lightingCalc)
           lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
           lc.getFloat("brightnessLimit")},
-      // Explicit cast: optUInt() is wider than unsigned, and a braced init treats the narrowing as an
+      // Explicit cast: toUInt() is wider than unsigned, and a braced init treats the narrowing as an
       // error. BackdropParams hit the identical trap -- the braces are doing their job.
-      (unsigned)config->get("lightingGpuSpreadIterations").optUInt().value(64),
-      config->get("lightingGpuShadowCompare").optBool().value(false),
-      config->get("lightingGpuBrightness").optFloat().value(1.0f),
-      config->get("lightingTonemap").optBool().value(false),
-      config->get("lightingWorldUpscale").optFloat().value(1.0f)};
+      (unsigned)config->getOrDefault("lightingGpuSpreadIterations").toUInt(),
+      config->getOrDefault("lightingGpuShadowCompare").toBool(),
+      config->getOrDefault("lightingGpuBrightness").toFloat(),
+      config->getOrDefault("lightingTonemap").toBool(),
+      config->getOrDefault("lightingWorldUpscale").toFloat()};
 
   Image gpuResult;
   LightmapResult lm = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
@@ -231,15 +231,17 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // makes this move byte-identical rather than byte-identical-plus-one-quiet-change; correcting it is a
   // separate decision, not a refactor's business.
   auto backdropConfig = Root::singleton().configuration();
+  // Every one of these carried TWO hand-typed fallbacks (the get() default and the opt().value()), and
+  // parallaxMaxDriftStepPx's said 1.5f against a shipped 0.75. See StarConfiguration::getOrDefault.
   BackdropParams backdropParams{
-      (unsigned)backdropConfig->get("envRefreshInterval", 1).optUInt().value(1),
-      backdropConfig->get("envOracle", false).optBool().value(false),
-      backdropConfig->get("envMaxDriftStepPx", 0.75f).optFloat().value(0.75f),
-      backdropConfig->get("backdropComposeMerge", true).optBool().value(true),
-      backdropConfig->get("antiAliasing").optBool().value(false),
-      backdropConfig->get("parallaxOracle", false).optBool().value(false),
-      (unsigned)backdropConfig->get("parallaxRefreshInterval", 0).optUInt().value(0),
-      backdropConfig->get("parallaxMaxDriftStepPx", 1.5f).optFloat().value(1.5f)};
+      (unsigned)backdropConfig->getOrDefault("envRefreshInterval").toUInt(),
+      backdropConfig->getOrDefault("envOracle").toBool(),
+      backdropConfig->getOrDefault("envMaxDriftStepPx").toFloat(),
+      backdropConfig->getOrDefault("backdropComposeMerge").toBool(),
+      backdropConfig->getOrDefault("antiAliasing").toBool(),
+      backdropConfig->getOrDefault("parallaxOracle").toBool(),
+      (unsigned)backdropConfig->getOrDefault("parallaxRefreshInterval").toUInt(),
+      backdropConfig->getOrDefault("parallaxMaxDriftStepPx").toFloat()};
 
   // THE SLICE. The orchestrator holds the fat struct; the pass gets the two members it actually reads.
   // Built at both call sites rather than hoisted to a local, so the slice is visible where the hand-off
@@ -294,9 +296,9 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_renderer->setEffectParameter("lightMapOffset",
         m_camera.worldToScreen(Vec2F(renderData.lightMinPosition) - Vec2F((float)m_lightMapBorder, (float)m_lightMapBorder)));
     m_renderer->setEffectParameter("lightmapBilinear",
-        Root::singleton().configuration()->get("lightingWorldSampleBilinear").optBool().value(false));
+        Root::singleton().configuration()->getOrDefault("lightingWorldSampleBilinear").toBool());
     m_renderer->setEffectParameter("lightmapUpscale",
-        Root::singleton().configuration()->get("lightingWorldUpscale").optFloat().value(1.0f));
+        Root::singleton().configuration()->getOrDefault("lightingWorldUpscale").toFloat());
   }
 
   // Parallax layers (env-cache-coupled backdrop: owns the parallax retained cache + the cross-surface arbiter).
