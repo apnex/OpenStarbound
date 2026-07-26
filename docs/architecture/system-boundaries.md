@@ -19,10 +19,12 @@ binary compositions and singleton counts. Everything numeric below comes out of 
 
 ## 1. How a boundary is determined
 
-**Two questions, not one.** Tests 1–4 ask whether a boundary *exists*, in descending order of
-evidential strength. Test 5 asks something different — whether an existing boundary is any *good* — and
-it is the question most architecture work actually turns on. A boundary can be perfectly enforced and
-still be badly shaped, and the first four tests are blind to that by construction.
+**Three questions, not one.** Tests 1–4 ask whether a boundary *exists*, in descending order of
+evidential strength. Test 5 asks whether an existing boundary is any *good*, which is the question most
+architecture work actually turns on — a boundary can be perfectly enforced and still be badly shaped,
+and the first four are blind to that by construction. Test 6 asks something different again, and of a
+different subject: not about a boundary at all, but about **one side of one**, and whether a new
+boundary could be put inside it.
 
 ```mermaid
 flowchart TD
@@ -52,7 +54,8 @@ flowchart TD
   T5 -->|no| B["<b>WHOLESALE</b><br/>enforced, and still bad.<br/>The consumer receives a bundle<br/>and reads a fraction of it."]
   B --> R5["<b>action:</b> give the consumer an input<br/>type it declares itself"]
 
-  T5 --> T6{"<b>Test 6 — Cohesion</b><br/>Is there a cut inside<br/>this side at all?"}
+  S(["A separate question, asked of one SIDE<br/>rather than of the boundary:<br/>could this side become two?"]) --> T6
+  T6{"<b>Test 6 — Cohesion</b><br/>Is there a cut inside<br/>this side at all?"}
   T6 -->|"one component"| C1["<b>NO PARTITION EXISTS</b><br/>a directory cannot be made.<br/>Breaking the cycle is the work,<br/>and it is not a build-file change."]
   T6 -->|"many components"| C2["<b>SPLITTABLE</b><br/>the cheap mechanism is available"]
 
@@ -72,8 +75,26 @@ for settling whether a boundary exists.
 
 **Tests 5 and 6 were added after the first four had been applied**, because the first four produced a
 recommendation that turned out to be impossible. Test 5 (§6) grades the interface rather than the
-permission. Test 6 (§9) asks whether a directory can be split at all — and for the directory this
-document most wanted to split, the answer is no.
+permission. Test 6 (§9) is drawn as its own entry point rather than downstream of test 5, because it is
+orthogonal: it takes a *directory* as its subject, it applies whether or not shape passed, and for the
+directory this document most wanted to split, its answer is no. This ladder is a record of being caught,
+not a taxonomy designed in advance.
+
+**What it does not measure, named rather than left as a hole.** Every test here is a snapshot. Nothing
+in this document distinguishes a boundary that has been stable for a decade from one rewritten monthly,
+and nothing prices what a boundary costs to move. Two candidate forms, either of which would sit beside
+tests 3 and 4 as a pressure measurement rather than a structural one:
+
+- **Churn** — commits touching each side, and commits touching both. Free from git history, and the
+  cheapest available proxy for where design pressure actually lives.
+- **Blast radius** — how many translation units rebuild when a boundary moves. Computable from the
+  include graph already measured in §5, and arguably the better of the two: it prices a boundary rather
+  than merely observing it.
+
+Neither is built, so **neither is drawn as a rung.** A test in the diagram that no instrument executes
+would make the picture assert a method nobody runs — the same defect as a document stating a number
+nobody re-measures. Tests 5 and 6 earned their place by falsifying a recommendation this document had
+already made. A seventh gets a node when it has done the same.
 
 The most important consequence sits between tests 1 and 4: **the compiler enforces boundaries between
 directories and enforces nothing within one.** Every instrument in `scripts/` is a hand-built substitute
