@@ -118,21 +118,45 @@ ADD_TEST (NAME layer1_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #
 # LOWER THESE AS THE PAY-DOWN LANDS. The lint reports how far below its ceiling it is and tells you to
 # tighten it. Raising one is allowed but must be argued in the commit message.
+# RELOCATION IS NOT A ROUTE TO GREEN, AND THAT RULE COST SOMETHING TO LEARN. Until #183 this gate
+# metered THREE files holding 2 of the subsystem's 17 reads. That gap was not incidental: closing the
+# Air-Gap MOVES reads to the composition root -- that IS the design -- so a gate covering only the
+# passes is satisfiable by relocation. It already had been. BackdropPass went 8 -> 0 in 1e46f71c,
+# genuinely correct work, and not one of those eight reads left the subsystem: they moved into
+# StarWorldPainter.cpp, which no gate touched. The ratchet scored a perfect result for a net change of
+# zero in coupling.
+#
+# So every file that can RECEIVE a relocated read now carries a ceiling, and a read moved from a pass
+# into the orchestrator counts against the orchestrator. That is the whole point: the next author who
+# relocates one has to edit a number here and say why -- exactly the moment to ask whether the value
+# belongs in a params struct resolved at the boundary instead.
 ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.sh
           --needle "Root::singleton"
           source/rendering/StarBackdropPass.cpp=0
           source/rendering/StarWorldPass.cpp=2
-          source/rendering/StarGpuLightmapPass.cpp=0)
+          source/rendering/StarGpuLightmapPass.cpp=0
+          source/rendering/StarWorldPainter.cpp=9
+          source/rendering/StarTilePainter.cpp=3
+          source/rendering/StarTextPainter.cpp=3
+          source/rendering/StarEnvironmentPainter.cpp=0
+          source/rendering/StarDrawablePainter.cpp=0)
 # RATCHET LOG -- lower these, never raise one without saying why in the commit message.
-#   BackdropPass  8 -> 0  (#137: BackdropParams resolved at the boundary by WorldPainter)
-#   WorldPass     2        the remaining residual; same treatment, not yet done
-#   LightmapPass  0        clean since extraction -- though BOUGHT by WorldPainter doing its reads
+#   2026-07-25  BackdropPass    8 -> 0  (#137: BackdropParams resolved at the boundary by WorldPainter)
+#               WorldPass       2        the remaining pass residual; same treatment, not yet done
+#               LightmapPass    0        clean since extraction -- though BOUGHT by WorldPainter's reads
+#   2026-07-26  #183 extends the ceilings to every file that can receive a relocated read:
+#               WorldPainter    9        8 of these ARRIVED from BackdropPass. Correct architecture,
+#                                        previously unmetered. This is the number to watch.
+#               TilePainter     3        pre-decomposition; untouched by the campaign
+#               TextPainter     3        pre-decomposition; untouched by the campaign
+#               EnvironmentPainter 0     PROHIBITION, not a ratchet -- it is clean, keep it clean
+#               DrawablePainter    0     PROHIBITION, not a ratchet -- it is clean, keep it clean
 #
-# THE RATCHET METERS 3 FILES OF 17 RESIDUAL READS. Closing the Air-Gap MOVES reads to the composition
-# root, so this ceiling set is satisfiable by relocation -- which is exactly the move that took
-# BackdropPass from 8 to 0, into a WorldPainter no gate touches. Extending the ceilings to the
-# orchestrator and painters is filed as the next step; until then read render_docs_fresh's generated
-# table, which reports metered-vs-total so the gap cannot be mistaken for compliance.
+# ALL 17 READS ARE NOW METERED. Cross-checked before landing: scripts/render-inventory.py and
+# layering-lint.sh use DIFFERENT comment-stripping strategies (a python regex pass vs the lint's own),
+# so agreement was CONFIRMED rather than assumed -- both report 15 across the five files added here,
+# plus the 2 already metered. If you add a render file, add it here too, or the total silently drifts
+# from the generated table in docs/render/architecture-3-target-state.md.
 
 # DOC-FRESHNESS GATE (#179). The architecture doc's Air-Gap counts are GENERATED into a marker block by
 # `scripts/render-inventory.py --inject`; this asserts the COMMITTED block still matches the tree.

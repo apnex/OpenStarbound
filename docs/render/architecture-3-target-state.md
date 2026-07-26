@@ -144,9 +144,9 @@ Three mechanisms now hold this section to the tree:
 | L1 substrate | 0 | 0 |
 | L2 primitives | 0 | 0 |
 | L3 passes | 2 | 2 |
-| L3 orchestrator | 9 | 0 |
-| painters (pre-decomposition) | 6 | 0 |
-| **total** | **17** | **2** |
+| L3 orchestrator | 9 | 9 |
+| painters (pre-decomposition) | 6 | 6 |
+| **total** | **17** | **17** |
 
 Files that carry a read, plus every file the ratchet holds at a ceiling:
 
@@ -155,15 +155,21 @@ Files that carry a read, plus every file the ratchet holds at a ceiling:
 | `StarBackdropPass.cpp` | L3 passes | 0 | 0 |
 | `StarWorldPass.cpp` | L3 passes | 2 | 2 |
 | `StarGpuLightmapPass.cpp` | L3 passes | 0 | 0 |
-| `StarWorldPainter.cpp` | L3 orchestrator | 9 | — not metered |
-| `StarTilePainter.cpp` | painters (pre-decomposition) | 3 | — not metered |
-| `StarTextPainter.cpp` | painters (pre-decomposition) | 3 | — not metered |
+| `StarWorldPainter.cpp` | L3 orchestrator | 9 | 9 |
+| `StarEnvironmentPainter.cpp` | painters (pre-decomposition) | 0 | 0 |
+| `StarTilePainter.cpp` | painters (pre-decomposition) | 3 | 3 |
+| `StarDrawablePainter.cpp` | painters (pre-decomposition) | 0 | 0 |
+| `StarTextPainter.cpp` | painters (pre-decomposition) | 3 | 3 |
 
 **Unclaimed by the layer table** (`source/rendering/`): `StarAnchorTypes.cpp`, `StarAnchorTypes.hpp`, `StarAssetTextureGroup.cpp`, `StarAssetTextureGroup.hpp`, `StarFontTextureGroup.cpp`, `StarFontTextureGroup.hpp` — a layering question nobody has answered.
 
 <!-- END GENERATED -->
 
-**Read the `metered` column before you celebrate a zero.** Closing the Air-Gap *moves* reads to the composition root — that is the design — so a ratchet covering only the passes is satisfiable by relocation, and most of the subsystem's residual sits in files no gate touches. The honest target is "pass bodies are pure functions of their parameters"; the count is a proxy for it, and a proxy you can satisfy by moving things is a proxy worth distrusting. Extending the ceilings to the orchestrator and the painters is the next step, not further pay-down against the metered two.
+**The `metered` column used to be the finding; it is now the proof.** Closing the Air-Gap *moves* reads to the composition root — that is the design — so a ratchet covering only the passes was satisfiable by relocation, and it had already been satisfied that way: `BackdropPass` went 8 → 0 without a single read leaving the subsystem. They landed in `WorldPainter`, which no gate touched.
+
+Every file that can *receive* a relocated read now carries a ceiling, so a read moved out of a pass counts against whatever catches it. `EnvironmentPainter` and `DrawablePainter` are held at **0** — prohibitions rather than ratchets, because they are clean and worth keeping so.
+
+The honest target is still "pass bodies are pure functions of their parameters", and the count is only a proxy for it. What changed is that the proxy can no longer be satisfied by moving things — only by removing them.
 
 What stays hand-written is the part a script cannot measure — the *shape* of each pass's compliance:
 
