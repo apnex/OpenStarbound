@@ -204,7 +204,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
-| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost | — | — |
+| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost | `f7609bb7` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3238,6 +3238,8 @@ watches.
 #### #199 — HEADLESS-1: give the CLIENT a headless expression -- 77 push-sink refs in genuine sim code is the real cost
 
 status: **pending**
+
+- `f7609bb7` game: the client can stop producing the view without stopping the world
 
 ```
 FILED 2026-07-26 from the boundary inventory (334bc38d, docs/render/game-render-boundary.md). Director's
