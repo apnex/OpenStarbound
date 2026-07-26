@@ -91,6 +91,28 @@ else
   echo "  ok"
 fi
 
+echo "=== contract violations ==="
+# GUARDRAIL G6 (#181): a counter no verdict reads is not a signal. render.backdrop.compose_recovered
+# existed for a week, incremented by a real detector, and appeared in ZERO scripts, tests and docs --
+# observable only by someone who already suspected the fault. The gate's own comment states the rule it
+# was breaking: "a check that reports but does not gate is not a gate."
+#
+# Asserted on the LOG LINE, not the counter, and that is a limitation worth naming: telemetry counters
+# never reach the harness log, so the gate cannot read them. The line is rate-limited to 4 per world
+# entry, which is plenty -- any occurrence at all must fail the run, and one line proves occurrence.
+#
+# Verify with STAR_BACKDROP_FORCE_DEFER=1: that injects the fault, and this block MUST turn the run red.
+recovered=$(grep -c "Recovering by compositing env directly" "$LOG" || true)
+printf "  backdrop clause-2 recoveries: %-6s" "$recovered"
+if [ "$recovered" -ne 0 ]; then
+  echo "  <-- FAIL"
+  pass=0
+  echo "    ! renderEnvironment found a deferral renderParallax never consumed. Both entry points must"
+  echo "    ! run on the same frame; the backdrop would have gone black. See BackdropPass clause 2."
+else
+  echo "  ok"
+fi
+
 if grep -q "RENDERTEST_AB" "$LOG"; then
   echo "=== in-process A/B ==="
   grep -E "renderTest.*(A/B|hashA|hashB|IDENTICAL|DIFFER)" "$LOG" | sed 's/^/  /'

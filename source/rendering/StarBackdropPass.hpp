@@ -6,6 +6,7 @@
 // concrete: a pass that includes the fat struct cannot compile without the world it draws.
 #include "StarSkyRenderData.hpp"
 #include "StarParallax.hpp"
+#include "StarTelemetry.hpp"
 #include "StarEnvironmentPainter.hpp"
 #include "StarRenderer.hpp"
 #include "StarRetainedSurface.hpp"
@@ -69,7 +70,15 @@ public:
   // generation drop already covers a renderer whose generation bumped; this also covers a SAME-renderer world
   // entry, where the env cache's refresh key (size + pixelRatio + counter, no content term) would otherwise
   // hold world A's sky for up to N-1 frames. (Parallax self-heals via its content key + camera position.)
-  void invalidateCaches() { m_envCache.invalidate(); m_parallaxCache.invalidate(); }
+  // Also resets the clause-2 warn budget (#181). The budget existed to stop a broken caller logging every
+  // frame, but as a process-lifetime static a four-line burst bought SESSION-LONG silence -- including
+  // across world re-entry, which is exactly when an operator would most expect a fresh diagnosis. World
+  // entry is a new context; the rate limit should be too.
+  void invalidateCaches() {
+    m_envCache.invalidate();
+    m_parallaxCache.invalidate();
+    m_clause2WarnBudget = 4;
+  }
 
   // AIR-GAP CONTRACT (1) FOR THIS PASS: a sliced const view of the frame, not the frame.
   //
@@ -122,6 +131,25 @@ private:
   bool m_backdropMergeLogged = false;
 
   Renderer* m_renderer;
+
+  // REGISTERED AT CONSTRUCTION, NOT ON FIRST USE (#181). These were function-local statics inside
+  // CONDITIONAL blocks, which meant a path never taken produced an ABSENT key in snapshot() -- and a
+  // consumer differencing two snapshots cannot distinguish ABSENT from ZERO. compose_recovered was the
+  // worst case: by construction it did not exist until the fault had already fired, so the one metric
+  // whose zero is the interesting reading was the one metric that could not report zero.
+  //
+  // Same bug class as the block-scope statics that never REGISTER in runtime-gated functions. Members
+  // registered in the constructor exist from frame zero, whatever the frame does.
+  TelemetryCounter m_composeRecovered;
+  TelemetryCounter m_envRefreshedCtr;
+  TelemetryCounter m_envSkippedCtr;
+  TelemetryCounter m_parallaxRefreshedCtr;
+  TelemetryCounter m_parallaxSkippedCtr;
+  TelemetryCounter m_parallaxBypassedCtr;
+
+  // Rate limit for the clause-2 diagnostic. A MEMBER, reset by invalidateCaches() on world entry --
+  // see the comment there.
+  int m_clause2WarnBudget = 4;
 
   // Renderer framebuffer generation the retained caches were last filled under. A renderer config reload
   // (the hdr / antiAliasing client options, both polled every frame) destroys and re-creates EVERY FBO with

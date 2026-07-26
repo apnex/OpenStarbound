@@ -11,7 +11,17 @@
 
 namespace Star {
 
-BackdropPass::BackdropPass(Renderer* renderer) : m_renderer(renderer) {}
+BackdropPass::BackdropPass(Renderer* renderer)
+  : m_renderer(renderer),
+    // #181: registered HERE, so every key exists in snapshot() from frame zero whatever the frame does.
+    // As conditional function-local statics these were absent until their branch first ran, making
+    // ABSENT indistinguishable from ZERO for a consumer differencing two snapshots.
+    m_composeRecovered(Telemetry::counter("render.backdrop.compose_recovered", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    m_envRefreshedCtr(Telemetry::counter("render.cache.env.refreshed", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    m_envSkippedCtr(Telemetry::counter("render.cache.env.skipped", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    m_parallaxRefreshedCtr(Telemetry::counter("render.cache.parallax.refreshed", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    m_parallaxSkippedCtr(Telemetry::counter("render.cache.parallax.skipped", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    m_parallaxBypassedCtr(Telemetry::counter("render.cache.parallax.bypassed_moving", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})) {}
 
 // CM-1: the merged env+parallax compose. One full-screen quad, sampling the env cache (opaque backdrop) and
 // the parallax cache (premultiplied coverage), writing "main" once via the backdropCompose effect:
@@ -166,16 +176,13 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
 
   bool recoverThisFrame = m_envComposeDeferred;
   if (recoverThisFrame) {
-    static int warnBudget = 4;   // rate-limited; a broken caller would otherwise log every frame
-    if (warnBudget > 0) {
-      --warnBudget;
+    if (m_clause2WarnBudget > 0) {
+      --m_clause2WarnBudget;
       Logger::error("[backdrop] the env compose was deferred and renderParallax never ran to issue it -- "
                     "the backdrop would have gone black. Recovering by compositing env directly this "
                     "frame. Both entry points must run on the same frame (BackdropPass clause 2).");
     }
-    static auto recoveries = Telemetry::counter("render.backdrop.compose_recovered",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-    recoveries.inc(1);
+    m_composeRecovered.inc(1);
   }
 
   // CM-1: reset each frame; set true below iff the env cache is active AND the merge is enabled, in which case
@@ -246,10 +253,6 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     // with the size term: drawEnv scales stars/debris/orbiters by camera pixelRatio (starAndDebrisRatio /
     // orbiterAndPlanetRatio above), so a ZOOM change alters the cached image at an unchanged screen size --
     // without it, zooming left the sky stale until the counter next came round.
-    static auto envRefreshed = Telemetry::counter("render.cache.env.refreshed",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-    static auto envSkipped = Telemetry::counter("render.cache.env.skipped",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
     bool envInvalidated = m_envCache.invalidated(envScreenSize, envPixelRatio);
     // cadenceHit is called UNCONDITIONALLY (not short-circuited behind envInvalidated) so the frame counter
     // advances every active frame -- exactly the old separate `++m_envRefreshCounter;` statement, which ran
@@ -299,7 +302,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     // counter advances exactly as before and the N-cadence phase does not shift. It remains the ceiling
     // on staleness for anything that drifts below the per-frame threshold but accumulates.
     bool refreshEnv = envInvalidated || envMotion || envContentChanged || envCadence;
-    (refreshEnv ? envRefreshed : envSkipped).inc(1);
+    (refreshEnv ? m_envRefreshedCtr : m_envSkippedCtr).inc(1);
     m_envRefreshedThisFrame = refreshEnv;
 
     m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
@@ -540,19 +543,12 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
       && (parallaxRefreshInterval > 1 || parallaxOracle)
       && (parallaxParked || parallaxOracle);   // oracle must stay on the cache path to gate it
 
-  static auto parallaxRefreshedCtr = Telemetry::counter("render.cache.parallax.refreshed",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-  static auto parallaxSkippedCtr = Telemetry::counter("render.cache.parallax.skipped",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-  static auto parallaxBypassedCtr = Telemetry::counter("render.cache.parallax.bypassed_moving",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-
   if (!parallaxCacheActive) {
     // Direct path (byte-identical stock parallax->main): camera moving, AA on, N<=1 oracle-off, or no layers.
     // Invalidate the cache so re-entry force-refreshes.
     m_parallaxCache.invalidate();
     if (parallaxHasLayers && !parallaxParked)
-      parallaxBypassedCtr.inc(1);
+      m_parallaxBypassedCtr.inc(1);
     // CM-1 reconcile: renderEnvironment deferred the env compose for a merge that will NOT happen (parallax is
     // not caching this frame -- moving camera, AA on, no layers, or N<=1). Composite the env cache into "main"
     // now, standalone, so env still reaches "main" exactly once before the direct parallax draws over it. Same
@@ -597,7 +593,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     } else if (refreshParallax) {
       m_parallaxRefreshDeferred = false;
     }
-    (refreshParallax ? parallaxRefreshedCtr : parallaxSkippedCtr).inc(1);
+    (refreshParallax ? m_parallaxRefreshedCtr : m_parallaxSkippedCtr).inc(1);
 
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
       MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
