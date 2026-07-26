@@ -206,38 +206,54 @@ without knowing what the directories actually are.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#tree -->
 ```
 source/
-├── extern/        T0    18 files   19,243 lines
-│   ├── curve25519/        vendored — excluded from every count here
-│   ├── fmt/               vendored — excluded from every count here
-│   └── lua/               vendored — excluded from every count here
-├── core/          T1   216 files   56,149 lines
-│   └── scripting/            2 files      258 lines
-├── base/          T2    29 files    7,380 lines
-│   └── scripting/            2 files       55 lines
-├── platform/      T2     4 files      142 lines
-├── application/   T2    25 files    7,372 lines
-│   └── discord/           vendored — excluded from every count here
-├── game/          T3   500 files  115,233 lines
-│   ├── interfaces/          47 files    3,123 lines
-│   ├── items/               30 files    4,070 lines
-│   ├── objects/             10 files    1,285 lines
-│   ├── scripting/           49 files    9,773 lines
-│   └── terrain/             26 files      980 lines
-├── rendering/     T4    23 files    4,413 lines
-├── windowing/     T4    61 files    9,646 lines
-├── frontend/      T4   102 files   16,861 lines
-├── client/        T5     4 files    2,383 lines
-└── server/        T5     7 files      783 lines
+├── extern/          T0    18 files    19,243 lines
+│   ├── curve25519/      vendored — excluded from every count here
+│   ├── fmt/             vendored — excluded from every count here
+│   └── lua/             vendored — excluded from every count here
+├── core/            T1   216 files    56,149 lines
+│   └── scripting/          2 files       258 lines
+├── base/            T2    29 files     7,380 lines
+│   └── scripting/          2 files        55 lines
+├── platform/        T2     4 files       142 lines
+├── application/     T2    25 files     7,372 lines
+│   └── discord/         vendored — excluded from every count here
+├── game/            T3   500 files   115,233 lines
+│   ├── interfaces/        47 files     3,123 lines
+│   ├── items/             30 files     4,070 lines
+│   ├── objects/           10 files     1,285 lines
+│   ├── scripting/         49 files     9,773 lines
+│   └── terrain/           26 files       980 lines
+├── rendering/       T4    23 files     4,413 lines
+├── windowing/       T4    61 files     9,646 lines
+├── frontend/        T4   102 files    16,861 lines
+├── client/          T5     4 files     2,383 lines
+├── server/          T5     7 files       783 lines
+├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
+├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     69 files    13,204 lines   ← outside the tier lattice; measured by nothing here
+│   └── gtest/           vendored — excluded from every count here
+└── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
 
-Depth two, directories only — a listing of 989 files would be noise. Counts are recursive and include subdirectories. **7 subdirectories hold real source and are easy to miss**: that is not hypothetical, `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. The vendored rows are marked because excluding them is a declared decision (`VENDORED_SUBTREES`), not an accident of not looking.
+**Every directory that holds code of ours, at every depth — and no files.** Counts are recursive and exclude vendored subtrees, matching every other number in this document. Vendored trees are named but not descended into, since the whole subtree is out of scope and listing its internals would be noise about code that is not ours. Set those aside and the tree is only 2 levels deep: the engine's structure is flatter than its size suggests, which is itself the finding — `source/game` carries 500 files with exactly five subdirectories and no boundary between them.
+
+Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (96 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
 <!-- END GENERATED: tree -->
 
-Two things are worth noticing before the edges. **`game/scripting` is the largest subdirectory in the
-tree** — the Lua binding surface, which §11 identifies as a subsystem with no home, is not a handful of
-files but a substantial body of code hiding one level down. And the tree is where the *shape* of the
-`game` problem becomes concrete: five subdirectories, all inside one grant list, none of them a
-boundary.
+Three things are worth noticing before the edges.
+
+**`game/scripting` is the largest subdirectory in the engine.** The Lua binding surface — which §11
+identifies as a subsystem with no home, no owner and no gate — is not a handful of files but a
+substantial body of code one level down. That materially raises the priority of §11's open question.
+
+**The shape of the `game` problem becomes concrete.** Five subdirectories, all inside a single grant
+list, none of them a boundary. They look like structure and enforce nothing; §9 explains why they
+cannot currently be made to.
+
+**Four top-level directories sit outside the tier lattice**, and therefore outside every measurement in
+this document. `test` is the substantial one. They are excluded because `TIERS` does not name them —
+they are tools and tests rather than engine layers — but that is a scope decision, and a reader should
+see it stated rather than have to infer it from an absence.
 
 ### What the compiler permits
 

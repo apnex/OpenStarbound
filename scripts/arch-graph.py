@@ -155,6 +155,7 @@ MAX_CLASS_EDGES = 24
 VENDORED_SUBTREES = (
     "extern/curve25519", "extern/fmt", "extern/lua",
     "application/discord",
+    "test/gtest",
 )
 
 SHAPE_MIN_MEMBERS = 8
@@ -662,57 +663,118 @@ def heat_class(refs):
     return "blaze"
 
 
-def subdirs(d):
-    """Immediate subdirectories of source/<d> that hold source files, with counts, and whether the
-    recursive scan excludes them as vendored."""
-    root = REPO / "source" / d
-    if not root.is_dir():
-        return []
+def dir_counts(p):
+    """Recursive source-file and line counts beneath a directory, PRUNING VENDORED SUBTREES.
+
+    The pruning is not optional. files_in() excludes vendored trees, so every other number in this
+    document does too; a tree whose rollups included them would have shown `extern` at 96 files against
+    the lattice's 18 and `application` at 56 against 25 -- the document contradicting itself inside two
+    adjacent sections. A view added to make omissions visible must not introduce one."""
+    files = lines = 0
+    src = REPO / "source"
+    for dirpath, dirnames, fns in os.walk(p):
+        rel = pathlib.Path(dirpath).relative_to(src).as_posix()
+        if is_vendored(rel):
+            dirnames[:] = []
+            continue
+        for fn in fns:
+            if fn.endswith(SRC_EXT):
+                files += 1
+                lines += len(read(pathlib.Path(dirpath) / fn).splitlines())
+    return files, lines
+
+
+def is_vendored(rel):
+    return any(rel == v or rel.startswith(v + "/") for v in VENDORED_SUBTREES)
+
+
+def dir_tree(p, rel=""):
+    """Every directory beneath p that holds source somewhere, at ANY depth. Vendored subtrees are
+    reported but not descended into -- the whole subtree is excluded, so enumerating its internals
+    would be noise about code that is not ours."""
     out = []
-    for sub in sorted(p for p in root.iterdir() if p.is_dir()):
-        rel = "%s/%s" % (d, sub.name)
-        vendored = any(rel == v or rel.startswith(v + "/") for v in VENDORED_SUBTREES)
-        files = lines = 0
-        for dirpath, _dn, fns in os.walk(sub):
-            for fn in fns:
-                if fn.endswith(SRC_EXT):
-                    files += 1
-                    lines += len(read(pathlib.Path(dirpath) / fn).splitlines())
-        if files:
-            out.append((sub.name, files, lines, vendored))
+    for sub in sorted(x for x in p.iterdir() if x.is_dir()):
+        r = "%s/%s" % (rel, sub.name) if rel else sub.name
+        # Vendored is tested BEFORE counting, because dir_counts() prunes vendored trees to zero and a
+        # zero-count node would then be dropped by the emptiness check below -- silently disappearing
+        # the very rows that exist to show what is excluded. Excluded from the COUNTS, present in the VIEW.
+        if is_vendored(r):
+            if any(fn.endswith(SRC_EXT) for _dp, _dn, fns in os.walk(sub) for fn in fns):
+                out.append((sub.name, r, 0, 0, True, []))
+            continue
+        files, lines = dir_counts(sub)
+        if not files:
+            continue
+        out.append((sub.name, r, files, lines, False, dir_tree(sub, r)))
     return out
 
 
 def d_tree(m):
     """3. The engine's shape on disk -- the one view that shows containment rather than relationships."""
-    sizes_ = m["sizes"]
-    rows = []
-    for tier, ds in TIERS:
-        for d in ds:
-            if d not in sizes_:
-                continue
-            rows.append((d, tier.split()[0], sizes_[d], subdirs(d)))
-    out = ["```", "source/"]
-    for i, (d, tier, (files, nlines), subs) in enumerate(rows):
-        last_dir = i == len(rows) - 1
-        out.append("%s %-14s %-3s %4d files  %7s lines"
-                   % ("└──" if last_dir else "├──", d + "/", tier, files, "{:,}".format(nlines)))
-        stem = "    " if last_dir else "│   "
-        for j, (name, sf, sl, vendored) in enumerate(subs):
-            branch = "└──" if j == len(subs) - 1 else "├──"
-            note = ("%4d files  %7s lines" % (sf, "{:,}".format(sl)) if not vendored
-                    else "vendored — excluded from every count here")
-            out.append("%s%s %-14s     %s" % (stem, branch, name + "/", note))
-    out.append("```")
-    out.append("")
-    total_sub = sum(1 for _d, _t, _s, subs in rows for s in subs if not s[3])
-    out.append("Depth two, directories only — a listing of 989 files would be noise. Counts are "
-               "recursive and include subdirectories. **%d subdirectories hold real source and are easy "
-               "to miss**: that is not hypothetical, `arch-graph.py` walked past every one of them until "
-               "2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number "
-               "this document published. The vendored rows are marked because excluding them is a "
-               "declared decision (`VENDORED_SUBTREES`), not an accident of not looking." % total_sub)
-    return "\n".join(out)
+    root = REPO / "source"
+    all_top = {name: node for node in dir_tree(root) for name in [node[0]]}
+    # Lattice directories in tier order first, then everything else. The "everything else" is the point:
+    # source/test, utility, json_tool and mod_uploader are real code that NO measurement in this document
+    # covers, because TIERS does not name them. A tree that quietly omitted them would hide that.
+    ordered = [(d, TIER_OF[d]) for _t, ds in TIERS for d in ds if d in all_top]
+    ordered += [(n, None) for n in sorted(all_top) if n not in TIER_OF]
+
+    lines_out = ["```", "source/"]
+
+    def emit(node, prefix, last):
+        name, _rel, files, nlines, vendored, kids = node
+        branch = "└── " if last else "├── "
+        label = ("vendored — excluded from every count here" if vendored
+                 else "%4d files  %8s lines" % (files, "{:,}".format(nlines)))
+        lines_out.append("%s%s%-16s %s" % (prefix, branch, name + "/", label))
+        child_prefix = prefix + ("    " if last else "│   ")
+        for i, kid in enumerate(kids):
+            emit(kid, child_prefix, i == len(kids) - 1)
+
+    for i, (name, tier) in enumerate(ordered):
+        node = all_top[name]
+        last = i == len(ordered) - 1
+        _n, _rel, files, nlines, vendored, kids = node
+        branch = "└── " if last else "├── "
+        tag = tier.split()[0] if tier else "—"
+        note = ("" if tier else "   ← outside the tier lattice; measured by nothing here")
+        lines_out.append("%s%-16s %-3s %4d files  %8s lines%s"
+                         % (branch, name + "/", tag, files, "{:,}".format(nlines), note))
+        child_prefix = "    " if last else "│   "
+        for j, kid in enumerate(kids):
+            emit(kid, child_prefix, j == len(kids) - 1)
+    lines_out.append("```")
+
+    outside = [n for n, t in ordered if t is None]
+    out_files = sum(all_top[n][2] for n in outside)
+    deepest = 0
+
+    def depth_of(nodes, d=1):
+        nonlocal deepest
+        for n in nodes:
+            deepest = max(deepest, d)
+            depth_of(n[5], d + 1)
+    depth_of([all_top[n] for n, _t in ordered])
+
+    lines_out.append("")
+    lines_out.append("**Every directory that holds code of ours, at every depth — and no files.** "
+                     "Counts are recursive and exclude vendored subtrees, matching every other number "
+                     "in this document. Vendored trees are named but not descended into, since the whole "
+                     "subtree is out of scope and listing its internals would be noise about code that "
+                     "is not ours. Set those aside and the tree is only %d level%s deep: the engine's "
+                     "structure is flatter than its size suggests, which is itself the finding — "
+                     "`source/game` carries 500 files with exactly five subdirectories and no boundary "
+                     "between them." % (deepest, "" if deepest == 1 else "s"))
+    lines_out.append("")
+    lines_out.append("Two things this view exists to make impossible to miss. **Subdirectories hide "
+                     "real code** — `arch-graph.py` walked past every one of them until 2026-07-26, "
+                     "and `source/game` alone hid 162 files and 19,230 lines from every number this "
+                     "document published. And **%d top-level directories (%d files) sit outside the "
+                     "tier lattice entirely**: %s. They are real code that `TIERS` does not name, so "
+                     "no test in this document covers them. That is a scope boundary, and it should be "
+                     "visible rather than inferred from an absence."
+                     % (len(outside), out_files, ", ".join("`%s`" % n for n in outside)))
+    return "\n".join(lines_out)
 
 
 def d_lattice(m):
