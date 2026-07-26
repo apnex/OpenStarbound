@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**129 tasks** across 2 store(s): 1 in_progress, 30 pending, 98 completed
+**134 tasks** across 2 store(s): 1 in_progress, 23 pending, 110 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 128 tasks, ids 64–191
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 133 tasks, ids 64–196
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 116, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 125, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 98.
+**Completed tasks citing no commit and no doc:** 79 of 110.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -142,7 +142,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
-| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
+| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | open | P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing | — | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
@@ -185,18 +185,23 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
 | [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
 | [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `e8d6860a` `7c0e8340` `c89be289` | — |
-| [#180](#c29c1332-180) | `c29c1332` | open | AX-A7: BackdropPass clause-2 "recovery" does not recover in the shipped config (audit delta[4]) | — | — |
-| [#181](#c29c1332-181) | `c29c1332` | open | AX-A1-COUNTERS: contract-violation counters are unobserved and the warn budgets never reset (audit delta[5]+[16]) | — | — |
-| [#182](#c29c1332-182) | `c29c1332` | open | AX-A14: ContentKey ships with zero tests beside a sibling with nine (audit delta[6]) | — | — |
+| [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | `6b6e8b72` | — |
+| [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | `472fd263` | — |
+| [#182](#c29c1332-182) | `c29c1332` | done | AX-A14 DONE: ContentKey's quantiser was UNDEFINED, not merely untested — fixed + 6 tests (13ed9399) | `13ed9399` | — |
 | [#183](#c29c1332-183) | `c29c1332` | done | AX-A3-RATCHET DONE: all 17 singleton reads metered, relocation is no longer a route to green (8eddcb37) | `8eddcb37` | — |
 | [#184](#c29c1332-184) | `c29c1332` | done | AX-A3-WORLDPASS DONE (declaration): four consumed inputs documented at the signature (252bed68) | `252bed68` | — |
-| [#185](#c29c1332-185) | `c29c1332` | open | AX-A2-CONFIG: render behaviour is declared in four competing places; newLighting in none (audit delta[14]) | — | — |
+| [#185](#c29c1332-185) | `c29c1332` | done | AX-A2-CONFIG DONE: getOrDefault + config_declared gate; newLighting declared, antiAliasing moved down (d46fee26) | `d46fee26` | — |
 | [#186](#c29c1332-186) | `c29c1332` | done | AX-A3-TIDY DONE: dead includes deleted, compose call site folded, false L2 build claim corrected (252bed68) | `252bed68` | — |
-| [#187](#c29c1332-187) | `c29c1332` | open | AX-A6: mechanise the NoAssets label rule -- it is currently a shouting comment (audit delta[15]) | — | — |
-| [#188](#c29c1332-188) | `c29c1332` | open | AX-A4-SPEC: the approved design spec still prescribes constructor injection, a known regression (audit delta[10]) | — | — |
-| [#189](#c29c1332-189) | `c29c1332` | open | AX-A12: docs/render/ has six files, no index, and the two doc chains never cross-link (audit delta[11]) | — | — |
-| [#190](#c29c1332-190) | `c29c1332` | open | AX-A8-PRISTINE: prove the FULL gate set from a pristine checkout, not just the script gates (audit delta[1], guardrail… | — | — |
+| [#187](#c29c1332-187) | `c29c1332` | done | AX-A6 DONE: label rule + preset filter asserted at configure time, both proven to fire (786d4342) | `786d4342` | — |
+| [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
+| [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
+| [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
 | [#191](#c29c1332-191) | `c29c1332` | open | DTO-2: finish contract (1) for WorldPass — blocked on TilePainter and on where EntityDrawables lives | — | — |
+| [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
+| [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
+| [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
+| [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
+| [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1241,6 +1246,7 @@ DESIGNED TO BE DELETED: if P-3 (#138) lands, the bypass and the whole parallax c
 
 status: **completed**
 
+- `3a30d7d8` docs(board): regenerate -- Air-Gap seam stages A/B/C closed, #191 filed [#137]
 - `a0f0089b` render(L3): WorldPass takes a sliced input that declares what it consumes
 - `b2cabd8d` render(L3): BackdropPass takes a sliced view -- contract (1), first pass
 - `e6edbe11` docs(render): file the axiom audit, so the guardrails commit messages cite actually exist
@@ -2643,43 +2649,51 @@ either commit, so their result is unaffected. A full pristine BUILD is still the
 
 <a id="c29c1332-180"></a>
 
-#### #180 — AX-A7: BackdropPass clause-2 "recovery" does not recover in the shipped config (audit delta[4])
+#### #180 — AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72)
 
-status: **pending**
+status: **completed**
+
+- `6b6e8b72` render(L3): make the clause-2 recovery actually recover, and make it executable
 
 ```
-VERIFIED IN THE TREE 2026-07-26, not inherited from the audit.
+SHIPPED 2026-07-26, commit 6b6e8b72.
 
-StarBackdropPass.cpp:106-118 detects a still-set deferral flag on entry, logs an error whose text is
-"Recovering by compositing env directly this frame", bumps render.backdrop.compose_recovered, and falls
-through to the unconditional reset at :121. But :288-289 is `if (composeMerge) m_envComposeDeferred = true;`
--- and `backdropComposeMerge` SHIPS TRUE. With the env cache active the same frame re-defers. The logged
-sentence describes an action not taken.
+THE DEFECT. On a stale deferral flag at entry the detector logged "Recovering by compositing env
+directly this frame", bumped render.backdrop.compose_recovered, and reset the flag -- then the merge
+decision 170 lines later SET IT AGAIN on the same frame, because backdropComposeMerge ships true. The
+deferral repeated, the black frame repeated, and the logged sentence described an action nobody took.
+It then went silent after four frames, because the warn budget is a process-lifetime static (#181).
 
-CONSEQUENCE: a throw recurring between the two entry points keeps the whole backdrop black indefinitely
-while the log claims recovery -- and then goes silent after four frames, because the warn budget at :107
-is a function-local static with process lifetime (see AX-A1-COUNTERS).
+THE FIX, two tokens: `params.composeMerge && !recoverThisFrame`. The recovering frame is forced onto the
+standalone branch -- the pre-CM-1 path the comment always claimed, always safe -- costing one merged
+compose in a frame that was already broken. The next frame re-arms normally.
 
-SEVERITY MEDIUM, not high: the fault is currently unreachable -- single caller, ordering verified -- so
-this is a latent lie in a recovery path, not a live defect.
+MADE EXECUTABLE. STAR_BACKDROP_FORCE_DEFER=1 arms the fault on one frame past warmup. Env-gated like the
+existing STAR_RENDERTEST_* knobs, read once, zero cost unset. The reason a broken recovery survived
+review is that nothing could run it.
 
-FIX, either is acceptable:
-  (a) make the recovery real -- force composeMerge=false for the recovering frame only, so the frame
-      genuinely composites env into main directly (the pre-CM-1 path, always safe); or
-  (b) correct the log line to say detection with recovery deferred to the next frame.
-(a) is the honest one and matches what the comment at :103-105 claims the design is.
+VERIFIED:
+  injected  fault armed 1x, recovery logged 1x, GATE: PASS (99/20/201, DIFF=0, 0 GL errors)
+  normal    GATE: PASS (89/20/207, DIFF=0, 0 GL errors); ctest -L NoAssets 5/5
 
-CLOSEOUT (audit hook 4): confirm by reading the shipped-default path that the frame actually composites
-env to main. Do NOT accept "the code has an if" as proof.
+WHAT IT DOES NOT PROVE, recorded in the code as well as here: the injection supplies a STALE FLAG, not
+the abort that produces one. renderParallax still runs on the injected frame, so the frame is correct
+either way and THE GATE CANNOT DISTINGUISH FIXED FROM BROKEN. It proves the branch executes and is
+harmless. Reproducing the real black frame needs renderParallax SKIPPED for a frame -- a caller-side
+knob this pass cannot provide, not worth inventing for a currently-unreachable fault. The fix's
+correctness rests on reading the branch; the contribution is that it is now a branch that runs.
 
-Blocked by nothing. Small. Keep the detection and the counter -- both are genuinely valuable.
+RESIDUAL, carried by #181: the counter is still read by no gate, and the warn budget is still a
+process-lifetime static, so a burst of four still buys session-long silence.
 ```
 
 <a id="c29c1332-181"></a>
 
-#### #181 — AX-A1-COUNTERS: contract-violation counters are unobserved and the warn budgets never reset (audit delta[5]+[16])
+#### #181 — AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263)
 
-status: **pending**
+status: **completed**
+
+- `472fd263` render: make the backdrop's contract violation observable -- gate it, register it, un-mute it
 
 ```
 Two halves of the same Hidden-State finding, both verified in the tree 2026-07-26.
@@ -2709,31 +2723,51 @@ Small, unblocked, and (3) is the one that makes the other two trustworthy.
 
 <a id="c29c1332-182"></a>
 
-#### #182 — AX-A14: ContentKey ships with zero tests beside a sibling with nine (audit delta[6])
+#### #182 — AX-A14 DONE: ContentKey's quantiser was UNDEFINED, not merely untested — fixed + 6 tests (13ed9399)
 
-status: **pending**
+status: **completed**
+
+- `13ed9399` render(L2): ContentKey's quantiser was not a function of its input -- tests, then the fix
 
 ```
-ContentKey landed in StarRetainedSurface.hpp -- L2, the one render file CI actually executes -- with nine
-sibling tests in retained_surface_test.cpp and zero of its own.
+SHIPPED 2026-07-26, commit 13ed9399. Filed as "add missing tests"; writing them found a real defect.
 
-Its ENTIRE STATED JUSTIFICATION is that hand-written keys drift: "the quantisers are here because rounding
-is exactly where two hand-written keys drift apart". An untested quantiser is the failure it was built to
-prevent. `(uint64_t)(unsigned)floor(scale * v)` on a negative input is undefined-ish narrowing nobody has
-exercised, and a drifted quantiser's symptom is a SILENTLY WRONG SKY, not a crash -- the cache returns a
-stale frame because two different scenes hashed equal.
+THE DEFECT. `mix((uint64_t)(unsigned)floor(scale * v))` -- float->unsigned conversion outside the
+destination range is UNDEFINED BEHAVIOUR. Measured under the shipping flags rather than reasoned about:
 
-ADD TO source/test/retained_surface_test.cpp (already in core_tests, already NoAssets-labelled):
-  * determinism -- same inputs, same key, across two instances
-  * order-sensitivity -- mix(a) then mix(b) != mix(b) then mix(a)
-  * quantisation boundary at scale 255 -- 0.0, 1.0, and the value either side of a bucket edge
-  * Vec3B vs Vec4B distinctness -- the same rgb must not collide across the two overloads
-  * out-of-range: values below 0 and above 1, which is the untested narrowing
+  -O3 -ffast-math   two keys from DIFFERENT over-range inputs printed the SAME value
+                    (140721258484321) and compared UNEQUAL. Address-shaped, not hash-shaped.
+  -O0               different values again; NaN landed on the zero bucket where -O3 did not.
 
-Guardrail G5 from the audit generalises this: no new retained surface, cache or key primitive ships
-without off-GPU unit coverage of its invalidation terms. ContentKey is the standing counter-example.
+A content hash whose comparison disagrees with its own printed value is not a wrong hash, it is not a
+hash. Silent by construction: the symptom is a parallax cache that thrashes or spuriously matches and
+composites a stale sky -- never a crash.
 
-Small, unblocked, pure TDD, no GPU needed.
+REACHABILITY, which is what makes it worth fixing rather than noting: the three call sites are skyAlpha,
+dayLevel and parallax layer.alpha. layer.alpha comes from MOD-AUTHORABLE parallax JSON. On an install
+with hundreds of mods a negative alpha is one authoring mistake away.
+
+THE FIX -- and the FIRST ATTEMPT WAS WRONG IN THE SAME WAY AS THE ORIGINAL. Clamping to 4294967295.0f is
+itself out of range: 4294967295 is not representable as a float and rounds UP to 2^32. The standalone
+probe caught it. The bound is 4294967040.0f (0xFFFFFF00), the largest float below 2^32.
+
+VERIFIED BEFORE TOUCHING THE HEADER, at both -O0 and -O3 -ffast-math: negative clamps to the zero
+bucket, over-range saturates consistently, in-range 0.5 is BIT-IDENTICAL to the pre-fix value
+(4953296397560300852). Nothing in [0, 2^32) touches either bound, so no reachable render path changed.
+
+TESTS 9 -> 15: determinism across instances, order-sensitivity, mix(0) advancing the FNV state,
+quantisation bucketing, Vec3B/Vec4B non-collision, totality. The totality test FAILED before the fix.
+
+NaN DELIBERATELY NOT ASSERTED. The build is -ffast-math (-ffinite-math-only); clang states using a NaN
+at all is undefined and warns on the literal. No leaf function restores semantics the TU was told to
+assume away, so asserting it would be green because the compiler chose, not because the code is right --
+the oracle-outside-its-contract trap this campaign already paid for once. Recorded in header and test.
+
+Closes guardrail G5's standing counter-example: no L2 member now ships without off-GPU coverage of its
+invalidation terms.
+
+VERIFIED: core_tests 15/15; ctest -L NoAssets 5/5; GATE: PASS (envoracle 101/101, paralloracle 20/20,
+spreadoracle 220/220, 0 GL errors).
 ```
 
 <a id="c29c1332-183"></a>
@@ -2809,9 +2843,11 @@ fat struct has 35 members; the two passes use 2 and 6.
 
 <a id="c29c1332-185"></a>
 
-#### #185 — AX-A2-CONFIG: render behaviour is declared in four competing places; newLighting in none (audit delta[14])
+#### #185 — AX-A2-CONFIG DONE: getOrDefault + config_declared gate; newLighting declared, antiAliasing moved down (d46fee26)
 
-status: **pending**
+status: **completed**
+
+- `d46fee26` config: one declaration per knob -- getOrDefault, and a gate that keeps it
 
 ```
 VERIFIED 2026-07-26. The asset-side spec is genuinely isomorphic -- opengl.config and effects/*.config are
@@ -2885,9 +2921,11 @@ VERIFIED: render-gate.sh GATE: PASS (105/20/211 oracles, DIFF=0, 0 GL errors); c
 
 <a id="c29c1332-187"></a>
 
-#### #187 — AX-A6: mechanise the NoAssets label rule -- it is currently a shouting comment (audit delta[15])
+#### #187 — AX-A6 DONE: label rule + preset filter asserted at configure time, both proven to fire (786d4342)
 
-status: **pending**
+status: **completed**
+
+- `786d4342` ci: the gates could not start on Windows, and nothing was reading CI
 
 ```
 Every testPreset in source/CMakePresets.json inherits `base`, which filters to LABELS NoAssets, and
@@ -2915,9 +2953,11 @@ Small, unblocked.
 
 <a id="c29c1332-188"></a>
 
-#### #188 — AX-A4-SPEC: the approved design spec still prescribes constructor injection, a known regression (audit delta[10])
+#### #188 — AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c)
 
-status: **pending**
+status: **completed**
+
+- `8781759c` docs: correct the design authority, and give docs/render a front door
 
 ```
 docs/superpowers/specs/2026-07-19-render-decomposition-design.md §3 prescribes constructor injection for
@@ -2949,9 +2989,11 @@ Small. Documentation only, but it is the authority document, so it outranks most
 
 <a id="c29c1332-189"></a>
 
-#### #189 — AX-A12: docs/render/ has six files, no index, and the two doc chains never cross-link (audit delta[11])
+#### #189 — AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c)
 
-status: **pending**
+status: **completed**
+
+- `8781759c` docs: correct the design authority, and give docs/render a front door
 
 ```
 Six files, ~1384 lines, no entry point, and the architecture-N chain and layer1-architecture.md reference
@@ -2980,9 +3022,11 @@ Small, unblocked.
 
 <a id="c29c1332-190"></a>
 
-#### #190 — AX-A8-PRISTINE: prove the FULL gate set from a pristine checkout, not just the script gates (audit delta[1], guardrail G1)
+#### #190 — AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef)
 
-status: **pending**
+status: **completed**
+
+- `704199ef` docs(audit): record the CI arc, and what a pristine checkout actually proved
 
 ```
 PARTIALLY DONE 2026-07-26. The three script gates -- layer1_layering, render_layering, render_docs_fresh --
@@ -3044,6 +3088,72 @@ unchanged. The frozen scene additionally has no particles and no entity animatio
 under exactly that weaker evidence and said so; a change that MOVES tile-drawing logic should not.
 Related to #174 but distinct: #174 is about camera motion, this is about the world body having no
 differential oracle at all.
+```
+
+<a id="c29c1332-192"></a>
+
+#### #192 — CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342)
+
+status: **completed**
+
+- `45da57fc` ci: two Windows-only failures, both real, neither what the message said
+- `786d4342` ci: the gates could not start on Windows, and nothing was reading CI
+
+```
+Uncovered by #187. ctest invokes ADD_TEST commands via CreateProcess on Windows, which does not honour a shebang and does not do PATHEXT/file-association lookup. So layer1_layering (.sh), render_layering (.sh) and render_docs_fresh (.py) all report ***Not Run on windows-latest -- registered, NoAssets-labelled, filtered IN by the preset, and unrunnable. ctest scores Not Run as FAILED, so they redden Windows CI unconditionally while guarding nothing there. Fix: port scripts/layering-lint.sh to pure Python (the payload is already Python; only root-location and arg parsing are bash), and register all three as COMMAND ${Python3_EXECUTABLE} <script>, never relying on the shebang. If Python3 is not found at configure, register a loud failing placeholder rather than silently dropping the gates.
+```
+
+<a id="c29c1332-193"></a>
+
+#### #193 — CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342)
+
+status: **completed**
+
+- `786d4342` ci: the gates could not start on Windows, and nothing was reading CI
+
+```
+dyld: Library not loaded: @loader_path/libsteam_api.dylib -- render_surface_tests links ${STAR_EXT_GUI_LIBS}, which appends ${STEAM_API_LIBRARY} when STAR_ENABLE_STEAM_INTEGRATION is ON (macOS CI has it ON). The dylib is staged next to dist/starbound only, so the test binary cannot launch at all: Subprocess aborted in 0.01s on both macOS jobs. It passes on Windows and Linux by accident of how those link. Beyond the CI red, linking a third-party social SDK into the unit test of a SOVEREIGN Layer-1 module is the opposite of what the module claims to be. Fix: split the SDL3+GL+GLEW core out of STAR_EXT_GUI_LIBS and link the test against that, leaving Steam/Discord for the game target.
+```
+
+<a id="c29c1332-194"></a>
+
+#### #194 — CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848)
+
+status: **completed**
+
+- `45da57fc` ci: two Windows-only failures, both real, neither what the message said
+- `f87a6848` test: the exception perf guard measured the machine, not the property
+
+```
+core_tests fails on windows-latest: EXPECT_LT(usPer, 15.0) got 491.03. The test guards a real fix (StarException must not resolve a DWARF backtrace eagerly in its ctor) but does so with an ABSOLUTE microsecond ceiling measured on this Linux box. On Windows the raw capture path (dbghelp/CaptureStackBackTrace, globally serialised) is far more expensive than Linux's fast unwind, so the number says nothing about whether the regression is present. Same lesson as the render oracles: an absolute threshold is not portable, a DIFFERENTIAL one is. Fix: assert the RATIO -- throw+catch+discard must be several times cheaper than throw+catch+printException(e,true) -- which cancels machine speed. Print all measured numbers either way.
+```
+
+<a id="c29c1332-195"></a>
+
+#### #195 — CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5)
+
+status: **completed**
+
+- `1328b3f5` ci: run the architecture gates on every push, not just source/ changes
+
+```
+.github/workflows/build.yml triggers on push only for paths assets/**, source/**, toolchains/**, triplets/**. A commit touching ONLY scripts/ or docs/ starts no CI at all -- 8781759c (the docs/render index + spec correction) triggered nothing. That is precisely inverted: render_docs_fresh exists to catch drift in docs/render/architecture-3-target-state.md, and layer1_layering/render_layering live in scripts/, so the three gates are blind to commits in exactly the trees they police. Adding docs/** and scripts/** to the existing filter would fire six full multi-platform builds for a typo fix -- too expensive. The right shape is a SEPARATE lightweight workflow (ubuntu, configure-only, no compile) that runs the script gates plus the configure-time label/preset checks on every push regardless of path. Cheap, always runs, and it is the only job that would catch a doc-only or script-only regression.
+```
+
+<a id="c29c1332-196"></a>
+
+#### #196 — BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16
+
+status: **pending**
+
+```
+Found by the G1 pristine-checkout proof (#190), 2026-07-26. Cloning HEAD to a scratch dir and configuring fails during vcpkg install: jemalloc 5.3.1's src/jemalloc_cpp.cpp calls std::__throw_bad_alloc(), which libstdc++ 16 (/usr/lib/gcc/x86_64-redhat-linux/16) no longer declares -- "error: no member named '__throw_bad_alloc' in namespace 'std'". The existing build/linux-release-clang/vcpkg_installed predates that toolchain and still works, so the failure is invisible until someone builds from scratch. CI's ubuntu-22.04 jobs are on an older libstdc++ and are unaffected.
+
+Two separable issues:
+(1) TOOLCHAIN: jemalloc 5.3.1 does not compile against libstdc++ 16. Needs a newer jemalloc port, a vcpkg overlay patch, or a pinned older toolchain for that port.
+(2) REPO, and the more interesting one: source/vcpkg.json lists { "name": "jemalloc", "platform": "linux" } UNCONDITIONALLY, while source/CMakeLists.txt:142 declares option(STAR_USE_JEMALLOC ... OFF). So every Linux build compiles and installs a dependency the default configuration does not link, and when that dependency stops building the whole project stops -- for a library it was not going to use. The fix is to gate the vcpkg dependency behind a manifest feature driven by the CMake option (VCPKG_MANIFEST_FEATURES set before project()).
+
+Risk if left: the working build directory is the only thing keeping this machine able to build. Lose it and the fork cannot be rebuilt here.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
