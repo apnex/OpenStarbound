@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 127, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 128, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -196,7 +196,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
 | [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
 | [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2: finish contract (1) for WorldPass — blocked on TilePainter and on where EntityDrawables lives | — | — |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `b2ac6c27` | — |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
@@ -3046,40 +3046,47 @@ Costs one full build. Worth batching with the next build window rather than run 
 
 <a id="c29c1332-191"></a>
 
-#### #191 — DTO-2: finish contract (1) for WorldPass — blocked on TilePainter and on where EntityDrawables lives
+#### #191 — DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer
 
 status: **pending**
 
+- `b2ac6c27` render: EntityDrawables moves out of the header the slice exists to avoid
+
 ```
-WorldPass's Input DTO landed 2026-07-26 (a0f0089b) but delivered only HALF of contract (1): the declared
-contract, not the buildability win. BackdropPass shed StarWorldRenderData.hpp entirely (11 transitive
-headers -> 2); WorldPass still includes it, for two independent reasons. Both are real, both were found
-by trying, and neither was in stage C's scope.
+BLOCKER 2 -- DONE 2026-07-26, b2ac6c27. EntityDrawables moved from StarWorldRenderData.hpp to
+StarEntityRenderingTypes.hpp, where both of its dependencies (EntityHighlightEffect, EntityRenderLayer)
+already live and which WorldRenderData.hpp already includes -- so no include changed anywhere and every
+consumer still sees it. Verified: build clean, frozen gate PASS (89/20/207 oracles, DIFF=0, 0 GL errors,
+0 gl-state desyncs), NoAssets 6/6, game_tests 92/92.
 
-BLOCKER 1 -- TILEPAINTER. WorldPass::setup() and ::adjustLighting() are pure pass-throughs to
-TilePainter, which takes `WorldRenderData&` in SEVEN signatures and includes the header itself:
-  adjustLighting, setup, terrainChunkHash, liquidChunkHash, getTerrainChunk, getLiquidChunk,
-  produceTerrainPrimitives/produceLiquidPrimitives (WorldRenderData const&)
-It uses THREE members of thirty-five -- geometry, lightMap, lightMinPosition -- which is the identical
-defect BackdropPass had. Slicing it is a small change by member count.
-The reason it was NOT done in stage C: TilePainter is a pre-decomposition painter, explicitly outside
-the decomposition's scope, at 500 lines with a chunk cache. Expanding into it mid-stage turns a bounded
-change unbounded. It is in scope for a DELIBERATE next step, which is this task.
+BLOCKER 1 -- RE-SCOPED. This task said "It uses THREE members of thirty-five ... Slicing it is a small
+change by member count." THE MEMBER COUNT IS RIGHT AND THE SIZING IS WRONG, found by trying:
 
-BLOCKER 2 -- WHERE THE TYPE LIVES. `EntityDrawables` is DEFINED INSIDE StarWorldRenderData.hpp (:17).
-Any type naming it needs that header, so WorldPass::Input cannot escape it even with TilePainter fixed.
-Moving EntityDrawables to its own header (or to StarEntityRenderingTypes.hpp, where its siblings
-OverheadBar and EntityRenderLayer already live) is the fix, and it is a game-side header change.
+  TilePainter's bodies touch exactly 3 members directly (geometry, lightMap, lightMinPosition -- all
+  three DIFFERENT types, so a mis-wire is a compile error, not a silent pixel change).
 
-DO BOTH OR NEITHER. Fixing only one leaves the include in place and the win unbanked.
+  BUT adjustLighting / setup / terrainChunkHash / liquidChunkHash all reach the rest of WorldRenderData
+  through TileDrawer::forEachRenderTile(WorldRenderData const&, ...) -- source/game/StarTileDrawer.hpp:39
+  -- which internally reads `tiles` and `tileMinPosition`. TilePainter cannot be sliced without slicing
+  TileDrawer, and TileDrawer is a GAME-layer class: 12 WorldRenderData references across
+  StarTileDrawer.hpp/.cpp, plus a third consumer in source/game/items/StarMaterialItem.cpp.
 
-VERIFICATION GAP TO CLOSE FIRST, and it is not the motion gap: THE WORLD BODY HAS NO PIXEL ORACLE. The
-render gate's three oracles cover env, parallax and lighting spread. For a WorldPass change the gate
-proves only that the pass ran without GL error -- not that tiles, entities, nametags and bars are
-unchanged. The frozen scene additionally has no particles and no entity animation. a0f0089b shipped
-under exactly that weaker evidence and said so; a change that MOVES tile-drawing logic should not.
-Related to #174 but distinct: #174 is about camera motion, this is about the world body having no
-differential oracle at all.
+So the real change is: a slice type + TilePainter's 7 signatures + TileDrawer's 12 references + a
+game-side item consumer. That crosses out of the render subsystem into the game layer, which is a
+different decision from the one this task described, and it should be taken deliberately rather than
+smuggled in behind a header move.
+
+VERIFICATION GAP, now characterised rather than just named. The golden full-frame hash CANNOT serve as
+the world-body oracle: measured 2026-07-26, the same frozen scene with an IDENTICAL state fingerprint
+(epochTime, dayLength, camera, parallaxLayers=1, entities=213) produces a different hash every run --
+stable within a run, different across runs, and NOT ASLR (3 runs under setarch -R gave 3 distinct
+hashes). #153 already reached this conclusion by a different route ("in-process A/B of two code paths,
+not a golden hash"); this re-derived it with numbers. Making the world body reproducible means pinning
+entity animation phase at freeze, which is its own project.
+
+NEXT ACTION: decide blocker 1 as its own scoped piece of work -- slice TileDrawer + TilePainter together,
+or leave WorldPass holding the fat include and close contract (1) as partial-by-design. Do not attempt it
+under the current evidence without deciding which.
 ```
 
 <a id="c29c1332-192"></a>
