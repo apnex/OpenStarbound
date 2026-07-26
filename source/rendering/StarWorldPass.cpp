@@ -44,7 +44,7 @@ void WorldPass::adjustLighting(WorldRenderData& renderData) {
   m_tilePainter->adjustLighting(renderData);
 }
 
-void WorldPass::renderWorld(WorldCamera const& camera, WorldRenderData& renderData) {
+void WorldPass::renderWorld(WorldCamera const& camera, Input in) {
   // The descriptor travels WITH begin(), not separately: the value is recorded generically inside
   // OpenGlRenderer (Telemetry::timer(name, desc).record(...), ~3 frames after the GPU did the work, at
   // GlGpuTimer::begin's own readback), which has no idea what "render.pass.world.gpu_us" MEANS. This pass
@@ -55,7 +55,7 @@ void WorldPass::renderWorld(WorldCamera const& camera, WorldRenderData& renderDa
   m_renderer->gpuTimer().begin("render.pass.world.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
-  for (auto& ed : renderData.entityDrawables) {
+  for (auto& ed : in.entityDrawables) {
     for (auto& p : ed.layers)
       entityDrawables[p.first].append({ed.highlightEffect, std::move(p.second)});
   }
@@ -76,26 +76,26 @@ void WorldPass::renderWorld(WorldCamera const& camera, WorldRenderData& renderDa
   };
 
   renderEntitiesUntil(RenderLayerBackgroundOverlay);
-  drawDrawableSet(camera, renderData.backgroundOverlays);
+  drawDrawableSet(camera, in.backgroundOverlays);
   renderEntitiesUntil(RenderLayerBackgroundTile);
   m_tilePainter->renderBackground(camera);
   renderEntitiesUntil(RenderLayerPlatform);
   m_tilePainter->renderMidground(camera);
   renderEntitiesUntil(RenderLayerBackParticle);
-  renderParticles(camera, renderData, Particle::Layer::Back);
+  renderParticles(camera, in.particles, Particle::Layer::Back);
   renderEntitiesUntil(RenderLayerLiquid);
   m_tilePainter->renderLiquid(camera);
   renderEntitiesUntil(RenderLayerMiddleParticle);
-  renderParticles(camera, renderData, Particle::Layer::Middle);
+  renderParticles(camera, in.particles, Particle::Layer::Middle);
   renderEntitiesUntil(RenderLayerForegroundTile);
   m_tilePainter->renderForeground(camera);
   renderEntitiesUntil(RenderLayerForegroundOverlay);
-  drawDrawableSet(camera, renderData.foregroundOverlays);
+  drawDrawableSet(camera, in.foregroundOverlays);
   renderEntitiesUntil(RenderLayerFrontParticle);
-  renderParticles(camera, renderData, Particle::Layer::Front);
+  renderParticles(camera, in.particles, Particle::Layer::Front);
   renderEntitiesUntil(RenderLayerOverlay);
-  drawDrawableSet(camera, renderData.nametags);
-  renderBars(camera, renderData);
+  drawDrawableSet(camera, in.nametags);
+  renderBars(camera, in.overheadBars);
   renderEntitiesUntil({});
   m_renderer->gpuTimer().end("render.pass.world.gpu_us");
 }
@@ -106,14 +106,14 @@ void WorldPass::cleanup(int64_t textureTimeout) {
   m_tilePainter->cleanup();
 }
 
-void WorldPass::renderParticles(WorldCamera const& camera, WorldRenderData& renderData, Particle::Layer layer) {
+void WorldPass::renderParticles(WorldCamera const& camera, List<Particle> const* particles, Particle::Layer layer) {
   const int textParticleFontSize = m_assets->json("/rendering.config:textParticleFontSize").toInt();
   const RectF particleRenderWindow = RectF::withSize(Vec2F(), Vec2F(camera.screenSize())).padded(m_assets->json("/rendering.config:particleRenderWindowPadding").toInt());
 
-  if (!renderData.particles)
+  if (!particles)
     return;
 
-  for (Particle const& particle : *renderData.particles) {
+  for (Particle const& particle : *particles) {
     if (layer != particle.layer)
       continue;
 
@@ -179,9 +179,9 @@ void WorldPass::renderParticles(WorldCamera const& camera, WorldRenderData& rend
   m_renderer->flush();
 }
 
-void WorldPass::renderBars(WorldCamera const& camera, WorldRenderData& renderData) {
+void WorldPass::renderBars(WorldCamera const& camera, List<OverheadBar> const& overheadBars) {
   auto offset = m_entityBarOffset;
-  for (auto const& bar : renderData.overheadBars) {
+  for (auto const& bar : overheadBars) {
     auto position = bar.entityPosition + offset;
     offset += m_entityBarSpacing;
     if (bar.icon) {

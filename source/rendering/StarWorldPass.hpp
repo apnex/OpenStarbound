@@ -43,36 +43,40 @@ public:
   void setup(WorldCamera const& camera, WorldRenderData& renderData, AssetsConstPtr assets);
   void adjustLighting(WorldRenderData& renderData);
 
-  // CONSUMES renderData. THIS IS THE CONTRACT, and it was undeclared until #184.
+  // AIR-GAP CONTRACT (1) FOR THIS PASS -- and, UNLIKE BackdropPass::Input, deliberately NOT a const view,
+  // because it cannot be. renderWorld is a SINK for four of these six and a VIEW for two. #184 found that
+  // and wrote it in a comment; this puts it in the type, where the compiler can see it.
   //
-  // The signature says `WorldRenderData&`, which reads as a mutable input. It is a SINK for four of the six
-  // members it touches and a VIEW for two:
+  // PASSED BY VALUE, not by const&. `Input const&` would be actively misleading: constness does not
+  // propagate through reference members, so the four sinks would remain mutable through it. Six references
+  // copy for free; a guarantee that is not one costs more than that.
   //
-  //   CONSUMED -- hollowed; outer container intact, elements moved-from
-  //     entityDrawables       std::move out of ed.layers
-  //     backgroundOverlays  } all three via drawDrawableSet, whose whole body is
-  //     foregroundOverlays  }   `for (Drawable& d : drawables) drawDrawable(camera, std::move(d));`
-  //     nametags            }
-  //   READ-ONLY
-  //     particles             List<Particle> const*
-  //     overheadBars          iterated by const&
-  //
-  // WHY THIS MATTERS RATHER THAN BEING A CURIOSITY: the rendertest state fingerprint already reads
-  // m_renderData AFTER render. It survives only because it reads outer .size(), which the moves leave
-  // intact. Extend it to hash nametag or overlay CONTENT -- the obvious next step for its stated purpose --
-  // and it returns a stable, WRONG fingerprint claiming the inputs matched when they were consumed. A
-  // diagnostic that lies is worse than none, and this one would lie in the direction that hides a real
-  // difference.
-  //
-  // It also decides the shape of the Air-Gap input DTO: `WorldInput` cannot be a const& view. Splitting the
-  // sink from the view is the honest signature, and is the next step rather than this comment.
-  void renderWorld(WorldCamera const& camera, WorldRenderData& renderData);
+  // WHY THE CONSUMPTION MATTERS rather than being a curiosity: the rendertest state fingerprint already
+  // reads m_renderData AFTER render. It survives only because it reads outer .size(), which the moves
+  // leave intact. Extend it to hash nametag or overlay CONTENT -- the obvious next step for its stated
+  // purpose -- and it returns a stable, WRONG fingerprint claiming the inputs matched when they were
+  // consumed. A diagnostic that lies is worse than none, and this one would lie in the direction that
+  // hides a real difference.
+  struct Input {
+    // CONSUMED -- hollowed by the end of the call; outer container intact, elements moved-from.
+    List<EntityDrawables>& entityDrawables;  // std::move out of ed.layers
+    List<Drawable>& backgroundOverlays;      // } all three via drawDrawableSet, whose entire body is
+    List<Drawable>& foregroundOverlays;      // }   `for (Drawable& d : ds) drawDrawable(camera, move(d));`
+    List<Drawable>& nametags;                // }
+    // READ-ONLY.
+    List<Particle> const* particles;
+    List<OverheadBar> const& overheadBars;
+  };
+
+  void renderWorld(WorldCamera const& camera, Input in);
 
   void cleanup(int64_t textureTimeout);
 
 private:
-  void renderParticles(WorldCamera const& camera, WorldRenderData& renderData, Particle::Layer layer);
-  void renderBars(WorldCamera const& camera, WorldRenderData& renderData);
+  // Sliced to what they use, for the same reason renderWorld is: each took the whole frame snapshot to
+  // read one member of it.
+  void renderParticles(WorldCamera const& camera, List<Particle> const* particles, Particle::Layer layer);
+  void renderBars(WorldCamera const& camera, List<OverheadBar> const& overheadBars);
   void drawEntityLayer(WorldCamera const& camera, List<Drawable> drawables, EntityHighlightEffect highlightEffect = EntityHighlightEffect());
   void drawDrawable(WorldCamera const& camera, Drawable drawable);
   void drawDrawableSet(WorldCamera const& camera, List<Drawable>& drawables);

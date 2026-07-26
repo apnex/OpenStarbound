@@ -304,7 +304,12 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
       *m_environmentPainter, backdropParams, ablateParallax);
 
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
-  m_worldPass->renderWorld(m_camera, renderData);
+  // THE SLICE, and note the asymmetry with the backdrop's: four of these six are CONSUMED by the call --
+  // hollowed, elements moved-from -- which is why WorldPass::Input holds non-const references and cannot
+  // be the const view BackdropPass::Input is. Anything reading renderData's overlays, nametags or entity
+  // drawables AFTER this line is reading a husk.
+  m_worldPass->renderWorld(m_camera, {renderData.entityDrawables, renderData.backgroundOverlays,
+      renderData.foregroundOverlays, renderData.nametags, renderData.particles, renderData.overheadBars});
 
   m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
