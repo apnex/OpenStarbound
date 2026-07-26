@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**135 tasks** across 2 store(s): 1 in_progress, 23 pending, 111 completed
+**136 tasks** across 2 store(s): 1 in_progress, 23 pending, 112 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 134 tasks, ids 64–197
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 135 tasks, ids 64–198
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 126, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 127, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 111.
+**Completed tasks citing no commit and no doc:** 79 of 112.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -144,7 +144,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
 | [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
-| [#139](#c29c1332-139) | `c29c1332` | open | P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing | — | — |
+| [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
 | [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `2026-07-25-unified-telemetry-model-design.md` |
 | [#142](#c29c1332-142) | `c29c1332` | done | FBO-1: FBO subsystem hardening — honour explicit size, gate oracle surfaces, diagnosable failures | — | — |
@@ -203,6 +203,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
 | [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
+| [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1351,41 +1352,46 @@ is the only oracle that can catch the ambient-state class of bug this work will 
 
 <a id="c29c1332-139"></a>
 
-#### #139 — P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing
+#### #139 — P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198
 
-status: **pending**
+status: **completed**
+
+- `f02a69f5` render(L1): the GL-state assertion pass -- the gate the pixel oracles cannot be
 
 ```
-RE-SCOPED 2026-07-25 by content audit at c9b2b024. Most of this task's own blocking gate turned out to be
-already satisfied by OTHER tasks — nobody had checked.
+PHASE 1 IS NOW COMPLETE, all three parts:
+ (a) absolute golden full-frame hash -- already existed, shipped as P-0 (#140)
+ (c) trustworthy cost instrument -- already existed (#166 telemetry model + PASS_MASK ablation)
+ (b) GL-STATE ASSERTION PASS -- BUILT 2026-07-26, f02a69f5.
 
-=== PHASE 1 (the gate this task calls blocking) — 2 of 3 ALREADY EXIST ===
- (a) ABSOLUTE golden full-frame hash — EXISTS. source/client/StarClientApplication.cpp:571
-     `if (m_renderTestFrames) renderTestCapture();` placed deliberately after the world compose and before
-     post-process/GUI; XXHash at :6; contract at StarClientApplication.hpp:131-186. Shipped as P-0 (#140).
- (c) TRUSTWORTHY COST INSTRUMENT — EXISTS. Whole-frame ablation via STAR_RENDERTEST_PASS_MASK
-     (StarWorldPainter.cpp:182-209) and STAR_RENDERTEST_NO_INTERFACE, plus the unified telemetry model
-     from #166 with its closure oracle.
- (b) GL-STATE ASSERTION PASS — DOES NOT EXIST. `git grep glStateAssert|assertGlState|StateAssert` returns
-     nothing; no seam asserts bound FBO / viewport / blend state at end-of-render.
+WHAT SHIPPED. GlPass::auditGlState + OpenGlRenderer::auditGlState, called unconditionally from
+finishFrame(). Compares BELIEF vs REALITY rather than absolute end-of-frame values: draw framebuffer,
+viewport extent and current program against the pass's bind cache; scissor enable against m_scissorRect;
+blending-enabled against an expectation (setBlendMode records nothing, so there is no belief to compare).
+The belief-vs-reality framing is the important part -- GlPass is a cache whose binds EARLY-OUT, so a
+disagreement does not merely mis-report, it skips the bind that would have fixed it. RB-1, RB-4, RB-7 and
+the resetToScreen hazard were all that desync.
 
-**(b) is now the entire near-term scope of this task.** It is also what #136 identified as the missing
-gate before ANY further render code motion: the existing pixel oracles are differential — reference and
-cache-under-test share the same draw lambda at the same frame position under the same ambient GL state —
-so refresh-key omissions, FBO lifecycle changes and ambient-state changes all cancel exactly and are
-invisible to them. That is how four live bugs reached the Director in P-1.
+FINDING FROM ITS OWN FIRST RUN, kept in the code: after invalidate(), a null m_target means "no belief",
+not "believes screen" -- only the {0,0} viewport sentinel separates them. That made the sentinel part of
+GlPass's INTERFACE, now named holdsBelief(). Nine boot-frame false positives, zero defects; the renderer's
+cache tells the truth on every rendering frame.
 
-=== PHASES 2-4 (the depth-buffer architecture) — ZERO TRACE, unchanged ===
-`git grep GL_DEPTH|DEPTH_TEST|depthBuffer|prepass|depthAttachment -- source/` returns exactly ONE line:
-StarRenderer_opengl.cpp:80 `glDisable(GL_DEPTH_TEST)` — the finding itself (the task cited :126; the line
-merely moved). GlSurface has no depth face and no depth flag: its format fields are hdr/alpha/clear/
-multisample/sizeDiv only (StarGlRenderSurface.hpp:110-118). Task #114 (R-C opaque tile z-prepass) is
-closed as explicitly DEFERRED/not-built, so step 2's backdrop cull does not exist either. No survey or
-design record: no markdown mentions "painter's algorithm", "z-prepass" or "opaque pass".
+PROVEN BOTH WAYS on hardware, and the injected run is the argument for the whole task:
+  clean    -- 0 desyncs, GATE: PASS, exit 0
+  injected -- 9 desyncs, GATE: FAIL, exit 1, while envoracle 101/101, paralloracle 20/20 and spreadoracle
+              227/227 ALL reported DIFF=0.
+A real ambient-state desync that every pixel oracle called perfect. STAR_RENDERTEST_GLSTATE_DESYNC=1 is
+the knob. render-gate.sh has a `=== gl state ===` block that fails on nonzero (G6).
 
-NEXT ACTION: build the GL-state assertion pass (1b), then do the Phase-2 SURVEY before designing anything.
-Do not start depth-buffer work off the back of this task's original framing — sequence it behind #137,
-which is the extraction contract everything else here rests on.
+UNBLOCKS: this was the oracle #136 named as required before ANY further render code motion, and the
+sequencing gate #138 sits behind. #197 (effect-parameter statefulness) was considered for folding in and
+deliberately NOT folded -- see the note there; its predicate is not crisp and it would have shipped with an
+allowlist for its only in-tree case.
+
+PHASES 2-4 (the depth-buffer architecture) are untouched and unrelated to Phase 1; split to #198 so this
+task closes on what it actually delivered rather than staying open on a different project.</description>
+<parameter name="activeForm">Building the GL-state assertion pass
 ```
 
 <a id="c29c1332-140"></a>
@@ -3212,6 +3218,37 @@ THREE COHERENT OPTIONS, decide rather than drift:
 Lean: (b) then (a). (b) is the gate this campaign keeps discovering it needed; the audit's whole finding
 was that unasserted rules decay. Sequence behind #139(b), the GL-state assertion pass -- same shape, same
 seam, and they should be one instrument rather than two.
+```
+
+<a id="c29c1332-198"></a>
+
+#### #198 — P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing
+
+status: **pending**
+
+```
+SPLIT OUT of #139 on 2026-07-26 when its Phase 1 completed. These phases were never part of Phase 1's
+scope and kept #139 open on a different project.
+
+STATUS: ZERO TRACE, unchanged since the 2026-07-25 content audit.
+  `git grep GL_DEPTH|DEPTH_TEST|depthBuffer|prepass|depthAttachment -- source/` returns exactly ONE line:
+  StarRenderer_opengl.cpp:80 `glDisable(GL_DEPTH_TEST)` -- the finding itself.
+  GlSurface has no depth face and no depth flag: its format fields are hdr / alpha / clear / multisample /
+  sizeDiv only (StarGlRenderSurface.hpp).
+  #114 (R-C opaque tile z-prepass) is closed as explicitly DEFERRED/not-built, so step 2's backdrop cull
+  does not exist either.
+  No survey or design record anywhere: no markdown mentions "painter's algorithm", "z-prepass" or
+  "opaque pass".
+
+NEXT ACTION: do the SURVEY first. Do not start depth-buffer work off the back of #139's original framing,
+which bundled it with an assertion pass it has nothing to do with. The question a survey has to answer is
+whether a 2D painter's-algorithm renderer with heavy alpha blending can use depth at all without changing
+output -- the campaign's own precedent (#129, built then MEASURED NULL then cleanly reverted) says a spike
+that answers "do not build this" is a success.
+
+SEQUENCING: behind #174 (motion harness, guardrail G9) like all other render code motion, and the survey
+should use the new GL-state audit from #139 -- depth state is exactly the ambient-state class it now
+watches.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
