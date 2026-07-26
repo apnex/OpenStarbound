@@ -7,6 +7,7 @@
 #include "StarLogging.hpp"
 #include "StarWorldCamera.hpp"
 #include "StarMathCommon.hpp"
+#include <cstdlib>
 
 namespace Star {
 
@@ -129,10 +130,42 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
   // so the failure would have arrived as a bug report about a black sky with nothing in the log.
   //
   // DETECT AND RECOVER, rather than assert. A hard failure would turn a mod-induced or refactor-induced
-  // ordering mistake into a crash, and the recovery is trivially correct: falling through to the reset
-  // below makes this frame composite env into "main" directly, which is the pre-CM-1 behaviour and is
-  // always safe.
-  if (m_envComposeDeferred) {
+  // ordering mistake into a crash on the Director's machine.
+  //
+  // AND UNTIL #180 THE RECOVERY DID NOT HAPPEN. This block used to reason that "falling through to the
+  // reset below makes this frame composite env into main directly" -- but the reset at the bottom of this
+  // comment only clears the flag, and the merge decision further down SETS IT AGAIN on the same frame,
+  // because backdropComposeMerge ships TRUE. So the deferral repeated, the black frame repeated, and the
+  // log line "Recovering by compositing env directly this frame" described an action nobody took. Then it
+  // went silent after four frames, because the warn budget is a process-lifetime static.
+  //
+  // A logged recovery that does not recover is worse than no recovery: it converts an unmissable failure
+  // into a reassuring one. The flag below now actually forces this frame onto the standalone path.
+  // FAULT INJECTION, so the detector and the recovery branch can be EXECUTED rather than only read. The
+  // clause-2 fault is unreachable in the shipped config -- one caller, ordering verified -- which is
+  // exactly why a recovery that did not recover survived review: nothing could run it. Env-gated like the
+  // rest of the harness knobs (STAR_RENDERTEST_*), read once, zero cost when unset. Arms on one frame past
+  // warmup, so the cache is populated and the recovered frame is a realistic one.
+  //
+  // WHAT IT DOES NOT REPRODUCE, stated so nobody mistakes a green run for more than it is: this injects a
+  // STALE DEFERRAL FLAG, not the abort that would produce one. renderParallax still runs on the injected
+  // frame, so the frame renders correctly either way and the gate cannot distinguish fixed from broken.
+  // What it proves is that the branch executes and is harmless. Reproducing the black frame needs
+  // renderParallax to be SKIPPED for a frame, which is a caller-side knob this pass cannot provide.
+  static bool const forceDefer = []() {
+    char const* e = getenv("STAR_BACKDROP_FORCE_DEFER");
+    return e && *e == '1';
+  }();
+  if (forceDefer) {
+    static int entries = 0;
+    if (++entries == 10) {
+      Logger::info("[backdrop] STAR_BACKDROP_FORCE_DEFER: arming the clause-2 fault on this frame");
+      m_envComposeDeferred = true;
+    }
+  }
+
+  bool recoverThisFrame = m_envComposeDeferred;
+  if (recoverThisFrame) {
     static int warnBudget = 4;   // rate-limited; a broken caller would otherwise log every frame
     if (warnBudget > 0) {
       --warnBudget;
@@ -313,7 +346,12 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     // Renderer exposes no notion of "who last wrote this target", so proving nothing writes "main" in the
     // window would need renderer-side support. Verified safe today (the lightmap phase writes only
     // lightingGpu* and restores world/main); anything added to that window must preserve it BY REVIEW.
-    bool composeMerge = params.composeMerge;
+    // `&& !recoverThisFrame` IS THE RECOVERY (#180). Without it this line re-armed the very deferral the
+    // detector had just reported recovering from, on the same frame, every frame -- because the merge
+    // ships enabled. Suppressing the merge for the recovering frame only sends it down the standalone
+    // branch below, which is the pre-CM-1 behaviour and always safe, and costs one merged compose in a
+    // frame that was already broken. The next frame re-arms normally.
+    bool composeMerge = params.composeMerge && !recoverThisFrame;
     if (composeMerge) {
       m_envComposeDeferred = true;
     } else {
