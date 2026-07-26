@@ -105,14 +105,16 @@ flowchart TD
   B --> R5["<b>action:</b> give the consumer an input<br/>type it declares itself"]
 
   S(["A separate question, asked of one SIDE<br/>rather than of the boundary:<br/>could this side become two?"]) --> T6
-  T6{"<b>Test 6 — Cohesion</b><br/>Is there a cut inside<br/>this side at all?"}
-  T6 -->|"one component"| C1["<b>NO PARTITION EXISTS</b><br/>a directory cannot be made.<br/>Breaking the cycle is the work,<br/>and it is not a build-file change."]
-  T6 -->|"many components"| C2["<b>SPLITTABLE</b><br/>the cheap mechanism is available"]
+  T6{"<b>Test 6 — Cohesion</b><br/>Do the DECLARATIONS cycle,<br/>or only the .cpp files?"}
+  T6 -->|"cyclic headers"| C1["<b>TYPE ENTANGLEMENT</b><br/>the declarations themselves cycle.<br/>The hard case: type surgery first."]
+  T6 -->|"acyclic headers,<br/>cyclic .cpp"| C3["<b>NO FREE PARTITION</b><br/>the strata exist in the declarations.<br/>Confine the implementation files,<br/>then the directory is trivial."]
+  T6 -->|"acyclic both"| C2["<b>SPLITTABLE NOW</b><br/>the cheap mechanism is available"]
 
   classDef verdict fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
   classDef action fill:#3a2d5c,stroke:#7b5ea7,color:#e8e0f5
   classDef bad fill:#5c2020,stroke:#a33,color:#ffe5e5
   class E,P,L,A,N,W,C2 verdict
+  class C3 action
   class R3,R4,R5 action
   class B,C1 bad
 ```
@@ -126,9 +128,14 @@ for settling whether a boundary exists.
 **Tests 5 and 6 were added after the first four had been applied**, because the first four produced a
 recommendation that turned out to be impossible. Test 5 (§6) grades the interface rather than the
 permission. Test 6 (§9) is drawn as its own entry point rather than downstream of test 5, because it is
-orthogonal: it takes a *directory* as its subject, it applies whether or not shape passed, and for the
-directory this document most wanted to split, its answer is no. This ladder is a record of being caught,
-not a taxonomy designed in advance.
+orthogonal: it takes a *directory* as its subject and applies whether or not shape passed.
+
+**Test 6 then had to be corrected too**, which is why it now asks about declarations rather than about
+cycles in general. Its first form measured translation units — `Foo.hpp` and `Foo.cpp` as one node —
+and concluded that `game` could not be partitioned at all. Separating the two graphs inverted the
+answer: the declarations are acyclic, and the cycle is entirely implementation-side. A test that
+conflates *what a file declares* with *what it uses* will call a layered system a monolith. This ladder
+is a record of being caught, twice, not a taxonomy designed in advance.
 
 **What it does not measure, named rather than left as a hole.** Every test here is a snapshot. Nothing
 in this document distinguishes a boundary that has been stable for a decade from one rewritten monthly,
@@ -632,8 +639,9 @@ networking. Whether those clusters are *separable* is a different question, and 
 
 Test 6. The obvious response to §8 is "give `game` sub-directories with their own grant lists". This
 section exists because that recommendation was in this document, stated as costing "no behavioural
-change at all", and it was **wrong** — not understated, impossible. Before proposing a partition,
-measure whether one exists.
+change at all", and it was wrong. Before proposing a partition, measure whether one exists — and
+measure the right graph, because the first version of this section got *that* wrong too and concluded
+something stronger than its evidence supported.
 
 <!-- BEGIN GENERATED: scripts/arch-graph.py#cohesion -->
 ```mermaid
@@ -644,42 +652,62 @@ xychart-beta
     bar [23, 3, 19, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
-| directory | units | internal edges | largest cycle | share | partitionable? |
-|:----------|------:|---------------:|--------------:|------:|:---------------|
-| `extern` | 13 | 12 | 3 | 23% | partly |
-| `core` | 154 | 473 | 5 | 3% | yes |
-| `base` | 16 | 11 | 3 | 19% | partly |
-| `platform` | 4 | 0 | 1 | 25% | n/a — too small |
-| `application` | 15 | 23 | 5 | 33% | partly |
-| `game` | 264 | 1562 | 226 | 86% | **NO — one blob** |
-| `rendering` | 12 | 17 | 1 | 8% | yes |
-| `windowing` | 31 | 89 | 26 | 84% | **NO — one blob** |
-| `frontend` | 51 | 88 | 6 | 12% | yes |
-| `client` | 2 | 2 | 2 | 100% | n/a — too small |
-| `server` | 4 | 4 | 2 | 50% | n/a — too small |
+| directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
+|:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
+| `extern` | 13 | 12 | 3 | 23% | 3 | **type-level entanglement** |
+| `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
+| `base` | 16 | 11 | 3 | 19% | 1 | partly, as it stands |
+| `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
+| `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
+| `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |
+| `rendering` | 12 | 17 | 1 | 8% | 1 | yes, freely |
+| `windowing` | 31 | 89 | 26 | 84% | 1 | **not by moving files** — see below |
+| `frontend` | 51 | 88 | 6 | 12% | 1 | yes, freely |
+| `client` | 2 | 2 | 2 | 100% | 1 | n/a — too small |
+| `server` | 4 | 4 | 2 | 50% | 1 | n/a — too small |
 
-A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node; edges are includes within the directory. A directory whose largest strongly-connected component is most of the directory **cannot be split**, because there is no cut to make. Directories in that state: `game`, `windowing`.
+A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node. **Two graphs over the same nodes, answering different questions.** *All edges* asks whether these files could be moved into sub-directories as they stand — a cycle blocks that, because a grant list cannot be handed to a directory whose files include across the proposed boundary. *Headers only* asks whether the **declarations** are hierarchical, which is what decides whether a decomposition is possible at all.
+
+**The header column is 1 for every directory of our own code.** Not "low" — one node. `source/game`'s declaration graph is entirely acyclic, and so is `windowing`'s. Every cycle in the first column is therefore implementation-side: `A.cpp` includes `B.hpp` while `B.cpp` includes `A.hpp`, which is a cycle between translation units and no cycle at all between types. Where that matters most: `game`, `windowing`.
+
+`extern` is the one header-cyclic row and it is not ours — vendored C libraries with mutually-including headers, which is ordinary for that code and outside the scope of anything here.
+
+That distinction decides the shape of the work. A library boundary is enforced on **headers** — a `.cpp` reaching across a boundary is what a boundary is *for* — so an acyclic declaration graph means the strata already exist and nobody has drawn them. Reading them out and confining each stratum's implementation files is a different and far more tractable problem than breaking a 226-node cycle, and it can be done one stratum at a time with each step provable.
 <!-- END GENERATED: cohesion -->
 
-Three things fall out, and they reframe the rest of the document.
+Four things fall out, and the first is a correction to what this section used to say.
 
-**`game` has no partition.** Its largest strongly-connected component is the overwhelming majority of
-the directory: entities include world, world includes entities, and the cycle closes over almost
-everything. You cannot hand a sub-directory its own grant list when it has a mutual include with the
-directory next door. The work is *breaking the cycle*, which is a sustained refactor of the simulation's
-type graph — not a build-file change, and not something with a byte-identical proof.
+**`game` has no *free* partition — which is not the same as no partition.** An earlier version of this
+section read the first column alone and concluded that `game`'s cycle had to be broken before anything
+could move: "a sustained refactor of the simulation's type graph". That overstated the evidence.
+Translation-unit granularity conflates a *declaration* with a *use*, and once the two are separated
+the picture inverts: **`game`'s header graph is completely acyclic.** The 226-unit cycle is entirely
+`A.cpp` ↔ `B.hpp` traffic — implementation files legitimately using many things, which is what
+implementation files do.
+
+So the accurate statement is narrower and much more hopeful. Files cannot be moved into sub-directories
+*as they stand*, because a grant list cannot be handed to a directory whose `.cpp` files include across
+the proposed boundary. But the strata that a decomposition would need **already exist in the
+declarations** — nobody has drawn them. That is a reading-and-confining problem, doable one stratum at
+a time with each step provable, not type surgery.
 
 **`windowing` is in the same state**, at smaller scale, and nobody had noticed because nobody had looked.
 
-**The render decomposition succeeded because `rendering` was already almost acyclic.** That is worth
-sitting with. The campaign's hardest structural achievement — L1/L2/L3, the passes, the sovereign
-substrate — was possible because the substrate permitted it. The same effort aimed at `game` would have
-hit a wall on day one. Feasibility was a property of the ground, not of the plan.
+**The render decomposition succeeded because `rendering` was already acyclic at both levels.** The
+campaign's hardest structural achievement — L1/L2/L3, the passes, the sovereign substrate — was
+possible because the substrate permitted it. Feasibility was a property of the ground, not of the plan.
+That remains true, and it is the reason to measure the ground before promising a plan.
 
-This also rehabilitates the hand-built instruments. `layering-lint.py` and its siblings look like
-substitutes for a cheap mechanism nobody bothered to use. For the two blob directories they are not a
-substitute for anything — **they are the only enforcement available**, because the cheap mechanism
-requires a cut that does not exist.
+**The instruments are still the only enforcement available today**, because a cut that exists in the
+declarations is not a cut the build can be told about until the implementation files are confined.
+`layering-lint.py` and its siblings look like substitutes for a cheap mechanism nobody bothered to use;
+for `game` and `windowing` they are holding a line the compiler cannot yet be asked to hold.
+
+**Two caveats, since this correction was itself produced in one pass.** `#include` is a coarse proxy: it
+cannot see template instantiation across a boundary, and it cannot see runtime coupling through `Root`'s
+databases, which is real and which no graph here measures. And removing `Root` from the first graph only
+takes `game` from 86% to 66% — the translation-unit entanglement is broad rather than one hub, so
+"confining the implementation files" is a large body of work even though it is a tractable kind.
 
 ---
 
@@ -988,15 +1016,23 @@ execute · largest un-audited surface in the system.) Together they are hundreds
 mod API and the save/wire compatibility contract, with no directory, no owner and no gate. Nothing here
 measures them because no instrument is shaped to. That is a gap in this document, not a low priority.
 
-**4. Break the `game` cycle — and understand what that means before starting.** (§9 · cost: months to
-years · highest ceiling, highest risk.) **There is no partition to make.** The overwhelming majority of
-`game`'s translation units are one strongly-connected component; a sub-directory cannot be given a grant
-list while it has mutual includes with its neighbours. The work is not a `CMakeLists.txt` per cluster —
-that is the *last* step, and it is trivial once the real work is done. The real work is breaking a
-cycle spanning most of the simulation's type graph, and it has three properties worth stating plainly:
-it cannot be done byte-identically, it cannot be verified by the existing oracles, and the first
-deliverable is not a refactor but a study of whether a cut is reachable at all. Anyone who starts this
-expecting a build-file change will stall in week one.
+**4. Draw `game`'s latent strata, then confine them.** (§9 · cost: months · highest ceiling, and less
+risky than it looked.) **`game`'s declaration graph is already acyclic** — the strata a decomposition
+needs exist today and nobody has read them out. What blocks a partition is not the type graph but the
+implementation files: a sub-directory cannot be given a grant list while its `.cpp` files include across
+the proposed boundary.
+
+So the work is neither a `CMakeLists.txt` per cluster (that is the *last* step, trivial once the rest is
+done) nor breaking a 226-node type cycle (there isn't one). It is: read the header DAG for natural
+strata, pick the most peripheral, confine that stratum's implementation includes, and only then give it
+a directory. Incremental, one stratum at a time, each step provable — and each step reversible if the
+stratum turns out to be wrong.
+
+Two things still make it months rather than weeks. Removing `Root` moves the translation-unit
+entanglement from 86% to only 66%, so the confinement work is broad rather than concentrated on one hub.
+And `#include` cannot see runtime coupling through `Root`'s databases, which is real and unmeasured —
+the first deliverable is still a feasibility study, but now it is a study of *which stratum to start
+with* rather than of whether a cut exists at all.
 
 **5. Cut the thinnest edges.** (§5 · cost: hours · small but real.) `windowing → rendering` is three
 includes in one file. Each cut removes a grant and makes the lattice shallower. Genuine, minor.

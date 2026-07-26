@@ -669,8 +669,22 @@ def scc(graph, nodes):
 
 
 def cohesion():
-    """Per directory: can it be partitioned at all? Units are translation units (Star*.hpp + .cpp as
-    one node), edges are internal includes."""
+    """Per directory, TWO graphs over the same nodes, because they answer different questions.
+
+    A translation unit is Star*.hpp + Star*.cpp as one node.
+
+      ALL EDGES     -- every internal include. Answers: can these files be moved into sub-directories as
+                       they stand? A cycle blocks that, because a grant list cannot be handed to a
+                       directory whose files include across the proposed boundary.
+      HEADERS ONLY  -- .hpp including .hpp. Answers the deeper question: are the DECLARATIONS
+                       hierarchical? That is what decides whether a decomposition is POSSIBLE at all.
+
+    THE SECOND GRAPH WAS NOT HERE ORIGINALLY, and its absence made this section assert that `game` had
+    no partition when what it had measured was that `game` has no FREE partition. The difference is not
+    academic: every directory in this tree is acyclic at header level, so every cycle reported by the
+    first graph is implementation-side. A library boundary is enforced on headers -- a .cpp reaching
+    across a boundary is what a boundary is FOR -- so an acyclic declaration graph means the strata
+    exist and nobody has drawn them, which is a very different problem from breaking a 226-node cycle."""
     out = {}
     # Basename, because an include names a basename; a subdirectory path would never match one.
     stem = lambda n: re.sub(r"\.(hpp|cpp|h|c)$", "", os.path.basename(n))
@@ -679,15 +693,19 @@ def cohesion():
         if not fs:
             continue
         units = {stem(f) for f in fs}
-        graph = {}
+        graphs = [{}, {}]
         for f in fs:
+            from_header = f.endswith(HDR_EXT)
             for inc in INCLUDE.findall(read(REPO / "source" / d / f)):
-                b = stem(os.path.basename(inc))
-                if b in units and b != stem(f):
-                    graph.setdefault(stem(f), set()).add(b)
-        comps = scc(graph, sorted(units))
-        biggest = len(comps[0]) if comps else 0
-        out[d] = (len(units), sum(len(v) for v in graph.values()), biggest)
+                base = os.path.basename(inc)
+                b = stem(base)
+                if b not in units or b == stem(f):
+                    continue
+                graphs[0].setdefault(stem(f), set()).add(b)
+                if from_header and base.endswith(HDR_EXT):
+                    graphs[1].setdefault(stem(f), set()).add(b)
+        big = [len(c[0]) if (c := scc(g, sorted(units))) else 0 for g in graphs]
+        out[d] = (len(units), sum(len(v) for v in graphs[0].values()), big[0], big[1])
     return out
 
 
@@ -945,26 +963,63 @@ def d_cohesion(m):
            '    y-axis "percent of translation units" 0 --> 100',
            "    bar [%s]" % ", ".join("%.0f" % (100.0 * coh[d][2] / coh[d][0]) for d in DIRS if d in coh),
            "```", ""]
-    out.append("| directory | units | internal edges | largest cycle | share | partitionable? |")
-    out.append("|:----------|------:|---------------:|--------------:|------:|:---------------|")
+    out.append("| directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |")
+    out.append("|:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|")
     for d in DIRS:
         if d not in coh:
             continue
-        units, edges, big = coh[d]
+        units, edges, big, bighdr = coh[d]
         share = big / units if units else 0
         # A 2-unit shell is trivially "one component" and that means nothing. Below the floor the
         # question is not answerable rather than answered badly.
-        verdict = ("n/a — too small" if units <= COHESION_MIN_UNITS
-                   else "**NO — one blob**" if share >= COHESION_BLOB
-                   else "partly" if share >= COHESION_PARTLY else "yes")
-        out.append("| `%s` | %d | %d | %d | %.0f%% | %s |" % (d, units, edges, big, 100 * share, verdict))
+        if units <= COHESION_MIN_UNITS:
+            verdict = "n/a — too small"
+        elif bighdr > 1:
+            verdict = "**type-level entanglement**"
+        elif share >= COHESION_BLOB:
+            verdict = "**not by moving files** — see below"
+        elif share >= COHESION_PARTLY:
+            verdict = "partly, as it stands"
+        else:
+            verdict = "yes, freely"
+        out.append("| `%s` | %d | %d | %d | %.0f%% | %d | %s |"
+                   % (d, units, edges, big, 100 * share, bighdr, verdict))
     blobs = [d for d in DIRS if d in coh and coh[d][0] > COHESION_MIN_UNITS
              and coh[d][2] / coh[d][0] >= COHESION_BLOB]
+    hdr_cyclic = [d for d in DIRS if d in coh and coh[d][3] > 1]
     out.append("")
-    out.append("A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node; edges are includes "
-               "within the directory. A directory whose largest strongly-connected component is most of "
-               "the directory **cannot be split**, because there is no cut to make. Directories in that "
-               "state: %s." % (", ".join("`%s`" % d for d in blobs) or "none"))
+    out.append("A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node. **Two graphs over the "
+               "same nodes, answering different questions.** *All edges* asks whether these files could "
+               "be moved into sub-directories as they stand — a cycle blocks that, because a grant list "
+               "cannot be handed to a directory whose files include across the proposed boundary. "
+               "*Headers only* asks whether the **declarations** are hierarchical, which is what decides "
+               "whether a decomposition is possible at all.")
+    ours = [d for d in DIRS if d in coh and d != "extern"]
+    ours_cyclic = [d for d in ours if coh[d][3] > 1]
+    out.append("")
+    if not ours_cyclic:
+        out.append("**The header column is 1 for every directory of our own code.** Not \"low\" — one "
+                   "node. `source/game`'s declaration graph is entirely acyclic, and so is "
+                   "`windowing`'s. Every cycle in the first column is therefore implementation-side: "
+                   "`A.cpp` includes `B.hpp` while `B.cpp` includes `A.hpp`, which is a cycle between "
+                   "translation units and no cycle at all between types. Where that matters most: %s."
+                   % (", ".join("`%s`" % d for d in blobs) or "none"))
+    else:
+        out.append("**Header-level cycles — genuine type entanglement — appear in %s.** Everywhere "
+                   "else the declaration graph is acyclic and the first column's cycles are "
+                   "implementation-side." % ", ".join("`%s`" % d for d in ours_cyclic))
+    if "extern" in [d for d in DIRS if d in coh and coh[d][3] > 1]:
+        out.append("")
+        out.append("`extern` is the one header-cyclic row and it is not ours — vendored C libraries "
+                   "with mutually-including headers, which is ordinary for that code and outside the "
+                   "scope of anything here.")
+    out.append("")
+    out.append("That distinction decides the shape of the work. A library boundary is enforced on "
+               "**headers** — a `.cpp` reaching across a boundary is what a boundary is *for* — so an "
+               "acyclic declaration graph means the strata already exist and nobody has drawn them. "
+               "Reading them out and confining each stratum's implementation files is a different and "
+               "far more tractable problem than breaking a 226-node cycle, and it can be done one "
+               "stratum at a time with each step provable.")
     return "\n".join(out)
 
 
