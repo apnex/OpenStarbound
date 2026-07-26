@@ -133,7 +133,7 @@ ADD_TEST (NAME layer1_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.sh
           --needle "Root::singleton"
           source/rendering/StarBackdropPass.cpp=0
-          source/rendering/StarWorldPass.cpp=2
+          source/rendering/StarWorldPass.cpp=0
           source/rendering/StarGpuLightmapPass.cpp=0
           source/rendering/StarWorldPainter.cpp=9
           source/rendering/StarTilePainter.cpp=3
@@ -144,6 +144,11 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #   2026-07-25  BackdropPass    8 -> 0  (#137: BackdropParams resolved at the boundary by WorldPainter)
 #               WorldPass       2        the remaining pass residual; same treatment, not yet done
 #               LightmapPass    0        clean since extraction -- though BOUGHT by WorldPainter's reads
+#   2026-07-26  WorldPass       2 -> 0  FIRST LOWERING, and the first REMOVAL rather than relocation:
+#                                       both reads were `m_assets = Root::singleton().assets()`, and
+#                                       WorldPainter already held a fresh handle at both call sites, so
+#                                       handing it in cost the orchestrator nothing. Subsystem 17 -> 15.
+#                                       NO L3 PASS NOW REACHES FOR A GLOBAL.
 #   2026-07-26  #183 extends the ceilings to every file that can receive a relocated read:
 #               WorldPainter    9        8 of these ARRIVED from BackdropPass. Correct architecture,
 #                                        previously unmetered. This is the number to watch.
@@ -152,7 +157,7 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #               EnvironmentPainter 0     PROHIBITION, not a ratchet -- it is clean, keep it clean
 #               DrawablePainter    0     PROHIBITION, not a ratchet -- it is clean, keep it clean
 #
-# ALL 17 READS ARE NOW METERED. Cross-checked before landing: scripts/render-inventory.py and
+# EVERY REMAINING READ IS METERED. Cross-checked before landing: scripts/render-inventory.py and
 # layering-lint.sh use DIFFERENT comment-stripping strategies (a python regex pass vs the lint's own),
 # so agreement was CONFIRMED rather than assumed -- both report 15 across the five files added here,
 # plus the 2 already metered. If you add a render file, add it here too, or the total silently drifts

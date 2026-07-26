@@ -1,5 +1,7 @@
 #include "StarWorldPass.hpp"
-#include "StarRoot.hpp"
+// StarRoot.hpp is DELIBERATELY ABSENT. The assets handle is handed in by WorldPainter -- the composition
+// root, which is allowed to know about Root; a pass is not. render_layering greps for the CALL, not the
+// include, so the compile is the only thing that can prove this dependency edge is actually gone.
 #include "StarAssets.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarAssetTextureGroup.hpp"
@@ -10,9 +12,7 @@
 
 namespace Star {
 
-WorldPass::WorldPass() {
-  m_assets = Root::singleton().assets();
-
+WorldPass::WorldPass(AssetsConstPtr assets) : m_assets(std::move(assets)) {
   m_highlightConfig = m_assets->json("/highlights.config");
   for (auto p : m_highlightConfig.get("highlightDirectives").iterateObject())
     m_highlightDirectives.set(EntityHighlightEffectTypeNames.getLeft(p.first), {p.second.getString("underlay", ""), p.second.getString("overlay", "")});
@@ -32,10 +32,11 @@ void WorldPass::renderInit(RendererPtr const& renderer) {
   m_drawablePainter = make_shared<DrawablePainter>(renderer, make_shared<AssetTextureGroup>(textureGroup));
 }
 
-void WorldPass::setup(WorldCamera const& camera, WorldRenderData& renderData) {
+void WorldPass::setup(WorldCamera const& camera, WorldRenderData& renderData, AssetsConstPtr assets) {
   // Refresh the current asset set (mirrors the pre-extraction render() which re-read Root assets each frame);
-  // the world-body helpers below do per-frame asset lookups (particle config, preload images).
-  m_assets = Root::singleton().assets();
+  // the world-body helpers below do per-frame asset lookups (particle config, preload images). The handle now
+  // arrives from the caller, which refreshes its own on the line before this call -- same value, same frame.
+  m_assets = std::move(assets);
   m_tilePainter->setup(camera, renderData);
 }
 

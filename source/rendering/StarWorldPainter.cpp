@@ -87,7 +87,11 @@ WorldPainter::WorldPainter() {
   // The world-body pass owns the tile/drawable/text painters + the entity-render config; it loads that config
   // once in its constructor, exactly where the pre-extraction WorldPainter loaded it. (Its painters are created
   // later, in renderInit -- they are recreated per world entry.)
-  m_worldPass = make_shared<WorldPass>();
+  //
+  // IT IS HANDED THE ASSETS READ ON LINE 81, not left to fetch its own. WorldPainter is the composition root
+  // and may know about Root; a pass may not. This is what took WorldPass to zero singleton reads WITHOUT
+  // adding one here -- a removal, not the relocation that took BackdropPass from 8 to 0.
+  m_worldPass = make_shared<WorldPass>(m_assets);
 }
 
 void WorldPainter::renderInit(RendererPtr renderer) {
@@ -175,7 +179,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 
   m_assets = Root::singleton().assets();
 
-  m_worldPass->setup(m_camera, renderData);
+  m_worldPass->setup(m_camera, renderData, m_assets);
 
   // Stars, Debris Fields, Sky, and Orbiters
 

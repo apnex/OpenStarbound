@@ -24,7 +24,12 @@ public:
   // Loads the entity-render config ONCE (highlights + overhead-bar geometry), matching the pre-extraction
   // WorldPainter constructor. The draw painters are NOT created here -- renderInit() does that, because the
   // pre-extraction renderInit recreated them on every world entry.
-  WorldPass();
+  //
+  // ASSETS ARE HANDED IN, NOT FETCHED. WorldPainter is the composition root and is allowed to know about
+  // Root; a pass is not. This was the last Root::singleton() read in any L3 pass body, and it left by
+  // REMOVAL rather than relocation -- WorldPainter already holds a fresh handle at both call sites, so
+  // nothing moved up into the orchestrator to pay for it.
+  explicit WorldPass(AssetsConstPtr assets);
 
   // (Re)create the tile / drawable / text painters on the given renderer. Called from WorldPainter::renderInit,
   // which runs on every world entry -- so, like the pre-extraction code, the painters are fresh each world.
@@ -32,7 +37,10 @@ public:
   // only a raw Renderer* for its own calls (valid for its lifetime -- the owned painters hold the renderer).
   void renderInit(RendererPtr const& renderer);
 
-  void setup(WorldCamera const& camera, WorldRenderData& renderData);
+  // Takes the frame's assets handle for the same reason the constructor does: the world-body helpers do
+  // per-frame asset lookups (particle config, preload images), and the pre-extraction render() re-read Root
+  // assets every frame. The caller already refreshes its own handle immediately before this call.
+  void setup(WorldCamera const& camera, WorldRenderData& renderData, AssetsConstPtr assets);
   void adjustLighting(WorldRenderData& renderData);
 
   // CONSUMES renderData. THIS IS THE CONTRACT, and it was undeclared until #184.

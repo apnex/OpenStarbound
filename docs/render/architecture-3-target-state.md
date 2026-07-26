@@ -143,17 +143,17 @@ Three mechanisms now hold this section to the tree:
 |:------|------:|----------------------------:|
 | L1 substrate | 0 | 0 |
 | L2 primitives | 0 | 0 |
-| L3 passes | 2 | 2 |
+| L3 passes | 0 | 0 |
 | L3 orchestrator | 9 | 9 |
 | painters (pre-decomposition) | 6 | 6 |
-| **total** | **17** | **17** |
+| **total** | **15** | **15** |
 
 Files that carry a read, plus every file the ratchet holds at a ceiling:
 
 | file | layer | reads | `render_layering` ceiling |
 |:-----|:------|------:|--------------------------:|
 | `StarBackdropPass.cpp` | L3 passes | 0 | 0 |
-| `StarWorldPass.cpp` | L3 passes | 2 | 2 |
+| `StarWorldPass.cpp` | L3 passes | 0 | 0 |
 | `StarGpuLightmapPass.cpp` | L3 passes | 0 | 0 |
 | `StarWorldPainter.cpp` | L3 orchestrator | 9 | 9 |
 | `StarEnvironmentPainter.cpp` | painters (pre-decomposition) | 0 | 0 |
