@@ -85,6 +85,13 @@ private:
   // GpuLightmapPass. Only used on the both-caches-active path; the env compose is deferred from
   // renderEnvironment (m_envComposeDeferred) and issued here so env reaches "main" exactly once.
   void mergedCompose(Vec2U const& size);
+
+  // The OTHER arm of the compose decision: env alone into "main", when the merge cannot happen. Called from
+  // BOTH entry points -- renderEnvironment when the merge is off, and renderParallax when the merge was armed
+  // but parallax then bypassed. The two call sites were verbatim copies of each other, comment included, which
+  // is how a compose decision comes to be described twice and maintained once.
+  void composeEnvStandalone(Vec2U const& size);
+
   RenderBufferPtr m_fullQuadBuffer;
   Vec2U m_fullQuadSize = {0, 0};
   // Set by renderEnvironment when the merge is enabled AND the env cache is active: the env->main compose is

@@ -16,6 +16,10 @@ SET (star_rendering_HEADERS
       StarEnvironmentPainter.hpp
       StarFontTextureGroup.hpp
       StarGpuLightmapPass.hpp
+      # L2. Header-only, so it compiles wherever it is included and was absent from this list until #186 --
+      # which meant the layer with the strictest sovereignty claim in the subsystem was not a declared source
+      # of the target that contains it. Every other rendering header is listed; this one is not optional.
+      StarRetainedSurface.hpp
       StarTextPainter.hpp
       StarTilePainter.hpp
       StarWorldPainter.hpp

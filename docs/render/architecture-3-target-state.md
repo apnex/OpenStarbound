@@ -45,7 +45,7 @@ flowchart TB
 
   subgraph PASSES["L3 · Sovereign render passes — one entry · Renderer-only · own telemetry"]
     BP["🟡 BackdropPass<br/>sky + parallax + env + compose-merge<br/>EXTRACTED · params at the boundary · no DTO"]:::partial
-    LP["✅ LightmapPass<br/>spread + point + cap on GPU<br/>explicit LightmapResult · no singleton reads"]:::done
+    LP["✅ GpuLightmapPass<br/>spread + point + cap on GPU<br/>explicit LightmapResult · no singleton reads"]:::done
     WPS["🟡 WorldPass<br/>tiles · entities · particles · bars<br/>EXTRACTED · singleton residual · no DTO"]:::partial
   end
 
@@ -175,7 +175,7 @@ What stays hand-written is the part a script cannot measure — the *shape* of e
 
 | pass | ① sliced input | ② no `Root::singleton` | ③ own telemetry | ④ explicit output |
 |---|---|---|---|---|
-| `LightmapPass` (`StarGpuLightmapPass`) | ✅ takes `ImageView`/`List` params | ✅ clean | 🟡 function-local statics | ✅ `LightmapResult` |
+| `GpuLightmapPass` | ✅ takes `ImageView`/`List` params | ✅ clean | 🟡 function-local statics | ✅ `LightmapResult` |
 | `BackdropPass` | ❌ takes `WorldRenderData&` | ✅ clean — `BackdropParams` resolved per frame | 🟡 function-local statics | n/a — draws to main FB |
 | `WorldPass` | ❌ **consumes** `WorldRenderData&` (`std::move`) | ❌ residual | ✅ descriptor travels with `begin()` | n/a — draws to main FB |
 
@@ -183,7 +183,8 @@ What stays hand-written is the part a script cannot measure — the *shape* of e
 
 Three corrections to earlier readings of this matrix, each found by checking the tree rather than the doc:
 
-- **`LightmapPass`'s clean sheet is bought, not earned.** `WorldPainter` performs six lighting config reads, an assets JSON read and an O(cells) scan *on the pass's behalf* before calling it. That is the right shape — resolve at the composition root — but it means a per-file count is gameable by relocation. The honest metric is "pass bodies are pure functions of their parameters", not a global tally.
+- **THE NAME `GpuLightmapPass` IS CORRECT AND THIS DOC WAS WRONG TO CALL IT `LightmapPass`.** The rename was carried on the residual list as "cosmetic, matches this doc's naming" — but `Gpu` is load-bearing, not decoration: there is a live **CPU** lightmap path (`renderData.lightMap`, gated by `lightingGpu`, and the pass's own header documents falling back to it when assets are missing). Dropping `Gpu` would stop the type naming *which of the two* it is. The doc has been corrected to the code; the rename is struck, not deferred.
+- **`GpuLightmapPass`'s clean sheet is bought, not earned.** `WorldPainter` performs six lighting config reads, an assets JSON read and an O(cells) scan *on the pass's behalf* before calling it. That is the right shape — resolve at the composition root — but it means a per-file count is gameable by relocation. The honest metric is "pass bodies are pure functions of their parameters", not a global tally.
 - **Contract ③ was scored backwards.** No pass owns a telemetry handle; all use function-local statics. `WorldPass` was marked amber while holding the *strongest* design in the tree — its descriptor travels with `begin()`, which is better than the contract as written. The contract is wrong, not the code, and enforcing it as stated would push the codebase away from its best pattern. Handle ownership here is cosmetic conformance.
 - **Contract ② says "injected at construction", and that prescription would ship a regression.** These knobs are live-tunable mid-session (`/rendercache envrefresh`), so construction-time injection would freeze them. The correct target is a per-frame params struct resolved **at the boundary** — exactly what `WorldPainter` already does for the lightmap pass.
 
@@ -197,4 +198,4 @@ Contract ④ is marked n/a rather than ❌ for the two drawing passes on purpose
 
 **The rail is complete; the Air-Gap contract is not.** Steps 0–5 were about *where the code lives* and they are done. What remains is the seam that makes each pass independently **buildable** — the DTO views and constructor injection in the [compliance matrix](#air-gap-compliance--measured-from-the-tree). Until contract ② is met, the clean per-layer branches still cannot be regenerated from the trunk, which was the whole point.
 
-Residuals that are *not* on this rail and should not be confused with it: `GpuLightmapPass` → `LightmapPass` rename (cosmetic, matches this doc's naming); the lightmap **dispatch prologue** (config reads, `PointParameters` assembly, the O(cells) auto-K emission scan, `shadowCompareFull`) still living in `WorldPainter` rather than the pass; and the rendertest pass-ablation mask, which is deliberate instrumentation, not undone work.
+Residuals that are *not* on this rail and should not be confused with it: the lightmap **dispatch prologue** (config reads, `PointParameters` assembly, the O(cells) auto-K emission scan, `shadowCompareFull`) still living in `WorldPainter` rather than the pass; and the rendertest pass-ablation mask, which is deliberate instrumentation, not undone work.

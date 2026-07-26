@@ -1,6 +1,8 @@
 #include "StarBackdropPass.hpp"
-#include "StarRoot.hpp"
-#include "StarConfiguration.hpp"
+// StarRoot.hpp / StarConfiguration.hpp are DELIBERATELY ABSENT. Every Root::singleton() read left this file
+// when BackdropParams took over (#137); the includes outlived them by a week. A needle-based lint greps for
+// the CALL, so a pass can be architecturally re-coupled through an include while still measuring 0 -- the
+// compile is the only thing that can prove this edge is gone, so let it.
 #include "StarTelemetry.hpp"
 #include "StarLogging.hpp"
 #include "StarWorldCamera.hpp"
@@ -72,6 +74,33 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
   m_renderer->flush();
   m_renderer->setBlendMode(BlendMode::Alpha);
   m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers
+}
+
+// Composite the env cache into "main" ALONE -- every path where the merged compose does not happen. Called
+// from BOTH entry points: renderEnvironment when the merge is off, and renderParallax when the merge was
+// armed but parallax then bypassed. These were two verbatim copies, ten-line comment included.
+//
+// Cadence::Call, NOT Frame. This compose and render.pass.parallax.compose.gpu_us are the two MUTUALLY
+// EXCLUSIVE arms of the compose decision: with the parallax cache bypassed (moving camera) the env
+// composites standalone; when parked, the merged parallax compose does it instead. Declared Frame, each
+// covers only its share of frames and coverage_scale reads the shortfall as sampling loss -- inflating
+// BOTH. Measured in real play 2026-07-25: env 1448/2208 frames (x1.52) + parallax 760/2208 (x2.91) drove
+// owner `gl` to 118.4%, parts exceeding the whole by 1279 us/tick. Absence here is genuine gating.
+//
+// That was invisible to the render gate for a STRUCTURAL reason, not an oversight: the harness camera never
+// moves, so the bypass never engages and the split never happens. Only a live capture with movement can
+// produce it -- which is the whole argument for #174.
+//
+// switchEffectConfig("world") restores the world effect + "main" target for the world layers and the
+// non-GPU-lighting path. It is part of the compose, not the caller's business -- which is exactly why this
+// belongs in one function rather than two.
+void BackdropPass::composeEnvStandalone(Vec2U const& size) {
+  m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
+  m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_envCache.name(),
+    passthroughParams(false));
+  m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
+  m_renderer->switchEffectConfig("world");
 }
 
 void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData& renderData,
@@ -293,22 +322,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, WorldRenderData&
       // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
       // mutations of the shared effect can't bleed in -- no forked config needed.
       //
-      // Cadence::Call, NOT Frame. This compose and render.pass.parallax.compose.gpu_us are the two MUTUALLY
-      // EXCLUSIVE arms of the compose decision: with the parallax cache bypassed (moving camera) the env
-      // composites standalone; when parked, the merged parallax compose does it instead. Declared Frame, each
-      // covers only its share of frames and coverage_scale reads the shortfall as sampling loss -- inflating
-      // BOTH. Measured in real play 2026-07-25: env 1448/2208 frames (x1.52) + parallax 760/2208 (x2.91) drove
-      // owner `gl` to 118.4%, parts exceeding the whole by 1279 us/tick. Absence here is genuine gating.
-      //
-      // This was invisible to the render gate for a STRUCTURAL reason, not an oversight: the harness camera
-      // never moves, so the bypass never engages and the split never happens. Only a live capture with
-      // movement can produce it.
-      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
-      m_renderer->composite("lightingPassthrough", "main", envScreenSize, "inputTexture", m_envCache.name(),
-        passthroughParams(false));
-      m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
-      m_renderer->switchEffectConfig("world");   // restore world effect + "main" target for the world layers / non-GPU-lighting path
+      composeEnvStandalone(envScreenSize);
     }
 
     // Bit-identity oracle (/rendercache envoracle on; default off, zero-cost when off). The cache path MUST
@@ -506,22 +520,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, WorldRenderData& re
     // now, standalone, so env still reaches "main" exactly once before the direct parallax draws over it. Same
     // passthrough the deferred env compose would have used; env stays byte-identical.
     if (m_envComposeDeferred) {
-      // Cadence::Call, NOT Frame. This compose and render.pass.parallax.compose.gpu_us are the two MUTUALLY
-      // EXCLUSIVE arms of the compose decision: with the parallax cache bypassed (moving camera) the env
-      // composites standalone; when parked, the merged parallax compose does it instead. Declared Frame, each
-      // covers only its share of frames and coverage_scale reads the shortfall as sampling loss -- inflating
-      // BOTH. Measured in real play 2026-07-25: env 1448/2208 frames (x1.52) + parallax 760/2208 (x2.91) drove
-      // owner `gl` to 118.4%, parts exceeding the whole by 1279 us/tick. Absence here is genuine gating.
-      //
-      // This was invisible to the render gate for a STRUCTURAL reason, not an oversight: the harness camera
-      // never moves, so the bypass never engages and the split never happens. Only a live capture with
-      // movement can produce it.
-      m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
-      m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_envCache.name(),
-        passthroughParams(false));
-      m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
-      m_renderer->switchEffectConfig("world");
+      composeEnvStandalone(parallaxScreenSize);
       m_envComposeDeferred = false;
     }
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",

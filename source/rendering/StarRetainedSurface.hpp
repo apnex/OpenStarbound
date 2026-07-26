@@ -50,11 +50,19 @@ namespace Star {
 // parallax key). The header's own stated justification for extracting RetainedSurface was that the
 // decision state had been "hand-rolled twice"; the identical duplication had simply moved down a level.
 //
-// DELIBERATELY TAKES Vec4B/Vec3B, NOT Color. L2's sovereignty is not a slogan -- it is a build fact: this
-// header includes only StarString.hpp and StarVector.hpp, which is what lets retained_surface_test link
-// against core alone and run off the GPU. Accepting Color would drag StarColor.hpp across the seam for a
-// four-byte conversion the caller can do itself. The quantisers are here because rounding is exactly
-// where two hand-written keys drift apart.
+// DELIBERATELY TAKES Vec4B/Vec3B, NOT Color -- but NOT for the reason this comment used to give.
+//
+// It claimed that accepting Color would "drag StarColor.hpp across the seam" and cost the core-only link.
+// That is false, and was false when written: StarColor.hpp lives in source/core/, so including it would
+// have cost this header nothing. A boundary defended by a build claim that does not hold invites the next
+// author to test the claim, find it hollow, and conclude the whole boundary is soft.
+//
+// THE REAL FENCE is that nothing here names StarRenderer.hpp (source/application). That is what
+// layer1_layering enforces, and what actually keeps retained_surface_test linkable against core + base
+// alone with no GL context. Vec4B/Vec3B is then a narrower judgement rather than a structural one, and
+// still a sound one: a four-byte conversion the caller can do itself does not earn a dependency.
+//
+// The quantisers are here because rounding is exactly where two hand-written keys drift apart.
 class ContentKey {
 public:
   void mix(uint64_t v) { m_hash = (m_hash ^ v) * 1099511628211ull; }

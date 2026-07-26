@@ -34,7 +34,32 @@ public:
 
   void setup(WorldCamera const& camera, WorldRenderData& renderData);
   void adjustLighting(WorldRenderData& renderData);
+
+  // CONSUMES renderData. THIS IS THE CONTRACT, and it was undeclared until #184.
+  //
+  // The signature says `WorldRenderData&`, which reads as a mutable input. It is a SINK for four of the six
+  // members it touches and a VIEW for two:
+  //
+  //   CONSUMED -- hollowed; outer container intact, elements moved-from
+  //     entityDrawables       std::move out of ed.layers
+  //     backgroundOverlays  } all three via drawDrawableSet, whose whole body is
+  //     foregroundOverlays  }   `for (Drawable& d : drawables) drawDrawable(camera, std::move(d));`
+  //     nametags            }
+  //   READ-ONLY
+  //     particles             List<Particle> const*
+  //     overheadBars          iterated by const&
+  //
+  // WHY THIS MATTERS RATHER THAN BEING A CURIOSITY: the rendertest state fingerprint already reads
+  // m_renderData AFTER render. It survives only because it reads outer .size(), which the moves leave
+  // intact. Extend it to hash nametag or overlay CONTENT -- the obvious next step for its stated purpose --
+  // and it returns a stable, WRONG fingerprint claiming the inputs matched when they were consumed. A
+  // diagnostic that lies is worse than none, and this one would lie in the direction that hides a real
+  // difference.
+  //
+  // It also decides the shape of the Air-Gap input DTO: `WorldInput` cannot be a const& view. Splitting the
+  // sink from the view is the honest signature, and is the next step rather than this comment.
   void renderWorld(WorldCamera const& camera, WorldRenderData& renderData);
+
   void cleanup(int64_t textureTimeout);
 
 private:
