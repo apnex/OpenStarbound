@@ -19,6 +19,56 @@ binary compositions and singleton counts. Everything numeric below comes out of 
 
 ## 1. How a boundary is determined
 
+### First, the one word this document leans on
+
+**A grant is one line in a directory's `INCLUDE_DIRECTORIES(...)` block.** The term is used throughout
+what follows and is not standard vocabulary — it is named here because nothing else in the build names
+the thing, and the thing is the authority every test below appeals to.
+
+The top-level `source/CMakeLists.txt` defines a path variable per directory:
+
+```cmake
+set(STAR_GAME_INCLUDES
+    ${PROJECT_SOURCE_DIR}/game
+    ${PROJECT_SOURCE_DIR}/game/interfaces
+    ${PROJECT_SOURCE_DIR}/game/items
+    ... )
+```
+
+Each directory's own `CMakeLists.txt` then opens by listing which of those it wants. This is all of
+`source/rendering/CMakeLists.txt`'s declaration of what it may see:
+
+```cmake
+INCLUDE_DIRECTORIES (
+    ${STAR_EXTERN_INCLUDES}
+    ${STAR_CORE_INCLUDES}
+    ${STAR_BASE_INCLUDES}
+    ${STAR_GAME_INCLUDES}        # <-- one grant
+    ${STAR_PLATFORM_INCLUDES}
+    ${STAR_APPLICATION_INCLUDES}
+    ${STAR_RENDERING_INCLUDES}
+  )
+```
+
+One line is a **grant**; the block is that directory's **grant list**. Four properties make it worth a
+word of its own, and each one is load-bearing somewhere below:
+
+- **Permission, not use.** A grant can be held and never spent — §5 finds five. "Dependency" would be
+  the wrong word for those, because nothing depends on anything.
+- **Declared, not derived.** Somebody typed the line. It is an architectural decision that happens to
+  live in a build file, which is why §1 treats it as an authority rather than an artefact.
+- **Enforced by absence.** With no grant, the header is not on the search path, so a `#include` of it
+  is a *file not found* compile error. Not a lint, not a warning, not a convention.
+- **One-directional, and complete.** `rendering` grants itself sight of `game`; `game` has no
+  reciprocal line, which is why cycles are uncompilable. And each list restates everything it wants —
+  `rendering` names `core` explicitly rather than inheriting it through `game` — so the block is the
+  whole statement, with nothing implicit.
+
+"Include path" names the mechanism but not the meaning; "visibility" sounds automatic. *Grant* carries
+that someone decided, and that it can be revoked.
+
+### The tests
+
 **Three questions, not one.** Tests 1–4 ask whether a boundary *exists*, in descending order of
 evidential strength. Test 5 asks whether an existing boundary is any *good*, which is the question most
 architecture work actually turns on — a boundary can be perfectly enforced and still be badly shaped,
