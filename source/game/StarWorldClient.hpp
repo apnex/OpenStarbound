@@ -164,6 +164,16 @@ public:
   // borderTiles here should extend the client window for border tile
   // calculations.  It is not necessary on the light array.
   void render(WorldRenderData& renderData, unsigned borderTiles);
+
+  // HEADLESS: stop producing the VIEW, keep simulating (#199). render() still runs and entities still emit
+  // -- particles spawn, sounds play, tile previews update, the world evolves identically -- but the two
+  // view sinks discard, so no drawables and no overhead bars are accumulated and renderData carries none.
+  //
+  // It is a property of the CLIENT, not of the harness: a bot, an integration test or a CI rig wants a
+  // world that ticks and nothing to look at. Off by default; the shipped client never touches it.
+  void setHeadless(bool headless);
+  bool headless() const;
+
   List<AudioInstancePtr> pullPendingAudio();
   List<AudioInstancePtr> pullPendingMusic();
 
@@ -203,13 +213,33 @@ public:
 private:
   static const float DropDist;
 
+  // RENDERCALLBACK HAS SIX SINKS AND TWO DUTIES, and that is why the client has no headless expression
+  // (#199). `entity->render(&callback)` is not a view function -- it is the entity's per-frame EMIT, and
+  // drawables are one of four outputs:
+  //
+  //   addDrawable / addOverheadBar   VIEW    -- what this entity looks like this frame
+  //   addLightSource                 VIEW    -- feeds the lightmap, which nothing but a renderer reads
+  //   addParticle                    SIM     -- particles are simulated; skipping them changes the world
+  //   addAudio                       AUDIO   -- a real side effect a headless client may still want
+  //   addTilePreview                 UI      -- placement preview state
+  //
+  // So "skip render() when headless" is WRONG: entities would stop emitting particles and sounds. The
+  // separable thing is not the CALL, it is the SINK -- which is why the gate lives here rather than at the
+  // call site, and why it is expressed as which sinks accept rather than as a branch around the loop.
+  //
+  // `wantView` false makes the two view sinks discard. Everything else behaves exactly as before, so the
+  // world evolves identically; only the description of how it LOOKS is dropped.
   struct ClientRenderCallback : RenderCallback {
+    explicit ClientRenderCallback(bool wantView = true) : wantView(wantView) {}
+
     void addDrawable(Drawable drawable, EntityRenderLayer renderLayer) override;
     void addLightSource(LightSource lightSource) override;
     void addParticle(Particle particle) override;
     void addAudio(AudioInstancePtr audio) override;
     void addTilePreview(PreviewTile preview) override;
     void addOverheadBar(OverheadBar bar) override;
+
+    bool wantView = true;
 
     Map<EntityRenderLayer, List<Drawable>> drawables;
     List<LightSource> lightSources;
@@ -305,6 +335,7 @@ private:
   uint64_t m_currentStep;
   double m_currentTime;
   bool m_fullBright;
+  bool m_headless = false;   // #199 -- see setHeadless()
   bool m_asyncLighting;
   CellularLightingCalculator m_lightingCalculator;
   mutable CellularLightIntensityCalculator m_lightIntensityCalculator;

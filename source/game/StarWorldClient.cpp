@@ -631,7 +631,7 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       if (m_startupHiddenEntities.contains(entity->entityId()))
         return;
 
-      ClientRenderCallback renderCallback;
+      ClientRenderCallback renderCallback(!m_headless);
 
       try { entity->render(&renderCallback); }
       catch (StarException const& e) {
@@ -656,32 +656,38 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       }
       
 
-      EntityDrawables ed;
-      for (auto& p : renderCallback.drawables) {
-        if (directives) {
-          int directiveIndex = unsigned(entity->entityId()) % directives->size();
-          for (auto& d : p.second) {
-            if (d.isImage())
-              d.imagePart().addDirectives(directives->at(directiveIndex), true);
+      // VIEW ASSEMBLY, skipped wholesale when headless (#199). With the view sinks discarding,
+      // renderCallback.drawables is empty and this block would append an empty EntityDrawables per entity
+      // and still run the interactive/inspection highlight queries -- work whose only consumer is a
+      // renderer. The sink gate makes it EMPTY; this gate makes it ABSENT.
+      if (!m_headless) {
+        EntityDrawables ed;
+        for (auto& p : renderCallback.drawables) {
+          if (directives) {
+            int directiveIndex = unsigned(entity->entityId()) % directives->size();
+            for (auto& d : p.second) {
+              if (d.isImage())
+                d.imagePart().addDirectives(directives->at(directiveIndex), true);
+            }
           }
+          ed.layers[p.first] = std::move(p.second);
         }
-        ed.layers[p.first] = std::move(p.second);
-      }
 
-      if (m_interactiveHighlightMode || (!inspecting && entity->entityId() == playerAimInteractive)) {
-        if (auto interactive = entityCast<InteractiveEntity>(entity)) {
-          if (interactive->isInteractive()) {
-            ed.highlightEffect.type = EntityHighlightEffectType::Interactive;
-            ed.highlightEffect.level = pulseLevel;
+        if (m_interactiveHighlightMode || (!inspecting && entity->entityId() == playerAimInteractive)) {
+          if (auto interactive = entityCast<InteractiveEntity>(entity)) {
+            if (interactive->isInteractive()) {
+              ed.highlightEffect.type = EntityHighlightEffectType::Interactive;
+              ed.highlightEffect.level = pulseLevel;
+            }
+          }
+        } else if (inspecting) {
+          if (auto inspectable = entityCast<InspectableEntity>(entity)) {
+            ed.highlightEffect = m_mainPlayer->inspectionHighlight(inspectable);
+            ed.highlightEffect.level *= inspectionFlickerMultiplier;
           }
         }
-      } else if (inspecting) {
-        if (auto inspectable = entityCast<InspectableEntity>(entity)) {
-          ed.highlightEffect = m_mainPlayer->inspectionHighlight(inspectable);
-          ed.highlightEffect.level *= inspectionFlickerMultiplier;
-        }
+        renderData.entityDrawables.append(std::move(ed));
       }
-      renderData.entityDrawables.append(std::move(ed));
 
       if (directives) {
         int directiveIndex = unsigned(entity->entityId()) % directives->size();
@@ -2920,6 +2926,13 @@ bool WorldClient::handleSecretBroadcast(PlayerPtr player, StringView broadcast) 
 
 
 void WorldClient::ClientRenderCallback::addDrawable(Drawable drawable, EntityRenderLayer renderLayer) {
+  // THE VIEW SINK, and the only place the headless decision is expressed for drawables. The entity still
+  // BUILT this drawable -- that work lives inside the entity and is not separable without changing every
+  // entity type -- but nothing downstream keeps it. See ClientRenderCallback in the header for why the gate
+  // is at the SINK and not around the render() call: that call also emits particles, audio and tile
+  // previews, and skipping it would change the world rather than just stop describing it.
+  if (!wantView)
+    return;
   drawables[renderLayer].append(std::move(drawable));
 }
 
@@ -2940,7 +2953,22 @@ void WorldClient::ClientRenderCallback::addTilePreview(PreviewTile preview) {
 }
 
 void WorldClient::ClientRenderCallback::addOverheadBar(OverheadBar bar) {
+  if (!wantView)
+    return;
   overheadBars.append(std::move(bar));
+}
+
+void WorldClient::setHeadless(bool headless) {
+  if (m_headless == headless)
+    return;
+  m_headless = headless;
+  Logger::info("WorldClient: view production {} -- the world still simulates; entities still emit particles, "
+               "audio and tile previews, and only drawables and overhead bars are discarded",
+    headless ? "OFF (headless)" : "ON");
+}
+
+bool WorldClient::headless() const {
+  return m_headless;
 }
 
 double WorldClient::epochTime() const {

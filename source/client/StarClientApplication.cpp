@@ -1218,6 +1218,17 @@ void ClientApplication::renderTestCapture() {
         char const* e = getenv("STAR_RENDERTEST_FULLBRIGHT");
         return e && *e && *e != '0';
       }();
+      // STAR_RENDERTEST_HEADLESS=1 (#199). Turn OFF the client's view production while the sim keeps
+      // running: entities still emit particles, audio and tile previews, and only drawables and overhead
+      // bars are discarded. Wired into the harness rather than left as an unexercised API -- a capability
+      // nothing runs is a capability nobody knows works.
+      static bool const headless = []() {
+        char const* e = getenv("STAR_RENDERTEST_HEADLESS");
+        return e && *e && *e != '0';
+      }();
+      if (headless && m_universeClient && m_universeClient->worldClient())
+        m_universeClient->worldClient()->setHeadless(true);
+
       if (fullbright && m_universeClient && m_universeClient->worldClient()) {
         m_universeClient->worldClient()->setFullBright(true);
         Logger::info("[texowner] fullbright FORCED -- the lightMap sampler aliases a live render target and is "
