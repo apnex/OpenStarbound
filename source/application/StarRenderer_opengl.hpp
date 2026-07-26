@@ -4,6 +4,7 @@
 #include "StarRenderer.hpp"
 #include "StarGlRenderSurface.hpp"
 #include "StarGlTexturePrimitives.hpp"
+#include "StarTelemetry.hpp"   // TelemetryCounter, held by value for the GL-state audit (#139)
 
 #include "GL/glew.h"
 
@@ -217,6 +218,21 @@ private:
 
   // The renderer's single door to the pass bind.
   void bindTarget(RefPtr<GlSurface> const& frameBuffer);
+
+  // END-OF-RENDER GL-STATE AUDIT (#139 phase 1b). Asks GL what is actually bound and compares it against what
+  // the renderer believes, then counts and reports any disagreement. Called unconditionally from
+  // finishFrame(); the rationale for unconditional lives there. Returns the number of disagreements.
+  unsigned auditGlState();
+
+  // Rate limit for the [glstate] diagnostic. A desync is typically per-frame and persistent, so an unlimited
+  // logger would write a line every frame forever and bury the FIRST occurrence -- the only one whose
+  // surrounding log lines say what caused it. The COUNTER below is never rate-limited.
+  int m_glStateReportBudget = 8;
+
+  // Registered in the constructor, never lazily inside the audit. A counter created inside a block that only
+  // runs when something is wrong makes ABSENT indistinguishable from ZERO to a snapshot-differencing
+  // consumer -- the exact defect #181 closed for the backdrop's contract-violation counter.
+  TelemetryCounter m_glStateMismatches;
 
   GlTargets m_targets;
 

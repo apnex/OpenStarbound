@@ -113,6 +113,27 @@ else
   echo "  ok"
 fi
 
+echo "=== gl state ==="
+# THE CHECK THE ORACLES STRUCTURALLY CANNOT BE (#139 phase 1b). The three above are DIFFERENTIAL: reference
+# and cache-under-test share one draw lambda, at one frame position, under one ambient GL state -- so anything
+# ambient cancels on both sides and reads as MATCH. That is not a gap in their implementation, it is what
+# "differential" means, and four bugs reached the Director through it (#136).
+#
+# Proven, not asserted: STAR_RENDERTEST_GLSTATE_DESYNC=1 binds a real framebuffer behind the pass's back and
+# produced 9 desync reports while envoracle 100/100, paralloracle 20/20 and spreadoracle 222/222 all still said
+# DIFF=0 and this script still said PASS. The oracles cannot see it. This block is why the run now goes red.
+desync=$(grep -c "^\[.*\] \[Error\] \[glstate\]" "$LOG" || true)
+printf "  gl-state desyncs: %-6s" "$desync"
+if [ "$desync" -ne 0 ]; then
+  echo "  <-- FAIL"
+  pass=0
+  # The first line is the one worth reading: a desync is usually persistent, so every later line describes the
+  # same fault, and only the first has the surrounding log lines that say what caused it.
+  grep -m2 "\[glstate\]" "$LOG" | sed 's/^/    ! /'
+else
+  echo "  ok"
+fi
+
 if grep -q "RENDERTEST_AB" "$LOG"; then
   echo "=== in-process A/B ==="
   grep -E "renderTest.*(A/B|hashA|hashB|IDENTICAL|DIFFER)" "$LOG" | sed 's/^/  /'

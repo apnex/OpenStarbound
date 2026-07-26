@@ -621,6 +621,61 @@ void GlPass::bindEffect(Effect& newEffect, Vec2U const& screenSize) {
   }
 }
 
+unsigned GlPass::auditGlState(bool report) const {
+  // NOTHING CLAIMED, NOTHING TO FALSIFY. After invalidate() this cache asserts nothing -- see holdsBelief().
+  // Every frame that reaches here in that state is a frame in which no target was ever bound: the boot and
+  // loading frames, where startFrame invalidates and no pass renders. Auditing them compares GL against a
+  // sentinel and reports the difference as a desync, which is how this function's first run produced nine
+  // false positives and zero defects.
+  if (!holdsBelief())
+    return 0;
+
+  unsigned bad = 0;
+
+  // THE DRAW FRAMEBUFFER. GL_DRAW_FRAMEBUFFER_BINDING, not GL_FRAMEBUFFER_BINDING: they are the same query
+  // only while read and draw are the same object, and blitGlSurface separates them deliberately. Asking for
+  // the draw binding asks about the thing draws actually land on, which is what this cache claims to know.
+  GLint boundFbo = 0;
+  glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &boundFbo);
+  GLuint believedFbo = m_target ? m_target->writeFace().id : 0;
+  if ((GLuint)boundFbo != believedFbo) {
+    ++bad;
+    if (report)
+      Logger::error("[glstate] draw framebuffer desync: GL has {}, the pass believes {} (target '{}'). "
+                    "bindTarget early-outs on this cache, so the next bind of that target will be SKIPPED "
+                    "and its draws will land on {}.",
+        boundFbo, believedFbo, m_target ? m_target->name : String("<screen>"), boundFbo);
+  }
+
+  // THE VIEWPORT. Only the extent is cached (the origin is always 0,0 -- see bindTarget/unbind), so only the
+  // extent is compared; asserting an origin this class never sets would be asserting someone else's business.
+  GLint vp[4] = {0, 0, 0, 0};
+  glGetIntegerv(GL_VIEWPORT, vp);
+  if ((unsigned)vp[2] != boundViewport[0] || (unsigned)vp[3] != boundViewport[1]) {
+    ++bad;
+    if (report)
+      Logger::error("[glstate] viewport desync: GL has {}x{}, the pass believes {}x{}. Every full-screen pass "
+                    "maps vertexPosition through screenSize and depends on the two agreeing.",
+        vp[2], vp[3], boundViewport[0], boundViewport[1]);
+  }
+
+  // THE PROGRAM. bindEffect has no identity early-out, so a mismatch here means something called glUseProgram
+  // behind the pass -- which also means the flattened attribute/uniform locations describe a different program
+  // than the one that will run.
+  GLint boundProgram = 0;
+  glGetIntegerv(GL_CURRENT_PROGRAM, &boundProgram);
+  GLuint believedProgram = m_effect ? m_effect->program : 0;
+  if ((GLuint)boundProgram != believedProgram) {
+    ++bad;
+    if (report)
+      Logger::error("[glstate] program desync: GL has {}, the pass believes {}. The pass's flattened attribute "
+                    "and uniform locations belong to the program it believes in, not the one bound.",
+        boundProgram, believedProgram);
+  }
+
+  return bad;
+}
+
 void GlPass::bindTarget(RefPtr<GlSurface> const& newTarget, Vec2U const& screenSize) {
   // A null target IS THE SCREEN (framebuffer 0). This is the one place the screen is bound -- the two
   // hand-rolled `target.reset(); glBindFramebuffer(0)` sites now route here through unbind().

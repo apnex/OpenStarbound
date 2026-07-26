@@ -88,6 +88,13 @@ OpenGlRenderer::OpenGlRenderer()
       (const char*)glGetString(GL_RENDERER),
       (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
+  // AT CONSTRUCTION, so the metric exists from frame zero whatever the frames do. Registering it inside the
+  // audit -- a block that only does anything when something is already wrong -- would make ABSENT and ZERO
+  // the same reading for anyone differencing two snapshots. That is the defect #181 closed for the
+  // backdrop's contract-violation counter, and it is not worth learning twice.
+  m_glStateMismatches = Telemetry::counter("render.glstate.mismatches",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+
   glClearColor(0.0, 0.0, 0.0, 1.0);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1137,8 +1144,79 @@ void OpenGlRenderer::startFrame() {
     glEnable(GL_SCISSOR_TEST);
 }
 
+// THE GL-STATE AUDIT (#139 phase 1b). The gate the pixel oracles structurally cannot be.
+//
+// The three in-frame oracles are DIFFERENTIAL: reference and cache-under-test share one draw lambda, at one
+// frame position, under one ambient GL state. Anything ambient therefore cancels on both sides and reads as
+// MATCH -- which is exactly why a refresh-key omission, an FBO lifecycle change or an ambient-state change
+// can be invisible to a green gate, and how four of them reached the Director in play (#136). This asks a
+// question no differential comparison can: does the renderer's own idea of what is bound match GL's?
+//
+// UNCONDITIONAL, and for the reason already written at the bottom of this function for the error drain: a
+// diagnostic gated on DebugEnabled is constexpr-false in every build we ship, profile or gate, which
+// guarantees its absence exactly where problems are actually found. The cost is five glGetIntegerv --
+// driver-side state reads, not sync points, against the thousands of GL calls the frame already issued.
+unsigned OpenGlRenderer::auditGlState() {
+  bool report = m_glStateReportBudget > 0;
+  unsigned bad = m_pass.auditGlState(report);
+
+  // SCISSOR. m_scissorRect is the renderer's belief; GL_SCISSOR_TEST is the fact. Only the enable is
+  // compared: the rect itself is set in the same act that records it, so a divergence there is not
+  // expressible, while the ENABLE is toggled independently by startFrame around the frame clear.
+  GLboolean scissorEnabled = GL_FALSE;
+  glGetBooleanv(GL_SCISSOR_TEST, &scissorEnabled);
+  if ((bool)scissorEnabled != (bool)m_scissorRect) {
+    ++bad;
+    if (report)
+      Logger::error("[glstate] scissor desync: GL_SCISSOR_TEST is {}, the renderer believes {}.",
+        scissorEnabled ? "enabled" : "disabled", m_scissorRect ? "enabled" : "disabled");
+  }
+
+  // BLEND, checked against an EXPECTED value rather than a belief, because setBlendMode is fire-and-forget:
+  // it issues GL and records nothing, so there is no belief to compare. What is invariant is weaker but
+  // real -- BlendMode::None is the only mode that disables blending, and every consumer that sets it
+  // restores Alpha immediately afterwards, so no frame should END with blending off. A frame that does has
+  // leaked a None out of a compose arm, which is precisely the shape of bug that reaches the Director as an
+  // intermittently wrong-looking backdrop.
+  GLboolean blendEnabled = GL_FALSE;
+  glGetBooleanv(GL_BLEND, &blendEnabled);
+  if (!blendEnabled) {
+    ++bad;
+    if (report)
+      Logger::error("[glstate] the frame ended with GL_BLEND disabled. Some consumer set BlendMode::None and "
+                    "did not restore Alpha; every draw until the next setBlendMode replaces instead of blends.");
+  }
+
+  if (bad) {
+    m_glStateMismatches.inc(bad);
+    if (report && --m_glStateReportBudget == 0)
+      Logger::error("[glstate] further GL-state desync reports suppressed this session; the counter "
+                    "render.glstate.mismatches keeps counting.");
+  }
+  return bad;
+}
+
 void OpenGlRenderer::finishFrame() {
   flushImmediatePrimitives();
+
+  // AUDIT BEFORE THE BLIT, not after. Below, glBindFramebuffer(GL_FRAMEBUFFER, 0) unconditionally puts GL
+  // back on the screen -- so an audit placed after it would find the screen bound every time and agree with
+  // itself, no matter what the frame actually did. Here it sees the state the frame genuinely ended in.
+  //
+  // FAULT INJECTION, because a check nobody has watched fail is not known to work. STAR_RENDERTEST_GLSTATE_DESYNC
+  // binds "main"'s write face behind the pass's back: GL then draws somewhere the cache does not know about,
+  // which is the exact desync this audit exists to catch, and the render gate must go red on it.
+  static int const forceDesync = []() {
+    char const* e = getenv("STAR_RENDERTEST_GLSTATE_DESYNC");
+    return e && String(e) != "0" ? 1 : 0;
+  }();
+  if (forceDesync) {
+    if (auto main = m_targets.find("main"))
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, main->writeFace().id);
+  }
+
+  auditGlState();
+
   // Close the whole-frame GPU span AFTER the final blit, not here -- see the end of this function.
   // Make sure that the immediate render buffer doesn't needlessly lock texutres
   // from being compressed.

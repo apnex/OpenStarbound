@@ -306,6 +306,25 @@ struct GlPass {
   Effect* effect() const { return m_effect; }
   RefPtr<GlSurface> const& target() const { return m_target; }
 
+  // ASK GL WHAT IS ACTUALLY BOUND, AND COMPARE IT TO WHAT THIS PASS BELIEVES (#139 phase 1b). Returns the
+  // number of disagreements; logs each one when `report`.
+  //
+  // WHY BELIEF-VS-REALITY AND NOT AN ABSOLUTE END-OF-FRAME CHECK. This pass is a CACHE: bindTarget and
+  // bindEffect early-out when they can prove the thing is already bound, so a cache that disagrees with GL
+  // does not merely mis-report -- it SKIPS the bind that would have fixed it, and every draw after that
+  // lands somewhere nobody asked for. Every framebuffer bug this module has had was that desync: RB-1's
+  // borrowed target, RB-4's passes early-out, RB-7's rebuilt target, and the stale-cache hazard
+  // resetToScreen closes. Asserting "the screen is bound at end of frame" catches the last frame of one of
+  // those and none of the rest; asserting that the cache tells the truth catches the class.
+  //
+  // It is also the only check that can see the failure mode the pixel oracles structurally cannot. They are
+  // DIFFERENTIAL -- reference and cache-under-test share one draw lambda at one frame position under one
+  // ambient GL state -- so an ambient-state divergence cancels exactly on both sides and reads as MATCH.
+  // Four bugs reached the Director through that hole (#136).
+  //
+  // Reads only: glGetIntegerv of driver-side state, no glFinish, no readback, nothing that syncs.
+  unsigned auditGlState(bool report) const;
+
   // Make `newTarget` the surface subsequent draws land on: bind its write face and set the viewport to that
   // face's size. A null newTarget binds the screen instead (see unbind). Keyed on (target, write-face,
   // viewport): it early-outs only when the cache proves all three already match, so a swap() (face flip) or
@@ -324,6 +343,18 @@ struct GlPass {
   // would read a stale (target/screen, size) and let the next bind early-out over a corpse or wrong binding.
   // The {0,0} viewport sentinel matches no real screen or target size, forcing the next bind to emit real GL.
   void invalidate() { m_target = {}; boundWriteToBack = false; boundViewport = Vec2U(0, 0); }
+
+  // DOES THIS CACHE CLAIM ANYTHING RIGHT NOW? Only the sentinel can answer, and that is worth stating: a null
+  // m_target normally MEANS "the screen is bound", but invalidate() also nulls it -- so after an invalidate the
+  // two readings are textually identical and mean opposite things ("I assert the screen" vs "I assert nothing").
+  // The {0,0} viewport is what separates them, which makes it part of the cache's INTERFACE, not an
+  // implementation detail of bindTarget's early-out.
+  //
+  // auditGlState() is the consumer, and needed it immediately: on boot frames startFrame invalidates and
+  // nothing binds afterwards, so the audit's first run reported the sentinel as a wrong belief nine times and
+  // read framebuffer creation's incidental bind as a desync. Neither was a defect. An audit that checks CLAIMS
+  // must first ask whether a claim is being made.
+  bool holdsBelief() const { return boundViewport != Vec2U(0, 0); }
 
   // THE FRAME-BOUNDARY RESET, as ONE act. Raw-bind framebuffer 0 AND drop the cache together, so the invalidate
   // can never be separated from the raw bind that necessitates it. startFrame's clearAll() has just bound every
