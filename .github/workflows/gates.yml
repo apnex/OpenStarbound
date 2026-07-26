@@ -1,0 +1,54 @@
+# THE ARCHITECTURE GATES, ON EVERY PUSH, WITH NO PATHS FILTER.
+#
+# build.yml -- which is where these gates otherwise run, as ctest tests -- triggers only on changes under
+# assets/, source/, toolchains/ or triplets/. That filter is right for a six-job multi-platform compile and
+# exactly wrong for these four checks, because their INPUTS live in the two trees the filter excludes:
+#
+#   render_docs_fresh  reads docs/render/architecture-3-target-state.md   -> docs/**
+#   layer1_layering    is  scripts/layering-lint.py                        -> scripts/**
+#   render_layering    is  the same script, different needle               -> scripts/**
+#   config_declared    is  scripts/config-lint.py                          -> scripts/**
+#
+# So the gates were blind to commits in precisely the trees they police: a doc-only commit could not fail
+# the doc-drift gate, and editing an instrument could not fail the instrument. 8781759c -- the docs/render
+# index -- started no CI job at all. This workflow closes that, and it is deliberately cheap: no compiler,
+# no vcpkg, no cache, a few seconds. Widening build.yml's filter instead would have fired six full
+# multi-platform builds for a typo fix.
+#
+# NOT COVERED HERE, AND NOT A GAP: the configure-time checks in source/test/CMakeLists.txt (the NoAssets
+# label rule and the CMakePresets filter assertion) are triggered by their own files, which are under
+# source/ and therefore already match build.yml's filter.
+name: Gates
+
+on:
+  push:
+    branches:
+      - '*'
+  pull_request:
+    branches:
+      - '*'
+
+jobs:
+  gates:
+    name: Architecture gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # These are the same commands source/test/CMakeLists.txt registers with ctest, run directly. Naming
+      # the interpreter rather than relying on the shebang is the rule that #192 cost a red CI to learn.
+      - name: layer1_layering -- the sovereign L1 module must not name OpenGlRenderer
+        run: python3 scripts/layering-lint.py
+
+      # --from-cmake, NOT a pasted copy of the ceilings. The ratchet is declared once, in the ctest
+      # registration; restating the numbers here would let a lowered ceiling in CMakeLists leave a stale
+      # copy quietly passing -- the one-knob-two-declarations defect #185 exists to delete.
+      - name: render_layering -- the L3 Air-Gap ratchet
+        run: python3 scripts/layering-lint.py --needle "Root::singleton" --from-cmake
+
+      - name: render_docs_fresh -- generated coupling counts still match the tree
+        run: python3 scripts/render-inventory.py --check docs/render/architecture-3-target-state.md
+
+      - name: config_declared -- every getOrDefault key has a declared default
+        run: python3 scripts/config-lint.py

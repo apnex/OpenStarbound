@@ -33,9 +33,11 @@ rely on the shebang for anything ctest runs.
 USAGE
   layering-lint.py                                  # L1 defaults: OpenGlRenderer, ceiling 0
   layering-lint.py --needle SYM  path[=MAX] ...     # MAX defaults to 0
+  layering-lint.py --needle SYM  --from-cmake       # read the ceilings from the ctest registration
 """
 
 import os
+import re
 import sys
 
 # Self-locating: the lint reads repo-relative paths, so it must run from the repo root no matter where
@@ -89,6 +91,33 @@ def strip_comments_and_strings(src):
     return "".join(out)
 
 
+# THE RATCHET HAS ONE HOME: the render_layering registration in source/test/CMakeLists.txt.
+#
+# --from-cmake exists so a second caller can run this gate without RESTATING the ceilings. The GitHub
+# gates workflow is that caller: it runs the four script gates on every push with no paths filter, because
+# build.yml's filter excludes the very trees these gates police. Had that workflow pasted the numbers, a
+# lowered ceiling in CMakeLists would have left a stale copy quietly passing -- the same one-knob-two-
+# declarations defect that #185 spent a day removing from the config. render-inventory.py already parses
+# this registration for the same reason.
+CEILING = re.compile(r"(source/rendering/\w+\.cpp)=(\d+)")
+
+
+def ceilings_from_cmake():
+    path = os.path.join(REPO, "source/test/CMakeLists.txt")
+    try:
+        with open(path, encoding="utf-8") as f:
+            found = CEILING.findall(f.read())
+    except OSError as e:
+        print("layering-lint: --from-cmake cannot read source/test/CMakeLists.txt (%s)" % e)
+        return None
+    if not found:
+        # Silently linting zero files would report OK and mean nothing.
+        print("layering-lint: --from-cmake found no `source/rendering/*.cpp=N` ceilings in "
+              "source/test/CMakeLists.txt -- the registration moved or was reshaped.")
+        return None
+    return ["%s=%s" % (f, n) for f, n in found]
+
+
 def main(argv):
     needle = DEFAULT_NEEDLE
     args = list(argv)
@@ -98,6 +127,10 @@ def main(argv):
             return 2
         needle = args[1]
         args = args[2:]
+    if args and args[0] == "--from-cmake":
+        args = ceilings_from_cmake()
+        if args is None:
+            return 2
     raw_specs = args if args else DEFAULT_SPECS
 
     # Each spec is "path" (ceiling 0) or "path=MAX".
