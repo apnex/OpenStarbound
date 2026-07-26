@@ -18,6 +18,30 @@ STAR_CLASS(GpuLightmapPass);
 struct LightmapResult {
   bool active = false;
   int border = 0;
+  // The Jacobi K the pass actually chose. The pass DERIVES this from the emission it was handed (see
+  // spreadIterationsFor), so it is the only thing that knows the value -- and the caller's parity
+  // diagnostic needs the same K to build its reference. Reporting it back beats making the caller
+  // recompute a number the pass already decided, which is exactly how the two would drift.
+  unsigned spreadIterations = 0;
+};
+
+// AIR-GAP CONTRACT (2) FOR THE LIGHTMAP PASS: every knob the pass runs on, resolved ONCE by the
+// composition root and handed in as a value. The same shape BackdropParams established, for the same
+// reason -- a sovereign pass should be a pure function of its parameters.
+//
+// It replaces five loose trailing arguments plus a PointParameters in what had become a 13-parameter
+// call, where transposing two floats compiles cleanly and yields a plausible wrong picture. Grouping
+// them also makes the seam legible: everything in here is config the ORCHESTRATOR reads, and nothing
+// else about the pass's behaviour comes from anywhere but its explicit inputs.
+struct LightmapParams {
+  PointParameters point;
+  // Upper bound on the auto-scaled Jacobi iteration count (`lightingGpuSpreadIterations`). A cap of 0
+  // disables the pass via the size/iterations early-out -- preserved deliberately, not incidentally.
+  unsigned spreadIterationCap = 64;
+  bool shadowCompare = false;
+  float brightnessScale = 1.0f;
+  bool tonemap = false;
+  float worldUpscale = 1.0f;
 };
 
 // GPU lighting pass driver (render thread; the async lighting thread has no GL context).
@@ -53,12 +77,23 @@ public:
   // uploaded as R8 (a third the bytes of the RGB24 obstacle), else the RGB24 obstacle is the fallback.
   LightmapResult processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
       ImageView const& obstacle, List<uint8_t> const& obstacleR8,
-      List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-      PointParameters const& params, float brightnessScale = 1.0f, bool tonemap = false,
-      bool shadowCompare = false, float worldUpscale = 1.0f, Image* gpuResult = nullptr,
-      int lightMapBorder = 0);
+      List<ColoredCellularLightArray::PointLight> const& lights,
+      LightmapParams const& lp, Image* gpuResult = nullptr, int lightMapBorder = 0);
 
 private:
+  // Auto-scale the spread Jacobi iterations to the emission's peak intensity.
+  //
+  // THIS LIVED IN WorldPainter UNTIL #137, and had no business there: it is an O(cells) scan over the
+  // pass's own first argument, producing a number only the pass consumes. Its presence in the
+  // orchestrator is most of why this pass could show a clean per-file singleton count while the work
+  // it needed sat one level up -- "bought, not earned".
+  //
+  // Production's Gauss-Seidel sweep propagates fully in 2 sweeps; a parallel Jacobi needs
+  // ~ceil(maxIntensity * spreadMaxAir) steps to reach the same distance (the de-risk's K bound). A fixed
+  // K under-propagated bright (>1.0) FU spread lights, giving dimmer-far-from-source cells. So: scan the
+  // (small) emission for its max channel, clamp to [8, configured cap].
+  static unsigned spreadIterationsFor(ImageView const& emission, LightmapParams const& lp);
+
   Renderer* m_renderer;
 
   // Persistent full-quad geometry: the size-covering rect drawn by every spread iteration and the

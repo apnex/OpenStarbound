@@ -136,40 +136,45 @@ LightmapResult WorldPainter::runGpuLightmapPass(WorldRenderData& renderData) {
   // and returns {active=false} (caller falls back to CPU) if assets are missing.
   if (!m_gpuLightmapPass)
     m_gpuLightmapPass = make_shared<GpuLightmapPass>(m_renderer.get());
+  // AIR-GAP CONTRACT (2) FOR THE LIGHTMAP PASS. Every knob resolved once, here at the composition root,
+  // and handed over as one value -- the shape BackdropParams established. What used to sit below this line
+  // was 45 lines of the PASS'S OWN WORK living in the orchestrator: an O(cells) scan over the pass's first
+  // argument, the iteration derivation that consumed it, and five loose trailing arguments. That is the
+  // whole reason this pass could show a clean per-file singleton count while the work it needed sat one
+  // level up. The scan now lives in the pass; only the config resolution stays here, where it belongs.
+  //
+  // BUILT AFTER THE ENABLE GATE ON PURPOSE. The /lighting.config JSON read is not free, and must not run on
+  // frames where GPU lighting is off -- the original ordering, preserved.
   auto lc = m_assets->json("/lighting.config:lighting");
-  PointParameters params{
-      lc.getFloat("pointMaxAir"), lc.getFloat("pointMaxObstacle"),
-      lc.getFloat("pointObstacleBoost"),
-      config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
-      lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
-      lc.getFloat("brightnessLimit")};
-  // Auto-scale spread Jacobi iterations to the emission's peak intensity. Production's Gauss-Seidel sweep
-  // propagates fully in 2 sweeps; a parallel Jacobi needs ~ceil(maxIntensity * spreadMaxAir) steps to reach the
-  // same distance (the de-risk's K bound). A fixed K under-propagated bright (>1.0) FU spread lights ->
-  // dimmer-far-from-source cells. Scan the (small) emission for its max channel; clamp [8, cfg spread cap].
-  float maxEmission = 0.0f;
-  {
-    auto const& em = renderData.lightingEmission;
-    float const* ed = (float const*)em.data();
-    size_t n = (size_t)em.size()[0] * em.size()[1] * 3;
-    for (size_t i = 0; i < n; ++i)
-      maxEmission = std::max(maxEmission, ed[i]);
-  }
-  unsigned cap = config->get("lightingGpuSpreadIterations").optUInt().value(64);
-  unsigned iterations = std::min(cap, std::max(8u, (unsigned)std::ceil(maxEmission * params.spreadMaxAir)));
-  bool shadowCompare = config->get("lightingGpuShadowCompare").optBool().value(false);
+  LightmapParams params{
+      PointParameters{
+          lc.getFloat("pointMaxAir"), lc.getFloat("pointMaxObstacle"),
+          lc.getFloat("pointObstacleBoost"),
+          config->get("newLighting").optBool().value(true),   // pointAdditive (matches lightingCalc)
+          lc.getFloat("spreadMaxAir"), lc.getFloat("spreadMaxObstacle"),
+          lc.getFloat("brightnessLimit")},
+      // Explicit cast: optUInt() is wider than unsigned, and a braced init treats the narrowing as an
+      // error. BackdropParams hit the identical trap -- the braces are doing their job.
+      (unsigned)config->get("lightingGpuSpreadIterations").optUInt().value(64),
+      config->get("lightingGpuShadowCompare").optBool().value(false),
+      config->get("lightingGpuBrightness").optFloat().value(1.0f),
+      config->get("lightingTonemap").optBool().value(false),
+      config->get("lightingWorldUpscale").optFloat().value(1.0f)};
+
   Image gpuResult;
-  float brightnessScale = config->get("lightingGpuBrightness").optFloat().value(1.0f);
-  bool tonemap = config->get("lightingTonemap").optBool().value(false);
   LightmapResult lm = m_gpuLightmapPass->processFull(renderData.lightingEmission, renderData.lightingEmissionHalf,
       renderData.lightingObstacle, renderData.lightingObstacleR8, renderData.lightingPointLights,
-      iterations, params, brightnessScale, tonemap, shadowCompare,
-      config->get("lightingWorldUpscale").optFloat().value(1.0f), &gpuResult, renderData.lightMapBorder);
-  // shadowCompare (diagnostics only): parity-check the GPU result against the CPU reference. It uses the border
-  // the active result carries (lm.border == renderData.lightMapBorder), which now travels IN the result.
-  if (lm.active && shadowCompare && gpuResult.size()[0] > 0)
+      params, &gpuResult, renderData.lightMapBorder);
+  // shadowCompare (diagnostics only): parity-check the GPU result against the CPU reference. It uses the
+  // border AND the iteration count the active result carries -- both travel IN the result, so the reference
+  // is built with exactly what the pass ran, not with a second derivation that could drift from it.
+  //
+  // THIS STAYS IN THE ORCHESTRATOR DELIBERATELY. It compares the GPU pass's output against the CPU lighting
+  // path's output; neither path owns that comparison, and the orchestrator is the only thing holding both.
+  if (lm.active && params.shadowCompare && gpuResult.size()[0] > 0)
     shadowCompareFull(gpuResult, renderData.lightMap, lm.border,
-        renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights, params, iterations);
+        renderData.lightingEmission, renderData.lightingObstacle, renderData.lightingPointLights,
+        params.point, lm.spreadIterations);
   return lm;
 }
 

@@ -7,11 +7,33 @@ namespace Star {
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
+// Moved here from WorldPainter by #137. Byte-identical to the loop it replaces: same scan over the same
+// buffer, same clamp, same order of operations.
+unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, LightmapParams const& lp) {
+  float maxEmission = 0.0f;
+  float const* ed = (float const*)emission.data;
+  size_t n = (size_t)emission.size[0] * emission.size[1] * 3;
+  for (size_t i = 0; i < n; ++i)
+    maxEmission = std::max(maxEmission, ed[i]);
+  return std::min(lp.spreadIterationCap,
+      std::max(8u, (unsigned)std::ceil(maxEmission * lp.point.spreadMaxAir)));
+}
+
 LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
     ImageView const& obstacle, List<uint8_t> const& obstacleR8,
-    List<ColoredCellularLightArray::PointLight> const& lights, unsigned spreadIterations,
-    PointParameters const& params, float brightnessScale, bool tonemap, bool shadowCompare, float worldUpscale, Image* gpuResult,
-    int lightMapBorder) {
+    List<ColoredCellularLightArray::PointLight> const& lights,
+    LightmapParams const& lp, Image* gpuResult, int lightMapBorder) {
+  // Unpacked into the names the ~200-line body already uses. Deliberate: grouping the arguments is the
+  // point of the change, and rewriting every use site would have buried a boundary change inside a
+  // rename diff. All six are read-only below (verified before landing), so aliasing them is safe.
+  PointParameters const& params = lp.point;
+  float const brightnessScale = lp.brightnessScale;
+  bool const tonemap = lp.tonemap;
+  bool const shadowCompare = lp.shadowCompare;
+  float const worldUpscale = lp.worldUpscale;
+  // The pass now derives its own K from the emission it was handed, rather than being told by a caller
+  // that had to scan the pass's input to work it out.
+  unsigned const spreadIterations = spreadIterationsFor(emission, lp);
   // Cadence::Call, not Frame: processFull is reached only inside `if (lightMapUpdated)`
   // (StarWorldPainter.cpp), so it fires on lightmap-publish frames, not every frame. Declared Frame it
   // measured 1099 of 1500 frames -- 73% coverage -- and the consumer scaled the total UP by 1.36x,
@@ -262,7 +284,10 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     m_renderer->switchEffectConfig("world");
     m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
   }
-  return {true, lightMapBorder};
+  // Report the K actually run alongside the border, for the same reason the border travels with `active`:
+  // the caller's parity diagnostic must reference the exact iteration count this pass used, and deriving
+  // it twice is how the two come to disagree.
+  return {true, lightMapBorder, spreadIterations};
 }
 
 }
