@@ -128,6 +128,48 @@ CROSS_CUTTING = [
 # defect class as a ratchet that meters three of seventeen sites (#183).
 MAX_CLASS_EDGES = 24
 
+# THE SHAPE TEST. Tests 1-4 ask whether a boundary EXISTS. This asks whether it is any good, which is a
+# different axis and the one most architecture work actually turns on: a boundary can be perfectly
+# enforced and still be badly shaped.
+#
+# The predicate: for a data aggregate that crosses a tier, how much of it does the consumer actually
+# read? A consumer that receives 23 members and reads 3 is being handed a bundle, not an interface.
+#
+# THE FILTERS ARE THE MEASUREMENT, and each was learned by getting a false answer without it:
+#   * struct, not class    -- for a CLASS, low fit is ENCAPSULATION WORKING, not a defect. Without this
+#                             the metric reported `Object` (59 members) at 3% fit in five consumers and
+#                             called it a finding. It is not; those consumers hold a pointer and call
+#                             two methods, which is correct design.
+#   * data-dominant        -- a struct with member functions is a class in disguise; same argument.
+#   * not foundation-owned -- a core utility type used everywhere is fine by construction.
+#   * cross-TIER only      -- within a tier, wide sharing is the point of being in the same tier.
+#   * >= SHAPE_MIN_MEMBERS -- a 4-member struct at 50% fit is not evidence of anything.
+#
+# Member reads are counted as `.name` or `->name`, which is why the aggregate must be data-dominant:
+# a bare identifier match would collide with every local variable of the same name.
+# VENDORED SUBTREES, skipped by the recursive file scan. These are third-party sources that live inside
+# our directories; they are not our architecture and counting them distorts every measure here -- and
+# `extern/.../core.h` collides by basename with `application/discord/core.h`, which correctly tripped the
+# ambiguous-basename guard the moment the scan started recursing. Declared rather than pattern-matched so
+# that adding a vendored tree is a visible decision.
+VENDORED_SUBTREES = (
+    "extern/curve25519", "extern/fmt", "extern/lua",
+    "application/discord",
+)
+
+SHAPE_MIN_MEMBERS = 8
+SHAPE_MAX_FUNCS = 2
+SHAPE_WHOLESALE = 0.34   # below this, the consumer receives far more than it reads
+SHAPE_FITTED = 0.67      # above this, the type is shaped to its consumer
+
+# COHESION. The document's own headline advice is "to make a boundary real, make it a directory with its
+# own grant list". This measures whether that route is even OPEN: a directory whose internal include
+# graph is one giant strongly-connected component cannot be partitioned, because there is no cut. The
+# advice was written before this was measured and was wrong for the directory it most wanted to apply to.
+COHESION_BLOB = 0.50     # largest SCC >= half the directory: no partition exists
+COHESION_PARTLY = 0.15
+COHESION_MIN_UNITS = 5   # below this the ratio is noise -- a 2-file shell is trivially one component
+
 SINGLETON = re.compile(r"Root::singleton\(\)")
 INCLUDE = re.compile(r'^\s*#\s*include\s*[<"]([^">]+)[">]', re.M)
 SRC_EXT = (".cpp", ".hpp", ".h", ".c")
@@ -168,10 +210,29 @@ def code(path):
 
 @functools.lru_cache(maxsize=None)
 def files_in(d):
-    p = REPO / "source" / d
-    if not p.is_dir():
+    """Every source file under source/<d>, RECURSIVELY, as paths relative to that directory.
+
+    This walked only the top level until 2026-07-26, and the omission was invisible until the cohesion
+    measurement -- which prototyped with os.walk -- disagreed with the generator about how many
+    translation units source/game has: 264 against 172. source/game has five subdirectories
+    (interfaces, items, objects, scripting, terrain) holding 162 files and 19,230 lines, and every
+    count this script produced excluded all of them. application/discord was missing too.
+
+    The lesson is the one this campaign keeps paying for: two implementations of the same measurement
+    disagreeing is the only reason anyone looked. A single instrument is unfalsifiable by construction."""
+    root = REPO / "source" / d
+    if not root.is_dir():
         return ()
-    return tuple(sorted(f for f in os.listdir(p) if f.endswith(SRC_EXT)))
+    out = []
+    for dirpath, _dirnames, filenames in os.walk(root):
+        for fn in filenames:
+            if not fn.endswith(SRC_EXT):
+                continue
+            rel = (pathlib.Path(dirpath) / fn).relative_to(root).as_posix()
+            if any(("%s/%s" % (d, rel)).startswith(v + "/") for v in VENDORED_SUBTREES):
+                continue
+            out.append(rel)
+    return tuple(sorted(out))
 
 
 def cmake_head(d):
@@ -194,11 +255,16 @@ def owner_map():
     owner, dupes = {}, {}
     for d in DIRS:
         for f in files_in(d):
-            if f.endswith(HDR_EXT):
-                if f in owner:
-                    dupes.setdefault(f, [owner[f]]).append(d)
-                else:
-                    owner[f] = d
+            if not f.endswith(HDR_EXT):
+                continue
+            # BASENAME, because that is what an #include resolves by. files_in() now returns paths
+            # relative to the directory, so `items/StarFoo.hpp` must key as `StarFoo.hpp` or every
+            # include of a subdirectory header silently resolves to no owner.
+            b = os.path.basename(f)
+            if b in owner:
+                dupes.setdefault(b, [owner[b]]).append(d)
+            else:
+                owner[b] = d
     return owner, dupes
 
 
@@ -403,11 +469,12 @@ def render_classes():
     homes = class_homes()
     classes, inherits, decls_by_file = {}, [], {}
     for d in ("application", "rendering"):
-        for f in files_in(d):
+        for rel in files_in(d):
+            f = os.path.basename(rel)
             if not f.endswith(HDR_EXT) or f not in layer_of:
                 continue
             layer = layer_of[f]
-            decls = declarations_in(REPO / "source" / d / f)
+            decls = declarations_in(REPO / "source" / d / rel)
             decls_by_file[f] = [c for c, _b in decls]
             for cls, bases in decls:
                 classes.setdefault(layer, set()).add(cls)
@@ -430,10 +497,11 @@ def cross_layer_edges(rep_of, layer_of):
     """Include edges between render layers, lifted to representative classes."""
     seen, over = set(), 0
     for d in ("application", "rendering"):
-        for f in files_in(d):
+        for rel in files_in(d):
+            f = os.path.basename(rel)
             if f not in layer_of or f not in rep_of:
                 continue
-            for inc in INCLUDE.findall(read(REPO / "source" / d / f)):
+            for inc in INCLUDE.findall(read(REPO / "source" / d / rel)):
                 b = os.path.basename(inc)
                 if b in layer_of and layer_of[b] != layer_of[f] and rep_of.get(b) != rep_of[f]:
                     edge = (rep_of[f], rep_of.get(b, b))
@@ -444,6 +512,127 @@ def cross_layer_edges(rep_of, layer_of):
                     else:
                         over += 1
     return sorted(seen), over
+
+
+STRUCT = re.compile(r"^struct\s+(\w+)\s*(?::[^{]*)?\{", re.M)
+FIELD = re.compile(r"^\s{2,}(?!return|using|typedef|friend)[\w:<>,\s\*&]+?[\s\*&](\w+)\s*(?:=[^;]*)?;\s*$")
+FUNCLIKE = re.compile(r"\w+\s*\([^)]*\)\s*(?:const)?\s*[;{]")
+
+
+def data_structs(d, f):
+    """Data-dominant structs declared in one file: name -> member names."""
+    src = code(REPO / "source" / d / f)
+    out = {}
+    for m in STRUCT.finditer(src):
+        i, depth = m.end(), 1
+        while i < len(src) and depth:
+            depth += (src[i] == "{") - (src[i] == "}")
+            i += 1
+        members, funcs = [], 0
+        for line in src[m.end():i - 1].splitlines():
+            if FUNCLIKE.search(line):
+                funcs += 1
+                continue
+            fm = FIELD.match(line)
+            if fm:
+                members.append(fm.group(1))
+        if len(members) >= SHAPE_MIN_MEMBERS and funcs <= SHAPE_MAX_FUNCS:
+            out[m.group(1)] = members
+    return out
+
+
+def shape():
+    """Cross-tier aggregate crossings, and how much of each the consumer actually reads."""
+    owners = {}
+    for d in DIRS:
+        if d in FOUNDATION:
+            continue
+        for f in files_in(d):
+            if f.endswith(HDR_EXT):
+                for name, members in data_structs(d, f).items():
+                    owners.setdefault(name, (d, f, members))
+    order = {t: i for i, (t, _ds) in enumerate(TIERS)}
+    rows = []
+    for name, (hd, hf, members) in owners.items():
+        rx = re.compile(r"\b%s\b" % re.escape(name))
+        reads = [re.compile(r"[.\->]\b%s\b" % re.escape(m)) for m in members]
+        for d in DIRS:
+            if d == hd or order[TIER_OF[d]] == order[TIER_OF[hd]]:
+                continue
+            for f in files_in(d):
+                src = code(REPO / "source" / d / f)
+                if not rx.search(src):
+                    continue
+                used = sum(1 for r in reads if r.search(src))
+                if used:
+                    rows.append((used / len(members), name, hd, len(members), d, f, used))
+    return sorted(rows)
+
+
+def scc(graph, nodes):
+    """Tarjan, iterative. Recursive would need a raised recursion limit for a 226-node component, and a
+    gate that dies with RecursionError on a big directory is a gate nobody trusts."""
+    index, low, onstack, stack, out, counter = {}, {}, {}, [], [], [0]
+    for root in nodes:
+        if root in index:
+            continue
+        index[root] = low[root] = counter[0]
+        counter[0] += 1
+        stack.append(root)
+        onstack[root] = True
+        work = [(root, iter(sorted(graph.get(root, ()))))]
+        while work:
+            v, it = work[-1]
+            descended = False
+            for w in it:
+                if w not in index:
+                    index[w] = low[w] = counter[0]
+                    counter[0] += 1
+                    stack.append(w)
+                    onstack[w] = True
+                    work.append((w, iter(sorted(graph.get(w, ())))))
+                    descended = True
+                    break
+                if onstack.get(w):
+                    low[v] = min(low[v], index[w])
+            if descended:
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[v])
+            if low[v] == index[v]:
+                comp = []
+                while True:
+                    w = stack.pop()
+                    onstack[w] = False
+                    comp.append(w)
+                    if w == v:
+                        break
+                out.append(comp)
+    return sorted(out, key=len, reverse=True)
+
+
+def cohesion():
+    """Per directory: can it be partitioned at all? Units are translation units (Star*.hpp + .cpp as
+    one node), edges are internal includes."""
+    out = {}
+    # Basename, because an include names a basename; a subdirectory path would never match one.
+    stem = lambda n: re.sub(r"\.(hpp|cpp|h|c)$", "", os.path.basename(n))
+    for d in DIRS:
+        fs = files_in(d)
+        if not fs:
+            continue
+        units = {stem(f) for f in fs}
+        graph = {}
+        for f in fs:
+            for inc in INCLUDE.findall(read(REPO / "source" / d / f)):
+                b = stem(os.path.basename(inc))
+                if b in units and b != stem(f):
+                    graph.setdefault(stem(f), set()).add(b)
+        comps = scc(graph, sorted(units))
+        biggest = len(comps[0]) if comps else 0
+        out[d] = (len(units), sum(len(v) for v in graph.values()), biggest)
+    return out
 
 
 def assert_tiers_match_grants(g):
@@ -547,6 +736,65 @@ def d_grantuse(m):
             rows.append((nfiles, incs, "| `%s → %s` | %d | %d | %s |" % (a, b, incs, nfiles, state)))
     for _f, _i, row in sorted(rows):
         out.append(row)
+    return "\n".join(out)
+
+
+def d_shape(m):
+    """6. Shape -- how much of what crosses is actually needed."""
+    rows = m["shape"]
+    out = ["| type | owner | width | consumer | reads | fit | verdict |",
+           "|:-----|:------|------:|:---------|------:|----:|:--------|"]
+    for fit, name, hd, w, d, f, used in rows:
+        verdict = ("**WHOLESALE**" if fit < SHAPE_WHOLESALE
+                   else "partial" if fit < SHAPE_FITTED else "fitted")
+        out.append("| `%s` | `%s` | %d | `%s/%s` | %d | %.0f%% | %s |"
+                   % (name, hd, w, d, f, used, 100 * fit, verdict))
+    bad = [r for r in rows if r[0] < SHAPE_WHOLESALE]
+    good = [r for r in rows if r[0] >= SHAPE_FITTED]
+    out.append("")
+    out.append("Data-dominant structs of %d+ members, declared outside a foundation library, read by a "
+               "consumer in a **different tier**. `width` is declared members; `reads` is how many the "
+               "consumer names via `.` or `->`. %d crossings measured: **%d wholesale**, %d partial, "
+               "%d fitted." % (SHAPE_MIN_MEMBERS, len(rows), len(bad), len(rows) - len(bad) - len(good),
+                               len(good)))
+    out.append("")
+    out.append("The filters carry the meaning. **Classes are excluded**: for a class, a consumer using "
+               "two of fifty-nine members is encapsulation working, not a defect — an earlier cut of "
+               "this measurement without that filter reported five such \"findings\" and every one was "
+               "wrong. Same-tier crossings are excluded because wide sharing inside a tier is the point "
+               "of being in one.")
+    return "\n".join(out)
+
+
+def d_cohesion(m):
+    """7. Cohesion -- whether a directory can be partitioned at all."""
+    coh = m["cohesion"]
+    out = ["```mermaid", "xychart-beta",
+           '    title "Largest strongly-connected component, as % of the directory"',
+           "    x-axis [%s]" % ", ".join(d for d in DIRS if d in coh),
+           '    y-axis "percent of translation units" 0 --> 100',
+           "    bar [%s]" % ", ".join("%.0f" % (100.0 * coh[d][2] / coh[d][0]) for d in DIRS if d in coh),
+           "```", ""]
+    out.append("| directory | units | internal edges | largest cycle | share | partitionable? |")
+    out.append("|:----------|------:|---------------:|--------------:|------:|:---------------|")
+    for d in DIRS:
+        if d not in coh:
+            continue
+        units, edges, big = coh[d]
+        share = big / units if units else 0
+        # A 2-unit shell is trivially "one component" and that means nothing. Below the floor the
+        # question is not answerable rather than answered badly.
+        verdict = ("n/a — too small" if units <= COHESION_MIN_UNITS
+                   else "**NO — one blob**" if share >= COHESION_BLOB
+                   else "partly" if share >= COHESION_PARTLY else "yes")
+        out.append("| `%s` | %d | %d | %d | %.0f%% | %s |" % (d, units, edges, big, 100 * share, verdict))
+    blobs = [d for d in DIRS if d in coh and coh[d][0] > COHESION_MIN_UNITS
+             and coh[d][2] / coh[d][0] >= COHESION_BLOB]
+    out.append("")
+    out.append("A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node; edges are includes "
+               "within the directory. A directory whose largest strongly-connected component is most of "
+               "the directory **cannot be split**, because there is no cut to make. Directories in that "
+               "state: %s." % (", ".join("`%s`" % d for d in blobs) or "none"))
     return "\n".join(out)
 
 
@@ -818,6 +1066,8 @@ def d_renderclasses(m):
 DIAGRAMS = [
     ("lattice", d_lattice),
     ("grantuse", d_grantuse),
+    ("shape", d_shape),
+    ("cohesion", d_cohesion),
     ("sankey", d_sankey),
     ("shells", d_shells),
     ("mass", d_mass),
@@ -839,6 +1089,7 @@ def measure():
         "grants": grants(), "uses": uses(), "sizes": sizes(), "reach": reach(),
         "binaries": binaries(), "crosscut": crosscut(), "parts": system_parts(),
         "render": render, "classedges": cross_layer_edges(render[2], render[3]),
+        "shape": shape(), "cohesion": cohesion(),
         "owner": owner, "dupes": dupes,
     }
 

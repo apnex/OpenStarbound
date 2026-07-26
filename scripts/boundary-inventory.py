@@ -56,7 +56,11 @@ strip_code = _layering.strip_comments_and_strings
 VOCAB = [
     ("Drawable",             "the view data model -- what to draw, produced by game code"),
     ("RenderCallback",       "the abstract sink entities push drawables into"),
-    ("WorldRenderData",      "the 35-member frame view model the render passes consume"),
+    # NO MEMBER COUNT HERE. This said "the 35-member frame view model" from the day it was written; the
+    # tree says 23, and the wrong number had already propagated into the generated boundary doc. It is
+    # the exact defect this campaign exists to stop, committed inside one of its own instruments. The
+    # width is measurable, so arch-graph.py's shape block states it and this description does not.
+    ("WorldRenderData",      "the frame view model the render passes consume"),
     ("EntityDrawables",      "per-entity drawable bundle"),
     ("EntityRenderLayer",    "draw ordering -- a render concern expressed in game types"),
     ("EntityHighlightEffect", "a visual effect described by the sim"),

@@ -65,7 +65,7 @@ Per term:
 |:-----|-----:|------:|:-----------|
 | `Drawable` | 495 | 96 | the view data model -- what to draw, produced by game code |
 | `RenderCallback` | 101 | 38 | the abstract sink entities push drawables into |
-| `WorldRenderData` | 18 | 6 | the 35-member frame view model the render passes consume |
+| `WorldRenderData` | 18 | 6 | the frame view model the render passes consume |
 | `EntityDrawables` | 3 | 3 | per-entity drawable bundle |
 | `EntityRenderLayer` | 61 | 25 | draw ordering -- a render concern expressed in game types |
 | `EntityHighlightEffect` | 7 | 3 | a visual effect described by the sim |

@@ -3,9 +3,10 @@
 **Scope:** the whole of OpenStarbound, not the render subsystem. `docs/render/` describes one tier of one
 of the six parts named below; this document is the map that tier sits inside.
 
-**Freshness basis:** nine of the ten diagrams are **generated** by `scripts/arch-graph.py --inject` and
-gated by the `arch_graph_fresh` ctest and the `Gates` workflow. The tenth — the determination method —
-is hand-authored, contains no measurable fact, and deliberately has no marker.
+**Freshness basis:** every diagram and table below except one is **generated** by
+`scripts/arch-graph.py --inject` and gated by the `arch_graph_fresh` ctest and the `Gates` workflow. The
+exception is §1's determination method, which is hand-authored, contains no measurable fact, and
+deliberately has no marker.
 
 This follows the rule `docs/render/README.md` states and the render campaign learned the hard way:
 
@@ -18,8 +19,10 @@ binary compositions and singleton counts. Everything numeric below comes out of 
 
 ## 1. How a boundary is determined
 
-Four tests, in descending order of evidential strength. The order matters: a boundary that passes test 1
-needs no argument, and a boundary that only passes test 4 is a proposal rather than a fact.
+**Two questions, not one.** Tests 1–4 ask whether a boundary *exists*, in descending order of
+evidential strength. Test 5 asks something different — whether an existing boundary is any *good* — and
+it is the question most architecture work actually turns on. A boundary can be perfectly enforced and
+still be badly shaped, and the first four tests are blind to that by construction.
 
 ```mermaid
 flowchart TD
@@ -39,15 +42,26 @@ flowchart TD
   T4 -->|yes| A["<b>ASPIRATIONAL</b><br/>a duty boundary with no mechanism.<br/>Needs a hand-built instrument —<br/>or a directory of its own."]
   T4 -->|no| N["<b>NOT A BOUNDARY</b><br/>one thing you hoped was two."]
 
-  E --> R1["ratchet: keep it"]
-  P --> R2["ratchet: keep the artifact building"]
   L --> R3["<b>action:</b> revoke the unused grant"]
-  A --> R4["<b>action:</b> give it a directory and a grant list.<br/>That converts a lint you maintain<br/>into a compile error you don't."]
+  A --> R4["<b>action:</b> can it become a directory?<br/>See test 6 — often it cannot."]
+
+  E --> T5
+  P --> T5
+  T5{"<b>Test 5 — Shape</b><br/>Can the consumer state what it<br/>needs in a type it owns?"}
+  T5 -->|yes| W["<b>WELL-SHAPED</b><br/>the interface is the need."]
+  T5 -->|no| B["<b>WHOLESALE</b><br/>enforced, and still bad.<br/>The consumer receives a bundle<br/>and reads a fraction of it."]
+  B --> R5["<b>action:</b> give the consumer an input<br/>type it declares itself"]
+
+  T5 --> T6{"<b>Test 6 — Cohesion</b><br/>Is there a cut inside<br/>this side at all?"}
+  T6 -->|"one component"| C1["<b>NO PARTITION EXISTS</b><br/>a directory cannot be made.<br/>Breaking the cycle is the work,<br/>and it is not a build-file change."]
+  T6 -->|"many components"| C2["<b>SPLITTABLE</b><br/>the cheap mechanism is available"]
 
   classDef verdict fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
   classDef action fill:#3a2d5c,stroke:#7b5ea7,color:#e8e0f5
-  class E,P,L,A,N verdict
-  class R1,R2,R3,R4 action
+  classDef bad fill:#5c2020,stroke:#a33,color:#ffe5e5
+  class E,P,L,A,N,W,C2 verdict
+  class R3,R4,R5 action
+  class B,C1 bad
 ```
 
 **Why this order.** Test 1 is authoritative because it is not an opinion: each directory's
@@ -55,6 +69,11 @@ flowchart TD
 compile error. Test 2 is next because an artifact that builds is a fact about the world. Tests 3 and 4
 are measurements of *pressure* rather than of structure — useful for deciding what to do next, useless
 for settling whether a boundary exists.
+
+**Tests 5 and 6 were added after the first four had been applied**, because the first four produced a
+recommendation that turned out to be impossible. Test 5 (§6) grades the interface rather than the
+permission. Test 6 (§9) asks whether a directory can be split at all — and for the directory this
+document most wanted to split, the answer is no.
 
 The most important consequence sits between tests 1 and 4: **the compiler enforces boundaries between
 directories and enforces nothing within one.** Every instrument in `scripts/` is a hand-built substitute
@@ -71,8 +90,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      823 files
-      220061 lines
+      989 files
+      239605 lines
       6 tiers
     Content
       assets/
@@ -81,7 +100,7 @@ mindmap
       vanilla pak is external
     Protocol
       net + save
-      175 files name it
+      187 files name it
       spans 6 directories
       no directory of its own
     Toolchain
@@ -103,7 +122,7 @@ A mindmap because this genuinely is a tree: six independent children of one root
 
 Only the first is what people mean by "the codebase". The other five are versioned separately, fail
 separately, and are invisible to any tool that reads only `source/`. The **protocol** in particular has
-no directory anywhere and no owner — see §8.
+no directory anywhere and no owner — see §11.
 
 ---
 
@@ -120,17 +139,17 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>214 files · 55,891 lines · Root×0</small>"]
+    core["core<br/><small>216 files · 56,149 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
-    base["base<br/><small>27 files · 7,325 lines · Root×0</small>"]
+    base["base<br/><small>29 files · 7,380 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,372 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>338 files · 96,002 lines · Root×521</small>"]
+    game["game<br/><small>500 files · 115,233 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -238,12 +257,12 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 <!-- BEGIN GENERATED: scripts/arch-graph.py#grantuse -->
 ```mermaid
 flowchart LR
-  base ==>|88 in 24| core
+  base ==>|92 in 26| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
-  game ==>|132 in 113| base
-  game ==>|675 in 286| core
+  game ==>|157 in 136| base
+  game ==>|840 in 382| core
   game -->|3 in 3| platform
   rendering -->|9 in 9| application
   rendering -->|7 in 5| base
@@ -253,13 +272,13 @@ flowchart LR
   windowing -->|2 in 1| application
   windowing ==>|19 in 17| base
   windowing ==>|38 in 24| core
-  windowing ==>|39 in 25| game
+  windowing ==>|41 in 25| game
   windowing -.->|0| platform
   windowing -->|3 in 1| rendering
   frontend -->|4 in 4| application
   frontend ==>|54 in 45| base
   frontend ==>|96 in 54| core
-  frontend ==>|226 in 75| game
+  frontend ==>|271 in 79| game
   frontend -.->|0| platform
   frontend -->|9 in 9| rendering
   frontend ==>|217 in 67| windowing
@@ -267,7 +286,7 @@ flowchart LR
   client -->|2 in 1| base
   client -->|14 in 3| core
   client -->|11 in 2| frontend
-  client -->|13 in 2| game
+  client -->|18 in 2| game
   client -.->|0| platform
   client -->|1 in 1| rendering
   client -->|1 in 1| windowing
@@ -295,7 +314,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `platform → core` | 5 | 2 | thin |
 | `application → platform` | 8 | 2 | thin |
 | `client → frontend` | 11 | 2 | thin |
-| `client → game` | 13 | 2 | thin |
+| `client → game` | 18 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
 | `client → core` | 14 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
@@ -310,14 +329,14 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `windowing → base` | 19 | 17 | load-bearing |
 | `rendering → core` | 45 | 18 | load-bearing |
 | `windowing → core` | 38 | 24 | load-bearing |
-| `base → core` | 88 | 24 | load-bearing |
-| `windowing → game` | 39 | 25 | load-bearing |
+| `windowing → game` | 41 | 25 | load-bearing |
+| `base → core` | 92 | 26 | load-bearing |
 | `frontend → base` | 54 | 45 | load-bearing |
 | `frontend → core` | 96 | 54 | load-bearing |
 | `frontend → windowing` | 217 | 67 | load-bearing |
-| `frontend → game` | 226 | 75 | load-bearing |
-| `game → base` | 132 | 113 | load-bearing |
-| `game → core` | 675 | 286 | load-bearing |
+| `frontend → game` | 271 | 79 | load-bearing |
+| `game → base` | 157 | 136 | load-bearing |
+| `game → core` | 840 | 382 | load-bearing |
 <!-- END GENERATED: grantuse -->
 
 **Dotted edges are free money.** A granted permission spent zero times costs nothing to revoke and
@@ -330,7 +349,45 @@ edge and include counts do not.
 
 ---
 
-## 6. Weighted coupling
+## 6. Shape — how much of what crosses is actually needed
+
+Test 5, and the one axis §§3–5 are structurally blind to. They ask whether a boundary is *permitted*
+and *used*. This asks whether what travels across it is an interface or a bundle.
+
+<!-- BEGIN GENERATED: scripts/arch-graph.py#shape -->
+| type | owner | width | consumer | reads | fit | verdict |
+|:-----|:------|------:|:---------|------:|----:|:--------|
+| `RadioMessage` | `game` | 14 | `frontend/StarChat.cpp` | 1 | 7% | **WHOLESALE** |
+| `WorldRenderData` | `game` | 23 | `rendering/StarTilePainter.cpp` | 3 | 13% | **WHOLESALE** |
+| `WorldRenderData` | `game` | 23 | `rendering/StarWorldPass.cpp` | 6 | 26% | **WHOLESALE** |
+| `RadioMessage` | `game` | 14 | `frontend/StarMainInterface.cpp` | 4 | 29% | **WHOLESALE** |
+| `RadioMessage` | `game` | 14 | `frontend/StarRadioMessagePopup.cpp` | 7 | 50% | partial |
+| `WorldRenderData` | `game` | 23 | `rendering/StarWorldPainter.cpp` | 20 | 87% | fitted |
+| `ItemRecipe` | `game` | 10 | `frontend/StarCraftingInterface.cpp` | 9 | 90% | fitted |
+| `RenderTile` | `game` | 16 | `rendering/StarTilePainter.cpp` | 16 | 100% | fitted |
+
+Data-dominant structs of 8+ members, declared outside a foundation library, read by a consumer in a **different tier**. `width` is declared members; `reads` is how many the consumer names via `.` or `->`. 8 crossings measured: **4 wholesale**, 1 partial, 3 fitted.
+
+The filters carry the meaning. **Classes are excluded**: for a class, a consumer using two of fifty-nine members is encapsulation working, not a defect — an earlier cut of this measurement without that filter reported five such "findings" and every one was wrong. Same-tier crossings are excluded because wide sharing inside a tier is the point of being in one.
+<!-- END GENERATED: shape -->
+
+**`WorldRenderData` is the exemplar, and it is more interesting than it first looks.** Measured against
+`source/rendering` as a whole its fit is 21 of 23 — the render library broadly needs the whole frame
+model, and at directory granularity nothing is wrong. The defect only appears per consumer: the
+orchestrator reads almost all of it, and then hands the same 23-member aggregate down to passes that
+read six and three. Each pass receives the whole frame to do a fraction of the work.
+
+That is exactly what Air-Gap contract ① exists to fix, and the fix pattern is already in the tree —
+`WorldPass` declares a four-member `Input` of its own. The metric says how much is left rather than
+whether to start.
+
+**A metric that only ever complains is not measuring anything.** This one also finds well-shaped
+crossings: `RenderTile` at 16 of 16 into `TilePainter`, `LiquidCellEngineParameters` at 11 of 11. Those
+are types shaped to their consumer, and they are the standard the wholesale rows are being held to.
+
+---
+
+## 7. Weighted coupling
 
 The same edges, with magnitude instead of buckets.
 
@@ -338,22 +395,22 @@ The same edges, with magnitude instead of buckets.
 ```mermaid
 sankey-beta
 
-game,core,675
-frontend,game,226
+game,core,840
+frontend,game,271
 frontend,windowing,217
-game,base,132
+game,base,157
 frontend,core,96
-base,core,88
+base,core,92
 frontend,base,54
 application,core,49
 rendering,core,45
-windowing,game,39
+windowing,game,41
 windowing,core,38
 server,core,25
 rendering,game,24
 windowing,base,19
+client,game,18
 client,core,14
-client,game,13
 client,frontend,11
 rendering,application,9
 frontend,rendering,9
@@ -373,12 +430,12 @@ client,rendering,1
 client,windowing,1
 ```
 
-**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 675 and `base → core` at 88 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
+**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 840 and `base → core` at 92 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
 <!-- END GENERATED: sankey -->
 
 ---
 
-## 7. Mass, and the one directory that is a continent
+## 8. Mass, and the one directory that is a continent
 
 <!-- BEGIN GENERATED: scripts/arch-graph.py#mass -->
 ```mermaid
@@ -387,13 +444,13 @@ treemap-beta
     "T0 vendored"
         "extern": 19243
     "T1 language"
-        "core": 55891
+        "core": 56149
     "T2 services"
+        "base": 7380
         "application": 7372
-        "base": 7325
         "platform": 142
     "T3 simulation"
-        "game": 96002
+        "game": 115233
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -407,19 +464,19 @@ treemap-beta
 
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
-| T0 vendored | `extern` | 18 | 19,243 | 8.7% |
-| T1 language | `core` | 214 | 55,891 | 25.4% |
-| T2 services | `base` | 27 | 7,325 | 3.3% |
+| T0 vendored | `extern` | 18 | 19,243 | 8.0% |
+| T1 language | `core` | 216 | 56,149 | 23.4% |
+| T2 services | `base` | 29 | 7,380 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
-| T2 services | `application` | 25 | 7,372 | 3.3% |
-| T3 simulation | `game` | 338 | 96,002 | 43.6% |
-| T4 presentation | `rendering` | 23 | 4,413 | 2.0% |
-| T4 presentation | `windowing` | 61 | 9,646 | 4.4% |
-| T4 presentation | `frontend` | 102 | 16,861 | 7.7% |
-| T5 shells | `client` | 4 | 2,383 | 1.1% |
-| T5 shells | `server` | 7 | 783 | 0.4% |
+| T2 services | `application` | 25 | 7,372 | 3.1% |
+| T3 simulation | `game` | 500 | 115,233 | 48.1% |
+| T4 presentation | `rendering` | 23 | 4,413 | 1.8% |
+| T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
+| T4 presentation | `frontend` | 102 | 16,861 | 7.0% |
+| T5 shells | `client` | 4 | 2,383 | 1.0% |
+| T5 shells | `server` | 7 | 783 | 0.3% |
 
-`game` is **44% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
+`game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
 <!-- END GENERATED: mass -->
 
 **Read these as directories, not layers — they are not the same partition.** The load-bearing example
@@ -433,32 +490,86 @@ So the render decomposition's own layers are **not contiguous in the tier lattic
 not see the simulation, while an L3 pass must consume `WorldRenderData`, which is a game type. But it
 means "the render subsystem" is not a place in the tree. It is a duty spanning two directories on
 opposite sides of the simulation, which is exactly why it needs the hand-built instruments named at the
-end of §1, and why §10 labels every layer with the library it actually lives in.
+end of §1, and why §12 labels every layer with the library it actually lives in.
 
 `game` is the structural problem this document exists to name. It is a single directory with a single
 grant list and no sub-`CMakeLists.txt`, which means **no boundary inside it is enforceable by test 1**.
 Its natural clusters are legible in the filenames — entities and items, world simulation, universe and
-networking — and nothing whatsoever holds them apart. It is the same situation as the render painters,
-at roughly twenty times the scale.
+networking. Whether those clusters are *separable* is a different question, and §9 answers it.
 
 ---
 
-## 8. Reach — where the god-object is visible
+## 9. Cohesion — is there a cut to make at all?
+
+Test 6. The obvious response to §8 is "give `game` sub-directories with their own grant lists". This
+section exists because that recommendation was in this document, stated as costing "no behavioural
+change at all", and it was **wrong** — not understated, impossible. Before proposing a partition,
+measure whether one exists.
+
+<!-- BEGIN GENERATED: scripts/arch-graph.py#cohesion -->
+```mermaid
+xychart-beta
+    title "Largest strongly-connected component, as % of the directory"
+    x-axis [extern, core, base, platform, application, game, rendering, windowing, frontend, client, server]
+    y-axis "percent of translation units" 0 --> 100
+    bar [23, 3, 19, 25, 33, 86, 8, 84, 12, 100, 50]
+```
+
+| directory | units | internal edges | largest cycle | share | partitionable? |
+|:----------|------:|---------------:|--------------:|------:|:---------------|
+| `extern` | 13 | 12 | 3 | 23% | partly |
+| `core` | 154 | 473 | 5 | 3% | yes |
+| `base` | 16 | 11 | 3 | 19% | partly |
+| `platform` | 4 | 0 | 1 | 25% | n/a — too small |
+| `application` | 15 | 23 | 5 | 33% | partly |
+| `game` | 264 | 1562 | 226 | 86% | **NO — one blob** |
+| `rendering` | 12 | 17 | 1 | 8% | yes |
+| `windowing` | 31 | 89 | 26 | 84% | **NO — one blob** |
+| `frontend` | 51 | 88 | 6 | 12% | yes |
+| `client` | 2 | 2 | 2 | 100% | n/a — too small |
+| `server` | 4 | 4 | 2 | 50% | n/a — too small |
+
+A translation unit is `StarFoo.hpp` + `StarFoo.cpp` as one node; edges are includes within the directory. A directory whose largest strongly-connected component is most of the directory **cannot be split**, because there is no cut to make. Directories in that state: `game`, `windowing`.
+<!-- END GENERATED: cohesion -->
+
+Three things fall out, and they reframe the rest of the document.
+
+**`game` has no partition.** Its largest strongly-connected component is the overwhelming majority of
+the directory: entities include world, world includes entities, and the cycle closes over almost
+everything. You cannot hand a sub-directory its own grant list when it has a mutual include with the
+directory next door. The work is *breaking the cycle*, which is a sustained refactor of the simulation's
+type graph — not a build-file change, and not something with a byte-identical proof.
+
+**`windowing` is in the same state**, at smaller scale, and nobody had noticed because nobody had looked.
+
+**The render decomposition succeeded because `rendering` was already almost acyclic.** That is worth
+sitting with. The campaign's hardest structural achievement — L1/L2/L3, the passes, the sovereign
+substrate — was possible because the substrate permitted it. The same effort aimed at `game` would have
+hit a wall on day one. Feasibility was a property of the ground, not of the plan.
+
+This also rehabilitates the hand-built instruments. `layering-lint.py` and its siblings look like
+substitutes for a cheap mechanism nobody bothered to use. For the two blob directories they are not a
+substitute for anything — **they are the only enforcement available**, because the cheap mechanism
+requires a cut that does not exist.
+
+---
+
+## 10. Reach — where the god-object is visible
 
 <!-- BEGIN GENERATED: scripts/arch-graph.py#reach -->
 ```mermaid
 xychart-beta
     title "Root::singleton() reads per directory"
     x-axis [core, base, platform, application, game, rendering, windowing, frontend, client, server]
-    y-axis "references" 0 --> 600
-    bar [0, 0, 0, 0, 521, 17, 41, 200, 2, 4]
+    y-axis "references" 0 --> 700
+    bar [0, 0, 0, 0, 640, 17, 41, 200, 2, 4]
 ```
 
 **Read the zeros carefully.** `Root` lives in `source/game`. `core`, `base`, `platform`, `application` read zero because they are not granted `game` and therefore *cannot see it* -- that is a consequence of the grant list, not a property anyone earned. The render campaign's L1 sovereignty is a different and narrower claim: an *internal* split of `source/application` that no compiler checks and `layering-lint.py` does.
 
 | directory | files reading Root | references |
 |:----------|-------------------:|-----------:|
-| `game` | 111 | 521 |
+| `game` | 136 | 640 |
 | `frontend` | 42 | 200 |
 | `windowing` | 17 | 41 |
 | `rendering` | 4 | 17 |
@@ -472,7 +583,7 @@ xychart-beta
 
 ---
 
-## 9. The subsystems with no directory
+## 11. The subsystems with no directory
 
 Tests 1, 2 and 3 are all directory-shaped and structurally cannot see a concern that spans directories.
 These are found by reading duty, which is why the vocabulary is declared in the script rather than
@@ -511,14 +622,14 @@ flowchart TB
     server
   end
   X0{{"Scripting"}}
-  X0 -.->|45| game
+  X0 -.->|99| game
   X0 -.->|14| frontend
-  X0 -.->|4| core
+  X0 -.->|6| core
   X0 -.->|4| windowing
   X0 -.->|3| client
   X0 -.->|2| base
   X1{{"Protocol"}}
-  X1 -.->|136| game
+  X1 -.->|148| game
   X1 -.->|31| core
   X1 -.->|3| server
   X1 -.->|2| base
@@ -530,7 +641,7 @@ flowchart TB
   X2 -.->|2| core
   X2 -.->|2| application
   X3{{"Assets"}}
-  X3 -.->|37| game
+  X3 -.->|46| game
   X3 -.->|6| base
   X3 -.->|6| rendering
   X3 -.->|4| windowing
@@ -543,10 +654,10 @@ Edge labels are files naming the concern. Single-file touches are elided (4 of t
 
 | concern | files | directories | tiers | why it has no home |
 |:--------|------:|------------:|------:|:-------------------|
-| **Scripting** | 72 | 6 | 5 of 6 | Lua VM is 4 files in core; the binding surface is spread across six directories |
-| **Protocol** | 175 | 6 | 5 of 6 | wire format and save format, versioned independently of the code that reads them |
+| **Scripting** | 128 | 6 | 5 of 6 | Lua VM is 4 files in core; the binding surface is spread across six directories |
+| **Protocol** | 187 | 6 | 5 of 6 | wire format and save format, versioned independently of the code that reads them |
 | **Telemetry** | 15 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
-| **Assets** | 57 | 7 | 5 of 6 | loader in base, consumed everywhere, content lives outside the tree entirely |
+| **Assets** | 66 | 7 | 5 of 6 | loader in base, consumed everywhere, content lives outside the tree entirely |
 <!-- END GENERATED: crosscut -->
 
 Each of these is a real subsystem with a real interface and no home. The scripting surface is the
@@ -555,7 +666,7 @@ starkest: the Lua VM is a handful of files in `core`, and the bindings that defi
 
 ---
 
-## 10. The render subsystem, and the one edge that leaves it
+## 12. The render subsystem, and the one edge that leaves it
 
 The only place in this document where inheritance is the actual relationship, so the only place a
 `classDiagram` is the right form. Layers are namespaces; the library each layer lives in is noted in
@@ -673,25 +784,59 @@ Of 13 inheritance edges, 10 stay inside the render libraries, 2 take a base from
 
 ---
 
-## 11. What the measurement says to do
+## 13. What the measurement says to do
 
-Ordered by cost, cheapest first. Numbers live in the generated blocks above; these are the judgements.
+**Ordered by value, not by cost** — an earlier version of this list was ordered cheapest-first, which
+put a near-worthless item at the top and buried the only one that matters. Cost is stated separately
+because it is a different question from worth. Numbers live in the generated blocks; these are the
+judgements.
 
-1. **Revoke every unused grant** (§5, dotted edges). Zero risk, zero behaviour change, and it moves the
-   boundary from "nobody happens to use it" to "the compiler forbids it".
-2. **Cut the thinnest edges** (§5). `windowing → rendering` is the smallest live cross-tier edge in the
-   tree by files touched. Each cut removes a grant and makes the lattice shallower.
-3. **Break the `TilePainter : TileDrawer` inheritance** (§10). One edge, and it is the reason `WorldPass`
-   cannot close its input contract and the client has no headless expression. Tracked as #191.
-4. **Give `game` internal boundaries** (§7). Not a refactor — a `CMakeLists.txt` per cluster and a grant
-   list each. This is the single highest-leverage structural change available, and it costs no
-   behavioural change at all.
-5. **Decide whether the cross-cutting subsystems get homes** (§9). Scripting and protocol are the two
-   that would benefit; both are currently un-auditable because no instrument is shaped to see them.
+**1. Break `TilePainter : TileDrawer`.** (§12 · cost: days · the highest value-per-effort in the list.)
+One inheritance edge, and it is the single reason `WorldPass` cannot close its input contract and the
+client has no headless expression. A render class whose base is a simulation class cannot be compiled
+without the simulation. Tracked as #191.
 
-The general rule underneath all five: **to make a boundary real, make it a directory with its own grant
-list.** That converts a lint we maintain into a compile error we do not. It is the cheapest enforcement
-mechanism in the system, and outside the tiers that already exist, nothing uses it.
+**2. Give the render passes input types they own.** (§6 · cost: days each · unblocks the above.) The
+wholesale rows in the shape table are consumers receiving a 23-member frame model to read three or six
+fields. `WorldPass::Input` already demonstrates the pattern; the remaining work is applying it, and each
+application shrinks what the game↔render boundary has to carry.
+
+**3. Decide whether scripting and protocol get homes.** (§11 · cost: weeks to design, unknown to
+execute · largest un-audited surface in the system.) Together they are hundreds of files defining the
+mod API and the save/wire compatibility contract, with no directory, no owner and no gate. Nothing here
+measures them because no instrument is shaped to. That is a gap in this document, not a low priority.
+
+**4. Break the `game` cycle — and understand what that means before starting.** (§9 · cost: months to
+years · highest ceiling, highest risk.) **There is no partition to make.** The overwhelming majority of
+`game`'s translation units are one strongly-connected component; a sub-directory cannot be given a grant
+list while it has mutual includes with its neighbours. The work is not a `CMakeLists.txt` per cluster —
+that is the *last* step, and it is trivial once the real work is done. The real work is breaking a
+cycle spanning most of the simulation's type graph, and it has three properties worth stating plainly:
+it cannot be done byte-identically, it cannot be verified by the existing oracles, and the first
+deliverable is not a refactor but a study of whether a cut is reachable at all. Anyone who starts this
+expecting a build-file change will stall in week one.
+
+**5. Cut the thinnest edges.** (§5 · cost: hours · small but real.) `windowing → rendering` is three
+includes in one file. Each cut removes a grant and makes the lattice shallower. Genuine, minor.
+
+**6. Revoke the unused grants.** (§5, dotted edges · cost: minutes · **hygiene, not progress**.) These
+forbid things nobody does. Revoking changes no behaviour, removes no coupling and enables no work; it
+only prevents a hypothetical future. Worth doing, worth doing last, and worth not mistaking for
+architecture.
+
+### The rule underneath, corrected
+
+The earlier version of this document ended: *"to make a boundary real, make it a directory with its own
+grant list — the cheapest enforcement mechanism in the system."* That is true, and §9 shows it is
+**unavailable exactly where it would matter most.** `game` and `windowing` cannot be partitioned today
+at any price short of breaking their cycles.
+
+So the honest rule has two halves:
+
+> Where a cut exists, make it a directory with its own grant list — the compiler is free and permanent.
+> **Where no cut exists, a hand-built instrument is not a workaround; it is the only enforcement
+> available**, and the campaign's ratchets are what a boundary looks like when the cheap mechanism is
+> out of reach.
 
 ---
 
