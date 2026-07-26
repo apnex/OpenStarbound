@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**134 tasks** across 2 store(s): 1 in_progress, 23 pending, 110 completed
+**135 tasks** across 2 store(s): 1 in_progress, 23 pending, 111 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 133 tasks, ids 64–196
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 134 tasks, ids 64–197
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 125, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 126, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 110.
+**Completed tasks citing no commit and no doc:** 79 of 111.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -138,7 +138,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
 | [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
 | [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
-| [#133](#c29c1332-133) | `c29c1332` | open | Render-target/FBO hardening: the PRIZE (RetainedSurface) shipped; items 1+2 unverified, re-scope | — | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
+| [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
@@ -202,6 +202,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
 | [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
+| [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1092,43 +1093,55 @@ DATA COLLECTED (2026-07-12) — 4-location idle per-pass GPU matrix (µs/frame),
 
 <a id="c29c1332-133"></a>
 
-#### #133 — Render-target/FBO hardening: the PRIZE (RetainedSurface) shipped; items 1+2 unverified, re-scope
+#### #133 — FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197
 
-status: **pending**
+status: **completed**
 
+- `a4106470` render(L1): a sampler's size uniform is now a function of the texture bound to it
 - cited in `docs/board.md`
 - cited in `docs/superpowers/specs/2026-07-14-render-surface-subsystem-design.md`
 
 ```
-STATUS CORRECTED 2026-07-25. Marked in_progress since 2026-07-12 and gated on "the env-cache lever validating". That gate resolved long ago, and the biggest item has since shipped under other tasks. Re-scoped to the residual.
+RE-AUDITED 2026-07-26 against the CURRENT decomposed renderer, per this task's own instruction not to re-derive from the 2026-07-12 file references. All three unknown items resolved with evidence.
 
-ITEM 4 -- "THE REAL PRIZE", the first-class retained cache surface -- SHIPPED. Verified in integration:
-  source/rendering/StarRetainedSurface.hpp
-  source/test/retained_surface_test.cpp   (render_surface_tests, 9/9 green 2026-07-25)
-  consumed by source/rendering/StarBackdropPass.hpp
-Landed via the render decomposition (branch render/layer2-retained-surface; a dangling commit records
-"migrate parallax cache to RetainedSurface -- decomposition step 1c"). This was the substrate the whole
-retained-layer arc needed, and it exists.
+ITEM 4 (the real prize, RetainedSurface) -- was already SHIPPED. Unchanged.
 
-ITEM 3 -- screen-sized-FBO textureSize={0,0} quirk -- BELIEVED COVERED by #142 (FBO-1: "honour explicit
-size, gate oracle surfaces, diagnosable failures"), but NOT re-verified in the post-decomposition tree.
-The renderer has been split into StarGlRenderSurface / GlPass / GlEffects / GlTargets since this was
-written, so the original file/function references no longer locate.
+ITEM 3 -- CLOSED, and it had a live residual that is now fixed (a4106470).
+The quirk as filed (screen-sized FBO reporting textureSize={0,0}) is gone: GlSurface::size()
+(StarGlRenderSurface.cpp:159) returns actual allocated storage and is documented "never (0,0) on a live
+surface"; sizeFor() is the single home of the size rule. F1/#142 did cover it.
+What survived was a different hole in the same place: textureSizeUniform was written only by whoever
+CHANGED a sampler, and nothing wrote it when the TEXTURE changed underneath a sampler that was not
+re-bound -- which happens on every renderer config reload, because GlEffects::rebindBorrows re-points
+borrowed samplers and CANNOT upload a uniform (it is not the pass and holds no bound program).
+Verified LATENT: 5 shipped effects declare a textureSizeUniform, but no shipped effect declares
+frameBufferTextures (mod-facing path only), every in-tree sampler with a size uniform is re-bound per use,
+and the two lighting targets sampled through one have fixed overrideSize. Fixed by replaying each
+sampler's size in GlPass::bindEffect, where the program is already told about screenSize and scriptables.
+Byte-identical on hardware (envoracle 89/89, paralloracle 20/20, spreadoracle 206/206, DIFF=0).
 
-ITEM 1 -- effect-param statefulness footgun (params persist across frames, so one consumer mutating a
-shared effect silently corrupts another; forced the environmentCompose.config workaround) -- STATUS
-UNKNOWN. A grep for switchEffectConfig in StarGlEffects found nothing, which means either it was fixed
-and renamed, or it moved. NEEDS A LOOK. This was flagged as the highest-value item and it bit during a
-live build.
+ITEM 2 -- CLOSED, shipped before this audit and by name.
+Renderer::composite(effect, dstFbo, dstSize, srcSampler, srcFbo, params) exists at StarRenderer.hpp:199,
+implemented at StarRenderer_opengl.cpp:844, docstring "Collapses the hand-rolled 'sample one FBO into
+another via a passthrough effect + full-screen quad' pattern." SEVEN consumers: GpuLightmapPass:166,255;
+BackdropPass:55,58,111,627,650. The "~4 hand-rolled sites" are gone. One deliberate non-user remains --
+mergedCompose's backdropCompose draw samples TWO textures (env + parallax) and cannot use a one-sampler
+helper. That is a legitimate exception, not residue.
 
-ITEM 2 -- shared composite(sourceFBO, destFBO, effect) helper to collapse the ~4 hand-rolled
-sample-FBO-into-target sites -- STATUS UNKNOWN, same reason. Note #143 (CM-1) merged the env + parallax
-composes into one full-screen pass, which removed at least one of the four sites, so the remaining
-duplication may be smaller than when this was written.
+ITEM 1 -- REDUCED, not closed. Split out to #197.
+The case that actually bit is solved: composite() sets its params explicitly on every call, so the shared
+lightingPassthrough effect is bleed-safe across consumers -- that is what its contract says and what
+passthroughParams(bool) delivers. The environmentCompose.config workaround this task cites no longer
+exists; #143 replaced it with backdropCompose, which declares ZERO effectParameters.
+The HAZARD is structurally intact though: EffectParameter::parameterValue is per-effect and persists for
+the effect's lifetime, and nothing resets it at frame start or at bind. The exposure is the `world`
+effect: bound at TEN sites (BackdropPass, GpuLightmapPass, WorldPainter, ClientApplication) and declaring
+SEVEN parameters. WorldPainter's fullbright branch deliberately leaves lightMapScale / lightMapOffset /
+lightmapBilinear / lightmapUpscale stale, relying on the shader ignoring them when lightMapEnabled=false.
+Correct today; a live coupling between config, shader and a C++ branch with nothing asserting it.
 
-NEXT ACTION (small): re-audit items 1, 2, 3 against the CURRENT decomposed renderer and either close this
-task or reduce it to whatever genuinely remains. Do not re-derive from the 2026-07-12 file references --
-they predate the decomposition and will mislead. Related: #142, #143, #137, #145.
+Related: #144 carries the same defect class for frameBufferTextures across loadConfig.</description>
+<parameter name="activeForm">Re-auditing the FBO hardening items
 ```
 
 <a id="c29c1332-134"></a>
@@ -3154,6 +3167,51 @@ Two separable issues:
 (2) REPO, and the more interesting one: source/vcpkg.json lists { "name": "jemalloc", "platform": "linux" } UNCONDITIONALLY, while source/CMakeLists.txt:142 declares option(STAR_USE_JEMALLOC ... OFF). So every Linux build compiles and installs a dependency the default configuration does not link, and when that dependency stops building the whole project stops -- for a library it was not going to use. The fix is to gate the vcpkg dependency behind a manifest feature driven by the CMake option (VCPKG_MANIFEST_FEATURES set before project()).
 
 Risk if left: the working build directory is the only thing keeping this machine able to build. Lose it and the fork cannot be rebuilt here.
+```
+
+<a id="c29c1332-197"></a>
+
+#### #197 — FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure
+
+status: **pending**
+
+```
+SPLIT OUT of #133 item 1 on 2026-07-26, after the re-audit found the original case solved but the hazard intact.
+
+WHAT IS SOLVED, and should not be re-fixed: the shared passthrough effect. Renderer::composite() sets its
+params explicitly on every call (StarRenderer_opengl.cpp:844, "no cross-consumer param bleed"), so
+lightingPassthrough is safe across its consumers via passthroughParams(bool). The environmentCompose.config
+workaround that #133 cited as evidence no longer exists -- #143 replaced it with backdropCompose, which
+declares zero effectParameters.
+
+WHAT REMAINS. EffectParameter::parameterValue (StarGlRenderSurface.hpp:30) is stored per effect and lives
+for the effect's lifetime. Nothing resets it at frame start; GlPass::bindEffect replays SCRIPTABLES only.
+So an ordinary parameter keeps whatever the last writer set, across frames and across consumers.
+
+THE EXPOSURE IS `world`: bound at TEN sites (StarBackdropPass.cpp:61,87,114,630,653;
+StarGpuLightmapPass.cpp:280,284; StarClientApplication.cpp:533 and the WorldPainter path) and declaring
+SEVEN parameters (lightMapEnabled, lightMapMultiplier, lightMapOffset, lightMapScale, lightmapBilinear,
+lightmapUpscale, vertexRounding). StarWorldPainter.cpp:256-303's fullbright branch sets lightMapEnabled
+and lightMapMultiplier and deliberately leaves lightMapScale / lightMapOffset / lightmapBilinear /
+lightmapUpscale STALE, relying on the world shader ignoring them when lightMapEnabled=false. That is
+correct today and is a live coupling between world.config, world.frag and a C++ branch, asserted by
+nothing.
+
+WHY IT IS NOT URGENT: no in-tree divergence has been demonstrated, and applyEffectParameter's dedup means
+the cache is only ever the renderer's belief about a uniform IT wrote -- a fresh Effect is re-emplaced on
+reload with an empty parameterValue, so the reload-staleness variant is already handled.
+
+THREE COHERENT OPTIONS, decide rather than drift:
+ (a) Extend the composite() discipline: give `world` a params struct resolved at its bind sites, so every
+     bind states all seven. Symmetric with BackdropParams / LightmapParams and with contract (2).
+ (b) Assert instead of restructure: a debug-only check at draw time that every declared parameter of the
+     bound effect has been written this frame. Cheap, catches the real failure mode, no behaviour change.
+ (c) WONTFIX with the coupling documented at world.config and the fullbright branch, on the grounds that
+     one effect with one careful consumer is not worth a mechanism.
+
+Lean: (b) then (a). (b) is the gate this campaign keeps discovering it needed; the audit's whole finding
+was that unasserted rules decay. Sequence behind #139(b), the GL-state assertion pass -- same shape, same
+seam, and they should be one instrument rather than two.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
