@@ -204,6 +204,30 @@ private:
   uint64_t m_renderTestAbHashA = 0;
   Image m_renderTestAbFrameA;
 
+  // MOTION-DRIVEN HARNESS (#174, guardrail G9). Everything below is FRAME-COUNTED, never wall-clock: a
+  // wall-clock cycle makes two runs incomparable the moment the machine is busy, and comparability is the
+  // whole product. Same discipline as pinSkyEpochTime.
+  //
+  // IT SERVES THE NOFREEZE INSTRUMENT, NOT THE FROZEN GATE, and that was the decision this task demanded be
+  // made deliberately. The byte-identity gate freezes the world so its input is deterministic -- and a frozen
+  // world does not tick, so the player cannot move in it at all. Motion is therefore only expressible in the
+  // unfrozen run, and what it is gated ON is a COUNTER invariant rather than a pixel hash. STAR_RENDERTEST_WALK
+  // sets NOFREEZE itself rather than asking the caller to remember.
+  unsigned m_renderTestWalk = 0;           // frames per leg (right / pause / left / pause); 0 = off
+  unsigned m_renderTestWalkFrame = 0;      // frames since the world settled -- the walk's own clock
+  unsigned m_renderTestTogglePeriod = 0;   // flip m_renderTestToggleKey every N frames; 0 = off
+  String m_renderTestToggleKey;            // a client option whose change REALLOCATES every framebuffer
+  unsigned m_renderTestZoomPeriod = 0;     // step zoomLevel every N frames; 0 = off
+  List<float> m_renderTestZoomLevels;
+  // Both knobs write a config key, and Configuration::set PERSISTS on exit -- the trap that has bitten this
+  // campaign twice and the harness itself once. Captured before the first write, restored at the terminal
+  // point, exactly as the A/B does.
+  StringMap<Json> m_renderTestConfigOriginals;
+
+  void renderTestDriveMotion();     // per frame, once the world has settled
+  void renderTestMotionVerdict();   // once, at the run's terminal point: the counters oracle
+  void renderTestRestoreConfig();   // put back every key the motion knobs wrote
+
   void renderTestCapture();
   uint64_t renderTestHash(Image const& frame, double* meanLuminance) const;
   // -----------------------------------------------------------------------------------------------

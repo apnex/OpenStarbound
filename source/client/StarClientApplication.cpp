@@ -192,6 +192,37 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
       m_renderTestOut = String(out);
     if (char const* warp = getenv("STAR_RENDERTEST_WARP"))
       m_renderTestWarp = String(warp);
+    // MOTION KNOBS (#174). Frames per leg / period, never seconds.
+    if (char const* walk = getenv("STAR_RENDERTEST_WALK"))
+      m_renderTestWalk = (unsigned)strtoul(walk, nullptr, 10);
+    // "<clientOptionKey>=<framesPerFlip>", e.g. antiAliasing=45 or hdr=60. Flipping either REALLOCATES every
+    // framebuffer with undefined content -- the churn the GL-state audit (#139) and the cache generation guard
+    // both exist for, and which no frozen run can produce.
+    if (char const* tog = getenv("STAR_RENDERTEST_TOGGLE")) {
+      String spec(tog);
+      if (auto eq = spec.find('='); eq != NPos) {
+        m_renderTestToggleKey = spec.substr(0, eq);
+        m_renderTestTogglePeriod = (unsigned)strtoul(spec.substr(eq + 1).utf8Ptr(), nullptr, 10);
+      } else {
+        Logger::error("[rendertest] STAR_RENDERTEST_TOGGLE must look like '<key>=<framesPerFlip>' -- got '{}'", spec);
+      }
+    }
+    // "<a>,<b>,...=<framesPerStep>", e.g. "2.0,3.0,4.0=45". Zoom changes the camera pixelRatio, which is a
+    // term in the env cache's refresh key and resizes every screen-sized surface.
+    if (char const* zoom = getenv("STAR_RENDERTEST_ZOOM")) {
+      String spec(zoom);
+      if (auto eq = spec.find('='); eq != NPos) {
+        for (auto const& lv : spec.substr(0, eq).split(','))
+          m_renderTestZoomLevels.append(strtof(lv.utf8Ptr(), nullptr));
+        m_renderTestZoomPeriod = (unsigned)strtoul(spec.substr(eq + 1).utf8Ptr(), nullptr, 10);
+      }
+      if (m_renderTestZoomLevels.size() < 2 || !m_renderTestZoomPeriod) {
+        Logger::error("[rendertest] STAR_RENDERTEST_ZOOM must look like '<a>,<b>[,...]=<framesPerStep>' with at "
+                      "least two levels -- got '{}'; zoom disabled", spec);
+        m_renderTestZoomLevels.clear();
+        m_renderTestZoomPeriod = 0;
+      }
+    }
     // "<configKey>=<jsonA>|<jsonB>", e.g. envRefreshInterval=1|4  or  lightingGpu=true|false
     if (char const* ab = getenv("STAR_RENDERTEST_AB")) {
       String spec(ab);
@@ -1163,12 +1194,18 @@ void ClientApplication::renderTestCapture() {
       // gate (it needs deterministic input), but it measures a FLOOR, not real play -- no entity animation,
       // no particles, no liquid motion, no lighting recomputes. For TIMING we do not need determinism, only
       // averages, so an unfrozen run is the honest number to compare against the Director's live HUD reading.
-      static bool const noFreeze = []() {
+      static bool const noFreezeEnv = []() {
         char const* e = getenv("STAR_RENDERTEST_NOFREEZE");
         return e && *e && *e != '0';
       }();
+      // A WALK IMPLIES NOFREEZE, and is not merely compatible with it: a frozen world does not tick, so the
+      // player cannot move in it at all. Requiring the caller to remember both would make the failure silent --
+      // the run would complete, report zero motion, and look like a renderer that never bypasses.
+      bool const noFreeze = noFreezeEnv || m_renderTestWalk > 0;
       m_renderTestLoading = false;
       m_renderTestFrozen = !noFreeze;
+      if (m_renderTestWalk && !noFreezeEnv)
+        Logger::info("[walk] STAR_RENDERTEST_WALK implies NOFREEZE -- the sim stays live so the player can move");
 
       // STAR_RENDERTEST_FULLBRIGHT=1 -- the RB-1 probe. The GPU lighting pass points the world effect's
       // `lightMap` sampler AT lightingGpuUpscaled's own colour attachment (setEffectTextureFromTarget).
@@ -1305,6 +1342,8 @@ void ClientApplication::renderTestCapture() {
         m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
     }
     m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbOriginal);   // never leave the pin behind
+    renderTestMotionVerdict();
+    renderTestRestoreConfig();
     appController()->quit();
     return;
   }
@@ -1363,6 +1402,8 @@ void ClientApplication::renderTestCapture() {
 
   if (index + 1 >= m_renderTestFrames) {
     Logger::info("[rendertest] DONE captured={} frames", m_renderTestFrames);
+    renderTestMotionVerdict();
+    renderTestRestoreConfig();
     appController()->quit();
   }
 }
@@ -1474,6 +1515,124 @@ void ClientApplication::updateTitle(float dt) {
   }
 }
 
+// THE MOTION DRIVER (#174). A deterministic, frame-counted cycle: walk right, pause, walk left, pause.
+//
+// Why scripted rather than "the Director walks around": the same reason STAR_RENDERTEST_WARP exists. A human
+// remembering to move produces a different path every run, and two runs that took different paths cannot be
+// compared -- which is the entire product of a harness. Frame-counted legs give the same path every time on
+// any machine, busy or idle.
+//
+// WHAT IT UNLOCKS, none of which any frozen run can reach: the parallax moving-camera BYPASS, the two
+// mutually-exclusive compose arms, ParkFrames hysteresis and the still<->moving transition, the retained
+// cache's scroll-shift path, adaptive-N (which derives from drift), and the whole of #177's env motion term.
+// The audit priced that blindness from evidence rather than assertion: one wrong measurement (owner `gl` at
+// 118.4%, parts exceeding the whole by 1279 us/tick) and one defect that reached the Director in play.
+void ClientApplication::renderTestDriveMotion() {
+  if (!m_player)
+    return;
+
+  unsigned t = m_renderTestWalkFrame++;
+
+  if (m_renderTestWalk) {
+    // Four legs of equal length. moveLeft/moveRight are the same calls the real input path makes
+    // (StarClientApplication.cpp's binding handlers), so this drives the player exactly as a key would --
+    // it is not a teleport, and the movement controller, collision and camera all see an ordinary walk.
+    unsigned leg = (t / m_renderTestWalk) % 4;
+    if (leg == 0)
+      m_player->moveRight();
+    else if (leg == 2)
+      m_player->moveLeft();
+    // legs 1 and 3 issue nothing: the pauses are what produce the still<->moving TRANSITION, and the
+    // transition is where ParkFrames hysteresis and the bypass/compose arm-switch actually live. A harness
+    // that only ever walked would exercise one arm and call it coverage.
+
+    // SAY WHERE THE PLAYER ACTUALLY IS at each leg boundary. A walk driver that issues moves the world
+    // ignores looks identical, in every counter, to a renderer that has stopped bypassing -- and the whole
+    // point of this instrument is to tell those two apart. One line per leg, so the position is in the log
+    // whether the run passes or fails.
+    if ((t % m_renderTestWalk) == 0) {
+      auto pos = m_player->position();
+      Logger::info("[walk] frame={} leg={} ({}) player=({:.3f},{:.3f})", t, leg,
+        leg == 0 ? "right" : (leg == 2 ? "left" : "pause"), pos[0], pos[1]);
+    }
+  }
+
+  if (m_renderTestTogglePeriod && (t % m_renderTestTogglePeriod) == 0) {
+    auto cfg = m_root->configuration();
+    if (!m_renderTestConfigOriginals.contains(m_renderTestToggleKey))
+      m_renderTestConfigOriginals[m_renderTestToggleKey] = cfg->getOrDefault(m_renderTestToggleKey);
+    bool now = cfg->getOrDefault(m_renderTestToggleKey).optBool().value(false);
+    cfg->set(m_renderTestToggleKey, !now);
+    Logger::info("[walk] frame={} toggled {} -> {}", t, m_renderTestToggleKey, !now);
+  }
+
+  if (m_renderTestZoomPeriod && (t % m_renderTestZoomPeriod) == 0) {
+    auto cfg = m_root->configuration();
+    if (!m_renderTestConfigOriginals.contains("zoomLevel"))
+      m_renderTestConfigOriginals["zoomLevel"] = cfg->getOrDefault("zoomLevel");
+    float lv = m_renderTestZoomLevels[(t / m_renderTestZoomPeriod) % m_renderTestZoomLevels.size()];
+    cfg->set("zoomLevel", lv);
+    Logger::info("[walk] frame={} zoomLevel -> {:.2f}", t, lv);
+  }
+}
+
+// Configuration::set PERSISTS to storage/starbound.config on exit. A motion run that left antiAliasing or
+// zoomLevel flipped would silently poison every later run from the same install -- the config-pinning trap
+// this campaign has been bitten by twice, once in the harness itself (a lightingGpu A/B left CPU lighting
+// pinned on and the next run rendered a black world that looked exactly like the bug under investigation).
+void ClientApplication::renderTestRestoreConfig() {
+  auto cfg = m_root->configuration();
+  for (auto const& kv : m_renderTestConfigOriginals) {
+    cfg->set(kv.first, kv.second);
+    Logger::info("[walk] restored {} = {}", kv.first, kv.second.repr());
+  }
+  m_renderTestConfigOriginals.clear();
+}
+
+// THE COUNTERS ORACLE -- the actual deliverable of #174, not the movement.
+//
+// Movement alone only EXERCISES the motion paths; it does not GATE them. What turns exercise into a gate is
+// an invariant over the counters the motion path maintains:
+//
+//   (1) refreshed + skipped + bypassed_moving == the frames the pass actually ran. Every frame takes exactly
+//       one of the three arms, so the three must partition the frames. A shortfall means an arm was taken
+//       that nobody counts -- which is precisely the defect class that drove owner `gl` to 118.4%.
+//   (2) bypassed_moving > 0. This is the one that could never be asserted before: the bypass only engages
+//       when the camera MOVES, so on a frozen run it is structurally unreachable and its absence is
+//       indistinguishable from a renderer that has stopped bypassing at all.
+//
+// The Director's live session already showed the partition holding exactly (1448 + 690 + 70 = 2208), so the
+// invariant is known-true, not hoped-for. This makes it checkable without him. It also retires #136 item (f),
+// which parked a counter-reading on the Director's eyes -- a counter-reading is something the substrate does.
+void ClientApplication::renderTestMotionVerdict() {
+  if (!m_renderTestWalk)
+    return;
+
+  auto counter = [](char const* key) {
+    return Telemetry::counter(key,
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail}).value();
+  };
+  uint64_t refreshed = counter("render.cache.parallax.refreshed");
+  uint64_t skipped   = counter("render.cache.parallax.skipped");
+  uint64_t bypassed  = counter("render.cache.parallax.bypassed_moving");
+  uint64_t total     = refreshed + skipped + bypassed;
+
+  Logger::info("[walkoracle] parallax arms: refreshed={} skipped={} bypassed_moving={} total={} walkFrames={}",
+    refreshed, skipped, bypassed, total, m_renderTestWalkFrame);
+
+  if (bypassed == 0)
+    Logger::error("[walkoracle] FAIL: bypassed_moving is ZERO after a scripted walk. Either the camera never "
+                  "moved (the walk did not drive the player) or the moving-camera bypass has stopped engaging. "
+                  "Both are defects, and neither is visible to any frozen run.");
+  else if (refreshed == 0 && skipped == 0)
+    Logger::error("[walkoracle] FAIL: every frame bypassed -- the parked arm never ran, so the pauses in the "
+                  "walk cycle did not produce a still camera and the still<->moving transition is untested.");
+  else
+    Logger::info("[walkoracle] PASS: the moving-camera bypass engaged ({} frames) AND the parked arms ran "
+                 "({} refreshed + {} skipped) -- both sides of the transition were exercised.",
+      bypassed, refreshed, skipped);
+}
+
 void ClientApplication::updateRunning(float dt) {
   // Render harness: warp to a named teleport bookmark before measuring. Without this the harness can only ever
   // measure wherever the character is parked -- which was the SHIP, where the parallax pass costs exactly ZERO.
@@ -1498,6 +1657,13 @@ void ClientApplication::updateRunning(float dt) {
       return;
     }
   }
+
+  // Drive the scripted motion only AFTER the world has settled. Walking during the load phase would move the
+  // player while chunks are still streaming, which changes what quiesces and makes the settle point itself
+  // depend on the walk -- the harness would be measuring its own driver.
+  if (m_renderTestFrames && !m_renderTestLoading
+      && (m_renderTestWalk || m_renderTestTogglePeriod || m_renderTestZoomPeriod))
+    renderTestDriveMotion();
 
   try {
     auto& app = appController();
