@@ -71,7 +71,33 @@ public:
 
   // Hash the QUANTISED value the draw itself consumes, so the key moves iff the rendered image would.
   // A raw float would move on every tick of a slow fade and refresh the cache for a sub-LSB change.
-  void mixQuantized(float v, float scale = 255.0f) { mix((uint64_t)(unsigned)floor(scale * v)); }
+  //
+  // THE CLAMP IS NOT DEFENSIVE PADDING; WITHOUT IT THIS FUNCTION IS NOT A FUNCTION. Converting a float
+  // to `unsigned` is UNDEFINED BEHAVIOUR outside the destination range, and #182 measured what that
+  // costs under this build's own flags (-O3 -ffast-math): two keys built from different over-range
+  // inputs PRINTED THE SAME VALUE AND COMPARED UNEQUAL, and out-of-range results differed between -O0
+  // and -O3. A content hash that disagrees with itself is worse than a wrong one.
+  //
+  // IT IS REACHABLE, not theoretical. The three call sites are skyAlpha, dayLevel and parallax
+  // layer.alpha -- and layer.alpha comes from mod-authorable parallax JSON, so a negative alpha is an
+  // authoring mistake away on a heavily-modded install. The symptom would not be a crash: it is a
+  // parallax cache whose key is garbage, so it either thrashes or spuriously matches and composites a
+  // stale sky.
+  //
+  // 4294967040.0f, not 4294967295.0f, and that distinction is the whole bug in miniature: 4294967295 is
+  // NOT representable as a float and rounds UP to 2^32, so clamping to it would itself be out of range.
+  // 0xFFFFFF00 is the largest float below 2^32. Verified total and IDENTICAL at -O0 and -O3 -ffast-math;
+  // in-range values are bit-unchanged, because nothing in [0, 2^32) touches either bound.
+  //
+  // NaN is deliberately NOT claimed: this build compiles with -ffast-math (-ffinite-math-only), under
+  // which clang says using a NaN at all is undefined. That is a build-wide property no leaf function can
+  // fix, so asserting NaN behaviour here would be an oracle run outside its contract.
+  void mixQuantized(float v, float scale = 255.0f) {
+    float q = floor(scale * v);
+    q = (q >= 0.0f) ? q : 0.0f;
+    q = (q <= 4294967040.0f) ? q : 4294967040.0f;
+    mix((uint64_t)(unsigned)q);
+  }
 
   uint64_t value() const { return m_hash; }
   bool changedFrom(uint64_t previous) const { return m_hash != previous; }

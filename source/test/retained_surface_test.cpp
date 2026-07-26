@@ -82,3 +82,94 @@ TEST(RetainedSurfaceTest, InitialPixelRatioSentinelIsConfigurable) {
   EXPECT_FALSE(parLike.invalidated({0, 0}, 0.0f));   // 0.0f  == 0.0f  -> sentinel matched (byte-identical to old)
   EXPECT_TRUE(parLike.invalidated({0, 0}, -1.0f));   // -1.0f != 0.0f  -> invalidated
 }
+
+// ---------------------------------------------------------------------------------------------------
+// ContentKey. L2's other half, and until #182 the one thing this layer shipped with ZERO coverage --
+// beside nine tests for its sibling. Its entire stated justification is that "rounding is exactly where
+// two hand-written keys drift apart", which makes an untested quantiser the failure it was built to
+// prevent. A drifted key's symptom is not a crash: it is a cache that returns a stale frame because two
+// different scenes hashed equal, i.e. a silently wrong sky.
+
+TEST(ContentKeyTest, IsDeterministicAcrossInstances) {
+  // The whole point of the type: two independently-built keys over the same content must agree, because
+  // that comparison is what decides whether the cache redraws.
+  ContentKey a, b;
+  a.mix(uint64_t(7)); a.mixQuantized(0.25f); a.mix(Vec3B(1, 2, 3));
+  b.mix(uint64_t(7)); b.mixQuantized(0.25f); b.mix(Vec3B(1, 2, 3));
+  EXPECT_EQ(a.value(), b.value());
+  EXPECT_FALSE(a.changedFrom(b.value()));
+}
+
+TEST(ContentKeyTest, IsOrderSensitive) {
+  // Content that differs only in ORDER must not collide -- otherwise swapping two parallax layers would
+  // read as "unchanged" and the cache would keep compositing the old arrangement.
+  ContentKey a, b;
+  a.mix(uint64_t(1)); a.mix(uint64_t(2));
+  b.mix(uint64_t(2)); b.mix(uint64_t(1));
+  EXPECT_NE(a.value(), b.value());
+}
+
+TEST(ContentKeyTest, EmptyKeyIsTheFnvBasisAndAnyMixMovesIt) {
+  // A fresh key must not equal a mixed one -- including mix(0), which a naive `hash ^= v` would leave
+  // untouched. FNV multiplies as well as xors, so zero still advances the state.
+  ContentKey fresh, zeroed;
+  zeroed.mix(uint64_t(0));
+  EXPECT_NE(fresh.value(), zeroed.value());
+  EXPECT_TRUE(zeroed.changedFrom(fresh.value()));
+}
+
+TEST(ContentKeyTest, QuantisesWithinABucketAndSeparatesAcrossOne) {
+  // The reason mixQuantized exists: a raw float would move the key on every tick of a slow fade and
+  // refresh the cache for a sub-LSB change nobody can see. At scale 255, 0.5 and 0.5+1e-4 land in the
+  // same bucket (127); 0.5 and 0.502 do not (127 vs 128).
+  ContentKey same1, same2, other;
+  same1.mixQuantized(0.5f);
+  same2.mixQuantized(0.5f + 1e-4f);
+  other.mixQuantized(0.502f);
+  EXPECT_EQ(same1.value(), same2.value());
+  EXPECT_NE(same1.value(), other.value());
+}
+
+TEST(ContentKeyTest, Vec3BAndVec4BDoNotCollideOnTheSameRgb) {
+  // Vec4B mixes a fourth byte; Vec3B does not. The same rgb through the two overloads must therefore
+  // differ -- an opaque colour and a colour-with-alpha are not the same content.
+  ContentKey three, four;
+  three.mix(Vec3B(10, 20, 30));
+  four.mix(Vec4B(10, 20, 30, 0));
+  EXPECT_NE(three.value(), four.value());
+}
+
+TEST(ContentKeyTest, QuantiserIsTotalOverOutOfRangeInput) {
+  // THE UNTESTED EDGE, and it is reachable rather than theoretical: mixQuantized's three call sites are
+  // skyAlpha, dayLevel and parallax layer.alpha -- and layer.alpha comes from mod-authorable JSON, so a
+  // negative alpha is an authoring mistake away on a heavily-modded install. `(unsigned)floor(scale * v)`
+  // outside the destination range is UNDEFINED BEHAVIOUR, which for a hash means a key that is not a
+  // function of its input.
+  //
+  // THIS TEST FAILED BEFORE THE FIX, and what it exposed was worse than a wrong number: measured under
+  // this build's own flags, two keys built from different over-range inputs PRINTED THE SAME VALUE AND
+  // COMPARED UNEQUAL, and results differed between -O0 and -O3. The contract asserted here is TOTALITY.
+  ContentKey zero, negative;
+  zero.mixQuantized(0.0f);
+  negative.mixQuantized(-0.1f);
+  EXPECT_EQ(negative.value(), zero.value()) << "negative input must clamp to the zero bucket, not wrap";
+
+  // The top end saturates: two enormous values agree with each other rather than landing in arbitrary
+  // buckets that could collide with real content.
+  ContentKey huge1, huge2;
+  huge1.mixQuantized(1e12f);
+  huge2.mixQuantized(1e13f);
+  EXPECT_EQ(huge1.value(), huge2.value()) << "over-range input must saturate, not wrap";
+  EXPECT_NE(huge1.value(), zero.value()) << "saturation must not collide with the zero bucket";
+
+  // The clamp costs nothing where it matters: in-range values never touch either bound.
+  ContentKey inRange;
+  inRange.mixQuantized(0.5f);
+  EXPECT_NE(inRange.value(), zero.value());
+}
+
+// NaN IS DELIBERATELY NOT TESTED, and the absence is a result rather than an oversight. This build
+// compiles with -ffast-math (-ffinite-math-only), under which clang states plainly that using a NaN at
+// all is undefined -- it warns on the literal. No leaf function can restore semantics the whole
+// translation unit has been told to assume away, so an assertion here would be an oracle run outside its
+// contract: green because the compiler was free to choose, not because the code is right.
