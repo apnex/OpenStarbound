@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**128 tasks** across 2 store(s): 1 in_progress, 33 pending, 94 completed
+**129 tasks** across 2 store(s): 1 in_progress, 30 pending, 98 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 127 tasks, ids 64–190
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 128 tasks, ids 64–191
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 110, of which **37 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 116, of which **37 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -56,7 +56,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 94.
+**Completed tasks citing no commit and no doc:** 79 of 98.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -142,7 +142,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
-| [#137](#c29c1332-137) | `c29c1332` | open | P-2 residual: the passes ARE extracted — what is left is the Air-Gap INPUT seam (DTOs) + the unmetered residual | `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
+| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | open | P-4 downgraded: Phase 1 is 2-of-3 already done elsewhere; only the GL-state assertion pass is missing | — | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
@@ -184,18 +184,19 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
 | [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
-| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `7c0e8340` `c89be289` | — |
+| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `e8d6860a` `7c0e8340` `c89be289` | — |
 | [#180](#c29c1332-180) | `c29c1332` | open | AX-A7: BackdropPass clause-2 "recovery" does not recover in the shipped config (audit delta[4]) | — | — |
 | [#181](#c29c1332-181) | `c29c1332` | open | AX-A1-COUNTERS: contract-violation counters are unobserved and the warn budgets never reset (audit delta[5]+[16]) | — | — |
 | [#182](#c29c1332-182) | `c29c1332` | open | AX-A14: ContentKey ships with zero tests beside a sibling with nine (audit delta[6]) | — | — |
-| [#183](#c29c1332-183) | `c29c1332` | open | AX-A3-RATCHET: extend the render_layering ceilings to the orchestrator and painters (audit delta[7]) | — | — |
-| [#184](#c29c1332-184) | `c29c1332` | open | AX-A3-WORLDPASS: renderWorld destructively consumes an input the header calls a reference (audit delta[13]) | — | — |
+| [#183](#c29c1332-183) | `c29c1332` | done | AX-A3-RATCHET DONE: all 17 singleton reads metered, relocation is no longer a route to green (8eddcb37) | `8eddcb37` | — |
+| [#184](#c29c1332-184) | `c29c1332` | done | AX-A3-WORLDPASS DONE (declaration): four consumed inputs documented at the signature (252bed68) | `252bed68` | — |
 | [#185](#c29c1332-185) | `c29c1332` | open | AX-A2-CONFIG: render behaviour is declared in four competing places; newLighting in none (audit delta[14]) | — | — |
-| [#186](#c29c1332-186) | `c29c1332` | open | AX-A3-TIDY: dead includes, a duplicated compose call site, and a false build claim in L2 (audit delta[17]) | — | — |
+| [#186](#c29c1332-186) | `c29c1332` | done | AX-A3-TIDY DONE: dead includes deleted, compose call site folded, false L2 build claim corrected (252bed68) | `252bed68` | — |
 | [#187](#c29c1332-187) | `c29c1332` | open | AX-A6: mechanise the NoAssets label rule -- it is currently a shouting comment (audit delta[15]) | — | — |
 | [#188](#c29c1332-188) | `c29c1332` | open | AX-A4-SPEC: the approved design spec still prescribes constructor injection, a known regression (audit delta[10]) | — | — |
 | [#189](#c29c1332-189) | `c29c1332` | open | AX-A12: docs/render/ has six files, no index, and the two doc chains never cross-link (audit delta[11]) | — | — |
 | [#190](#c29c1332-190) | `c29c1332` | open | AX-A8-PRISTINE: prove the FULL gate set from a pristine checkout, not just the script gates (audit delta[1], guardrail… | — | — |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2: finish contract (1) for WorldPass — blocked on TilePainter and on where EntityDrawables lives | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1236,57 +1237,56 @@ DESIGNED TO BE DELETED: if P-3 (#138) lands, the bypass and the whole parallax c
 
 <a id="c29c1332-137"></a>
 
-#### #137 — P-2 residual: the passes ARE extracted — what is left is the Air-Gap INPUT seam (DTOs) + the unmetered residual
+#### #137 — P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191)
 
-status: **pending**
+status: **completed**
 
+- `a0f0089b` render(L3): WorldPass takes a sliced input that declares what it consumes
+- `b2cabd8d` render(L3): BackdropPass takes a sliced view -- contract (1), first pass
+- `e6edbe11` docs(render): file the axiom audit, so the guardrails commit messages cite actually exist
+- `d4b47d7e` render(gate): claim the three unlayered files -- the residual was 17, not 15
+- `37306207` render(L3): the lightmap pass derives its own K, and takes its config as one value
+- `c2208b71` render(L3): no pass reaches for a global -- WorldPass takes its assets, 17 reads to 15
 - `da0125b2` fix(render): commit the lint body and doc that aba06048 CLAIMED and did not contain
 - `1e46f71c` render(L3): close the Air-Gap seam for BackdropPass -- 8 singleton reads to 0
 - `af9d54a9` render(L2): finish Layer 2 in code -- one content key, one compose parameter block
 - `aba06048` render: make the architecture gates actually run, and ratchet the L3 residual
 
 ```
-RE-SCOPED 2026-07-25 by content audit; CORRECTED 2026-07-26 after the M7 axiom audit found this task and
-the architecture doc both quoting a count the tree had already contradicted. The extraction half is DONE;
-stop treating the existence of StarBackdropPass.*/StarWorldPass.* as either completion OR as nothing.
+CLOSED 2026-07-26 across stages A/B/C, six commits, every one gate-green on `integration`.
 
-NO COUNTS ARE RESTATED HERE. They live in the generated block in
-docs/render/architecture-3-target-state.md and come from `scripts/render-inventory.py`; the
-`render_docs_fresh` ctest fails CI when they drift. Restating one here is how this task came to assert
-"BackdropPass 7 reads" against a tree measuring 0 -- and a cold agent read it as work to do.
+WHAT SHIPPED
+  252bed68  interface hygiene: renderWorld's consumption declared (4 sinks, not 1); dead StarRoot/
+            StarConfiguration includes deleted; the standalone env compose folded from two verbatim
+            copies into composeEnvStandalone(); L2's false build claim corrected; RetainedSurface.hpp
+            added to star_rendering_HEADERS; the GpuLightmapPass rename STRUCK (Gpu is load-bearing --
+            there is a live CPU lightmap path -- so the docs were corrected to the code).
+  c2208b71  WorldPass takes its assets handle. 17 -> 15 reads, a REMOVAL not a relocation: WorldPainter
+            already held a fresh handle at both call sites. NO L3 PASS REACHES FOR A GLOBAL.
+  37306207  the lightmap dispatch prologue split: config -> LightmapParams at the boundary (processFull
+            13 params -> 8), the O(cells) auto-K scan INTO the pass as spreadIterationsFor(), the
+            cross-path shadowCompare diagnostic left in the orchestrator on purpose. LightmapResult now
+            reports the K it chose, so the parity reference cannot derive a different one.
+  d4b47d7e  the three unlayered files claimed. Residual 15 -> 17, and nothing got worse: two
+            Root::singleton() reads in StarAssetTextureGroup that no layer had ever counted.
+  b2cabd8d  BackdropPass::Input -- 2 members of 35, pure reads. StarWorldRenderData.hpp DROPPED: eleven
+            transitive headers to two. PROVEN, not asserted: a standalone TU including only
+            StarBackdropPass.hpp passes -fsyntax-only with no StarWorldRenderData.hpp in its include set.
+  a0f0089b  WorldPass::Input -- non-const refs for the four consumed members, const for the two views,
+            passed by value (Input const& would be misleading; constness does not propagate through
+            reference members). renderParticles/renderBars sliced the same way.
 
-=== LANDED (do not redo) ===
-Extraction and thinning both shipped. WorldPainter::render() no longer holds cache gates, adaptive-N maths
-or oracle dual-run logic -- only call sites (m_backdropPass->renderEnvironment, ->renderParallax,
-m_worldPass->renderWorld). BackdropPass is sovereign in OWNERSHIP, not a pass-through: it holds both
-retained caches, the cross-surface arbiter, adaptive-N and the CM-1 merged compose, and carries its own
-telemetry. WorldPass likewise carries real logic. LightmapPass 'tighten' shipped: explicit LightmapResult
-consumed via WorldPainter::runGpuLightmapPass. Rail steps 3/4/5 are complete.
+Also 8eddcb37 (#183) beforehand, which is what made the ratchet able to tell a removal from a relocation.
 
-CONTRACT (2) IS CLOSED FOR BackdropPass (1e46f71c): the reads moved out to WorldPainter as BackdropParams,
-resolved PER FRAME at the composition root -- deliberately NOT constructor injection, which would freeze
-the live-tunable knobs (/rendercache envrefresh) the campaign uses to A/B itself. The Director-approved
-design spec still prescribes constructor injection and needs a correction banner (audit delta[10]).
+WHAT IS HONESTLY NOT DONE, carried by #191: WorldPass still includes the fat struct, blocked on
+TilePainter (7 signatures, 3 members used) and on EntityDrawables being DEFINED inside
+StarWorldRenderData.hpp. Contract (1) is DONE for BackdropPass and HALF-DONE for WorldPass. The clean
+per-layer branches still cannot be regenerated from the trunk until #191 lands.
 
-=== THE ACTUAL RESIDUAL ===
- 1. INPUT SEAM -- `git grep BackdropInput|WorldInput|LightingInput -- source/` still returns ZERO. Both
-    drawing passes take the fat, MUTABLE WorldRenderData&. LightmapPass already satisfies this IN
-    SUBSTANCE (processFull takes sliced ImageView/List params), so for that pass the DTO is a naming
-    convention, NOT outstanding work. WorldPass additionally CONSUMES its input (std::move) without
-    declaring it -- audit delta[13].
- 2. THE UNMETERED RESIDUAL. The ratchet meters 3 files; most reads sit in WorldPainter and the painters,
-    which no gate touches. Closing the Air-Gap MOVES reads to the composition root, so the metric is
-    satisfiable by relocation -- extend the ceilings to the orchestrator and painters BEFORE paying down
-    further, or the number goes green while the coupling stands (audit delta[7]).
- 3. Cosmetic: rename GpuLightmapPass -> LightmapPass to match the design docs.
-
-Also NOT part of this task: the lightmap DISPATCH PROLOGUE (config reads, PointParameters assembly, the
-O(cells) auto-K emission scan, shadowCompareFull) still lives in WorldPainter -- see architecture-2 row 4.
-The rendertest pass-ablation mask is deliberate instrumentation from #141, not undone work.
-
-BLOCKS #138 and #139. GUARDRAIL G9 from the audit: no BackdropPass split and no L3 boundary change until
-#174 lands -- the only correctness evidence is a harness whose camera never moves, so it is structurally
-blind to the paths a split would move.
+STILL GATED, unchanged: the BackdropPass split, on #174. G9 was narrowed 2026-07-26 (Director-approved,
+recorded in docs/render/axiom-alignment-audit.md) from "no L3 boundary change" to "no L3 SPLIT" -- the
+narrowing is to G9's own rationale, which is entirely about code motion across paths the motionless
+harness cannot execute.
 ```
 
 <a id="c29c1332-138"></a>
@@ -2606,6 +2606,8 @@ mtime closes the actual observed hole -- a failed build leaving the binary untou
 
 status: **completed**
 
+- `2ef87860` render(tools): measure the two things the published artifacts quote, and claim the Renderer interface
+- `e8d6860a` docs(board): file the M7 audit deltas -- 11 new tasks, #174/#136/#170 corrected [#179]
 - `7c0e8340` docs(board): regenerate -- #178 and #179 closed, #137 corrected [#179]
 - `c89be289` docs(render): generate the Air-Gap counts into the doc, and gate them
 
@@ -2736,70 +2738,73 @@ Small, unblocked, pure TDD, no GPU needed.
 
 <a id="c29c1332-183"></a>
 
-#### #183 — AX-A3-RATCHET: extend the render_layering ceilings to the orchestrator and painters (audit delta[7])
+#### #183 — AX-A3-RATCHET DONE: all 17 singleton reads metered, relocation is no longer a route to green (8eddcb37)
 
-status: **pending**
+status: **completed**
+
+- `8eddcb37` render(gate): meter every file a relocated singleton read can land in
 
 ```
-THE METRIC IS SATISFIABLE BY RELOCATION AND HAS ALREADY BEEN SATISFIED THAT WAY ONCE.
+SHIPPED 2026-07-26, commit 8eddcb37 on `integration`.
 
-Measured by scripts/render-inventory.py and now published in the generated block of
-docs/render/architecture-3-target-state.md: 17 Root::singleton() reads across the render subsystem, of
-which the render_layering ratchet meters 2. BackdropPass went 8 -> 0 by MOVING its reads into
-StarWorldPainter.cpp -- which is correct architecture (resolve at the composition root) and completely
-unmetered. The painters, at 1810 lines, are the growth surface and no gate touches them.
+The ratchet metered 3 files holding 2 of 17 reads. Now every file that can RECEIVE a relocated read
+carries a ceiling: WorldPainter=9, TilePainter=3, TextPainter=3, EnvironmentPainter=0,
+DrawablePainter=0 (the last two are PROHIBITIONS, not ratchets -- they are clean). Metered 2 -> 17.
 
-So the ratchet currently rewards the move and then stops watching. Extend it to today's counts -- read
-them from the generated block, do not hand-type them here -- covering StarWorldPainter.cpp,
-StarTilePainter.cpp, StarTextPainter.cpp, StarEnvironmentPainter.cpp, StarDrawablePainter.cpp.
+Guardrail G4 is now mechanical rather than remembered: a read moved out of a pass counts against
+whatever catches it, so the metric can only be satisfied by REMOVING coupling, not by moving it.
 
-GUARDRAIL G4: once the orchestrator and painters carry ceilings, RELOCATING a read counts against the
-RECEIVING file. Relocation is not a route to green.
+CROSS-CHECK PERFORMED (audit closeout hook 6, which said confirm rather than assume):
+render-inventory.py and layering-lint.sh use different comment-stripping strategies and had never
+been compared outside the three metered files. Both report 15 across the five added, + 2 = 17. Exact.
 
-Do this BEFORE further Air-Gap pay-down. Paying down against the metered two while the unmetered fifteen
-are free to grow optimises the number rather than the architecture.
+VERIFIED BOTH DIRECTIONS: ctest -L NoAssets 5/5 at the committed ceilings; tightening WorldPainter
+9 -> 8 gives LAYERING CEILING EXCEEDED, exit 1, printing all nine offending lines with file:line.
 
-Add a RATCHET LOG entry stating the ceilings and the date. Verify render-inventory.py and layering-lint.sh
-agree on every metered file -- they use DIFFERENT comment-stripping strategies, so confirm, do not assume
-(audit closeout hook 6).
+NOTABLE: render_docs_fresh (#179) caught this commit -- metered went 2 -> 17, the generated table
+changed, CI went red until the block was regenerated and the diff read. First real catch by that gate,
+one day after it landed.
 
-Small-to-medium, unblocked, and it is the honest prerequisite for #137.
+WHAT THIS DOES NOT DO: it removes zero coupling. The residual is still 17. Its value is that the next
+pay-down is honest -- and #137's mechanism is precisely more relocation to the composition root, which
+would otherwise have driven the passes to 0 while WorldPainter silently climbed past 9.
 ```
 
 <a id="c29c1332-184"></a>
 
-#### #184 — AX-A3-WORLDPASS: renderWorld destructively consumes an input the header calls a reference (audit delta[13])
+#### #184 — AX-A3-WORLDPASS DONE (declaration): four consumed inputs documented at the signature (252bed68)
 
-status: **pending**
+status: **completed**
+
+- `252bed68` render(L2/L3): interface hygiene -- declare what renderWorld consumes, delete what nothing uses
 
 ```
-VERIFIED IN THE TREE 2026-07-26. StarWorldPass.hpp:37 declares
-`void renderWorld(WorldCamera const& camera, WorldRenderData& renderData);` -- a plain mutable reference,
-read as an input. StarWorldPass.cpp:57-60 then does:
+SHIPPED 2026-07-26, commit 252bed68 on `integration`. Option (a) -- declare -- is done.
 
-    for (auto& ed : renderData.entityDrawables)
-      for (auto& p : ed.layers)
-        entityDrawables[p.first].append({ed.highlightEffect, std::move(p.second)});
+THE AUDIT FOUND ONE CONSUMED FIELD. MEASURING FOUND FOUR:
+  CONSUMED (hollowed; outer container intact, elements moved-from)
+    entityDrawables      std::move out of ed.layers
+    backgroundOverlays } all three via drawDrawableSet, whose entire body is
+    foregroundOverlays }   `for (Drawable& d : drawables) drawDrawable(camera, std::move(d));`
+    nametags           }
+  READ-ONLY
+    particles            List<Particle> const*
+    overheadBars         iterated by const&
 
-It MOVES the per-entity layer lists out of the caller's struct. After renderWorld returns, renderData's
-entity drawables are hollowed -- outer containers intact, inner Lists empty.
+The contract is now written at StarWorldPass.hpp's renderWorld declaration, with the reason: the
+rendertest state fingerprint already reads m_renderData AFTER render and survives only because it reads
+outer .size(), which the moves leave intact. Extend it to hash nametag or overlay CONTENT -- the obvious
+next step -- and it returns a stable, WRONG fingerprint claiming the inputs matched when they were
+consumed. A diagnostic that lies is worse than none.
 
-WHY IT MATTERS RATHER THAN BEING A CURIOSITY: the rendertest state fingerprint already reads m_renderData
-AFTER render. It survives today only because it reads outer .size(), which the move leaves intact.
-Extending it to hash nametag or overlay CONTENT -- the obvious next step for its stated purpose -- yields
-a stable, WRONG fingerprint that claims the inputs matched when they were consumed. A diagnostic that lies
-is worse than no diagnostic, and this one would lie in exactly the direction that hides a real difference.
+REMAINING, AND DELIBERATELY CARRIED BY STAGE C (#137) RATHER THAN HERE: option (b), splitting the
+signature so the sink and the view are separate parameters. That is not a follow-up to the DTO work --
+it IS the DTO work, because `WorldInput` cannot be a const& view when four of six members are consumed.
+Declaring it first is what makes the DTO designable.
 
-FIX, cheapest first:
-  (a) one line at StarWorldPass.hpp:37 declaring the consumption; or
-  (b) take WorldRenderData&& ; or
-  (c) rename to consumeAndRenderWorld.
-(a) is enough today. (b)/(c) make it unrepresentable and are the right move if the DTO seam (#137) lands.
-
-Note this is also the reason contract (1) for WorldPass is scored "CONSUMES" rather than merely "takes the
-fat struct" in the architecture doc's compliance matrix.
-
-Small, unblocked.
+Contrast measured the same way and recorded for stage C: BackdropPass touches only TWO members
+(skyRenderData, parallaxLayers) and writes neither, so `BackdropInput` is a two-field const view. The
+fat struct has 35 members; the two passes use 2 and 6.
 ```
 
 <a id="c29c1332-185"></a>
@@ -2844,33 +2849,38 @@ Medium. Unblocked. Touches the config path, so byte-identity verification applie
 
 <a id="c29c1332-186"></a>
 
-#### #186 — AX-A3-TIDY: dead includes, a duplicated compose call site, and a false build claim in L2 (audit delta[17])
+#### #186 — AX-A3-TIDY DONE: dead includes deleted, compose call site folded, false L2 build claim corrected (252bed68)
 
-status: **pending**
+status: **completed**
+
+- `252bed68` render(L2/L3): interface hygiene -- declare what renderWorld consumes, delete what nothing uses
 
 ```
-Three small items, each with a reason to exist beyond tidiness.
+SHIPPED 2026-07-26, commit 252bed68 on `integration`. All three items, plus two that fell out.
 
-(1) DEAD INCLUDES. StarBackdropPass.cpp:2-3 still includes StarRoot.hpp and StarConfiguration.hpp. Every
-Root::singleton() read left that file in 1e46f71c; the includes did not. They keep a dependency edge alive
-that the needle-based lint CANNOT see -- render_layering greps for "Root::singleton", so a file can be
-architecturally re-coupled through an include while measuring 0. Delete them; the compile proves it.
+(1) DEAD INCLUDES. StarRoot.hpp / StarConfiguration.hpp deleted from StarBackdropPass.cpp. They
+outlived the last Root::singleton() read by a week. render_layering greps for the CALL, so a pass can
+be architecturally re-coupled through an include while still measuring 0 -- the compile is the only
+thing that can prove the edge is gone. It now has.
 
-(2) DUPLICATED STANDALONE-COMPOSE CALL SITES. The same standalone env-compose sequence appears twice in
-StarBackdropPass.cpp (the renderEnvironment path and the renderParallax CM-1 reconcile path). Fold into one
-helper. This is the same duplication-of-a-decision that ContentKey was extracted to kill one level down --
-BackdropParams already did it for the six config blocks; this is the leftover.
+(2) DUPLICATED STANDALONE-COMPOSE. Folded into BackdropPass::composeEnvStandalone(Vec2U const&). The
+two sites were verbatim copies including a ten-line comment, differing only in which screen-size
+variable they read. Byte-identical: both issued the same four calls in the same order.
 
-(3) THE L2 BOUNDARY IS DEFENDED BY A CLAIM THAT IS FALSE. StarRetainedSurface.hpp says accepting Color
-"would drag StarColor.hpp across the seam" and that including only StarString/StarVector "is what lets
-retained_surface_test link against core alone". VERIFIED: StarColor.hpp lives in source/core/ -- including
-it would NOT break the core-only link. The real fence is not naming StarRenderer.hpp (source/application),
-which is what layer1_layering actually enforces.
-  The Vec4B/Vec3B choice is still correct; the JUSTIFICATION is wrong, and a boundary defended by a false
-  build claim invites the next author to test the claim, find it false, and conclude the boundary is soft.
-  Correct the comment to name the real fence.
+(3) FALSE BUILD CLAIM IN L2. StarRetainedSurface.hpp claimed accepting Color would "drag StarColor.hpp
+across the seam" and cost the core-only link. StarColor.hpp is in source/core/ -- it would have cost
+nothing, and the claim was false when written. Corrected to name the REAL fence: nothing here names
+StarRenderer.hpp, which is what layer1_layering enforces. Vec4B/Vec3B stands as the narrower judgement.
 
-All three small, unblocked, no behaviour change. (1) and (2) are byte-identical; (3) is a comment.
+FELL OUT WHILE DOING IT:
+(4) StarRetainedSurface.hpp was ABSENT from star_rendering_HEADERS -- the layer with the strictest
+sovereignty claim was not a declared source of the target containing it. Added.
+(5) THE GpuLightmapPass -> LightmapPass RENAME IS STRUCK, NOT DEFERRED. `Gpu` is load-bearing: there is
+a live CPU lightmap path (renderData.lightMap, gated by lightingGpu; the pass's own header documents
+falling back to it). Dropping it would stop the type naming WHICH OF THE TWO it is. The docs were
+corrected to the code, not the reverse.
+
+VERIFIED: render-gate.sh GATE: PASS (105/20/211 oracles, DIFF=0, 0 GL errors); ctest -L NoAssets 5/5.
 ```
 
 <a id="c29c1332-187"></a>
@@ -2996,6 +3006,44 @@ windows-latest runner. If it does not, all three script gates are green-by-absen
 Overlaps AX-A6 (#187); do it in whichever lands first.
 
 Costs one full build. Worth batching with the next build window rather than run standalone.
+```
+
+<a id="c29c1332-191"></a>
+
+#### #191 — DTO-2: finish contract (1) for WorldPass — blocked on TilePainter and on where EntityDrawables lives
+
+status: **pending**
+
+```
+WorldPass's Input DTO landed 2026-07-26 (a0f0089b) but delivered only HALF of contract (1): the declared
+contract, not the buildability win. BackdropPass shed StarWorldRenderData.hpp entirely (11 transitive
+headers -> 2); WorldPass still includes it, for two independent reasons. Both are real, both were found
+by trying, and neither was in stage C's scope.
+
+BLOCKER 1 -- TILEPAINTER. WorldPass::setup() and ::adjustLighting() are pure pass-throughs to
+TilePainter, which takes `WorldRenderData&` in SEVEN signatures and includes the header itself:
+  adjustLighting, setup, terrainChunkHash, liquidChunkHash, getTerrainChunk, getLiquidChunk,
+  produceTerrainPrimitives/produceLiquidPrimitives (WorldRenderData const&)
+It uses THREE members of thirty-five -- geometry, lightMap, lightMinPosition -- which is the identical
+defect BackdropPass had. Slicing it is a small change by member count.
+The reason it was NOT done in stage C: TilePainter is a pre-decomposition painter, explicitly outside
+the decomposition's scope, at 500 lines with a chunk cache. Expanding into it mid-stage turns a bounded
+change unbounded. It is in scope for a DELIBERATE next step, which is this task.
+
+BLOCKER 2 -- WHERE THE TYPE LIVES. `EntityDrawables` is DEFINED INSIDE StarWorldRenderData.hpp (:17).
+Any type naming it needs that header, so WorldPass::Input cannot escape it even with TilePainter fixed.
+Moving EntityDrawables to its own header (or to StarEntityRenderingTypes.hpp, where its siblings
+OverheadBar and EntityRenderLayer already live) is the fix, and it is a game-side header change.
+
+DO BOTH OR NEITHER. Fixing only one leaves the include in place and the win unbanked.
+
+VERIFICATION GAP TO CLOSE FIRST, and it is not the motion gap: THE WORLD BODY HAS NO PIXEL ORACLE. The
+render gate's three oracles cover env, parallax and lighting spread. For a WorldPass change the gate
+proves only that the pass ran without GL error -- not that tiles, entities, nametags and bars are
+unchanged. The frozen scene additionally has no particles and no entity animation. a0f0089b shipped
+under exactly that weaker evidence and said so; a change that MOVES tile-drawing logic should not.
+Related to #174 but distinct: #174 is about camera motion, this is about the world body having no
+differential oracle at all.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
