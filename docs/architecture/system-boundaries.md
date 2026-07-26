@@ -619,7 +619,7 @@ So the render decomposition's own layers are **not contiguous in the tier lattic
 not see the simulation, while an L3 pass must consume `WorldRenderData`, which is a game type. But it
 means "the render subsystem" is not a place in the tree. It is a duty spanning two directories on
 opposite sides of the simulation, which is exactly why it needs the hand-built instruments named at the
-end of §1, and why §12 labels every layer with the library it actually lives in.
+end of §1, and why §13 labels every layer with the library it actually lives in.
 
 `game` is the structural problem this document exists to name. It is a single directory with a single
 grant list and no sub-`CMakeLists.txt`, which means **no boundary inside it is enforceable by test 1**.
@@ -795,7 +795,60 @@ starkest: the Lua VM is a handful of files in `core`, and the bindings that defi
 
 ---
 
-## 12. The render subsystem, and the one edge that leaves it
+## 12. Inside the presentation tier — three directories, three duties
+
+The lattice treats T4 as one row. It is three directories doing three different jobs, and the
+difference is not written down anywhere else in this repository.
+
+<!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
+| directory | files | lines | duty | names `game` |
+|:----------|------:|------:|:-----|-------------:|
+| `rendering` | 23 | 4,413 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
+| `frontend` | 102 | 16,861 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
+
+**Two draw paths, not one.** `windowing/StarGuiContext.hpp` holds its own `RendererPtr` alongside a `TextPainterPtr`, `DrawablePainterPtr` and `AssetTextureGroupPtr`. So the frame reaches the GPU twice over: the world through `WorldPainter` and the L3 passes, and the interface through `GuiContext` and the painters. That single file is the entire `windowing → rendering` edge.
+
+Which `source/rendering` headers are consumed from **outside** `source/rendering`:
+
+| header | consumed by | what that means |
+|:-------|:------------|:----------------|
+| `StarAssetTextureGroup.hpp` | `frontend`, `windowing` | **UI draw path** — shared infrastructure, not render-internal |
+| `StarDrawablePainter.hpp` | `windowing` | **UI draw path** — shared infrastructure, not render-internal |
+| `StarEnvironmentPainter.hpp` | `frontend` | `frontend` only — mixed; see the note below |
+| `StarTextPainter.hpp` | `frontend`, `windowing` | **UI draw path** — shared infrastructure, not render-internal |
+| `StarWorldPainter.hpp` | `client`, `frontend` | `frontend` only — mixed; see the note below |
+
+This is the standing answer to a question the render decomposition never resolved. **3 of these serve the UI path as well as the world path**, so they are not render-subsystem-internal and decomposing them into L3 would have broken the interface. The painters were never leftover work; they are a shared service that happens to live in `source/rendering`.
+
+The rows are deliberately not given one verdict, because they are not one thing. `client` **owns** a `WorldPainterPtr` — that is the composition root, and expected. `frontend` mostly passes that pointer through (`MainMixer::setWorldPainter`, `WirePane`'s constructor) rather than reaching into render internals. But `TitleScreen.cpp` constructs an `EnvironmentPainter` outright, which is a genuine second consumer. Include-level measurement cannot separate *passes a handle* from *draws with it*; those three cases are named here rather than flattened into a verdict this instrument has not earned.
+
+Where the `windowing`/`frontend` duty line blurs — toolkit files naming a simulation **noun**. Ambient services (`Root`, `GameTypes`, `ImageMetadataDatabase` and friends) are excluded: `Root` alone appears in seventeen of these files and would bury the signal under the god-object §10 already measures.
+
+| file in `source/windowing` | game types it names |
+|:---------------------------|:--------------------|
+| `StarItemGridWidget.hpp` | `Item`, `ItemBag` |
+| `StarItemSlotWidget.cpp` | `DurabilityItem`, `Item` |
+| `StarItemSlotWidget.hpp` | `Animation` |
+| `StarLargeCharPlateWidget.cpp` | `Player` |
+| `StarPane.cpp` | `ItemDatabase` |
+| `StarPane.hpp` | `ItemDatabase` |
+| `StarPortraitWidget.hpp` | `Player` |
+| `StarWidgetLuaBindings.cpp` | `ItemDatabase` |
+
+**A widget that knows what an `Item` is is not a toolkit widget** — it is a frontend widget in the wrong directory. These 8 files are where the `windowing → game` edge that §5 marks load-bearing actually comes from.
+
+**Before acting on that, read §9.** `windowing` is one strongly-connected component, so these files may be entangled with the toolkit rather than cleanly liftable. Extraction is a different operation from partition and may well be possible — but assuming so without measuring is exactly the mistake §9 exists to stop repeating.
+<!-- END GENERATED: presentation -->
+
+The duty line that holds is `rendering` versus the other two: it draws the world and knows nothing
+about a widget, a pane or a button. The line that does **not** hold is `windowing` versus `frontend` —
+a widget toolkit should name none of the simulation's nouns, and this one names several, with `Pane`
+itself (the base class every screen inherits) among them.
+
+---
+
+## 13. The render subsystem, and the one edge that leaves it
 
 The only place in this document where inheritance is the actual relationship, so the only place a
 `classDiagram` is the right form. Layers are namespaces; the library each layer lives in is noted in
@@ -913,14 +966,14 @@ Of 13 inheritance edges, 10 stay inside the render libraries, 2 take a base from
 
 ---
 
-## 13. What the measurement says to do
+## 14. What the measurement says to do
 
 **Ordered by value, not by cost** — an earlier version of this list was ordered cheapest-first, which
 put a near-worthless item at the top and buried the only one that matters. Cost is stated separately
 because it is a different question from worth. Numbers live in the generated blocks; these are the
 judgements.
 
-**1. Break `TilePainter : TileDrawer`.** (§12 · cost: days · the highest value-per-effort in the list.)
+**1. Break `TilePainter : TileDrawer`.** (§13 · cost: days · the highest value-per-effort in the list.)
 One inheritance edge, and it is the single reason `WorldPass` cannot close its input contract and the
 client has no headless expression. A render class whose base is a simulation class cannot be compiled
 without the simulation. Tracked as #191.

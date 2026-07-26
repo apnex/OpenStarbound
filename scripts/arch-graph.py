@@ -128,6 +128,25 @@ CROSS_CUTTING = [
 # defect class as a ratchet that meters three of seventeen sites (#183).
 MAX_CLASS_EDGES = 24
 
+# THE PRESENTATION TIER'S THREE DUTIES. The tier lattice treats T4 as one row; it is three directories
+# doing three different jobs, and the difference is not written down anywhere else. The duty strings are
+# the claim; everything measured beside them below is what tests it.
+PRESENTATION_DUTY = [
+    ("rendering", "draws the WORLD — tiles, entities, lighting, parallax, sky"),
+    ("windowing", "a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON"),
+    ("frontend", "THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets"),
+]
+
+# AMBIENT vs DOMAIN game headers, for the presentation-tier duty check. `Root` appears in almost every UI
+# file and says nothing -- it is the god-object, already measured in the reach section, and counting it
+# here would bury the signal underneath it. The question a toolkit widget should fail is narrower: does it
+# name one of the simulation's NOUNS? A widget that knows what an Item is cannot be generic; a widget that
+# reads Root is merely living in this codebase.
+GAME_AMBIENT = {
+    "StarRoot.hpp", "StarGameTypes.hpp", "StarGameTimers.hpp", "StarInput.hpp",
+    "StarImageMetadataDatabase.hpp", "StarDrawable.hpp", "StarLuaGameConverters.hpp",
+}
+
 # THE SHAPE TEST. Tests 1-4 ask whether a boundary EXISTS. This asks whether it is any good, which is a
 # different axis and the one most architecture work actually turns on: a boundary can be perfectly
 # enforced and still be badly shaped.
@@ -568,6 +587,42 @@ def shape():
                 if used:
                     rows.append((used / len(members), name, hd, len(members), d, f, used))
     return sorted(rows)
+
+
+def presentation():
+    """The T4 directories' duties, tested three ways.
+
+    (a) how much of `game` each names -- a widget toolkit should name none of it;
+    (b) which source/rendering headers are consumed from OUTSIDE source/rendering -- the ones that are
+        turn out not to be render-subsystem-internal at all but shared infrastructure, which is the
+        standing explanation for why the painters were never decomposed;
+    (c) which source/windowing files name game types -- game-aware widgets sitting in the toolkit."""
+    owner, _d = owner_map()
+    t4 = [d for d, _why in PRESENTATION_DUTY]
+
+    # (b) external consumers of each source/rendering header
+    external = {}
+    for d in DIRS:
+        if d == "rendering":
+            continue
+        for rel in files_in(d):
+            for inc in INCLUDE.findall(read(REPO / "source" / d / rel)):
+                b = os.path.basename(inc)
+                if owner.get(b) == "rendering":
+                    external.setdefault(b, set()).add(d)
+
+    # (c) windowing files that name a game header, and which ones
+    gameaware = []
+    for rel in files_in("windowing"):
+        hits = []
+        for inc in INCLUDE.findall(read(REPO / "source" / "windowing" / rel)):
+            b = os.path.basename(inc)
+            if owner.get(b) == "game":
+                hits.append(b)
+        hits = [h for h in hits if h not in GAME_AMBIENT]
+        if hits:
+            gameaware.append((os.path.basename(rel), sorted(set(hits))))
+    return t4, external, sorted(gameaware, key=lambda kv: (-len(kv[1]), kv[0]))
 
 
 def scc(graph, nodes):
@@ -1075,6 +1130,79 @@ def d_taxonomy(m):
     return "\n".join(out)
 
 
+def d_presentation(m):
+    """12. The presentation tier's three duties, and where they blur."""
+    _t4, external, gameaware = m["presentation"]
+    use = m["uses"]
+    sizes_ = m["sizes"]
+    out = ["| directory | files | lines | duty | names `game` |",
+           "|:----------|------:|------:|:-----|-------------:|"]
+    for d, why in PRESENTATION_DUTY:
+        f, n = sizes_.get(d, (0, 0))
+        incs, gf = use.get((d, "game"), (0, 0))
+        out.append("| `%s` | %d | %s | %s | %d includes in %d files |"
+                   % (d, f, "{:,}".format(n), why, incs, gf))
+    out.append("")
+    out.append("**Two draw paths, not one.** `windowing/StarGuiContext.hpp` holds its own `RendererPtr` "
+               "alongside a `TextPainterPtr`, `DrawablePainterPtr` and `AssetTextureGroupPtr`. So the "
+               "frame reaches the GPU twice over: the world through `WorldPainter` and the L3 passes, "
+               "and the interface through `GuiContext` and the painters. That single file is the entire "
+               "`windowing → rendering` edge.")
+    out.append("")
+    shared = sorted((h, ds) for h, ds in external.items())
+    shells = {"client", "server"}
+    out.append("Which `source/rendering` headers are consumed from **outside** `source/rendering`:")
+    out.append("")
+    out.append("| header | consumed by | what that means |")
+    out.append("|:-------|:------------|:----------------|")
+    ui = 0
+    for h, ds in shared:
+        if "windowing" in ds:
+            verdict = "**UI draw path** — shared infrastructure, not render-internal"
+            ui += 1
+        elif ds <= shells:
+            verdict = "composition root wiring it up, not a second consumer"
+        else:
+            verdict = "`frontend` only — mixed; see the note below"
+        out.append("| `%s` | %s | %s |" % (h, ", ".join("`%s`" % x for x in sorted(ds)), verdict))
+    out.append("")
+    out.append("This is the standing answer to a question the render decomposition never resolved. "
+               "**%d of these serve the UI path as well as the world path**, so they are not "
+               "render-subsystem-internal and decomposing them into L3 would have broken the interface. "
+               "The painters were never leftover work; they are a shared service that happens to live in "
+               "`source/rendering`." % ui)
+    out.append("")
+    out.append("The rows are deliberately not given one verdict, because they are not one thing. "
+               "`client` **owns** a `WorldPainterPtr` — that is the composition root, and expected. "
+               "`frontend` mostly passes that pointer through (`MainMixer::setWorldPainter`, "
+               "`WirePane`'s constructor) rather than reaching into render internals. But "
+               "`TitleScreen.cpp` constructs an `EnvironmentPainter` outright, which is a genuine second "
+               "consumer. Include-level measurement cannot separate *passes a handle* from *draws with "
+               "it*; those three cases are named here rather than flattened into a verdict this "
+               "instrument has not earned.")
+    out.append("")
+    out.append("Where the `windowing`/`frontend` duty line blurs — toolkit files naming a simulation "
+               "**noun**. Ambient services (`Root`, `GameTypes`, `ImageMetadataDatabase` and friends) are "
+               "excluded: `Root` alone appears in seventeen of these files and would bury the signal "
+               "under the god-object §10 already measures.")
+    out.append("")
+    out.append("| file in `source/windowing` | game types it names |")
+    out.append("|:---------------------------|:--------------------|")
+    for f, hits in gameaware:
+        out.append("| `%s` | %s |" % (f, ", ".join("`%s`" % h.replace("Star", "").replace(".hpp", "")
+                                                   for h in hits)))
+    out.append("")
+    out.append("**A widget that knows what an `Item` is is not a toolkit widget** — it is a frontend "
+               "widget in the wrong directory. These %d files are where the `windowing → game` edge that "
+               "§5 marks load-bearing actually comes from." % len(gameaware))
+    out.append("")
+    out.append("**Before acting on that, read §9.** `windowing` is one strongly-connected component, so "
+               "these files may be entangled with the toolkit rather than cleanly liftable. Extraction "
+               "is a different operation from partition and may well be possible — but assuming so "
+               "without measuring is exactly the mistake §9 exists to stop repeating.")
+    return "\n".join(out)
+
+
 def d_renderclasses(m):
     """9. Render layers and the one inheritance edge that crosses a library."""
     classes, inherits, _rep, _layer_of, _homes, layer_dirs = m["render"]
@@ -1189,6 +1317,7 @@ DIAGRAMS = [
     ("mass", d_mass),
     ("reach", d_reach),
     ("crosscut", d_crosscut),
+    ("presentation", d_presentation),
     ("taxonomy", d_taxonomy),
     ("renderclasses", d_renderclasses),
 ]
@@ -1205,7 +1334,7 @@ def measure():
         "grants": grants(), "uses": uses(), "sizes": sizes(), "reach": reach(),
         "binaries": binaries(), "crosscut": crosscut(), "parts": system_parts(),
         "render": render, "classedges": cross_layer_edges(render[2], render[3]),
-        "shape": shape(), "cohesion": cohesion(),
+        "shape": shape(), "cohesion": cohesion(), "presentation": presentation(),
         "owner": owner, "dupes": dupes,
     }
 
