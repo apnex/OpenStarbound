@@ -139,7 +139,10 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
           source/rendering/StarTilePainter.cpp=3
           source/rendering/StarTextPainter.cpp=3
           source/rendering/StarEnvironmentPainter.cpp=0
-          source/rendering/StarDrawablePainter.cpp=0)
+          source/rendering/StarDrawablePainter.cpp=0
+          source/rendering/StarAssetTextureGroup.cpp=2
+          source/rendering/StarFontTextureGroup.cpp=0
+          source/rendering/StarAnchorTypes.cpp=0)
 # RATCHET LOG -- lower these, never raise one without saying why in the commit message.
 #   2026-07-25  BackdropPass    8 -> 0  (#137: BackdropParams resolved at the boundary by WorldPainter)
 #               WorldPass       2        the remaining pass residual; same treatment, not yet done
@@ -156,6 +159,14 @@ ADD_TEST (NAME render_layering COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts
 #               TextPainter     3        pre-decomposition; untouched by the campaign
 #               EnvironmentPainter 0     PROHIBITION, not a ratchet -- it is clean, keep it clean
 #               DrawablePainter    0     PROHIBITION, not a ratchet -- it is clean, keep it clean
+#   2026-07-26  #137 claims the three previously UNLAYERED files, so the count stops lying by omission:
+#               AssetTextureGroup  2      a reload-listener registration + an assets handle. These were
+#                                         always there; no layer was looking. Measured residual 15 -> 17.
+#                                         NOTE it is also consumed by source/frontend and source/windowing
+#                                         -- shared service, not ours alone. Look outside source/rendering
+#                                         before treating this as render-subsystem debt.
+#               FontTextureGroup   0      PROHIBITION -- glyph cache, clean
+#               AnchorTypes        0      PROHIBITION -- type vocabulary, clean
 #
 # EVERY REMAINING READ IS METERED. Cross-checked before landing: scripts/render-inventory.py and
 # layering-lint.sh use DIFFERENT comment-stripping strategies (a python regex pass vs the lint's own),

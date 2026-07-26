@@ -145,8 +145,8 @@ Three mechanisms now hold this section to the tree:
 | L2 primitives | 0 | 0 |
 | L3 passes | 0 | 0 |
 | L3 orchestrator | 9 | 9 |
-| painters (pre-decomposition) | 6 | 6 |
-| **total** | **15** | **15** |
+| painters (pre-decomposition) | 8 | 8 |
+| **total** | **17** | **17** |
 
 Files that carry a read, plus every file the ratchet holds at a ceiling:
 
@@ -160,8 +160,9 @@ Files that carry a read, plus every file the ratchet holds at a ceiling:
 | `StarTilePainter.cpp` | painters (pre-decomposition) | 3 | 3 |
 | `StarDrawablePainter.cpp` | painters (pre-decomposition) | 0 | 0 |
 | `StarTextPainter.cpp` | painters (pre-decomposition) | 3 | 3 |
-
-**Unclaimed by the layer table** (`source/rendering/`): `StarAnchorTypes.cpp`, `StarAnchorTypes.hpp`, `StarAssetTextureGroup.cpp`, `StarAssetTextureGroup.hpp`, `StarFontTextureGroup.cpp`, `StarFontTextureGroup.hpp` — a layering question nobody has answered.
+| `StarAnchorTypes.cpp` | painters (pre-decomposition) | 0 | 0 |
+| `StarAssetTextureGroup.cpp` | painters (pre-decomposition) | 2 | 2 |
+| `StarFontTextureGroup.cpp` | painters (pre-decomposition) | 0 | 0 |
 
 <!-- END GENERATED -->
 

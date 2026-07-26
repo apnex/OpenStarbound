@@ -78,11 +78,30 @@ LAYERS = [
     ("L3 orchestrator", "sequences the passes and owns nothing a pass should own", [
         "source/rendering/StarWorldPainter.hpp", "source/rendering/StarWorldPainter.cpp",
     ]),
+    # The three texture/type helpers below were UNCLAIMED until #137 -- in the build, in no layer, and so
+    # invisible to every count this instrument produced. Answering that layering question is what this
+    # bucket's "unassigned" report existed to force. The evidence, measured rather than assumed:
+    #   StarAnchorTypes        35 lines, includes only StarBiMap, no Renderer/GL/Root. Text-positioning
+    #                          vocabulary; sole consumer is StarTextPainter.hpp.
+    #   StarFontTextureGroup  201 lines, TexturePtr/TextureGroupPtr only, no GL, no Root. Glyph texture
+    #                          cache; sole consumer is StarTextPainter.hpp.
+    #   StarAssetTextureGroup 133 lines, TexturePtr/TextureGroupPtr, no GL, but TWO Root::singleton()
+    #                          reads (a reload-listener registration and an assets handle) that nothing
+    #                          was counting. Claiming it is why the measured residual rose 15 -> 17: the
+    #                          coupling did not appear, the table simply started looking.
+    #
+    # ONE OF THEM IS NOT REALLY OURS. StarAssetTextureGroup is also consumed by source/frontend
+    # (ChatBubbleManager) and source/windowing (GuiContext) -- it is a shared texture-caching service, not
+    # a render-subsystem-internal helper. It sits here because that is where it lives and what the passes
+    # use it for; do not "decompose" it without looking outside source/rendering first.
     ("painters (pre-decomposition)", "drawing helpers the passes consume; untouched by the decomposition", [
         "source/rendering/StarEnvironmentPainter.hpp", "source/rendering/StarEnvironmentPainter.cpp",
         "source/rendering/StarTilePainter.hpp", "source/rendering/StarTilePainter.cpp",
         "source/rendering/StarDrawablePainter.hpp", "source/rendering/StarDrawablePainter.cpp",
         "source/rendering/StarTextPainter.hpp", "source/rendering/StarTextPainter.cpp",
+        "source/rendering/StarAnchorTypes.hpp", "source/rendering/StarAnchorTypes.cpp",
+        "source/rendering/StarAssetTextureGroup.hpp", "source/rendering/StarAssetTextureGroup.cpp",
+        "source/rendering/StarFontTextureGroup.hpp", "source/rendering/StarFontTextureGroup.cpp",
     ]),
 ]
 
