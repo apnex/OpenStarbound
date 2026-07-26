@@ -20,6 +20,7 @@ content without fixing the reading order fixes nothing.
 |---|---|---|
 | `architecture-3-target-state.md` | **canonical** — current state, layers, Air-Gap compliance | **generator-backed.** Its counts come from `scripts/render-inventory.py --inject` and are CI-gated by the `render_docs_fresh` ctest. Prose is hand-written; every *current-state number* is generated |
 | `axiom-alignment-audit.md` | **canonical** — the M7 audit, its 10 guardrails, and delta status | body generated verbatim from the audit run; the *Decisions and status* section is hand-maintained and dated |
+| `game-render-boundary.md` | **canonical** — what `star_game` carries that only a renderer wants, and why a headless *client* does not exist while a headless *server* ships | **generator-backed.** Counts come from `scripts/boundary-inventory.py --inject`, gated by `boundary_fresh`; the ceiling is gated by `boundary_ratchet` |
 | `layer1-architecture.md` | **canonical for L1** — the sovereign render-surface substrate | hand-written, last verified 2026-07-25. Enforced in part by the `layer1_layering` ctest |
 | `architecture-1-vanilla-baseline.md` | **panel** — upstream `2ea33530`, before the campaign | pinned to a fixed commit; cannot go stale |
 | `architecture-2-accreted-monolith.md` | **panel** — the fork at branch point `75d29067` | pinned to a fixed commit. Its *"what each concern becomes"* column tracks live work and is dated |

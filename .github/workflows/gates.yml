@@ -52,3 +52,15 @@ jobs:
 
       - name: config_declared -- every getOrDefault key has a declared default
         run: python3 scripts/config-lint.py
+
+      # The ceiling is passed here rather than restated: it lives in source/test/CMakeLists.txt, and a pasted
+      # copy would let a lowered ceiling leave a stale duplicate quietly passing.
+      - name: boundary_ratchet -- the game layer's push-sink surface may not grow
+        run: |
+          CEIL=$(grep -oE 'boundary-inventory\.py --max-sink [0-9]+' source/test/CMakeLists.txt \
+                 | grep -oE '[0-9]+$')
+          test -n "$CEIL" || { echo "could not read the boundary ceiling from source/test/CMakeLists.txt"; exit 1; }
+          python3 scripts/boundary-inventory.py --max-sink "$CEIL"
+
+      - name: boundary_fresh -- the boundary doc's generated numbers match the tree
+        run: python3 scripts/boundary-inventory.py --check docs/render/game-render-boundary.md

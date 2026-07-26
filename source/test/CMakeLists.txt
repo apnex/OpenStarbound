@@ -234,6 +234,35 @@ ADD_TEST (NAME render_docs_fresh COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME config_declared COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/config-lint.py)
 
+# THE GAME<->RENDER BOUNDARY, measured and ratcheted (docs/render/game-render-boundary.md).
+#
+# A headless SERVER already ships -- starbound_server links no render library, and zero files in source/game
+# name Renderer/OpenGl/GL_/glew. What does not exist is a headless CLIENT: WorldClient unconditionally
+# produces WorldRenderData, every Entity carries render()/renderLightSources() vtable slots a server never
+# calls, and view code like TileDrawer lives in the sim library.
+#
+# The ceiling is the PUSH-SINK + FRAME-MODEL vocabulary only -- RenderCallback, WorldRenderData,
+# EntityDrawables, EntityRenderLayer, EntityHighlightEffect, renderLightSources. `Drawable` is deliberately
+# EXCLUDED: an entity describing its own appearance is a legitimate game-layer duty, and folding it in would
+# produce one number (708) that nobody can act on instead of one (213) that names the actual blocker.
+#
+# A TOTAL, not per-file, and that is the opposite call from the render_layering ratchet above -- deliberately.
+# #183's lesson was that a per-file ratchet over a SUBSET is satisfiable by relocation. Here it is not:
+# moving a reference between two star_game files leaves the total unchanged, and the only ways down are to
+# delete it or move the code OUT of star_game, which is the goal. Gameable proxy and real target coincide.
+#
+# SET AT TODAY'S COUNT, like every ratchet this campaign has shipped. Lower it as the pay-down lands; raising
+# it is allowed and must be argued in the commit message.
+ADD_TEST (NAME boundary_ratchet COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/boundary-inventory.py --max-sink 213)
+
+# Same shape as render_docs_fresh: the doc's numbers are GENERATED into a marker block, and this asserts the
+# committed block still matches the tree. A measurement a human pastes is hand-typed again the instant it
+# lands (#179).
+ADD_TEST (NAME boundary_fresh COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/boundary-inventory.py
+          --check docs/render/game-render-boundary.md)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -273,7 +302,8 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 # before being added here.
 SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
-  LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared)
+  LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
+                                   boundary_ratchet boundary_fresh)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()
