@@ -943,7 +943,7 @@ classDiagram
   Renderer <|-- OpenGlRenderer
   RefCounter <|-- Texture
   Texture <|-- TextureEntry
-  TileDrawer <|-- TilePainter
+  TilePainter --|> TileDrawer
   AssetTextureGroup ..> Renderer
   BackdropPass ..> EnvironmentPainter
   BackdropPass ..> Renderer

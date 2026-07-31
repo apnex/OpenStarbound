@@ -1305,8 +1305,22 @@ def d_renderclasses(m):
             out.append("    class %s" % p)
         out.append("  }")
 
+    # EDGE-WRITING DIRECTION IS A LAYOUT LEVER, and the only one Mermaid's classDiagram offers.
+    # `A <|-- B` and `B --|> A` are semantically identical -- both say B extends A -- but the parser
+    # records the first-named node first, and dagre ranks by that: under `direction LR` the first name
+    # goes left. So an edge written base-first puts the base on the LEFT.
+    #
+    # Internal edges stay base-first, which is the natural reading and keeps the L1 cluster laid out as
+    # it was. The edges that LEAVE the subsystem are written derived-first, so the foreign namespace
+    # lands to the RIGHT of the layer it escapes from -- the picture then reads as "out of the
+    # subsystem" rather than "in from the side", which is what the section is about. One edge today.
+    crossing_now = {(c, p) for c, p, _l, h in inherits
+                    if h not in ("application", "rendering", "external") and h not in FOUNDATION}
     for child, parent, _layer, _home in inherits:
-        out.append("  %s <|-- %s" % (parent, child))
+        if (child, parent) in crossing_now:
+            out.append("  %s --|> %s" % (child, parent))
+        else:
+            out.append("  %s <|-- %s" % (parent, child))
     for a, b in edges:
         out.append("  %s ..> %s" % (a, b))
     out.append("```")
