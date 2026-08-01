@@ -1199,7 +1199,7 @@ flowchart TD
   clienttick -.->|3: audio buffer · AudioSink| audiotick
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
   clienttick -.->|1: netcode · UniverseConnection| universeloop
-  universeloop -.->|world state| clienttick
+  universeloop -.->|authoritative state · pull, not a reply| clienttick
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
   inputtick -.->|*: window changed| resizesignal
   frameloop -->|4:| swaptick
@@ -1232,6 +1232,20 @@ flowchart TD
 a scene delta must survive being a packet, so `clientTick` can never synchronously enter `rendering`. A
 `RenderPrimitive` never crosses a machine, so `presentTick` calling `Device` can be an ordinary virtual
 call. The compile diagram draws both as `-->` and cannot tell them apart.
+
+**The two `universeLoop` edges are one connection and are still two edges.** `UniverseConnection` is
+duplex, so the outbound and inbound arrows share a socket — but the inbound one is **not a return
+path**, and calling it one would import request/response semantics this design must not have. The
+measurement: `push(List<PacketPtr>)` and `pull()` over an explicit `m_sendQueue`, and the client calls
+`receiveAny(timeout)`, which **drains whatever has arrived**. It never waits for the answer to what it
+sent. What comes back is not a reply; it is whatever the authority has published since last time.
+
+**And that makes seam 1 a second instance of a mechanism this codebase already ships.** Duplex, queued,
+neither side blocking on the other's body, working co-located over a loopback and split over a network
+with no change of shape — `clientTick ⇄ universeLoop` is `clientTick ⇄ presentTick` already built and
+running in production. `InterpolationTracker` was already recorded as the precedent for *resampling*;
+this is the precedent for the *transport*, and it is the stronger of the two, because it is the part
+that has to survive a machine boundary.
 
 Four things this view shows that the dependency view structurally cannot:
 
