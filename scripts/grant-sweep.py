@@ -72,7 +72,7 @@ NOT_YET_BUILT = ("scene", "presentation", "transcript", "host_null", "gpu_sdl",
                  "client_opengl", "client_headless", "client_sdl_gpu",
                  "universe", "world", "universe_view", "world_view", "world_sim", "worldgen", "world_gen",
                  "sound", "mixing", "audio", "audio_sdl", "celestial",
-                 "interaction", "client_agent")
+                 "interaction", "client_agent", "colocation")
 
 # The register's own file counts, cross-checked against FROM_APPLICATION.
 REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10}

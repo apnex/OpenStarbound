@@ -517,6 +517,7 @@ flowchart TD
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     inter["<b>interaction</b><br/>LIBRARY<br/><i>how a participant acts on the world</i>"]
+    coloc["<b>colocation</b><br/>LIBRARY<br/><i>runs the authority in the participant's own process</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
     wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
     uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
@@ -601,8 +602,16 @@ flowchart TD
   uview --> platform
   uview --> game
   uview --> wview
-  shell --> auth
-  shell --> world
+  coloc --> core
+  coloc --> base
+  coloc --> platform
+  coloc --> game
+  coloc --> auth
+  coloc --> world
+  coloc --> uview
+  cgl --> coloc
+  csg --> coloc
+  chl --> coloc
   shell --> uview
   shell --> wview
   front --> win
@@ -686,7 +695,7 @@ flowchart TD
   class core,base kFoundation
   class platform,host,scene,contract,gpu,sound,audiodev,celest kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb,mixing,audiosdl kBackend
-  class game,auth,world,wgen,uview,wview,win,front,inter,shell kLibrary
+  class game,auth,world,wgen,uview,wview,win,front,inter,coloc,shell kLibrary
   class cgl,chl,csg,cagent,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
@@ -1073,6 +1082,47 @@ times directly and `windowing` once. Those are now `REMOVING` entries in `grant-
 design exists to delete — rather than grants, because granting them would declare the coupling
 permanent and re-charge every composition for the UI.
 
+### `colocation` — the client stops containing a server
+
+The same rule applied once more, to the largest grant `client` was spending on everyone's behalf.
+`client` named `world` and `universe` — the authority — **because single-player hosting was folded
+into the participant.** It is not folded in metaphorically: `StarClientApplication.hpp:3` includes
+`StarUniverseServer.hpp`, and line 128 holds `UniverseServerPtr m_universeServer`. The server is a
+member of the client.
+
+**`colocation`** (LIBRARY, INTERIOR) — *runs the authority in the participant's own process*. It owns
+the embedded `UniverseServer`, the local socket pair, and the encode/decode parity **D8** requires of
+any co-located seam. `client` sheds `world` and `universe` entirely.
+
+That gives D8 a home. Until now it was a decision with no component to bind to: "a seam's co-located
+path is an optimisation, never a different contract" was a rule about code that lived nowhere in
+particular. It lives here, and it is the only component in the register that names both an authority
+and a view — which is precisely why it is the one that owes the proof.
+
+| entrypoint | links | authority? |
+|---|---|---|
+| `client_opengl` / `client_sdl_gpu` | 28 of 37 | **yes** — the desktop game hosts single-player |
+| `client_headless` | 22 of 37 | **yes** — so it can record a single-player session |
+| `client_agent` | **15 of 37** | **no** — it must connect to one over the wire |
+
+`client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
+cannot name an authority cannot accidentally embed one, and the composition is 15 components against
+the graphical client's 28.
+
+**Why `colocation` and not `hosting`.** `host`, `host_sdl` and `host_null` already mean the *driver
+and window* host in this register. A second, unrelated meaning of "host" — the authority — in the same
+document is the vocabulary trap this design has already paid for once, when one word "presentation"
+did two jobs and had to be split into presentation backend and GPU backend. `colocation` is also the
+word **D8** already uses, so the component and the decision that governs it share a name.
+
+**AND A LIMIT WORTH STATING PLAINLY, because the gates are green and that is misleading here.**
+`grant-sweep` passes this revocation without checking it. `StarUniverseServer.hpp` lives in `game/`,
+and `universe` has no directory yet — so the sweep resolves that include to a component `client` **is**
+granted, and sees nothing. This boundary is **pure assertion**, and it will stay assertion until
+`universe` is its own directory and its own OBJECT library. Per the link-altitude finding, a component
+that is not a directory is unenforceable by construction; this is the most consequential instance of
+that in the whole design, and no green run should be read as evidence for it.
+
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_agent -->
 ```mermaid
@@ -1094,11 +1144,8 @@ flowchart TD
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
-    universe["<b>universe</b><br/>LIBRARY"]
     universe_view["<b>universe_view</b><br/>LIBRARY"]
-    world["<b>world</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     client["<b>client</b><br/>LIBRARY"]
@@ -1115,9 +1162,7 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> sound
-  client --> universe
   client --> universe_view
-  client --> world
   client --> world_view
   client_agent --> client
   client_agent --> core
@@ -1146,35 +1191,18 @@ flowchart TD
   scene --> core
   sound --> base
   sound --> core
-  universe --> base
-  universe --> celestial
-  universe --> core
-  universe --> game
-  universe --> platform
-  universe --> world
-  universe --> worldgen
   universe_view --> base
   universe_view --> celestial
   universe_view --> core
   universe_view --> game
   universe_view --> platform
   universe_view --> world_view
-  world --> base
-  world --> core
-  world --> game
-  world --> platform
-  world --> worldgen
   world_view --> base
   world_view --> core
   world_view --> game
   world_view --> platform
   world_view --> scene
   world_view --> sound
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
   classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
@@ -1183,11 +1211,11 @@ flowchart TD
   class base,core kFoundation
   class celestial,host,platform,presentation,scene,sound kContract
   class host_null kBackend
-  class client,game,interaction,universe,universe_view,world,world_view,worldgen kLibrary
+  class client,game,interaction,universe_view,world_view kLibrary
   class client_agent kEntrypoint
 ```
 
-**client_agent links 18 of 36 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transcript`, `windowing`, `world_gen`, `world_sim`
+**client_agent links 15 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transcript`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
 <!-- END GENERATED: client_agent -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
@@ -1208,6 +1236,7 @@ flowchart TD
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
@@ -1236,16 +1265,22 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> sound
-  client --> universe
   client --> universe_view
-  client --> world
   client --> world_view
   client_headless --> client
+  client_headless --> colocation
   client_headless --> core
   client_headless --> frontend
   client_headless --> host_null
   client_headless --> transcript
   client_headless --> windowing
+  colocation --> base
+  colocation --> core
+  colocation --> game
+  colocation --> platform
+  colocation --> universe
+  colocation --> universe_view
+  colocation --> world
   frontend --> base
   frontend --> core
   frontend --> game
@@ -1326,11 +1361,11 @@ flowchart TD
   class base,core kFoundation
   class celestial,host,platform,presentation,scene,sound kContract
   class host_null,transcript kBackend
-  class client,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,colocation,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
 ```
 
-**client_headless links 21 of 36 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
+**client_headless links 22 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 ### Tier 3 — an entity no longer knows how it *sounds*. NOT STARTED.
@@ -1493,6 +1528,7 @@ flowchart TD
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
@@ -1527,12 +1563,11 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> sound
-  client --> universe
   client --> universe_view
-  client --> world
   client --> world_view
   client_opengl --> audio_sdl
   client_opengl --> client
+  client_opengl --> colocation
   client_opengl --> core
   client_opengl --> frontend
   client_opengl --> gpu_opengl
@@ -1540,6 +1575,13 @@ flowchart TD
   client_opengl --> mixing
   client_opengl --> rendering
   client_opengl --> windowing
+  colocation --> base
+  colocation --> core
+  colocation --> game
+  colocation --> platform
+  colocation --> universe
+  colocation --> universe_view
+  colocation --> world
   frontend --> base
   frontend --> core
   frontend --> game
@@ -1633,11 +1675,11 @@ flowchart TD
   class base,core kFoundation
   class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
-  class client,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,colocation,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
 ```
 
-**client_opengl links 27 of 36 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_opengl links 28 of 37 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -1661,6 +1703,7 @@ flowchart TD
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
@@ -1695,12 +1738,11 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> sound
-  client --> universe
   client --> universe_view
-  client --> world
   client --> world_view
   client_sdl_gpu --> audio_sdl
   client_sdl_gpu --> client
+  client_sdl_gpu --> colocation
   client_sdl_gpu --> core
   client_sdl_gpu --> frontend
   client_sdl_gpu --> gpu_sdl
@@ -1708,6 +1750,13 @@ flowchart TD
   client_sdl_gpu --> mixing
   client_sdl_gpu --> rendering
   client_sdl_gpu --> windowing
+  colocation --> base
+  colocation --> core
+  colocation --> game
+  colocation --> platform
+  colocation --> universe
+  colocation --> universe_view
+  colocation --> world
   frontend --> base
   frontend --> core
   frontend --> game
@@ -1799,11 +1848,11 @@ flowchart TD
   class base,core kFoundation
   class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
-  class client,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,colocation,frontend,game,interaction,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
-**client_sdl_gpu links 27 of 36 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_sdl_gpu links 28 of 37 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
@@ -1854,7 +1903,7 @@ flowchart TD
   class world_gen kEntrypoint
 ```
 
-**world_gen links 7 of 36 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+**world_gen links 7 of 37 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
 <!-- END GENERATED: world_gen -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
@@ -1911,7 +1960,7 @@ flowchart TD
   class world_sim kEntrypoint
 ```
 
-**world_sim links 8 of 36 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
+**world_sim links 8 of 37 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
 <!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
@@ -1976,7 +2025,7 @@ flowchart TD
   class server kEntrypoint
 ```
 
-**server links 9 of 36 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
+**server links 9 of 37 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -2004,6 +2053,7 @@ Every component in the diagram, in the same reading order.
 | **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`interaction`** | LIBRARY | INTERIOR | how a participant acts on the world | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`colocation`** | LIBRARY | INTERIOR | runs the authority in the participant's own process | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
 | **`mixing`** | BACKEND | PERIPHERY | turns sound into samples | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
@@ -2022,7 +2072,7 @@ Every component in the diagram, in the same reading order.
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 
-Thirty-six components: eight CONTRACTs, nine BACKENDs, ten LIBRARYs, two FOUNDATIONs, seven
+Thirty-seven components: eight CONTRACTs, nine BACKENDs, eleven LIBRARYs, two FOUNDATIONs, seven
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -2188,12 +2238,13 @@ is actually established today.
 | `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one. **Implements `CelestialSlaveDatabase`** — the same contract, the replica side |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `interaction` | core, base, platform, game, world_view, universe_view | **names no `windowing` and no `frontend`** — acting on the world is not a UI concern |
+| `colocation` | core, base, platform, game, world, universe, universe_view | **the only component that names both an authority and a view**; it exists to join them in one process, and D8 governs it |
 | `frontend` | core, base, platform, game, windowing, scene, host, interaction | this game's screens; does not draw, and drives the verbs rather than owning them |
-| `client` | core, base, platform, game, world, universe, world_view, universe_view, interaction, presentation, scene, sound, host | **names no backend, and no longer names `windowing` or `frontend`** — the UI is composed in by an entrypoint that wants one. It grants `universe` because a hosting client runs one |
-| `client_opengl` | core, client, host_sdl, windowing, frontend, rendering, gpu_opengl, mixing, audio_sdl | the only place GL and SDL are named together; composes in the UI, the pixels and the sound |
-| `client_headless` | core, client, host_null, windowing, frontend, transcript | the only place the recorder is named; it keeps the UI **because it records what the UI produces** |
-| `client_agent` | core, client, host_null | the smallest participant that can still play: no UI, no recorder, no sound |
-| `client_sdl_gpu` | core, client, host_sdl, windowing, frontend, rendering, gpu_sdl, mixing, audio_sdl | identical to `client_opengl` except for the backend — which is the entire point |
+| `client` | core, base, platform, game, world_view, universe_view, interaction, presentation, scene, sound, host | **a participant, and nothing else.** Names no backend, no UI, and — now — **no `world` and no `universe`**: a client that cannot name an authority cannot accidentally embed one |
+| `client_opengl` | core, client, colocation, host_sdl, windowing, frontend, rendering, gpu_opengl, mixing, audio_sdl | the only place GL and SDL are named together; composes in the authority, the UI, the pixels and the sound |
+| `client_headless` | core, client, colocation, host_null, windowing, frontend, transcript | the only place the recorder is named; it keeps the UI **because it records what the UI produces**, and `colocation` so it can record a single-player session |
+| `client_agent` | core, client, host_null | the smallest participant that can still play: no UI, no recorder, no sound — and **no authority**, so it must connect to one over the wire |
+| `client_sdl_gpu` | core, client, colocation, host_sdl, windowing, frontend, rendering, gpu_sdl, mixing, audio_sdl | identical to `client_opengl` except for the backend — which is the entire point |
 | `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
 | `world_sim` | core, base, game, world, worldgen, platform | **no `universe` either** — residency comes from configuration, not from participants |
 | `world_gen` | core, base, game, worldgen, celestial, platform | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
