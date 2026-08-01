@@ -374,7 +374,9 @@ This maps onto the boundary document's existing ENFORCED / PROVEN / ASPIRATIONAL
 supplies the rule for growing this diagram: **an ELEMENT is promoted to a COMPONENT when its boundary
 becomes worth a compile error.** Boxes get added by that test, not by feel.
 
-Elements are drawn as rounded, dashed boxes attached to their owner with a dotted line.
+Elements are drawn **inside** their owning component, which becomes a container box. A component
+with no named internals stays a plain box — so the diagram distinguishes, at a glance, the
+components whose insides the design has something to say about from those it treats as opaque.
 
 **Element naming carries one more rule, and it is load-bearing:**
 
@@ -461,27 +463,31 @@ both taxonomies at once without either being inferred from the other.
 ```mermaid
 flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
-    shell["<b>client</b><br/>LIBRARY<br/><i>owns the client frame</i>"]
-    clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
-    simloop(["<b>simLoop</b> · LOOP<br/><i>fixed-timestep accumulator</i>"])
-    simtick(["<b>simTick</b> · TICK<br/><i>one deterministic step</i>"])
-    audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
+    subgraph shell ["<b>client</b> · LIBRARY<br/><i>owns the client frame</i>"]
+      clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
+      simloop(["<b>simLoop</b> · LOOP<br/><i>fixed-timestep accumulator</i>"])
+      simtick(["<b>simTick</b> · TICK<br/><i>one deterministic step</i>"])
+      audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
+    end
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
-    srv["<b>server</b><br/>ENTRYPOINT<br/><i>hosts a universe for remote players</i>"]
-    serverloop(["<b>serverLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
+    subgraph srv ["<b>server</b> · ENTRYPOINT<br/><i>hosts a universe for remote players</i>"]
+      serverloop(["<b>serverLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
+    end
   end
 
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
-    game["<b>game</b><br/>LIBRARY<br/><i>the simulation</i>"]
-    universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
+    subgraph game ["<b>game</b> · LIBRARY<br/><i>the simulation</i>"]
+      universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
+    end
   end
 
   subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
-    rend["<b>rendering</b><br/>BACKEND<br/><i>turns a scene into pixels</i>"]
-    presenttick(["<b>presentTick</b> · TICK<br/><i>resample · camera · assemble · paint</i>"])
+    subgraph rend ["<b>rendering</b> · BACKEND<br/><i>turns a scene into pixels</i>"]
+      presenttick(["<b>presentTick</b> · TICK<br/><i>resample · camera · assemble · paint</i>"])
+    end
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
     glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
     sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
@@ -494,10 +500,12 @@ flowchart TD
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
-    hostsdl["<b>host_sdl</b><br/>BACKEND<br/><i>the SDL host implementation</i>"]
-    frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
-    hostnull["<b>host_null</b><br/>BACKEND<br/><i>a host that shows nothing</i>"]
-    headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
+    subgraph hostsdl ["<b>host_sdl</b> · BACKEND<br/><i>the SDL host implementation</i>"]
+      frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
+    end
+    subgraph hostnull ["<b>host_null</b> · BACKEND<br/><i>a host that shows nothing</i>"]
+      headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
+    end
     platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
     host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
     platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
@@ -539,15 +547,6 @@ flowchart TD
   chl --> hostnull
   srv --> game
 
-  hostsdl -.- frameloop
-  shell -.- clienttick
-  shell -.- simloop
-  shell -.- simtick
-  shell -.- audiotick
-  rend -.- presenttick
-  hostnull -.- headlessloop
-  srv -.- serverloop
-  game -.- universeloop
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
