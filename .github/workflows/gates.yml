@@ -96,21 +96,18 @@ jobs:
       - name: composition_graphs -- per-composition diagrams match the grant table
         run: python3 scripts/composition-graphs.py --check
 
-      # grant_sweep measures coupling between OUR components, via includes. This coupling runs through
-      # SDL's GL sub-API, so no include sweep can see it: 15 references, counted as 1. The host is
-      # supposed to own a window, not a GL context.
       # Derived from the runtime projection's edges. Fails on an element that is neither driven nor
       # declared undriven -- "what starts this?" must have an answer for all 24.
       - name: drive_table -- what drives what, generated from the runtime projection
         run: python3 scripts/drive-table.py --check
 
-      # The only gate that reads the WORDS. Sixteen others check tables and were all green while the
-      # prose said "three clocks", called `participant` `client`, and referenced undefined decisions.
       # The only gate that greps C++ for the design. Owns the tree measurements a DESIGN DECISION
       # rests on -- "thirteen render() bodies" was 17, "exactly four" Lua groups was 11.
       - name: spec_measures -- the load-bearing measurements still hold
         run: python3 scripts/spec-measures.py --check
 
+      # The only gate that reads the WORDS. The others check tables and were all green while the
+      # prose said "three clocks", called `participant` `client`, and referenced undefined decisions.
       - name: prose_claims -- the prose agrees with the registers
         run: python3 scripts/prose-claims.py --check
 
@@ -124,7 +121,12 @@ jobs:
       - name: tree_map -- the target directory tree matches the register
         run: python3 scripts/tree-map.py --check
 
+      # grant_sweep measures coupling between OUR components, via includes. This runs through SDL's GL
+      # sub-API, so no include sweep can see it: 18 references, counted as 1. The needle is a regex
+      # because the coupling has three spellings -- SDL_GL_*, SDL_GLContext, SDL_WINDOW_OPENGL -- and
+      # the first version of this ratchet saw only the first and reported 15. The host is supposed to
+      # own a window, not a GL context.
       - name: host_api_neutral -- the SDL host must not know a graphics API
         run: |
-          python3 scripts/layering-lint.py --needle "SDL_GL_" \
-            source/application/StarMainApplication_sdl.cpp=15
+          python3 scripts/layering-lint.py --needle "re:SDL_GL|SDL_WINDOW_OPENGL" \
+            source/application/StarMainApplication_sdl.cpp=18

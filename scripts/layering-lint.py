@@ -135,6 +135,24 @@ def main(argv):
             return 2
         needle = args[1]
         args = args[2:]
+
+    # A needle prefixed `re:` is a regular expression rather than a substring. Added because
+    # host_api_neutral was blind to its own table: it counted `SDL_GL_` while the seam-2 table three
+    # paragraphs above it named "the context" and "the window creation flags" as GL couplings --
+    # spelled `SDL_GLContext` and `SDL_WINDOW_OPENGL`, neither of which contains `SDL_GL_`. A single
+    # coupling with three spellings cannot be expressed as one substring, and picking the loosest
+    # common prefix would have swept in unrelated SDL. The two existing callers pass plain symbols
+    # and are unaffected.
+    if needle.startswith("re:"):
+        try:
+            rx = re.compile(needle[3:])
+        except re.error as e:
+            print("layering-lint: bad regex needle %r (%s)" % (needle[3:], e))
+            return 2
+        match = lambda line: rx.search(line) is not None
+    else:
+        match = lambda line: needle in line
+
     if args and args[0] == "--from-cmake":
         args = ceilings_from_cmake()
         if args is None:
@@ -161,7 +179,7 @@ def main(argv):
             return 2
         code = strip_comments_and_strings(src)
         hits = [(lineno, line.strip())
-                for lineno, line in enumerate(code.split("\n"), 1) if needle in line]
+                for lineno, line in enumerate(code.split("\n"), 1) if match(line)]
         counts[path] = len(hits)
         sites[path] = hits
 

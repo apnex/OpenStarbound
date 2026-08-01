@@ -949,8 +949,14 @@ legal by construction. It also explains `headlessLoop`'s pacing problem exactly:
 must be told what to yield on.
 
 **Instrument limit, now named because it will recur.** `grant_sweep` is blind to any coupling
-expressed through a third-party API. A new ratchet, `host_api_neutral`, counts `SDL_GL_` inside the
-SDL host with a ceiling of **15**, falling to zero. It uses the same `layering-lint` needle machinery
+expressed through a third-party API. A new ratchet, `host_api_neutral`, counts GL coupling inside the
+SDL host with a ceiling of **18**, falling to zero. Its needle is a regex — `SDL_GL|SDL_WINDOW_OPENGL`
+— because **the coupling has three spellings and the first version of this ratchet could only see
+one.** It counted `SDL_GL_` and scored 15, while the seam-2 table immediately above names "the
+context" and "the window creation flags" as exactly the couplings a neutral host must not have:
+`SDL_GLContext` and `SDL_WINDOW_OPENGL`, neither of which contains `SDL_GL_`. An instrument invented
+because include sweeps cannot see through a vendor API was itself missing three sites, on a list its
+own paragraph had already written down. It uses the same `layering-lint` needle machinery
 the render arc built for `Root::singleton` — the second time that instrument has been the only one
 able to see a coupling, and both times because the coupling ran through something the include graph
 does not model.
@@ -3851,8 +3857,8 @@ not a decision.
   and the design's boundary are the same place** — which is why the composition oracle, which observes
   behaviour rather than structure, is the one that has to carry the weight.
 - **Include sweeps cannot see through a third party.** `grant_sweep` measures coupling between our
-  components; coupling routed through a vendor API is invisible to it. `host_sdl` holds 15 `SDL_GL_`
-  references that the sweep scores as 1. Needle ratchets (`host_api_neutral`, `render_layering`)
+  components; coupling routed through a vendor API is invisible to it. `host_sdl` holds 18 GL
+  references — three of them spelled without `SDL_GL_` — that the sweep scores as 1. Needle ratchets (`host_api_neutral`, `render_layering`)
   cover the known instances; there is no general instrument, and assuming the include graph is the
   whole coupling graph is now a named error rather than a habit.
 - **Nothing here proves the design is good**, only that it is self-consistent and behaviour-preserving.
@@ -4158,14 +4164,39 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 
 | type | today | target | action |
 |---|---|---|---|
-| `Drawable` | `game` | `presentation` | **MOVE** — six core includes, already carries `DataStream` operators |
-| `WorldCamera` | `game` | `presentation` | **MOVE** — view state, 4 includes from `rendering` |
+| `Drawable` | `game` | `scene` | **MOVE** — six core includes, already carries `DataStream` operators |
+| `WorldCamera` | `game` | `scene` | **MOVE** — view state, 4 includes from `rendering` |
 | text metrics (`stringWidth`, `wrapText`, `determineTextSize`, …) | `rendering/TextPainter` | simulation side | **SPLIT** — layout is data; rasterisation stays |
 | `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
-| `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
-| `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
+| `Frame` | — | `scene` | **NEW** — the scene payload itself |
+| `AudioBatch` | — | `sound` | **NEW** — `sound` is declared "`AudioInstance` and its batch encoding"; this is that encoding |
+| `InputBatch` | — | `presentation` | **NEW** — the one payload that *is* device-side; see below |
+| `AnchorTypes` | `rendering` (35 lines) | `scene` | **MOVE** — text anchoring is vocabulary, not drawing |
 | `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
 | `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 7** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+
+**Every one of those targets read `presentation` until 2026-08-02, and it was a buildability defect
+rather than a naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound`
+are CONTRACTs in **`domain/`**. Grants point `COMPOSITION → DEVICE → DOMAIN → MACHINE`, so a DOMAIN
+component may never name a DEVICE one. `game` and `world_view` are both DOMAIN and both name
+`Drawable` on nearly every page of this design — so with `Drawable` in `presentation`, `game` would
+need a grant that `spec_consistency`'s ZONE_ORDER verdict rejects at zero exceptions. **The design as
+written would not have compiled**, and the register already said so: `scene`'s contents column reads
+*"the scene vocabulary and its delta encoding"* and `presentation`'s reads *"`SceneSink`, `AudioSink`,
+`InputSource`. **No drawing code.**"* The sink is device-side; the vocabulary it carries is not.
+
+**`InputBatch` is the exception, and the asymmetry is the design rather than an oversight.** Scene and
+audio flow *outward* — produced in `domain/`, consumed by a device — so their vocabulary must be
+nameable from DOMAIN. Input flows *inward*: `InputSource::poll()` lives in `presentation`, and its
+only consumer is `participant`, which is COMPOSITION and grants `presentation` directly. No DOMAIN
+component ever names an `InputBatch`, so it stays device-side legally.
+
+That is also the answer to the question this register did not previously ask: **how does a
+screen-space click become a world coordinate, if the simulation may not name a device type?** It does
+not resolve it from an `InputBatch` at all. `WorldCamera` moving to `scene` puts the screen↔world
+transform on the *domain* side of seam 1, where `participant` already holds it — which is why the
+`camera` Lua group can survive in a composition with no `rendering` linked, and why `client_agent`
+keeps `camera` while losing `renderer` (Section 2). One placement decision answers both.
 
 ### Renamed, and deliberately not renamed
 

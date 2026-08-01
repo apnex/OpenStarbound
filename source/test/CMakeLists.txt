@@ -412,11 +412,16 @@ IF (Python3_Interpreter_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prose-claims.py --selftest)
 ENDIF ()
 
+# The needle was "SDL_GL_" with a ceiling of 15, and it was blind to its own design. The seam-2 table
+# in the headless-client spec names "the context" and "the window creation flags" as the GL couplings
+# a neutral host must not have -- spelled `SDL_GLContext` and `SDL_WINDOW_OPENGL`, neither of which
+# contains `SDL_GL_`. A ratchet invented to see coupling the include graph misses was itself missing
+# three sites, on a subject its own paragraph enumerated. Widened to a regex; the true count is 18.
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME host_api_neutral COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
-            --needle "SDL_GL_"
-            source/application/StarMainApplication_sdl.cpp=15)
+            --needle "re:SDL_GL|SDL_WINDOW_OPENGL"
+            source/application/StarMainApplication_sdl.cpp=18)
 ENDIF ()
 
 endif() # Python3_Interpreter_FOUND
