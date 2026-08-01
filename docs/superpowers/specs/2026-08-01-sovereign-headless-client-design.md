@@ -520,7 +520,6 @@ flowchart TD
     uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
     world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
     wgen["<b>worldgen</b><br/>LIBRARY<br/><i>turns a seed into terrain</i>"]
-    celest["<b>celestial</b><br/>LIBRARY<br/><i>the star map</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
     subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
@@ -544,6 +543,7 @@ flowchart TD
     gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
     sound["<b>sound</b><br/>CONTRACT<br/><i>what is audible, where, how loud</i>"]
     audiodev["<b>audio</b><br/>CONTRACT<br/><i>the audio-device contract</i>"]
+    celest["<b>celestial</b><br/>CONTRACT<br/><i>the star map's vocabulary and its lookup interface</i>"]
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
@@ -619,7 +619,8 @@ flowchart TD
   audiodev --> core
   celest --> core
   celest --> base
-  celest --> game
+  game --> celest
+  auth --> wgen
   wgen --> celest
   auth --> celest
   uview --> celest
@@ -665,9 +666,9 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
-  class platform,host,scene,contract,gpu,sound,audiodev kContract
+  class platform,host,scene,contract,gpu,sound,audiodev,celest kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb,mixing,audiosdl kBackend
-  class game,auth,world,wgen,celest,uview,wview,win,front,shell kLibrary
+  class game,auth,world,wgen,uview,wview,win,front,shell kLibrary
   class cgl,chl,csg,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
@@ -992,12 +993,12 @@ flowchart TD
     platform["<b>platform</b><br/>CONTRACT"]
   end
   subgraph Z_SEAM ["SEAM"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -1016,7 +1017,6 @@ flowchart TD
   end
   celestial --> base
   celestial --> core
-  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -1043,6 +1043,7 @@ flowchart TD
   frontend --> scene
   frontend --> windowing
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   host --> core
@@ -1070,6 +1071,7 @@ flowchart TD
   universe --> game
   universe --> platform
   universe --> world
+  universe --> worldgen
   universe_view --> base
   universe_view --> celestial
   universe_view --> core
@@ -1098,15 +1100,15 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class host,platform,presentation,scene,sound kContract
+  class celestial,host,platform,presentation,scene,sound kContract
   class host_null,transcript kBackend
-  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
 ```
 
@@ -1170,26 +1172,80 @@ instead of with the code that consumes it:
 | carved out | apparent cycle | the actual file | belongs to |
 |---|---|---|---|
 | `worldgen` | `worldgen` ↔ `world` | `StarWorldGeneration.hpp` — holds `LiquidWorld(WorldServer*)`, `FallingBlocksWorld(WorldServer*)`, `DungeonGeneratorWorld(WorldServer*, bool)` | `world` — adapters that write generated output into a live world |
-| `celestial` | `celestial` ↔ `worldgen` | `StarCelestialGraphics.hpp` — names `TerrainDatabase`, `BiomeDatabase`, `Parallax`, `LiquidsDatabase`, returns image paths | `world_view` — the appearance of celestial data, consumed by `Sky` |
 | `scene` (tier 2) | `game` ↔ `scene` | the thirteen `render()` bodies | `world_view` — appearance, not state |
 
-The rule this yields is worth more than the three instances: **when a candidate component appears to
+The rule this yields is worth more than the two instances: **when a candidate component appears to
 depend on its own consumer, look for one file before redrawing the boundary.** Appearance code and
 adapter code get filed next to the data they describe, because that is where they were written; the
 dependency they create is an artifact of filing, not of design. Each time, deleting the file's
 membership — not the boundary — made the edge acyclic.
 
-Verification that this is not three coincidences: with `StarCelestialGraphics` excluded, the remaining
-four celestial files (`Coordinate`, `Types`, `Parameters`, `Database`) name **nothing** from `worldgen`
-or `world`, and `StarRoot.hpp` names `Celestial` **zero** times — so the reverse edge is genuinely gone,
-not merely relabelled.
+**RETRACTED: `StarCelestialGraphics` was listed here as a third instance and it is not one.** The claim
+was that it is view-side and refiles to `world_view`. Two measurements kill that:
 
-### `celestial` — the star map is its own primitive
+- its consumer at `StarSystemWorldServer.cpp:452,456` is an **authority**, filling
+  `skyParameters.nearbyMoons` and `horizonImages` for replication to clients;
+- `drawWorld` returns `List<pair<String, float>>` — **image paths and scales, not `Drawable`.** It
+  selects assets. It does not draw.
+
+So it is **misnamed, not misfiled**: the word *Graphics* is doing the lying, and it was enough to make
+me file it by its name instead of its signature. Its real home is `universe`, which sits above both
+`celestial` and `worldgen`, uses both, and is where its consumer already lives — which is why `universe`
+now carries a `worldgen` grant.
+
+That distinction is worth keeping alongside the rule: **a name can misdirect a boundary exactly as
+effectively as a location can, and it is harder to catch, because reading the name feels like
+evidence.** The correction here came from reading a return type.
+
+What does survive is the acyclicity, by a different route: the four contract headers
+(`Coordinate`, `Types`, `Parameters`, `Database`) include only `StarRect`, `StarJson`, `StarVector`,
+`StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`
+and `StarPerlin` — every one of them `core` — plus `StarWorldParameters`, which moves in (below).
+
+### `celestial` — a CONTRACT, because the code already split it
 
 Measured, and it separates cleanly in both directions: `WorldServer` and its agents name `Celestial`
 **zero** times, while `StarWorldTemplate` names `CelestialCoordinate`, `CelestialParameters` and
 `CelestialDatabase` directly. So `world` does not need it and `worldgen` does, which is exactly the
 2×2 the separability test asks for.
+
+**But it is a CONTRACT, not a LIBRARY, and that was not a choice — the tree had already made it:**
+
+```
+class CelestialDatabase                       // abstract
+class CelestialMasterDatabase : public ...    // UniverseServer, VersioningDatabase
+class CelestialSlaveDatabase  : public ...    // UniverseClient, SystemWorldClient
+```
+
+That is the **authority/view split this document already adopted**, sitting inside a component the
+first draft declared indivisible. So `celestial` is the interface and the vocabulary; the master
+implementation belongs to `universe` and the slave to `universe_view`, exactly as `WorldServer` and
+`WorldClient` divide.
+
+It also explains a detail noted earlier without being understood: `WorldTemplate` takes a
+`CelestialDatabasePtr`, not a concrete database. **`worldgen` already depends on the contract alone.**
+The seam is in the code; the register was simply not describing it.
+
+**`WorldParameters` moves into `celestial`, and that is what makes the contract clean.** The four
+headers' only non-`core` include is `StarWorldParameters.hpp`, and a CONTRACT that names a LIBRARY is
+not a seam — it is a coupling with a seam's label. Every other contract in the register
+(`scene`, `sound`, `gpu`, `audio`, `host`, `platform`) names only foundations and other contracts, so
+the invariant is real and worth keeping. Measured cost of the move: `StarWorldParameters.hpp` is
+included by exactly **three** files — `StarCelestialParameters.hpp`, `scripting/StarWorldLuaBindings.cpp`
+and itself — and `WorldServer`/`WorldClient` name it **zero** times. It was never a `world` type. It is
+the star map's description of a world, which is the definition of `celestial`.
+
+The residue is one edge: `game --> celestial`, for that single Lua binding file. A LIBRARY naming a
+CONTRACT is legal and cheap, and because `celestial` carries no database implementation, `world_sim`
+transitively naming it costs nothing — it gets types, never a star map. That is precisely the value of
+the contract form over the library form.
+
+**One measured obstruction, recorded because it sizes the work.** `StarCelestialDatabase.hpp` holds
+all three classes — abstract, master and slave — in one header. That is the second instance of the
+same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer`: **the contract and its
+implementations sharing a file.** Neither split can be enforced, or even attributed by an instrument,
+until the header is divided. Worth naming as a pattern, since two of the four components adopted today
+are blocked on exactly it.
 
 This also corrects a claim committed earlier the same day. That claim said the star map "reads
 parameters, which are `game` domain types, and never touches `worldgen`." The first half is right and
@@ -1212,13 +1268,13 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     audio["<b>audio</b><br/>CONTRACT"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -1243,7 +1299,6 @@ flowchart TD
   audio_sdl --> core
   celestial --> base
   celestial --> core
-  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -1273,6 +1328,7 @@ flowchart TD
   frontend --> scene
   frontend --> windowing
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   gpu --> core
@@ -1313,6 +1369,7 @@ flowchart TD
   universe --> game
   universe --> platform
   universe --> world
+  universe --> worldgen
   universe_view --> base
   universe_view --> celestial
   universe_view --> core
@@ -1341,15 +1398,15 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class audio,gpu,host,platform,presentation,scene,sound kContract
+  class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
-  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
 ```
 
@@ -1370,13 +1427,13 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     audio["<b>audio</b><br/>CONTRACT"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -1401,7 +1458,6 @@ flowchart TD
   audio_sdl --> core
   celestial --> base
   celestial --> core
-  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -1431,6 +1487,7 @@ flowchart TD
   frontend --> scene
   frontend --> windowing
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   gpu --> core
@@ -1469,6 +1526,7 @@ flowchart TD
   universe --> game
   universe --> platform
   universe --> world
+  universe --> worldgen
   universe_view --> base
   universe_view --> celestial
   universe_view --> core
@@ -1497,15 +1555,15 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class audio,gpu,host,platform,presentation,scene,sound kContract
+  class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
-  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
@@ -1521,8 +1579,10 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
   end
+  subgraph Z_SEAM ["SEAM"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+  end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -1531,8 +1591,8 @@ flowchart TD
   end
   celestial --> base
   celestial --> core
-  celestial --> game
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   platform --> core
@@ -1547,14 +1607,14 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class platform kContract
-  class celestial,game,worldgen kLibrary
+  class celestial,platform kContract
+  class game,worldgen kLibrary
   class world_gen kEntrypoint
 ```
 
@@ -1570,8 +1630,10 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
   end
+  subgraph Z_SEAM ["SEAM"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+  end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1581,8 +1643,8 @@ flowchart TD
   end
   celestial --> base
   celestial --> core
-  celestial --> game
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   platform --> core
@@ -1602,14 +1664,14 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class platform kContract
-  class celestial,game,world,worldgen kLibrary
+  class celestial,platform kContract
+  class game,world,worldgen kLibrary
   class world_sim kEntrypoint
 ```
 
@@ -1625,8 +1687,10 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
   end
+  subgraph Z_SEAM ["SEAM"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+  end
   subgraph Z_INTERIOR ["INTERIOR"]
-    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
@@ -1637,8 +1701,8 @@ flowchart TD
   end
   celestial --> base
   celestial --> core
-  celestial --> game
   game --> base
+  game --> celestial
   game --> core
   game --> platform
   platform --> core
@@ -1654,6 +1718,7 @@ flowchart TD
   universe --> game
   universe --> platform
   universe --> world
+  universe --> worldgen
   world --> base
   world --> core
   world --> game
@@ -1664,14 +1729,14 @@ flowchart TD
   worldgen --> core
   worldgen --> game
   worldgen --> platform
-  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class base,core kFoundation
-  class platform kContract
-  class celestial,game,universe,world,worldgen kLibrary
+  class celestial,platform kContract
+  class game,universe,world,worldgen kLibrary
   class server kEntrypoint
 ```
 
@@ -1698,7 +1763,7 @@ Every component in the diagram, in the same reading order.
 | **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
 | **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
 | **`worldgen`** | LIBRARY | INTERIOR | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
-| **`celestial`** | LIBRARY | INTERIOR | the star map | `CelestialCoordinate`, `CelestialParameters`, `CelestialDatabase`, `CelestialTypes` |
+| **`celestial`** | CONTRACT | SEAM | the star map's vocabulary and its lookup interface | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
 | **`universe_view`** | LIBRARY | INTERIOR | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
 | **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
@@ -1711,7 +1776,7 @@ Every component in the diagram, in the same reading order.
 | **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
 | **`audio_sdl`** | BACKEND | PERIPHERY | the SDL audio backend | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
-| **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick`, `audioTick` |
+| **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
 | **`client_sdl_gpu`** | ENTRYPOINT | SHELL | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
@@ -1719,7 +1784,7 @@ Every component in the diagram, in the same reading order.
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 
-Thirty-four components: seven CONTRACTs, nine BACKENDs, ten LIBRARYs, two FOUNDATIONs, six
+Thirty-four components: eight CONTRACTs, nine BACKENDs, nine LIBRARYs, two FOUNDATIONs, six
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -1773,7 +1838,7 @@ and ticks nothing.
 |---|---|---|
 | host | `host_sdl` — owns `frameLoop`: pump, step, swap, idle | `host_null` — owns `headlessLoop`, ~10 lines plus 35 no-ops |
 | presentation | `rendering` + `gpu_opengl` | `transcript` |
-| **everything else** | `client` · `clientLoop` · `clientTick` · `fixedTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
+| **everything else** | `client` · `clientLoop` · `clientTick` · `fixedTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
 
 The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
 telemetry model cannot fork between the two clients — which was the whole reason the loop question
@@ -1876,13 +1941,13 @@ is actually established today.
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
-| `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
-| `celestial` | core, base, game | the star map; **names no `world` and no `worldgen`** — it is their input, not their consumer |
+| `game` | core, base, platform, celestial | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks. `celestial` is a contract, so naming it couples to types, not to a database |
+| `celestial` | core, base | a CONTRACT names only foundations and other contracts; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
 | `worldgen` | core, base, platform, game, celestial | **names no `world`** — generation knows nothing that ticks |
 | `world` | core, base, platform, game, worldgen | **names no `scene`**; it calls generation lazily, per region |
-| `universe` | core, base, platform, game, world, celestial | it manages worlds, so it names `world`; `world` never names it back |
+| `universe` | core, base, platform, game, world, worldgen, celestial | it manages worlds, so it names `world`; `world` never names it back. **Implements `CelestialMasterDatabase`**, and holds `CelestialGraphics` — which needs `worldgen`'s biome and terrain databases |
 | `world_view` | core, base, platform, game, scene, sound | **the simulation cannot name a presentation interface at all** — it names the vocabulary, never the sink |
-| `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one; the star map is its own |
+| `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one. **Implements `CelestialSlaveDatabase`** — the same contract, the replica side |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
 | `client` | core, base, platform, game, world, universe, world_view, universe_view, windowing, frontend, presentation, scene, sound, host | **names no backend**; it grants `universe` because a hosting client runs one |
@@ -2181,7 +2246,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`clientTick`** | TICK | DERIVED | `client` | `driver` | one driver step, sim side |
 | **`fixedTick`** | TICK | FIXED | `client` | `driver` | one step of simulated time |
 | **`presentTick`** | TICK | DERIVED | `rendering` | `driver` | resample, camera, assemble, paint |
-| **`audioTick`** | TICK | EXTERNAL | `client` | `audio` | fills a buffer for SDL's audio loop |
+| **`audioTick`** | TICK | EXTERNAL | `mixing` | `audio` | fills a PCM buffer; **pulled by `audio_sdl`**, not driven by any loop we own |
 | **`swapTick`** | TICK | DISPLAY | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
 | **`resizeSignal`** | SIGNAL | EVENT | `client` | `driver` | the window changed; surfaces must be rebuilt |
 | **`openglWiring`** | WIRING | ONCE | `client_opengl` | `driver` | composes `host_sdl` + `client` + `rendering` + `gpu_opengl` |
@@ -2223,7 +2288,7 @@ flowchart TD
       universeloop["<b>universeLoop</b> · LOOP<br/><i>universe</i>"]
     end
     subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
-      audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
+      audiotick["<b>audioTick</b> · TICK<br/><i>mixing</i>"]
     end
   end
 

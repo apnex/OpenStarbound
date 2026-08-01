@@ -37,14 +37,37 @@ KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
 ZONE_TITLE = {"SUBSTRATE": "SUBSTRATE", "SEAM": "SEAM", "INTERIOR": "INTERIOR",
               "PERIPHERY": "PERIPHERY", "SHELL": "SHELL"}
-# Same palette as Section 4's map, so a reader moving between them is not relearning colours.
-CLASSDEF = """  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
-  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff"""
 CLASS_OF = {"FOUNDATION": "kFoundation", "CONTRACT": "kContract", "BACKEND": "kBackend",
             "LIBRARY": "kLibrary", "ENTRYPOINT": "kEntrypoint"}
+
+# The palette is READ FROM Section 4's map, never restated here.
+#
+# It used to be a pasted copy, under a comment asserting "Same palette as Section 4's map, so a reader
+# moving between them is not relearning colours." That comment was false the day it was written -- the
+# two palettes shared not one colour. A FOUNDATION was #3d3d3d grey here and #23282f slate there; a
+# CONTRACT was blue here and amber there; a BACKEND purple here and red there. So a reader moving
+# between the whole-system map and a per-composition view had to relearn every colour, which is the
+# exact cost the comment claimed to have avoided. One knob, two declarations, and the second one lying
+# -- the defect #185 exists to delete, in its most embarrassing form: a comment as the only evidence.
+CLASSDEF_LINE = re.compile(r'^\s*classDef\s+(k\w+)\s+(.+?)\s*$', re.M)
+
+
+def palette(text):
+    """-> the five component classDefs, lifted verbatim from the compile projection.
+
+    Scoped to that diagram rather than the whole document so a stray classDef elsewhere cannot
+    silently win. Hard-fails on a missing kind: a generator that quietly drops a colour produces a
+    diagram whose boxes all look alike, which reads as a rendering glitch rather than a broken tool."""
+    start = text.find("%% projection: compile")
+    if start < 0:
+        raise SystemExit("composition-graphs: no compile projection in the spec -- cannot read the palette")
+    end = text.find("```", start)
+    found = dict(CLASSDEF_LINE.findall(text[start:end if end > 0 else len(text)]))
+    missing = [c for c in CLASS_OF.values() if c not in found]
+    if missing:
+        raise SystemExit("composition-graphs: the compile diagram declares no %s -- palette incomplete"
+                         % ", ".join(missing))
+    return "\n".join("  classDef %s %s" % (c, found[c]) for c in CLASS_OF.values())
 
 COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
@@ -70,7 +93,7 @@ def closure(root, comp, grants):
     return seen
 
 
-def diagram(entry, comp, grants):
+def diagram(entry, comp, grants, classdef):
     linked = closure(entry, comp, grants)
     absent = sorted(set(comp) - linked)
     out = ["```mermaid", "%%%% composition: %s" % entry, "flowchart TD"]
@@ -86,7 +109,7 @@ def diagram(entry, comp, grants):
         for b in sorted(grants.get(a, ())):
             if b in linked and b != a:
                 out.append("  %s --> %s" % (a, b))
-    out.append(CLASSDEF)
+    out.append(classdef)
     for kind in KINDS:
         members = sorted(n for n in linked if comp[n]["kind"] == kind)
         if members:
@@ -107,7 +130,7 @@ def blocks(text):
     if len(comp) < 15:
         raise SystemExit("composition-graphs: only %d components parsed; the register regex has "
                          "regressed" % len(comp))
-    return {e: diagram(e, comp, grants) for e in entries}
+    return {e: diagram(e, comp, grants, palette(text)) for e in entries}
 
 
 def apply(text, generated, inject):
