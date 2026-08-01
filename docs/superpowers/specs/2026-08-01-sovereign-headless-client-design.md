@@ -1269,6 +1269,49 @@ element register, for three reasons:
 The general rule, stated once: an ELEMENT earns a register row when it owns a clock or when something
 can call it on its own. Sequential phases inside one tick are contents, not elements.
 
+### The tick is the root of a call tree
+
+Because a TICK is the *highest-order* call a loop drives, everything it reaches executes at that tick's
+cadence, on that tick's thread. The tick is therefore not merely a row in a register — it is a **root**,
+and the register is a set of roots that between them span every line of code this system executes.
+
+Three things follow, and the last is an instrument this design still lacks.
+
+**Cadence is inherited by reachability.** A function's cadence is not a property it declares; it is
+derived from which root reaches it. `WorldClient::update()` has no cadence of its own and runs at FIXED
+because `fixedTick` reaches it. Two consequences worth stating: a function reached by roots at
+*different* cadences is billed at both, and a function reached by **no** root is not executed at all —
+dead, or reachable only from a loop this design does not yet model.
+
+**The tree terminates at exactly three boundaries, and they are the architecture's.**
+
+| the tree stops at | why | what it means |
+|---|---|---|
+| a **SEAM** | the call is virtual; the callee is whichever backend was composed | the tree **branches per composition** — `client_headless` is the same tree with a different branch taken |
+| a **HANDOFF** | the payload crosses a thread or a process; the producer never enters the consumer's body | the consumer is a **separate tree**, rooted at its own element |
+| a **SCRIPT** call | Lua; not statically resolvable at all | the one genuinely opaque terminator — its surface is measured in Section 2 |
+
+That is not a coincidence and it is worth stating plainly: **the leaves of the call tree are the design's
+boundaries.** A boundary is exactly a place where static reachability stops. If a boundary is not a
+leaf, it is not a boundary — it is a habit.
+
+**Two instruments this makes possible. Neither is built.**
+
+1. **The graft rule at full fidelity.** As gated, it checks the edges this document *draws*. Over the
+   call closure it would check every call a tick actually makes: for each root, the closure must stay
+   inside what its component is granted. That is the difference between verifying a picture and
+   verifying the system — and it is the honest successor to `spec_consistency`.
+2. **The deduplication measure — the one north-star goal with nothing behind it.** "Why this is fully
+   deduplicated" is asserted and unmeasured. But `closure(clientTick) ∩ closure(presentTick)` is
+   precisely the code that must exist on *both* machines when the two are split, and the design says
+   that intersection should be `scene` plus the foundations and nothing else. Anything else in it is a
+   leak, and its size is a number that can only go down. This is the measurement the north star has
+   been missing, and it falls straight out of treating ticks as roots.
+
+Both need a real call graph rather than an include graph — `grant-sweep` measures *permission*, and a
+closure measures *use*. They are different questions, and the gap between them is where dead grants and
+undeclared coupling both hide.
+
 ### What actually crosses each seam
 
 The two seams carry different currency, and conflating them is the frame-streaming mistake in another
@@ -1297,6 +1340,16 @@ Two properties of that table are load-bearing:
 ---
 
 ## 6. Verification — NOT YET DESIGNED
+
+Two candidates are named rather than blank, both falling out of Section 5's call-tree framing and both
+requiring a real call graph rather than an include graph:
+
+- **The graft rule at full fidelity** — check each element root's call closure against its component's
+  grants, instead of only the edges this document draws.
+- **The deduplication measure** — `closure(clientTick) ∩ closure(presentTick)`, which should be `scene`
+  plus the foundations and nothing else. The one north-star goal with no instrument today.
+
+Everything else in this section is still outstanding.
 
 Constraints known so far:
 
