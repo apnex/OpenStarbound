@@ -63,8 +63,14 @@ FROM_APPLICATION = {
 # `server` was missing here until 2026-08-01, so source/server/ mapped to None and the component
 # reported UNVERIFIABLE ("not in the tree") while four of its files sat in the tree. A component the
 # instrument cannot see is indistinguishable from one that agrees with the table.
-PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "client",
-               "server")
+PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "server")
+
+# Directories whose target-state component has a DIFFERENT NAME. `source/client/` holds
+# ClientApplication, which the target state calls `participant`: after `colocation` took the embedded
+# authority and the entrypoints took the UI, what is left owns the participant's clock and composes
+# its parts. It is not a network client -- a self-hosting one embeds its own universe -- and the
+# document's own term of art was already "participant" everywhere else.
+RENAMED = {"client": "participant"}
 
 # Declared in the design but with no files yet. Listed so they are reported UNVERIFIABLE rather than
 # quietly absent -- an unlisted name would just look like a typo in the grant table.
@@ -91,11 +97,11 @@ REMOVING = {
     ("windowing", "gpu"): (1, "GuiContext holds a RendererPtr"),
     ("frontend", "rendering"): (9, "four named files reach WorldPainter/EnvironmentPainter"),
     ("frontend", "gpu"): (1, "Cinematic holds a RendererPtr"),
-    ("client", "rendering"): (1, "ClientApplication names a painter"),
-    ("client", "gpu"): (1, "RenderingLuaBindings calls app->renderer()"),
-    ("client", "host_sdl"): (1, "the STAR_MAIN_APPLICATION macro moves to client_opengl"),
-    ("client", "frontend"): (11, "the UI is composed in by an entrypoint that wants one"),
-    ("client", "windowing"): (1, "same: `client_agent` must link no widget toolkit"),
+    ("participant", "rendering"): (1, "ClientApplication names a painter"),
+    ("participant", "gpu"): (1, "RenderingLuaBindings calls app->renderer()"),
+    ("participant", "host_sdl"): (1, "the STAR_MAIN_APPLICATION macro moves to client_opengl"),
+    ("participant", "frontend"): (11, "the UI is composed in by an entrypoint that wants one"),
+    ("participant", "windowing"): (1, "same: `client_agent` must link no widget toolkit"),
     ("host_sdl", "gpu"): (1, "the host should not know what a Renderer is"),
     ("host_sdl", "gpu_opengl"): (1, "the entrypoint constructs the backend, not the host"),
 }
@@ -109,6 +115,8 @@ def owner_of(path):
             if path.name in names:
                 return component
         return None            # discord/ and anything unclaimed
+    if top in RENAMED:
+        return RENAMED[top]
     return top if top in PASSTHROUGH else None
 
 

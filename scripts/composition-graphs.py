@@ -63,16 +63,31 @@ def palette(text):
         raise SystemExit("composition-graphs: no compile projection in the spec -- cannot read the palette")
     end = text.find("```", start)
     found = dict(CLASSDEF_LINE.findall(text[start:end if end > 0 else len(text)]))
-    missing = [c for c in CLASS_OF.values() if c not in found]
+    missing = [c for c in list(CLASS_OF.values()) + ["kElement"] if c not in found]
     if missing:
         raise SystemExit("composition-graphs: the compile diagram declares no %s -- palette incomplete"
                          % ", ".join(missing))
-    return "\n".join("  classDef %s %s" % (c, found[c]) for c in CLASS_OF.values())
+    return "\n".join("  classDef %s %s" % (c, found[c])
+                     for c in list(CLASS_OF.values()) + ["kElement"])
 
 COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
     r')\s*\|\s*([^|]+?)\s*\|')
 GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
+
+# LOOP elements, so a composition diagram shows not just what a binary CONTAINS but what in it has a
+# clock. A reader asking "what drives this?" could not answer it from these diagrams before; the
+# whole-system map showed the loops and the per-composition views dropped them.
+ELEMENT_ROW = re.compile(
+    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*LOOP\s*\|\s*(\w+)\s*\|\s*`(\w+)`\s*\|\s*`\w+`\s*\|')
+
+
+def loops_of(text):
+    """-> owner component -> [(loop name, cadence)]. Empty is legal: most components own no clock."""
+    out = {}
+    for name, cadence, owner in ELEMENT_ROW.findall(text):
+        out.setdefault(owner, []).append((name, cadence))
+    return out
 
 
 def parse(text):
@@ -93,7 +108,7 @@ def closure(root, comp, grants):
     return seen
 
 
-def diagram(entry, comp, grants, classdef):
+def diagram(entry, comp, grants, classdef, loops):
     linked = closure(entry, comp, grants)
     absent = sorted(set(comp) - linked)
     out = ["```mermaid", "%%%% composition: %s" % entry, "flowchart TD"]
@@ -103,7 +118,18 @@ def diagram(entry, comp, grants, classdef):
             continue
         out.append('  subgraph Z_%s ["%s"]' % (zone, ZONE_TITLE[zone]))
         for n in members:
-            out.append('    %s["<b>%s</b><br/>%s"]' % (n, n, comp[n]["kind"]))
+            mine = loops.get(n, ())
+            if not mine:
+                out.append('    %s["<b>%s</b><br/>%s"]' % (n, n, comp[n]["kind"]))
+                continue
+            # Same shape as the compile map: a component that owns a clock becomes a container with
+            # its loops inside. Subgraphs are legal edge endpoints in mermaid, so the id is unchanged
+            # and every grant edge below still resolves.
+            out.append('    subgraph %s ["<b>%s</b> · %s"]' % (n, n, comp[n]["kind"]))
+            for lname, cadence in sorted(mine):
+                out.append('      %s_%s(["<b>%s</b> · LOOP<br/><i>cadence %s</i>"])'
+                           % (n, lname, lname, cadence))
+            out.append("    end")
         out.append("  end")
     for a in sorted(linked):
         for b in sorted(grants.get(a, ())):
@@ -114,6 +140,9 @@ def diagram(entry, comp, grants, classdef):
         members = sorted(n for n in linked if comp[n]["kind"] == kind)
         if members:
             out.append("  class %s %s" % (",".join(members), CLASS_OF[kind]))
+    elems = ["%s_%s" % (n, ln) for n in sorted(linked) for ln, _c in loops.get(n, ())]
+    if elems:
+        out.append("  class %s kElement" % ",".join(sorted(elems)))
     out.append("```")
     out.append("")
     out.append("**%s links %d of %d components.** Not linked: %s"
@@ -130,7 +159,8 @@ def blocks(text):
     if len(comp) < 15:
         raise SystemExit("composition-graphs: only %d components parsed; the register regex has "
                          "regressed" % len(comp))
-    return {e: diagram(e, comp, grants, palette(text)) for e in entries}
+    loops = loops_of(text)
+    return {e: diagram(e, comp, grants, palette(text), loops) for e in entries}
 
 
 def apply(text, generated, inject):
