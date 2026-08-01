@@ -441,6 +441,34 @@ Two arrow kinds, because they mean different things:
 derive from it, so the grant is still required and `grant-sweep` still checks for it. The thick arrow
 classifies *why* a dependency exists — it does not remove one.
 
+**The diagram is compile time, and only compile time.** Every arrow is an `#include` permitted by a
+grant list, enforced by `INCLUDE_DIRECTORIES`, and a violation is a compile error. **No arrow means
+"calls" and no arrow means "sends data to."** Section 4 does carry a runtime model as well — the
+element register and its clocks, the driver's shape, and what crosses each seam — but that is a
+*different graph*, and the design's value lives in the places where the two disagree:
+
+| | compile-time graph | runtime graph |
+|---|---|---|
+| edge means | A may include B | A calls B, or sends data to B |
+| lives in | the diagram and the grant table | the element register, the driver shape, the seam-currency table |
+| enforced by | `INCLUDE_DIRECTORIES` — a compile error | nothing mechanical; it is a description |
+| `client` ↔ `rendering` | **no edge in either direction** | `client` → `rendering`, every frame |
+| `host_sdl` ↔ `client` | `host_sdl --> host`, and `client --> host` | `host_sdl`'s `frameLoop` **calls** `client` |
+| `client_opengl` | the most edges of any component | **not present at all** after construction |
+
+Those last three rows are the whole design in miniature:
+
+- **A seam is a runtime edge with no compile edge.** `client` grants name no backend and `rendering`
+  never names `client`; both point at `presentation` instead. The frame-by-frame flow between them
+  crosses a boundary the compiler proves neither side can reach directly. That is what buys the
+  network split for free — nothing has to be re-plumbed, because nothing was plumbed.
+- **Implements arrows point opposite to the calls.** `host_sdl ==> host` is a compile dependency
+  pointing *at* the contract, while the runtime call goes the other way, from the driver into the
+  client. Reading `==>` as a call direction inverts the system.
+- **Entrypoints are all compile-time and no runtime.** `client_opengl` names five components and
+  executes nothing after wiring. A component whose two graphs disagree that completely is doing its
+  job — which is why "the entrypoint passes the scene to the backend" is the wrong picture.
+
 **And it is measurable rather than asserted.** An implements edge is an inheritance edge: a class in
 the backend deriving from a base declared in the contract. The three that exist today all check out —
 `Controller : public ApplicationController`, `OpenGlRenderer : public Renderer`, and four separate
@@ -530,7 +558,6 @@ flowchart TD
   shell --> host
   scene --> base
   contract --> scene
-  gpu --> base
   game --> base
   game --> scene
   win --> game
@@ -962,7 +989,7 @@ register above is enforced by the build rather than by review:
 | `client` | core, base, platform, game, windowing, frontend, presentation, scene, host | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
-| `server` | core, base, game | **three grants, and no presentation slot at all** |
+| `server` | core, base, game, platform | **no presentation slot at all**; `platform` is reached only transitively, through `game` |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported

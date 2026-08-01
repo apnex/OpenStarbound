@@ -60,7 +60,11 @@ FROM_APPLICATION = {
 }
 
 # Target components that exist today under their own name and need no remapping.
-PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "client")
+# `server` was missing here until 2026-08-01, so source/server/ mapped to None and the component
+# reported UNVERIFIABLE ("not in the tree") while four of its files sat in the tree. A component the
+# instrument cannot see is indistinguishable from one that agrees with the table.
+PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "client",
+               "server")
 
 # Declared in the design but with no files yet. Listed so they are reported UNVERIFIABLE rather than
 # quietly absent -- an unlisted name would just look like a typo in the grant table.
@@ -112,7 +116,9 @@ def scan():
     UNUSED -- a false negative that would have argued for deleting a grant the build needs."""
     owner_of_header, files, headers = {}, collections.Counter(), {}
     paths = []
-    for p in SRC.rglob("Star*"):
+    # Not rglob("Star*"): entry points are named main.cpp, and one of them holds the server's loop.
+    # owner_of() filters everything out of scope, so widening the glob only adds real files.
+    for p in SRC.rglob("*"):
         if p.suffix not in CODE_EXT:
             continue
         rel = p.relative_to(SRC)
