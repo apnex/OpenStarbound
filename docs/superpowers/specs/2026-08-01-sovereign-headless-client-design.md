@@ -924,8 +924,58 @@ Constraints known so far:
 
 ## 6. Risks
 
-**The central one.** `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`,
-`SkyRenderData` and `Particle` have not been assessed. Some are appearance data wearing a game name and
+### The vocabulary assessment — RESOLVED, and the risk shrank
+
+The six types are now assessed against the tree rather than by name. **Five of six are clean and none
+blocks D6.** Every type crossing the seam was measured for virtuals, wire-readiness and its `game`
+dependency footprint; all twelve headers have **zero virtuals** — every one is data or a database,
+none is an interface.
+
+| type | verdict | evidence |
+|---|---|---|
+| `EntityDrawables` | **CLEAN** | `{EntityHighlightEffect, Map<EntityRenderLayer, List<Drawable>>}` — names no entity |
+| `OverheadBar` | **CLEAN** | same header, same dependency set |
+| `SkyRenderData` | **CLEAN** | already carries `DataStream`; one dep (`SkyParameters`) |
+| `ParallaxLayer` | **CLEAN** | already carries `DataStream`; one dep — `PlantDatabase`, which is odd and worth a look |
+| `Particle` | **CLEAN as a type** | cascades to core: `Particle → Animation → Drawable → core`. Its problem is the raw `List<Particle> const*` pointer, which is a **shape** defect (Section 3), not a vocabulary one |
+| `RenderTileArray` | **NEEDS NARROWING** | a clean `typedef MultiArray<RenderTile, 2>` trapped in `StarWorldTiles.hpp`, which drags in `WorldLayout`, `TileSectorArray`, `TileDamage`, `LiquidTypes` — simulation machinery. Extract the typedef and its `RenderTile` into their own header |
+
+**Two headers are already T2-clean today**, depending on `core` and nothing else: `Drawable` (6 core
+includes, wire-ready) and `ImageMetadataDatabase` (6 core includes). They move for free.
+
+**And most of the rest is a cascade, not twelve separate jobs.** Move `Drawable` and `GameTypes` down
+and `Animation`, `EntityDrawables`, `OverheadBar`, `WorldCamera`, `Particle` and `WeatherTypes` all
+become clean behind them. `GameTypes` is the recurring dependency — it is coordinate and geometry
+vocabulary, already listed as ambient in `scripts/arch-graph.py`, and it belongs in `scene`.
+
+### A free win: the scariest edge is a dead include
+
+`StarWorldRenderData.hpp` includes `StarEntity.hpp` — the simulation's polymorphic base, and on paper
+the single dependency that would kill D6. **It is vestigial.** The struct holds no member naming
+`Entity`, and no `Entity` token appears anywhere in the header outside comments and the include line
+itself; `EntityDrawables` moved to `StarEntityRenderingTypes.hpp` under task #191, which the header
+includes separately.
+
+Deleting one line removes the heaviest header's worst dependency at zero cost. It is the first
+sequencing step and it is byte-identical by construction.
+
+### What remains genuinely hard
+
+**Resources, not vocabulary.** `Root`, `MaterialDatabase`, `LiquidsDatabase` and
+`MaterialRenderProfile` do not move — they are **injected**. The painters receive what they need
+instead of reaching a singleton, which is the `Root` cluster already identified: four files,
+three call shapes.
+
+**`TileDrawer`** — a singleton read plus the one inheritance edge leaving the render subsystem
+(task #191). Unchanged as the hardest residue.
+
+**`WorldTiles`** — must be split so `RenderTileArray` can leave without dragging the tile simulation
+with it.
+
+---
+
+**Superseded.** `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`,
+`SkyRenderData` and `Particle` were unassessed when this section was written. Some are appearance data wearing a game name and
 will move as easily as `Drawable`. Others encode simulation concepts and will need **narrowing rather
 than relocation** — that is the shape work in the boundary document's Section 6, promoted into scope. One or two
 may not move at all, which would leave the frame carrying a small game-typed residue and push
@@ -946,8 +996,8 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    reason the rule exists.
 2. **Section 5, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
-3. **The vocabulary assessment** — the six unresolved types in Section 6; cheap-move vs needs-narrowing vs
-   cannot-move. **This gates Section 4.**
+3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
+   D6. See Section 6. Section 4 is no longer gated by it.
 4. **Sequencing** — the order of extraction, each step provable and reversible.
 5. **Out-of-scope statement** — explicit list of what this spec does not cover.
 6. **Cleanup ledger** — what the contract exposes as dead, and where it gets removed.
