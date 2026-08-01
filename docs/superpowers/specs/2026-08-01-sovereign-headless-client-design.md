@@ -296,7 +296,7 @@ same string appears in the diagram, the register and the grant table, and no com
 | KIND | the rule it carries |
 |---|---|
 | **FOUNDATION** | depended on by everything above it; names nothing above itself |
-| **CONTRACT** | declarations only — no `.cpp`, no library target; may name only foundation types |
+| **CONTRACT** | declares an interface and may name only foundation types. Any `.cpp` holds **value-type constructors and trivial defaults only** — never a backend's behaviour — and its size is metered: `platform` 0, `host` 41, `gpu` 89 lines, ratcheting down |
 | **BACKEND** | implements a contract; interchangeable with its siblings; named only by an ENTRYPOINT |
 | **LIBRARY** | ordinary code, named directly by its consumers, not interchangeable |
 | **ENTRYPOINT** | an executable; the only place a backend may be named |
@@ -360,14 +360,19 @@ flowchart TD
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
     app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
-    platform["<b>platform</b><br/>CONTRACT<br/><i>host and platform services</i>"]
+    host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
+    platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
     base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
     core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
   end
 
   base --> core
   platform --> core
+  host --> platform
+  app --> host
   app --> platform
+  win --> host
+  shell --> host
   contract --> base
   gpu --> base
   game --> base
@@ -394,7 +399,7 @@ flowchart TD
   classDef kLibrary    fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   class core,base kFoundation
-  class platform,contract,gpu kContract
+  class platform,host,contract,gpu kContract
   class app,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
@@ -444,8 +449,9 @@ Every component in the diagram, in the same reading order.
 |---|---|---|---|---|---|
 | **`core`** | FOUNDATION | SUBSTRATE | language and containers | unchanged (216 files, 56,149 lines) | **KEEP** |
 | **`base`** | FOUNDATION | SUBSTRATE | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
-| **`platform`** | CONTRACT | SUBSTRATE | host and platform services | today's 4 headers **+** `StarApplicationController.hpp` | **GAINS a contract** — see below |
-| **`application`** | BACKEND | SUBSTRATE | the PC host implementation | today's `application` minus 10 render files and one contract header | **SPLIT** — sheds 4,291 lines, keeps ~3,000 |
+| **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | unchanged (4 headers, 142 lines, 27 pure virtuals) | **KEEP** — the model the other contract directories copy |
+| **`host`** | CONTRACT | SUBSTRATE | the host contract | `StarApplication.hpp`, `StarApplicationController.hpp`, `StarApplication.cpp` — 3 files, 209 lines, out of `application` | **SPLIT OUT** — see below; already has 8 consumers in 3 directories |
+| **`application`** | BACKEND | SUBSTRATE | the PC host implementation | today's `application` minus 10 render files and 3 host files | **SPLIT** — sheds 4,500 lines, keeps 12 files / 2,872 lines |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
@@ -459,7 +465,8 @@ Every component in the diagram, in the same reading order.
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — thin |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — thin, plus a null host implementation |
 
-Three contracts, five backends, and the kinds are what make the next finding visible.
+Seventeen components: four CONTRACTs, five BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
+The kinds are what make the next finding visible.
 
 ### The pattern already exists — it just has one home out of three
 
@@ -474,17 +481,44 @@ contract-and-backend. It does it three times. Only one of the three has a direct
 
 `source/application` is a BACKEND that has swallowed two CONTRACTs. That is the whole of the naming
 confusion in one sentence, and it means **this design is not introducing a pattern — it is finishing
-one the codebase started.**
+one the codebase started.** After the split those three pre-existing contracts each have a directory
+and a grant list — `platform`, `host`, `gpu` — and `presentation` is the only genuinely new one.
 
-`ApplicationController` moves to `platform` rather than to a new directory: its 35 methods are window,
-cursor, clipboard, audio-device and vsync control, and four of them already return `platform` types
-(`statisticsService`, `userGeneratedContentService`, `desktopService`). It is a host contract sitting
-one directory too high, and `platform` is where it belongs.
+### Why `host` is its own directory and not part of `platform`
 
-That relocation is also load-bearing for headless. `client` calls
-`applicationInit(ApplicationControllerPtr)`, so a headless shell needs a host implementation of its
-own. Because `ApplicationController` is already abstract, that is 35 no-op methods rather than a
-design problem — and it is why `client_headless` is "thin **plus a null host**" in the register above.
+A first draft folded `ApplicationController` into `platform`. Two measurements killed that:
+
+- **It is a consumer of `platform`, not a peer.** `StarApplicationController.hpp` includes all four
+  platform service headers and returns all four types. Folding it in would put a thing and its own
+  dependency inside one directory — dissolving the boundary rather than moving it.
+- **`platform`'s duty would have become "host **and** platform services"** — a Law-of-One violation by
+  the axiom's own test.
+
+`host` is also not a new component. **`ApplicationController` is already named in 8 files across 3
+directories outside `application`:** `client` (2, `applicationInit`), `frontend` (4, clipboard and
+audio input), `windowing` (2, cursor and clipboard). What is new is a directory and a grant list.
+
+`Application` moves with it, because the two are halves of one contract: the host runs an
+`Application` and hands it an `ApplicationController`, and they share the `WindowMode` enum. Splitting
+them would leave a cycle between `host` and `application`. `Application` is also what makes
+`client` sovereign: `class ClientApplication : public Application` today, so without the move `client`
+would need a grant on `application` and could name SDL.
+
+`StarMainApplication.hpp` stays behind. It is the `STAR_MAIN_APPLICATION` macro that defines
+`main()`/`WinMain()` — an entrypoint artifact, not a library one — so it belongs to `client_opengl`,
+and `client`'s current dependency on `application` disappears with the split rather than needing a
+grant.
+
+### The grant table was wrong, and the reason matters
+
+Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 4 as first
+published would not have compiled.**
+
+Every other artifact here was checked against an instrument: the diagram's edges came from a measured
+include sweep and are machine-verified against the register. The grant table's contents were derived
+from the design instead — and that is precisely where the defect sat. The rule the render work already
+runs under, *no document may state a current-state number an instrument cannot measure*, applies to
+grants as well as numbers. Section 5 must gate the grant table against a measured sweep.
 
 **The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
 That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
@@ -568,16 +602,19 @@ register above is enforced by the build rather than by review:
 
 | directory | granted | the statement it makes |
 |---|---|---|
+| `platform` | core | vendor services declared, never implemented here |
+| `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
+| `application` | core, platform, host | the PC backend implements both contracts above it |
 | `presentation` | core, base | the contract cannot name a game type — D6, enforced |
 | `gpu` | core, base | the GPU contract cannot name a game type either |
 | `gpu_opengl` | core, base, gpu, extern | GL is named here and nowhere above |
 | `rendering` | core, base, presentation, gpu | **`game` and `application` are both revoked** |
 | `transcript` | core, base, presentation | the recorder cannot see a GPU at all |
 | `game` | core, base, presentation | the simulation may speak the vocabulary, never a backend |
-| `windowing`, `frontend` | + game, presentation | they emit into the frame; they do not draw |
-| `client` | core, base, game, windowing, frontend, presentation | **names no backend** — not `rendering`, not `transcript`, not `gpu` |
+| `windowing`, `frontend` | + game, presentation, **host** | they emit into the frame and use clipboard, cursor and audio input; they do not draw |
+| `client` | core, base, game, windowing, frontend, presentation, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu`, not `application` |
 | `client_opengl` | + rendering, gpu_opengl, application | the only place GL and SDL are named together |
-| `client_headless` | + transcript | the only place the recorder is named |
+| `client_headless` | + transcript | the only place the recorder is named; supplies its own `host` implementation |
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
