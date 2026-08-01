@@ -853,20 +853,26 @@ register above is enforced by the build rather than by review:
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
 | `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `host_sdl` | core, host, **platform**, platform_pc | the SDL host; the only place SDL is named. `platform` because `ApplicationController`'s four service accessors return its types |
-| `host_null` | core, host, **platform** | a host that can name no device at all — it returns `nullptr` for all four services, but must still name their types to override |
-| `platform_pc` | core, platform | the vendor backend; the only place Steam and Discord are named |
+| `host_sdl` | core, host, platform, platform_pc | the SDL host; the only place SDL is named |
+| `host_null` | core, host, platform | names no device at all — returns `nullptr` for all four services, but must still name their types to override |
+| `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
 | `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
-| `gpu` | core, base | the GPU contract cannot name a game type either |
-| `gpu_opengl` | core, base, gpu, extern | GL is named here and nowhere above |
+| `gpu` | core | the GPU contract cannot name a game type either |
+| `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above |
 | `rendering` | core, base, presentation, scene, gpu | **`game` is revoked, and so is the `application` it depends on today** |
 | `transcript` | core, base, presentation, scene | the recorder cannot see a GPU at all |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
-| `game` | core, base, **scene** | **the simulation cannot name a presentation interface at all** |
-| `windowing`, `frontend` | + game, scene, **host** | they emit into the frame and use clipboard, cursor and audio input; they do not draw |
-| `client` | core, base, game, windowing, frontend, presentation, scene, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
-| `client_opengl` | + rendering, gpu_opengl, host_sdl | the only place GL and SDL are named together |
-| `client_headless` | + transcript, host_null | the only place the recorder is named |
+| `game` | core, base, platform, **scene** | **the simulation cannot name a presentation interface at all** |
+| `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
+| `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
+| `client` | core, base, platform, game, windowing, frontend, presentation, scene, host | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
+| `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
+| `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
+
+**Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
+above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
+four such rows as missing the grants they appeared to have. A grant list that is not complete is not
+a grant list.
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are

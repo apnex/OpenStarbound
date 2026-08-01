@@ -275,6 +275,15 @@ ADD_TEST (NAME arch_graph_fresh COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/arch-graph.py
           --check docs/architecture/system-boundaries.md)
 
+# GRANT SWEEP. The headless-client design's grant table is the one artifact in it with no instrument
+# behind it, and two defects sat there: `host` granted to nobody while 8 files needed it, and both
+# host backends missing `platform`. Neither would have compiled. This maps today's files onto their
+# target-state owners, resolves includes TRANSITIVELY (the preprocessor does), and fails on any
+# grant the tree needs but the table omits -- plus a ratchet on the 43 crossings the design exists
+# to delete, which may only go down.
+ADD_TEST (NAME grant_sweep COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/grant-sweep.py --check)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -315,7 +324,8 @@ ADD_TEST (NAME render_surface_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIR
 SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
-                                   boundary_ratchet boundary_fresh arch_graph_fresh)
+                                   boundary_ratchet boundary_fresh arch_graph_fresh
+                                   grant_sweep)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

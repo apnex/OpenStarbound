@@ -73,3 +73,9 @@ jobs:
       # which the generator would draw something confidently wrong.
       - name: arch_graph_fresh -- the system-boundary diagrams match the tree
         run: python3 scripts/arch-graph.py --check docs/architecture/system-boundaries.md
+
+      # The grant table is the one artifact in the headless-client design with no instrument behind
+      # it, and two defects sat there -- both would have failed to compile. Transitive, because the
+      # preprocessor is; plus a ratchet on the crossings the design exists to delete.
+      - name: grant_sweep -- the headless-client grant table matches the tree
+        run: python3 scripts/grant-sweep.py --check
