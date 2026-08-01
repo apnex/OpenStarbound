@@ -187,6 +187,11 @@ flowchart LR
   class Shell,Panes,PS pres
 ```
 
+**Arrows here are calls, not includes** — the opposite convention to Section 4's dependency graph,
+which is why every edge in this one is labelled with the call it represents. The two diagrams answer
+different questions: this one asks *who invokes whom at runtime*, Section 4 asks *who may name whom at
+compile time*.
+
 **Consequences.**
 
 - **Surface B is a non-problem.** Those scripts exist only because panes exist. Delete presentation and
@@ -300,8 +305,13 @@ same string appears in the diagram, the register and the grant table, and no com
 a CMake variable or a lint rule, and wrapped by a line break. `ENTRYPOINT`, never `ENTRY POINT`. The
 same rule applies to any kind added later.
 
-Arrows point downstream — `A --> B` means **B may include A**. **Colour is by kind, not by side** —
-the subgraphs already carry the sides, so colour is spent on the one thing nothing else encodes.
+**`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
+"base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
+and the executables at the top, and an arrow that has to be added to make something compile is a
+dependency that has to be justified.
+
+**Colour is by kind, not by side** — the subgraphs already carry the sides, so colour is spent on the
+one thing nothing else encodes.
 
 ```mermaid
 flowchart TD
@@ -342,28 +352,28 @@ flowchart TD
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
   end
 
-  core --> base
-  core --> platform
-  platform --> app
-  base --> contract
-  base --> gpu
-  base --> game
-  contract --> game
-  game --> win
-  win --> front
-  front --> shell
-  contract --> rend
-  contract --> tr
-  contract --> shell
-  gpu --> rend
-  gpu --> glb
-  gpu --> sdlb
-  shell --> cgl
-  shell --> chl
-  rend --> cgl
-  glb --> cgl
-  app --> cgl
-  tr --> chl
+  base --> core
+  platform --> core
+  app --> platform
+  contract --> base
+  gpu --> base
+  game --> base
+  game --> contract
+  win --> game
+  front --> win
+  shell --> front
+  shell --> contract
+  rend --> contract
+  rend --> gpu
+  tr --> contract
+  glb --> gpu
+  sdlb --> gpu
+  cgl --> shell
+  cgl --> rend
+  cgl --> glb
+  cgl --> app
+  chl --> shell
+  chl --> tr
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
@@ -376,6 +386,10 @@ flowchart TD
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
 ```
+
+The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
+edges that carry information are drawn. `extern` is omitted entirely. The full per-directory statement
+is the grant table below, and every grant in it is reachable along these arrows.
 
 **No arrow runs between the simulation side and the presentation backends.** That absence is the
 design. `client_opengl` is the only box that touches both arms, which is what makes it the only box
