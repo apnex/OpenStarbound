@@ -1,9 +1,11 @@
 # Sovereign Decoupled Headless Client — Target-State Design
 
-> **STATUS: WORK IN PROGRESS.** Section 1 (where the boundary goes) is Director-approved.
-> Sections 2–6 are not yet designed. Written mid-brainstorm at the Director's request so that
-> nothing is lost to a context compaction. Do not treat the unwritten sections as omissions —
-> they are outstanding work, listed in Section 7.
+> **STATUS: WORK IN PROGRESS. NOTHING IS APPROVED.** Director's rule, adopted 2026-08-01:
+> **approval is aggregate only — no section is approved until the whole can be reasoned with
+> together.** Section 1 was stamped approved earlier and has been returned to PROVISIONAL, because
+> the model beneath it moved. Sections marked PROVISIONAL are designed and awaiting that aggregate
+> review; sections marked NOT YET DESIGNED are outstanding work, listed in Section 7. Do not treat
+> either as an omission.
 
 **Goal.** Make presentation a replaceable component behind a stated contract, so that a Starbound
 client can run with **no presentation linked at all** — and so that a different presentation
@@ -40,7 +42,7 @@ exists to serve.**
 
 ---
 
-## 1. Where the boundary goes — APPROVED
+## 1. Where the boundary goes — PROVISIONAL
 
 ### The boundary is at *drawing*, not at *UI*
 
@@ -151,6 +153,30 @@ the T2 shell that owns the GL context. Unifying the pixel side takes the backend
 which is precisely what D5 requires — so **the naming question and the injection question are the same
 question**, and they have to be answered in that order. See Section 4's ordering constraint.
 
+### What supersedes this section
+
+Everything measured above stands. **The contract shape does not.**
+
+`present(Frame const&)` hands the presentation side a finished, camera-resolved frame. That welds the
+pixel rate to the assembly rate: presentation can only rasterise what it was given, when it was given
+it. Over a network it degrades to frame streaming — bandwidth O(screen), and every hitch in the sim
+appears as a hitch on the glass.
+
+Section 4 replaces it with a **scene delta**, which lets the presentation side own its own clock and
+resample locally. Under that model:
+
+- **frame assembly moves to the presentation side.** The claim above — *"the contract begins after
+  assembly"* — reverses.
+- **`present(Frame const&)` becomes the degenerate case**: a scene delta already resolved for one
+  camera at one instant, with the delta being "everything". It is the MVP rung of a taller ladder, not
+  a wrong answer.
+- **`RenderCallback` is unaffected.** The measurement holds — 39 files, all in `game` — it simply
+  pushes scene items rather than drawables.
+
+The `windowing`/`frontend` placement, the twelve-includes measurement, and the `Drawable` and
+`ImageMetadataDatabase` evidence are all independent of which payload crosses, so they carry forward
+unchanged.
+
 ---
 
 ## 2. The client Lua surface — context finding
@@ -253,7 +279,7 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 
 ---
 
-## 4. Structure and the naming register — PROPOSED
+## 4. Structure and the naming register — PROVISIONAL
 
 These are the names the rest of the work is designed against. Adopting them forces renames,
 consolidations and splits; each is listed with its action so nothing arrives by surprise.
@@ -324,6 +350,27 @@ Neither axis reuses **TIER** (T0–T5, `docs/architecture/system-boundaries.md`)
 the render decomposition). Both words are already load-bearing elsewhere in this repository and mean
 something else.
 
+### ALTITUDE — what a box actually is
+
+A **COMPONENT is a directory with its own grant list.** Not a class, file, module or package, and the
+reason is mechanical rather than stylistic: `INCLUDE_DIRECTORIES` is per-directory, so the directory is
+the smallest unit at which a boundary is a *compile error* rather than an opinion. That is why `gpu` is
+a component and `Renderer` — the actual interface — is not: `Renderer` cannot be granted or denied to
+anyone, but the directory holding it can.
+
+Some things the design must place are smaller than that, so there is a second altitude:
+
+| ALTITUDE | is | violating its boundary is |
+|---|---|---|
+| **COMPONENT** | a directory with its own grant list | **a compile error** |
+| **ELEMENT** | a named class, interface, type or function inside a component | **a review comment** |
+
+This maps onto the boundary document's existing ENFORCED / PROVEN / ASPIRATIONAL verdicts, and it
+supplies the rule for growing this diagram: **an ELEMENT is promoted to a COMPONENT when its boundary
+becomes worth a compile error.** Boxes get added by that test, not by feel.
+
+Elements are drawn as rounded, dashed boxes attached to their owner with a dotted line.
+
 **`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
 "base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
 and the executables at the top, and an arrow that has to be added to make something compile is a
@@ -335,9 +382,11 @@ both taxonomies at once without either being inferred from the other.
 ```mermaid
 flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
-    shell["<b>client</b><br/>LIBRARY<br/><i>composition and tick loop</i>"]
+    shell["<b>client</b><br/>LIBRARY<br/><i>owns the client frame</i>"]
+    simtick(["<b>simTick</b> · ELEMENT<br/><i>the deterministic sim tick</i>"])
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+    nullhost(["<b>nullHost</b> · ELEMENT<br/><i>a host that shows nothing</i>"])
   end
 
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
@@ -347,19 +396,22 @@ flowchart TD
   end
 
   subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
-    rend["<b>rendering</b><br/>BACKEND<br/><i>draws the world</i>"]
+    rend["<b>rendering</b><br/>BACKEND<br/><i>turns a scene into pixels</i>"]
+    presenttick(["<b>presentTick</b> · ELEMENT<br/><i>resample · camera · assemble · paint</i>"])
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
     glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
     sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
   end
 
   subgraph Z_SEAM ["SEAM — the declared boundaries"]
+    scene["<b>scene</b><br/>CONTRACT<br/><i>what exists, where, moving how</i>"]
     contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
     gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
     app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
+    frameloop(["<b>frameLoop</b> · ELEMENT<br/><i>pump · tick · swap · idle</i>"])
     host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
     platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
     base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
@@ -373,10 +425,11 @@ flowchart TD
   app --> platform
   win --> host
   shell --> host
-  contract --> base
+  scene --> base
+  contract --> scene
   gpu --> base
   game --> base
-  game --> contract
+  game --> scene
   win --> game
   front --> win
   shell --> front
@@ -393,16 +446,23 @@ flowchart TD
   chl --> shell
   chl --> tr
 
+  app -.- frameloop
+  shell -.- simtick
+  rend -.- presenttick
+  chl -.- nullhost
+
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
   classDef kBackend    fill:#5c2020,stroke:#aa3333,color:#ffe5e5
   classDef kLibrary    fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
-  class platform,host,contract,gpu kContract
+  class platform,host,scene,contract,gpu kContract
   class app,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
+  class frameloop,simtick,presenttick,nullhost kElement
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -452,21 +512,95 @@ Every component in the diagram, in the same reading order.
 | **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | unchanged (4 headers, 142 lines, 27 pure virtuals) | **KEEP** — the model the other contract directories copy |
 | **`host`** | CONTRACT | SUBSTRATE | the host contract | `StarApplication.hpp`, `StarApplicationController.hpp`, `StarApplication.cpp` — 3 files, 209 lines, out of `application` | **SPLIT OUT** — see below; already has 8 consumers in 3 directories |
 | **`application`** | BACKEND | SUBSTRATE | the PC host implementation | today's `application` minus 10 render files and 3 host files | **SPLIT** — sheds 4,500 lines, keeps 12 files / 2,872 lines |
-| **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
+| **`scene`** | CONTRACT | SEAM | what exists, where, moving how | — | **NEW** — the payload vocabulary. Split from `presentation` so the simulation can be granted the vocabulary **without** the interfaces |
+| **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no library target. **Contains no drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
-| **`rendering`** | BACKEND | PERIPHERY | draws the world | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
+| **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
 | **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
 | **`gpu`** | CONTRACT | SEAM | the GPU contract | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
 | **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
-| **`client`** | LIBRARY | SHELL | composition and tick loop | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
+| **`client`** | LIBRARY | SHELL | owns the client frame | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — thin |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — thin, plus a null host implementation |
 
-Seventeen components: four CONTRACTs, five BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
+Eighteen components: five CONTRACTs, five BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
 The kinds are what make the next finding visible.
+
+### Element register
+
+| element | owner | duty |
+|---|---|---|
+| **`frameLoop`** | `application` | pump · tick · swap · idle — the host keeps the outer loop |
+| **`simTick`** | `client` | the deterministic sim tick, fixed timestep |
+| **`presentTick`** | `rendering` | resample · camera · assemble · paint, at display rate |
+| **`nullHost`** | `client_headless` | a host that shows nothing — 35 no-op methods over `host` |
+
+### Three rate authorities, and assembly is not one
+
+Measured in `StarMainApplication_sdl.cpp` today:
+
+| authority | governed by | where |
+|---|---|---|
+| **sim** | `TickRateApproacher(60.0f, 1.0f)` plus `maxFrameSkip` | the frame loop |
+| **paint** | vsync / `SDL_GL_SwapWindow` | the same loop |
+| **audio** | `SDL_OpenAudioDeviceStream` @ 44100 Hz | **already a separate thread** |
+
+Three already, and a fourth when the server is remote. **Frame assembly is not one of them** — it has
+no clock, it is a transform whose rate is set by whoever pulls it. Giving it an authority would be
+inventing a governor with nothing to govern.
+
+Today the sim and paint authorities are *nested and welded*: `updatesBehind = max(round(ticksBehind), 1)`
+means the sim may run ahead of the frame rate but never behind it, so at 144 Hz the simulation is
+forced to 144 ticks per second whether it wants them or not. Under the scene model they unweld — the
+sim keeps its own clock and presentation resamples.
+
+### The vocabulary that was missing: scene
+
+The reason a sovereign pixel loop looked impossible is that only two vocabularies were named, and
+neither works:
+
+| | what it is | interpolatable | names game types |
+|---|---|---|---|
+| **entity state** | the simulation | yes | **yes** — cannot cross, D6 |
+| **scene** | what exists, where, moving how, in which layer, plus the camera target | **yes** | **no** |
+| **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
+
+`Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
+exactly why it is on the unassessed list in Section 6.
+
+With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
+the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
+
+**And the pattern is already proven in this codebase.** `game/StarInterpolationTracker.{hpp,cpp}` —
+held by both `WorldServer` (per client) and `WorldClient` — does exactly this clock reconciliation
+between server and client today: `receiveTimeUpdate(remoteTime)`, `interpolationLeadTime()`,
+`extrapolationHint()`. Applying it at the client↔presentation seam is the same pattern one seam
+further out, not a new invention.
+
+### What the payload choice actually buys
+
+| payload | pixel rate | assembly lives | what can be plugged in | network cost |
+|---|---|---|---|---|
+| finished `Frame` | == sim rate | game side | **any rasteriser** — GL, SDL_GPU, null | O(screen) |
+| **scene delta** | free, resampled | presentation side | **any presentation** — a rasteriser, a text renderer, an audio-only client, a debug visualiser, a bot's perception | **O(change)** |
+
+Because the payload is semantic rather than baked, presentation stops meaning *"something that draws"*
+and starts meaning *"something that experiences"*. A transcript of scene deltas is assertable —
+*"player at (x,y), facing left"* — where a transcript of drawables is a list of quads nobody can test
+against. **The scene model makes D4's recorder genuinely useful rather than merely faithful.**
+
+Co-located, the delta is a memcpy on one thread. Split, it is a packet. Same code, different
+transport — which makes the transport a second implementation proving the contract, exactly as null
+proves the backend.
+
+**Accepted costs**, recorded rather than glossed: a scene vocabulary and delta encoding; a resampler on
+any presentation wanting a free-running rate (an ELEMENT, or a LIBRARY if `transcript` also wants
+fixed-rate recording — open); camera resolution moving to the presentation side; and materially more
+machinery than `present(Frame)`. The Director waived A3's Earned Exposure for this deliberately: the
+payoff is judged worth the forecast surface.
 
 ### The pattern already exists — it just has one home out of three
 
@@ -605,14 +739,15 @@ register above is enforced by the build rather than by review:
 | `platform` | core | vendor services declared, never implemented here |
 | `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
 | `application` | core, platform, host | the PC backend implements both contracts above it |
-| `presentation` | core, base | the contract cannot name a game type — D6, enforced |
+| `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
 | `gpu` | core, base | the GPU contract cannot name a game type either |
 | `gpu_opengl` | core, base, gpu, extern | GL is named here and nowhere above |
-| `rendering` | core, base, presentation, gpu | **`game` and `application` are both revoked** |
-| `transcript` | core, base, presentation | the recorder cannot see a GPU at all |
-| `game` | core, base, presentation | the simulation may speak the vocabulary, never a backend |
-| `windowing`, `frontend` | + game, presentation, **host** | they emit into the frame and use clipboard, cursor and audio input; they do not draw |
-| `client` | core, base, game, windowing, frontend, presentation, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu`, not `application` |
+| `rendering` | core, base, presentation, scene, gpu | **`game` and `application` are both revoked** |
+| `transcript` | core, base, presentation, scene | the recorder cannot see a GPU at all |
+| `scene` | core, base | the payload vocabulary; names no game type and no interface |
+| `game` | core, base, **scene** | **the simulation cannot name a presentation interface at all** |
+| `windowing`, `frontend` | + game, scene, **host** | they emit into the frame and use clipboard, cursor and audio input; they do not draw |
+| `client` | core, base, game, windowing, frontend, presentation, scene, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu`, not `application` |
 | `client_opengl` | + rendering, gpu_opengl, application | the only place GL and SDL are named together |
 | `client_headless` | + transcript | the only place the recorder is named; supplies its own `host` implementation |
 
@@ -683,8 +818,9 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ## 7. What remains to be designed
 
-1. **Section 4's naming register** — written and awaiting Director approval, and provisional until item 3
-   lands: the six unassessed types could add rows or move `presentation` to T3.5.
+1. **Aggregate review.** Per the status rule, Sections 1 and 4 are both PROVISIONAL and neither can be
+   approved alone. The scene model changed Section 1 after it had been stamped approved, which is the
+   reason the rule exists.
 2. **Section 5, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
 3. **The vocabulary assessment** — the six unresolved types in Section 6; cheap-move vs needs-narrowing vs
