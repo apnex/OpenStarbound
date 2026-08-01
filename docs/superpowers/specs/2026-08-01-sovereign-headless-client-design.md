@@ -710,10 +710,14 @@ costume. Naming both precisely is what keeps the split honest:
 
 Two properties of that table are load-bearing:
 
-- **Flow is one-way and nothing returns.** `rendering` hands `client` nothing back. An entrypoint
-  wires the two together once at composition and is never in the frame path — which is what its
-  ENTRYPOINT kind means. A `client_*` that relayed data per frame would be a component with
-  behaviour, and the kind would be a lie.
+- **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
+  returns `client` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
+  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
+  list said "flow is one-way and nothing returns", which contradicted this section's own contract
+  table. Seam 2 genuinely is one-way.
+- **An entrypoint is never in the frame path.** It wires the components together once at composition
+  and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
+  frame would be a component with behaviour, and the kind would be a lie.
 - **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
   knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
 
