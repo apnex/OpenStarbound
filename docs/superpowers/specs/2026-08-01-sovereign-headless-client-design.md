@@ -343,7 +343,7 @@ last grouping axis, and the one the clusters in the diagram draw:
 | **SHELL** | where the two arms rejoin into an executable |
 
 Zone is not a synonym for kind: `platform` is a CONTRACT in the SUBSTRATE, `presentation` is a
-CONTRACT in the SEAM, and `application` is a BACKEND in the SUBSTRATE while `rendering` is a BACKEND
+CONTRACT in the SEAM, and `host_sdl` is a BACKEND in the SUBSTRATE while `rendering` is a BACKEND
 in the PERIPHERY. The two axes are independent by construction, and the register below carries both.
 
 Neither axis reuses **TIER** (T0–T5, `docs/architecture/system-boundaries.md`) or **LAYER** (L1/L2/L3,
@@ -437,8 +437,6 @@ flowchart TD
     audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
-    headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
-    nullhost(["<b>nullHost</b> · ELEMENT<br/><i>a host that shows nothing</i>"])
   end
 
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
@@ -462,8 +460,11 @@ flowchart TD
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
-    app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
+    hostsdl["<b>host_sdl</b><br/>BACKEND<br/><i>the SDL host implementation</i>"]
     frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
+    hostnull["<b>host_null</b><br/>BACKEND<br/><i>a host that shows nothing</i>"]
+    headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
+    platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
     host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
     platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
     base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
@@ -473,8 +474,10 @@ flowchart TD
   base --> core
   platform --> core
   host --> platform
-  app --> host
-  app --> platform
+  hostsdl --> host
+  hostsdl --> platformpc
+  hostnull --> host
+  platformpc --> platform
   win --> host
   shell --> host
   scene --> base
@@ -494,18 +497,18 @@ flowchart TD
   cgl --> shell
   cgl --> rend
   cgl --> glb
-  cgl --> app
+  cgl --> hostsdl
   chl --> shell
   chl --> tr
+  chl --> hostnull
 
-  app -.- frameloop
+  hostsdl -.- frameloop
   shell -.- clienttick
   shell -.- simloop
   shell -.- simtick
   shell -.- audiotick
   rend -.- presenttick
-  chl -.- headlessloop
-  chl -.- nullhost
+  hostnull -.- headlessloop
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
@@ -515,10 +518,10 @@ flowchart TD
   classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
   class platform,host,scene,contract,gpu kContract
-  class app,rend,tr,glb,sdlb kBackend
+  class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
-  class frameloop,headlessloop,simloop,clienttick,simtick,audiotick,presenttick,nullhost kElement
+  class frameloop,headlessloop,simloop,clienttick,simtick,audiotick,presenttick kElement
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -567,7 +570,9 @@ Every component in the diagram, in the same reading order.
 | **`base`** | FOUNDATION | SUBSTRATE | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
 | **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | unchanged (4 headers, 142 lines, 27 pure virtuals) | **KEEP** — the model the other contract directories copy |
 | **`host`** | CONTRACT | SUBSTRATE | the host contract | `StarApplication.hpp`, `StarApplicationController.hpp`, `StarApplication.cpp` — 3 files, 209 lines, out of `application` | **SPLIT OUT** — see below; already has 8 consumers in 3 directories |
-| **`application`** | BACKEND | SUBSTRATE | the PC host implementation | today's `application` minus 10 render files and 3 host files | **SPLIT** — sheds 4,500 lines, keeps 12 files / 2,872 lines |
+| **`host_sdl`** | BACKEND | SUBSTRATE | the SDL host implementation | `StarMainApplication.hpp` + `StarMainApplication_sdl.cpp` — 2 files, 1,491 lines, out of `application` | **SPLIT OUT** — owns `frameLoop` |
+| **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | — | **NEW** — owns `headlessLoop`; 35 no-ops over an already-abstract interface |
+| **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the 10 vendor files — 1,381 lines, out of `application` | **SPLIT OUT** — `application` ceases to exist |
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | — | **NEW** — the payload vocabulary. Split from `presentation` so the simulation can be granted the vocabulary **without** the interfaces |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no library target. **Contains no drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
@@ -579,24 +584,24 @@ Every component in the diagram, in the same reading order.
 | **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
 | **`client`** | LIBRARY | SHELL | owns the client frame | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
-| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — thin |
-| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — a ~10-line driver plus a null host; every other element is shared with the graphical client |
+| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — pure wiring: `host_sdl` + `rendering` + `gpu_opengl`. No elements |
+| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — pure wiring: `host_null` + `transcript`. No elements |
 
-Eighteen components: five CONTRACTs, five BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
+Twenty components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
+Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude is right.
 The kinds are what make the next finding visible.
 
 ### Element register
 
 | element | kind | owner | clock | called by |
 |---|---|---|---|---|
-| **`frameLoop`** | LOOP | `application` | display / vsync | — it *is* a driver |
-| **`headlessLoop`** | LOOP | `client_headless` | wall clock or free-run | — it *is* a driver |
+| **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
+| **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
 | **`simLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
 | **`simTick`** | TICK | `client` | — | `simLoop`, zero-to-N times per driver step |
 | **`clientTick`** | TICK | `client` | — | whichever driver this process has |
 | **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
 | **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
-| **`nullHost`** | — | `client_headless` | — | 35 no-op methods over `host` |
 
 ### The driver, and why there is no `presentLoop`
 
@@ -656,10 +661,9 @@ whoever pulls it. Giving it an authority would be inventing a governor with noth
 
 | | `client_opengl` | `client_headless` |
 |---|---|---|
-| driver | `frameLoop` — pump, step, swap, idle | `headlessLoop` — ~10 lines |
-| host | `application` | `nullHost` — 35 no-ops over an already-abstract interface |
+| host | `host_sdl` — owns `frameLoop`: pump, step, swap, idle | `host_null` — owns `headlessLoop`, ~10 lines plus 35 no-ops |
 | presentation | `rendering` + `gpu_opengl` | `transcript` |
-| **everything else** | `client` · `simLoop` · `clientTick` · `simTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` | **identical** |
+| **everything else** | `client` · `simLoop` · `clientTick` · `simTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
 
 The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
 telemetry model cannot fork between the two clients — which was the whole reason the loop question
@@ -849,18 +853,20 @@ register above is enforced by the build rather than by review:
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
 | `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `application` | core, platform, host | the PC backend implements both contracts above it |
+| `host_sdl` | core, host, platform_pc | the SDL host; the only place SDL is named |
+| `host_null` | core, host | a host that can name no device at all |
+| `platform_pc` | core, platform | the vendor backend; the only place Steam and Discord are named |
 | `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
 | `gpu` | core, base | the GPU contract cannot name a game type either |
 | `gpu_opengl` | core, base, gpu, extern | GL is named here and nowhere above |
-| `rendering` | core, base, presentation, scene, gpu | **`game` and `application` are both revoked** |
+| `rendering` | core, base, presentation, scene, gpu | **`game` is revoked, and so is the `application` it depends on today** |
 | `transcript` | core, base, presentation, scene | the recorder cannot see a GPU at all |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `game` | core, base, **scene** | **the simulation cannot name a presentation interface at all** |
 | `windowing`, `frontend` | + game, scene, **host** | they emit into the frame and use clipboard, cursor and audio input; they do not draw |
-| `client` | core, base, game, windowing, frontend, presentation, scene, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu`, not `application` |
-| `client_opengl` | + rendering, gpu_opengl, application | the only place GL and SDL are named together |
-| `client_headless` | + transcript | the only place the recorder is named; supplies its own `host` implementation |
+| `client` | core, base, game, windowing, frontend, presentation, scene, **host** | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
+| `client_opengl` | + rendering, gpu_opengl, host_sdl | the only place GL and SDL are named together |
+| `client_headless` | + transcript, host_null | the only place the recorder is named |
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
