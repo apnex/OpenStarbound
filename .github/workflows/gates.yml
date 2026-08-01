@@ -79,3 +79,8 @@ jobs:
       # preprocessor is; plus a ratchet on the crossings the design exists to delete.
       - name: grant_sweep -- the headless-client grant table matches the tree
         run: python3 scripts/grant-sweep.py --check
+
+      # The design's loop count was wrong twice, both found by inspection. A count nobody can
+      # recompute is a claim, not a measurement.
+      - name: loop_inventory -- every cadence loop is declared and the spec agrees
+        run: python3 scripts/loop-inventory.py --check

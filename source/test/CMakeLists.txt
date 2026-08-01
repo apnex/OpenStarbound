@@ -284,6 +284,14 @@ ADD_TEST (NAME arch_graph_fresh COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME grant_sweep COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/grant-sweep.py --check)
 
+# LOOP INVENTORY. The design's loop count was wrong twice, both times found by inspection rather than
+# by a check -- once missing the fixed-timestep accumulator nested in the frame loop, once missing
+# UniverseServer::run entirely. This finds every loop that YIELDS TO TIME (sleeps, waits, consults a
+# rate governor, or is a thread body), requires each to be declared, and reconciles the declared set
+# against the *Loop elements the spec models.
+ADD_TEST (NAME loop_inventory COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/loop-inventory.py --check)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -325,7 +333,7 @@ SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
                                    boundary_ratchet boundary_fresh arch_graph_fresh
-                                   grant_sweep)
+                                   grant_sweep loop_inventory)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()
