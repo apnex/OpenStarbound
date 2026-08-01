@@ -747,7 +747,7 @@ Two orthogonal axes, and "headless" names only the second:
 
 | | role | presentation |
 |---|---|---|
-| `client_opengl` | **participant** — one player's view of a world | `rendering` + `gpu_opengl` |
+| `client_opengl` | **participant, and optionally also an authority** — see below | `rendering` + `gpu_opengl` |
 | `client_headless` | **participant** — one player's view of a world | `transcript` |
 | `server` | **authority** — hosts a universe for N remote players | **no slot at all** |
 
@@ -1170,7 +1170,7 @@ flowchart TD
       headlesswiring["<b>headlessWiring</b> · WIRING<br/><i>client_headless</i>"]
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
-    subgraph tuniverse ["universe thread — cadence FREE; EMBEDDED, single-player only"]
+    subgraph tuniverse ["universe thread — cadence FREE; only when THIS client hosts"]
       universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
     end
     subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
@@ -1198,8 +1198,8 @@ flowchart TD
   clienttick -.->|2: scene delta · SceneSink · SEAM 1| presenttick
   clienttick -.->|3: audio buffer · AudioSink| audiotick
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
-  clienttick -.->|1: UniverseConnection · addLocalClient| universeloop
-  clienttick -.->|1: UniverseConnection · TcpPacketSocket| universeloop2
+  clienttick -.->|1: UniverseConnection · addLocalClient — self-hosted| universeloop
+  clienttick -.->|1: UniverseConnection · TcpPacketSocket — a guest| universeloop2
   universeloop -.->|authoritative state · pull, not a reply| clienttick
   universeloop2 -.->|authoritative state · pull, not a reply| clienttick
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
@@ -1268,13 +1268,20 @@ one boundary further out.
 Four things this view shows that the dependency view structurally cannot:
 
 - **`universeLoop` appears in both processes, and the client reaches either through one edge.** The
-  client's universe thread exists *only* in the single-player composition; in multiplayer the client
-  process has no universe thread at all and the edge crosses to the server process instead. Both are
-  drawn, both at sequence `1:`, because **exactly one exists in any given run.** The client cannot tell
-  which it got — measured, not asserted: `connect(m_universeServer->addLocalClient(), …)` and
+  axis is **not** single-player versus multiplayer — it is *who hosts the universe*, and there are
+  three cases: this client hosts it, a dedicated `server` process hosts it, or someone else's client
+  hosts it. Both edges are drawn at sequence `1:` because **exactly one exists in any given run**, and
+  the client cannot tell which it got: `connect(m_universeServer->addLocalClient(), …)` and
   `connect(UniverseConnection(TcpPacketSocket::open(…)), …)` are the same method taking the same type.
-  That is "local is a degenerate case of remote" as a picture rather than a claim, and it is the
-  pattern this whole design copies for presentation.
+  Measured, not asserted — as is the absence of any process spawn: there is no `fork`, `exec`,
+  `CreateProcess` or `starbound_server` reference anywhere in `client/` or `application/`, so a hosted
+  universe is **a thread in the client's own process**, never a child process.
+- **A hosting client is an authority as well as a participant.** `setListeningTcp`, `maxClients` and
+  `addClient(UniverseConnection(P2PPacketSocket::open(…)))` are all called on the *client's* embedded
+  server: it accepts remote players. So `client_opengl` straddles the participant/authority split that
+  distinguishes `client_headless` from `server` — the two are independent axes, not one. That is
+  precisely why `universeLoop` has to be reachable through an identical edge either way: the client
+  that hosts and the client that joins run the same code, and neither knows which it is.
 - **The host calls the client.** `frameLoop ==> clientTick` runs opposite to `host_sdl --> host` and
   `client --> host`. Reading the compile arrows as call direction inverts the system.
 - **Presentation and simulation share a thread today.** Most of the client process sits in one
