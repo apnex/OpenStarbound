@@ -389,6 +389,16 @@ ENDIF ()
 #
 # It checks the document against ITSELF, not against the tree: numbers measured from the codebase
 # belong to the ratchets that own them. That limit is stated in the script rather than discovered.
+# spec_measures is the only gate here that greps C++ on the design's behalf. It owns the handful of
+# tree measurements a DESIGN DECISION rests on, and regenerates them into Section 6. Seven of the 27
+# confirmed review findings were one defect in seven costumes: "the thirteen render() bodies" (17),
+# "exactly four" Lua groups (11), "43 crossings across 10 edges" (55 across 12). Each was true when
+# written and each had become an argument resting on a memory.
+IF (Python3_Interpreter_FOUND)
+  ADD_TEST (NAME spec_measures COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/spec-measures.py --check)
+ENDIF ()
+
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME prose_claims COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prose-claims.py --check)
@@ -456,7 +466,7 @@ IF (Python3_Interpreter_FOUND)
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
   LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map prose_claims
-                                   prose_claims_fires)
+                                   prose_claims_fires spec_measures)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

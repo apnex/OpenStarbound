@@ -209,7 +209,7 @@ Every measurement in this section re-verified and still stands — `RenderCallba
 |---|---|---|
 | the boundary is at *drawing*, not at *UI* | **yes** | but `windowing`/`frontend` are no longer granted by the participant — an ENTRYPOINT composes them, so "which side" became "which composition" |
 | `windowing` + `frontend` sit on the game side | **yes** — both are INTERIOR | `client_agent` links neither, which the single-boundary framing had no way to express |
-| `RenderCallback` is unaffected | **shape yes, home no** | tier 2 moves the thirteen implementing bodies to `world_view`; tier 3 does the same for its `addAudio` counterpart |
+| `RenderCallback` is unaffected | **shape yes, home no** | tier 2 moves the 17 implementing bodies to `world_view`; tier 3 does the same for its `addAudio` counterpart |
 | the pixel side has no name today | **superseded** | it has five: `rendering`, `gpu`, `gpu_opengl`, `gpu_sdl`, `transcript` |
 | three contracts | **superseded** | ten, and the third one — audio — was upgraded from "merely nullable" to a swappable contract with its own backend (D3) |
 
@@ -226,16 +226,47 @@ Recorded here because it was the decisive fact behind D4, and because it is docu
 
 **There are two Lua surfaces, not one.**
 
-**Surface A — global, four groups, injected by the shell into the game layer.**
+**Surface A — global, 11 groups, injected by the shell into the game layer.**
 `UniverseClient::setLuaCallbacks(group, callbacks)` → `LuaRoot::addCallbacks`. Every script created
-from that root sees them. `ClientApplication` pushes in exactly four:
+from that root sees them. `ClientApplication` pushes in 11, and what each one *binds* is the part that
+matters — the second column is the target-state component that would have to supply it:
 
-```cpp
-m_universeClient->setLuaCallbacks("voice",     LuaBindings::makeVoiceCallbacks());
-m_universeClient->setLuaCallbacks("renderer",  LuaBindings::makeRenderingCallbacks(this));
-m_universeClient->setLuaCallbacks("clipboard", LuaBindings::makeClipboardCallbacks(app, ...));
-m_universeClient->setLuaCallbacks("interface", LuaBindings::makeInterfaceCallbacks(m_mainInterface.get()));
-```
+| group | what the shell hands it | supplied by |
+|---|---|---|
+| `input` | nothing — `makeInputCallbacks()` | `host` (the input source) |
+| `voice` | nothing, but defined in `source/frontend` | `frontend` |
+| `camera` | **`&m_worldPainter->camera()`** | **`world_view`** — a *presentation* object |
+| `renderer` | **`this`, the shell itself** | **`rendering`** |
+| `clipboard` | the `Application` | `platform` |
+| `http` | an enable flag | `net` |
+| `interface` | `m_mainInterface.get()` | `frontend` |
+| `chat` | `m_mainInterface.get()` + `m_universeClient.get()` | `frontend` + `participant` |
+| `celestial` | `m_universeClient.get()` | `celestial` |
+| `team` | `m_universeClient->teamClient().get()` | `participant` |
+| `world` | `m_universeClient->worldClient().get()` | `world_view` |
+
+**This document said "exactly four" until 2026-08-02, and the seven it missed are the interesting
+ones.** The original four were `voice`, `renderer`, `clipboard` and `interface` — a tidy set that
+made the surface look like a presentation concern. The full 11 say something stronger and less
+comfortable: **`camera` binds a `WorldCamera` owned by the `WorldPainter` into the *global* script
+root**, so today every entity and player script in the game can reach a presentation object. That is
+not a hazard the design invented; it is the sharpest single instance of the coupling this design
+exists to remove, and it was invisible while the measurement said four.
+
+It also makes the obligation below concrete rather than prudent. Reading the *supplied by* column
+against each composition's grant closure gives the surface each one can actually offer:
+
+| composition | groups it can supply | missing |
+|---|---:|---|
+| `client_opengl` | **11 / 11** | — |
+| `client_headless` | **10 / 11** | `renderer` |
+| `client_agent` | **7 / 11** | `renderer`, `interface`, `chat`, `voice` |
+
+**The surface is not a fixed list the shell owns — it is a function of what got composed**, and the
+three numbers fall straight out of the grant table without anyone choosing them. Note the shape of
+what `client_agent` loses: every missing group is a *presentation or UI* group. It keeps `camera` and
+`world`, because a participant with no senses still needs to know where it is looking — which is the
+same conclusion the `interaction` component reached from the other direction.
 
 **Surface B — local, created by presentation for scripts presentation owns.**
 `makeWidgetCallbacks(Widget*, GuiReader)`, attached directly by `Pane`, `BaseScriptPane`,
@@ -244,9 +275,9 @@ scripts* ever see it; it never reaches entity or player scripts.
 
 ```mermaid
 flowchart LR
-  Shell["ClientApplication<br/>(the shell)"] -->|"setLuaCallbacks × 4"| UC["UniverseClient<br/><i>source/game</i>"]
+  Shell["ClientApplication<br/>(the shell)"] -->|"setLuaCallbacks × 11"| UC["UniverseClient<br/><i>source/game</i>"]
   UC --> LR["LuaRoot"]
-  LR --> ES["entity / player scripts<br/>see: renderer, interface,<br/>voice, clipboard"]
+  LR --> ES["entity / player scripts<br/>see all 11 global groups<br/><i>including camera — a WorldPainter object</i>"]
   Panes["Pane · BaseScriptPane<br/>ContainerInterface · TitleScreen"] -->|"addCallbacks direct"| PS["pane scripts only<br/>see: widget"]
   classDef game fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
   classDef pres fill:#5c2020,stroke:#a33,color:#ffe5e5
@@ -284,8 +315,9 @@ same reason it does not have the component's headers.** A stub would be worse th
 let a mod believe an interface exists in a binary that cannot honour it, and fail at the point of use
 instead of the point of composition.
 
-The diagram above is the shape of it. `setLuaCallbacks × 4` is the shell injecting exactly the four
-groups its composition provides; a different shell injects a different four. **The mod surface is
+The diagram above is the shape of it. `setLuaCallbacks × 11` is the shell injecting exactly the
+groups its composition can supply; a different shell injects a different set, and the table above
+says which. **The mod surface is
 composed, like everything else in this design** — which makes it consistent rather than exceptional.
 
 What this *does* require, and it is now a named obligation rather than a discovered surprise: **a
@@ -1123,8 +1155,9 @@ not built. `world_gen` is its replacement, as a first-class composition that can
 
 Measured, and it is an order of magnitude smaller than the first estimate. "118 files name
 `Drawable`/`RenderCallback`" counted every file that *mentions* the types. The files that actually
-**implement the hook** are **thirteen**, and their bodies run 23–66 lines — roughly **500 lines in
-total**.
+**implement the hook** are **17**, and their bodies run 1–67 lines — **521 lines in total**. That
+count is generated in Section 6; it read "thirteen" for most of this document's life, which is
+exactly why it is now measured instead of quoted.
 
 `RenderCallback` is already the sink, with a six-method surface that is exactly `scene`'s content:
 
@@ -1133,7 +1166,7 @@ addDrawable(Drawable, EntityRenderLayer)   addParticle(Particle)       addTilePr
 addLightSource(LightSource)                addAudio(AudioInstancePtr)  addOverheadBar(OverheadBar)
 ```
 
-**The change.** Those thirteen `render()` bodies leave `game` and land in `world_view`. Each entity instead
+**The change.** Those 17 `render()` bodies leave `game` and land in `world_view`. Each entity instead
 exposes the state its old body read — `ItemDrop::render` reads `m_mode`, `m_drawRarityBeam`, `m_item`
 and `m_boundBox`, so those become the appearance input. The entity emits **state**; `world_view` turns state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
@@ -1734,7 +1767,7 @@ an Ogg decoder. `Renderer`, `Pane`, `Widget`, `GuiContext`, `TextPainter` and `W
 **0** — because those are directories the server does not link, which is the same lesson tier 2 taught
 from the other side.
 
-**The change.** The audio equivalents of the thirteen `render()` bodies leave `game` and land in
+**The change.** The audio equivalents of the 17 `render()` bodies leave `game` and land in
 `world_view`. An entity emits **state**; `world_view` turns state into an `AudioInstance`, exactly as
 it turns state into a `Drawable`. `game` is granted `sound` no more than it is granted `scene`.
 
@@ -1771,7 +1804,7 @@ instead of with the code that consumes it:
 | carved out | apparent cycle | the actual file | belongs to |
 |---|---|---|---|
 | `worldgen` | `worldgen` ↔ `world` | `StarWorldGeneration.hpp` — holds `LiquidWorld(WorldServer*)`, `FallingBlocksWorld(WorldServer*)`, `DungeonGeneratorWorld(WorldServer*, bool)` | `world` — adapters that write generated output into a live world |
-| `scene` (tier 2) | `game` ↔ `scene` | the thirteen `render()` bodies | `world_view` — appearance, not state |
+| `scene` (tier 2) | `game` ↔ `scene` | the 17 `render()` bodies | `world_view` — appearance, not state |
 
 The rule this yields is worth more than the two instances: **when a candidate component appears to
 depend on its own consumer, look for one file before redrawing the boundary.** Appearance code and
@@ -2956,7 +2989,7 @@ Two limits apply even to the anchored fourteen:
   consistently. `REGISTER_COUNTS` cross-checks the counts, which catches a miscount and not a
   misplacement.
 - **The measurement is conditional on the revocations landing.** The sweep reads today's tree, in
-  which the 43 crossings the ratchet tracks still exist. It establishes that the grant table describes
+  which the crossings the ratchet tracks still exist. It establishes that the grant table describes
   the tree *as it will be once those are deleted* — not the tree as it stands.
 
 **So the honest reading of a green run is "no contradiction found", never "the design is correct."**
@@ -3683,6 +3716,29 @@ Instruments split into two kinds, and conflating them is the failure mode:
 - **VERIFICATION** runs against the built target and asks whether the split preserved behaviour.
   None of these can exist before the thing exists — and that is a schedule fact, not an excuse.
 
+### The measured facts this design rests on
+
+Some numbers in this document are decoration and some are load-bearing. These are the load-bearing
+ones — each is a measurement a **design decision** stands on, so each is measured from the tree by
+`scripts/spec-measures.py` and regenerated here rather than remembered.
+
+The reason is a defect this document produced four times. "The thirteen `render()` bodies" was tier
+2's headline and there are 17. "`ClientApplication` pushes in exactly four" is the whole evidentiary
+basis of D4 and it pushes 11. "43 direct crossings across 10 edges" was Section 10's completion
+criterion and `grant-sweep` reports 55 across 12. Every one was true when written, and every one had
+since become an argument resting on a memory.
+
+<!-- BEGIN GENERATED: scripts/spec-measures.py -->
+| measure | value | what rests on it |
+|---|---:|---|
+| `render bodies` | **17** | tier 2 -- the bodies that leave `game` for `world_view` |
+| `lua callback groups` | **11** | D4 -- the client Lua surface a composition must state (`input`, `voice`, `camera`, `renderer`, `clipboard`, `http`, `interface`, `chat`, `celestial`, `team`, `world`) |
+| `RenderCallback files` | **39 (all in `game`)** | Section 1 -- `RenderCallback` is game-internal frame assembly, not a crossing |
+| `ratchet crossings / edges` | **55 / 12** | Section 10 -- the delta's completion criterion |
+
+*Measured from the tree by `scripts/spec-measures.py`, which owns exactly the figures a design decision rests on. Every other number in this document is prose and is the author's to keep true.*
+<!-- END GENERATED: spec-measures -->
+
 ### The one oracle that carries most of the weight
 
 Five of the design's claims look separate and are not. **D8** says a co-located seam is not a cheaper
@@ -3926,8 +3982,11 @@ What a delta document has to produce:
 
 1. **The move list** — which of today's files become which target component, complete and file-level.
    `scripts/grant-sweep.py` already carries a partial mapping and cross-checks its own file counts.
-2. **The removal ratchet** — `grant-sweep` measures **43 direct crossings across 10 edges** that the
-   target forbids. The delta is finished when that reaches zero.
+2. **The removal ratchet** — `grant-sweep` measures the direct crossings the target forbids; the
+   current figure is generated in Section 6 and stands at **55 across 12 edges**. The delta is
+   finished when that reaches zero. This read **43 across 10** until 2026-08-02, which is the wrong
+   direction to be wrong in: a completion criterion that drifts *downward* on paper while the tree
+   grows makes the work look nearly done.
 3. **The ordering** — below, as far as it is currently understood.
 4. **The cleanup ledger** — what the contract exposes as dead, and where it is deleted.
 

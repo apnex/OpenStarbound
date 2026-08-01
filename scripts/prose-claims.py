@@ -93,6 +93,16 @@ ALLOWED = {
     "connect": "a function name in the netcode discussion",
     "star_game": "a CMake OBJECT-library target, named as a fact about the build",
     "hosting": "a REJECTED name, kept to explain why `colocation` was chosen instead",
+    # Lua callback GROUP names -- a namespace of its own, listed in Section 2's Surface A table.
+    # Worth noting what this list cannot do: `celestial` and `world` are group names AND component
+    # names, so those two reach the clean bucket for the wrong reason. The overlap is real in the
+    # code, not an artifact here, and it is why the Surface A table names what each group *binds*
+    # rather than trusting the group name to say it.
+    "camera": "Lua callback group; binds a WorldCamera owned by the WorldPainter",
+    "renderer": "Lua callback group; binds the shell itself",
+    "clipboard": "Lua callback group; binds the Application",
+    "interface": "Lua callback group; binds MainInterface",
+    "voice": "Lua callback group; defined in source/frontend",
 }
 
 # Sentences that defer architecture to a later document, or declare something not covered. Under D2
