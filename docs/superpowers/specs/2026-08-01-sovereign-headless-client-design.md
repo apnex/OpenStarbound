@@ -303,53 +303,66 @@ same string appears in the diagram, the register and the grant table, and no com
 
 **Kinds are single uppercase words.** A kind is a token: it has to survive being grepped, pasted into
 a CMake variable or a lint rule, and wrapped by a line break. `ENTRYPOINT`, never `ENTRY POINT`. The
-same rule applies to any kind added later.
+same rule applies to any kind added later, and to the zones below.
+
+Kind says what a component *is*. **ZONE** says where it sits relative to the seams — the second and
+last grouping axis, and the one the clusters in the diagram draw:
+
+| ZONE | the rule it carries |
+|---|---|
+| **SUBSTRATE** | below every seam; available to both arms and to the shells |
+| **SEAM** | a declared boundary — the only components both arms may name |
+| **INTERIOR** | inside seam 1; compiles and runs with no presentation linked at all |
+| **PERIPHERY** | outside seam 1; meets hardware or a recorder, and is swapped or deleted wholesale |
+| **SHELL** | where the two arms rejoin into an executable |
+
+Zone is not a synonym for kind: `platform` is a CONTRACT in the SUBSTRATE, `presentation` is a
+CONTRACT in the SEAM, and `application` is a BACKEND in the SUBSTRATE while `rendering` is a BACKEND
+in the PERIPHERY. The two axes are independent by construction, and the register below carries both.
+
+Neither axis reuses **TIER** (T0–T5, `docs/architecture/system-boundaries.md`) or **LAYER** (L1/L2/L3,
+the render decomposition). Both words are already load-bearing elsewhere in this repository and mean
+something else.
 
 **`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
 "base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
 and the executables at the top, and an arrow that has to be added to make something compile is a
 dependency that has to be justified.
 
-**Colour is by kind, not by side** — the subgraphs already carry the sides, so colour is spent on the
-one thing nothing else encodes.
+**The clusters are zones and colour is kind** — one axis per visual channel, so the diagram carries
+both taxonomies at once without either being inferred from the other.
 
 ```mermaid
 flowchart TD
-  subgraph FOUND ["foundation and services"]
-    core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
-    base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
-    platform["<b>platform</b><br/>CONTRACT<br/><i>host and platform services</i>"]
-    app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
+  subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
+    shell["<b>client</b><br/>LIBRARY<br/><i>composition and tick loop</i>"]
+    cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
+    chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
   end
 
-  subgraph SEAM1 ["SEAM 1 — built by this design"]
-    contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
-  end
-
-  subgraph SIM ["simulation side"]
-    game["<b>game</b><br/>LIBRARY<br/><i>the simulation</i>"]
-    win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
+  subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
+    win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
+    game["<b>game</b><br/>LIBRARY<br/><i>the simulation</i>"]
   end
 
-  subgraph PB ["presentation backends — implement seam 1"]
+  subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
     rend["<b>rendering</b><br/>BACKEND<br/><i>draws the world</i>"]
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
-  end
-
-  subgraph SEAM2 ["SEAM 2 — already exists"]
-    gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
-  end
-
-  subgraph GB ["GPU backends — implement seam 2"]
     glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
     sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
   end
 
-  subgraph SH ["shells"]
-    shell["<b>client</b><br/>LIBRARY<br/><i>composition and tick loop</i>"]
-    cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
-    chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+  subgraph Z_SEAM ["SEAM — the declared boundaries"]
+    contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
+    gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
+  end
+
+  subgraph Z_SUB ["SUBSTRATE — below every seam"]
+    app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
+    platform["<b>platform</b><br/>CONTRACT<br/><i>host and platform services</i>"]
+    base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
+    core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
   end
 
   base --> core
@@ -427,24 +440,24 @@ relocation of already-separated code, and it is independent of seam 1.
 
 Every component in the diagram, in the same reading order.
 
-| name | kind | duty | assembled from | action |
-|---|---|---|---|---|
-| **`core`** | FOUNDATION | language and containers | unchanged (216 files, 56,149 lines) | **KEEP** |
-| **`base`** | FOUNDATION | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
-| **`platform`** | CONTRACT | host and platform services | today's 4 headers **+** `StarApplicationController.hpp` | **GAINS a contract** — see below |
-| **`application`** | BACKEND | the PC host implementation | today's `application` minus 10 render files and one contract header | **SPLIT** — sheds 4,291 lines, keeps ~3,000 |
-| **`presentation`** | CONTRACT | the presentation contract | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
-| **`game`** | LIBRARY | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
-| **`windowing`** | LIBRARY | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
-| **`frontend`** | LIBRARY | this game's screens | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
-| **`rendering`** | BACKEND | draws the world | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
-| **`transcript`** | BACKEND | records instead of drawing | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
-| **`gpu`** | CONTRACT | the GPU contract | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
-| **`gpu_opengl`** | BACKEND | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
-| **`gpu_sdl`** | BACKEND | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
-| **`client`** | LIBRARY | composition and tick loop | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
-| **`client_opengl`** | ENTRYPOINT | graphical entry point | today's client entry point | **NEW** — thin |
-| **`client_headless`** | ENTRYPOINT | headless entry point | — | **NEW** — thin, plus a null host implementation |
+| name | kind | zone | duty | assembled from | action |
+|---|---|---|---|---|---|
+| **`core`** | FOUNDATION | SUBSTRATE | language and containers | unchanged (216 files, 56,149 lines) | **KEEP** |
+| **`base`** | FOUNDATION | SUBSTRATE | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
+| **`platform`** | CONTRACT | SUBSTRATE | host and platform services | today's 4 headers **+** `StarApplicationController.hpp` | **GAINS a contract** — see below |
+| **`application`** | BACKEND | SUBSTRATE | the PC host implementation | today's `application` minus 10 render files and one contract header | **SPLIT** — sheds 4,291 lines, keeps ~3,000 |
+| **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
+| **`game`** | LIBRARY | INTERIOR | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
+| **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
+| **`frontend`** | LIBRARY | INTERIOR | this game's screens | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
+| **`rendering`** | BACKEND | PERIPHERY | draws the world | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
+| **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
+| **`gpu`** | CONTRACT | SEAM | the GPU contract | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
+| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
+| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
+| **`client`** | LIBRARY | SHELL | composition and tick loop | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
+| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — thin |
+| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — thin, plus a null host implementation |
 
 Three contracts, five backends, and the kinds are what make the next finding visible.
 
