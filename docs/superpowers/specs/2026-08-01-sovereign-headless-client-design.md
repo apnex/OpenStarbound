@@ -1346,8 +1346,28 @@ requiring a real call graph rather than an include graph:
 
 - **The graft rule at full fidelity** — check each element root's call closure against its component's
   grants, instead of only the edges this document draws.
-- **The deduplication measure** — `closure(clientTick) ∩ closure(presentTick)`, which should be `scene`
-  plus the foundations and nothing else. The one north-star goal with no instrument today.
+- ~~**The deduplication measure**~~ — **BUILT** (`scripts/dedup-measure.py`, ctest `dedup_measure`).
+  Measured from `objdump` relocations rather than includes: *use*, not permission. Today
+  `closure(clientTick)` is 8,622 symbols and `closure(presentTick)` is 2,074, of which **1,484 are
+  shared — 72% of everything the presentation side executes is also executed by the client side.**
+  Of that, 887 are foundations and contracts and are shared by design; **596 are leaks**, ratcheted and
+  falling only:
+
+  | component | symbols | |
+  |---|---|---|
+  | `core` 525, `base` 362, `host` 1 | 888 | shared by design |
+  | `game` | 229 | the headline revocation, at symbol granularity |
+  | `rendering` 98, `frontend` 79, `gpu_opengl` 72, `host_sdl` 41, `client` 40, `windowing` 19 | 349 | each already an edge on the removal ratchet |
+  | `platform_pc` | 18 | **not on the ratchet** — Steam and Discord code reachable from both roots |
+
+  The breakdown corroborates `grant-sweep`'s `REMOVING` list almost edge for edge, which is independent
+  evidence that the two instruments measure the same coupling from opposite directions. `platform_pc`
+  is the one component the include sweep never flagged, and it is a new finding.
+
+  **The number is a LOWER BOUND.** 62,540 indirect call sites were not followed, because a virtual call
+  names no target. That blind spot is not incidental — a virtual call through a contract *is* a seam,
+  and this section says the call tree is supposed to stop there. The instrument's limit and the
+  design's boundary are the same place.
 
 Everything else in this section is still outstanding.
 

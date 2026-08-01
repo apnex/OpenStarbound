@@ -304,6 +304,16 @@ ADD_TEST (NAME loop_inventory COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME spec_consistency COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/spec-consistency.py --check)
 
+# DEDUPLICATION MEASURE. "Why this is fully deduplicated" was the design's one north-star claim with
+# no instrument behind it. Section 5's framing supplies one: a TICK is the root of a call tree, so
+# closure(clientTick) INTERSECT closure(presentTick) is exactly the code both machines must ship once
+# the two sides split. Measured from objdump relocations -- USE, not the include PERMISSION that
+# grant-sweep measures. Ratchet at 596 symbols outside the foundations and contracts; may only fall.
+# Not in the Gates workflow: that job runs scripts without building, where this would permanently
+# SKIP and a permanent skip reads like a pass.
+ADD_TEST (NAME dedup_measure COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/dedup-measure.py --check)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -345,7 +355,8 @@ SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
                                    boundary_ratchet boundary_fresh arch_graph_fresh
-                                   grant_sweep loop_inventory spec_consistency)
+                                   grant_sweep loop_inventory spec_consistency
+                                   dedup_measure)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()
