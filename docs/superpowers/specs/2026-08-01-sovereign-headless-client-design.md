@@ -292,11 +292,16 @@ same string appears in the diagram, the register and the grant table, and no com
 |---|---|
 | **FOUNDATION** | depended on by everything above it; names nothing above itself |
 | **CONTRACT** | declarations only — no `.cpp`, no library target; may name only foundation types |
-| **BACKEND** | implements a contract; interchangeable with its siblings; named only by an entry point |
+| **BACKEND** | implements a contract; interchangeable with its siblings; named only by an ENTRYPOINT |
 | **LIBRARY** | ordinary code, named directly by its consumers, not interchangeable |
-| **ENTRY POINT** | an executable; the only place a backend may be named |
+| **ENTRYPOINT** | an executable; the only place a backend may be named |
 
-Arrows point downstream — `A --> B` means **B may include A**.
+**Kinds are single uppercase words.** A kind is a token: it has to survive being grepped, pasted into
+a CMake variable or a lint rule, and wrapped by a line break. `ENTRYPOINT`, never `ENTRY POINT`. The
+same rule applies to any kind added later.
+
+Arrows point downstream — `A --> B` means **B may include A**. **Colour is by kind, not by side** —
+the subgraphs already carry the sides, so colour is spent on the one thing nothing else encodes.
 
 ```mermaid
 flowchart TD
@@ -333,8 +338,8 @@ flowchart TD
 
   subgraph SH ["shells"]
     shell["<b>client</b><br/>LIBRARY<br/><i>composition and tick loop</i>"]
-    cgl["<b>client_opengl</b><br/>ENTRY POINT<br/><i>graphical entry point</i>"]
-    chl["<b>client_headless</b><br/>ENTRY POINT<br/><i>headless entry point</i>"]
+    cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
+    chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
   end
 
   core --> base
@@ -360,14 +365,16 @@ flowchart TD
   app --> cgl
   tr --> chl
 
-  classDef sim fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef pix fill:#5c2020,stroke:#a33,color:#ffe5e5
-  classDef joint fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef found fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  class game,win,front sim
-  class rend,tr,glb,sdlb pix
-  class contract,gpu joint
-  class core,base,platform,app,shell,cgl,chl found
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend    fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary    fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  class core,base kFoundation
+  class platform,contract,gpu kContract
+  class app,rend,tr,glb,sdlb kBackend
+  class game,win,front,shell kLibrary
+  class cgl,chl kEntrypoint
 ```
 
 **No arrow runs between the simulation side and the presentation backends.** That absence is the
@@ -422,8 +429,8 @@ Every component in the diagram, in the same reading order.
 | **`gpu_opengl`** | BACKEND | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
 | **`gpu_sdl`** | BACKEND | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
 | **`client`** | LIBRARY | composition and tick loop | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
-| **`client_opengl`** | ENTRY POINT | graphical entry point | today's client entry point | **NEW** — thin |
-| **`client_headless`** | ENTRY POINT | headless entry point | — | **NEW** — thin, plus a null host implementation |
+| **`client_opengl`** | ENTRYPOINT | graphical entry point | today's client entry point | **NEW** — thin |
+| **`client_headless`** | ENTRYPOINT | headless entry point | — | **NEW** — thin, plus a null host implementation |
 
 Three contracts, five backends, and the kinds are what make the next finding visible.
 
