@@ -764,6 +764,7 @@ The kinds are what make the next finding visible.
 | **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
 | **`superviseLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
 | **`fixedTick`** | TICK | `client` | — | `clientLoop`, zero-to-N times per driver step |
+| **`inputTick`** | TICK | `host_sdl` | — | whichever driver this process has; drains the OS event queue |
 | **`clientTick`** | TICK | `client` | — | whichever driver this process has |
 | **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
 | **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
@@ -820,6 +821,117 @@ element register, for three reasons:
 
 The general rule, stated once: an ELEMENT earns a register row when it owns a clock or when something
 can call it on its own. Sequential phases inside one tick are contents, not elements.
+
+### The execution graph — the second view
+
+The diagram earlier in this section is **compile time**: who may include whom. This one is **run time**:
+what actually executes, on which thread, and what it hands to what. They are different graphs on the
+same node set, and every earlier attempt to describe the runtime in prose alongside a dependency
+picture produced a contradiction within a day.
+
+Clusters are **threads**, nested inside **processes**. Each node is an ELEMENT, labelled with the
+component that owns it, so both views reconcile against the same register.
+
+```mermaid
+flowchart TD
+  subgraph pclient ["<b>client_opengl</b> — one process"]
+    subgraph tdriver ["driver thread — exactly one driver runs; clock: vsync, or free-run when headless"]
+      frameloop["<b>frameLoop</b> · LOOP<br/><i>host_sdl</i>"]
+      headlessloop["<b>headlessLoop</b> · LOOP<br/><i>host_null</i>"]
+      inputtick["<b>inputTick</b> · TICK<br/><i>host_sdl</i>"]
+      clienttick["<b>clientTick</b> · TICK<br/><i>client</i>"]
+      clientloop["<b>clientLoop</b> · LOOP<br/><i>client</i>"]
+      fixedtick["<b>fixedTick</b> · TICK<br/><i>client</i>"]
+      presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
+      device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
+    end
+    subgraph tuniverse ["universe thread — clock: its own"]
+      universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
+    end
+    subgraph taudio ["SDL audio thread — clock: SDL's"]
+      audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
+    end
+  end
+
+  subgraph pserver ["<b>server</b> — a separate process"]
+    subgraph tmain ["main thread — 100 ms poll"]
+      superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
+    end
+    subgraph tuniverse2 ["universe thread — clock: its own"]
+      universeloop2["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
+    end
+  end
+
+  frameloop --> inputtick
+  frameloop ==>|Application| clienttick
+  frameloop ==>|Application| presenttick
+  headlessloop ==>|Application — the identical two calls| clienttick
+  headlessloop ==>|Application| presenttick
+  clienttick --> clientloop
+  clientloop --> fixedtick
+  clienttick -.->|scene delta · SceneSink · SEAM 1| presenttick
+  clienttick -.->|audio buffer · AudioSink| audiotick
+  presenttick ==>|RenderPrimitive · Device · SEAM 2| device
+  clienttick -.->|netcode · UniverseConnection| universeloop
+  universeloop -.->|world state| clienttick
+  inputtick -.->|input · UNRESOLVED, see below| clienttick
+  superviseloop -.->|supervises only; ticks nothing| universeloop2
+
+  classDef kLoop fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kTick fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kDev  fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kGap  fill:#8a1f1f,stroke:#4d0f0f,color:#fff,stroke-dasharray:4 3
+  class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop kLoop
+  class clienttick,fixedtick,presenttick,audiotick kTick
+  class device kDev
+  class inputtick kGap
+```
+
+**Three edge kinds, and the distinction between them is the point:**
+
+| edge | means | why it matters |
+|---|---|---|
+| `A --> B` | **direct call**, same thread, statically bound | ordinary control flow |
+| `A ==> B` | **call dispatched through a contract** — virtual, in-process | the compile arrow points the *other* way; this is where the two graphs invert |
+| `A -.-> B` | **handoff** — a payload crosses; the producer does not block on the consumer's body | it may cross a thread, a process, or a machine |
+
+**Seam 1 is a handoff; seam 2 is a call.** That falls out of the network constraint rather than taste:
+a scene delta must survive being a packet, so `clientTick` can never synchronously enter `rendering`. A
+`RenderPrimitive` never crosses a machine, so `presentTick` calling `Device` can be an ordinary virtual
+call. The compile diagram draws both as `-->` and cannot tell them apart.
+
+Four things this view shows that the dependency view structurally cannot:
+
+- **`universeLoop` appears in both processes.** The same element, two homes: single-player embeds it,
+  a dedicated server runs it standalone. That is "local is a degenerate case of remote" as a picture
+  rather than a claim — and it is the pattern this whole design copies for presentation.
+- **The host calls the client.** `frameLoop ==> clientTick` runs opposite to `host_sdl --> host` and
+  `client --> host`. Reading the compile arrows as call direction inverts the system.
+- **Presentation and simulation share a thread today.** Most of the client process sits in one
+  cluster. The split-across-machines case is exactly this diagram with that cluster cut in two, and
+  nothing else moving.
+- **The two client compositions are the same picture.** `frameLoop` and `headlessLoop` are drawn side
+  by side because exactly one of them exists in any given process, and both make the *identical two
+  calls* into `clientTick` and `presentTick` through the same `Application` contract. `client_headless`
+  substitutes `host_null` for `host_sdl` and `transcript` for `rendering`; **no element moves and none
+  is added.** That claim was previously asserted in prose; here it is visible.
+- **`superviseLoop` supervises nothing it drives.** Its only edge is a dashed label; the authority in
+  the server process is `universeLoop`, on another thread.
+
+**The unresolved edge.** `inputTick` is drawn dashed and red because the target state cannot currently
+deliver its output. `InputSource` is declared by `presentation` and implemented by `rendering` and
+`transcript` — but input events originate at the **host**, and neither backend is granted `host`:
+
+```
+rendering  | core, base, presentation, scene, gpu     <- no host
+transcript | core, base, presentation, scene          <- no host
+```
+
+So `poll()` has nothing to return. `InputSource` belongs on seam 1 rather than in `host`, because seam
+1 is the boundary that crosses machines and the human sits at the display — routing input through
+`host` instead would need a second network-spanning seam, which D3 forbids. The defect is narrower
+than that: **the presentation backend cannot reach its own local host.** Resolving it is a Director
+decision, carried as an open item in Section 7 with three candidate fixes, not silently patched here.
 
 ### Three clocks, of which we own two
 
@@ -1131,6 +1243,16 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    reason the rule exists.
 2. **Section 5, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
+3. **The input path — a live defect, not a gap.** `InputSource` is declared by `presentation` and
+   implemented by `rendering` and `transcript`, but input events originate at the host and neither
+   backend is granted `host`, so `poll()` has nothing to return. `InputSource` should stay on seam 1
+   (it is the boundary that crosses machines, and the human sits at the display; routing input through
+   `host` would need a second network-spanning seam, which D3 forbids). The open question is narrow:
+   **how does a presentation backend reach its own local host?** Three candidates — grant `rendering`
+   and `transcript` the `host` contract; have the entrypoint inject the host's queue at composition,
+   which still needs the type named somewhere; or declare the queue's type in `presentation` itself so
+   neither backend names `host`. Surfaced by drawing the execution graph; not resolvable by inspection
+   of the dependency graph, which is why it survived this long.
 3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
    D6. See Section 6. Section 4 is no longer gated by it.
 4. **The delta from today** — Section 9, not yet computed. Section 4 is now target-state only, so the
