@@ -91,3 +91,7 @@ jobs:
       # trigger the paint.
       - name: spec_consistency -- both projections agree, and the graft holds
         run: python3 scripts/spec-consistency.py --check
+
+      # Derived from the grant table, so it needs no build and belongs here rather than only in ctest.
+      - name: composition_graphs -- per-composition diagrams match the grant table
+        run: python3 scripts/composition-graphs.py --check

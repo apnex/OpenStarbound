@@ -314,6 +314,13 @@ ADD_TEST (NAME spec_consistency COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME dedup_measure COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/dedup-measure.py --check)
 
+# COMPOSITION GRAPHS. The whole-system map answers "what exists"; it cannot answer "what does THIS
+# binary link". Derived from the grant table rather than drawn, because three hand-made diagrams would
+# be three more artifacts to drift. Their first generation raised two questions the map hides: `server`
+# links `scene`, and `client_headless` links `windowing` and `frontend`.
+ADD_TEST (NAME composition_graphs COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/composition-graphs.py --check)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -356,7 +363,7 @@ IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
                                    boundary_ratchet boundary_fresh arch_graph_fresh
                                    grant_sweep loop_inventory spec_consistency
-                                   dedup_measure)
+                                   dedup_measure composition_graphs)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

@@ -505,6 +505,7 @@ flowchart TD
     end
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+    csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
       superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
@@ -573,6 +574,11 @@ flowchart TD
   tr ==> host
   glb ==> gpu
   sdlb ==> gpu
+  csg --> core
+  csg --> client
+  csg --> hostsdl
+  csg --> rend
+  csg --> sdlb
   cgl --> shell
   cgl --> rend
   cgl --> glb
@@ -593,10 +599,10 @@ flowchart TD
   class platform,host,scene,contract,gpu kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
-  class cgl,chl,srv kEntrypoint
+  class cgl,chl,csg,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
-  class sdlb kOutOfScope
+  class sdlb,csg kOutOfScope
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -700,6 +706,353 @@ them measured:
 `Device` rather than `Rasterizer` because the contract also owns texture creation, framebuffer
 targets, blend and scissor state — the whole drawing device, not the rasterisation step alone.
 
+### One diagram per composition — GENERATED
+
+The map above answers *what exists*. It cannot answer *what does this binary actually link*, and that
+is the question someone building `client_headless` has. A composition is an ENTRYPOINT plus the
+transitive closure of its grant list, so these are **derived from the grant table** by
+`scripts/composition-graphs.py` and gated by `composition_graphs`. Three hand-drawn diagrams would be
+three more things to drift; nothing below is a new decision.
+
+Two questions the whole-system map hides, and these raised on their first run. Neither is answered
+here — a generator shows the consequence of a decision, it does not make one:
+
+- **`server` links `scene`**, the presentation vocabulary, in a process that never presents. It does so
+  because `game` grants `scene` and the server links `game`. Either the emission is genuinely dead
+  weight on an authority, or `scene` is more universal than "the presentation seam's vocabulary".
+- **`client_headless` links `windowing` and `frontend`** — a widget toolkit and this game's screens, in
+  a client that draws nothing. Pane *state* may well be needed by scripting; the toolkit is the part
+  worth interrogating.
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
+```mermaid
+%% composition: client_headless
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    host["<b>host</b><br/>CONTRACT"]
+    host_null["<b>host_null</b><br/>BACKEND"]
+    platform["<b>platform</b><br/>CONTRACT"]
+  end
+  subgraph Z_SEAM ["SEAM"]
+    presentation["<b>presentation</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    frontend["<b>frontend</b><br/>LIBRARY"]
+    game["<b>game</b><br/>LIBRARY"]
+    windowing["<b>windowing</b><br/>LIBRARY"]
+  end
+  subgraph Z_PERIPHERY ["PERIPHERY"]
+    transcript["<b>transcript</b><br/>BACKEND"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    client["<b>client</b><br/>LIBRARY"]
+    client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
+  end
+  client --> base
+  client --> core
+  client --> frontend
+  client --> game
+  client --> host
+  client --> platform
+  client --> presentation
+  client --> scene
+  client --> windowing
+  client_headless --> client
+  client_headless --> core
+  client_headless --> host_null
+  client_headless --> transcript
+  frontend --> base
+  frontend --> core
+  frontend --> game
+  frontend --> host
+  frontend --> platform
+  frontend --> scene
+  frontend --> windowing
+  game --> base
+  game --> core
+  game --> platform
+  game --> scene
+  host --> core
+  host --> platform
+  host_null --> core
+  host_null --> host
+  host_null --> platform
+  platform --> core
+  presentation --> base
+  presentation --> core
+  presentation --> scene
+  scene --> base
+  scene --> core
+  transcript --> base
+  transcript --> core
+  transcript --> host
+  transcript --> presentation
+  transcript --> scene
+  windowing --> base
+  windowing --> core
+  windowing --> game
+  windowing --> host
+  windowing --> platform
+  windowing --> scene
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class host,platform,presentation,scene kContract
+  class host_null,transcript kBackend
+  class client,frontend,game,windowing kLibrary
+  class client_headless kEntrypoint
+```
+
+**client_headless links 13 of 22 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`
+<!-- END GENERATED: client_headless -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
+```mermaid
+%% composition: client_opengl
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    host["<b>host</b><br/>CONTRACT"]
+    host_sdl["<b>host_sdl</b><br/>BACKEND"]
+    platform["<b>platform</b><br/>CONTRACT"]
+    platform_pc["<b>platform_pc</b><br/>BACKEND"]
+  end
+  subgraph Z_SEAM ["SEAM"]
+    gpu["<b>gpu</b><br/>CONTRACT"]
+    presentation["<b>presentation</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    frontend["<b>frontend</b><br/>LIBRARY"]
+    game["<b>game</b><br/>LIBRARY"]
+    windowing["<b>windowing</b><br/>LIBRARY"]
+  end
+  subgraph Z_PERIPHERY ["PERIPHERY"]
+    gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
+    rendering["<b>rendering</b><br/>BACKEND"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    client["<b>client</b><br/>LIBRARY"]
+    client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
+  end
+  client --> base
+  client --> core
+  client --> frontend
+  client --> game
+  client --> host
+  client --> platform
+  client --> presentation
+  client --> scene
+  client --> windowing
+  client_opengl --> client
+  client_opengl --> core
+  client_opengl --> gpu_opengl
+  client_opengl --> host_sdl
+  client_opengl --> rendering
+  frontend --> base
+  frontend --> core
+  frontend --> game
+  frontend --> host
+  frontend --> platform
+  frontend --> scene
+  frontend --> windowing
+  game --> base
+  game --> core
+  game --> platform
+  game --> scene
+  gpu --> core
+  gpu_opengl --> core
+  gpu_opengl --> gpu
+  host --> core
+  host --> platform
+  host_sdl --> core
+  host_sdl --> host
+  host_sdl --> platform
+  host_sdl --> platform_pc
+  platform --> core
+  platform_pc --> core
+  platform_pc --> host
+  platform_pc --> platform
+  presentation --> base
+  presentation --> core
+  presentation --> scene
+  rendering --> base
+  rendering --> core
+  rendering --> gpu
+  rendering --> host
+  rendering --> presentation
+  rendering --> scene
+  scene --> base
+  scene --> core
+  windowing --> base
+  windowing --> core
+  windowing --> game
+  windowing --> host
+  windowing --> platform
+  windowing --> scene
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class gpu,host,platform,presentation,scene kContract
+  class gpu_opengl,host_sdl,platform_pc,rendering kBackend
+  class client,frontend,game,windowing kLibrary
+  class client_opengl kEntrypoint
+```
+
+**client_opengl links 16 of 22 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`
+<!-- END GENERATED: client_opengl -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
+```mermaid
+%% composition: client_sdl_gpu
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    host["<b>host</b><br/>CONTRACT"]
+    host_sdl["<b>host_sdl</b><br/>BACKEND"]
+    platform["<b>platform</b><br/>CONTRACT"]
+    platform_pc["<b>platform_pc</b><br/>BACKEND"]
+  end
+  subgraph Z_SEAM ["SEAM"]
+    gpu["<b>gpu</b><br/>CONTRACT"]
+    presentation["<b>presentation</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    frontend["<b>frontend</b><br/>LIBRARY"]
+    game["<b>game</b><br/>LIBRARY"]
+    windowing["<b>windowing</b><br/>LIBRARY"]
+  end
+  subgraph Z_PERIPHERY ["PERIPHERY"]
+    gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
+    rendering["<b>rendering</b><br/>BACKEND"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    client["<b>client</b><br/>LIBRARY"]
+    client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
+  end
+  client --> base
+  client --> core
+  client --> frontend
+  client --> game
+  client --> host
+  client --> platform
+  client --> presentation
+  client --> scene
+  client --> windowing
+  client_sdl_gpu --> client
+  client_sdl_gpu --> core
+  client_sdl_gpu --> gpu_sdl
+  client_sdl_gpu --> host_sdl
+  client_sdl_gpu --> rendering
+  frontend --> base
+  frontend --> core
+  frontend --> game
+  frontend --> host
+  frontend --> platform
+  frontend --> scene
+  frontend --> windowing
+  game --> base
+  game --> core
+  game --> platform
+  game --> scene
+  gpu --> core
+  host --> core
+  host --> platform
+  host_sdl --> core
+  host_sdl --> host
+  host_sdl --> platform
+  host_sdl --> platform_pc
+  platform --> core
+  platform_pc --> core
+  platform_pc --> host
+  platform_pc --> platform
+  presentation --> base
+  presentation --> core
+  presentation --> scene
+  rendering --> base
+  rendering --> core
+  rendering --> gpu
+  rendering --> host
+  rendering --> presentation
+  rendering --> scene
+  scene --> base
+  scene --> core
+  windowing --> base
+  windowing --> core
+  windowing --> game
+  windowing --> host
+  windowing --> platform
+  windowing --> scene
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class gpu,host,platform,presentation,scene kContract
+  class gpu_sdl,host_sdl,platform_pc,rendering kBackend
+  class client,frontend,game,windowing kLibrary
+  class client_sdl_gpu kEntrypoint
+```
+
+**client_sdl_gpu links 16 of 22 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`
+<!-- END GENERATED: client_sdl_gpu -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
+```mermaid
+%% composition: server
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+  end
+  subgraph Z_SEAM ["SEAM"]
+    scene["<b>scene</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    game["<b>game</b><br/>LIBRARY"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    server["<b>server</b><br/>ENTRYPOINT"]
+  end
+  game --> base
+  game --> core
+  game --> platform
+  game --> scene
+  platform --> core
+  scene --> base
+  scene --> core
+  server --> base
+  server --> core
+  server --> game
+  server --> platform
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class platform,scene kContract
+  class game kLibrary
+  class server kEntrypoint
+```
+
+**server links 6 of 22 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `transcript`, `windowing`
+<!-- END GENERATED: server -->
+
 ### The register — one row per box
 
 Every component in the diagram, in the same reading order.
@@ -726,9 +1079,10 @@ Every component in the diagram, in the same reading order.
 | **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick`, `audioTick` |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
+| **`client_sdl_gpu`** | ENTRYPOINT | SHELL | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 
-Twenty-one components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, three
+Twenty-two components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, four
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -887,6 +1241,7 @@ is actually established today.
 | `client` | core, base, platform, game, windowing, frontend, presentation, scene, host | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
+| `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
 | `server` | core, base, game, platform | **no presentation slot at all**; `platform` is reached only transitively, through `game` |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
