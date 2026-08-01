@@ -1,0 +1,218 @@
+
+:root{
+  /* Cool slate ground; a single warm oxidised-brass mark, the colour of annotation ink on an
+     engineering drawing. The accent is also the colour of unfinished work here -- most of this
+     document is unfinished, and the palette says so. */
+  --ground:#f1f3f7; --surface:#fbfbfd; --raise:#e6e9f1; --sink:#e9ecf3;
+  --ink:#14161d; --muted:#525869; --faint:#7b8195;
+  --rule:#d7dae5; --rule-soft:#e4e7ef;
+  --accent:#8a5f24; --accent-soft:#f3ecdf;
+  --ok:#2b7a5f; --ok-soft:#e2f0ea;
+  --risk:#a8462f;
+  --shadow:0 1px 2px rgba(20,22,29,.05), 0 10px 28px -16px rgba(20,22,29,.28);
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --ground:#101217; --surface:#171a21; --raise:#1e222b; --sink:#141821;
+    --ink:#e6e8ee; --muted:#98a0b2; --faint:#798094;
+    --rule:#272c37; --rule-soft:#1f242d;
+    --accent:#d29a52; --accent-soft:#2a2216;
+    --ok:#4fb894; --ok-soft:#15261f;
+    --risk:#e08060;
+    --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#101217; --surface:#171a21; --raise:#1e222b; --sink:#141821;
+  --ink:#e6e8ee; --muted:#98a0b2; --faint:#798094;
+  --rule:#272c37; --rule-soft:#1f242d;
+  --accent:#d29a52; --accent-soft:#2a2216;
+  --ok:#4fb894; --ok-soft:#15261f;
+  --risk:#e08060;
+  --shadow:0 1px 2px rgba(0,0,0,.45), 0 12px 32px -18px rgba(0,0,0,.8);
+}
+:root[data-theme="light"]{
+  --ground:#f1f3f7; --surface:#fbfbfd; --raise:#e6e9f1; --sink:#e9ecf3;
+  --ink:#14161d; --muted:#525869; --faint:#7b8195;
+  --rule:#d7dae5; --rule-soft:#e4e7ef;
+  --accent:#8a5f24; --accent-soft:#f3ecdf;
+  --ok:#2b7a5f; --ok-soft:#e2f0ea;
+  --risk:#a8462f;
+  --shadow:0 1px 2px rgba(20,22,29,.05), 0 10px 28px -16px rgba(20,22,29,.28);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16.5px; line-height:1.62;
+  -webkit-text-size-adjust:100%; overflow-x:hidden;
+}
+.wrap{display:grid; grid-template-columns:1fr}
+@media (min-width:1080px){
+  /* Wide shell so diagrams and tables get room. Prose does NOT stretch with it -- p/ul/ol stay
+     capped at 70ch below, so the text column keeps its measure and figures break out wider. */
+  .wrap{grid-template-columns:16.5rem minmax(0,1fr); gap:3.5rem;
+        max-width:160rem; margin:0 auto; padding:0 2rem}
+}
+
+/* ---- design-state rail ---------------------------------------------------- */
+nav{display:none}
+@media (min-width:1080px){
+  nav{display:block; position:sticky; top:0; align-self:start;
+      max-height:100vh; overflow-y:auto; padding:4.75rem 0 3rem}
+  .navhead{font-family:var(--mono); font-size:.635rem; letter-spacing:.13em;
+           text-transform:uppercase; color:var(--faint); margin:0 0 .85rem}
+  nav a{display:grid; grid-template-columns:1.85rem minmax(0,1fr) .6rem; gap:.45rem;
+        align-items:baseline; padding:.32rem 0; text-decoration:none; color:var(--muted);
+        font-size:.815rem; line-height:1.35}
+  nav a .n{font-family:var(--mono); font-size:.7rem; color:var(--faint);
+           font-variant-numeric:tabular-nums}
+  nav a .d{width:.42rem; height:.42rem; border-radius:50%; align-self:center;
+           background:var(--rule); justify-self:end}
+  nav a.approved .d{background:var(--ok)}
+  nav a.proposed .d{background:var(--accent)}
+  nav a.todo .d{background:none; box-shadow:inset 0 0 0 1.5px var(--faint)}
+  nav a.plain .d{background:none}
+  nav a:hover{color:var(--accent)}
+  nav a:hover .n{color:var(--accent)}
+  nav a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+  .navkey{margin-top:1.4rem; padding-top:1rem; border-top:1px solid var(--rule-soft);
+          display:flex; flex-direction:column; gap:.4rem}
+  .navkey span{display:flex; align-items:center; gap:.45rem; font-family:var(--mono);
+               font-size:.635rem; letter-spacing:.06em; text-transform:uppercase; color:var(--faint)}
+  .navkey i{width:.42rem; height:.42rem; border-radius:50%}
+  .navkey .approved i{background:var(--ok)}
+  .navkey .proposed i{background:var(--accent)}
+  .navkey .todo i{box-shadow:inset 0 0 0 1.5px var(--faint)}
+}
+
+main{min-width:0; padding:0 1.15rem 6rem}
+@media (min-width:1080px){main{padding:0 0 8rem}}
+
+/* ---- hero ----------------------------------------------------------------- */
+.hero{padding:4.5rem 0 2rem; border-bottom:1px solid var(--rule); margin-bottom:2.5rem}
+.eyebrow{font-family:var(--mono); font-size:.675rem; letter-spacing:.12em; text-transform:uppercase;
+         color:var(--faint); margin:0 0 1rem}
+.hero h1{
+  font-weight:660; font-size:clamp(2rem,5vw,3.05rem); line-height:1.08;
+  letter-spacing:-.025em; margin:0; text-wrap:balance; max-width:20ch;
+}
+.standfirst{margin:1.25rem 0 0; max-width:62ch; font-size:1.06rem; color:var(--muted); line-height:1.55}
+.standfirst em{color:var(--ink); font-style:normal; font-weight:620;
+               box-shadow:inset 0 -.42em 0 var(--accent-soft)}
+
+.banner{
+  margin:1.9rem 0 0; padding:1rem 1.15rem; background:var(--accent-soft);
+  border-left:2px solid var(--accent); border-radius:0 5px 5px 0; max-width:70ch;
+}
+.banner .chip{margin:0 0 .55rem}
+.banner p{margin:0; font-size:.88rem; color:var(--muted); max-width:none; line-height:1.55}
+.banner strong{color:var(--ink)}
+
+.meta{display:grid; grid-template-columns:repeat(auto-fit,minmax(10.5rem,1fr));
+      gap:1rem 1.75rem; margin:2rem 0 0; padding:0}
+.meta div{margin:0}
+.meta dt{font-family:var(--mono); font-size:.635rem; letter-spacing:.1em; text-transform:uppercase;
+         color:var(--faint); margin:0 0 .22rem}
+.meta dd{margin:0; font-size:.85rem; color:var(--muted); font-variant-numeric:tabular-nums}
+.meta code{background:none; padding:0; color:var(--accent); font-size:.92em}
+.hero .note{margin:1.6rem 0 0; font-size:.775rem; color:var(--faint); max-width:64ch; line-height:1.5}
+.hero .note code{background:none; padding:0; font-size:.94em; word-break:break-all}
+
+/* ---- status chips --------------------------------------------------------- */
+.chip{
+  display:inline-block; font-family:var(--mono); font-size:.61rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:.2em .55em .22em; border-radius:3px; white-space:nowrap;
+  vertical-align:.32em; font-weight:500;
+}
+.chip.approved{background:var(--ok-soft); color:var(--ok); box-shadow:inset 0 0 0 1px currentColor}
+.chip.proposed{background:var(--accent-soft); color:var(--accent); box-shadow:inset 0 0 0 1px currentColor}
+.chip.todo{background:none; color:var(--faint); box-shadow:inset 0 0 0 1px var(--rule)}
+
+/* ---- headings + text ------------------------------------------------------ */
+h2{
+  display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.55rem; align-items:baseline;
+  font-weight:640; font-size:clamp(1.35rem,2.7vw,1.75rem); line-height:1.2; letter-spacing:-.018em;
+  margin:3.6rem 0 1.1rem; scroll-margin-top:1.5rem; text-wrap:balance;
+}
+h2 .secnum{font-family:var(--mono); font-size:.56em; font-weight:500; color:var(--accent);
+           font-variant-numeric:tabular-nums; letter-spacing:0}
+@media (max-width:560px){
+  h2{grid-template-columns:auto minmax(0,1fr)}
+  h2 .chip{grid-column:2; justify-self:start; margin-top:.35rem}
+}
+h3{font-weight:660; font-size:1.015rem; letter-spacing:-.004em; color:var(--ink);
+   margin:2.35rem 0 .65rem; scroll-margin-top:1.5rem}
+h4{font-weight:640; font-size:.93rem; margin:1.8rem 0 .5rem; color:var(--muted)}
+
+p{margin:0 0 1.05rem; max-width:70ch}
+strong{font-weight:640}
+em{font-style:italic}
+a{color:var(--accent); text-underline-offset:.16em; text-decoration-thickness:.06em}
+a:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+
+ul,ol{max-width:70ch; margin:0 0 1.3rem; padding-left:1.4rem}
+li{margin:.45rem 0}
+li::marker{color:var(--faint); font-variant-numeric:tabular-nums}
+
+blockquote{margin:1.5rem 0; padding:.85rem 1.2rem; border-left:2px solid var(--rule);
+           background:var(--sink); border-radius:0 4px 4px 0}
+blockquote p{margin:0; max-width:none; color:var(--muted)}
+
+hr{border:0; border-top:1px solid var(--rule-soft); margin:3.2rem 0 0}
+
+code{font-family:var(--mono); font-size:.855em; background:var(--raise);
+     padding:.12em .34em; border-radius:3px; word-break:break-word}
+h2 code,h3 code,li strong code,strong code{background:none; padding:0}
+h2 code,h3 code{font-size:.82em}
+
+/* ---- figures -------------------------------------------------------------- */
+.scroll{overflow-x:auto; margin:1.5rem 0; -webkit-overflow-scrolling:touch}
+pre.code{margin:0; padding:1rem 1.15rem; background:var(--surface); border:1px solid var(--rule);
+         border-radius:5px; box-shadow:var(--shadow)}
+pre.code code{background:none; padding:0; font-size:.825rem; line-height:1.6; white-space:pre}
+
+/* The contract schematic is the thesis of the document, so it is the one thing that gets weight. */
+figure.schematic{
+  margin:2rem 0; padding:1.5rem 1.25rem; background:var(--surface);
+  border:1px solid var(--accent); border-radius:6px; box-shadow:var(--shadow);
+  overflow-x:auto; position:relative;
+}
+figure.schematic::before{
+  content:"the seam"; position:absolute; top:-.6rem; left:1.15rem; padding:0 .45rem;
+  background:var(--ground); font-family:var(--mono); font-size:.6rem; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--accent);
+}
+figure.schematic pre{margin:0; font-family:var(--mono); font-size:.8rem; line-height:1.6;
+                     white-space:pre; color:var(--ink)}
+
+figure.diagram{margin:1.9rem 0; padding:1.75rem 1.25rem; background:var(--surface);
+               border:1px solid var(--rule); border-radius:6px; box-shadow:var(--shadow);
+               overflow-x:auto}
+pre.mermaid{margin:0; text-align:center; font-family:var(--mono); font-size:.8rem}
+/* Mermaid writes an inline `max-width:<natural>px` on the svg, which caps the diagram at whatever
+   size it happened to lay out at -- so a wider page alone changes nothing. Override it so the
+   diagram scales to the column it is given. */
+pre.mermaid svg{max-width:100%!important; width:100%; height:auto}
+
+/* ---- tables --------------------------------------------------------------- */
+table{border-collapse:collapse; width:100%; min-width:max-content;
+      font-size:.855rem; font-variant-numeric:tabular-nums}
+thead th{font-weight:640; font-size:.665rem; letter-spacing:.09em; text-transform:uppercase;
+         color:var(--faint); font-family:var(--mono); padding:.5rem .85rem;
+         border-bottom:1px solid var(--rule); white-space:nowrap}
+tbody td{padding:.55rem .85rem; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--sink)}
+td code{background:none; padding:0; font-size:.92em}
+td strong{color:var(--ink)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+/* Passages retained as history -- a superseded count or a dead zone name, kept because explaining
+   why a name was replaced requires naming it. Recessed so they do not read as current claims. */
+p.historical{color:var(--faint); font-size:.94em; border-left:2px solid var(--rule-soft);
+             padding-left:.9rem}
+p.historical strong{color:var(--muted)}
