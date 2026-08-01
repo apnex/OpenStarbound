@@ -428,8 +428,22 @@ Two arrow kinds, because they mean different things:
 
 | arrow | reads | rule |
 |---|---|---|
-| `A --> B` | **A includes B** — B is on A's grant list | ordinary dependency; read `base --> core` as "base includes core" |
-| `A ==> B` | **A implements B** — A satisfies that contract | **every BACKEND has exactly one**, and it points at a CONTRACT |
+| `A --> B` | **A includes B** — B is on A's grant list | read `base --> core` as "base includes core" |
+| `A ==> B` | **A includes B *and* implements it** — a class in A derives from a base declared in B | **every BACKEND has exactly one**, and it points at a CONTRACT |
+
+**`==>` implies `-->`; it does not replace it.** An implementer has to see the declaration in order to
+derive from it, so the grant is still required and `grant-sweep` still checks for it. The thick arrow
+classifies *why* a dependency exists — it does not remove one.
+
+**And it is measurable rather than asserted.** An implements edge is an inheritance edge: a class in
+the backend deriving from a base declared in the contract. The three that exist today all check out —
+`Controller : public ApplicationController`, `OpenGlRenderer : public Renderer`, and four separate
+`Pc…`/`Steam…` services deriving from `platform`'s declarations.
+
+One nuance the measurement exposes: **the include need not be direct.**
+`StarMainApplication_sdl.cpp` derives from `ApplicationController` while including it only through
+`StarMainApplication.hpp`. That is precisely why `grant-sweep` resolves the include closure rather
+than counting direct `#include` lines.
 
 Arrows point *at* dependencies, so the foundation sits at the bottom and the executables at the top,
 and an arrow that has to be added to make something compile is a dependency that has to be justified.
