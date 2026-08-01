@@ -297,7 +297,7 @@ and the second boundary **already exists and already works**:
 | | seam | declared by | implemented by | status |
 |---|---|---|---|---|
 | **1** | `SceneSink` · `AudioSink` · `InputSource` — game ↔ presentation | `presentation` | `rendering`, `transcript` | **does not exist** — this design builds it |
-| **2** | `Renderer` — pixels ↔ GPU API | `StarRenderer.hpp` | `OpenGlRenderer`, later SDL_GPU | **exists, and measures clean** |
+| **2** | `Device` — primitives ↔ GPU API (`Renderer` today) | `StarRenderer.hpp` | `OpenGlRenderer`, later SDL_GPU | **exists, and measures clean** |
 
 Four measurements say seam 2 is real rather than nominal:
 
@@ -360,7 +360,7 @@ something else.
 A **COMPONENT is a directory with its own grant list.** Not a class, file, module or package, and the
 reason is mechanical rather than stylistic: `INCLUDE_DIRECTORIES` is per-directory, so the directory is
 the smallest unit at which a boundary is a *compile error* rather than an opinion. That is why `gpu` is
-a component and `Renderer` — the actual interface — is not: `Renderer` cannot be granted or denied to
+a component and `Device` — the actual interface — is not: `Device` cannot be granted or denied to
 anyone, but the directory holding it can.
 
 Some things the design must place are smaller than that, so there is a second altitude:
@@ -649,9 +649,46 @@ Two consequences worth stating:
 
 ### Seam 2 — the boundary that already exists
 
-`Renderer` needs no design work. It needs a **home and a grant list**, which it does not have today
+`Device` needs no design work. It needs a **home and a grant list**, which it does not have today
 because it lives inside `application` next to Steam and P2P networking. Splitting it out is a
 relocation of already-separated code, and it is independent of seam 1.
+
+**It is called `Renderer` today, and the target state renames it to `Device`.** Two reasons, one of
+them measured:
+
+- The component `rendering` would otherwise depend on a type called `Renderer` — one word, two
+  referents, on opposite sides of a seam. That is the same ambiguity `simLoop` had against
+  `universeLoop`, and it fails the same test: these names are read in grep output, telemetry owner
+  strings and profile frames, where the other side of the seam is not visible.
+- **The measurement says the name is simply wrong.** `RenderVertex` carries a `screenCoordinate` and
+  `RenderQuad`'s constructor takes a `minScreen`: vertices arrive at this seam **already projected**.
+  The camera transform is applied on the `rendering` side. So the thing called `Renderer` has no
+  camera, no scene and no world — it receives screen-space textured primitives and paints them. It
+  does not render. `rendering` renders.
+
+`Device` rather than `Rasterizer` because the contract also owns texture creation, framebuffer
+targets, blend and scissor state — the whole drawing device, not the rasterisation step alone.
+
+### What actually crosses each seam
+
+The two seams carry different currency, and conflating them is the frame-streaming mistake in another
+costume. Naming both precisely is what keeps the split honest:
+
+| | seam 1 — `presentation` | seam 2 — `gpu` |
+|---|---|---|
+| **currency** | a **scene delta** | a **`RenderPrimitive`** |
+| **shape** | what exists, where, moving how, plus the camera *target* | `Variant<RenderTriangle, RenderQuad, RenderPoly>` of `RenderVertex { screenCoordinate, textureCoordinate, color, param1 }` |
+| **register** | declarative — names no game type, and is interpolatable | imperative — screen-space, already projected |
+| **crosses** | `client` → `rendering` | `rendering` → a `gpu_*` backend |
+
+Two properties of that table are load-bearing:
+
+- **Flow is one-way and nothing returns.** `rendering` hands `client` nothing back. An entrypoint
+  wires the two together once at composition and is never in the frame path — which is what its
+  ENTRYPOINT kind means. A `client_*` that relayed data per frame would be a component with
+  behaviour, and the kind would be a lie.
+- **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
+  knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
 
 ### The register — one row per box
 
@@ -673,16 +710,17 @@ Every component in the diagram, in the same reading order.
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
 | **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | the same scene, written down instead of drawn — three modes below |
-| **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Renderer` interface, the texture atlas, render diagnostics |
-| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Renderer` and its surface substrate |
-| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Renderer` |
+| **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Device` interface, the texture atlas, render diagnostics |
+| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
 | **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick`, `audioTick` |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 
-Twenty components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
-Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude is right.
+Twenty-one components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, three
+ENTRYPOINTs. Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude
+is right.
 The kinds are what make the next finding visible.
 
 ### Element register
@@ -730,6 +768,27 @@ names record:
 An earlier draft named these `simLoop` and `simTick`. Both were dropped: `universeLoop` is also
 simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
 strings and profile frames, where the enclosing component is not visible to disambiguate them.
+
+### Why `presentTick` is one element and not two
+
+`presentTick` does four things in order — **resample · camera · assemble · paint** — and the first two
+are a different job from the last two: resampling is a pure function of the scene, the target time and
+the camera, and needs no device at all, while assembling and painting need a `Device`. That is a real
+decomposition and `rendering`'s contents record it. It is deliberately **not** two entries in the
+element register, for three reasons:
+
+- **The register models cadence, and these share one exactly.** Its columns are *clock* and *called
+  by*. There is precisely one resample per paint, by construction, because the resample target *is*
+  the paint's timestamp. Two rows would assert a distinction the clock column cannot express.
+- **Nothing calls either half alone.** An element earns a row when something can call it
+  independently. `transcript` implements the same seam and paints nothing, but it records deltas
+  verbatim rather than resampling them, so it is not a second caller of the first half.
+- **Splitting the driver-facing call would leak phase order into the host.** `frameLoop` would have to
+  know that resample precedes paint. That is a worse boundary than the one the split documents, and it
+  is the same inversion rejected when the frame loop was considered for a move into `client`.
+
+The general rule, stated once: an ELEMENT earns a register row when it owns a clock or when something
+can call it on its own. Sequential phases inside one tick are contents, not elements.
 
 ### Three clocks, of which we own two
 
