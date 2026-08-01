@@ -144,8 +144,8 @@ ELEMENT_FREE = {
     "universe_view": "same: driven by the participant's tick, never self-scheduled",
     "interaction": "verbs are called by input and by scripts; a verb has no cadence",
     "script": "the Lua host runs inside whatever tick calls into it -- deliberately no clock",
-    "storage": "reads and writes when asked; persistence is a service, and a store that ticked
-                 on its own would be deciding when to save -- which is the caller's business",
+    "storage": "reads and writes when asked; a store that ticked on its own would be deciding "
+               "WHEN to save, which is the caller's business",
     "windowing": "widgets emit into the frame when asked; the toolkit drives nothing",
     "frontend": "screens are updated by the participant's tick",
     "gpu_opengl": "executes device calls issued by `presentTick`",
