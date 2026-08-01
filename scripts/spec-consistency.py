@@ -49,11 +49,14 @@ KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 # gate's first run report a drift that did not exist.
 TALLY_ORDER = ("CONTRACT", "BACKEND", "LIBRARY", "FOUNDATION", "ENTRYPOINT")
 ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
-CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED")
+CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
+# Runtime element kinds. WIRING and SIGNAL were added once the Application contract was measured:
+# of its ten virtuals only three are ticks, and six fit neither LOOP nor TICK.
+EKINDS = "LOOP|TICK|WIRING|SIGNAL"
 
 # Below these the parse is not believable. They are floors, not targets: raise them only when the
 # design genuinely grows, and never lower them to make a red gate green.
-FLOOR = {"components": 15, "elements": 8, "compile_edges": 20, "runtime_edges": 8, "grants": 15}
+FLOOR = {"components": 15, "elements": 13, "compile_edges": 20, "runtime_edges": 13, "grants": 15}
 
 WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
          "nine": 9, "ten": 10, "Nineteen": 19, "Twenty": 20, "Twenty-one": 21, "Twenty-two": 22}
@@ -62,7 +65,7 @@ COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
     r')\s*\|\s*([^|]+?)\s*\|')
 ELEMENT_ROW = re.compile(
-    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(LOOP|TICK)\s*\|\s*(\w+)\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|')
+    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + EKINDS + r')\s*\|\s*(\w+)\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|')
 GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
 TALLY = re.compile(r'([\w-]+) components: (\w+) CONTRACTs, (\w+) BACKENDs, (\w+) LIBRARYs, '
                    r'(\w+) FOUNDATIONs, (\w+)\s*\n?ENTRYPOINTs')
@@ -72,7 +75,7 @@ C_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b><br/>(\w+)<br/><i>([^<]+)</i>"\]',
 C_BOX = re.compile(r'^\s*subgraph (\w+) \["<b>(\w+)</b> · (\w+)"\]', re.M)
 C_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>)\s*(\w+)\s*$', re.M)
 # runtime projection
-R_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b> · (LOOP|TICK)<br/><i>(\w+)</i>"\]', re.M)
+R_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b> · (' + EKINDS + r')<br/><i>(\w+)</i>"\]', re.M)
 R_THREAD = re.compile(r'^\s*subgraph (t\w+) \["([^"]+)"\]', re.M)
 R_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>|-\.->)\|?([^|\n]*)\|?\s*(\w+)\s*$', re.M)
 
@@ -173,7 +176,7 @@ def check(text):
         seg = seg[:seg.index("\n    end")] if "\n    end" in seg else seg
         thread = label.split()[0]
         for _i, n, _k, _o in re.findall(
-                r'(\w+)\["<b>(\w+)</b> · (LOOP|TICK)<br/><i>(\w+)</i>"\]', seg):
+                r'(\w+)\["<b>(\w+)</b> · (' + EKINDS + r')<br/><i>(\w+)</i>"\]', seg):
             if elem.get(n, {}).get("thread") != thread:
                 findings.append(("DRIFT", "`%s` is drawn in thread '%s', register says '%s'"
                                  % (n, thread, elem.get(n, {}).get("thread"))))

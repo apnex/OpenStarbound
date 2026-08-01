@@ -729,8 +729,12 @@ Every component in the diagram, in the same reading order.
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 
 Twenty-one components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, three
-ENTRYPOINTs. Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude
-is right.
+ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
+test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
+and composition is the single most important runtime fact in this design, because it is the *only*
+thing that differs between `client_opengl` and `client_headless`. The claim was true only while the
+taxonomy had no kind capable of expressing its counterexample — a claim propped up by a blind spot,
+which is the fourth time that shape has appeared in this document.
 The kinds are what make the next finding visible.
 
 ### `server` is not a headless client
@@ -1029,9 +1033,27 @@ way to show.
 There is deliberately **no runtime altitude below ELEMENT**. Statements, branches and expressions
 execute too, and modelling them would be a call graph rather than an architecture.
 
-**KIND — what an element does about time.** Two values, defined in full by the rule already stated:
-**`LOOP`** owns a clock — it has the `while`, sets the cadence, and decides when to stop.
-**`TICK`** is one iteration's body, called by something else, owning no cadence.
+**KIND — what an element is with respect to time.** Four values. An earlier draft had two, and the
+`Application` contract this design already depends on refutes that directly: of its ten virtuals, three
+are ticks, one is a query, and **six fit neither**.
+
+| kind | what it is | fails by |
+|---|---|---|
+| **`LOOP`** | owns a clock — it has the `while`, sets the cadence, decides when to stop | never yielding, or the wrong rate |
+| **`TICK`** | the **highest-order** call a loop drives; one iteration's body, owning no cadence | being too slow for its loop's budget |
+| **`WIRING`** | runs **exactly once per process**, outside every clock; decides what is connected to what | the wrong **order** |
+| **`SIGNAL`** | driven by an occurrence rather than a clock; aperiodic and repeatable | not being handled, or **re-entering** |
+
+`WIRING` and `SIGNAL` are separate kinds rather than one because their failure modes are separate,
+which is the same test that separated `LOOP` from `TICK`.
+
+**`TICK` is not "any method call".** `WorldClient::update()` runs once a frame and is *not* a tick — it
+sits inside `fixedTick`. Highest-order is the whole of the discriminator, and it is the same discipline
+as the compile projection, where a class inside a component is not a component. A runtime element
+exists where **a cadence or a boundary is decided**, not wherever a call happens.
+
+**`WIRING` is not only startup.** `shutdown()` has the identical shape — once, outside every clock,
+order load-bearing — and teardown order is where this codebase's lifetime bugs have actually lived.
 
 **CADENCE — what drives it.** The runtime analogue of ZONE: ZONE places a component relative to the
 seams, CADENCE places an element relative to time.
@@ -1043,6 +1065,8 @@ seams, CADENCE places an element relative to time.
 | **FREE** | a wall-clock poll or as-fast-as-possible | `headlessLoop`, `universeLoop`, `superviseLoop` |
 | **EXTERNAL** | someone else's clock, which we do not own | `audioTick` — SDL's audio thread |
 | **DERIVED** | no clock at all; runs when called | `inputTick`, `clientTick`, `presentTick` |
+| **ONCE** | not driven at all; runs a single time per process | every `WIRING` element |
+| **EVENT** | an occurrence, at no predictable rate | `resizeSignal` |
 
 **EDGE — how one element reaches another.** Three values, and the middle one is where the projections
 invert: `CALL` (direct, same thread), `DISPATCH` (virtual, through a contract), `HANDOFF` (a payload
@@ -1082,6 +1106,11 @@ Two container columns, one per projection — the graft, in a table.
 | **`fixedTick`** | TICK | FIXED | `client` | `driver` | one step of simulated time |
 | **`presentTick`** | TICK | DERIVED | `rendering` | `driver` | resample, camera, assemble, paint |
 | **`audioTick`** | TICK | EXTERNAL | `client` | `audio` | fills a buffer for SDL's audio loop |
+| **`swapTick`** | TICK | DISPLAY | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
+| **`resizeSignal`** | SIGNAL | EVENT | `client` | `driver` | the window changed; surfaces must be rebuilt |
+| **`openglWiring`** | WIRING | ONCE | `client_opengl` | `driver` | composes `host_sdl` + `client` + `rendering` + `gpu_opengl` |
+| **`headlessWiring`** | WIRING | ONCE | `client_headless` | `driver` | composes `host_null` + `client` + `transcript` |
+| **`serverWiring`** | WIRING | ONCE | `server` | `main` | composes the universe and its query and rcon threads |
 
 *Called by* was a column here and is now the execution graph's edges, which is the only copy.
 
@@ -1108,6 +1137,10 @@ flowchart TD
       clientloop["<b>clientLoop</b> · LOOP<br/><i>client</i>"]
       fixedtick["<b>fixedTick</b> · TICK<br/><i>client</i>"]
       presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
+      swaptick["<b>swapTick</b> · TICK<br/><i>host_sdl</i>"]
+      resizesignal["<b>resizeSignal</b> · SIGNAL<br/><i>client</i>"]
+      openglwiring["<b>openglWiring</b> · WIRING<br/><i>client_opengl</i>"]
+      headlesswiring["<b>headlessWiring</b> · WIRING<br/><i>client_headless</i>"]
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
     subgraph tuniverse ["universe thread — cadence FREE, a wakeup interval"]
@@ -1120,6 +1153,7 @@ flowchart TD
 
   subgraph pserver ["<b>server</b> — a separate process"]
     subgraph tmain ["main thread — cadence FREE, a 100 ms poll"]
+      serverwiring["<b>serverWiring</b> · WIRING<br/><i>server</i>"]
       superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
     end
     subgraph tuniverse2 ["universe thread — cadence FREE, a wakeup interval"]
@@ -1139,17 +1173,24 @@ flowchart TD
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
   clienttick -.->|netcode · UniverseConnection| universeloop
   universeloop -.->|world state| clienttick
-  inputtick -.->|input · UNRESOLVED, see below| clienttick
+  inputtick -.->|input · InputSource · SEAM 1| clienttick
+  inputtick -.->|window changed| resizesignal
+  frameloop --> swaptick
+  openglwiring -.->|constructs, then never runs again| frameloop
+  headlesswiring -.->|constructs, then never runs again| headlessloop
+  serverwiring -.->|constructs, then never runs again| superviseloop
   superviseloop -.->|supervises only; ticks nothing| universeloop2
 
   classDef kLoop fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kTick fill:#2e6da4,stroke:#1f4e79,color:#fff
   classDef kDev  fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kGap  fill:#8a1f1f,stroke:#4d0f0f,color:#fff,stroke-dasharray:4 3
+  classDef kWire fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  classDef kSig  fill:#8a5a1f,stroke:#4d310f,color:#fff
   class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop kLoop
-  class clienttick,fixedtick,presenttick,audiotick kTick
+  class clienttick,fixedtick,presenttick,audiotick,inputtick,swaptick kTick
   class device kDev
-  class inputtick kGap
+  class openglwiring,headlesswiring,serverwiring kWire
+  class resizesignal kSig
 ```
 
 **Three edge kinds, and the distinction between them is the point:**
@@ -1183,20 +1224,29 @@ Four things this view shows that the dependency view structurally cannot:
 - **`superviseLoop` supervises nothing it drives.** Its only edge is a dashed label; the authority in
   the server process is `universeLoop`, on another thread.
 
-**The unresolved edge.** `inputTick` is drawn dashed and red because the target state cannot currently
-deliver its output. `InputSource` is declared by `presentation` and implemented by `rendering` and
-`transcript` — but input events originate at the **host**, and neither backend is granted `host`:
+**The input path, resolved.** An earlier draft drew `inputTick` dashed and red: `InputSource` is
+declared by `presentation` and implemented by `rendering` and `transcript`, but input originates at the
+**host** and neither backend was granted `host`, so `poll()` had nothing to return. Granting both
+backends `host` — the change the paint trigger needed anyway — closed it, and the edge is now ordinary.
+`InputSource` stays on seam 1 rather than moving into `host`, because seam 1 is the boundary that
+crosses machines and the human sits at the display; routing input through `host` would need a second
+network-spanning seam, which D3 forbids.
+
+**One phase still has no legal home: `finishTick`.** The frame loop's own telemetry names five phases
+and this register models four of them. The fifth — `cpu.frame.finish.us`, which calls `finishFrame()`
+and then lets the overlay draw — is annotated in the source as *"THE TRUE END OF THE FRAME"* and
+*"the renderer cannot do this itself: it does not own this ordering."* So the host owns an ordering
+constraint over the GPU, and the graft rule rejects every home for it:
 
 ```
-rendering  | core, base, presentation, scene, gpu     <- no host
-transcript | core, base, presentation, scene          <- no host
+host_sdl   grants core, host, platform, platform_pc
+gpu_opengl grants core, gpu, extern
+shared CONTRACTs: none
 ```
 
-So `poll()` has nothing to return. `InputSource` belongs on seam 1 rather than in `host`, because seam
-1 is the boundary that crosses machines and the human sits at the display — routing input through
-`host` instead would need a second network-spanning seam, which D3 forbids. The defect is narrower
-than that: **the presentation backend cannot reach its own local host.** Resolving it is a Director
-decision, carried as an open item in Section 8 with three candidate fixes, not silently patched here.
+That is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1. It is carried as an
+open item rather than given an invented owner — the second defect of exactly this class, and both were
+found the same way: by drawing the runtime and asking the compile projection for permission.
 
 ### Why `presentTick` is one element and not two
 
@@ -1332,16 +1382,18 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    reason the rule exists.
 2. **Section 6, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
-3. **The input path — a live defect, not a gap.** `InputSource` is declared by `presentation` and
-   implemented by `rendering` and `transcript`, but input events originate at the host and neither
-   backend is granted `host`, so `poll()` has nothing to return. `InputSource` should stay on seam 1
-   (it is the boundary that crosses machines, and the human sits at the display; routing input through
-   `host` would need a second network-spanning seam, which D3 forbids). The open question is narrow:
-   **how does a presentation backend reach its own local host?** Three candidates — grant `rendering`
-   and `transcript` the `host` contract; have the entrypoint inject the host's queue at composition,
-   which still needs the type named somewhere; or declare the queue's type in `presentation` itself so
-   neither backend names `host`. Surfaced by drawing the execution graph; not resolvable by inspection
-   of the dependency graph, which is why it survived this long.
+3. ~~**The input path**~~ — **DONE.** `InputSource::poll()` had nothing to return because no
+   presentation backend could reach the host that drained the events. Resolved by granting `rendering`
+   and `transcript` the `host` contract — the change the paint trigger required independently, so the
+   three candidate fixes collapsed to one for a reason rather than a preference.
+4. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
+   names five phases and the register models four. The fifth, `cpu.frame.finish.us`, calls
+   `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE
+   FRAME"* and *"the renderer cannot do this itself: it does not own this ordering."* So a host owns an
+   ordering constraint over the GPU, and the graft rule rejects it: `host_sdl` and `gpu_opengl` share
+   no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
+   **Both defects of this class were found the same way** — by drawing the runtime and asking the
+   compile projection for permission — and neither was visible in the dependency graph alone.
 3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
    D6. See Section 7. Section 4 is no longer gated by it.
 4. **The delta from today** — Section 10, not yet computed. Section 4 is now target-state only, so the
