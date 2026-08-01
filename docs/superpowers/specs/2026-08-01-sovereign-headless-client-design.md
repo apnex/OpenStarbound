@@ -1434,9 +1434,22 @@ reached for an embedded `UniverseServer`, `host_sdl` reached for a `Renderer`. `
 the last and largest instance. Under the composability rule, the entrypoint composes what a binary
 needs — and a singleton is precisely the mechanism that takes that choice away.
 
-**Measured today, and it is the ratchet this implies:** `Root::singleton` is read in **66 files
-outside `game`** — frontend 43, windowing 17, utility 3, server 3 — every one of which should be
-reading `content`. Inside `game` the 139 `StarRoot.hpp` includes are legitimate and stay.
+**Measured today, and it is the ratchet this implies:** `Root::singleton` is read in **79 files
+outside `source/game/`** — `frontend` 43, `windowing` 17, `source/test/` 8, **`rendering` 4**,
+`server` 3, `source/utility/` 3, `source/client/` 1 —
+every one of which should be reading `content`. Inside `game` the `StarRoot.hpp` includes are
+legitimate and stay.
+
+**That count read 66 until 2026-08-02, and the omission was the load-bearing one.** The old breakdown
+listed frontend, windowing, utility and server, and left out `rendering` — the single component this
+design must sever from the simulation, and therefore the one whose `Root` coupling matters most. It
+also dropped `source/test/` and `source/client/`. A number labelled "outside `game`" that quietly means "outside
+`game`, and also outside four other directories I did not think of" is worse than no number.
+
+**Live reads, not raw occurrences**, and the distinction costs three files: `rendering` matches
+`Root::singleton` in 7 files by plain grep and in 4 after comments are stripped, which is the same
+stripping `render_layering` applies. Those 4 are already on that ratchet with per-file ceilings, which
+is probably why they felt excluded — but a ratchet on a coupling is not the absence of the coupling.
 
 **The render arc already built the needle for exactly this.** `render_layering` runs
 `scripts/layering-lint.py --needle "Root::singleton"` with per-file ceilings, on the stated grounds
@@ -1815,6 +1828,19 @@ simulation fact and has nothing to do with whether anyone is listening (D9).
 separately from `mixing`, so the link gate scores both files as `mixing` and thereby **understates**
 the leak. And `Mixer` lives in `base`, a FOUNDATION granted to everything, so today every
 composition — `server`, `world_sim`, `world_gen` included — links it unconditionally.
+
+**A second obstruction, and it is the one that stops `sound` being `scene`'s twin today.** `scene` was
+adopted on the strength of a measurement: `Drawable` **already carries `DataStream` operators**, so it
+"moves down essentially for free and is already wire-ready". `AudioInstance` carries **none** — there
+is not one `DataStream` operator in `base/StarMixer.hpp`'s 172 lines. The two contracts are therefore
+symmetric in *duty* and asymmetric in *readiness*, and calling `sound` "the audio twin of `scene`"
+without saying so overstated how much of tier 3 was already done.
+
+The consequence is specific rather than vague: **`AudioBatch` needs a value encoding designed, not
+merely declared.** `Drawable` needed a home; `AudioInstance` needs a wire format first. It is also why
+`AudioInstancePtr` sits in the vocabulary register as **RESHAPE** and not MOVE — Section 3's rule that
+a pointer cannot cross a seam bites on the audio side and does not bite on the scene side. **Tier 3 is
+not tier 2 with the nouns swapped**, and until 2026-08-02 this document implied it was.
 
 **Acceptance test, falsifiable the day it lands:** `link_sweep` reports no `mixing` row for
 `starbound_server`, and the `("server", "mixing")` ratchet entry is deleted rather than lowered.
@@ -2605,7 +2631,7 @@ Every component in the diagram, in the same reading order.
 | **`host_null`** | BACKEND | MACHINE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
-| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene` |
+| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
 | **`net`** | CONTRACT | DOMAIN | what a replicated field is | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
 | **`content`** | CONTRACT | MACHINE | what a mod can change: data | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
@@ -2778,12 +2804,20 @@ two shells share almost nothing:
 
 | | `server` | `client_headless` |
 |---|---|---|
-| depends on | **core, base, game — three** | eleven components |
-| host contract | **never touches it** | `host_null`, for clipboard, cursor and the audio device |
-| its loop | **supervision** — `while (isRunning()) { sleep(100); }` | **driver** — `clientTick` then `presentTick` per step |
-| what ticks the world | `game`'s `universeLoop`, a thread `UniverseServer` owns | `participant`'s `clientLoop`, a fixed-timestep accumulator |
+| depends on | **12 components**, none of them in `device/` | **25 components**, two of them in `device/` |
+| zones reached | `machine/` and `domain/` only | all four |
+| host contract | **never touches it** | `host_null`, for clipboard and cursor — **not audio**; it links neither `audio` nor `mixing` |
+| its loop | **supervision** — `superviseLoop`, `while (isRunning()) { sleep(100); }` | **driver** — `headlessLoop`: `clientTick` then `present` per step |
+| what ticks the world | `universe`'s `universeLoop`, on its own thread | `participant`'s `clientLoop`, a fixed-timestep accumulator |
 | simulates via | `UniverseServer` — authoritative | `UniverseClient` — a slave view |
 | players | N, remote | one, local |
+
+**This table read "core, base, game — three" against "eleven" until 2026-08-02, and both numbers
+predate the simulation split.** They are 12 and 25 now, so the gap it was drawn to dramatise
+is *narrower* than it claimed, not wider — and the honest form of the contrast is the second row
+rather than the first. The distinction that survives the register growing is **which zones each one
+enters**, not how many components it happens to name. It also credited `host_null` to "the audio
+device", which `client_headless` does not link at all.
 
 They share exactly one property: **they link `game` and draw nothing.** That is a negative property,
 not a shared design, and it is the whole of the resemblance.
