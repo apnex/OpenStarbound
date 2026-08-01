@@ -1265,6 +1265,44 @@ boundary in production. `connect(m_universeServer->addLocalClient(), …)` and
 and nothing downstream of `connect` knows the difference. Seam 1 asks for that shape a second time,
 one boundary further out.
 
+### Where the universe lives is a WIRING decision, not an execution mode
+
+There is **no conditional execution model**. `universeLoop` is the same class on the same kind of
+thread at the same cadence wherever it runs. `UniverseClient` does not branch, `UniverseConnection`
+does not branch, and nothing downstream of `connect()` can tell. Exactly one thing varies, once, in a
+`WIRING` element: whether this process constructs a `UniverseServer`, and which `PacketSocket` backend
+the resulting pair gets.
+
+**`PacketSocket` is the substitution point** — `LocalPacketSocket` and `TcpPacketSocket` are two
+backends of one contract, chosen at composition and invisible afterwards. That is this design's own
+pattern, already shipping, one boundary further in.
+
+### The co-located path must not be a cheaper semantics — D8
+
+An earlier draft of this section listed four reasons a dedicated universe process would be expensive.
+Three of them were not costs. They were **smells**, and naming them as costs would have argued for
+keeping a defect:
+
+| listed as a cost | what it actually is |
+|---|---|
+| "serialisation is free locally" | `LocalPacketSocket::writeData()` and `readData()` both `return false`, and `sendPackets` moves `PacketPtr` straight into the peer's `Deque`. **The wire format is never exercised in the most common configuration**, and two "sides" share mutable heap objects across what this document calls a boundary |
+| "assets and `Root` load twice" | a consequence of `Root` being an undifferentiated singleton, which the Air-Gap ratchet already exists to pay down. A decomposed asset layer would let each process load what it needs |
+| "supervision and orphan handling do not exist" | a feature absent today, not a cost of building it. Nothing currently notices if the embedded universe thread dies |
+
+Only launch latency was a real cost, and it is small and solvable.
+
+**The consequence is a design requirement, and seam 1 inherits it.** The co-located backend of a seam
+must be *semantically identical* to the split one, not merely faster — otherwise the configuration
+almost everyone runs is the one that never tests the boundary, and breakage surfaces only in the rare
+configuration. Seam 1's claim that "co-located, the delta is a memcpy" is exactly the shape that
+produces this, and `LocalPacketSocket` is the worked example of what goes wrong.
+
+> **D8 — a seam's co-located path is an optimisation, never a different contract.** Either it performs
+> the same encode/decode the split path does, or an oracle proves the two produce identical results.
+> "It is faster because it skips the boundary" is a boundary that does not exist.
+
+D8 has no instrument yet. It belongs in Section 6 alongside the other two.
+
 Four things this view shows that the dependency view structurally cannot:
 
 - **`universeLoop` appears in both processes, and the client reaches either through one edge.** The
@@ -1417,6 +1455,12 @@ requiring a real call graph rather than an include graph:
 
 - **The graft rule at full fidelity** — check each element root's call closure against its component's
   grants, instead of only the edges this document draws.
+- **The D8 oracle — a seam's co-located path must be the same contract as its split path.** Today
+  `LocalPacketSocket::writeData()` and `readData()` both `return false`: the configuration almost
+  everyone runs never exercises the wire format. Seam 1 inherits this the moment "co-located is a
+  memcpy" is taken literally. The instrument is either an encode/decode on both paths, or an A/B
+  proving the two produce identical results — the same shape as the render subsystem's existing
+  bit-identity oracles.
 - ~~**The deduplication measure**~~ — **BUILT** (`scripts/dedup-measure.py`, ctest `dedup_measure`).
   Measured from `objdump` relocations rather than includes: *use*, not permission. Today
   `closure(clientTick)` is 8,622 symbols and `closure(presentTick)` is 2,074, of which **1,484 are
