@@ -3,7 +3,7 @@
 > **STATUS: WORK IN PROGRESS.** Section 1 (where the boundary goes) is Director-approved.
 > Sections 2–6 are not yet designed. Written mid-brainstorm at the Director's request so that
 > nothing is lost to a context compaction. Do not treat the unwritten sections as omissions —
-> they are outstanding work, listed in §7.
+> they are outstanding work, listed in Section 7.
 
 **Goal.** Make presentation a replaceable component behind a stated contract, so that a Starbound
 client can run with **no presentation linked at all** — and so that a different presentation
@@ -29,7 +29,7 @@ it becomes a backend swap precisely because the null case forced the contract to
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = merely nullable. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
-| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See §1 and the risk in §6. |
+| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 1 and the risk in Section 6. |
 
 ### Why D6 is not a preference
 
@@ -51,7 +51,7 @@ Everything that turns descriptions into **pixels** is presentation.
 the passes and L1 sit on the presentation side.
 
 That sounds like a large restructure. It is not, and the measurement in
-`docs/architecture/system-boundaries.md` §5 says why:
+`docs/architecture/system-boundaries.md` Section 5 says why:
 
 | edge | includes | files |
 |---|---:|---:|
@@ -73,7 +73,7 @@ it is and crosses nothing.
 **The contract begins after assembly:** *here is a finished frame, present it.*
 
 Which is why the video contract is one call per frame with one value, and why it passes the network
-test in §5 without redesign.
+test in Section 5 without redesign.
 
 ### The three contracts, as streams
 
@@ -134,9 +134,9 @@ Consequently the word *presentation* is carrying three different meanings at onc
 | `star_rendering` (T4) | painters and passes | **half** — misses the renderer itself |
 | tier T4 "presentation" | `{rendering, windowing, frontend}` | **wrong both ways** — includes the UI this section just placed on the game side, still misses the GL backend |
 | L1 / L2 / L3 | the render decomposition | **L1 straddles the directory line** — which is why `scripts/layering-lint.py` has to name `application/` paths |
-| `source/presentation` (§4) | the contract, interface-only | **no** — that is the seam, not the side |
+| `source/presentation` (Section 4) | the contract, interface-only | **no** — that is the seam, not the side |
 
-§4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
+Section 4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
 
 **First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
 `${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line is the entire design
@@ -149,7 +149,7 @@ satisfies test 2 (severability) already. Nothing needs to move for it.
 **And the GL backend has exactly one consumer outside its own `.cpp`:** `StarMainApplication_sdl.cpp`,
 the T2 shell that owns the GL context. Unifying the pixel side takes the backend away from that shell,
 which is precisely what D5 requires — so **the naming question and the injection question are the same
-question**, and they have to be answered in that order. See §4's ordering constraint.
+question**, and they have to be answered in that order. See Section 4's ordering constraint.
 
 ---
 
@@ -227,7 +227,7 @@ Zero round trips, already batched. Nobody designed this for the thought experime
 
 - **Pointers crossing.** `addAudio(AudioInstancePtr)` passes a shared handle.
   `WorldRenderData::particles` is a raw `List<Particle> const*`. Neither survives a wire — and neither
-  is visible to any existing instrument, because §6 of the boundary document measures *how much* of a
+  is visible to any existing instrument, because Section 6 of the boundary document measures *how much* of a
   type is used and nothing measures *whether it could be sent*.
 - **Query-shaped Lua callbacks.** Four of the seven in `makeRenderingCallbacks` return values:
   `framesSkipped()`, `postProcessGroupEnabled(String)`, `getEffectParameter(...)`,
@@ -382,7 +382,7 @@ A presentation backend need not have a GPU backend at all: `transcript` has none
 | **`AudioSink`** | one-way in | `play(AudioBatch const&)` | merely nullable |
 | **`InputSource`** | one round trip out | `poll() -> InputBatch` | pluggable source |
 
-The sink/source vocabulary is chosen to carry §3's network constraint in the name itself: **a sink
+The sink/source vocabulary is chosen to carry Section 3's network constraint in the name itself: **a sink
 never answers, and there is exactly one source, polled once per frame.** A method that returns a value
 on something called a *Sink* is a naming error before it is a design error — which makes the constraint
 reviewable by reading, not only by counting.
@@ -447,7 +447,7 @@ resolve. Three of them resolve by themselves and one does not:
 - **`TextPainter` genuinely splits.** Its method list is two jobs in one class: `stringWidth`,
   `wrapText`, `wrapTextViews`, `determineTextSize`, `determineLineSize`, `glyphWidth` are **layout**;
   `renderText`, `renderLine`, `renderGlyph`, `renderPrimitives` are **drawing**. Layout goes to the
-  simulation side under §1's *metrics are data* precedent; rasterisation stays in `rendering`.
+  simulation side under Section 1's *metrics are data* precedent; rasterisation stays in `rendering`.
 
 **(2) The GPU seam splits `application`'s render half in two**, along a line the includes already
 draw — `gpu` (4 files, 835 lines, abstract) and `gpu_opengl` (6 files, 3,456 lines, GL). See the
@@ -462,7 +462,7 @@ files, and the 12 distinct headers cluster by difficulty:
 | **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
 | **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
 
-The middle cluster is the one this spec had not confronted: §6 listed `Root` coupling as a *secondary*
+The middle cluster is the one this spec had not confronted: Section 6 listed `Root` coupling as a *secondary*
 risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
 runtime coupling, and `#include` counts alone would never have surfaced it.
 
@@ -476,19 +476,19 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
 | `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
 | `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
-| `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — §3: a pointer cannot cross |
-| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on §6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+| `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
+| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
 
 ### Renamed, and deliberately not renamed
 
-- **`StarRenderingLuaBindings`** (in `client`) — **RESHAPE.** §2's caveat: it binds to
+- **`StarRenderingLuaBindings`** (in `client`) — **RESHAPE.** Section 2's caveat: it binds to
   `ClientApplication` methods and calls `app->renderer()`. It must address the contract, not a shell,
   before a second shell can offer the same four Lua groups.
 - **The T4 tier label "presentation"** — **RETIRED.** In the target state `windowing`/`frontend` and
   `rendering` no longer share a tier, so `TIERS` in `scripts/arch-graph.py` changes shape, not just
-  wording. The boundary document's §12 (the presentation tier's three duties) is rewritten by this.
+  wording. The boundary document's Section 12 (the presentation tier's three duties) is rewritten by this.
 - **`RenderCallback`** — **NOT RENAMED.** It is tempting to rename it away from the contract's
-  vocabulary, but the measurement in §1 says it occurs in 39 files and all 39 are in `source/game`. It
+  vocabulary, but the measurement in Section 1 says it occurs in 39 files and all 39 are in `source/game`. It
   never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
   enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
 
@@ -528,14 +528,14 @@ unblocked today.**
 **Seam 2 — do it first, alone.** Splitting `gpu` and `gpu_opengl` out of `application` is a
 relocation of code that is already separated by its includes. Nothing needs injecting: the shell goes
 on constructing `OpenGlRenderer` exactly as it does now, and the only edits are grant lists. It does
-not depend on the contract, on the vocabulary assessment, or on §6. It is the cheapest step in this
+not depend on the contract, on the vocabulary assessment, or on Section 6. It is the cheapest step in this
 spec and it stands on its own merits even if seam 1 is never built.
 
 **Seam 1 — the order is forced.** The GL backend's only external consumer is
 `StarMainApplication_sdl.cpp`, the shell that owns the GL context, so taking the backend out of its
 reach is correct under D5 but must come last:
 
-1. `presentation` exists and the vocabulary moves down (gated by §6's assessment).
+1. `presentation` exists and the vocabulary moves down (gated by Section 6's assessment).
 2. `Root` reads leave the four painters — injected resource access, not a singleton reach.
 3. `client` takes injected backends instead of constructing GL.
 4. **Only then** does `${STAR_GAME_INCLUDES}` come out of `rendering`.
@@ -554,7 +554,7 @@ Constraints known so far:
   `scripts/render-gate.sh` and `scripts/render-motion.sh`.
 - The null client must **link shell 2 only** (`extern + core + base + game` + the contract), which is
   itself the proof that presentation is severable — the same move `render_surface_tests` makes for L1.
-- The round-trip ratchet of §3 and the existing `boundary_ratchet` 213 both only go down.
+- The round-trip ratchet of Section 3 and the existing `boundary_ratchet` 213 both only go down.
 
 ---
 
@@ -563,7 +563,7 @@ Constraints known so far:
 **The central one.** `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`,
 `SkyRenderData` and `Particle` have not been assessed. Some are appearance data wearing a game name and
 will move as easily as `Drawable`. Others encode simulation concepts and will need **narrowing rather
-than relocation** — that is §6-of-the-boundary-document's shape work, promoted into scope. One or two
+than relocation** — that is the shape work in the boundary document's Section 6, promoted into scope. One or two
 may not move at all, which would leave the frame carrying a small game-typed residue and push
 `presentation` to T3.5 after all.
 
@@ -577,11 +577,12 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ## 7. What remains to be designed
 
-1. **§4's naming register** — written and awaiting Director approval, and provisional until item 3
+1. **Section 4's naming register** — written and awaiting Director approval, and provisional until item 3
    lands: the six unassessed types could add rows or move `presentation` to T3.5.
-2. **§5 Verification** — gates, oracles, the round-trip ratchet's exact metric and starting ceiling.
-3. **The vocabulary assessment** — the six unresolved types in §6; cheap-move vs needs-narrowing vs
-   cannot-move. **This gates §4.**
+2. **Section 5, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
+   ceiling.
+3. **The vocabulary assessment** — the six unresolved types in Section 6; cheap-move vs needs-narrowing vs
+   cannot-move. **This gates Section 4.**
 4. **Sequencing** — the order of extraction, each step provable and reversible.
 5. **Out-of-scope statement** — explicit list of what this spec does not cover.
 6. **Cleanup ledger** — what the contract exposes as dead, and where it gets removed.
@@ -590,9 +591,9 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ## 8. Related
 
-- `docs/architecture/system-boundaries.md` — the measured map this design sits inside. §5 (granted vs
-  spent), §6 (shape), §9 (cohesion), §12 (presentation tier's three duties), §13 (the one inheritance
-  edge that leaves).
+- `docs/architecture/system-boundaries.md` — the measured map this design sits inside. Sections 5
+  (granted vs spent), 6 (shape), 9 (cohesion), 12 (presentation tier's three duties) and 13 (the one
+  inheritance edge that leaves).
 - `scripts/boundary-inventory.py` — the 213 push-sink ratchet this design should drive down.
 - Task #199 — the sink-gating groundwork already landed (`WorldClient::setHeadless`,
   `ClientRenderCallback(wantView)`).
