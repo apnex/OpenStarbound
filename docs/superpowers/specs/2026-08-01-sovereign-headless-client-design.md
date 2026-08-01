@@ -4,7 +4,7 @@
 > **approval is aggregate only — no section is approved until the whole can be reasoned with
 > together.** Section 1 was stamped approved earlier and has been returned to PROVISIONAL, because
 > the model beneath it moved. Sections marked PROVISIONAL are designed and awaiting that aggregate
-> review; sections marked NOT YET DESIGNED are outstanding work, listed in Section 7. Do not treat
+> review; sections marked NOT YET DESIGNED are outstanding work, listed in Section 8. Do not treat
 > either as an omission.
 
 **Goal.** Make presentation a replaceable component behind a stated contract, so that a Starbound
@@ -31,7 +31,7 @@ it becomes a backend swap precisely because the null case forced the contract to
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = merely nullable. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
-| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 1 and the risk in Section 6. |
+| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 1 and the risk in Section 7. |
 
 ### Why D6 is not a preference
 
@@ -286,7 +286,7 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 ## 4. The target state — PROVISIONAL
 
 **This section describes the target state and nothing else.** No migration, no actions against the
-current tree, no history — those live in Section 9, and the delta itself is a separate exercise. Read
+current tree, no history — those live in Section 10, and the delta itself is a separate exercise. Read
 every table here as a description of the system we are building, not of the one we have.
 
 ### There are two seams, not one
@@ -443,14 +443,15 @@ classifies *why* a dependency exists — it does not remove one.
 
 **The diagram is compile time, and only compile time.** Every arrow is an `#include` permitted by a
 grant list, enforced by `INCLUDE_DIRECTORIES`, and a violation is a compile error. **No arrow means
-"calls" and no arrow means "sends data to."** Section 4 does carry a runtime model as well — the
-element register and its clocks, the driver's shape, and what crosses each seam — but that is a
-*different graph*, and the design's value lives in the places where the two disagree:
+"calls" and no arrow means "sends data to."** The runtime model is **Section 5**, and nothing in this
+section describes it. That separation is deliberate: every attempt to carry both here produced a
+contradiction within a day. They are *different graphs* over the same register, and the design's value
+lives in the places where they disagree:
 
 | | compile-time graph | runtime graph |
 |---|---|---|
 | edge means | A may include B | A calls B, or sends data to B |
-| lives in | the diagram and the grant table | the element register, the driver shape, the seam-currency table |
+| lives in | **Section 4** — this diagram and the grant table | **Section 5** — the element register, the driver shape, the execution graph |
 | enforced by | `INCLUDE_DIRECTORIES` — a compile error | nothing mechanical; it is a description |
 | `client` ↔ `rendering` | **no edge in either direction** | `client` → `rendering`, every frame |
 | `host_sdl` ↔ `client` | `host_sdl --> host`, and `client --> host` | `host_sdl`'s `frameLoop` **calls** `client` |
@@ -696,31 +697,6 @@ them measured:
 `Device` rather than `Rasterizer` because the contract also owns texture creation, framebuffer
 targets, blend and scissor state — the whole drawing device, not the rasterisation step alone.
 
-### What actually crosses each seam
-
-The two seams carry different currency, and conflating them is the frame-streaming mistake in another
-costume. Naming both precisely is what keeps the split honest:
-
-| | seam 1 — `presentation` | seam 2 — `gpu` |
-|---|---|---|
-| **currency** | a **scene delta** | a **`RenderPrimitive`** |
-| **shape** | what exists, where, moving how, plus the camera *target* | `Variant<RenderTriangle, RenderQuad, RenderPoly>` of `RenderVertex { screenCoordinate, textureCoordinate, color, param1 }` |
-| **register** | declarative — names no game type, and is interpolatable | imperative — screen-space, already projected |
-| **crosses** | `client` → `rendering` | `rendering` → a `gpu_*` backend |
-
-Two properties of that table are load-bearing:
-
-- **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
-  returns `client` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
-  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
-  list said "flow is one-way and nothing returns", which contradicted this section's own contract
-  table. Seam 2 genuinely is one-way.
-- **An entrypoint is never in the frame path.** It wires the components together once at composition
-  and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
-  frame would be a component with behaviour, and the kind would be a lie.
-- **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
-  knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
-
 ### The register — one row per box
 
 Every component in the diagram, in the same reading order.
@@ -753,209 +729,6 @@ Twenty-one components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDA
 ENTRYPOINTs. Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude
 is right.
 The kinds are what make the next finding visible.
-
-### Element register
-
-| element | kind | owner | clock | called by |
-|---|---|---|---|---|
-| **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
-| **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
-| **`clientLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
-| **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
-| **`superviseLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
-| **`fixedTick`** | TICK | `client` | — | `clientLoop`, zero-to-N times per driver step |
-| **`inputTick`** | TICK | `host_sdl` | — | whichever driver this process has; drains the OS event queue |
-| **`clientTick`** | TICK | `client` | — | whichever driver this process has |
-| **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
-| **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
-
-### The driver, and why there is no `presentLoop`
-
-A **driver** is the loop that owns a process's cadence. There is exactly one per process, it comes from
-whatever host that process has, and its whole shape is four lines:
-
-```
-frameLoop      while (running) { pump(); clientTick(now); presentTick(now); swap(); idle(); }
-headlessLoop   while (!done)   {         clientTick(now); presentTick(now);         }
-```
-
-**Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
-today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
-genuinely a tick and there is no `presentLoop` at any stage. An earlier draft of this section predicted
-one; that prediction was wrong.
-
-`clientLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
-fixed step while real time does not cooperate: it runs `fixedTick` zero-to-N times to bring simulated
-time level with real time.
-
-That makes the client's three elements a sequence of **time domains**, which is exactly what their
-names record:
-
-| element | cadence | one iteration is |
-|---|---|---|
-| `clientTick` | **real** time, whatever the driver runs at | one driver step |
-| `clientLoop` | — | the converter: real time in, fixed steps out |
-| `fixedTick` | **simulated** time, fixed 60 Hz | one step of the simulation |
-
-An earlier draft named these `simLoop` and `simTick`. Both were dropped: `universeLoop` is also
-simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
-strings and profile frames, where the enclosing component is not visible to disambiguate them.
-
-### Why `presentTick` is one element and not two
-
-`presentTick` does four things in order — **resample · camera · assemble · paint** — and the first two
-are a different job from the last two: resampling is a pure function of the scene, the target time and
-the camera, and needs no device at all, while assembling and painting need a `Device`. That is a real
-decomposition and `rendering`'s contents record it. It is deliberately **not** two entries in the
-element register, for three reasons:
-
-- **The register models cadence, and these share one exactly.** Its columns are *clock* and *called
-  by*. There is precisely one resample per paint, by construction, because the resample target *is*
-  the paint's timestamp. Two rows would assert a distinction the clock column cannot express.
-- **Nothing calls either half alone.** An element earns a row when something can call it
-  independently. `transcript` implements the same seam and paints nothing, but it records deltas
-  verbatim rather than resampling them, so it is not a second caller of the first half.
-- **Splitting the driver-facing call would leak phase order into the host.** `frameLoop` would have to
-  know that resample precedes paint. That is a worse boundary than the one the split documents, and it
-  is the same inversion rejected when the frame loop was considered for a move into `client`.
-
-The general rule, stated once: an ELEMENT earns a register row when it owns a clock or when something
-can call it on its own. Sequential phases inside one tick are contents, not elements.
-
-### The execution graph — the second view
-
-The diagram earlier in this section is **compile time**: who may include whom. This one is **run time**:
-what actually executes, on which thread, and what it hands to what. They are different graphs on the
-same node set, and every earlier attempt to describe the runtime in prose alongside a dependency
-picture produced a contradiction within a day.
-
-Clusters are **threads**, nested inside **processes**. Each node is an ELEMENT, labelled with the
-component that owns it, so both views reconcile against the same register.
-
-```mermaid
-flowchart TD
-  subgraph pclient ["<b>client_opengl</b> — one process"]
-    subgraph tdriver ["driver thread — exactly one driver runs; clock: vsync, or free-run when headless"]
-      frameloop["<b>frameLoop</b> · LOOP<br/><i>host_sdl</i>"]
-      headlessloop["<b>headlessLoop</b> · LOOP<br/><i>host_null</i>"]
-      inputtick["<b>inputTick</b> · TICK<br/><i>host_sdl</i>"]
-      clienttick["<b>clientTick</b> · TICK<br/><i>client</i>"]
-      clientloop["<b>clientLoop</b> · LOOP<br/><i>client</i>"]
-      fixedtick["<b>fixedTick</b> · TICK<br/><i>client</i>"]
-      presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
-      device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
-    end
-    subgraph tuniverse ["universe thread — clock: its own"]
-      universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
-    end
-    subgraph taudio ["SDL audio thread — clock: SDL's"]
-      audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
-    end
-  end
-
-  subgraph pserver ["<b>server</b> — a separate process"]
-    subgraph tmain ["main thread — 100 ms poll"]
-      superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
-    end
-    subgraph tuniverse2 ["universe thread — clock: its own"]
-      universeloop2["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
-    end
-  end
-
-  frameloop --> inputtick
-  frameloop ==>|Application| clienttick
-  frameloop ==>|Application| presenttick
-  headlessloop ==>|Application — the identical two calls| clienttick
-  headlessloop ==>|Application| presenttick
-  clienttick --> clientloop
-  clientloop --> fixedtick
-  clienttick -.->|scene delta · SceneSink · SEAM 1| presenttick
-  clienttick -.->|audio buffer · AudioSink| audiotick
-  presenttick ==>|RenderPrimitive · Device · SEAM 2| device
-  clienttick -.->|netcode · UniverseConnection| universeloop
-  universeloop -.->|world state| clienttick
-  inputtick -.->|input · UNRESOLVED, see below| clienttick
-  superviseloop -.->|supervises only; ticks nothing| universeloop2
-
-  classDef kLoop fill:#1f4e79,stroke:#0f2d46,color:#fff
-  classDef kTick fill:#2e6da4,stroke:#1f4e79,color:#fff
-  classDef kDev  fill:#7a3e9d,stroke:#4d2763,color:#fff
-  classDef kGap  fill:#8a1f1f,stroke:#4d0f0f,color:#fff,stroke-dasharray:4 3
-  class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop kLoop
-  class clienttick,fixedtick,presenttick,audiotick kTick
-  class device kDev
-  class inputtick kGap
-```
-
-**Three edge kinds, and the distinction between them is the point:**
-
-| edge | means | why it matters |
-|---|---|---|
-| `A --> B` | **direct call**, same thread, statically bound | ordinary control flow |
-| `A ==> B` | **call dispatched through a contract** — virtual, in-process | the compile arrow points the *other* way; this is where the two graphs invert |
-| `A -.-> B` | **handoff** — a payload crosses; the producer does not block on the consumer's body | it may cross a thread, a process, or a machine |
-
-**Seam 1 is a handoff; seam 2 is a call.** That falls out of the network constraint rather than taste:
-a scene delta must survive being a packet, so `clientTick` can never synchronously enter `rendering`. A
-`RenderPrimitive` never crosses a machine, so `presentTick` calling `Device` can be an ordinary virtual
-call. The compile diagram draws both as `-->` and cannot tell them apart.
-
-Four things this view shows that the dependency view structurally cannot:
-
-- **`universeLoop` appears in both processes.** The same element, two homes: single-player embeds it,
-  a dedicated server runs it standalone. That is "local is a degenerate case of remote" as a picture
-  rather than a claim — and it is the pattern this whole design copies for presentation.
-- **The host calls the client.** `frameLoop ==> clientTick` runs opposite to `host_sdl --> host` and
-  `client --> host`. Reading the compile arrows as call direction inverts the system.
-- **Presentation and simulation share a thread today.** Most of the client process sits in one
-  cluster. The split-across-machines case is exactly this diagram with that cluster cut in two, and
-  nothing else moving.
-- **The two client compositions are the same picture.** `frameLoop` and `headlessLoop` are drawn side
-  by side because exactly one of them exists in any given process, and both make the *identical two
-  calls* into `clientTick` and `presentTick` through the same `Application` contract. `client_headless`
-  substitutes `host_null` for `host_sdl` and `transcript` for `rendering`; **no element moves and none
-  is added.** That claim was previously asserted in prose; here it is visible.
-- **`superviseLoop` supervises nothing it drives.** Its only edge is a dashed label; the authority in
-  the server process is `universeLoop`, on another thread.
-
-**The unresolved edge.** `inputTick` is drawn dashed and red because the target state cannot currently
-deliver its output. `InputSource` is declared by `presentation` and implemented by `rendering` and
-`transcript` — but input events originate at the **host**, and neither backend is granted `host`:
-
-```
-rendering  | core, base, presentation, scene, gpu     <- no host
-transcript | core, base, presentation, scene          <- no host
-```
-
-So `poll()` has nothing to return. `InputSource` belongs on seam 1 rather than in `host`, because seam
-1 is the boundary that crosses machines and the human sits at the display — routing input through
-`host` instead would need a second network-spanning seam, which D3 forbids. The defect is narrower
-than that: **the presentation backend cannot reach its own local host.** Resolving it is a Director
-decision, carried as an open item in Section 7 with three candidate fixes, not silently patched here.
-
-### Three clocks, of which we own two
-
-| clock | owned by | one per |
-|---|---|---|
-| **driver** | the host this process happens to have | **process** |
-| **sim** | `client` — a fixed-timestep accumulator | client |
-| audio | SDL, via `SDL_OpenAudioDeviceStream` @ 44100 Hz | device |
-
-The driver clock being *per process* is the move that makes the network case free: co-located there is
-one driver; split across a machine boundary there are two, one on each side, and **no element moves and
-none is added**.
-
-| | co-located | split |
-|---|---|---|
-| sim side | `frameLoop` → `clientTick` → `clientLoop` | `headlessLoop` → `clientTick` → `clientLoop` → scene delta **out** |
-| pixel side | same driver → `presentTick` | its own host's `frameLoop` → `presentTick` ← scene delta **in** |
-| the delta is | a memcpy on one thread | a packet |
-
-Same code, different transport. Crossings stay at one push per driver step, one-way and by value, which
-is what Section 3 asks for.
-
-**Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
-whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
 
 ### `server` is not a headless client
 
@@ -1023,7 +796,7 @@ neither works:
 | **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
 
 `Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
-exactly why it is on the unassessed list in Section 6.
+exactly why it is on the unassessed list in Section 7.
 
 With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
 the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
@@ -1145,7 +918,7 @@ Two limits apply even to the anchored fourteen:
 **So the honest reading of a green run is "no contradiction found", never "the design is correct."**
 The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
 assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
-That is a ratchet pointing the opposite way from the removal ratchet, and Section 5 should gate both.
+That is a ratchet pointing the opposite way from the removal ratchet, and Section 6 should gate both.
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
@@ -1157,7 +930,244 @@ platform services are Steam and P2P, and its only `application` include was `Sta
 becomes `gpu`. Dropping both leaves the drawing code depending on nothing but the foundation and two
 contracts.
 
-## 5. Verification — NOT YET DESIGNED
+## 5. Run time — PROVISIONAL
+
+Section 4 answers *who may name whom*: a compile-time question, enforced by `INCLUDE_DIRECTORIES`,
+where a violation is a build failure. This section answers a different one — **what executes, on which
+thread, in what order, and what it hands to what.** They are different graphs over the same register,
+and the design's value lives in the places where they disagree; Section 4's arrow legend tabulates
+three such places.
+
+Keeping them apart is not tidiness. Every previous attempt to describe run time in prose alongside the
+dependency picture produced a contradiction within a day — most recently a claim that nothing returns
+across seam 1, which this section's own contract table had already refuted.
+
+### The driver, and why there is no `presentLoop`
+
+A **driver** is the loop that owns a process's cadence. There is exactly one per process, it comes from
+whatever host that process has, and its whole shape is four lines:
+
+```
+frameLoop      while (running) { pump(); clientTick(now); presentTick(now); swap(); idle(); }
+headlessLoop   while (!done)   {         clientTick(now); presentTick(now);         }
+```
+
+**Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
+today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
+genuinely a tick and there is no `presentLoop` at any stage. An earlier draft of this section predicted
+one; that prediction was wrong.
+
+`clientLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
+fixed step while real time does not cooperate: it runs `fixedTick` zero-to-N times to bring simulated
+time level with real time.
+
+That makes the client's three elements a sequence of **time domains**, which is exactly what their
+names record:
+
+| element | cadence | one iteration is |
+|---|---|---|
+| `clientTick` | **real** time, whatever the driver runs at | one driver step |
+| `clientLoop` | — | the converter: real time in, fixed steps out |
+| `fixedTick` | **simulated** time, fixed 60 Hz | one step of the simulation |
+
+An earlier draft named these `simLoop` and `simTick`. Both were dropped: `universeLoop` is also
+simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
+strings and profile frames, where the enclosing component is not visible to disambiguate them.
+
+### Three clocks, of which we own two
+
+| clock | owned by | one per |
+|---|---|---|
+| **driver** | the host this process happens to have | **process** |
+| **sim** | `client` — a fixed-timestep accumulator | client |
+| audio | SDL, via `SDL_OpenAudioDeviceStream` @ 44100 Hz | device |
+
+The driver clock being *per process* is the move that makes the network case free: co-located there is
+one driver; split across a machine boundary there are two, one on each side, and **no element moves and
+none is added**.
+
+| | co-located | split |
+|---|---|---|
+| sim side | `frameLoop` → `clientTick` → `clientLoop` | `headlessLoop` → `clientTick` → `clientLoop` → scene delta **out** |
+| pixel side | same driver → `presentTick` | its own host's `frameLoop` → `presentTick` ← scene delta **in** |
+| the delta is | a memcpy on one thread | a packet |
+
+Same code, different transport. Crossings stay at one push per driver step, one-way and by value, which
+is what Section 3 asks for.
+
+**Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
+whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
+
+### Element register
+
+| element | kind | owner | clock | called by |
+|---|---|---|---|---|
+| **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
+| **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
+| **`clientLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
+| **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
+| **`superviseLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
+| **`fixedTick`** | TICK | `client` | — | `clientLoop`, zero-to-N times per driver step |
+| **`inputTick`** | TICK | `host_sdl` | — | whichever driver this process has; drains the OS event queue |
+| **`clientTick`** | TICK | `client` | — | whichever driver this process has |
+| **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
+| **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
+
+### The execution graph
+
+Clusters are **threads**, nested inside **processes**. Each node is an ELEMENT, labelled with the
+component that owns it, so both views reconcile against the same register.
+
+```mermaid
+flowchart TD
+  subgraph pclient ["<b>client_opengl</b> — one process"]
+    subgraph tdriver ["driver thread — exactly one driver runs; clock: vsync, or free-run when headless"]
+      frameloop["<b>frameLoop</b> · LOOP<br/><i>host_sdl</i>"]
+      headlessloop["<b>headlessLoop</b> · LOOP<br/><i>host_null</i>"]
+      inputtick["<b>inputTick</b> · TICK<br/><i>host_sdl</i>"]
+      clienttick["<b>clientTick</b> · TICK<br/><i>client</i>"]
+      clientloop["<b>clientLoop</b> · LOOP<br/><i>client</i>"]
+      fixedtick["<b>fixedTick</b> · TICK<br/><i>client</i>"]
+      presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
+      device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
+    end
+    subgraph tuniverse ["universe thread — clock: its own"]
+      universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
+    end
+    subgraph taudio ["SDL audio thread — clock: SDL's"]
+      audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
+    end
+  end
+
+  subgraph pserver ["<b>server</b> — a separate process"]
+    subgraph tmain ["main thread — 100 ms poll"]
+      superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
+    end
+    subgraph tuniverse2 ["universe thread — clock: its own"]
+      universeloop2["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
+    end
+  end
+
+  frameloop --> inputtick
+  frameloop ==>|Application| clienttick
+  frameloop ==>|Application| presenttick
+  headlessloop ==>|Application — the identical two calls| clienttick
+  headlessloop ==>|Application| presenttick
+  clienttick --> clientloop
+  clientloop --> fixedtick
+  clienttick -.->|scene delta · SceneSink · SEAM 1| presenttick
+  clienttick -.->|audio buffer · AudioSink| audiotick
+  presenttick ==>|RenderPrimitive · Device · SEAM 2| device
+  clienttick -.->|netcode · UniverseConnection| universeloop
+  universeloop -.->|world state| clienttick
+  inputtick -.->|input · UNRESOLVED, see below| clienttick
+  superviseloop -.->|supervises only; ticks nothing| universeloop2
+
+  classDef kLoop fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kTick fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kDev  fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kGap  fill:#8a1f1f,stroke:#4d0f0f,color:#fff,stroke-dasharray:4 3
+  class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop kLoop
+  class clienttick,fixedtick,presenttick,audiotick kTick
+  class device kDev
+  class inputtick kGap
+```
+
+**Three edge kinds, and the distinction between them is the point:**
+
+| edge | means | why it matters |
+|---|---|---|
+| `A --> B` | **direct call**, same thread, statically bound | ordinary control flow |
+| `A ==> B` | **call dispatched through a contract** — virtual, in-process | the compile arrow points the *other* way; this is where the two graphs invert |
+| `A -.-> B` | **handoff** — a payload crosses; the producer does not block on the consumer's body | it may cross a thread, a process, or a machine |
+
+**Seam 1 is a handoff; seam 2 is a call.** That falls out of the network constraint rather than taste:
+a scene delta must survive being a packet, so `clientTick` can never synchronously enter `rendering`. A
+`RenderPrimitive` never crosses a machine, so `presentTick` calling `Device` can be an ordinary virtual
+call. The compile diagram draws both as `-->` and cannot tell them apart.
+
+Four things this view shows that the dependency view structurally cannot:
+
+- **`universeLoop` appears in both processes.** The same element, two homes: single-player embeds it,
+  a dedicated server runs it standalone. That is "local is a degenerate case of remote" as a picture
+  rather than a claim — and it is the pattern this whole design copies for presentation.
+- **The host calls the client.** `frameLoop ==> clientTick` runs opposite to `host_sdl --> host` and
+  `client --> host`. Reading the compile arrows as call direction inverts the system.
+- **Presentation and simulation share a thread today.** Most of the client process sits in one
+  cluster. The split-across-machines case is exactly this diagram with that cluster cut in two, and
+  nothing else moving.
+- **The two client compositions are the same picture.** `frameLoop` and `headlessLoop` are drawn side
+  by side because exactly one of them exists in any given process, and both make the *identical two
+  calls* into `clientTick` and `presentTick` through the same `Application` contract. `client_headless`
+  substitutes `host_null` for `host_sdl` and `transcript` for `rendering`; **no element moves and none
+  is added.** That claim was previously asserted in prose; here it is visible.
+- **`superviseLoop` supervises nothing it drives.** Its only edge is a dashed label; the authority in
+  the server process is `universeLoop`, on another thread.
+
+**The unresolved edge.** `inputTick` is drawn dashed and red because the target state cannot currently
+deliver its output. `InputSource` is declared by `presentation` and implemented by `rendering` and
+`transcript` — but input events originate at the **host**, and neither backend is granted `host`:
+
+```
+rendering  | core, base, presentation, scene, gpu     <- no host
+transcript | core, base, presentation, scene          <- no host
+```
+
+So `poll()` has nothing to return. `InputSource` belongs on seam 1 rather than in `host`, because seam
+1 is the boundary that crosses machines and the human sits at the display — routing input through
+`host` instead would need a second network-spanning seam, which D3 forbids. The defect is narrower
+than that: **the presentation backend cannot reach its own local host.** Resolving it is a Director
+decision, carried as an open item in Section 8 with three candidate fixes, not silently patched here.
+
+### Why `presentTick` is one element and not two
+
+`presentTick` does four things in order — **resample · camera · assemble · paint** — and the first two
+are a different job from the last two: resampling is a pure function of the scene, the target time and
+the camera, and needs no device at all, while assembling and painting need a `Device`. That is a real
+decomposition and `rendering`'s contents record it. It is deliberately **not** two entries in the
+element register, for three reasons:
+
+- **The register models cadence, and these share one exactly.** Its columns are *clock* and *called
+  by*. There is precisely one resample per paint, by construction, because the resample target *is*
+  the paint's timestamp. Two rows would assert a distinction the clock column cannot express.
+- **Nothing calls either half alone.** An element earns a row when something can call it
+  independently. `transcript` implements the same seam and paints nothing, but it records deltas
+  verbatim rather than resampling them, so it is not a second caller of the first half.
+- **Splitting the driver-facing call would leak phase order into the host.** `frameLoop` would have to
+  know that resample precedes paint. That is a worse boundary than the one the split documents, and it
+  is the same inversion rejected when the frame loop was considered for a move into `client`.
+
+The general rule, stated once: an ELEMENT earns a register row when it owns a clock or when something
+can call it on its own. Sequential phases inside one tick are contents, not elements.
+
+### What actually crosses each seam
+
+The two seams carry different currency, and conflating them is the frame-streaming mistake in another
+costume. Naming both precisely is what keeps the split honest:
+
+| | seam 1 — `presentation` | seam 2 — `gpu` |
+|---|---|---|
+| **currency** | a **scene delta** | a **`RenderPrimitive`** |
+| **shape** | what exists, where, moving how, plus the camera *target* | `Variant<RenderTriangle, RenderQuad, RenderPoly>` of `RenderVertex { screenCoordinate, textureCoordinate, color, param1 }` |
+| **register** | declarative — names no game type, and is interpolatable | imperative — screen-space, already projected |
+| **crosses** | `client` → `rendering` | `rendering` → a `gpu_*` backend |
+
+Two properties of that table are load-bearing:
+
+- **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
+  returns `client` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
+  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
+  list said "flow is one-way and nothing returns", which contradicted this section's own contract
+  table. Seam 2 genuinely is one-way.
+- **An entrypoint is never in the frame path.** It wires the components together once at composition
+  and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
+  frame would be a component with behaviour, and the kind would be a lie.
+- **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
+  knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
+
+---
+
+## 6. Verification — NOT YET DESIGNED
 
 Constraints known so far:
 
@@ -1169,7 +1179,7 @@ Constraints known so far:
 
 ---
 
-## 6. Risks
+## 7. Risks
 
 ### The vocabulary assessment — RESOLVED, and the risk shrank
 
@@ -1236,12 +1246,12 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ---
 
-## 7. What remains to be designed
+## 8. What remains to be designed
 
 1. **Aggregate review.** Per the status rule, Sections 1 and 4 are both PROVISIONAL and neither can be
    approved alone. The scene model changed Section 1 after it had been stamped approved, which is the
    reason the rule exists.
-2. **Section 5, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
+2. **Section 6, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
 3. **The input path — a live defect, not a gap.** `InputSource` is declared by `presentation` and
    implemented by `rendering` and `transcript`, but input events originate at the host and neither
@@ -1254,8 +1264,8 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    neither backend names `host`. Surfaced by drawing the execution graph; not resolvable by inspection
    of the dependency graph, which is why it survived this long.
 3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
-   D6. See Section 6. Section 4 is no longer gated by it.
-4. **The delta from today** — Section 9, not yet computed. Section 4 is now target-state only, so the
+   D6. See Section 7. Section 4 is no longer gated by it.
+4. **The delta from today** — Section 10, not yet computed. Section 4 is now target-state only, so the
    move list, the removal ratchet and the cleanup ledger are a separate exercise.
 4. **Sequencing** — the order of extraction, each step provable and reversible.
 5. **Out-of-scope statement** — explicit list of what this spec does not cover.
@@ -1263,7 +1273,7 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ---
 
-## 8. Related
+## 9. Related
 
 - `docs/architecture/system-boundaries.md` — the measured map this design sits inside. Sections 5
   (granted vs spent), 6 (shape), 9 (cohesion), 12 (presentation tier's three duties) and 13 (the one
@@ -1275,7 +1285,7 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ---
 
-## 9. Delta from today — NOT YET COMPUTED
+## 10. Delta from today — NOT YET COMPUTED
 
 **Section 4 describes the target state and nothing else** — no migration, no actions against the
 current tree, no history. Everything about *getting there* lives here, and the delta itself is a
@@ -1363,7 +1373,7 @@ row granting `gpu` only `core`. Two artifacts of this section had been contradic
 plain sight. The grant table's contents were derived from the design rather than measured, and that is
 where the first two defects sat. The rule the render work already
 runs under, *no document may state a current-state number an instrument cannot measure*, applies to
-grants as well as numbers. Section 5 must gate the grant table against a measured sweep.
+grants as well as numbers. Section 6 must gate the grant table against a measured sweep.
 
 **The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
 That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
@@ -1410,7 +1420,7 @@ files, and the 12 distinct headers cluster by difficulty:
 | **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
 | **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
 
-The middle cluster is the one this spec had not confronted: Section 6 listed `Root` coupling as a *secondary*
+The middle cluster is the one this spec had not confronted: Section 7 listed `Root` coupling as a *secondary*
 risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
 runtime coupling, and `#include` counts alone would never have surfaced it.
 
@@ -1425,7 +1435,7 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
 | `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
 | `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
-| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 7** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
 
 ### Renamed, and deliberately not renamed
 
