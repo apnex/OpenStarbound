@@ -392,6 +392,14 @@ ENDIF ()
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME prose_claims COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prose-claims.py --check)
+  # ...AND THE GATE ITSELF IS GATED. prose_claims reported OK for its entire life while two of its
+  # five verdicts were half-blind: STALE_ZONE could not see "has no SEAM zone at all" (nothing beside
+  # it was a KIND word) and COUNT_DRIFT could not see "forty components" (it only read digits). Both
+  # were found by a human reading the document, not by the gate. A green --check proves the document
+  # is clean and proves nothing about the instrument. --selftest injects one known defect per verdict,
+  # asserts each fires, and asserts a control sentence does NOT.
+  ADD_TEST (NAME prose_claims_fires COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prose-claims.py --selftest)
 ENDIF ()
 
 IF (Python3_Interpreter_FOUND)
@@ -447,7 +455,8 @@ IF (Python3_Interpreter_FOUND)
   IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
-  LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map prose_claims)
+  LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map prose_claims
+                                   prose_claims_fires)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

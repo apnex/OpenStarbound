@@ -109,6 +109,12 @@ jobs:
       - name: prose_claims -- the prose agrees with the registers
         run: python3 scripts/prose-claims.py --check
 
+      # A green gate says the document is clean; it says nothing about whether the gate can see. Two
+      # of prose_claims' verdicts were half-blind for their entire life while reporting OK. This
+      # injects one known defect per verdict and asserts each fires, plus a control that must not.
+      - name: prose_claims_fires -- every verdict fires on a known defect
+        run: python3 scripts/prose-claims.py --selftest
+
       # Zones are directories now, so the register is a filesystem layout. Derived, never written.
       - name: tree_map -- the target directory tree matches the register
         run: python3 scripts/tree-map.py --check

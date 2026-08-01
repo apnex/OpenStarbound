@@ -7,18 +7,27 @@
 > review; sections marked NOT YET DESIGNED are outstanding work, listed in Section 8. Do not treat
 > either as an omission.
 
-**Goal.** Make presentation a replaceable component behind a stated contract, so that a Starbound
-client can run with **no presentation linked at all** — and so that a different presentation
-implementation (SDL_GPU) becomes a swap rather than a rewrite.
+**Goal.** Describe the **perfect target state of the Starbound client**: every duty owned by exactly
+one component, every dependency declared and enforceable, every composition a choice rather than an
+inheritance. 41 components in four zone directories, with the boundaries drawn where they *belong* —
+not where the current tree makes them cheap. This is a refactor of the shape of the whole program,
+not a change to one seam.
 
-**The unifying frame.** *A headless client is presentation-backend = null.* If presentation is
-replaceable behind a contract, "no presentation" is simply one implementation and SDL_GPU is another.
-Run it the other way and the same thing holds: if the system runs with nothing on the other side of
-the seam, the seam is proven to be an interface rather than a habit.
+**The forcing function.** *A headless client is presentation-backend = null.* Presentation is where
+this started, because a seam only proves itself when something runs with nothing on the other side of
+it. You only know a contract is right when two implementations satisfy it: GL is implementation #1,
+null is the cheap #2, SDL_GPU is #3 — and #3 is a backend swap precisely because #2 forced the
+contract to be honest first.
 
-**Why that single move is the whole design.** You only know a contract is right when two
-implementations satisfy it. GL is implementation #1. Null is the cheap #2. SDL_GPU would be #3 — and
-it becomes a backend swap precisely because the null case forced the contract to be honest first.
+**That one move generated the method, and the method is the design.** State the duty. Name the
+contract. Compose the participant. Applied once it yields a headless client; applied to the whole
+program it yields this document. **The presentation seam is the origin of the design, not its
+scope** — `content`, `storage`, `net`, `script`, `celestial`, `interaction`, `universe`, `world` and
+`worldgen` all arrived by running the same method past the seam that started it.
+
+**What "target state" means here (D7).** No boundary in this document is justified by what the code
+does today, and none is gated on what it would cost to reach. Cost is a consequence, recorded in
+Section 10.
 
 ---
 
@@ -26,8 +35,8 @@ it becomes a backend swap precisely because the null case forced the contract to
 
 | # | Decision |
 |---|---|
-| **D1** | **Purpose — all six.** Architectural forcing function · foundation for distributed Starbound · CI harness · bot/agent client · cleanup of legacy/dead code sitting inside boundaries · swappable presentation components. |
-| **D2** | **Scope of THIS spec.** Contract + null implementation + shell + the cleanup the contract exposes. SDL_GPU backend, CI harness, bot driver and distributed decomposition are each **follow-on specs that consume the contract**. |
+| **D1** | **Purpose — a full target-state refactor.** Clean boundaries, decoupled components, sovereign duties, composable entry points. The six original drivers — architectural forcing function · foundation for distributed Starbound · CI harness · bot/agent client · cleanup of legacy and dead code sitting inside boundaries · swappable presentation components — are the **symptoms that made the need visible**, not six separate features. Each is satisfied *by* the target state rather than pursued beside it. |
+| **D2** | **Scope of THIS spec: the whole target state.** Every component, contract, clock and composition in the registers — including `client_sdl_gpu`, `client_agent`, `world_sim`, `world_gen` and `colocation`. **What is deferred is sequencing, not scope.** Section 10 records the order and the delta; follow-on *plans* consume this spec, and there are no follow-on *specs* for anything architectural. If it belongs in the perfect shape, it belongs here. |
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = **swappable contract** — *upgraded from "merely nullable"*: the register grew `sound`, `mixing`, `audio` and `audio_sdl`, and a modality with a backend is not a nullable afterthought. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
@@ -64,8 +73,10 @@ That sounds like a large restructure. It is not, and the measurement in
 | `frontend → rendering` | 9 | 9 |
 
 **Twelve includes across ten files** — the thinnest live cross-tier edge in the entire tree is exactly
-the cut this design needs. The UI already does its own layout and already emits `Drawable`s; it simply
-hands them to a painter directly today instead of into a stream.
+where *this* seam wants to be cut. The UI already does its own layout and already emits `Drawable`s;
+it simply hands them to a painter directly today instead of into a stream. Per D7 the thinness is
+not why the boundary belongs here — it is why this boundary happens to be cheap, which is a Section 10
+fact that arrived for free.
 
 ### `RenderCallback` is not part of the contract
 
@@ -148,8 +159,11 @@ Consequently the word *presentation* is carrying three different meanings at onc
 Section 4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
 
 **First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
-`${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line is the entire design
-stated as a build rule; everything else in this spec is the work that makes deletion possible.
+`${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line states **this seam** as a
+build rule, and the rest of Section 1 is the work that makes the deletion possible. It is not the
+whole design — the target state deletes an equivalent line for every one of the 41 components, and
+`tree-map.py` exists to make that the same kind of statement everywhere rather than a special
+argument about presentation.
 
 **Second: `RenderCallback` occurs in 39 files and all 39 are in `source/game`.** The claim above that
 it is game-internal frame assembly is not an assertion about intent — it is a measurement, and it
@@ -185,11 +199,11 @@ The `windowing`/`frontend` placement, the twelve-includes measurement, and the `
 unchanged.
 
 **And a second supersession, larger than the first: this section asks where THE boundary goes,
-singular. The design now has forty components and roughly a dozen boundaries.**
+singular. The design now has 41 components and roughly a dozen boundaries** — which is the same
+supersession D1 and D2 record at the top of the document, met here first and in miniature.
 
 Every measurement in this section re-verified and still stands — `RenderCallback` is in **exactly 39
-`game` files**, checked again after the register reached forty components. What has changed is the
-frame around them:
+`game` files**, checked again at 41 components. What has changed is the frame around them:
 
 | this section says | still true? | what supersedes it |
 |---|---|---|
@@ -358,10 +372,11 @@ Four measurements say seam 2 is real rather than nominal:
   in `StarWorldPass.cpp`.
 - `game` touches none of it. `windowing`, `frontend` and `participant` touch `StarRenderer.hpp` once each.
 
-**Consequence: SDL_GPU is a seam-2 swap and does not need this design at all.** It replaces
-`OpenGlRenderer` and keeps every painter and pass. D2 already listed it as a follow-on; the earlier
-diagram contradicted that by drawing it as a peer of `rendering`, which would have implied
-reimplementing the painters.
+**Consequence: SDL_GPU enters *below* seam 2, not beside `rendering`.** It replaces `OpenGlRenderer`
+and keeps every painter and pass, so in the target state it costs exactly one BACKEND (`gpu_sdl`) and
+one composition (`client_sdl_gpu`) — both of which are in the register and in scope per D2. An earlier
+diagram drew it as a peer of `rendering`, which would have implied reimplementing the painters; that
+is the claim this measurement refutes.
 
 ### The shape stops being a stack
 
@@ -539,8 +554,9 @@ and an arrow that has to be added to make something compile is a dependency that
 `==>` edges is doing two jobs — which is exactly the shape of the `application` this design dissolves:
 it implemented `platform` and `host` both, and its duty string hid that behind a single noun.
 
-`gpu_sdl` is drawn faded and dashed: it is declared so the register shows where an SDL_GPU backend
-lands, but D2 places it out of scope for this spec.
+`gpu_sdl` is drawn like any other BACKEND, because in the target state it *is* one. It was previously
+faded to mark it as future work; that is a fact about today's tree and D7 forbids the target state
+from carrying one. Which backend gets written first is sequencing, and sequencing lives in Section 10.
 
 **The clusters are zones and colour is kind** — one axis per visual channel, so the diagram carries
 both taxonomies at once without either being inferred from the other.
@@ -770,8 +786,6 @@ flowchart TD
   class game,auth,world,wgen,uview,wview,win,front,inter,coloc,script,storage,shell kLibrary
   class cgl,chl,csg,cagent,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
-  classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
-  class sdlb,csg kOutOfScope
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -801,7 +815,7 @@ months and nothing says so.
 The word that was doing both jobs now splits:
 
 - **presentation backend** — implements seam 1. `rendering` draws; `transcript` records.
-- **GPU backend** — implements seam 2. `gpu_opengl` today; `gpu_sdl` later.
+- **GPU backend** — implements seam 2. `gpu_opengl` and `gpu_sdl` are peers; neither is privileged.
 
 A presentation backend need not have a GPU backend at all: `transcript` has none.
 
@@ -1125,8 +1139,8 @@ and `m_boundBox`, so those become the appearance input. The entity emits **state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
 
 **What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
-links **nine of thirty-four components and has no SEAM zone at all** — the generated `server` diagram
-above now names `scene` in its *not linked* list. An authority that cannot name the presentation
+links **12 of 41 components, reaches only the MACHINE and DOMAIN zones, and does not name `scene` at
+all** — the generated `server` diagram above lists `scene` under *not linked*. An authority that cannot name the presentation
 vocabulary is not a claim about discipline; it is a compile error waiting for anyone who tries.
 
 **`client_headless` links `windowing` and `frontend` — NOT A DEFECT, and the design already resolves
@@ -1255,10 +1269,12 @@ that in the whole design, and no green run should be read as evidence for it.
 
 ### `net` and `script` — and the thing that actually blocks the rest
 
-The register had **thirty-seven components and not one of them named Lua.** For a fork whose purpose is
-running Frackin Universe, the largest extension surface in the system had no representation at all.
-`LuaEngine` is 4,681 symbols in `starbound_server` — the biggest attributed thing after `game` itself —
-and it was invisible.
+<!-- HISTORICAL -->
+When these two were adopted the register held **37 components and not one of them named Lua.** For a
+fork whose purpose is running Frackin Universe, the largest extension surface in the system had no
+representation at all. `LuaEngine` is 4,681 symbols in `starbound_server` — the biggest attributed
+thing after `game` itself — and it was invisible.
+<!-- END HISTORICAL -->
 
 **`net`** — CONTRACT, `domain/`. The 11 `NetElement*` headers, **already in `core` and already domain-free**
 (10 of 11 name no domain type). It is a CONTRACT rather than a library because domain types *derive
@@ -2569,10 +2585,12 @@ Every component in the diagram, in the same reading order.
 
 ### ZONE is a directory, and the four are a layering
 
+<!-- HISTORICAL -->
 The zones used to be five and they mixed three metaphors: SUBSTRATE/SHELL is vertical, INTERIOR/
 PERIPHERY is radial, SEAM is topological. Three of the five did not parse on reading, and measurement
 found the deeper problem: **ZONE was 80% determined by KIND** — only 8 of 41 components deviated from
 their kind's default, so the axis was mostly restating something already stated.
+<!-- END HISTORICAL -->
 
 The four that replace them each answer the same question — **what does this component face?**
 
@@ -2913,9 +2931,9 @@ are absent only because the server's CMakeLists does not name those libraries.
 
 > Under OBJECT-library semantics, containment is decided entirely by which libraries an ENTRYPOINT
 > names. That is an all-or-nothing, directory-granular switch. **A component in this register is
-> enforceable if and only if it is its own directory.** Twenty-three of the thirty-four are not yet,
-> which is exactly the set `grant-sweep` calls UNVERIFIABLE — so the two numbers are not two
-> problems, they are one problem counted twice.
+> enforceable if and only if it is its own directory.** 27 of the 41 are not yet, which is exactly the
+> set `grant-sweep` calls UNVERIFIABLE — so the two numbers are not two problems, they are one problem
+> counted twice.
 
 `link_sweep` closes the altitude. It attributes each symbol to its unique defining object file, maps
 that to a component, and asserts membership of the ENTRYPOINT's grant closure. Symbols defined by
@@ -3873,13 +3891,16 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
    **Both defects of this class were found the same way** — by drawing the runtime and asking the
    compile projection for permission — and neither was visible in the dependency graph alone.
-3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
+5. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
    D6. See Section 7. Section 4 is no longer gated by it.
-4. **The delta from today** — Section 10, not yet computed. Section 4 is now target-state only, so the
-   move list, the removal ratchet and the cleanup ledger are a separate exercise.
-4. **Sequencing** — the order of extraction, each step provable and reversible.
-5. **Out-of-scope statement** — explicit list of what this spec does not cover.
-6. **Cleanup ledger** — what the contract exposes as dead, and where it gets removed.
+6. **The delta from today** — Section 10, not yet computed. Section 4 is target-state only, so the
+   move list, the removal ratchet and the cleanup ledger are a separate exercise. It has three parts:
+   - **Sequencing** — the order of extraction, each step provable and reversible.
+   - **Deferral statement** — what is deferred, and until when. Per D2 nothing architectural is out of
+     scope, so this is a **schedule, not a boundary**; the distinction is load-bearing, because the
+     previous wording deferred `client_sdl_gpu`, `client_agent` and `colocation` to specs that were
+     never going to be written.
+   - **Cleanup ledger** — what the contracts expose as dead, and where it gets removed.
 
 ---
 
