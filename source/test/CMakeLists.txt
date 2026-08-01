@@ -373,6 +373,14 @@ IF (Python3_Interpreter_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/drive-table.py --check)
 ENDIF ()
 
+# TREE MAP. Zones became directories, so the register is now a filesystem layout. A hand-written tree
+# beside a 41-row table would be a second declaration of one fact -- the defect class that produced
+# spec-model.py. Derived and checked for freshness like every other generated block.
+IF (Python3_Interpreter_FOUND)
+  ADD_TEST (NAME tree_map COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/tree-map.py --check)
+ENDIF ()
+
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME host_api_neutral COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
@@ -426,7 +434,7 @@ IF (Python3_Interpreter_FOUND)
   IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
-  LIST (APPEND star_noassets_tests host_api_neutral drive_table)
+  LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

@@ -63,7 +63,8 @@ KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 # reordered: KINDS is the taxonomy, this is one sentence's phrasing, and conflating them made the
 # gate's first run report a drift that did not exist.
 TALLY_ORDER = ("CONTRACT", "BACKEND", "LIBRARY", "FOUNDATION", "ENTRYPOINT")
-ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
+ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
+ZONE_ORDER = {z: i for i, z in enumerate(ZONES)}
 CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 # CARDINALITY -- how many instances exist at once. Added 2026-08-01 after the Director asked whether
 # N worlds are N instances of the one `world` component. They are, and nothing in the taxonomy said
@@ -154,6 +155,34 @@ ELEMENT_FREE = {
     "platform_pc": "vendor services answer when called",
     "host_sdl_extra": "placeholder guard -- never matches a real component",
 }
+
+
+def check_zone_order(comp, grants):
+    """Every grant edge must point DOWN the zone order: COMPOSITION -> DEVICE -> DOMAIN -> MACHINE.
+
+    This is the check that turns zones from labels into directories. The four-zone grouping was chosen
+    BECAUSE it produced a perfectly layered DAG -- zero upward edges across 41 components -- and a
+    layering nobody enforces reverts to a suggestion within a release.
+
+    It also earns its keep immediately: the first four-zone assignment had exactly one upward edge,
+    `storage` (MACHINE) -> `script` (DOMAIN). That was not a placement error to paper over, it was a
+    real finding. `script` grants only core, base and content and names no domain type at all -- it is
+    the Lua interpreter host, infrastructure like the allocator. It had been filed in DOMAIN by
+    association with `game/scripting/`, which is where the files sit TODAY. D7 violation, caught by
+    the layering rather than by reading."""
+    out = []
+    for a in sorted(grants):
+        if a not in comp:
+            continue
+        for b in sorted(grants[a]):
+            if b not in comp:
+                continue
+            if ZONE_ORDER[comp[b]["zone"]] > ZONE_ORDER[comp[a]["zone"]]:
+                out.append(("ZONE_ORDER",
+                            "`%s` (%s) grants `%s` (%s) -- that points UP the zone order, so the "
+                            "directory layering would be circular"
+                            % (a, comp[a]["zone"], b, comp[b]["zone"])))
+    return out
 
 
 def check_granted(comp, grants):
@@ -388,6 +417,7 @@ def check(text):
         if counts[key] < floor:
             findings.append(("VACUOUS", "only %d %s parsed, floor is %d -- the parser has regressed"
                              % (counts[key], key, floor)))
+    findings.extend(check_zone_order(comp, grants))
     findings.extend(check_granted(comp, grants))
     findings.extend(check_cardinality(elem))
     findings.extend(check_runtime_coverage(comp, elem))

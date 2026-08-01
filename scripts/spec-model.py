@@ -41,7 +41,10 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 
 KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
-ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
+ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
+# Ordered: every grant edge points DOWN this list, verified at zero exceptions. That is what makes
+# zones directories rather than labels -- a path lint can enforce the layering.
+ZONE_ORDER = {z: i for i, z in enumerate(("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION"))}
 EKINDS = ("LOOP", "TICK", "WIRING", "SIGNAL")
 CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")

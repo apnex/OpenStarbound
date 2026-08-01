@@ -47,9 +47,11 @@ MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/composition-graphs.py#%s -->"
 MARK_END = "<!-- END GENERATED: %s -->"
 
 KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
-ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
-ZONE_TITLE = {"SUBSTRATE": "SUBSTRATE", "SEAM": "SEAM", "INTERIOR": "INTERIOR",
-              "PERIPHERY": "PERIPHERY", "SHELL": "SHELL"}
+ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
+ZONE_TITLE = {"MACHINE": "MACHINE — the OS, the vendor, the asset store",
+              "DOMAIN": "DOMAIN — the game's own state and rules",
+              "DEVICE": "DEVICE — meets a display, a speaker, a file",
+              "COMPOSITION": "COMPOSITION — wires the rest"}
 CLASS_OF = {"FOUNDATION": "kFoundation", "CONTRACT": "kContract", "BACKEND": "kBackend",
             "LIBRARY": "kLibrary", "ENTRYPOINT": "kEntrypoint"}
 

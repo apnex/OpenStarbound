@@ -391,11 +391,11 @@ last grouping axis, and the one the clusters in the diagram draw:
 
 | ZONE | the rule it carries |
 |---|---|
-| **SUBSTRATE** | below every seam; available to both arms and to the shells |
+| **MACHINE** | below every seam; available to both arms and to the shells |
 | **SEAM** | a declared boundary — the only components both arms may name |
-| **INTERIOR** | inside seam 1; compiles and runs with no presentation linked at all |
-| **PERIPHERY** | outside seam 1; meets hardware or a recorder, and is swapped or deleted wholesale |
-| **SHELL** | where the two arms rejoin into an executable |
+| **DOMAIN** | inside seam 1; compiles and runs with no presentation linked at all |
+| **DEVICE** | outside seam 1; meets hardware or a recorder, and is swapped or deleted wholesale |
+| **COMPOSITION** | where the two arms rejoin into an executable |
 
 Zone is not a synonym for kind: `platform` is a CONTRACT in the SUBSTRATE, `presentation` is a
 CONTRACT in the SEAM, and `host_sdl` is a BACKEND in the SUBSTRATE while `rendering` is a BACKEND
@@ -546,75 +546,72 @@ both taxonomies at once without either being inferred from the other.
 ```mermaid
 %% projection: compile
 flowchart TD
-  subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the other three; every binary is here"]
+    cagent["<b>client_agent</b><br/>ENTRYPOINT<br/><i>a participant with no senses</i>"]
+    chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+    cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
+    csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
     subgraph shell ["<b>participant</b> · LIBRARY"]
       clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
       clientloop(["<b>clientLoop</b> · LOOP<br/><i>real time into fixed steps</i>"])
       fixedtick(["<b>fixedTick</b> · TICK<br/><i>one step of simulated time</i>"])
       audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
     end
-    cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
-    chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
-    cagent["<b>client_agent</b><br/>ENTRYPOINT<br/><i>a participant with no senses</i>"]
-    csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
-    wsim["<b>world_sim</b><br/>ENTRYPOINT<br/><i>ticks one world with no participant</i>"]
-    wgn["<b>world_gen</b><br/>ENTRYPOINT<br/><i>generates terrain and never ticks it</i>"]
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
       superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
+    wgn["<b>world_gen</b><br/>ENTRYPOINT<br/><i>generates terrain and never ticks it</i>"]
+    wsim["<b>world_sim</b><br/>ENTRYPOINT<br/><i>ticks one world with no participant</i>"]
   end
 
-  subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
-    front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
-    inter["<b>interaction</b><br/>LIBRARY<br/><i>how a participant acts on the world</i>"]
-    coloc["<b>colocation</b><br/>LIBRARY<br/><i>runs the authority in the participant's own process</i>"]
-    script["<b>script</b><br/>LIBRARY<br/><i>hosts Lua; owns no bindings</i>"]
-    win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
-    wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
-    uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
-    world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
-    wgen["<b>worldgen</b><br/>LIBRARY<br/><i>turns a seed into terrain</i>"]
-    game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
-    subgraph auth ["<b>universe</b> · LIBRARY"]
-      universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
-    end
-  end
-
-  subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    audiodev["<b>audio</b><br/>CONTRACT<br/><i>the audio-device contract</i>"]
+    audiosdl["<b>audio_sdl</b><br/>BACKEND<br/><i>the SDL audio backend</i>"]
+    gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
+    glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
+    sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
+    mixing["<b>mixing</b><br/>BACKEND<br/><i>turns sound into samples</i>"]
+    contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
     subgraph rend ["<b>rendering</b> · BACKEND"]
       presenttick(["<b>presentTick</b> · TICK<br/><i>resample · camera · assemble · paint</i>"])
     end
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
-    glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
-    sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
-    mixing["<b>mixing</b><br/>BACKEND<br/><i>turns sound into samples</i>"]
-    audiosdl["<b>audio_sdl</b><br/>BACKEND<br/><i>the SDL audio backend</i>"]
   end
 
-  subgraph Z_SEAM ["SEAM — the declared boundaries"]
-    scene["<b>scene</b><br/>CONTRACT<br/><i>what exists, where, moving how</i>"]
-    contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
-    gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
-    sound["<b>sound</b><br/>CONTRACT<br/><i>what is audible, where, how loud</i>"]
-    net["<b>net</b><br/>CONTRACT<br/><i>what a replicated field is</i>"]
-    audiodev["<b>audio</b><br/>CONTRACT<br/><i>the audio-device contract</i>"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules; touches no device"]
     celest["<b>celestial</b><br/>CONTRACT<br/><i>the star map's vocabulary and its lookup interface</i>"]
+    coloc["<b>colocation</b><br/>LIBRARY<br/><i>runs the authority in the participant's own process</i>"]
+    front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
+    game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
+    inter["<b>interaction</b><br/>LIBRARY<br/><i>how a participant acts on the world</i>"]
+    net["<b>net</b><br/>CONTRACT<br/><i>what a replicated field is</i>"]
+    scene["<b>scene</b><br/>CONTRACT<br/><i>what exists, where, moving how</i>"]
+    sound["<b>sound</b><br/>CONTRACT<br/><i>what is audible, where, how loud</i>"]
+    subgraph auth ["<b>universe</b> · LIBRARY"]
+      universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
+    end
+    uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
+    win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
+    world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
+    wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
+    wgen["<b>worldgen</b><br/>LIBRARY<br/><i>turns a seed into terrain</i>"]
   end
 
-  subgraph Z_SUB ["SUBSTRATE — below every seam"]
-    subgraph hostsdl ["<b>host_sdl</b> · BACKEND"]
-      frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
-    end
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
+    base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
+    content["<b>content</b><br/>CONTRACT<br/><i>what a mod can change: data</i>"]
+    core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
+    host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
     subgraph hostnull ["<b>host_null</b> · BACKEND"]
       headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
     end
-    platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
-    host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
+    subgraph hostsdl ["<b>host_sdl</b> · BACKEND"]
+      frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
+    end
     platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
-    content["<b>content</b><br/>CONTRACT<br/><i>what a mod can change: data</i>"]
+    platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
+    script["<b>script</b><br/>LIBRARY<br/><i>hosts Lua; owns no bindings</i>"]
     storage["<b>storage</b><br/>LIBRARY<br/><i>durable state, and migrating it forward</i>"]
-    base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
-    core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
   end
 
   base --> core
@@ -1392,7 +1389,7 @@ session a token pattern with an unlisted term produced a clean-looking wrong res
 ```mermaid
 %% composition: client_agent
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -1401,23 +1398,23 @@ flowchart TD
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    net["<b>net</b><br/>CONTRACT"]
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    presentation["<b>presentation</b><br/>CONTRACT"]
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     client_agent["<b>client_agent</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -1513,7 +1510,7 @@ flowchart TD
 ```mermaid
 %% composition: client_headless
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -1522,21 +1519,18 @@ flowchart TD
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    net["<b>net</b><br/>CONTRACT"]
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
       universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
@@ -1550,12 +1544,13 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_PERIPHERY ["PERIPHERY"]
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    presentation["<b>presentation</b><br/>CONTRACT"]
     subgraph transcript ["<b>transcript</b> · BACKEND"]
       transcript_recordTick(["<b>recordTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -1841,7 +1836,7 @@ by two components at different times is a component, not loose vocabulary.
 ```mermaid
 %% composition: client_opengl
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -1852,25 +1847,18 @@ flowchart TD
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
-    audio["<b>audio</b><br/>CONTRACT"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    subgraph gpu ["<b>gpu</b> · CONTRACT"]
-      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
-    end
-    net["<b>net</b><br/>CONTRACT"]
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
       universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
@@ -1884,17 +1872,22 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_PERIPHERY ["PERIPHERY"]
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    audio["<b>audio</b><br/>CONTRACT"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
     gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
     subgraph mixing ["<b>mixing</b> · BACKEND"]
       mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
     end
+    presentation["<b>presentation</b><br/>CONTRACT"]
     subgraph rendering ["<b>rendering</b> · BACKEND"]
       rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -2061,7 +2054,7 @@ flowchart TD
 ```mermaid
 %% composition: client_sdl_gpu
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2072,25 +2065,18 @@ flowchart TD
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
-    audio["<b>audio</b><br/>CONTRACT"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    subgraph gpu ["<b>gpu</b> · CONTRACT"]
-      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
-    end
-    net["<b>net</b><br/>CONTRACT"]
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
       universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
@@ -2104,17 +2090,22 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_PERIPHERY ["PERIPHERY"]
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    audio["<b>audio</b><br/>CONTRACT"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
     gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
     subgraph mixing ["<b>mixing</b> · BACKEND"]
       mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
     end
+    presentation["<b>presentation</b><br/>CONTRACT"]
     subgraph rendering ["<b>rendering</b> · BACKEND"]
       rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -2281,23 +2272,21 @@ flowchart TD
 ```mermaid
 %% composition: world_gen
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    net["<b>net</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
   end
   celestial --> base
@@ -2353,27 +2342,25 @@ flowchart TD
 ```mermaid
 %% composition: world_sim
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    net["<b>net</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
       world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
   end
   celestial --> base
@@ -2436,20 +2423,18 @@ flowchart TD
 ```mermaid
 %% composition: server
 flowchart TD
-  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>CONTRACT"]
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_SEAM ["SEAM"]
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    net["<b>net</b><br/>CONTRACT"]
-  end
-  subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
-    script["<b>script</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
       universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
@@ -2460,7 +2445,7 @@ flowchart TD
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_SHELL ["SHELL"]
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
     subgraph server ["<b>server</b> · ENTRYPOINT"]
       server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
@@ -2535,48 +2520,156 @@ Every component in the diagram, in the same reading order.
 <!-- TABLE: components -->
 | name | kind | zone | duty | contents |
 |---|---|---|---|---|
-| **`core`** | FOUNDATION | SUBSTRATE | language and containers | the language, containers and algorithms everything rests on |
-| **`base`** | FOUNDATION | SUBSTRATE | shared services | services shared by the simulation and the shells |
-| **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
-| **`host`** | CONTRACT | SUBSTRATE | the host contract | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
-| **`host_sdl`** | BACKEND | SUBSTRATE | the SDL host implementation | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
-| **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
-| **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
-| **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
-| **`sound`** | CONTRACT | SEAM | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene` |
-| **`net`** | CONTRACT | SEAM | what a replicated field is | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
-| **`content`** | CONTRACT | SUBSTRATE | what a mod can change: data | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
-| **`storage`** | LIBRARY | SUBSTRATE | durable state, and migrating it forward | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
-| **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
-| **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
-| **`worldgen`** | LIBRARY | INTERIOR | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
-| **`celestial`** | CONTRACT | SEAM | the star map's vocabulary and its lookup interface | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
-| **`universe_view`** | LIBRARY | INTERIOR | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
-| **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
-| **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
-| **`interaction`** | LIBRARY | INTERIOR | how a participant acts on the world | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | INTERIOR | hosts Lua; owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
-| **`colocation`** | LIBRARY | INTERIOR | runs the authority in the participant's own process | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
-| **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
-| **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
-| **`mixing`** | BACKEND | PERIPHERY | turns sound into samples | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
-| **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | the same scene, written down instead of drawn — three modes below |
-| **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Device` interface, the texture atlas, render diagnostics |
-| **`audio`** | CONTRACT | SEAM | the audio-device contract | the `AudioDevice` interface: a sample format and a pull |
-| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
-| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
-| **`audio_sdl`** | BACKEND | PERIPHERY | the SDL audio backend | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
-| **`participant`** | LIBRARY | SHELL | owns the participant's clock and composes its parts | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
-| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
-| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` + the UI it records |
-| **`client_agent`** | ENTRYPOINT | SHELL | a participant with no senses | wiring only: `host_null`; an AI player that acts and neither draws nor records |
-| **`client_sdl_gpu`** | ENTRYPOINT | SHELL | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
-| **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
-| **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
-| **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
+| **`core`** | FOUNDATION | MACHINE | language and containers | the language, containers and algorithms everything rests on |
+| **`base`** | FOUNDATION | MACHINE | shared services | services shared by the simulation and the shells |
+| **`platform`** | CONTRACT | MACHINE | platform-service contracts | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`host`** | CONTRACT | MACHINE | the host contract | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
+| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
+| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
+| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
+| **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
+| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene` |
+| **`net`** | CONTRACT | DOMAIN | what a replicated field is | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
+| **`content`** | CONTRACT | MACHINE | what a mod can change: data | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
+| **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
+| **`presentation`** | CONTRACT | DEVICE | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`game`** | LIBRARY | DOMAIN | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
+| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
+| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
+| **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
+| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
+| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
+| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | widgets, layout and `GuiContext` |
+| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
+| **`frontend`** | LIBRARY | DOMAIN | this game's screens | this game's panes, menus and screens |
+| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`mixing`** | BACKEND | DEVICE | turns sound into samples | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
+| **`transcript`** | BACKEND | DEVICE | records instead of drawing | the same scene, written down instead of drawn — three modes below |
+| **`gpu`** | CONTRACT | DEVICE | the GPU contract | the `Device` interface, the texture atlas, render diagnostics |
+| **`audio`** | CONTRACT | DEVICE | the audio-device contract | the `AudioDevice` interface: a sample format and a pull |
+| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
+| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
+| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
+| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
+| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | wiring only: `host_null` + `transcript` + the UI it records |
+| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | wiring only: `host_null`; an AI player that acts and neither draws nor records |
+| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
+| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
+| **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | wiring only: `world` + a configured residency |
+| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 <!-- END TABLE: components -->
+
+### ZONE is a directory, and the four are a layering
+
+The zones used to be five and they mixed three metaphors: SUBSTRATE/SHELL is vertical, INTERIOR/
+PERIPHERY is radial, SEAM is topological. Three of the five did not parse on reading, and measurement
+found the deeper problem: **ZONE was 80% determined by KIND** — only 8 of 41 components deviated from
+their kind's default, so the axis was mostly restating something already stated.
+
+The four that replace them each answer the same question — **what does this component face?**
+
+| zone | faces | n |
+|---|---|---|
+| **`machine/`** | the OS, the vendor, the asset store, the disk | 10 |
+| **`domain/`** | nothing outside; the game's own state and rules | 14 |
+| **`device/`** | a display, a speaker, a file, a recorder | 9 |
+| **`composition/`** | the other three; it wires them | 8 |
+
+**SEAM is gone, and no `boundary/` directory replaces it.** A CONTRACT already declares that it is a
+boundary, so a directory saying it again would be the second-declaration defect this document has
+removed repeatedly. The rule instead:
+
+> **A contract lives in the zone of what it abstracts, not in a zone of its own.**
+
+`host`, `platform` and `content` abstract the machine. `scene`, `sound`, `net` and `celestial` are the
+domain describing itself. `gpu`, `audio` and `presentation` abstract devices and their sinks. That
+also keeps each interface beside its implementations — `gpu` next to `gpu_opengl` and `gpu_sdl` is the
+entire point of a swappable backend, and a `boundary/` directory would have put them in different
+trees.
+
+**Every grant edge points down that order, at zero exceptions across 41 components**, checked by
+`spec_consistency`'s `ZONE_ORDER` verdict. That is what makes zones directories rather than labels:
+`domain/ must not include device/` becomes a statement about paths, checkable without parsing C++.
+
+**The layering earned its keep before it was even written down.** The first four-zone assignment had
+exactly one upward edge — `storage` (machine) granting `script` (domain). That was not a placement to
+paper over. `script` grants only `core`, `base` and `content` and names **no domain type at all**: it
+is the Lua interpreter host, infrastructure like the allocator. It had been filed in the domain by
+association with `game/scripting/`, which is where the files sit *today* — a D7 violation made without
+noticing, and caught by the layering rather than by reading.
+
+### The target directory structure — GENERATED
+
+One directory per component, grouped by zone. Derived from the register above, because a hand-written
+tree beside a 41-row table is a second declaration of the same fact.
+
+**Two facts stack to make this enforceable rather than aspirational.** A component is enforceable if
+and only if it is its own directory — the OBJECT-library finding, since every Star library links all
+of its objects into every consumer. And every grant points down the zone order. Together they turn the
+architecture into something an `#include` can violate and a lint can catch.
+
+<!-- BEGIN GENERATED: scripts/tree-map.py -->
+```
+source/
+  machine/       # 10 components
+    ├── base/            FOUNDATION
+    ├── content/         CONTRACT
+    ├── core/            FOUNDATION
+    ├── host/            CONTRACT
+    ├── host_null/       BACKEND
+    ├── host_sdl/        BACKEND
+    ├── platform/        CONTRACT
+    ├── platform_pc/     BACKEND
+    ├── script/          LIBRARY
+    └── storage/         LIBRARY
+  domain/        # 14 components
+    ├── celestial/       CONTRACT
+    ├── colocation/      LIBRARY
+    ├── frontend/        LIBRARY
+    ├── game/            LIBRARY
+    ├── interaction/     LIBRARY
+    ├── net/             CONTRACT
+    ├── scene/           CONTRACT
+    ├── sound/           CONTRACT
+    ├── universe/        LIBRARY
+    ├── universe_view/   LIBRARY
+    ├── windowing/       LIBRARY
+    ├── world/           LIBRARY
+    ├── world_view/      LIBRARY
+    └── worldgen/        LIBRARY
+  device/        # 9 components
+    ├── audio/           CONTRACT
+    ├── audio_sdl/       BACKEND
+    ├── gpu/             CONTRACT
+    ├── gpu_opengl/      BACKEND
+    ├── gpu_sdl/         BACKEND
+    ├── mixing/          BACKEND
+    ├── presentation/    CONTRACT
+    ├── rendering/       BACKEND
+    └── transcript/      BACKEND
+  composition/   # 8 components
+    ├── client_agent/    ENTRYPOINT
+    ├── client_headless/ ENTRYPOINT
+    ├── client_opengl/   ENTRYPOINT
+    ├── client_sdl_gpu/  ENTRYPOINT
+    ├── participant/     LIBRARY
+    ├── server/          ENTRYPOINT
+    ├── world_gen/       ENTRYPOINT
+    └── world_sim/       ENTRYPOINT
+
+source/extern/     # vendored third-party sources we do not architect: lua, fmt, xxhash, rpmalloc
+source/test/       # the gates and unit tests; links whatever it measures
+scripts/           # the instruments -- every gate in Section 6 lives here
+assets/            # content, which `content` abstracts and no C++ component owns
+```
+
+**41 components in 4 zone directories.** Reading top to bottom is reading the dependency order: every grant points down this list, checked by `spec_consistency`'s ZONE_ORDER verdict at zero exceptions.
+<!-- END GENERATED: tree-map -->
+
 
 Forty-one components: ten CONTRACTs, nine BACKENDs, thirteen LIBRARYs, two FOUNDATIONs, seven
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
