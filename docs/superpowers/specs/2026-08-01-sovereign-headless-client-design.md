@@ -632,7 +632,7 @@ flowchart TD
   glb ==> gpu
   sdlb ==> gpu
   csg --> core
-  csg --> client
+  csg --> shell
   csg --> hostsdl
   csg --> rend
   csg --> sdlb

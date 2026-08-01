@@ -159,6 +159,23 @@ def check(text):
                          % n))
     compile_edges = C_EDGE.findall(dep)
     for a, _arrow, b in compile_edges:
+        # UNDECLARED, CHECKED FIRST. The grant test below opens with `a in ids and b in ids`, which
+        # SILENTLY SKIPS any edge naming an id the diagram never declared. Mermaid does not skip it --
+        # it invents a bare, unstyled, empty box with that name and floats it beside the map.
+        #
+        # That is how `csg --> client` lived here. Every other entrypoint writes `--> shell`, the id of
+        # the client subgraph; `client` was never a node id. So `client_sdl_gpu` had NO edge to the
+        # client component at all, and an orphan box appeared instead. The Director found it by looking
+        # at the picture, which is the one method this gate exists to make unnecessary.
+        #
+        # It survived because `client` IS a registered component NAME -- ids and names are different
+        # namespaces and this check conflated them. Same shape as the R_EDGE label defect: a silent
+        # skip on the unresolvable, which reads as agreement.
+        for end in (a, b):
+            if end not in ids:
+                findings.append(("UNDECLARED",
+                                 "edge `%s --> %s` names `%s`, which no node or subgraph declares; "
+                                 "mermaid draws that as an orphan box" % (a, b, end)))
         if a in ids and b in ids and ids[a] in grants and ids[b] not in grants[ids[a]]:
             findings.append(("UNGRANTED", "`%s --> %s` is drawn, but %s's grant list omits it"
                              % (ids[a], ids[b], ids[a])))
