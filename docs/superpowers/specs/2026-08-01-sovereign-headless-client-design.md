@@ -1072,6 +1072,33 @@ seams, CADENCE places an element relative to time.
 invert: `CALL` (direct, same thread), `DISPATCH` (virtual, through a contract), `HANDOFF` (a payload
 crosses; the producer does not block on the consumer's body).
 
+**ORDER — a fourth thing an edge carries, because a graph alone cannot.** A flowchart's edges are a
+*set*: `frameLoop` reaching four elements says nothing about the sequence, and the sequence is
+load-bearing. The source says so itself, at the phase this design cannot yet place: *"THE TRUE END OF
+THE FRAME… the renderer cannot do this itself: **it does not own this ordering**."* An ordering
+constraint owned by the host, in a model with no way to write one down.
+
+So every edge leaving a source that has **more than one** carries a prefix:
+
+| prefix | means |
+|---|---|
+| `1:` `2:` `3:` … | the sequence, starting at 1, contiguous as a set. **Ties are legal** and mean "same phase" — `clientTick`'s netcode exchange and its fixed step share `1:` because they happen inside one call |
+| `*:` | **deliberately unordered.** `inputTick`'s two edges interleave per event; numbering them would assert an order that does not exist |
+
+Mixing the two styles from one source is an error, and so is a gap in the numbering. A source with a
+single outgoing edge needs no prefix: there is nothing to order.
+
+The numbers are measured, not assumed. `clientTick`'s came from reading `ClientApplication::update`:
+`universeClient->update` (the exchange and the replica step, hence the tie), then `worldPainter->update`,
+then `mainMixer->update`.
+
+**What ORDER still cannot express, stated rather than hidden.** `WIRING`'s declared failure mode is
+wrong order — but what a `WIRING` element orders is the construction of **components**, and this
+graph's vertices are **elements**. The constraint is real, it is the reason teardown must reverse
+composition, and it is *not expressible here*. That is a genuine limit of the runtime projection: it
+can sequence a frame and cannot sequence a composition. Recorded as a limit rather than forced into a
+notation that would only look like coverage.
+
 ### The graft rule
 
 > **Every runtime edge must be legal in the compile projection.** For an edge from element *a* to
@@ -1161,21 +1188,21 @@ flowchart TD
     end
   end
 
-  frameloop --> inputtick
-  frameloop ==>|Application| clienttick
-  frameloop ==>|Presenter| presenttick
-  headlessloop ==>|Application — the identical two calls| clienttick
-  headlessloop ==>|Presenter| presenttick
-  clienttick --> clientloop
+  frameloop -->|1:| inputtick
+  frameloop ==>|2: Application| clienttick
+  frameloop ==>|3: Presenter| presenttick
+  headlessloop ==>|1: Application — the identical calls| clienttick
+  headlessloop ==>|2: Presenter| presenttick
+  clienttick -->|1:| clientloop
   clientloop --> fixedtick
-  clienttick -.->|scene delta · SceneSink · SEAM 1| presenttick
-  clienttick -.->|audio buffer · AudioSink| audiotick
+  clienttick -.->|2: scene delta · SceneSink · SEAM 1| presenttick
+  clienttick -.->|3: audio buffer · AudioSink| audiotick
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
-  clienttick -.->|netcode · UniverseConnection| universeloop
+  clienttick -.->|1: netcode · UniverseConnection| universeloop
   universeloop -.->|world state| clienttick
-  inputtick -.->|input · InputSource · SEAM 1| clienttick
-  inputtick -.->|window changed| resizesignal
-  frameloop --> swaptick
+  inputtick -.->|*: input · InputSource · SEAM 1| clienttick
+  inputtick -.->|*: window changed| resizesignal
+  frameloop -->|4:| swaptick
   openglwiring -.->|constructs, then never runs again| frameloop
   headlesswiring -.->|constructs, then never runs again| headlessloop
   serverwiring -.->|constructs, then never runs again| superviseloop

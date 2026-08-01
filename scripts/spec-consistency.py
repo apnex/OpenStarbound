@@ -28,6 +28,7 @@ VERDICTS. Any of these fails the gate.
   TALLY         the prose count disagrees with the register it counts
   UNGRANTED     a compile-projection edge the grant table does not permit
   GRAFT         a runtime edge with no legal compile-time route
+  ORDER         a source with several outgoing edges does not sequence them, or sequences them badly
   VACUOUS       the parse found implausibly little -- a parser regression, not a clean document
 
 VACUOUS deserves its own name. A gate whose parser silently stops matching reports success, and this
@@ -36,6 +37,7 @@ screaming failure as PASS, and a loop inventory that globbed the wrong filename 
 holding the server's loop. Finding nothing is not the same as finding nothing wrong.
 """
 import argparse
+import collections
 import pathlib
 import re
 import sys
@@ -77,7 +79,16 @@ C_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>)\s*(\w+)\s*$', re.M)
 # runtime projection
 R_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b> · (' + EKINDS + r')<br/><i>(\w+)</i>"\]', re.M)
 R_THREAD = re.compile(r'^\s*subgraph (t\w+) \["([^"]+)"\]', re.M)
-R_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>|-\.->)\|?([^|\n]*)\|?\s*(\w+)\s*$', re.M)
+# The |label| is OPTIONAL AS A UNIT. An earlier form made the pipes independently optional, so on an
+# unlabelled edge the greedy label group swallowed the destination -- `frameloop --> swaptick` parsed
+# as destination "k" -- and the edge was silently dropped from every check, the graft rule included.
+# Seven of eighteen runtime edges were invisible, while the gate reported all of them legal.
+R_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>|-\.->)\s*(?:\|([^|\n]*)\|)?\s*(\w+)\s*$', re.M)
+# A flowchart edge set carries no sequence, and the frame's sequence is load-bearing -- the source
+# says the host "does not own this ordering" about the one phase that has no home. So an edge leaving
+# a source with siblings must be prefixed `N:` (contiguous from 1, ties legal) or `*:` (deliberately
+# unordered). Without this the notation would be decoration.
+SEQ = re.compile(r'^\s*(\d+|\*)\s*:')
 
 # Elements are the graft point, but a runtime diagram may also name a non-element endpoint that the
 # compile register owns -- the GPU backend's draw calls being the one that exists. Declared, not guessed.
@@ -201,6 +212,34 @@ def check(text):
         if not shared:
             findings.append(("GRAFT", "`%s -> %s` runs at run time, but %s cannot reach %s: no grant "
                                       "and no shared contract" % (endpoints[a], endpoints[b], oa, ob)))
+
+    # ---- ORDER: sequencing of sibling runtime edges ------------------------------------------
+    out_edges = collections.defaultdict(list)
+    for a, _arrow, label, b in R_EDGE.findall(exe):
+        if a in endpoints and b in endpoints:
+            out_edges[a].append((endpoints[b], label or ""))
+    for src, outs in sorted(out_edges.items()):
+        if len(outs) < 2:
+            continue
+        prefixes = []
+        for dst, label in outs:
+            m = SEQ.match(label)
+            if not m:
+                findings.append(("ORDER", "`%s -> %s` leaves a source with %d edges and carries no "
+                                          "sequence prefix" % (endpoints[src], dst, len(outs))))
+            else:
+                prefixes.append(m.group(1))
+        if len(prefixes) != len(outs):
+            continue
+        stars = [p for p in prefixes if p == "*"]
+        if stars and len(stars) != len(prefixes):
+            findings.append(("ORDER", "`%s` mixes `*:` with numbered edges; a source is either "
+                                      "ordered or it is not" % endpoints[src]))
+        elif not stars:
+            nums = sorted({int(p) for p in prefixes})
+            if nums != list(range(1, len(nums) + 1)):
+                findings.append(("ORDER", "`%s` sequences its edges %s, which is not contiguous "
+                                          "from 1" % (endpoints[src], nums)))
 
     # ---- the prose tally ----------------------------------------------------------------------
     m = TALLY.search(text)
