@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Measure what the client and the presentation side would BOTH have to ship, if they were split.
 
-WHY THIS EXISTS. "Why this is fully deduplicated" is a section of the headless-client design, and until
+WHY THIS EXISTS. "Why this is fully deduplicated" is a section of the target-state architecture, and until
 now it was the one north-star claim with no instrument behind it -- asserted, never measured. Section 5
 supplies the definition that makes it measurable: a TICK is the highest-order call a loop drives, so it
 is the ROOT of a call tree, and everything reachable from it executes at that tick's cadence.

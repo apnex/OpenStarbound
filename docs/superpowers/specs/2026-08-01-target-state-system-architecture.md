@@ -1,4 +1,4 @@
-# Sovereign Decoupled Headless Client — Target-State Design
+# Target State System Architecture
 
 > **STATUS: WORK IN PROGRESS. NOTHING IS APPROVED.** Director's rule, adopted 2026-08-01:
 > **approval is aggregate only — no section is approved until the whole can be reasoned with

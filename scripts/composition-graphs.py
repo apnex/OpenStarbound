@@ -28,7 +28,6 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 
 def _spec_model():
     """Import the ONE table reader. Hyphenated filenames cannot be imported normally; restating its
@@ -42,6 +41,7 @@ def _spec_model():
 
 
 MODEL = _spec_model()
+SPEC = MODEL.SPEC          # one declaration of where the document lives
 
 MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/composition-graphs.py#%s -->"
 MARK_END = "<!-- END GENERATED: %s -->"

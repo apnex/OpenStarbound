@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inventory every cadence loop in the tree, and reconcile it with the design's claim.
 
-WHY THIS EXISTS. The headless-client design states how many loops the system has, and that number has
+WHY THIS EXISTS. The target-state architecture states how many loops the system has, and that number has
 been wrong twice -- both times found by the Director pushing on a claim, not by any check:
 
   1. "exactly one loop" missed the fixed-timestep accumulator nested inside the frame loop.
@@ -45,7 +45,17 @@ import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SRC = REPO / "source"
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
+def _spec_model():
+    """The one reader of the document -- and the one declaration of its path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spec_model", str(REPO / "scripts" / "spec-model.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+MODEL = _spec_model()
+SPEC = MODEL.SPEC
 
 LOOPHEAD = re.compile(r'^(\s*)(?:while|for|do)\s*[({]')
 FUNC = re.compile(r'^(?:\w[\w:<>,&*\s]*?\s+)?(\w+)::(\w+)\s*\(')
@@ -212,8 +222,18 @@ def scan():
 
 
 def spec_loops():
+    """The *Loop elements the design models.
+
+    A MISSING SPEC IS A HARD FAILURE, not a skipped check. This returned None and printed "spec not
+    found; skipping the spec-drift check" while still exiting 0 -- so renaming or deleting the design
+    silently disabled the only half of this gate that reads it, and the run stayed green. Found on
+    2026-08-02 by pointing spec-model at a nonexistent file and watching which gates still passed;
+    four of five failed correctly and this one did not. It is the same VACUOUS rule spec-model states
+    for its table markers: a check that cannot find what it is checking must not report success.
+    """
     if not SPEC.exists():
-        return None
+        raise SystemExit("loop-inventory: %s does not exist -- refusing to report OK on a spec-drift "
+                         "check that cannot read the spec" % SPEC)
     t = SPEC.read_text(encoding="utf-8")
     return set(re.findall(r'\|\s*\*\*`(\w+Loop)`\*\*\s*\|\s*LOOP\s*\|', t))
 
@@ -256,9 +276,7 @@ def main(argv):
 
     drift = 0
     spec = spec_loops()
-    if spec is None:
-        print("  NOTE        spec not found; skipping the spec-drift check")
-    else:
+    if True:
         modelled = {d[2] for d in DECLARED.values() if d[2]} | TARGET_ONLY
         for name in sorted(spec - modelled):
             drift += 1

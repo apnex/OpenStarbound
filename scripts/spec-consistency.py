@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile the headless-client design's two projections against each other and against its registers.
+"""Reconcile the target-state architecture's two projections against each other and against its registers.
 
 WHY THIS EXISTS. The design is described twice on purpose: Section 4 is the COMPILE projection (who may
 name whom, enforced by INCLUDE_DIRECTORIES) and Section 5 is the RUNTIME projection (what executes, on
@@ -43,7 +43,6 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 
 def _spec_model():
     """Import the ONE table reader. Hyphenated filenames cannot be imported normally; restating its
@@ -57,6 +56,7 @@ def _spec_model():
 
 
 MODEL = _spec_model()
+SPEC = MODEL.SPEC          # one declaration of where the document lives
 
 KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 # The prose tally lists kinds in its own order, which is not KINDS'. Kept separate rather than

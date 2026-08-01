@@ -35,7 +35,17 @@ import subprocess
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
+def _spec_model():
+    """The one reader of the document -- and the one declaration of its path."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spec_model", str(REPO / "scripts" / "spec-model.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+MODEL = _spec_model()
+SPEC = MODEL.SPEC
 
 BEGIN = "<!-- BEGIN GENERATED: scripts/spec-measures.py -->"
 END = "<!-- END GENERATED: spec-measures -->"

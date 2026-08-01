@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""THE ONE READER of the headless-client design's tables. Every gate imports this; none re-implements it.
+"""THE ONE READER of the target-state architecture's tables. Every gate imports this; none re-implements it.
 
 WHY THIS EXISTS, and it is the most embarrassing defect this document has produced.
 
@@ -38,7 +38,11 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
+# The one declaration of WHERE the document is, as well as how it parses. Seven scripts
+# each hardcoded this path, so renaming the file meant editing seven constants and
+# hoping -- the same "N declarations of one fact" shape this module was written to
+# delete for the tables. Consumers import SPEC; they do not restate it.
+SPEC = REPO / "docs/superpowers/specs/2026-08-01-target-state-system-architecture.md"
 
 KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")

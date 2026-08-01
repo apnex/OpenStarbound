@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check the headless-client design's grant table against the tree.
+"""Check the target-state architecture's grant table against the tree.
 
 WHY THIS EXISTS. Every other artifact in that design is machine-checked -- the diagram's edges come
 from a measured include sweep and are verified against the register on every render. The grant table's
@@ -32,7 +32,6 @@ import re
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
-SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 SRC = REPO / "source"
 
 def _spec_model():
@@ -47,6 +46,7 @@ def _spec_model():
 
 
 MODEL = _spec_model()
+SPEC = MODEL.SPEC          # one declaration of where the document lives
 
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.M)
 CODE_EXT = (".hpp", ".cpp", ".h")
