@@ -853,8 +853,8 @@ register above is enforced by the build rather than by review:
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
 | `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `host_sdl` | core, host, platform_pc | the SDL host; the only place SDL is named |
-| `host_null` | core, host | a host that can name no device at all |
+| `host_sdl` | core, host, **platform**, platform_pc | the SDL host; the only place SDL is named. `platform` because `ApplicationController`'s four service accessors return its types |
+| `host_null` | core, host, **platform** | a host that can name no device at all — it returns `nullptr` for all four services, but must still name their types to override |
 | `platform_pc` | core, platform | the vendor backend; the only place Steam and Discord are named |
 | `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
 | `gpu` | core, base | the GPU contract cannot name a game type either |
