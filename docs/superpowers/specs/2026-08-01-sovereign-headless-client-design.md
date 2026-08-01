@@ -1170,7 +1170,7 @@ flowchart TD
       headlesswiring["<b>headlessWiring</b> · WIRING<br/><i>client_headless</i>"]
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
-    subgraph tuniverse ["universe thread — cadence FREE, a wakeup interval"]
+    subgraph tuniverse ["universe thread — cadence FREE; EMBEDDED, single-player only"]
       universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
     end
     subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
@@ -1198,8 +1198,10 @@ flowchart TD
   clienttick -.->|2: scene delta · SceneSink · SEAM 1| presenttick
   clienttick -.->|3: audio buffer · AudioSink| audiotick
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
-  clienttick -.->|1: netcode · UniverseConnection| universeloop
+  clienttick -.->|1: UniverseConnection · addLocalClient| universeloop
+  clienttick -.->|1: UniverseConnection · TcpPacketSocket| universeloop2
   universeloop -.->|authoritative state · pull, not a reply| clienttick
+  universeloop2 -.->|authoritative state · pull, not a reply| clienttick
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
   inputtick -.->|*: window changed| resizesignal
   frameloop -->|4:| swaptick
@@ -1247,11 +1249,32 @@ running in production. `InterpolationTracker` was already recorded as the preced
 this is the precedent for the *transport*, and it is the stronger of the two, because it is the part
 that has to survive a machine boundary.
 
+**Three compositions, one pattern, and the third already crosses machines.** The substitution this
+design rests on — *exactly one of N exists per run, and the caller cannot tell which* — is not a
+proposal. It ships three times over:
+
+| the choice | the alternatives | who is indifferent |
+|---|---|---|
+| which host drives the process | `host_sdl` · `host_null` | `client`, via `Application` |
+| which presentation receives the scene | `rendering` · `transcript` | `client`, via `SceneSink` — **this design's new one** |
+| **which universe is authoritative** | embedded · remote over TCP | `client`, via `UniverseConnection` |
+
+The third is the load-bearing precedent, because it is the only one that already spans a machine
+boundary in production. `connect(m_universeServer->addLocalClient(), …)` and
+`connect(UniverseConnection(TcpPacketSocket::open(…)), …)` are the same method taking the same type,
+and nothing downstream of `connect` knows the difference. Seam 1 asks for that shape a second time,
+one boundary further out.
+
 Four things this view shows that the dependency view structurally cannot:
 
-- **`universeLoop` appears in both processes.** The same element, two homes: single-player embeds it,
-  a dedicated server runs it standalone. That is "local is a degenerate case of remote" as a picture
-  rather than a claim — and it is the pattern this whole design copies for presentation.
+- **`universeLoop` appears in both processes, and the client reaches either through one edge.** The
+  client's universe thread exists *only* in the single-player composition; in multiplayer the client
+  process has no universe thread at all and the edge crosses to the server process instead. Both are
+  drawn, both at sequence `1:`, because **exactly one exists in any given run.** The client cannot tell
+  which it got — measured, not asserted: `connect(m_universeServer->addLocalClient(), …)` and
+  `connect(UniverseConnection(TcpPacketSocket::open(…)), …)` are the same method taking the same type.
+  That is "local is a degenerate case of remote" as a picture rather than a claim, and it is the
+  pattern this whole design copies for presentation.
 - **The host calls the client.** `frameLoop ==> clientTick` runs opposite to `host_sdl --> host` and
   `client --> host`. Reading the compile arrows as call direction inverts the system.
 - **Presentation and simulation share a thread today.** Most of the client process sits in one
