@@ -85,7 +85,9 @@ WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven"
          "Twenty-six": 26, "Twenty-seven": 27, "Twenty-eight": 28,
          "Twenty-nine": 29, "Thirty": 30, "Thirty-one": 31, "Thirty-two": 32,
          "Thirty-three": 33, "Thirty-four": 34, "Thirty-five": 35, "Thirty-six": 36,
-         "Thirty-seven": 37, "Thirty-eight": 38, "Thirty-nine": 39, "Forty": 40,
+         "Thirty-seven": 37, "Thirty-eight": 38, "Thirty-nine": 39, "Forty": 40, "Forty-one": 41, "Forty-two": 42,
+         "Forty-three": 43, "Forty-four": 44, "Forty-five": 45,
+         "thirteen": 13, "fourteen": 14,
          "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13}
 
 COMPONENT_ROW = re.compile(
@@ -142,6 +144,8 @@ ELEMENT_FREE = {
     "universe_view": "same: driven by the participant's tick, never self-scheduled",
     "interaction": "verbs are called by input and by scripts; a verb has no cadence",
     "script": "the Lua host runs inside whatever tick calls into it -- deliberately no clock",
+    "storage": "reads and writes when asked; persistence is a service, and a store that ticked
+                 on its own would be deciding when to save -- which is the caller's business",
     "windowing": "widgets emit into the frame when asked; the toolkit drives nothing",
     "frontend": "screens are updated by the participant's tick",
     "gpu_opengl": "executes device calls issued by `presentTick`",

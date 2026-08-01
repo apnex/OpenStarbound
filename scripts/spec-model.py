@@ -47,7 +47,7 @@ CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")
 
 # Floors, not targets. Raise when the design genuinely grows; never lower to make a red gate green.
-FLOOR = {"components": 30, "grants": 30, "elements": 20}
+FLOOR = {"components": 35, "grants": 33, "elements": 20}
 
 MARK = "<!-- TABLE: %s -->"
 ENDMARK = "<!-- END TABLE: %s -->"
