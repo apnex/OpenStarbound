@@ -294,6 +294,16 @@ ADD_TEST (NAME grant_sweep COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME loop_inventory COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/loop-inventory.py --check)
 
+# SPEC CONSISTENCY. The headless-client design is described twice on purpose -- Section 4 is the
+# compile projection, Section 5 the runtime one -- and two descriptions of one model drift. Eight
+# defects were found by running these comparisons by hand before this became a gate, including a
+# diagram edge contradicting its own grant row and a stale component tally. The one that earned the
+# gate is the GRAFT RULE: every runtime edge must be legal in the compile projection, and its first
+# run rejected two, because no host shared a contract with `rendering` and so nothing could trigger
+# the paint. Ten injected defects were each confirmed to fire, including a missing projection marker.
+ADD_TEST (NAME spec_consistency COMMAND ${Python3_EXECUTABLE}
+          ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/spec-consistency.py --check)
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -335,7 +345,7 @@ SET (star_noassets_tests core_tests render_surface_tests)
 IF (Python3_Interpreter_FOUND)
   LIST (APPEND star_noassets_tests layer1_layering render_layering render_docs_fresh config_declared
                                    boundary_ratchet boundary_fresh arch_graph_fresh
-                                   grant_sweep loop_inventory)
+                                   grant_sweep loop_inventory spec_consistency)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

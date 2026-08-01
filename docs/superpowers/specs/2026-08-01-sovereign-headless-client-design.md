@@ -494,6 +494,7 @@ lands, but D2 places it out of scope for this spec.
 both taxonomies at once without either being inferred from the other.
 
 ```mermaid
+%% projection: compile
 flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
     subgraph shell ["<b>client</b> · LIBRARY"]
@@ -898,9 +899,13 @@ than it is:
 
 | | what it establishes | coverage |
 |---|---|---|
-| **coherence** | the document does not contradict itself — diagram against register, drawn edges against the grant table, prose tallies against both | **all 21 components.** Says nothing about correctness |
+| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 21 components and all 10 elements.** Gated as `spec_consistency`; says nothing about correctness |
 | **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **14 of 21 components** |
 | **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
+
+`spec_consistency` also refuses to pass on a parse that found implausibly little, and hard-fails if
+either diagram loses its `%% projection:` marker — a check that cannot find what it is checking must
+not report success. Ten injected defects were each confirmed to fire before it was registered.
 
 The seven components with no files — `scene`, `presentation`, `transcript`, `host_null`, `gpu_sdl`,
 `client_opengl`, `client_headless` — have grant rows that are **pure assertion**. `grant-sweep` reports
@@ -1092,6 +1097,7 @@ Clusters are **threads**, nested inside **processes**. Each node is an ELEMENT, 
 component that owns it, so both views reconcile against the same register.
 
 ```mermaid
+%% projection: runtime
 flowchart TD
   subgraph pclient ["<b>client_opengl</b> — one process"]
     subgraph tdriver ["driver thread — exactly one driver runs; cadence DISPLAY, or FREE when headless"]

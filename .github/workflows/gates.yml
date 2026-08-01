@@ -84,3 +84,10 @@ jobs:
       # recompute is a claim, not a measurement.
       - name: loop_inventory -- every cadence loop is declared and the spec agrees
         run: python3 scripts/loop-inventory.py --check
+
+      # The design is described twice on purpose -- Section 4 compile, Section 5 run time -- and two
+      # descriptions of one model drift. The graft rule is the reason this is a gate: every runtime
+      # edge must be legal in the compile projection, and its first run found the host unable to
+      # trigger the paint.
+      - name: spec_consistency -- both projections agree, and the graft holds
+        run: python3 scripts/spec-consistency.py --check
