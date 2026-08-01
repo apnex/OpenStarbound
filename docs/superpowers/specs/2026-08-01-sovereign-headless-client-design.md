@@ -184,6 +184,26 @@ The `windowing`/`frontend` placement, the twelve-includes measurement, and the `
 `ImageMetadataDatabase` evidence are all independent of which payload crosses, so they carry forward
 unchanged.
 
+**And a second supersession, larger than the first: this section asks where THE boundary goes,
+singular. The design now has forty components and roughly a dozen boundaries.**
+
+Every measurement in this section re-verified and still stands — `RenderCallback` is in **exactly 39
+`game` files**, checked again after the register reached forty components. What has changed is the
+frame around them:
+
+| this section says | still true? | what supersedes it |
+|---|---|---|
+| the boundary is at *drawing*, not at *UI* | **yes** | but `windowing`/`frontend` are no longer granted by the participant — an ENTRYPOINT composes them, so "which side" became "which composition" |
+| `windowing` + `frontend` sit on the game side | **yes** — both are INTERIOR | `client_agent` links neither, which the single-boundary framing had no way to express |
+| `RenderCallback` is unaffected | **shape yes, home no** | tier 2 moves the thirteen implementing bodies to `world_view`; tier 3 does the same for its `addAudio` counterpart |
+| the pixel side has no name today | **superseded** | it has five: `rendering`, `gpu`, `gpu_opengl`, `gpu_sdl`, `transcript` |
+| three contracts | **superseded** | ten, and the third one — audio — was upgraded from "merely nullable" to a swappable contract with its own backend (D3) |
+
+**This section is kept as written, not patched into agreement.** It is the record of the question the
+design started from — *where does one boundary go* — and the answer it reached. Rewriting it to match
+the current register would erase the reasoning that produced the register, and the reasoning is the
+part worth keeping. Read it as history with a live measurement set, not as the current design.
+
 ---
 
 ## 2. The client Lua surface — context finding
@@ -231,6 +251,33 @@ compile time*.
   both go together. Nothing to null out.
 - **Surface A is the entire headless Lua question, and it is four named groups** — not a sprawling
   surface.
+
+### This section already answered the mod-API question the register later raised — RESOLVED
+
+Adopting `script` raised an open decision: the Lua surface is per-component, so the bindings a mod can
+call depend on which components a composition links. `client_agent` has no `widget.*`, `interface.*`,
+`clipboard.*` or `voice.*`; `server` and `world_sim` also lose `renderer.*`. Accept it, guarantee a
+core surface, or stub the absentees?
+
+**Accept it — and this section is why.** The argument for Surface B generalises exactly:
+
+> Those scripts exist only because panes exist. Delete presentation and both go together. Nothing to
+> null out.
+
+That is not special pleading about panes. It is the general rule: **a binding is the public surface of
+a component, so a composition that does not link the component does not have the binding — for the
+same reason it does not have the component's headers.** A stub would be worse than absence: it would
+let a mod believe an interface exists in a binary that cannot honour it, and fail at the point of use
+instead of the point of composition.
+
+The diagram above is the shape of it. `setLuaCallbacks × 4` is the shell injecting exactly the four
+groups its composition provides; a different shell injects a different four. **The mod surface is
+composed, like everything else in this design** — which makes it consistent rather than exceptional.
+
+What this *does* require, and it is now a named obligation rather than a discovered surprise: **a
+composition must be able to state its Lua surface**, so a mod can declare what it needs and fail at
+load with a clear reason rather than at first call with `attempt to index a nil value`. That belongs
+in Section 6 as a verification duty, and it is added there.
 - **The injection point is already dependency injection, already in the game layer.** `UniverseClient`
   exposes a slot; the shell fills it. That is precisely the shape this design wants, and it already
   exists.
@@ -3208,14 +3255,100 @@ Two properties of that table are load-bearing:
 
 ---
 
-## 6. Verification — NOT YET DESIGNED
+## 6. Verification — DESIGNED
 
-Two candidates are named rather than blank, both falling out of Section 5's call-tree framing and both
-requiring a real call graph rather than an include graph:
+**What verification means here, given D7.** This document describes a system that does not exist, so
+nothing here can show *the designed thing works*. What it can do is name, for each claim the design
+makes, the observation that would prove it false. An instrument that cannot fail proves nothing, and
+a claim with no instrument is an opinion — this project has been bitten by both.
+
+Instruments split into two kinds, and conflating them is the failure mode:
+
+- **ANCHORING** runs against today's tree and asks whether the document describes it honestly.
+  `grant_sweep`, `loop_inventory`, `link_sweep`, `dedup_measure`.
+- **VERIFICATION** runs against the built target and asks whether the split preserved behaviour.
+  None of these can exist before the thing exists — and that is a schedule fact, not an excuse.
+
+### The one oracle that carries most of the weight
+
+Five of the design's claims look separate and are not. **D8** says a co-located seam is not a cheaper
+semantics. **D9** says what ticks is not derived from who is watching. The authority/view split says a
+replica is a view of an authority. `world_sim` says a world runs with no participant. `colocation`
+says embedding is a placement choice. Every one of them is the same underlying assertion:
+
+> **A world's evolution is a function of its seed and its inputs — never of its composition.**
+
+That is one experiment. Take one world, one seed, one recorded input sequence. Tick it in every
+composition that can tick a world, and hash the world state every step:
+
+| run | composition | what it proves if the hashes agree |
+|---|---|---|
+| A | `client_opengl` — participant with `colocation` | the embedded path is the reference |
+| B | `server` + `client_agent` over the wire | **D8** — co-located and split are one contract, not two |
+| C | `world_sim` — no participant at all | **D9** — ticking does not depend on being watched |
+| D | run C in a separate process from run A's universe | placement is wiring, as `worldTick` claims |
+
+**Divergence at step N localises the defect to the tick that produced it**, which is the property that
+makes this worth building over any number of narrower tests. A single hash mismatch names the
+composition, the step and — with the seed — reproduces on demand.
+
+It also subsumes the D8 oracle named below rather than sitting beside it: if run B agrees with run A,
+the wire path and the co-located path computed the same thing, which is exactly what D8 demands. The
+narrower oracle stays specified only as the fallback if full state hashing proves too coarse to
+localise.
+
+**What makes this falsifiable rather than aspirational:** `LocalPacketSocket::writeData()` and
+`readData()` both `return false` today. The configuration almost everyone runs never exercises the
+wire format at all. Run B is therefore the first thing that has ever compared the two paths, and it
+is the run most likely to fail — which is the point of building it.
+
+### The acceptance test, stated so it can fail
+
+Section 4 already states it: *load a world containing FU automation, attach no participant, tick it,
+and assert the machines advance.* Sharpened by the oracle above: **run C must not merely advance, it
+must produce the same hashes as run A.** A world that ticks but ticks differently unobserved is D9
+violated with extra steps.
+
+### The full instrument set
+
+| claim | instrument | kind | state |
+|---|---|---|---|
+| the grant table describes the tree | `grant_sweep` | anchoring | **built** |
+| every cadence loop is declared | `loop_inventory` | anchoring | **built** |
+| the two projections agree; the graft holds; coverage is complete | `spec_consistency` | anchoring | **built** |
+| per-composition diagrams match the grants | `composition_graphs` | anchoring | **built** |
+| a binary contains only its closure | `link_sweep` | anchoring | **built** |
+| the two sides share only what they must | `dedup_measure` | anchoring | **built** |
+| **evolution is independent of composition** | **the composition oracle above** | **verification** | **designed, not built** |
+| the graphical client is unchanged | `render-gate.sh`, `render-motion.sh` | verification | **built** (from the render arc) |
+| a call tree stays inside its grants | full-fidelity graft rule | anchoring | **designed, not built** — needs a real call graph, not an include graph |
+| a composition can state its Lua surface | surface manifest + load-time check | verification | **designed, not built** — see Section 2 |
+
+### The Lua surface obligation
+
+Section 2 resolved the mod-API question as *accept the absence*, on the grounds that a binding is a
+component's public surface and an unlinked component has none. That resolution creates one duty: a
+composition must be able to **declare** its Lua surface, so a mod states what it needs and fails at
+load with a clear reason — never at first call with `attempt to index a nil value`. The manifest is
+derivable from the grant closure, exactly as the composition diagrams are, so it costs a generator and
+not a decision.
+
+### Two limits, stated rather than discovered later
+
+- **`dedup_measure` reports a LOWER BOUND.** 62,540 indirect call sites are not followed, because a
+  virtual call names no target. That blind spot is not incidental: a virtual call through a contract
+  *is* a seam, and Section 5 says the call tree is supposed to stop there. **The instrument's limit
+  and the design's boundary are the same place** — which is why the composition oracle, which observes
+  behaviour rather than structure, is the one that has to carry the weight.
+- **Nothing here proves the design is good**, only that it is self-consistent and behaviour-preserving.
+  Whether forty components is the right forty is a judgement the aggregate review makes, not a gate.
+
+### The measurement behind the deduplication row
+
 
 - **The graft rule at full fidelity** — check each element root's call closure against its component's
   grants, instead of only the edges this document draws.
-- **The D8 oracle — a seam's co-located path must be the same contract as its split path.** Today
+- **The D8 oracle, retained as a fallback to the composition oracle.** Today
   `LocalPacketSocket::writeData()` and `readData()` both `return false`: the configuration almost
   everyone runs never exercises the wire format. Seam 1 inherits this the moment "co-located is a
   memcpy" is taken literally. The instrument is either an encode/decode on both paths, or an A/B
@@ -3244,9 +3377,7 @@ requiring a real call graph rather than an include graph:
   and this section says the call tree is supposed to stop there. The instrument's limit and the
   design's boundary are the same place.
 
-Everything else in this section is still outstanding.
-
-Constraints known so far:
+**Constraints carried forward:**
 
 - The graphical client must stay **byte-identical** throughout, proven by the existing
   `scripts/render-gate.sh` and `scripts/render-motion.sh`.
