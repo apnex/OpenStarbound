@@ -71,7 +71,8 @@ PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "ren
 NOT_YET_BUILT = ("scene", "presentation", "transcript", "host_null", "gpu_sdl",
                  "client_opengl", "client_headless", "client_sdl_gpu",
                  "universe", "world", "universe_view", "world_view", "world_sim", "worldgen", "world_gen",
-                 "sound", "mixing", "audio", "audio_sdl", "celestial")
+                 "sound", "mixing", "audio", "audio_sdl", "celestial",
+                 "interaction", "client_agent")
 
 # The register's own file counts, cross-checked against FROM_APPLICATION.
 REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10}
@@ -93,6 +94,8 @@ REMOVING = {
     ("client", "rendering"): (1, "ClientApplication names a painter"),
     ("client", "gpu"): (1, "RenderingLuaBindings calls app->renderer()"),
     ("client", "host_sdl"): (1, "the STAR_MAIN_APPLICATION macro moves to client_opengl"),
+    ("client", "frontend"): (11, "the UI is composed in by an entrypoint that wants one"),
+    ("client", "windowing"): (1, "same: `client_agent` must link no widget toolkit"),
     ("host_sdl", "gpu"): (1, "the host should not know what a Renderer is"),
     ("host_sdl", "gpu_opengl"): (1, "the entrypoint constructs the backend, not the host"),
 }
