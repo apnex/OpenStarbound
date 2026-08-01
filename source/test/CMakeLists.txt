@@ -381,6 +381,19 @@ IF (Python3_Interpreter_FOUND)
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/tree-map.py --check)
 ENDIF ()
 
+# PROSE CLAIMS. Sixteen gates check tables, diagrams and grants. NONE of them read the words, and the
+# words are where claims rot -- no generator owns prose and no parser read it. Every gate was green
+# while the document said "three clocks" (five), called `participant` `client` (renamed hours before),
+# described `net` as "CONTRACT, SEAM" (a zone that no longer exists), and referenced D8/D9, which had
+# no rows in the decisions table. Its first run found 16 such claims.
+#
+# It checks the document against ITSELF, not against the tree: numbers measured from the codebase
+# belong to the ratchets that own them. That limit is stated in the script rather than discovered.
+IF (Python3_Interpreter_FOUND)
+  ADD_TEST (NAME prose_claims COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/prose-claims.py --check)
+ENDIF ()
+
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME host_api_neutral COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
@@ -434,7 +447,7 @@ IF (Python3_Interpreter_FOUND)
   IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
-  LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map)
+  LIST (APPEND star_noassets_tests host_api_neutral drive_table tree_map prose_claims)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

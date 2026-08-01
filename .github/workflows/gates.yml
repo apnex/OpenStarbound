@@ -104,6 +104,11 @@ jobs:
       - name: drive_table -- what drives what, generated from the runtime projection
         run: python3 scripts/drive-table.py --check
 
+      # The only gate that reads the WORDS. Sixteen others check tables and were all green while the
+      # prose said "three clocks", called `participant` `client`, and referenced undefined decisions.
+      - name: prose_claims -- the prose agrees with the registers
+        run: python3 scripts/prose-claims.py --check
+
       # Zones are directories now, so the register is a filesystem layout. Derived, never written.
       - name: tree_map -- the target directory tree matches the register
         run: python3 scripts/tree-map.py --check

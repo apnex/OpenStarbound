@@ -397,9 +397,11 @@ last grouping axis, and the one the clusters in the diagram draw:
 | **DEVICE** | outside seam 1; meets hardware or a recorder, and is swapped or deleted wholesale |
 | **COMPOSITION** | where the two arms rejoin into an executable |
 
-Zone is not a synonym for kind: `platform` is a CONTRACT in the SUBSTRATE, `presentation` is a
-CONTRACT in the SEAM, and `host_sdl` is a BACKEND in the SUBSTRATE while `rendering` is a BACKEND
-in the PERIPHERY. The two axes are independent by construction, and the register below carries both.
+Zone is not a synonym for kind, but it is close enough that the closeness had to be measured:
+`platform` is a CONTRACT in `machine/` while `scene` is a CONTRACT in `domain/`, and `host_sdl` is a
+BACKEND in `machine/` while `rendering` is a BACKEND in `device/`. **ZONE is 80% determined by KIND —
+only 8 of 41 components deviate from their kind's default**, and the axis earns its place on those
+eight. That measurement is why the zones were cut from five to four; see the zone section below.
 
 Neither axis reuses **TIER** (T0–T5, `docs/architecture/system-boundaries.md`) or **LAYER** (L1/L2/L3,
 the render decomposition). Both words are already load-bearing elsewhere in this repository and mean
@@ -1045,7 +1047,8 @@ from *what is simulated*, and D9 separates *what is simulated* from *who is watc
 
 And it is why `world_sim` is a composition rather than a special case — **the same `world` component,
 with residency supplied by configuration instead of by players.** The generated diagram above shows it
-linking **6 of 27 components**: `core`, `base`, `platform`, `game`, `world`, and itself. No `universe`,
+linking **12 of 41 components**: `core`, `base`, `platform`, `game`, `world`, `worldgen`, `celestial`,
+`net`, `script`, `storage`, `content`, and itself. No `universe`,
 no view, no presentation, no `scene`.
 
 **Acceptance test, and it is falsifiable today:** load a world containing FU automation, attach no
@@ -1162,7 +1165,7 @@ So an agent mines, crafts and manages containers with no widget in the binary. N
 blocked it — but nothing in the design *expressed* it either, because the verbs were filed with the
 screens.
 
-**`interaction` is therefore adopted**: LIBRARY, INTERIOR, *how a participant acts on the world*.
+**`interaction` is therefore adopted**: LIBRARY, `domain/`, *how a participant acts on the world*.
 Granted `game`, `world_view`, `universe_view`; **never `windowing`, never `frontend`**. The edge runs
 `frontend --> interaction`, never back.
 
@@ -1217,7 +1220,7 @@ into the participant.** It is not folded in metaphorically: `StarClientApplicati
 `StarUniverseServer.hpp`, and line 128 holds `UniverseServerPtr m_universeServer`. The server is a
 member of the client.
 
-**`colocation`** (LIBRARY, INTERIOR) — *runs the authority in the participant's own process*. It owns
+**`colocation`** (LIBRARY, `domain/`) — *runs the authority in the participant's own process*. It owns
 the embedded `UniverseServer`, the local socket pair, and the encode/decode parity **D8** requires of
 any co-located seam. `participant` sheds `world` and `universe` entirely.
 
@@ -1233,7 +1236,7 @@ and a view — which is precisely why it is the one that owes the proof.
 | `client_agent` | **15 of 37** | **no** — it must connect to one over the wire |
 
 `client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
-cannot name an authority cannot accidentally embed one, and the composition is 15 components against
+cannot name an authority cannot accidentally embed one, and the composition is 19 of 41 components against
 the graphical client's 28.
 
 **Why `colocation` and not `hosting`.** `host`, `host_sdl` and `host_null` already mean the *driver
@@ -1257,12 +1260,13 @@ running Frackin Universe, the largest extension surface in the system had no rep
 `LuaEngine` is 4,681 symbols in `starbound_server` — the biggest attributed thing after `game` itself —
 and it was invisible.
 
-**`net`** — CONTRACT, SEAM. The 11 `NetElement*` headers, **already in `core` and already domain-free**
+**`net`** — CONTRACT, `domain/`. The 11 `NetElement*` headers, **already in `core` and already domain-free**
 (10 of 11 name no domain type). It is a CONTRACT rather than a library because domain types *derive
 from* `NetElement`: it is the vocabulary of replication, used identically by the authority and the
 view, which is the definition of a seam here.
 
-**`script`** — LIBRARY, INTERIOR. `LuaRoot`, `ScriptableThread`, `LuaComponents`: the interpreter's
+**`script`** — LIBRARY, `machine/` *(it was adopted into the domain and the zone layering later moved
+it: it names no domain type at all)*. `LuaRoot`, `ScriptableThread`, `LuaComponents`: the interpreter's
 lifecycle. **It is not the mod-facing API**, and that distinction is load-bearing.
 
 **The Lua surface is per-component and must stay that way.** 25 binding files across **six** components:
@@ -1343,7 +1347,7 @@ not a coincidence; it is the difference between *content* and *domain tables*.
 
 ### `content` — the data half of the mod surface
 
-Adopted as a CONTRACT in SUBSTRATE: `assets()`, `configuration()`, and — target state — the two
+Adopted as a CONTRACT in `machine/`: `assets()`, `configuration()`, and — target state — the two
 services `LuaRoot` currently reaches into `Root` for, `toStoragePath()` and `registerReloadListener()`.
 `Assets` and `Configuration` both already live in `base` and both name World/Entity/Player **zero**
 times, so the contract costs nothing to state.
@@ -1360,7 +1364,7 @@ That completes the mod story in two halves that mirror each other:
 | **code** | `script` + per-component bindings | Lua behaviour |
 
 **And it is the same defect as every other one this design has removed, in different clothing.** A
-global reached for services that could be handed over: `client` reached for `windowing`, `client`
+global reached for services that could be handed over: `participant` reached for `windowing`, it
 reached for an embedded `UniverseServer`, `host_sdl` reached for a `Renderer`. `Root::singleton` is
 the last and largest instance. Under the composability rule, the entrypoint composes what a binary
 needs — and a singleton is precisely the mechanism that takes that choice away.
