@@ -435,7 +435,7 @@ Two arrow kinds, because they mean different things:
 | arrow | reads | rule |
 |---|---|---|
 | `A --> B` | **A includes B** — B is on A's grant list | read `base --> core` as "base includes core" |
-| `A ==> B` | **A includes B *and* implements it** — a class in A derives from a base declared in B | **every BACKEND has exactly one**, and it points at a CONTRACT |
+| `A ==> B` | **A includes B *and* implements it** — a class in A derives from a base declared in B | **every BACKEND has at least one**, and every one points at a CONTRACT |
 
 **`==>` implies `-->`; it does not replace it.** An implementer has to see the declaration in order to
 derive from it, so the grant is still required and `grant-sweep` still checks for it. The thick arrow
@@ -566,8 +566,10 @@ flowchart TD
   shell --> front
   shell --> contract
   rend ==> contract
+  rend ==> host
   rend --> gpu
   tr ==> contract
+  tr ==> host
   glb ==> gpu
   sdlb ==> gpu
   cgl --> shell
@@ -706,7 +708,7 @@ Every component in the diagram, in the same reading order.
 | **`core`** | FOUNDATION | SUBSTRATE | language and containers | the language, containers and algorithms everything rests on |
 | **`base`** | FOUNDATION | SUBSTRATE | shared services | services shared by the simulation and the shells |
 | **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
-| **`host`** | CONTRACT | SUBSTRATE | the host contract | `Application` — what a host runs — and `ApplicationController` — what a host provides |
+| **`host`** | CONTRACT | SUBSTRATE | the host contract | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
 | **`host_sdl`** | BACKEND | SUBSTRATE | the SDL host implementation | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
 | **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
@@ -871,8 +873,8 @@ is actually established today.
 | `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
 | `gpu` | core | the GPU contract cannot name a game type either |
 | `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above |
-| `rendering` | core, base, presentation, scene, gpu | **`game` is revoked, and so is the `application` it depends on today** |
-| `transcript` | core, base, presentation, scene | the recorder cannot see a GPU at all |
+| `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
+| `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `game` | core, base, platform, **scene** | **the simulation cannot name a presentation interface at all** |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
@@ -998,20 +1000,91 @@ is what Section 3 asks for.
 **Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
 whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
 
+### The runtime taxonomy
+
+Section 4 classifies boxes on three axes — ALTITUDE, KIND, ZONE. Run time needs its own three, and
+they have to *graft*: a name that means one thing in one projection and something else in the other is
+worse than no name. The graft point is deliberate and singular.
+
+**ALTITUDE — what a runtime box is.**
+
+| altitude | what it is | crossing it costs | contains |
+|---|---|---|---|
+| **PROCESS** | one address space | a network hop — nothing can be passed by pointer | THREADs |
+| **THREAD** | one flow of control; owns **at most one** clock | a handoff — a queue, a lock, or a packet | ELEMENTs |
+| **ELEMENT** | a named unit of execution: a loop, or one iteration's body | an ordinary call | — |
+
+**`ELEMENT` is the same word, and the same thing, as Section 4's ELEMENT.** That is the graft: the two
+projections share one vertex set and disagree only about what *contains* it. Compile time puts an
+element in a COMPONENT; run time puts it in a THREAD. Neither containment implies the other, and the
+places they cut across each other are exactly what one view can see and the other cannot — `client`
+owns `clientTick` on the driver thread and `audioTick` on SDL's, which the dependency diagram has no
+way to show.
+
+There is deliberately **no runtime altitude below ELEMENT**. Statements, branches and expressions
+execute too, and modelling them would be a call graph rather than an architecture.
+
+**KIND — what an element does about time.** Two values, defined in full by the rule already stated:
+**`LOOP`** owns a clock — it has the `while`, sets the cadence, and decides when to stop.
+**`TICK`** is one iteration's body, called by something else, owning no cadence.
+
+**CADENCE — what drives it.** The runtime analogue of ZONE: ZONE places a component relative to the
+seams, CADENCE places an element relative to time.
+
+| cadence | driven by | example |
+|---|---|---|
+| **DISPLAY** | the display's refresh; vsync paces it | `frameLoop` |
+| **FIXED** | a fixed simulated timestep, independent of real time | `clientLoop`, `fixedTick` |
+| **FREE** | a wall-clock poll or as-fast-as-possible | `headlessLoop`, `universeLoop`, `superviseLoop` |
+| **EXTERNAL** | someone else's clock, which we do not own | `audioTick` — SDL's audio thread |
+| **DERIVED** | no clock at all; runs when called | `inputTick`, `clientTick`, `presentTick` |
+
+**EDGE — how one element reaches another.** Three values, and the middle one is where the projections
+invert: `CALL` (direct, same thread), `DISPATCH` (virtual, through a contract), `HANDOFF` (a payload
+crosses; the producer does not block on the consumer's body).
+
+### The graft rule
+
+> **Every runtime edge must be legal in the compile projection.** For an edge from element *a* to
+> element *b*: either they share a component, or *a*'s component grants *b*'s, or both grant a common
+> CONTRACT to dispatch through.
+
+This is what makes the two views one design rather than two documents. It is mechanical, it runs in the
+standing verification, and its first run rejected two edges — `frameLoop → presentTick` and
+`headlessLoop → presentTick` — because no host shared a contract with `rendering`. **The host could
+not trigger the paint.** Routing it through `client` instead would have been legal but wrong: in the
+split case the client is on another machine and cannot pace a remote display, so the code would have
+had to differ between compositions, which is precisely what this design claims never happens. The fix
+was compile-side — `rendering` and `transcript` gain `host`, and `host` declares `Presenter` alongside
+`Application` as the second role a host drives.
+
+That is the working loop the two projections are for: **a runtime requirement, checked against a
+compile-time permission, resolved by changing the permission.**
+
 ### Element register
 
-| element | kind | owner | clock | called by |
-|---|---|---|---|---|
-| **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
-| **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
-| **`clientLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
-| **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
-| **`superviseLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
-| **`fixedTick`** | TICK | `client` | — | `clientLoop`, zero-to-N times per driver step |
-| **`inputTick`** | TICK | `host_sdl` | — | whichever driver this process has; drains the OS event queue |
-| **`clientTick`** | TICK | `client` | — | whichever driver this process has |
-| **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
-| **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
+Two container columns, one per projection — the graft, in a table.
+
+| element | kind | cadence | owner *(compile)* | thread *(run)* | duty |
+|---|---|---|---|---|---|
+| **`frameLoop`** | LOOP | DISPLAY | `host_sdl` | `driver` | drives a process that has a display |
+| **`headlessLoop`** | LOOP | FREE | `host_null` | `driver` | drives a process that has none |
+| **`clientLoop`** | LOOP | FIXED | `client` | `driver` | converts real time into fixed steps |
+| **`universeLoop`** | LOOP | FREE | `game` | `universe` | supervises worlds and connections on a wakeup interval |
+| **`superviseLoop`** | LOOP | FREE | `server` | `main` | waits for shutdown; ticks nothing |
+| **`inputTick`** | TICK | DERIVED | `host_sdl` | `driver` | drains the OS event queue |
+| **`clientTick`** | TICK | DERIVED | `client` | `driver` | one driver step, sim side |
+| **`fixedTick`** | TICK | FIXED | `client` | `driver` | one step of simulated time |
+| **`presentTick`** | TICK | DERIVED | `rendering` | `driver` | resample, camera, assemble, paint |
+| **`audioTick`** | TICK | EXTERNAL | `client` | `audio` | fills a buffer for SDL's audio loop |
+
+*Called by* was a column here and is now the execution graph's edges, which is the only copy.
+
+**Two things the cadence column makes visible.** `client` owns elements at three different cadences,
+so "the client's clock" is not a thing that exists. And **neither modelled server loop is FIXED** —
+`universeLoop` sleeps a wakeup interval and `superviseLoop` polls at 100 ms, so the authoritative
+fixed tick is `worldServerThread`, which this design does not yet model. That gap is real and named
+rather than implied by an empty column.
 
 ### The execution graph
 
@@ -1021,7 +1094,7 @@ component that owns it, so both views reconcile against the same register.
 ```mermaid
 flowchart TD
   subgraph pclient ["<b>client_opengl</b> — one process"]
-    subgraph tdriver ["driver thread — exactly one driver runs; clock: vsync, or free-run when headless"]
+    subgraph tdriver ["driver thread — exactly one driver runs; cadence DISPLAY, or FREE when headless"]
       frameloop["<b>frameLoop</b> · LOOP<br/><i>host_sdl</i>"]
       headlessloop["<b>headlessLoop</b> · LOOP<br/><i>host_null</i>"]
       inputtick["<b>inputTick</b> · TICK<br/><i>host_sdl</i>"]
@@ -1031,28 +1104,28 @@ flowchart TD
       presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
-    subgraph tuniverse ["universe thread — clock: its own"]
+    subgraph tuniverse ["universe thread — cadence FREE, a wakeup interval"]
       universeloop["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
     end
-    subgraph taudio ["SDL audio thread — clock: SDL's"]
+    subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
       audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
     end
   end
 
   subgraph pserver ["<b>server</b> — a separate process"]
-    subgraph tmain ["main thread — 100 ms poll"]
+    subgraph tmain ["main thread — cadence FREE, a 100 ms poll"]
       superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
     end
-    subgraph tuniverse2 ["universe thread — clock: its own"]
+    subgraph tuniverse2 ["universe thread — cadence FREE, a wakeup interval"]
       universeloop2["<b>universeLoop</b> · LOOP<br/><i>game</i>"]
     end
   end
 
   frameloop --> inputtick
   frameloop ==>|Application| clienttick
-  frameloop ==>|Application| presenttick
+  frameloop ==>|Presenter| presenttick
   headlessloop ==>|Application — the identical two calls| clienttick
-  headlessloop ==>|Application| presenttick
+  headlessloop ==>|Presenter| presenttick
   clienttick --> clientloop
   clientloop --> fixedtick
   clienttick -.->|scene delta · SceneSink · SEAM 1| presenttick
