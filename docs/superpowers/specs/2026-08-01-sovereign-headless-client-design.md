@@ -399,8 +399,8 @@ second.** Reading `SdlPlatform::run()` line by line:
 while (true) {                                     // frameLoop      — clock: vsync + swap
     for (event : processEvents())                  //   a DRAIN — no clock, it just empties a queue
         m_application->processInput(event);
-    for (int i = 0; i < updatesBehind; ++i) {      //   A LOOP — clock: m_updateTicker @ 60Hz
-        m_application->update();                   //     simTick
+    for (int i = 0; i < updatesBehind; ++i) {      //   clientLoop     — clock: m_updateTicker @ 60Hz
+        m_application->update();                   //     fixedTick
         m_updateRate = m_updateTicker.tick();
     }
     m_application->render();                       //   presentTick
@@ -469,14 +469,14 @@ flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
     subgraph shell ["<b>client</b> · LIBRARY"]
       clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
-      simloop(["<b>simLoop</b> · LOOP<br/><i>fixed-timestep accumulator</i>"])
-      simtick(["<b>simTick</b> · TICK<br/><i>one deterministic step</i>"])
+      clientloop(["<b>clientLoop</b> · LOOP<br/><i>real time into fixed steps</i>"])
+      fixedtick(["<b>fixedTick</b> · TICK<br/><i>one step of simulated time</i>"])
       audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
     end
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
-      serverloop(["<b>serverLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
+      superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
   end
 
@@ -563,7 +563,7 @@ flowchart TD
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl,srv kEntrypoint
-  class frameloop,headlessloop,simloop,serverloop,universeloop,clienttick,simtick,audiotick,presenttick kElement
+  class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
   class sdlb kOutOfScope
 ```
@@ -676,10 +676,10 @@ Every component in the diagram, in the same reading order.
 | **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Renderer` interface, the texture atlas, render diagnostics |
 | **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Renderer` and its surface substrate |
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Renderer` |
-| **`client`** | LIBRARY | SHELL | owns the client frame | composition, `simLoop`, `clientTick`, `simTick`, `audioTick` |
+| **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick`, `audioTick` |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
-| **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `serverLoop`, and the rcon and server-query threads |
+| **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 
 Twenty components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
 Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude is right.
@@ -691,10 +691,10 @@ The kinds are what make the next finding visible.
 |---|---|---|---|---|
 | **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
 | **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
-| **`simLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
+| **`clientLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
 | **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
-| **`serverLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
-| **`simTick`** | TICK | `client` | — | `simLoop`, zero-to-N times per driver step |
+| **`superviseLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
+| **`fixedTick`** | TICK | `client` | — | `clientLoop`, zero-to-N times per driver step |
 | **`clientTick`** | TICK | `client` | — | whichever driver this process has |
 | **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
 | **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
@@ -714,9 +714,22 @@ today, and when it runs on a separate machine it gets a driver from *its own* ho
 genuinely a tick and there is no `presentLoop` at any stage. An earlier draft of this section predicted
 one; that prediction was wrong.
 
-`simLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
-fixed step while real time does not cooperate: it runs `simTick` zero-to-N times to bring simulated
+`clientLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
+fixed step while real time does not cooperate: it runs `fixedTick` zero-to-N times to bring simulated
 time level with real time.
+
+That makes the client's three elements a sequence of **time domains**, which is exactly what their
+names record:
+
+| element | cadence | one iteration is |
+|---|---|---|
+| `clientTick` | **real** time, whatever the driver runs at | one driver step |
+| `clientLoop` | — | the converter: real time in, fixed steps out |
+| `fixedTick` | **simulated** time, fixed 60 Hz | one step of the simulation |
+
+An earlier draft named these `simLoop` and `simTick`. Both were dropped: `universeLoop` is also
+simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
+strings and profile frames, where the enclosing component is not visible to disambiguate them.
 
 ### Three clocks, of which we own two
 
@@ -732,7 +745,7 @@ none is added**.
 
 | | co-located | split |
 |---|---|---|
-| sim side | `frameLoop` → `clientTick` → `simLoop` | `headlessLoop` → `clientTick` → `simLoop` → scene delta **out** |
+| sim side | `frameLoop` → `clientTick` → `clientLoop` | `headlessLoop` → `clientTick` → `clientLoop` → scene delta **out** |
 | pixel side | same driver → `presentTick` | its own host's `frameLoop` → `presentTick` ← scene delta **in** |
 | the delta is | a memcpy on one thread | a packet |
 
@@ -764,7 +777,7 @@ two shells share almost nothing:
 | depends on | **core, base, game — three** | eleven components |
 | host contract | **never touches it** | `host_null`, for clipboard, cursor and the audio device |
 | its loop | **supervision** — `while (isRunning()) { sleep(100); }` | **driver** — `clientTick` then `presentTick` per step |
-| what ticks the world | `game`'s `universeLoop`, a thread `UniverseServer` owns | `client`'s `simLoop`, a fixed-timestep accumulator |
+| what ticks the world | `game`'s `universeLoop`, a thread `UniverseServer` owns | `client`'s `clientLoop`, a fixed-timestep accumulator |
 | simulates via | `UniverseServer` — authoritative | `UniverseClient` — a slave view |
 | players | N, remote | one, local |
 
@@ -787,7 +800,7 @@ and ticks nothing.
 |---|---|---|
 | host | `host_sdl` — owns `frameLoop`: pump, step, swap, idle | `host_null` — owns `headlessLoop`, ~10 lines plus 35 no-ops |
 | presentation | `rendering` + `gpu_opengl` | `transcript` |
-| **everything else** | `client` · `simLoop` · `clientTick` · `simTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
+| **everything else** | `client` · `clientLoop` · `clientTick` · `fixedTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
 
 The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
 telemetry model cannot fork between the two clients — which was the whole reason the loop question

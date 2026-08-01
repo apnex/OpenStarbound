@@ -288,7 +288,9 @@ ADD_TEST (NAME grant_sweep COMMAND ${Python3_EXECUTABLE}
 # by a check -- once missing the fixed-timestep accumulator nested in the frame loop, once missing
 # UniverseServer::run entirely. This finds every loop that YIELDS TO TIME (sleeps, waits, consults a
 # rate governor, or is a thread body), requires each to be declared, and reconciles the declared set
-# against the *Loop elements the spec models.
+# against the *Loop elements the spec models. A third miss was the instrument's own: it globbed
+# Star*.cpp and only matched qualified/inline member definitions, so server/main.cpp's free `main()`
+# and its loop were invisible -- and a matching false "target-state-only" declaration kept it green.
 ADD_TEST (NAME loop_inventory COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/loop-inventory.py --check)
 

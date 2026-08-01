@@ -19,8 +19,14 @@ spins to completion inside one call and never yields. So a loop is a candidate w
 A NESTED loop counts separately only when its OWN body carries a cadence signal. The fixed-timestep
 accumulator inside the frame loop is a distinct cadence -- it has its own clock -- so it must be
 reported; a plain `for (auto x : y)` in the same body is not, because its own body yields nothing.
-Suppressing everything nested inside a cadence loop hid `simLoop`, which is the whole reason the
+Suppressing everything nested inside a cadence loop hid `clientLoop`, which is the whole reason the
 count was wrong the first time.
+
+WHAT IS SCANNED. Every `*.cpp` under source/, excluding vendored trees. An earlier version globbed
+`Star*.cpp` and only matched `X::method` or inline member definitions, which made `server/main.cpp`
+doubly invisible -- wrong filename, and a free `int main(...)` body. It held the real server loop, and
+the gate stayed green over the gap because the spec's `serverLoop` had been declared target-state-only.
+A blind spot plus a matching false declaration reads exactly like agreement.
 
 VERDICTS. Every candidate must appear in DECLARED below.
 
@@ -61,7 +67,10 @@ DECLARED = {
     ("application/StarMainApplication_sdl.cpp", "SdlPlatform::run", 1):
         ("frameLoop", "driver", "frameLoop"),
     ("application/StarMainApplication_sdl.cpp", "SdlPlatform::run", 2):
-        ("simLoop", "accumulator", "simLoop"),
+        ("clientLoop", "accumulator", "clientLoop"),
+    # --- the server entry point's supervisor. Free `main()`, so nothing matched it until the
+    #     scanner learned to read free functions.
+    ("server/main.cpp", "main", 1): ("superviseLoop", "supervisor", "superviseLoop"),
     # --- the authoritative world tick. The design missed this one entirely.
     ("game/StarUniverseServer.cpp", "UniverseServer::run", 1):
         ("universeLoop", "worker", "universeLoop"),
@@ -103,11 +112,14 @@ DECLARED = {
         ("steamSubmitWait", "plumbing", None),
     ("test/StarTestUniverse.cpp", "TestUniverse::warpPlayer", 1): ("warpWait", "plumbing", None),
     ("test/StarTestUniverse.cpp", "TestUniverse::update", 1): ("testStep", "plumbing", None),
+    ("test/universe_connection_test.cpp", "ASyncClientThread::run", 1):
+        ("testClientThread", "worker", None),
 }
 
 # Loops the spec models that do not exist in the tree yet. Listed so SPEC DRIFT distinguishes
-# "target state, not built" from "the document invented one".
-TARGET_ONLY = {"headlessLoop", "serverLoop"}
+# "target state, not built" from "the document invented one". Keep this set as small as the truth
+# allows: an entry here silences the drift check for that name, so a wrong one hides a real loop.
+TARGET_ONLY = {"headlessLoop"}
 
 
 def thread_classes():
@@ -143,6 +155,10 @@ CLASSDEF = re.compile(r'^\s*(?:class|struct)\s+(\w+)\b')
 # whitespace made the scanner attribute loops to whatever was last logged.
 QUALIFIED = re.compile(r'^(?:[\w:<>,&*~][\w:<>,&*\s]*?\s+)?(\w+)::(\w+)\s*\([^;]*$')
 INLINE = re.compile(r'^\s*(?:virtual\s+|static\s+|inline\s+)*[\w:<>,&*]+[\s&*]+(\w+)\s*\([^;]*$')
+# A free function definition: column 0, no `::` before the parameter list. `int main(...)` is the
+# one that matters -- it is where an entry point's loop lives.
+FREE = re.compile(r'^(?:[\w:<>,&*][\w:<>,&*\s]*?[\s&*])(\w+)\s*\([^;]*$')
+NOTFN = {"if", "for", "while", "switch", "return", "catch", "else", "do", "sizeof"}
 
 
 def scan():
@@ -154,7 +170,7 @@ def scan():
     is the single most important loop in the system."""
     threads = thread_classes()
     out = []
-    for p in sorted(SRC.rglob("Star*.cpp")):
+    for p in sorted(SRC.rglob("*.cpp")):
         if "extern" in p.parts or "discord" in p.parts:
             continue
         rel = str(p.relative_to(SRC))
@@ -170,8 +186,12 @@ def scan():
                 fn = "%s::%s" % (m.group(1), m.group(2))
             elif classes:
                 m = INLINE.match(l)
-                if m and m.group(1) not in ("if", "for", "while", "switch", "return", "catch"):
+                if m and m.group(1) not in NOTFN:
                     fn = "%s::%s" % (classes[-1][0], m.group(1))
+            elif not l[:1].isspace():
+                m = FREE.match(l)
+                if m and m.group(1) not in NOTFN and "::" not in l.split("(")[0]:
+                    fn = m.group(1)
             if LOOPHEAD.match(l) and fn:
                 body, end = loop_body(lines, i)
                 cls = fn.split("::")[0]
