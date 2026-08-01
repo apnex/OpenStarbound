@@ -750,7 +750,6 @@ flowchart TD
   wgn --> game
   wgn --> wgen
 
-
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
   classDef kBackend    fill:#5c2020,stroke:#aa3333,color:#ffe5e5
@@ -1323,7 +1322,6 @@ session a token pattern with an unlisted term produced a clean-looking wrong res
 `MainInterface` missing from the `frontend` sweep.
 
 
-
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_agent -->
 ```mermaid
 %% composition: client_agent
@@ -1748,7 +1746,6 @@ parameters, which are `game` domain types, and never touches `worldgen`." The fi
 the second half misses the structure: **celestial parameters are the input contract to generation.**
 Approaching a planet reads them; landing feeds the same type to the generator. A shared input consumed
 by two components at different times is a component, not loose vocabulary.
-
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
 ```mermaid
@@ -2855,6 +2852,50 @@ order load-bearing — and teardown order is where this codebase's lifetime bugs
 **CADENCE — what drives it.** The runtime analogue of ZONE: ZONE places a component relative to the
 seams, CADENCE places an element relative to time.
 
+
+| cadence | driven by | example |
+|---|---|---|
+| **DISPLAY** | the display's refresh; vsync paces it | `frameLoop` |
+| **FIXED** | a fixed simulated timestep, independent of real time | `clientLoop`, `fixedTick` |
+| **FREE** | **we own the clock, so we must state its pacing** — see below | `headlessLoop`, `universeLoop`, `superviseLoop` |
+| **EXTERNAL** | someone else's clock, which we do not own | `audioTick` — SDL's audio thread |
+| **DERIVED** | no clock at all; runs when called | `inputTick`, `clientTick`, `presentTick` |
+| **ONCE** | not driven at all; runs a single time per process | every `WIRING` element |
+| **EVENT** | an occurrence, at no predictable rate | `resizeSignal` |
+
+**FREE needs a pacing policy, and that is a design obligation rather than an implementation detail.**
+The other cadences are paced by something outside us: DISPLAY blocks on vsync, EXTERNAL blocks on the
+audio device, FIXED is an accumulator over real time, DERIVED and ONCE inherit. **FREE is the only
+cadence where nothing external will stop us**, so a FREE loop that does not declare how it yields is a
+spin loop with a nice name.
+
+Both FREE loops that exist declare one: `universeLoop` ends its body with
+`Thread::sleep(mainWakeupInterval)`; `superviseLoop` sleeps 100 ms. The taxonomy previously read
+"a wall-clock poll **or as-fast-as-possible**", which folded a paced loop and a busy loop into one
+word — two very different things for a design whose whole point is composing processes that coexist.
+
+| FREE loop | pacing | why |
+|---|---|---|
+| `universeLoop` | a wakeup interval | supervision is not urgent; it must only be timely |
+| `superviseLoop` | 100 ms | it waits for shutdown and ticks nothing |
+| **`headlessLoop`** | **a wiring parameter** | see below — it is the only one with no natural answer |
+
+**`headlessLoop`'s pacing is composed, not fixed.** `frameLoop` blocks in `swapTick`, where vsync
+actually stops the thread. Remove the display and that block disappears with it — so the headless
+driver has nothing to yield on unless the composition says what to yield on. It takes a target rate as
+wiring:
+
+| entrypoint | rate | why |
+|---|---|---|
+| `client_headless` in discard mode | **unpaced** | a CI bulk run should finish as fast as the machine allows |
+| `client_headless` recording | the recorded rate | a transcript is only meaningful at a stated cadence |
+| `client_agent` | the agent's decision rate | an AI player that spins a core to think 10× a second is a bug |
+
+Same element, same code, pacing chosen by the entrypoint — the same shape as `worldLoop`, whose
+placement is wiring, and as `gpu_opengl` vs `gpu_sdl`, whose backend is wiring. **A cadence of FREE
+says who owns the clock; it does not say what the clock is set to, and the register now distinguishes
+those.**
+
 **CARDINALITY — how many exist at once.** Compile time has no need for this axis: a component is a
 directory, and there is one of it. Run time does, because an element can be instanced.
 
@@ -2870,17 +2911,6 @@ It was added after the Director asked whether N worlds are N instances of the on
 They are — and nothing in the taxonomy said so. "One per resident world" lived in a note, as prose,
 where no gate could read it. `spec_consistency` now rejects an element that declares no legal
 cardinality.
-
-| cadence | driven by | example |
-|---|---|---|
-| **DISPLAY** | the display's refresh; vsync paces it | `frameLoop` |
-| **FIXED** | a fixed simulated timestep, independent of real time | `clientLoop`, `fixedTick` |
-| **FREE** | a wall-clock poll or as-fast-as-possible | `headlessLoop`, `universeLoop`, `superviseLoop` |
-| **EXTERNAL** | someone else's clock, which we do not own | `audioTick` — SDL's audio thread |
-| **DERIVED** | no clock at all; runs when called | `inputTick`, `clientTick`, `presentTick` |
-| **ONCE** | not driven at all; runs a single time per process | every `WIRING` element |
-| **EVENT** | an occurrence, at no predictable rate | `resizeSignal` |
-
 **EDGE — how one element reaches another.** Three values, and the middle one is where the projections
 invert: `CALL` (direct, same thread), `DISPATCH` (virtual, through a contract), `HANDOFF` (a payload
 crosses; the producer does not block on the consumer's body).
@@ -3401,7 +3431,6 @@ not a decision.
   Whether forty components is the right forty is a judgement the aggregate review makes, not a gate.
 
 ### The measurement behind the deduplication row
-
 
 - **The graft rule at full fidelity** — check each element root's call closure against its component's
   grants, instead of only the edges this document draws.
