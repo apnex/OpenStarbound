@@ -845,6 +845,63 @@ Two consequences worth stating:
   already cross. Sending a lightmap would be sending a rendered artifact — the frame-streaming mistake
   in miniature.
 
+### The host owns a window; the backend owns everything drawn to it
+
+`client_opengl` and `client_sdl_gpu` differ by one grant, and the register said that difference was
+"the entire point". **It was not true, and `grant_sweep` could not see why.**
+
+The sweep measures coupling between *our* components, via includes. It scores `host_sdl → gpu` at 1
+and `host_sdl → gpu_opengl` at 1, both already on the removal ratchet. Meanwhile `host_sdl` contains:
+
+| in the SDL host today | count |
+|---|---|
+| `SDL_GL_CONTEXT*` attribute constants | 11 |
+| `SDL_GL_SetAttribute` — pinning a 3.2 core profile | 8 |
+| `SDL_GL_SetSwapInterval` | 3 |
+| `SDL_GL_SwapWindow` | 2 |
+| `SDL_WINDOW_OPENGL` in the window flags | 2 |
+| `SDL_GL_CreateContext` / `DestroyContext` / `SDL_GLContext` | 3 |
+
+**15 references, counted as 1.** The coupling is real but it is routed through *SDL's GL sub-API* — a
+third party — and no include sweep can see through that. Delete `make_shared<OpenGlRenderer>()` and
+the ratchet reads zero while the host still creates a GL context and swaps GL buffers. Compose
+`gpu_sdl` instead and nothing changes: same window flags, same context, same present. **The second
+backend, which this design names as its proof of swappability, would not work.**
+
+**The rule.** `host_sdl` owns the window **as an OS object** — creation, size, title, events, cursor,
+clipboard. It owns nothing about how that window is drawn to. Everything else belongs to the backend:
+
+| moves to | what |
+|---|---|
+| `gpu_opengl` | the context, its eight attributes, its swap interval, its present |
+| `gpu_sdl` | claiming the window for a GPU device, and presenting through it |
+| **wiring** | the window creation flags — the entrypoint names both host and backend, so it supplies them, exactly as it supplies `headlessLoop`'s pacing |
+
+**`swapTick` moves from `host_sdl` to `gpu`, and that is the deduplication.** Present is a device
+operation, so the CONTRACT owns the element and each backend implements it: `SDL_GL_SwapWindow` in
+one, a device present in the other. **One element, one name, two implementations** — rather than a
+`glSwapTick` and a `gpuSwapTick` that would have to be kept in step by hand.
+
+**The graft rule then rejected my first attempt, which is the useful part.** With `swapTick` owned by
+`gpu`, the runtime edge `frameLoop --> swapTick` became illegal: `host_sdl` has no grant to `gpu`, and
+adding one would restore the very edge the ratchet exists to delete. The fix is better than the
+proposal:
+
+> **The host does not drive the swap. `presentTick` does.** Painting ends in presenting, both reached
+> through seam 2, and the host merely calls the presenter and waits however long that takes.
+
+`frameLoop` loses an ordered edge and gains nothing; `rendering` already grants `gpu`, so the chain is
+legal by construction. It also explains `headlessLoop`'s pacing problem exactly: swap `rendering` for
+`transcript` and the same chain ends in `recordTick`, which blocks on nothing — so a headless driver
+must be told what to yield on.
+
+**Instrument limit, now named because it will recur.** `grant_sweep` is blind to any coupling
+expressed through a third-party API. A new ratchet, `host_api_neutral`, counts `SDL_GL_` inside the
+SDL host with a ceiling of **15**, falling to zero. It uses the same `layering-lint` needle machinery
+the render arc built for `Root::singleton` — the second time that instrument has been the only one
+able to see a coupling, and both times because the coupling ran through something the include graph
+does not model.
+
 ### Seam 2 — the boundary that already exists
 
 `Device` needs no design work. It needs a **home and a grant list**, which it does not have today
@@ -1354,6 +1411,8 @@ flowchart TD
     client_agent["<b>client_agent</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
     end
   end
   celestial --> base
@@ -1428,7 +1487,7 @@ flowchart TD
   class host_null kBackend
   class game,interaction,participant,script,universe_view,world_view kLibrary
   class client_agent kEntrypoint
-  class host_null_headlessLoop,participant_clientLoop kElement
+  class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick kElement
 ```
 
 **client_agent links 18 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transcript`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
@@ -1463,22 +1522,28 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
-    transcript["<b>transcript</b><br/>BACKEND"]
+    subgraph transcript ["<b>transcript</b> · BACKEND"]
+      transcript_recordTick(["<b>recordTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
   end
   subgraph Z_SHELL ["SHELL"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
     end
   end
   celestial --> base
@@ -1603,7 +1668,7 @@ flowchart TD
   class host_null,transcript kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
-  class host_null_headlessLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
+  class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick,transcript_recordTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
 **client_headless links 25 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
@@ -1758,6 +1823,7 @@ flowchart TD
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
+      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
@@ -1765,7 +1831,9 @@ flowchart TD
   subgraph Z_SEAM ["SEAM"]
     audio["<b>audio</b><br/>CONTRACT"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    gpu["<b>gpu</b><br/>CONTRACT"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
     net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
@@ -1779,11 +1847,13 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1791,13 +1861,19 @@ flowchart TD
   subgraph Z_PERIPHERY ["PERIPHERY"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
-    mixing["<b>mixing</b><br/>BACKEND"]
-    rendering["<b>rendering</b><br/>BACKEND"]
+    subgraph mixing ["<b>mixing</b> · BACKEND"]
+      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
+    end
+    subgraph rendering ["<b>rendering</b> · BACKEND"]
+      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
   end
   subgraph Z_SHELL ["SHELL"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
     end
   end
   audio --> core
@@ -1941,7 +2017,7 @@ flowchart TD
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
-  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
+  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
 **client_opengl links 31 of 40 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
@@ -1958,6 +2034,7 @@ flowchart TD
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
+      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
@@ -1965,7 +2042,9 @@ flowchart TD
   subgraph Z_SEAM ["SEAM"]
     audio["<b>audio</b><br/>CONTRACT"]
     celestial["<b>celestial</b><br/>CONTRACT"]
-    gpu["<b>gpu</b><br/>CONTRACT"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
     net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
@@ -1979,11 +2058,13 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1991,13 +2072,19 @@ flowchart TD
   subgraph Z_PERIPHERY ["PERIPHERY"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
-    mixing["<b>mixing</b><br/>BACKEND"]
-    rendering["<b>rendering</b><br/>BACKEND"]
+    subgraph mixing ["<b>mixing</b> · BACKEND"]
+      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
+    end
+    subgraph rendering ["<b>rendering</b> · BACKEND"]
+      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
   end
   subgraph Z_SHELL ["SHELL"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
     end
   end
   audio --> core
@@ -2041,6 +2128,8 @@ flowchart TD
   game --> platform
   game --> script
   gpu --> core
+  gpu_sdl --> core
+  gpu_sdl --> gpu
   host --> core
   host --> platform
   host_sdl --> core
@@ -2139,7 +2228,7 @@ flowchart TD
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
-  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
+  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
 **client_sdl_gpu links 31 of 40 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
@@ -2229,6 +2318,7 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -2278,7 +2368,7 @@ flowchart TD
   class celestial,content,net,platform kContract
   class game,script,world,worldgen kLibrary
   class world_sim kEntrypoint
-  class world_worldLoop kElement
+  class world_worldLoop,world_worldTick kElement
 ```
 
 **world_sim links 11 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
@@ -2303,9 +2393,11 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
     end
     subgraph world ["<b>world</b> · LIBRARY"]
       world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -2364,7 +2456,7 @@ flowchart TD
   class celestial,content,net,platform kContract
   class game,script,universe,world,worldgen kLibrary
   class server kEntrypoint
-  class server_superviseLoop,universe_universeLoop,world_worldLoop kElement
+  class server_superviseLoop,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
 **server links 12 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
@@ -2561,13 +2653,14 @@ is actually established today.
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
 | `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `host_sdl` | core, host, platform, platform_pc | the SDL host; the only place SDL is named |
+| `host_sdl` | core, host, platform, platform_pc | the SDL host. It owns the window **as an OS object** and nothing about how that window is drawn to. **NOT the only place SDL is named** — a backend that draws through SDL names it too |
 | `host_null` | core, host, platform | names no device at all — returns `nullptr` for all four services, but must still name their types to override |
 | `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
 | `presentation` | core, base, scene, sound | the interfaces are stated in scene and sound terms — D6, enforced |
 | `gpu` | core | the GPU contract cannot name a game type either |
 | `audio` | core | nor can the audio-device contract — a sample format is not a domain type |
-| `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above |
+| `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above — **including the context, its eight attributes, its swap interval and its present**, all of which sit in `host_sdl` today |
+| `gpu_sdl` | core, gpu, extern | claims the window for a GPU device and presents through it. **No GL context exists in this composition** — which is the whole test of whether the backend is really swappable |
 | `audio_sdl` | core, audio, extern | `SDL_OpenAudioDeviceStream` is named here and nowhere above |
 | `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
 | `mixing` | core, base, presentation, sound, audio | implements `AudioSink`; **no `host`** — the device pulls it, nothing paints it |
@@ -2880,10 +2973,11 @@ word — two very different things for a design whose whole point is composing p
 | `superviseLoop` | 100 ms | it waits for shutdown and ticks nothing |
 | **`headlessLoop`** | **a wiring parameter** | see below — it is the only one with no natural answer |
 
-**`headlessLoop`'s pacing is composed, not fixed.** `frameLoop` blocks in `swapTick`, where vsync
-actually stops the thread. Remove the display and that block disappears with it — so the headless
-driver has nothing to yield on unless the composition says what to yield on. It takes a target rate as
-wiring:
+**`headlessLoop`'s pacing is composed, not fixed.** `frameLoop` blocks in `swapTick` — reached
+*through* `presentTick`, since the host no longer drives the swap itself — and that is where vsync
+actually stops the thread. Swap `rendering` for `transcript` and the chain ends in `recordTick`, which
+blocks on nothing. So the headless driver has nothing to yield on unless the composition says what to
+yield on. It takes a target rate as wiring:
 
 | entrypoint | rate | why |
 |---|---|---|
@@ -2980,7 +3074,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`universeTick`** | TICK | FREE | **UNIVERSE** | `universe` | `universe` | one supervision step: world lifecycle, connections, warps |
 | **`worldTick`** | TICK | FIXED | **WORLD** | `world` | `world` | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
 | **`recordTick`** | TICK | DERIVED | **PROCESS** | `transcript` | `driver` | the same scene `presentTick` would paint, written down instead |
-| **`swapTick`** | TICK | DISPLAY | **PROCESS** | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
+| **`swapTick`** | TICK | DISPLAY | **PROCESS** | `gpu` | `driver` | presents the backbuffer; **where vsync actually blocks**. Owned by the CONTRACT and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
 | **`resizeSignal`** | SIGNAL | EVENT | **PROCESS** | `participant` | `driver` | the window changed; surfaces must be rebuilt |
 | **`openglWiring`** | WIRING | ONCE | **PROCESS** | `client_opengl` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
 | **`headlessWiring`** | WIRING | ONCE | **PROCESS** | `client_headless` | `driver` | composes `host_null` + `participant` + `transcript` |
@@ -3016,7 +3110,7 @@ flowchart TD
       clientloop["<b>clientLoop</b> · LOOP<br/><i>participant</i>"]
       fixedtick["<b>fixedTick</b> · TICK<br/><i>participant</i>"]
       presenttick["<b>presentTick</b> · TICK<br/><i>rendering</i>"]
-      swaptick["<b>swapTick</b> · TICK<br/><i>host_sdl</i>"]
+      swaptick["<b>swapTick</b> · TICK<br/><i>gpu</i>"]
       resizesignal["<b>resizeSignal</b> · SIGNAL<br/><i>participant</i>"]
       openglwiring["<b>openglWiring</b> · WIRING<br/><i>client_opengl</i>"]
       headlesswiring["<b>headlessWiring</b> · WIRING<br/><i>client_headless</i>"]
@@ -3079,7 +3173,8 @@ flowchart TD
   clientloop --> fixedtick
   clienttick -.->|2: scene delta · SceneSink · SEAM 1| presenttick
   clienttick -.->|3: audio buffer · AudioSink| audiotick
-  presenttick ==>|RenderPrimitive · Device · SEAM 2| device
+  presenttick ==>|1: RenderPrimitive · Device · SEAM 2| device
+  presenttick ==>|2: present · Device · SEAM 2| swaptick
   clienttick -.->|1: UniverseConnection · addLocalClient — self-hosted| universeloop
   clienttick -.->|1: UniverseConnection · TcpPacketSocket — a guest| universeloop2
   universeloop -->|1:| universetick
@@ -3094,7 +3189,6 @@ flowchart TD
   worldloop3 --> worldtick3
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
   inputtick -.->|*: window changed| resizesignal
-  frameloop -->|4:| swaptick
   openglwiring -.->|constructs, then never runs again| frameloop
   headlesswiring -.->|constructs, then never runs again| headlessloop
   sdlgpuwiring -.->|constructs, then never runs again| frameloop
@@ -3427,6 +3521,11 @@ not a decision.
   *is* a seam, and Section 5 says the call tree is supposed to stop there. **The instrument's limit
   and the design's boundary are the same place** — which is why the composition oracle, which observes
   behaviour rather than structure, is the one that has to carry the weight.
+- **Include sweeps cannot see through a third party.** `grant_sweep` measures coupling between our
+  components; coupling routed through a vendor API is invisible to it. `host_sdl` holds 15 `SDL_GL_`
+  references that the sweep scores as 1. Needle ratchets (`host_api_neutral`, `render_layering`)
+  cover the known instances; there is no general instrument, and assuming the include graph is the
+  whole coupling graph is now a named error rather than a habit.
 - **Nothing here proves the design is good**, only that it is self-consistent and behaviour-preserving.
   Whether forty components is the right forty is a judgement the aggregate review makes, not a gate.
 

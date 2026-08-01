@@ -344,6 +344,31 @@ IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/link-sweep.py --check)
 ENDIF ()
 
+# HOST API NEUTRALITY -- and it exists because grant_sweep is STRUCTURALLY BLIND to it.
+#
+# The design says `host_sdl` owns the window as an OS object and knows nothing about how that window
+# is drawn to. grant_sweep agrees: it measures coupling between OUR components via includes, and it
+# counts host_sdl -> gpu at 1 and host_sdl -> gpu_opengl at 1, both already on the removal ratchet.
+#
+# It is wrong by an order of magnitude, and not through any defect of its own. The real coupling is
+# expressed through SDL'S GL SUB-API -- a third party -- which no include sweep can see:
+#
+#   SDL_WINDOW_OPENGL in the window flags, 8x SDL_GL_SetAttribute pinning a 3.2 core context,
+#   SDL_GL_CreateContext / DestroyContext, SDL_GL_SetSwapInterval, SDL_GL_SwapWindow
+#
+# 15 references. Delete `make_shared<OpenGlRenderer>()` and grant_sweep reads ZERO while the host
+# still creates a GL context and swaps GL buffers -- at which point `client_sdl_gpu`, whose entire
+# claim is "identical except for the backend", would not work.
+#
+# ANY coupling routed through a third-party API is invisible to the include sweep. This is the first
+# instance found; it is unlikely to be the last, and Section 6 now says so.
+IF (Python3_Interpreter_FOUND)
+  ADD_TEST (NAME host_api_neutral COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
+            --needle "SDL_GL_"
+            source/application/StarMainApplication_sdl.cpp=15)
+ENDIF ()
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -390,6 +415,7 @@ IF (Python3_Interpreter_FOUND)
   IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
+  LIST (APPEND star_noassets_tests host_api_neutral)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

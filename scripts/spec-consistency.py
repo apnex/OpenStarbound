@@ -139,6 +139,28 @@ ELEMENT_FREE = {
 }
 
 
+def check_granted(comp, grants):
+    """Every component except a FOUNDATION must have a grant row.
+
+    grant-sweep iterates the GRANT TABLE, so a component with no row there is not reported as
+    ungranted -- it is not reported at all. `gpu_sdl` had been in the register as a declared BACKEND
+    with no grant row since it was added, and no instrument said a word: the sweep saw 39 components
+    it could talk about and one it could not see. Absence from a table is the quietest defect there
+    is, and this document has now been bitten by it three times.
+
+    FOUNDATIONs are exempt by construction: `core` and `base` are the bottom, and a row saying they
+    name nothing would be noise."""
+    out = []
+    for c, v in sorted(comp.items()):
+        if v["kind"] == "FOUNDATION":
+            continue
+        if c not in grants:
+            out.append(("UNGRANTED_ROW",
+                        "`%s` is a registered %s with no grant row; grant-sweep cannot see it at all"
+                        % (c, v["kind"])))
+    return out
+
+
 def check_cardinality(elem):
     """Every element declares a legal cardinality. An undeclared instance count is how `worldLoop`
     came to be 'one per resident world' in a note nobody could check."""
@@ -353,6 +375,7 @@ def check(text):
         if counts[key] < floor:
             findings.append(("VACUOUS", "only %d %s parsed, floor is %d -- the parser has regressed"
                              % (counts[key], key, floor)))
+    findings.extend(check_granted(comp, grants))
     findings.extend(check_cardinality(elem))
     findings.extend(check_runtime_coverage(comp, elem))
 

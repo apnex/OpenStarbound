@@ -95,3 +95,11 @@ jobs:
       # Derived from the grant table, so it needs no build and belongs here rather than only in ctest.
       - name: composition_graphs -- per-composition diagrams match the grant table
         run: python3 scripts/composition-graphs.py --check
+
+      # grant_sweep measures coupling between OUR components, via includes. This coupling runs through
+      # SDL's GL sub-API, so no include sweep can see it: 15 references, counted as 1. The host is
+      # supposed to own a window, not a GL context.
+      - name: host_api_neutral -- the SDL host must not know a graphics API
+        run: |
+          python3 scripts/layering-lint.py --needle "SDL_GL_" \
+            source/application/StarMainApplication_sdl.cpp=15

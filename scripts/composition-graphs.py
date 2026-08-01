@@ -79,14 +79,17 @@ GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
 # clock. A reader asking "what drives this?" could not answer it from these diagrams before; the
 # whole-system map showed the loops and the per-composition views dropped them.
 ELEMENT_ROW = re.compile(
-    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*LOOP\s*\|\s*(\w+)\s*\|\s*\*\*(\w+)\*\*\s*\|\s*`(\w+)`\s*\|\s*`\w+`\s*\|')
+    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(LOOP|TICK)\s*\|\s*(\w+)\s*\|\s*\*\*(\w+)\*\*\s*\|\s*`(\w+)`\s*\|\s*`\w+`\s*\|')
 
 
 def loops_of(text):
-    """-> owner component -> [(loop name, cadence)]. Empty is legal: most components own no clock."""
+    """-> owner component -> [(name, kind, cadence, cardinality)] for everything that RUNS REPEATEDLY.
+
+    LOOP and TICK only. WIRING runs once and SIGNAL is an event; drawing them would answer a question
+    nobody asks of a composition diagram. Empty is legal and common -- most components are called."""
     out = {}
-    for name, cadence, card, owner in ELEMENT_ROW.findall(text):
-        out.setdefault(owner, []).append((name, cadence, card))
+    for name, kind, cadence, card, owner in ELEMENT_ROW.findall(text):
+        out.setdefault(owner, []).append((name, kind, cadence, card))
     return out
 
 
@@ -126,9 +129,9 @@ def diagram(entry, comp, grants, classdef, loops):
             # its loops inside. Subgraphs are legal edge endpoints in mermaid, so the id is unchanged
             # and every grant edge below still resolves.
             out.append('    subgraph %s ["<b>%s</b> · %s"]' % (n, n, comp[n]["kind"]))
-            for lname, cadence, card in sorted(mine):
-                out.append('      %s_%s(["<b>%s</b> · LOOP<br/><i>%s · one per %s</i>"])'
-                           % (n, lname, lname, cadence, card.lower()))
+            for lname, kind, cadence, card in sorted(mine):
+                out.append('      %s_%s(["<b>%s</b> · %s<br/><i>%s · one per %s</i>"])'
+                           % (n, lname, lname, kind, cadence, card.lower()))
             out.append("    end")
         out.append("  end")
     for a in sorted(linked):
@@ -140,7 +143,7 @@ def diagram(entry, comp, grants, classdef, loops):
         members = sorted(n for n in linked if comp[n]["kind"] == kind)
         if members:
             out.append("  class %s %s" % (",".join(members), CLASS_OF[kind]))
-    elems = ["%s_%s" % (n, ln) for n in sorted(linked) for ln, _c, _k in loops.get(n, ())]
+    elems = ["%s_%s" % (n, ln) for n in sorted(linked) for ln, _k, _c, _d in loops.get(n, ())]
     if elems:
         out.append("  class %s kElement" % ",".join(sorted(elems)))
     out.append("```")
