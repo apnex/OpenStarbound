@@ -371,6 +371,28 @@ becomes worth a compile error.** Boxes get added by that test, not by feel.
 
 Elements are drawn as rounded, dashed boxes attached to their owner with a dotted line.
 
+**Element naming carries one more rule, and it is load-bearing:**
+
+| suffix | means | owns a cadence |
+|---|---|---|
+| **`*Loop`** | it has the `while` — it sets the cadence and decides when to stop | **yes** |
+| **`*Tick`** | one iteration's body, called by a loop | **no** |
+
+So **the number of `*Loop` elements is the number of clocks this codebase owns.** Today that is one,
+and it lives in `application` — which is exactly where the loop-relocation decision put it. Anyone
+proposing to move the loop into `client` has to add or relocate a `*Loop` box, which makes the change
+visible instead of implicit.
+
+Audio proves the rule rather than breaking it. It is a genuine rate authority, but the loop belongs to
+SDL — `SDL_OpenAudioDeviceStream` takes a callback and we supply the body — so `audioTick` is
+correctly a tick, not a loop.
+
+**This naming will migrate.** Today the system runs **one loop and three governors**: the sim's rate
+authority is a `TickRateApproacher` that the host's loop *consults*, not a loop that runs itself. Under
+the scene model the sim and presentation clocks genuinely separate, at which point `simTick` and
+`presentTick` become **`simLoop`** and **`presentLoop`** — or acquire sibling `*Loop` elements. The
+rename is the visible signal that the clocks have split, and it is expected rather than a defect.
+
 **`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
 "base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
 and the executables at the top, and an arrow that has to be added to make something compile is a
@@ -384,6 +406,7 @@ flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
     shell["<b>client</b><br/>LIBRARY<br/><i>owns the client frame</i>"]
     simtick(["<b>simTick</b> · ELEMENT<br/><i>the deterministic sim tick</i>"])
+    audiotick(["<b>audioTick</b> · ELEMENT<br/><i>fills a buffer for SDL's audio loop</i>"])
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
     nullhost(["<b>nullHost</b> · ELEMENT<br/><i>a host that shows nothing</i>"])
@@ -448,6 +471,7 @@ flowchart TD
 
   app -.- frameloop
   shell -.- simtick
+  shell -.- audiotick
   rend -.- presenttick
   chl -.- nullhost
 
@@ -462,7 +486,7 @@ flowchart TD
   class app,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
-  class frameloop,simtick,presenttick,nullhost kElement
+  class frameloop,simtick,audiotick,presenttick,nullhost kElement
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -535,6 +559,7 @@ The kinds are what make the next finding visible.
 |---|---|---|
 | **`frameLoop`** | `application` | pump · tick · swap · idle — the host keeps the outer loop |
 | **`simTick`** | `client` | the deterministic sim tick, fixed timestep |
+| **`audioTick`** | `client` | fills a buffer for SDL's audio loop — `ClientApplication::getAudioData` |
 | **`presentTick`** | `rendering` | resample · camera · assemble · paint, at display rate |
 | **`nullHost`** | `client_headless` | a host that shows nothing — 35 no-op methods over `host` |
 
