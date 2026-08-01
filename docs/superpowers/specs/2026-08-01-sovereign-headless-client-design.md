@@ -507,6 +507,7 @@ flowchart TD
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
     csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
     wsim["<b>world_sim</b><br/>ENTRYPOINT<br/><i>ticks one world with no participant</i>"]
+    wgn["<b>world_gen</b><br/>ENTRYPOINT<br/><i>generates terrain and never ticks it</i>"]
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
       superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
@@ -518,6 +519,7 @@ flowchart TD
     wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
     uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
     world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
+    wgen["<b>worldgen</b><br/>LIBRARY<br/><i>turns a seed into terrain</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
     subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
@@ -577,6 +579,11 @@ flowchart TD
   world --> base
   world --> platform
   world --> game
+  world --> wgen
+  wgen --> core
+  wgen --> base
+  wgen --> platform
+  wgen --> game
   wview --> core
   wview --> base
   wview --> platform
@@ -621,6 +628,12 @@ flowchart TD
   wsim --> platform
   wsim --> game
   wsim --> world
+  wsim --> wgen
+  wgn --> core
+  wgn --> base
+  wgn --> platform
+  wgn --> game
+  wgn --> wgen
 
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
@@ -632,8 +645,8 @@ flowchart TD
   class core,base kFoundation
   class platform,host,scene,contract,gpu kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
-  class game,auth,world,uview,wview,win,front,shell kLibrary
-  class cgl,chl,csg,wsim,srv kEntrypoint
+  class game,auth,world,wgen,uview,wview,win,front,shell kLibrary
+  class cgl,chl,csg,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
   class sdlb,csg kOutOfScope
@@ -871,15 +884,46 @@ Measured properly:
 | `dungeon_generation_benchmark` | yes | **no** | *generation* |
 | `planet_mapgen` | **no** | no | *generation*, and it does not even instantiate a world |
 
-The correction is worth more than the claim was: **the two that do not fit identify a third primitive.**
-Creating a world and ticking one are different jobs with different cardinalities — generation runs once
-per world (or on demand for a preview), simulation runs continuously — and `planet_mapgen` already
-proves generation stands alone, since it links neither `WorldServer` nor anything above it.
+**And a second correction, which cuts harder than the first: none of the three is built.**
+`source/utility/CMakeLists.txt` lines 39, 59, 64 and 69 all read `#ADD_EXECUTABLE` — `planet_mapgen`,
+`world_benchmark`, `generation_benchmark` and `dungeon_generation_benchmark` are commented out. So the
+table above describes what these files *would* link, not a shipping composition. Every claim in this
+document of the form "X already proves Y" must name a built target, and this one did not.
 
-`worldgen` is therefore a candidate component: `StarWorldTemplate`, `StarWorldGeneration`,
-`StarDungeonGenerator` and the 26-file `game/terrain/` tree — **32 files, of which exactly one names
-`WorldServer`** (`StarWorldGeneration.cpp`, line 2). One edge to invert and the boundary is clean.
-Not adopted here; recorded with its measurement so the decision is cheap when it is taken.
+The evidence is weaker; the argument is stronger. Someone wrote four utilities that each wanted exactly
+one of these primitives without the rest, and all four rotted out of the build. **A composition nobody
+can name is a composition nobody maintains.** That is the case for making them ENTRYPOINTs rather than
+against it: `world_sim` and `world_gen` are what these utilities were reaching for, and a named target
+in the register is gated, built and swept, where a commented-out utility is not.
+
+**The two that do not fit identify a third primitive.** Creating a world and ticking one are different
+jobs with different cardinalities — generation runs once per world, or on demand for a preview;
+simulation runs continuously.
+
+`worldgen` is therefore ADOPTED as a component: `StarWorldTemplate`, `StarDungeonGenerator` and the
+26-file `game/terrain/` tree. The one reverse edge is **a misfiled file, not a real dependency**:
+`StarWorldGeneration.hpp` holds `LiquidWorld(WorldServer*)`, `FallingBlocksWorld(WorldServer*)` and
+`DungeonGeneratorWorld(WorldServer*, bool)` — adapters that write generated output *into a live world*.
+That is world-side glue wearing a generation-side filename. Refile it to `world` and the boundary is
+clean by construction: `world --> worldgen`, never the reverse.
+
+**When generation actually runs, during play.** Worth writing down because the answer surprised the
+review, and because it fixes the cardinality above:
+
+| the participant… | what runs | generates terrain? |
+|---|---|---|
+| approaches a planet in space | `universe_view` reads `CelestialParameters::visitableParameters()` | **no** — descriptive parameters only, no world instantiated |
+| lands | `universe` creates or loads the world; initial terrain from the seed | **yes**, once |
+| explores | `world` calls `signalRegion()` / `generateRegion()` on approach to unexplored ground | **yes**, lazily, for the world's life |
+
+Three things, and the first is a fourth primitive this document had been folding into generation: the
+star map reads **parameters**, which are `game` domain types, and never touches `worldgen`. Only the
+last two are generation, and the third is why `world` must be granted `worldgen` rather than merely
+handed a finished world — generation is not a startup phase, it is a service `world` calls forever.
+
+`planet_mapgen` answers the question directly: it is **never invoked during play**. It is a standalone
+dev tool that renders a template to an image, it has zero references anywhere outside itself, and it is
+not built. `world_gen` is its replacement, as a first-class composition that cannot rot unnoticed.
 
 ### Tier 2 — an entity no longer knows how it looks. DONE.
 
@@ -937,6 +981,7 @@ flowchart TD
     windowing["<b>windowing</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     transcript["<b>transcript</b><br/>BACKEND"]
@@ -1008,11 +1053,16 @@ flowchart TD
   world --> core
   world --> game
   world --> platform
+  world --> worldgen
   world_view --> base
   world_view --> core
   world_view --> game
   world_view --> platform
   world_view --> scene
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1021,11 +1071,11 @@ flowchart TD
   class base,core kFoundation
   class host,platform,presentation,scene kContract
   class host_null,transcript kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
 ```
 
-**client_headless links 17 of 27 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`, `world_sim`
+**client_headless links 18 of 29 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
@@ -1053,6 +1103,7 @@ flowchart TD
     windowing["<b>windowing</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
@@ -1134,11 +1185,16 @@ flowchart TD
   world --> core
   world --> game
   world --> platform
+  world --> worldgen
   world_view --> base
   world_view --> core
   world_view --> game
   world_view --> platform
   world_view --> scene
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1147,11 +1203,11 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_opengl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
 ```
 
-**client_opengl links 20 of 27 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_sim`
+**client_opengl links 21 of 29 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -1179,6 +1235,7 @@ flowchart TD
     windowing["<b>windowing</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
@@ -1258,11 +1315,16 @@ flowchart TD
   world --> core
   world --> game
   world --> platform
+  world --> worldgen
   world_view --> base
   world_view --> core
   world_view --> game
   world_view --> platform
   world_view --> scene
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1271,12 +1333,55 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_sdl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
-**client_sdl_gpu links 20 of 27 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_sim`
+**client_sdl_gpu links 21 of 29 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
+```mermaid
+%% composition: world_gen
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    game["<b>game</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
+  end
+  game --> base
+  game --> core
+  game --> platform
+  platform --> core
+  world_gen --> base
+  world_gen --> core
+  world_gen --> game
+  world_gen --> platform
+  world_gen --> worldgen
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class platform kContract
+  class game,worldgen kLibrary
+  class world_gen kEntrypoint
+```
+
+**world_gen links 6 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+<!-- END GENERATED: world_gen -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
 ```mermaid
@@ -1290,6 +1395,7 @@ flowchart TD
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
@@ -1302,11 +1408,17 @@ flowchart TD
   world --> core
   world --> game
   world --> platform
+  world --> worldgen
   world_sim --> base
   world_sim --> core
   world_sim --> game
   world_sim --> platform
   world_sim --> world
+  world_sim --> worldgen
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1314,11 +1426,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,world kLibrary
+  class game,world,worldgen kLibrary
   class world_sim kEntrypoint
 ```
 
-**world_sim links 6 of 27 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world_view`
+**world_sim links 7 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
 <!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
@@ -1334,6 +1446,7 @@ flowchart TD
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     server["<b>server</b><br/>ENTRYPOINT"]
@@ -1357,6 +1470,11 @@ flowchart TD
   world --> core
   world --> game
   world --> platform
+  world --> worldgen
+  worldgen --> base
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1364,11 +1482,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,universe,world kLibrary
+  class game,universe,world,worldgen kLibrary
   class server kEntrypoint
 ```
 
-**server links 7 of 27 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `universe_view`, `windowing`, `world_sim`, `world_view`
+**server links 8 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -1388,7 +1506,8 @@ Every component in the diagram, in the same reading order.
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
-| **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer` and its agents: spawner, wire processor, falling blocks |
+| **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
+| **`worldgen`** | LIBRARY | INTERIOR | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
 | **`universe_view`** | LIBRARY | INTERIOR | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
 | **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
@@ -1404,8 +1523,9 @@ Every component in the diagram, in the same reading order.
 | **`client_sdl_gpu`** | ENTRYPOINT | SHELL | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
+| **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 
-Twenty-seven components: five CONTRACTs, seven BACKENDs, eight LIBRARYs, two FOUNDATIONs, five
+Twenty-nine components: five CONTRACTs, seven BACKENDs, nine LIBRARYs, two FOUNDATIONs, six
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -1559,7 +1679,8 @@ is actually established today.
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
-| `world` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
+| `worldgen` | core, base, platform, game | **names no `world`** — generation knows nothing that ticks |
+| `world` | core, base, platform, game, worldgen | **names no `scene`**; it calls generation lazily, per region |
 | `universe` | core, base, platform, game, world | it manages worlds, so it names `world`; `world` never names it back |
 | `world_view` | core, base, platform, game, scene |
 | `universe_view` | core, base, platform, game, world_view | it decides which world you are in, so it constructs one | **the simulation cannot name a presentation interface at all** |
@@ -1570,7 +1691,8 @@ is actually established today.
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
 | `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
 | `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
-| `world_sim` | core, base, game, world, platform | **no `universe` either** — residency comes from configuration, not from participants |
+| `world_sim` | core, base, game, world, worldgen, platform | **no `universe` either** — residency comes from configuration, not from participants |
+| `world_gen` | core, base, game, worldgen, platform | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
