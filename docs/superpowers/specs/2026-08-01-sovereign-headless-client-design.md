@@ -516,7 +516,7 @@ flowchart TD
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
     repl["<b>view</b><br/>LIBRARY<br/><i>one participant's local world</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
-    subgraph auth ["<b>authority</b> · LIBRARY"]
+    subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
     end
   end
@@ -752,35 +752,42 @@ and is retracted twice over:
 
 | `game` files | count | becomes |
 |---|---|---|
-| authority-only | **5** — `WorldServer`, `Spawner`, `WireProcessor`, `FallingBlocksAgent`, `LiquidTypes` | **`authority`** |
-| replica-only | **43** — `UniverseClient`, sky, parallax, particles, chat, statistics, team | **`replica`** |
+| authority-only | **5** — `WorldServer`, `Spawner`, `WireProcessor`, `FallingBlocksAgent`, `LiquidTypes` | **`universe`** |
+| replica-only | **43** — `UniverseClient`, sky, parallax, particles, chat, statistics, team | **`view`** |
 | both | **127** | **`game`**, re-scoped to the domain |
 
 So `game` becomes the **domain** — entities, items, tiles, stats, damage, the model both sides share —
-with an `authority` and a `replica` orchestrating it. `universeLoop` moves with `WorldServer`: it is
-`UniverseServer::run`, and that is the authority, not the domain.
+with a `universe` and a `view` orchestrating it. `universeLoop` moves with `WorldServer`: it is
+`UniverseServer::run`, and that belongs to `universe`, not to the domain.
 
 **What the split buys, and what it does not.** `server` stops linking the replica half entirely — the
-generated composition above names `replica` in its *not linked* list, which is the whole point. What it
+generated composition above names `view` in its *not linked* list, which is the whole point. What it
 does **not** buy is `scene`: the domain still grants it, because **118 of 500 `game` files name
 `Drawable`/`RenderCallback`** — appearance is woven through the entity model, not concentrated.
 
-### What `authority` and `view` mean
+### What `universe` and `view` mean
 
 Two words doing precise work, defined once because neither is self-evident:
 
-> **`authority`** — the component that owns the canonical world and **decides what happens in it**.
-> Exactly one exists per world. It persists that world and serves it. Nothing overrules it.
+> **`universe`** — the component that **owns and runs the simulated world, and decides what happens
+> in it**. It holds `UniverseServer` and the per-world `WorldServer`s that server spins up and down as
+> players travel. Nothing overrules it.
+>
+> A note on vocabulary, because it is a genuine trap: in this codebase **`World` means one literal
+> instance** — one planet, one player's ship interior, or one mission — and `UniverseServer` holds a
+> `Map<WorldId, …WorldServerThreadPtr>` of many. So the everyday sense of "the game world" is what the
+> code calls the *universe*, and a component named `world`-anything would be named after the smallest
+> thing inside it.
 >
 > **`view`** — the component that maintains **one participant's local world**: authoritative state as
 > it arrives, predicted forward between updates, plus detail that exists only for a viewer.
 
-`replica` was the first name for the second and it was wrong. Of its 43 files, a large share —
+`replica` was the first name for `view` and it was wrong. Of its 43 files, a large share —
 particles, parallax, sky — **replicate nothing**; they are locally generated and have no authoritative
 counterpart. A word that describes half of what a component holds is worse than a plainer one.
 `view` covers both halves: what is mirrored *and* what is invented for the viewer.
 
-The pairing is the definition: **the authority decides, the view observes.** And it does not collide
+The pairing is the definition: **the universe decides, the view observes.** And it does not collide
 with the neighbouring words, because the three do different jobs — **`view` produces the scene**,
 **`presentation` carries it**, **`rendering` draws it**.
 
@@ -833,9 +840,9 @@ flowchart TD
     scene["<b>scene</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
+    universe["<b>universe</b><br/>LIBRARY"]
     view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
@@ -846,11 +853,6 @@ flowchart TD
     client["<b>client</b><br/>LIBRARY"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
   end
-  authority --> base
-  authority --> core
-  authority --> game
-  authority --> platform
-  client --> authority
   client --> base
   client --> core
   client --> frontend
@@ -859,6 +861,7 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> universe
   client --> view
   client --> windowing
   client_headless --> client
@@ -891,6 +894,10 @@ flowchart TD
   transcript --> host
   transcript --> presentation
   transcript --> scene
+  universe --> base
+  universe --> core
+  universe --> game
+  universe --> platform
   view --> base
   view --> core
   view --> game
@@ -910,7 +917,7 @@ flowchart TD
   class base,core kFoundation
   class host,platform,presentation,scene kContract
   class host_null,transcript kBackend
-  class authority,client,frontend,game,view,windowing kLibrary
+  class client,frontend,game,universe,view,windowing kLibrary
   class client_headless kEntrypoint
 ```
 
@@ -935,9 +942,9 @@ flowchart TD
     scene["<b>scene</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
+    universe["<b>universe</b><br/>LIBRARY"]
     view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
@@ -949,11 +956,6 @@ flowchart TD
     client["<b>client</b><br/>LIBRARY"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
   end
-  authority --> base
-  authority --> core
-  authority --> game
-  authority --> platform
-  client --> authority
   client --> base
   client --> core
   client --> frontend
@@ -962,6 +964,7 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> universe
   client --> view
   client --> windowing
   client_opengl --> client
@@ -1003,6 +1006,10 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  universe --> base
+  universe --> core
+  universe --> game
+  universe --> platform
   view --> base
   view --> core
   view --> game
@@ -1022,7 +1029,7 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_opengl,host_sdl,platform_pc,rendering kBackend
-  class authority,client,frontend,game,view,windowing kLibrary
+  class client,frontend,game,universe,view,windowing kLibrary
   class client_opengl kEntrypoint
 ```
 
@@ -1047,9 +1054,9 @@ flowchart TD
     scene["<b>scene</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
+    universe["<b>universe</b><br/>LIBRARY"]
     view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
@@ -1061,11 +1068,6 @@ flowchart TD
     client["<b>client</b><br/>LIBRARY"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
   end
-  authority --> base
-  authority --> core
-  authority --> game
-  authority --> platform
-  client --> authority
   client --> base
   client --> core
   client --> frontend
@@ -1074,6 +1076,7 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> universe
   client --> view
   client --> windowing
   client_sdl_gpu --> client
@@ -1113,6 +1116,10 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  universe --> base
+  universe --> core
+  universe --> game
+  universe --> platform
   view --> base
   view --> core
   view --> game
@@ -1132,7 +1139,7 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_sdl,host_sdl,platform_pc,rendering kBackend
-  class authority,client,frontend,game,view,windowing kLibrary
+  class client,frontend,game,universe,view,windowing kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
@@ -1149,25 +1156,25 @@ flowchart TD
     platform["<b>platform</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
-    authority["<b>authority</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
+    universe["<b>universe</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     server["<b>server</b><br/>ENTRYPOINT"]
   end
-  authority --> base
-  authority --> core
-  authority --> game
-  authority --> platform
   game --> base
   game --> core
   game --> platform
   platform --> core
-  server --> authority
   server --> base
   server --> core
   server --> game
   server --> platform
+  server --> universe
+  universe --> base
+  universe --> core
+  universe --> game
+  universe --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1175,7 +1182,7 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class authority,game kLibrary
+  class game,universe kLibrary
   class server kEntrypoint
 ```
 
@@ -1198,7 +1205,7 @@ Every component in the diagram, in the same reading order.
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`authority`** | LIBRARY | INTERIOR | the simulation that owns truth | `WorldServer` and its agents: spawner, wire processor, falling blocks |
+| **`universe`** | LIBRARY | INTERIOR | owns and runs the simulated world | `UniverseServer`, the per-world `WorldServer`s it manages, spawner, wire processor, falling blocks |
 | **`view`** | LIBRARY | INTERIOR | one participant's local world | `UniverseClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
@@ -1367,15 +1374,15 @@ is actually established today.
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
-| `authority` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
+| `universe` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
 | `view` | core, base, platform, game, scene | **the simulation cannot name a presentation interface at all** |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
-| `client` | core, base, platform, game, authority, view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `authority` because a hosting client *is* one |
+| `client` | core, base, platform, game, universe, view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `universe` because a hosting client runs one |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
 | `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
-| `server` | core, base, game, authority, platform | **no presentation slot, no `view`, and after tier 2 no `scene` either** |
+| `server` | core, base, game, universe, platform | **no presentation slot, no `view`, and after tier 2 no `scene` either** |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
@@ -1614,7 +1621,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`frameLoop`** | LOOP | DISPLAY | `host_sdl` | `driver` | drives a process that has a display |
 | **`headlessLoop`** | LOOP | FREE | `host_null` | `driver` | drives a process that has none |
 | **`clientLoop`** | LOOP | FIXED | `client` | `driver` | converts real time into fixed steps |
-| **`universeLoop`** | LOOP | FREE | `authority` | `universe` | supervises worlds and connections on a wakeup interval |
+| **`universeLoop`** | LOOP | FREE | `universe` | `universe` | supervises worlds and connections on a wakeup interval |
 | **`superviseLoop`** | LOOP | FREE | `server` | `main` | waits for shutdown; ticks nothing |
 | **`inputTick`** | TICK | DERIVED | `host_sdl` | `driver` | drains the OS event queue |
 | **`clientTick`** | TICK | DERIVED | `client` | `driver` | one driver step, sim side |
@@ -1659,7 +1666,7 @@ flowchart TD
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
     subgraph tuniverse ["universe thread — cadence FREE; only when THIS client hosts"]
-      universeloop["<b>universeLoop</b> · LOOP<br/><i>authority</i>"]
+      universeloop["<b>universeLoop</b> · LOOP<br/><i>universe</i>"]
     end
     subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
       audiotick["<b>audioTick</b> · TICK<br/><i>client</i>"]
@@ -1672,7 +1679,7 @@ flowchart TD
       superviseloop["<b>superviseLoop</b> · LOOP<br/><i>server</i>"]
     end
     subgraph tuniverse2 ["universe thread — cadence FREE, a wakeup interval"]
-      universeloop2["<b>universeLoop</b> · LOOP<br/><i>authority</i>"]
+      universeloop2["<b>universeLoop</b> · LOOP<br/><i>universe</i>"]
     end
   end
 

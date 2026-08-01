@@ -70,7 +70,7 @@ PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "ren
 # quietly absent -- an unlisted name would just look like a typo in the grant table.
 NOT_YET_BUILT = ("scene", "presentation", "transcript", "host_null", "gpu_sdl",
                  "client_opengl", "client_headless", "client_sdl_gpu",
-                 "authority", "view")
+                 "universe", "view")
 
 # The register's own file counts, cross-checked against FROM_APPLICATION.
 REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10}
