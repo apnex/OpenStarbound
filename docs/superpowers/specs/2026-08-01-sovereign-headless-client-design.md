@@ -518,6 +518,7 @@ flowchart TD
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     inter["<b>interaction</b><br/>LIBRARY<br/><i>how a participant acts on the world</i>"]
     coloc["<b>colocation</b><br/>LIBRARY<br/><i>runs the authority in the participant's own process</i>"]
+    script["<b>script</b><br/>LIBRARY<br/><i>hosts Lua; owns no bindings</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
     wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
     uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
@@ -545,6 +546,7 @@ flowchart TD
     contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
     gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
     sound["<b>sound</b><br/>CONTRACT<br/><i>what is audible, where, how loud</i>"]
+    net["<b>net</b><br/>CONTRACT<br/><i>what a replicated field is</i>"]
     audiodev["<b>audio</b><br/>CONTRACT<br/><i>the audio-device contract</i>"]
     celest["<b>celestial</b><br/>CONTRACT<br/><i>the star map's vocabulary and its lookup interface</i>"]
   end
@@ -647,6 +649,11 @@ flowchart TD
   celest --> core
   celest --> base
   game --> celest
+  game --> net
+  game --> script
+  net --> core
+  script --> core
+  script --> base
   auth --> wgen
   wgen --> celest
   auth --> celest
@@ -693,9 +700,9 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
-  class platform,host,scene,contract,gpu,sound,audiodev,celest kContract
+  class platform,host,scene,contract,gpu,sound,audiodev,celest,net kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb,mixing,audiosdl kBackend
-  class game,auth,world,wgen,uview,wview,win,front,inter,coloc,shell kLibrary
+  class game,auth,world,wgen,uview,wview,win,front,inter,coloc,script,shell kLibrary
   class cgl,chl,csg,cagent,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
@@ -1123,6 +1130,88 @@ granted, and sees nothing. This boundary is **pure assertion**, and it will stay
 that is not a directory is unenforceable by construction; this is the most consequential instance of
 that in the whole design, and no green run should be read as evidence for it.
 
+### `net` and `script` — and the thing that actually blocks the rest
+
+The register had **thirty-seven components and not one of them named Lua.** For a fork whose purpose is
+running Frackin Universe, the largest extension surface in the system had no representation at all.
+`LuaEngine` is 4,681 symbols in `starbound_server` — the biggest attributed thing after `game` itself —
+and it was invisible.
+
+**`net`** — CONTRACT, SEAM. The 11 `NetElement*` headers, **already in `core` and already domain-free**
+(10 of 11 name no domain type). It is a CONTRACT rather than a library because domain types *derive
+from* `NetElement`: it is the vocabulary of replication, used identically by the authority and the
+view, which is the definition of a seam here.
+
+**`script`** — LIBRARY, INTERIOR. `LuaRoot`, `ScriptableThread`, `LuaComponents`: the interpreter's
+lifecycle. **It is not the mod-facing API**, and that distinction is load-bearing.
+
+**The Lua surface is per-component and must stay that way.** 25 binding files across **six** components:
+game 36 files, frontend 6, base 2, participant 2, core 2, windowing 2. Each component exposes its own
+bindings the way it exposes its own headers — `windowing` owns `widget.*`, `frontend` owns
+`interface.*`/`clipboard.*`/`voice.*`, `participant` owns `renderer.*`. Anyone later "consolidating the
+bindings" would be undoing the boundary, not tidying it.
+
+**OPEN DECISION: the mod API is now a composition property.**
+
+| composition | Lua bindings absent |
+|---|---|
+| `client_opengl`, `client_headless` | none |
+| `client_agent` | `widget.*`, `interface.*`, `clipboard.*`, `voice.*` |
+| `server`, `world_sim` | those plus `renderer.*` |
+
+A mod written against `interface.*` does not degrade on `client_agent` — **it is not there.** Defensible,
+and undecided. Three options: accept it, declare a guaranteed core surface every composition must
+provide, or stub the absentees. **Not resolved here.**
+
+### The real blocker is `Root`, and the render arc already found it
+
+`script` was proposed as a component *below* `game`, and the measurement nearly refused it:
+`StarLuaRoot.hpp` includes `StarRoot.hpp`, which is `game`. Following that through is the most
+important structural finding in this section.
+
+**What `LuaRoot` actually uses `Root` for, measured line by line:** `root.configuration()` for four
+config values, `root.registerReloadListener(...)`, `root.toStoragePath("lua")`, and
+`Root::singleton().assets()`. **Configuration, a storage path, a reload listener, and assets. Not one
+domain type.** `Assets` itself lives in `base` and names World/Entity/Player zero times.
+
+So `script`'s dependency on `game` is **not a dependency on the domain at all** — it is the `Root`
+singleton used as a service locator. Hence the grant row: `script | core, base`, with those four
+services injected rather than fetched.
+
+**And that generalises past `script`.** `Root` is a **40-accessor singleton** holding every content
+database — Assets, Configuration, ItemDatabase, MonsterDatabase, TerrainDatabase, SpeciesDatabase,
+VersioningDatabase and 33 more — and `StarRoot.hpp` is included by **197 files across four components**:
+
+| | files including `StarRoot.hpp` |
+|---|---|
+| `game` | 139 |
+| `frontend` | 40 |
+| `windowing` | 17 |
+| `participant` | 1 |
+
+**That is why `game` is 263 headers and cannot be split.** Every candidate decomposition — `net`,
+`script`, `storage`, or any other — reaches `Root`, and `Root` transitively owns everything. The
+monolith is not held together by domain coupling. It is held together by a service locator.
+
+**The render decomposition already discovered this and built the instrument.** `render_layering` runs
+`scripts/layering-lint.py --needle "Root::singleton"` with per-file ceilings, on the grounds that "a
+sovereign pass should be a pure function of its parameters". That gate exists because the *render*
+side hit this wall first. The sim side has now hit the identical one, from the opposite direction.
+
+**Consequence for sequencing.** Decomposing `Root` — each component owning its own databases,
+injection replacing the singleton — is the prerequisite for splitting `game`, not a follow-up to it.
+It is also, on the 197-file measurement, larger than anything else outstanding. Section 10 must price
+it before any file moves, and it should be priced as the *first* item rather than as part of `game`.
+
+**One correction to method, because it nearly shipped the wrong component set.** A token filter
+(`World|Player|Entity|Item|Universe|...`) reported nine `game/scripting` headers as "domain-free",
+including `StarMovementControllerLuaBindings` — which names `MovementController`, a game type the
+pattern simply did not list. The include-based re-measure gave a different set, and the `.cpp` check
+a third. **Three filters, three answers, and only the last is trustworthy.** Second time in this
+session a token pattern with an unlisted term produced a clean-looking wrong result; the first was
+`MainInterface` missing from the `frontend` sweep.
+
+
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_agent -->
 ```mermaid
@@ -1139,6 +1228,7 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     celestial["<b>celestial</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
@@ -1146,6 +1236,7 @@ flowchart TD
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
   end
@@ -1163,7 +1254,9 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
   host --> core
   host --> platform
   host_null --> core
@@ -1175,6 +1268,7 @@ flowchart TD
   interaction --> platform
   interaction --> universe_view
   interaction --> world_view
+  net --> core
   participant --> base
   participant --> core
   participant --> game
@@ -1193,6 +1287,8 @@ flowchart TD
   presentation --> sound
   scene --> base
   scene --> core
+  script --> base
+  script --> core
   sound --> base
   sound --> core
   universe_view --> base
@@ -1214,14 +1310,14 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class celestial,host,platform,presentation,scene,sound kContract
+  class celestial,host,net,platform,presentation,scene,sound kContract
   class host_null kBackend
-  class game,interaction,participant,universe_view,world_view kLibrary
+  class game,interaction,participant,script,universe_view,world_view kLibrary
   class client_agent kEntrypoint
   class host_null_headlessLoop,participant_clientLoop kElement
 ```
 
-**client_agent links 15 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transcript`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
+**client_agent links 17 of 39 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transcript`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
 <!-- END GENERATED: client_agent -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
@@ -1239,6 +1335,7 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     celestial["<b>celestial</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
@@ -1248,6 +1345,7 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
     end
@@ -1293,7 +1391,9 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
   host --> core
   host --> platform
   host_null --> core
@@ -1305,6 +1405,7 @@ flowchart TD
   interaction --> platform
   interaction --> universe_view
   interaction --> world_view
+  net --> core
   participant --> base
   participant --> core
   participant --> game
@@ -1323,6 +1424,8 @@ flowchart TD
   presentation --> sound
   scene --> base
   scene --> core
+  script --> base
+  script --> core
   sound --> base
   sound --> core
   transcript --> base
@@ -1372,14 +1475,14 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class celestial,host,platform,presentation,scene,sound kContract
+  class celestial,host,net,platform,presentation,scene,sound kContract
   class host_null,transcript kBackend
-  class colocation,frontend,game,interaction,participant,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,universe_universeLoop kElement
 ```
 
-**client_headless links 22 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
+**client_headless links 24 of 39 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 ### Tier 3 — an entity no longer knows how it *sounds*. NOT STARTED.
@@ -1539,6 +1642,7 @@ flowchart TD
     audio["<b>audio</b><br/>CONTRACT"]
     celestial["<b>celestial</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
@@ -1548,6 +1652,7 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
     end
@@ -1602,7 +1707,9 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
   gpu --> core
   gpu_opengl --> core
   gpu_opengl --> gpu
@@ -1623,6 +1730,7 @@ flowchart TD
   mixing --> core
   mixing --> presentation
   mixing --> sound
+  net --> core
   participant --> base
   participant --> core
   participant --> game
@@ -1650,6 +1758,8 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  script --> base
+  script --> core
   sound --> base
   sound --> core
   universe --> base
@@ -1694,14 +1804,14 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
+  class audio,celestial,gpu,host,net,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
-  class colocation,frontend,game,interaction,participant,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
   class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop kElement
 ```
 
-**client_opengl links 28 of 37 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_opengl links 30 of 39 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -1722,6 +1832,7 @@ flowchart TD
     audio["<b>audio</b><br/>CONTRACT"]
     celestial["<b>celestial</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
     sound["<b>sound</b><br/>CONTRACT"]
@@ -1731,6 +1842,7 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
     end
@@ -1785,7 +1897,9 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
   gpu --> core
   host --> core
   host --> platform
@@ -1804,6 +1918,7 @@ flowchart TD
   mixing --> core
   mixing --> presentation
   mixing --> sound
+  net --> core
   participant --> base
   participant --> core
   participant --> game
@@ -1831,6 +1946,8 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  script --> base
+  script --> core
   sound --> base
   sound --> core
   universe --> base
@@ -1875,14 +1992,14 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class audio,celestial,gpu,host,platform,presentation,scene,sound kContract
+  class audio,celestial,gpu,host,net,platform,presentation,scene,sound kContract
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
-  class colocation,frontend,game,interaction,participant,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
   class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop kElement
 ```
 
-**client_sdl_gpu links 28 of 37 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_sdl_gpu links 30 of 39 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
@@ -1896,9 +2013,11 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     celestial["<b>celestial</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
@@ -1909,8 +2028,13 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
+  net --> core
   platform --> core
+  script --> base
+  script --> core
   world_gen --> base
   world_gen --> celestial
   world_gen --> core
@@ -1929,12 +2053,12 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class celestial,platform kContract
-  class game,worldgen kLibrary
+  class celestial,net,platform kContract
+  class game,script,worldgen kLibrary
   class world_gen kEntrypoint
 ```
 
-**world_gen links 7 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+**world_gen links 9 of 39 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
 <!-- END GENERATED: world_gen -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
@@ -1948,9 +2072,11 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     celestial["<b>celestial</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -1962,8 +2088,13 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
+  net --> core
   platform --> core
+  script --> base
+  script --> core
   world --> base
   world --> core
   world --> game
@@ -1987,12 +2118,12 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class celestial,platform kContract
-  class game,world,worldgen kLibrary
+  class celestial,net,platform kContract
+  class game,script,world,worldgen kLibrary
   class world_sim kEntrypoint
 ```
 
-**world_sim links 8 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
+**world_sim links 10 of 39 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
 <!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
@@ -2006,9 +2137,11 @@ flowchart TD
   end
   subgraph Z_SEAM ["SEAM"]
     celestial["<b>celestial</b><br/>CONTRACT"]
+    net["<b>net</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
+    script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
     end
@@ -2025,8 +2158,13 @@ flowchart TD
   game --> base
   game --> celestial
   game --> core
+  game --> net
   game --> platform
+  game --> script
+  net --> core
   platform --> core
+  script --> base
+  script --> core
   server --> base
   server --> core
   server --> game
@@ -2057,13 +2195,13 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class celestial,platform kContract
-  class game,universe,world,worldgen kLibrary
+  class celestial,net,platform kContract
+  class game,script,universe,world,worldgen kLibrary
   class server kEntrypoint
   class server_superviseLoop,universe_universeLoop kElement
 ```
 
-**server links 9 of 37 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
+**server links 11 of 39 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -2081,6 +2219,7 @@ Every component in the diagram, in the same reading order.
 | **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
 | **`sound`** | CONTRACT | SEAM | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene` |
+| **`net`** | CONTRACT | SEAM | what a replicated field is | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
@@ -2091,6 +2230,7 @@ Every component in the diagram, in the same reading order.
 | **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`interaction`** | LIBRARY | INTERIOR | how a participant acts on the world | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`script`** | LIBRARY | INTERIOR | hosts Lua; owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
 | **`colocation`** | LIBRARY | INTERIOR | runs the authority in the participant's own process | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
@@ -2110,7 +2250,7 @@ Every component in the diagram, in the same reading order.
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 
-Thirty-seven components: eight CONTRACTs, nine BACKENDs, eleven LIBRARYs, two FOUNDATIONs, seven
+Thirty-nine components: nine CONTRACTs, nine BACKENDs, twelve LIBRARYs, two FOUNDATIONs, seven
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -2267,7 +2407,8 @@ is actually established today.
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
-| `game` | core, base, platform, celestial | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks. `celestial` is a contract, so naming it couples to types, not to a database |
+| `net` | core | replication vocabulary; **names no domain type** — 10 of its 11 headers already name none |
+| `game` | core, base, platform, celestial, net, script | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it, and neither names it back |
 | `celestial` | core, base | a CONTRACT names only foundations and other contracts; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
 | `worldgen` | core, base, platform, game, celestial | **names no `world`** — generation knows nothing that ticks |
 | `world` | core, base, platform, game, worldgen | **names no `scene`**; it calls generation lazily, per region |
@@ -2275,6 +2416,7 @@ is actually established today.
 | `world_view` | core, base, platform, game, scene, sound | **the simulation cannot name a presentation interface at all** — it names the vocabulary, never the sink |
 | `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one. **Implements `CelestialSlaveDatabase`** — the same contract, the replica side |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
+| `script` | core, base | **names no `game`.** Measured: `LuaRoot`'s only tie to `game` is `Root::singleton()` used as a service locator — configuration, a storage path, a reload listener and `assets()`. Not one domain type |
 | `interaction` | core, base, platform, game, world_view, universe_view | **names no `windowing` and no `frontend`** — acting on the world is not a UI concern |
 | `colocation` | core, base, platform, game, world, universe, universe_view | **the only component that names both an authority and a view**; it exists to join them in one process, and D8 governs it |
 | `frontend` | core, base, platform, game, windowing, scene, host, interaction | this game's screens; does not draw, and drives the verbs rather than owning them |
