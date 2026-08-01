@@ -520,6 +520,7 @@ flowchart TD
     uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
     world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
     wgen["<b>worldgen</b><br/>LIBRARY<br/><i>turns a seed into terrain</i>"]
+    celest["<b>celestial</b><br/>LIBRARY<br/><i>the star map</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
     subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
@@ -533,12 +534,16 @@ flowchart TD
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
     glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
     sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
+    mixing["<b>mixing</b><br/>BACKEND<br/><i>turns sound into samples</i>"]
+    audiosdl["<b>audio_sdl</b><br/>BACKEND<br/><i>the SDL audio backend</i>"]
   end
 
   subgraph Z_SEAM ["SEAM — the declared boundaries"]
     scene["<b>scene</b><br/>CONTRACT<br/><i>what exists, where, moving how</i>"]
     contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
     gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
+    sound["<b>sound</b><br/>CONTRACT<br/><i>what is audible, where, how loud</i>"]
+    audiodev["<b>audio</b><br/>CONTRACT<br/><i>the audio-device contract</i>"]
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
@@ -602,6 +607,23 @@ flowchart TD
   shell --> front
   shell --> contract
   rend ==> contract
+  mixing ==> contract
+  mixing --> sound
+  mixing --> audiodev
+  mixing --> core
+  mixing --> base
+  audiosdl ==> audiodev
+  audiosdl --> core
+  sound --> core
+  sound --> base
+  audiodev --> core
+  celest --> core
+  celest --> base
+  celest --> game
+  wgen --> celest
+  auth --> celest
+  uview --> celest
+  wgn --> celest
   rend ==> host
   rend --> gpu
   tr ==> contract
@@ -643,9 +665,9 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
-  class platform,host,scene,contract,gpu kContract
-  class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
-  class game,auth,world,wgen,uview,wview,win,front,shell kLibrary
+  class platform,host,scene,contract,gpu,sound,audiodev kContract
+  class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb,mixing,audiosdl kBackend
+  class game,auth,world,wgen,celest,uview,wview,win,front,shell kLibrary
   class cgl,chl,csg,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
@@ -688,7 +710,7 @@ A presentation backend need not have a GPU backend at all: `transcript` has none
 | name | direction | call | strength (D3) |
 |---|---|---|---|
 | **`SceneSink`** | one-way in | `accept(SceneDelta const&)` | swappable contract |
-| **`AudioSink`** | one-way in | `play(AudioBatch const&)` | merely nullable |
+| **`AudioSink`** | one-way in | `play(AudioBatch const&)` | swappable contract |
 | **`InputSource`** | one round trip out | `poll() -> InputBatch` | pluggable source |
 
 The sink/source vocabulary is chosen to carry Section 3's network constraint in the name itself: **a sink
@@ -945,7 +967,7 @@ and `m_boundBox`, so those become the appearance input. The entity emits **state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
 
 **What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
-links **six of twenty-four components and has no SEAM zone at all** — the generated `server` diagram
+links **nine of thirty-four components and has no SEAM zone at all** — the generated `server` diagram
 above now names `scene` in its *not linked* list. An authority that cannot name the presentation
 vocabulary is not a claim about discipline; it is a compile error waiting for anyone who tries.
 
@@ -972,8 +994,10 @@ flowchart TD
   subgraph Z_SEAM ["SEAM"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -990,6 +1014,9 @@ flowchart TD
     client["<b>client</b><br/>LIBRARY"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
   end
+  celestial --> base
+  celestial --> core
+  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -998,6 +1025,7 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> sound
   client --> universe
   client --> universe_view
   client --> windowing
@@ -1026,19 +1054,24 @@ flowchart TD
   presentation --> base
   presentation --> core
   presentation --> scene
+  presentation --> sound
   scene --> base
   scene --> core
+  sound --> base
+  sound --> core
   transcript --> base
   transcript --> core
   transcript --> host
   transcript --> presentation
   transcript --> scene
   universe --> base
+  universe --> celestial
   universe --> core
   universe --> game
   universe --> platform
   universe --> world
   universe_view --> base
+  universe_view --> celestial
   universe_view --> core
   universe_view --> game
   universe_view --> platform
@@ -1059,7 +1092,9 @@ flowchart TD
   world_view --> game
   world_view --> platform
   world_view --> scene
+  world_view --> sound
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1069,14 +1104,99 @@ flowchart TD
   classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
-  class host,platform,presentation,scene kContract
+  class host,platform,presentation,scene,sound kContract
   class host_null,transcript kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
 ```
 
-**client_headless links 18 of 29 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
+**client_headless links 20 of 34 components.** Not linked: `audio`, `audio_sdl`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
+
+### Tier 3 — an entity no longer knows how it *sounds*. NOT STARTED.
+
+Tier 2 was found by asking where appearance lived. Nobody asked the same question about the second
+output modality, and the answer is that it was never asked in this document either: the register had
+five presentation components and **no audio component at all**, while `presentation` declared an
+`AudioSink` whose strength column read *merely nullable* beside `SceneSink`'s *swappable contract*.
+That asymmetry was the whole defect in one word.
+
+**It is the same defect, in the same files.** 111 `game` files hold `Drawable`/`RenderCallback`;
+**31 hold `AudioInstance`; 25 hold both.** `StarObject.hpp` carries `AudioInstancePtr m_soundEffect`
+twenty lines from its `Drawable` cache. `RenderCallback`'s six-method surface already interleaves the
+two — `addDrawable`, `addParticle`, `addLightSource`, **`addAudio`**, `addTilePreview`, `addOverheadBar`
+— so the sink was always carrying both and only one of them had a component behind it.
+
+**The link altitude proves it rather than arguing it.** `starbound_server` contains `Mixer` (98
+symbols), `AudioInstance` (159) and `Songbook` (126). A dedicated server ships a software mixer and
+an Ogg decoder. `Renderer`, `Pane`, `Widget`, `GuiContext`, `TextPainter` and `WorldPainter` are all
+**0** — because those are directories the server does not link, which is the same lesson tier 2 taught
+from the other side.
+
+**The change.** The audio equivalents of the thirteen `render()` bodies leave `game` and land in
+`world_view`. An entity emits **state**; `world_view` turns state into an `AudioInstance`, exactly as
+it turns state into a `Drawable`. `game` is granted `sound` no more than it is granted `scene`.
+
+**The stack this needs, and it is deliberately the render stack's mirror:**
+
+| render | audio | duty |
+|---|---|---|
+| `scene` CONTRACT | **`sound`** CONTRACT | what exists / what is audible — vocabulary, no engine |
+| `rendering` BACKEND | **`mixing`** BACKEND | turns that vocabulary into pixels / into PCM |
+| `gpu` CONTRACT | **`audio`** CONTRACT | the device interface |
+| `gpu_opengl` BACKEND | **`audio_sdl`** BACKEND | the one place a device is opened |
+
+Four components for four files looks heavy until the separability test is applied to each, and each
+passes: `game` and `world_view` name `sound` and never `mixing`; a recorder would want `mixing`
+without `audio_sdl`, exactly as `transcript` wants a presentation backend without a GPU backend;
+and `client_headless` links **none of the four**, which is the entire point.
+
+**One measured obstruction, recorded because it sizes the work.** `base/StarMixer.hpp` defines BOTH
+`AudioInstance` and `Mixer` — the contract and the backend in one header, which is precisely the state
+`scene`/`rendering` was in before that split. Until it is divided, no instrument can attribute `sound`
+separately from `mixing`, so the link gate scores both files as `mixing` and thereby **understates**
+the leak. And `Mixer` lives in `base`, a FOUNDATION granted to everything, so today every
+composition — `server`, `world_sim`, `world_gen` included — links it unconditionally.
+
+**Acceptance test, falsifiable the day it lands:** `link_sweep` reports no `mixing` row for
+`starbound_server`, and the `("server", "mixing")` ratchet entry is deleted rather than lowered.
+
+### The reverse edge is always one misfiled file — three for three
+
+Three components have now been carved out, and each looked at first like it had a dependency cycle
+with its neighbour. In all three cases the cycle was a single file filed with the data it describes
+instead of with the code that consumes it:
+
+| carved out | apparent cycle | the actual file | belongs to |
+|---|---|---|---|
+| `worldgen` | `worldgen` ↔ `world` | `StarWorldGeneration.hpp` — holds `LiquidWorld(WorldServer*)`, `FallingBlocksWorld(WorldServer*)`, `DungeonGeneratorWorld(WorldServer*, bool)` | `world` — adapters that write generated output into a live world |
+| `celestial` | `celestial` ↔ `worldgen` | `StarCelestialGraphics.hpp` — names `TerrainDatabase`, `BiomeDatabase`, `Parallax`, `LiquidsDatabase`, returns image paths | `world_view` — the appearance of celestial data, consumed by `Sky` |
+| `scene` (tier 2) | `game` ↔ `scene` | the thirteen `render()` bodies | `world_view` — appearance, not state |
+
+The rule this yields is worth more than the three instances: **when a candidate component appears to
+depend on its own consumer, look for one file before redrawing the boundary.** Appearance code and
+adapter code get filed next to the data they describe, because that is where they were written; the
+dependency they create is an artifact of filing, not of design. Each time, deleting the file's
+membership — not the boundary — made the edge acyclic.
+
+Verification that this is not three coincidences: with `StarCelestialGraphics` excluded, the remaining
+four celestial files (`Coordinate`, `Types`, `Parameters`, `Database`) name **nothing** from `worldgen`
+or `world`, and `StarRoot.hpp` names `Celestial` **zero** times — so the reverse edge is genuinely gone,
+not merely relabelled.
+
+### `celestial` — the star map is its own primitive
+
+Measured, and it separates cleanly in both directions: `WorldServer` and its agents name `Celestial`
+**zero** times, while `StarWorldTemplate` names `CelestialCoordinate`, `CelestialParameters` and
+`CelestialDatabase` directly. So `world` does not need it and `worldgen` does, which is exactly the
+2×2 the separability test asks for.
+
+This also corrects a claim committed earlier the same day. That claim said the star map "reads
+parameters, which are `game` domain types, and never touches `worldgen`." The first half is right and
+the second half misses the structure: **celestial parameters are the input contract to generation.**
+Approaching a planet reads them; landing feeds the same type to the generator. A shared input consumed
+by two components at different times is a component, not loose vocabulary.
+
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
 ```mermaid
@@ -1091,11 +1211,14 @@ flowchart TD
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
   end
   subgraph Z_SEAM ["SEAM"]
+    audio["<b>audio</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -1106,13 +1229,21 @@ flowchart TD
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
+    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
+    mixing["<b>mixing</b><br/>BACKEND"]
     rendering["<b>rendering</b><br/>BACKEND"]
   end
   subgraph Z_SHELL ["SHELL"]
     client["<b>client</b><br/>LIBRARY"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
   end
+  audio --> core
+  audio_sdl --> audio
+  audio_sdl --> core
+  celestial --> base
+  celestial --> core
+  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -1121,15 +1252,18 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> sound
   client --> universe
   client --> universe_view
   client --> windowing
   client --> world
   client --> world_view
+  client_opengl --> audio_sdl
   client_opengl --> client
   client_opengl --> core
   client_opengl --> gpu_opengl
   client_opengl --> host_sdl
+  client_opengl --> mixing
   client_opengl --> rendering
   frontend --> base
   frontend --> core
@@ -1150,6 +1284,11 @@ flowchart TD
   host_sdl --> host
   host_sdl --> platform
   host_sdl --> platform_pc
+  mixing --> audio
+  mixing --> base
+  mixing --> core
+  mixing --> presentation
+  mixing --> sound
   platform --> core
   platform_pc --> core
   platform_pc --> host
@@ -1157,6 +1296,7 @@ flowchart TD
   presentation --> base
   presentation --> core
   presentation --> scene
+  presentation --> sound
   rendering --> base
   rendering --> core
   rendering --> gpu
@@ -1165,12 +1305,16 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  sound --> base
+  sound --> core
   universe --> base
+  universe --> celestial
   universe --> core
   universe --> game
   universe --> platform
   universe --> world
   universe_view --> base
+  universe_view --> celestial
   universe_view --> core
   universe_view --> game
   universe_view --> platform
@@ -1191,7 +1335,9 @@ flowchart TD
   world_view --> game
   world_view --> platform
   world_view --> scene
+  world_view --> sound
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1201,13 +1347,13 @@ flowchart TD
   classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
-  class gpu,host,platform,presentation,scene kContract
-  class gpu_opengl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class audio,gpu,host,platform,presentation,scene,sound kContract
+  class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
+  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
 ```
 
-**client_opengl links 21 of 29 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_opengl links 26 of 34 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -1223,11 +1369,14 @@ flowchart TD
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
   end
   subgraph Z_SEAM ["SEAM"]
+    audio["<b>audio</b><br/>CONTRACT"]
     gpu["<b>gpu</b><br/>CONTRACT"]
     presentation["<b>presentation</b><br/>CONTRACT"]
     scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
@@ -1238,13 +1387,21 @@ flowchart TD
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
+    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
+    mixing["<b>mixing</b><br/>BACKEND"]
     rendering["<b>rendering</b><br/>BACKEND"]
   end
   subgraph Z_SHELL ["SHELL"]
     client["<b>client</b><br/>LIBRARY"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
   end
+  audio --> core
+  audio_sdl --> audio
+  audio_sdl --> core
+  celestial --> base
+  celestial --> core
+  celestial --> game
   client --> base
   client --> core
   client --> frontend
@@ -1253,15 +1410,18 @@ flowchart TD
   client --> platform
   client --> presentation
   client --> scene
+  client --> sound
   client --> universe
   client --> universe_view
   client --> windowing
   client --> world
   client --> world_view
+  client_sdl_gpu --> audio_sdl
   client_sdl_gpu --> client
   client_sdl_gpu --> core
   client_sdl_gpu --> gpu_sdl
   client_sdl_gpu --> host_sdl
+  client_sdl_gpu --> mixing
   client_sdl_gpu --> rendering
   frontend --> base
   frontend --> core
@@ -1280,6 +1440,11 @@ flowchart TD
   host_sdl --> host
   host_sdl --> platform
   host_sdl --> platform_pc
+  mixing --> audio
+  mixing --> base
+  mixing --> core
+  mixing --> presentation
+  mixing --> sound
   platform --> core
   platform_pc --> core
   platform_pc --> host
@@ -1287,6 +1452,7 @@ flowchart TD
   presentation --> base
   presentation --> core
   presentation --> scene
+  presentation --> sound
   rendering --> base
   rendering --> core
   rendering --> gpu
@@ -1295,12 +1461,16 @@ flowchart TD
   rendering --> scene
   scene --> base
   scene --> core
+  sound --> base
+  sound --> core
   universe --> base
+  universe --> celestial
   universe --> core
   universe --> game
   universe --> platform
   universe --> world
   universe_view --> base
+  universe_view --> celestial
   universe_view --> core
   universe_view --> game
   universe_view --> platform
@@ -1321,7 +1491,9 @@ flowchart TD
   world_view --> game
   world_view --> platform
   world_view --> scene
+  world_view --> sound
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1331,13 +1503,13 @@ flowchart TD
   classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
-  class gpu,host,platform,presentation,scene kContract
-  class gpu_sdl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class audio,gpu,host,platform,presentation,scene,sound kContract
+  class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
+  class celestial,client,frontend,game,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
-**client_sdl_gpu links 21 of 29 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_sdl_gpu links 26 of 34 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
@@ -1350,22 +1522,28 @@ flowchart TD
     platform["<b>platform</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
   end
+  celestial --> base
+  celestial --> core
+  celestial --> game
   game --> base
   game --> core
   game --> platform
   platform --> core
   world_gen --> base
+  world_gen --> celestial
   world_gen --> core
   world_gen --> game
   world_gen --> platform
   world_gen --> worldgen
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1376,11 +1554,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,worldgen kLibrary
+  class celestial,game,worldgen kLibrary
   class world_gen kEntrypoint
 ```
 
-**world_gen links 6 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+**world_gen links 7 of 34 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
 <!-- END GENERATED: world_gen -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
@@ -1393,6 +1571,7 @@ flowchart TD
     platform["<b>platform</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1400,6 +1579,9 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
   end
+  celestial --> base
+  celestial --> core
+  celestial --> game
   game --> base
   game --> core
   game --> platform
@@ -1416,6 +1598,7 @@ flowchart TD
   world_sim --> world
   world_sim --> worldgen
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1426,11 +1609,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,world,worldgen kLibrary
+  class celestial,game,world,worldgen kLibrary
   class world_sim kEntrypoint
 ```
 
-**world_sim links 7 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
+**world_sim links 8 of 34 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
 <!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
@@ -1443,6 +1626,7 @@ flowchart TD
     platform["<b>platform</b><br/>CONTRACT"]
   end
   subgraph Z_INTERIOR ["INTERIOR"]
+    celestial["<b>celestial</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
     world["<b>world</b><br/>LIBRARY"]
@@ -1451,6 +1635,9 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     server["<b>server</b><br/>ENTRYPOINT"]
   end
+  celestial --> base
+  celestial --> core
+  celestial --> game
   game --> base
   game --> core
   game --> platform
@@ -1462,6 +1649,7 @@ flowchart TD
   server --> universe
   server --> world
   universe --> base
+  universe --> celestial
   universe --> core
   universe --> game
   universe --> platform
@@ -1472,6 +1660,7 @@ flowchart TD
   world --> platform
   world --> worldgen
   worldgen --> base
+  worldgen --> celestial
   worldgen --> core
   worldgen --> game
   worldgen --> platform
@@ -1482,11 +1671,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,universe,world,worldgen kLibrary
+  class celestial,game,universe,world,worldgen kLibrary
   class server kEntrypoint
 ```
 
-**server links 8 of 29 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
+**server links 9 of 34 components.** Not linked: `audio`, `audio_sdl`, `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `mixing`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -1503,20 +1692,25 @@ Every component in the diagram, in the same reading order.
 | **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
+| **`sound`** | CONTRACT | SEAM | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene` |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
 | **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
 | **`worldgen`** | LIBRARY | INTERIOR | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
+| **`celestial`** | LIBRARY | INTERIOR | the star map | `CelestialCoordinate`, `CelestialParameters`, `CelestialDatabase`, `CelestialTypes` |
 | **`universe_view`** | LIBRARY | INTERIOR | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
 | **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`mixing`** | BACKEND | PERIPHERY | turns sound into samples | `Mixer` and the `Audio` decoder: resolve a batch, apply attenuation, fill a PCM buffer |
 | **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | the same scene, written down instead of drawn — three modes below |
 | **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Device` interface, the texture atlas, render diagnostics |
+| **`audio`** | CONTRACT | SEAM | the audio-device contract | the `AudioDevice` interface: a sample format and a pull |
 | **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
+| **`audio_sdl`** | BACKEND | PERIPHERY | the SDL audio backend | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
 | **`client`** | LIBRARY | SHELL | owns the client frame | composition, `clientLoop`, `clientTick`, `fixedTick`, `audioTick` |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
@@ -1525,7 +1719,7 @@ Every component in the diagram, in the same reading order.
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
 
-Twenty-nine components: five CONTRACTs, seven BACKENDs, nine LIBRARYs, two FOUNDATIONs, six
+Thirty-four components: seven CONTRACTs, nine BACKENDs, ten LIBRARYs, two FOUNDATIONs, six
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -1672,27 +1866,32 @@ is actually established today.
 | `host_sdl` | core, host, platform, platform_pc | the SDL host; the only place SDL is named |
 | `host_null` | core, host, platform | names no device at all — returns `nullptr` for all four services, but must still name their types to override |
 | `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
-| `presentation` | core, base, scene | the interfaces are stated in scene terms — D6, enforced |
+| `presentation` | core, base, scene, sound | the interfaces are stated in scene and sound terms — D6, enforced |
 | `gpu` | core | the GPU contract cannot name a game type either |
+| `audio` | core | nor can the audio-device contract — a sample format is not a domain type |
 | `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above |
+| `audio_sdl` | core, audio, extern | `SDL_OpenAudioDeviceStream` is named here and nowhere above |
 | `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
+| `mixing` | core, base, presentation, sound, audio | implements `AudioSink`; **no `host`** — the device pulls it, nothing paints it |
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
+| `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
 | `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
-| `worldgen` | core, base, platform, game | **names no `world`** — generation knows nothing that ticks |
+| `celestial` | core, base, game | the star map; **names no `world` and no `worldgen`** — it is their input, not their consumer |
+| `worldgen` | core, base, platform, game, celestial | **names no `world`** — generation knows nothing that ticks |
 | `world` | core, base, platform, game, worldgen | **names no `scene`**; it calls generation lazily, per region |
-| `universe` | core, base, platform, game, world | it manages worlds, so it names `world`; `world` never names it back |
-| `world_view` | core, base, platform, game, scene |
-| `universe_view` | core, base, platform, game, world_view | it decides which world you are in, so it constructs one | **the simulation cannot name a presentation interface at all** |
+| `universe` | core, base, platform, game, world, celestial | it manages worlds, so it names `world`; `world` never names it back |
+| `world_view` | core, base, platform, game, scene, sound | **the simulation cannot name a presentation interface at all** — it names the vocabulary, never the sink |
+| `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one; the star map is its own |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
-| `client` | core, base, platform, game, world, universe, world_view, universe_view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `universe` because a hosting client runs one |
-| `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
+| `client` | core, base, platform, game, world, universe, world_view, universe_view, windowing, frontend, presentation, scene, sound, host | **names no backend**; it grants `universe` because a hosting client runs one |
+| `client_opengl` | core, client, host_sdl, rendering, gpu_opengl, mixing, audio_sdl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
-| `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
+| `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl, mixing, audio_sdl | identical to `client_opengl` except for the backend — which is the entire point |
 | `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
 | `world_sim` | core, base, game, world, worldgen, platform | **no `universe` either** — residency comes from configuration, not from participants |
-| `world_gen` | core, base, game, worldgen, platform | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
+| `world_gen` | core, base, game, worldgen, celestial, platform | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
@@ -1708,17 +1907,62 @@ than it is:
 
 | | what it establishes | coverage |
 |---|---|---|
-| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 21 components and all 10 elements.** Gated as `spec_consistency`; says nothing about correctness |
-| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **14 of 21 components** |
+| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 34 components and all 15 elements.** Gated as `spec_consistency`; says nothing about correctness |
+| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 35 grant rows.** Gated as `grant_sweep` |
+| **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 6 ENTRYPOINTs** — the two that exist. Gated as `link_sweep` |
 | **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
 
 `spec_consistency` also refuses to pass on a parse that found implausibly little, and hard-fails if
 either diagram loses its `%% projection:` marker — a check that cannot find what it is checking must
 not report success. Ten injected defects were each confirmed to fire before it was registered.
 
-The seven components with no files — `scene`, `presentation`, `transcript`, `host_null`, `gpu_sdl`,
-`client_opengl`, `client_headless` — have grant rows that are **pure assertion**. `grant-sweep` reports
-them UNVERIFIABLE rather than passing them, which is the only honest verdict available.
+The **23** components with no files yet — the whole simulation split (`world`, `universe`, `worldgen`,
+`celestial`, the two `*_view`s), the whole audio stack (`sound`, `mixing`, `audio`, `audio_sdl`), the
+presentation seam (`scene`, `presentation`, `transcript`) and every ENTRYPOINT but `server` — have grant
+rows that are **pure assertion**. `grant-sweep` reports them UNVERIFIABLE rather than passing them,
+which is the only honest verdict available.
+
+### The altitude every gate above was blind to
+
+The three rows above all read the SOURCE. On 2026-08-01 a one-off sweep of the actual binaries showed
+what that misses:
+
+```
+starbound_server:  Renderer 0   Pane 0   Widget 0   GuiContext 0   TextPainter 0   WorldPainter 0
+                   Drawable 249   RenderCallback 87   Image 209   AudioInstance 159   Mixer 98   Songbook 126
+```
+
+**Every boundary that held is a directory. Every boundary that failed is a type inside `game`.** And a
+source-altitude gate is right to pass all of it: `server` IS granted `game`, and `Mixer` IS in `base`.
+The declaration is satisfied and the binary is still wrong.
+
+**Why the boundaries behave that way is mechanical, not accidental.** All eight Star libraries are
+declared `ADD_LIBRARY(... OBJECT ...)` — core, base, game, rendering, frontend, windowing, application,
+extern. An OBJECT library links **all** of its objects into every consumer; there is no per-object
+pruning. `starbound_server` therefore contains all 237 `star_game` objects unconditionally, including
+`WorldClient` — the *client-side replica* — at 308 symbols. `rendering`, `windowing` and `frontend`
+are absent only because the server's CMakeLists does not name those libraries.
+
+**The consequence is a hard constraint on this entire design, and it deserves to be stated as one:**
+
+> Under OBJECT-library semantics, containment is decided entirely by which libraries an ENTRYPOINT
+> names. That is an all-or-nothing, directory-granular switch. **A component in this register is
+> enforceable if and only if it is its own directory.** Twenty-three of the thirty-four are not yet,
+> which is exactly the set `grant-sweep` calls UNVERIFIABLE — so the two numbers are not two
+> problems, they are one problem counted twice.
+
+`link_sweep` closes the altitude. It attributes each symbol to its unique defining object file, maps
+that to a component, and asserts membership of the ENTRYPOINT's grant closure. Symbols defined by
+several objects (templates, inlines, vtables) are **not** attributed — first-wins attribution was
+tried during the tier-2 measurement and produced spuriously-reachable files — so they are reported as
+AMBIGUOUS rather than guessed. Coverage is printed before verdicts, and the gate refuses to report OK
+if it found no binary to measure.
+
+Two leaks are ratcheted today, both on `starbound_server`: **`mixing` 186** and **`scene` 48**. Both
+UNDERSTATE the defect, because only eight files can be attributed to those target components so far;
+the rest of the same leak sits inside the 27,645 `game` symbols every binary links. As tiers 2 and 3
+land, symbols will migrate out of `game` into those rows, so **the ceilings will rise before they
+fall** — a raise is legitimate only with the migration named in the reason.
 
 Two limits apply even to the anchored fourteen:
 

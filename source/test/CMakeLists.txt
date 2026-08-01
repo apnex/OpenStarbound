@@ -321,6 +321,29 @@ ADD_TEST (NAME dedup_measure COMMAND ${Python3_EXECUTABLE}
 ADD_TEST (NAME composition_graphs COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/composition-graphs.py --check)
 
+# LINK SWEEP. Every gate above reads the SOURCE. None can see what the linker did, and that is not a
+# small blind spot: a source-altitude check reports PASS over a 73 MB dedicated server containing a
+# software audio mixer, because `server` IS granted `game` and `Mixer` IS in `base`. The declaration
+# is satisfied and the binary is still wrong. This attributes every symbol in every built ENTRYPOINT
+# back to a component and asserts it lies inside that composition's grant closure.
+#
+# Ratcheted, because the tree has two real leaks today (server links `mixing` and `scene`). Ceilings
+# live in the script beside the reason each exists.
+#
+# LINUX ONLY, AND DELIBERATELY SO. It parses ELF `nm -A` output and maps object paths through the
+# OBJECT-library layout; there is no `nm` under MSVC, and the binaries carry a .exe suffix. Registering
+# it on all six platforms would put Windows and macOS red the day it landed -- which is #201 (CI-5)
+# exactly, a gate that was red on Windows from birth for a path-separator assumption. Absent on those
+# platforms is honest; red on those platforms is noise that trains people to ignore the matrix.
+#
+# It IS labelled NoAssets, unlike its sibling dedup_measure's placement suggests: it needs no assets/,
+# only a completed build, and build.yml runs ctest after building. It refuses to report OK when it
+# finds no binary to measure, so a build that produced nothing fails loudly rather than passing empty.
+IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  ADD_TEST (NAME link_sweep COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/link-sweep.py --check)
+ENDIF ()
+
 endif() # Python3_Interpreter_FOUND
 
 # Render-surface unit tests: the RB-1 / RB-6 CPU-side invariants of the sovereign module, exercised in isolation
@@ -364,6 +387,9 @@ IF (Python3_Interpreter_FOUND)
                                    boundary_ratchet boundary_fresh arch_graph_fresh
                                    grant_sweep loop_inventory spec_consistency
                                    dedup_measure composition_graphs)
+  IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
+  ENDIF ()
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

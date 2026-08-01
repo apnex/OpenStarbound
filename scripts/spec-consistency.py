@@ -64,7 +64,9 @@ WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven"
          "nine": 9, "ten": 10, "Nineteen": 19, "Twenty": 20, "Twenty-one": 21, "Twenty-two": 22,
          "Twenty-three": 23, "Twenty-four": 24, "Twenty-five": 25,
          "Twenty-six": 26, "Twenty-seven": 27, "Twenty-eight": 28,
-         "Twenty-nine": 29, "eight": 8, "nine": 9}
+         "Twenty-nine": 29, "Thirty": 30, "Thirty-one": 31, "Thirty-two": 32,
+         "Thirty-three": 33, "Thirty-four": 34, "Thirty-five": 35,
+         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11}
 
 COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
