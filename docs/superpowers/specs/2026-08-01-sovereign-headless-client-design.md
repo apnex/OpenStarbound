@@ -74,23 +74,27 @@ it is and crosses nothing.
 
 **The contract begins after assembly:** *here is a finished frame, present it.*
 
+*(Superseded in part — see the end of this section. Under the scene model there are **two** assemblies:
+the simulation assembles a **scene**, presentation assembles a **frame** from it. `RenderCallback` is
+still the first one and still crosses nothing.)*
+
 Which is why the video contract is one call per frame with one value, and why it passes the network
 test in Section 5 without redesign.
 
 ### The three contracts, as streams
 
 ```
-game side                          │  contract (T2)     │  presentation side
-───────────────────────────────────┼────────────────────┼──────────────────────
-world sim, entities                │                    │
-  ↓ RenderCallback (internal)      │                    │
-frame assembly                     │                    │
-UI logic, widget layout            │  present(Frame)  → │  painters, passes, L1
-  ↓ emits Drawables                │  play(AudioBatch)→ │  GL / SDL_GPU / null
-                                   │  ← poll() Input    │
+simulation side                    │  seam 1  (T2)          │  presentation side
+───────────────────────────────────┼────────────────────────┼──────────────────────────
+world sim, entities                │                        │  resample scene to now
+  ↓ RenderCallback (internal)      │                        │    ↓ apply the camera
+SCENE assembly                     │  accept(SceneDelta) →  │  FRAME assembly
+UI logic, widget layout            │  play(AudioBatch)   →  │    ↓ paint
+  ↓ emits scene items              │  ← poll() InputBatch   │  rendering · transcript
 ```
 
-- **Video** — `present(Frame const&)`. One call, one value, per frame.
+- **Video** — `accept(SceneDelta const&)`. One call, one value, per driver step. The MVP rung is
+  `present(Frame const&)`: the same call with the scene already camera-resolved.
 - **Audio** — `play(AudioBatch const&)`. One-way. Fixes `AudioInstancePtr`: the batch carries values,
   not handles.
 - **Input** — `poll() -> InputBatch`. The single permitted round trip, once per frame, returning a batch.
@@ -291,7 +295,7 @@ and the second boundary **already exists and already works**:
 
 | | seam | declared by | implemented by | status |
 |---|---|---|---|---|
-| **1** | `FrameSink` · `AudioSink` · `InputSource` — game ↔ presentation | `presentation` | `rendering`, `transcript` | **does not exist** — this design builds it |
+| **1** | `SceneSink` · `AudioSink` · `InputSource` — game ↔ presentation | `presentation` | `rendering`, `transcript` | **does not exist** — this design builds it |
 | **2** | `Renderer` — pixels ↔ GPU API | `StarRenderer.hpp` | `OpenGlRenderer`, later SDL_GPU | **exists, and measures clean** |
 
 Four measurements say seam 2 is real rather than nominal:
@@ -545,7 +549,7 @@ A presentation backend need not have a GPU backend at all: `transcript` has none
 
 | name | direction | call | strength (D3) |
 |---|---|---|---|
-| **`FrameSink`** | one-way in | `present(Frame const&)` | swappable contract |
+| **`SceneSink`** | one-way in | `accept(SceneDelta const&)` | swappable contract |
 | **`AudioSink`** | one-way in | `play(AudioBatch const&)` | merely nullable |
 | **`InputSource`** | one round trip out | `poll() -> InputBatch` | pluggable source |
 
@@ -553,6 +557,41 @@ The sink/source vocabulary is chosen to carry Section 3's network constraint in 
 never answers, and there is exactly one source, polled once per frame.** A method that returns a value
 on something called a *Sink* is a naming error before it is a design error — which makes the constraint
 reviewable by reading, not only by counting.
+
+**`SceneSink` replaces the `FrameSink` an earlier draft named.** `present(Frame const&)` hands over a
+finished, camera-resolved frame, which welds the pixel rate to the assembly rate; `accept(SceneDelta)`
+does not. Both this table and Section 1 still said `Frame` after the payload had already changed — an
+inconsistency inside one document, and exactly what the aggregate-approval rule exists to catch.
+
+### What `scene` actually contains
+
+`scene` is the newest component and the most load-bearing, and naming it is not the same as defining
+it. Its contents come from what crosses today — `WorldRenderData`'s members plus the camera — sorted by
+the property that decides the delta encoding: **can presentation resample it between updates?**
+
+| group | carries | resamplable |
+|---|---|---|
+| **camera** | `WorldCamera` — position, zoom, pixel ratio | **yes** — and it matters most; camera motion is what the eye tracks |
+| **entities** | `EntityDrawables` — highlight effect, `Map<EntityRenderLayer, List<Drawable>>` | **yes**, given identity and a motion term |
+| **particles** | `Particle` | **yes** — they already carry velocity |
+| **parallax** | `ParallaxLayer` | **derived** — a function of the camera, so it resamples for free |
+| **tiles** | `RenderTileArray` | **no** — a tile grid changes discretely; interpolating it is meaningless |
+| **sky** | `SkyRenderData` | **slowly** — interpolatable, rarely worth it |
+| **lighting** | emission, obstacle and point-light arrays | **derived** — recomputed from the above |
+| **overlays** | nametags, `OverheadBar`, background and foreground `Drawable`s | **follows its anchor** |
+
+**That split is the delta encoding.** Resamplable groups send state plus a motion term and are
+interpolated locally; discrete groups send changes and are applied on arrival. Nothing needs a uniform
+scheme, which is what makes the payload cheap: at rest, a scene delta is almost empty.
+
+Two consequences worth stating:
+
+- **`scene` owns the camera.** The simulation decides what the camera should *follow*; presentation
+  resolves where it *is* at display time. That is what keeps mouse-look and zoom instant when the
+  simulation is a network hop away.
+- **Lighting is derived, not transported.** It is computed from tiles, entities and sky, all of which
+  already cross. Sending a lightmap would be sending a rendered artifact — the frame-streaming mistake
+  in miniature.
 
 ### Seam 2 — the boundary that already exists
 
