@@ -506,6 +506,7 @@ flowchart TD
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
     csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
+    wsim["<b>world_sim</b><br/>ENTRYPOINT<br/><i>ticks one world with no participant</i>"]
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
       superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
@@ -514,7 +515,9 @@ flowchart TD
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
-    repl["<b>view</b><br/>LIBRARY<br/><i>one participant's local world</i>"]
+    wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
+    uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
+    world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
     subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
@@ -569,13 +572,25 @@ flowchart TD
   auth --> base
   auth --> platform
   auth --> game
-  repl --> core
-  repl --> base
-  repl --> platform
-  repl --> game
-  repl --> scene
+  auth --> world
+  world --> core
+  world --> base
+  world --> platform
+  world --> game
+  wview --> core
+  wview --> base
+  wview --> platform
+  wview --> game
+  wview --> scene
+  uview --> core
+  uview --> base
+  uview --> platform
+  uview --> game
+  uview --> wview
   shell --> auth
-  shell --> repl
+  shell --> world
+  shell --> uview
+  shell --> wview
   front --> win
   shell --> front
   shell --> contract
@@ -600,6 +615,12 @@ flowchart TD
   chl --> hostnull
   srv --> game
   srv --> auth
+  srv --> world
+  wsim --> core
+  wsim --> base
+  wsim --> platform
+  wsim --> game
+  wsim --> world
 
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
@@ -611,8 +632,8 @@ flowchart TD
   class core,base kFoundation
   class platform,host,scene,contract,gpu kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
-  class game,auth,repl,win,front,shell kLibrary
-  class cgl,chl,csg,srv kEntrypoint
+  class game,auth,world,uview,wview,win,front,shell kLibrary
+  class cgl,chl,csg,wsim,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
   class sdlb,csg kOutOfScope
@@ -753,43 +774,92 @@ and is retracted twice over:
 | `game` files | count | becomes |
 |---|---|---|
 | authority-only | **5** — `WorldServer`, `Spawner`, `WireProcessor`, `FallingBlocksAgent`, `LiquidTypes` | **`universe`** |
-| replica-only | **43** — `UniverseClient`, sky, parallax, particles, chat, statistics, team | **`view`** |
+| replica-only | **43** — `UniverseClient`, sky, parallax, particles, chat, statistics, team | **`universe_view` + `world_view`** |
 | both | **127** | **`game`**, re-scoped to the domain |
 
 So `game` becomes the **domain** — entities, items, tiles, stats, damage, the model both sides share —
-with a `universe` and a `view` orchestrating it. `universeLoop` moves with `WorldServer`: it is
-`UniverseServer::run`, and that belongs to `universe`, not to the domain.
+with two authority components and two view components orchestrating it. `universeLoop` is
+`UniverseServer::run`, so it belongs to `universe`, not to the domain.
 
 **What the split buys, and what it does not.** `server` stops linking the replica half entirely — the
-generated composition above names `view` in its *not linked* list, which is the whole point. What it
+generated composition above names both view components in its *not linked* list, which is the point. What it
 does **not** buy is `scene`: the domain still grants it, because **118 of 500 `game` files name
 `Drawable`/`RenderCallback`** — appearance is woven through the entity model, not concentrated.
 
-### What `universe` and `view` mean
+### The four halves, and why there are four
 
-Two words doing precise work, defined once because neither is self-evident:
+The domain is shared; everything else splits twice — once by **who decides** and once by **what
+scope**. The cardinalities differ across every adjacent pair, which is the tell that the boundary is
+real rather than tidy.
 
-> **`universe`** — the component that **owns and runs the simulated world, and decides what happens
-> in it**. It holds `UniverseServer` and the per-world `WorldServer`s that server spins up and down as
-> players travel. Nothing overrules it.
->
-> A note on vocabulary, because it is a genuine trap: in this codebase **`World` means one literal
-> instance** — one planet, one player's ship interior, or one mission — and `UniverseServer` holds a
-> `Map<WorldId, …WorldServerThreadPtr>` of many. So the everyday sense of "the game world" is what the
-> code calls the *universe*, and a component named `world`-anything would be named after the smallest
-> thing inside it.
->
-> **`view`** — the component that maintains **one participant's local world**: authoritative state as
-> it arrives, predicted forward between updates, plus detail that exists only for a viewer.
+| | duty | how many |
+|---|---|---|
+| **`universe`** | decides which worlds exist, who is connected, and where players go | **one** per game |
+| **`world`** | decides what happens inside one world — tiles, entities, damage, spawning | **N** per universe |
+| **`universe_view`** | one participant's connection and star map | one per participant |
+| **`world_view`** | one participant's picture of one world — replicated, predicted, decorated | one per participant |
 
-`replica` was the first name for `view` and it was wrong. Of its 43 files, a large share —
-particles, parallax, sky — **replicate nothing**; they are locally generated and have no authoritative
-counterpart. A word that describes half of what a component holds is worse than a plainer one.
-`view` covers both halves: what is mirrored *and* what is invented for the viewer.
+The dependency shape is two parallel chains over one domain, joined at a single seam:
 
-The pairing is the definition: **the universe decides, the view observes.** And it does not collide
-with the neighbouring words, because the three do different jobs — **`view` produces the scene**,
-**`presentation` carries it**, **`rendering` draws it**.
+```
+universe       -->  world       -->  game
+universe_view  -->  world_view  -->  game
+                    world_view  -->  scene
+```
+
+**`world_view` does not depend on `world`.** That is the whole point, and it is now structural rather
+than a convention someone has to remember.
+
+**A vocabulary trap, stated because anyone will hit it.** In this codebase **`World` means one literal
+instance** — one planet, one player's ship interior, or one mission — and `UniverseServer` holds a
+`Map<WorldId, …WorldServerThreadPtr>` of many, spun up and down as players travel. The everyday sense
+of "the game world" is what the code calls the **universe**. A `World`-prefixed name for the whole
+thing would be naming it after the smallest part inside it.
+
+### `world_sim`, and the rule it forced out
+
+The requirement: **a world exists and ticks — Frackin Universe automation machines running — with no
+player present.** It is a target-state decoupling in its own right, and it is a far better acceptance
+test than anything Section 6 holds today, because it fails loudly right now for two measurable reasons.
+
+**One is already solvable.** Entity dormancy is not hard-wired to viewers:
+
+```cpp
+bool requested = entity->takeWakeRequested();     // the entity's own request
+bool awake     = m_awakeEntities.contains(id);    // the world's awake set
+bool run       = requested || awake;
+```
+
+`Entity::setKeepAlive` exists and both `Monster` and the NPC database use it. An automation object can
+keep itself ticking without an observer.
+
+**The other is the blocker, and it is hard-coded in `universe`:**
+
+```cpp
+} else if (world->noClients()) {
+    if (!anyPendingWarps && world->shouldExpire()) {
+      Logger::info("UniverseServer: Stopping idle world {}", worldId);
+      world->stop();
+```
+
+No amount of entity wakefulness survives the world being **stopped**. `universe` has exactly one reason
+to keep a world resident, and it is *a player is here*.
+
+> **D9 — what ticks must not be derived from who is watching.** A world runs because something
+> **requires** it, and that requirement is an explicit input — **residency**. A connected participant
+> is one source of it. A standing automation lease is another. A benchmark harness is a third.
+> `universe` collects reasons; it does not invent them.
+
+This is the same disease as the presentation seam, one layer over: the seam separates *what is drawn*
+from *what is simulated*, and D9 separates *what is simulated* from *who is watching*.
+
+And it is why `world_sim` is a composition rather than a special case — **the same `world` component,
+with residency supplied by configuration instead of by players.** The generated diagram above shows it
+linking **6 of 27 components**: `core`, `base`, `platform`, `game`, `world`, and itself. No `universe`,
+no view, no presentation, no `scene`.
+
+**Acceptance test, and it is falsifiable today:** load a world containing FU automation, attach no
+participant, tick it, and assert the machines advance.
 
 ### Tier 2 — an entity no longer knows how it looks. DONE.
 
@@ -805,9 +875,9 @@ addDrawable(Drawable, EntityRenderLayer)   addParticle(Particle)       addTilePr
 addLightSource(LightSource)                addAudio(AudioInstancePtr)  addOverheadBar(OverheadBar)
 ```
 
-**The change.** Those thirteen `render()` bodies leave `game` and land in `view`. Each entity instead
+**The change.** Those thirteen `render()` bodies leave `game` and land in `world_view`. Each entity instead
 exposes the state its old body read — `ItemDrop::render` reads `m_mode`, `m_drawRarityBeam`, `m_item`
-and `m_boundBox`, so those become the appearance input. The entity emits **state**; `view` turns state
+and `m_boundBox`, so those become the appearance input. The entity emits **state**; `world_view` turns state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
 
 **What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
@@ -843,8 +913,10 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
-    view["<b>view</b><br/>LIBRARY"]
+    universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
+    world["<b>world</b><br/>LIBRARY"]
+    world_view["<b>world_view</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     transcript["<b>transcript</b><br/>BACKEND"]
@@ -862,8 +934,10 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> universe
-  client --> view
+  client --> universe_view
   client --> windowing
+  client --> world
+  client --> world_view
   client_headless --> client
   client_headless --> core
   client_headless --> host_null
@@ -898,17 +972,27 @@ flowchart TD
   universe --> core
   universe --> game
   universe --> platform
-  view --> base
-  view --> core
-  view --> game
-  view --> platform
-  view --> scene
+  universe --> world
+  universe_view --> base
+  universe_view --> core
+  universe_view --> game
+  universe_view --> platform
+  universe_view --> world_view
   windowing --> base
   windowing --> core
   windowing --> game
   windowing --> host
   windowing --> platform
   windowing --> scene
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world_view --> base
+  world_view --> core
+  world_view --> game
+  world_view --> platform
+  world_view --> scene
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -917,11 +1001,11 @@ flowchart TD
   class base,core kFoundation
   class host,platform,presentation,scene kContract
   class host_null,transcript kBackend
-  class client,frontend,game,universe,view,windowing kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
   class client_headless kEntrypoint
 ```
 
-**client_headless links 15 of 24 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`
+**client_headless links 17 of 27 components.** Not linked: `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `platform_pc`, `rendering`, `server`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
@@ -945,8 +1029,10 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
-    view["<b>view</b><br/>LIBRARY"]
+    universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
+    world["<b>world</b><br/>LIBRARY"]
+    world_view["<b>world_view</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
@@ -965,8 +1051,10 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> universe
-  client --> view
+  client --> universe_view
   client --> windowing
+  client --> world
+  client --> world_view
   client_opengl --> client
   client_opengl --> core
   client_opengl --> gpu_opengl
@@ -1010,17 +1098,27 @@ flowchart TD
   universe --> core
   universe --> game
   universe --> platform
-  view --> base
-  view --> core
-  view --> game
-  view --> platform
-  view --> scene
+  universe --> world
+  universe_view --> base
+  universe_view --> core
+  universe_view --> game
+  universe_view --> platform
+  universe_view --> world_view
   windowing --> base
   windowing --> core
   windowing --> game
   windowing --> host
   windowing --> platform
   windowing --> scene
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world_view --> base
+  world_view --> core
+  world_view --> game
+  world_view --> platform
+  world_view --> scene
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1029,11 +1127,11 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_opengl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,view,windowing kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
   class client_opengl kEntrypoint
 ```
 
-**client_opengl links 18 of 24 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`
+**client_opengl links 20 of 27 components.** Not linked: `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -1057,8 +1155,10 @@ flowchart TD
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
-    view["<b>view</b><br/>LIBRARY"]
+    universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
+    world["<b>world</b><br/>LIBRARY"]
+    world_view["<b>world_view</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
     gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
@@ -1077,8 +1177,10 @@ flowchart TD
   client --> presentation
   client --> scene
   client --> universe
-  client --> view
+  client --> universe_view
   client --> windowing
+  client --> world
+  client --> world_view
   client_sdl_gpu --> client
   client_sdl_gpu --> core
   client_sdl_gpu --> gpu_sdl
@@ -1120,17 +1222,27 @@ flowchart TD
   universe --> core
   universe --> game
   universe --> platform
-  view --> base
-  view --> core
-  view --> game
-  view --> platform
-  view --> scene
+  universe --> world
+  universe_view --> base
+  universe_view --> core
+  universe_view --> game
+  universe_view --> platform
+  universe_view --> world_view
   windowing --> base
   windowing --> core
   windowing --> game
   windowing --> host
   windowing --> platform
   windowing --> scene
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world_view --> base
+  world_view --> core
+  world_view --> game
+  world_view --> platform
+  world_view --> scene
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1139,12 +1251,55 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_sdl,host_sdl,platform_pc,rendering kBackend
-  class client,frontend,game,universe,view,windowing kLibrary
+  class client,frontend,game,universe,universe_view,windowing,world,world_view kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
-**client_sdl_gpu links 18 of 24 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`
+**client_sdl_gpu links 20 of 27 components.** Not linked: `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
+```mermaid
+%% composition: world_sim
+flowchart TD
+  subgraph Z_SUBSTRATE ["SUBSTRATE"]
+    base["<b>base</b><br/>FOUNDATION"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+  end
+  subgraph Z_INTERIOR ["INTERIOR"]
+    game["<b>game</b><br/>LIBRARY"]
+    world["<b>world</b><br/>LIBRARY"]
+  end
+  subgraph Z_SHELL ["SHELL"]
+    world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
+  end
+  game --> base
+  game --> core
+  game --> platform
+  platform --> core
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world_sim --> base
+  world_sim --> core
+  world_sim --> game
+  world_sim --> platform
+  world_sim --> world
+  classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
+  classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
+  classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
+  classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
+  classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
+  class base,core kFoundation
+  class platform kContract
+  class game,world kLibrary
+  class world_sim kEntrypoint
+```
+
+**world_sim links 6 of 27 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `transcript`, `universe`, `universe_view`, `windowing`, `world_view`
+<!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
 ```mermaid
@@ -1158,6 +1313,7 @@ flowchart TD
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     universe["<b>universe</b><br/>LIBRARY"]
+    world["<b>world</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     server["<b>server</b><br/>ENTRYPOINT"]
@@ -1171,10 +1327,16 @@ flowchart TD
   server --> game
   server --> platform
   server --> universe
+  server --> world
   universe --> base
   universe --> core
   universe --> game
   universe --> platform
+  universe --> world
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
   classDef kFoundation fill:#3d3d3d,stroke:#1f1f1f,color:#fff
   classDef kContract fill:#1f4e79,stroke:#0f2d46,color:#fff
   classDef kBackend fill:#7a3e9d,stroke:#4d2763,color:#fff
@@ -1182,11 +1344,11 @@ flowchart TD
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
   class platform kContract
-  class game,universe kLibrary
+  class game,universe,world kLibrary
   class server kEntrypoint
 ```
 
-**server links 6 of 24 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `view`, `windowing`
+**server links 7 of 27 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `universe_view`, `windowing`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -1205,8 +1367,10 @@ Every component in the diagram, in the same reading order.
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | INTERIOR | owns and runs the simulated world | `UniverseServer`, the per-world `WorldServer`s it manages, spawner, wire processor, falling blocks |
-| **`view`** | LIBRARY | INTERIOR | one participant's local world | `UniverseClient`, sky, parallax, particles, and **every entity's appearance** |
+| **`universe`** | LIBRARY | INTERIOR | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`world`** | LIBRARY | INTERIOR | decides what happens inside one world | `WorldServer` and its agents: spawner, wire processor, falling blocks |
+| **`universe_view`** | LIBRARY | INTERIOR | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
+| **`world_view`** | LIBRARY | INTERIOR | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
@@ -1219,8 +1383,9 @@ Every component in the diagram, in the same reading order.
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
 | **`client_sdl_gpu`** | ENTRYPOINT | SHELL | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
+| **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 
-Twenty-four components: five CONTRACTs, seven BACKENDs, six LIBRARYs, two FOUNDATIONs, four
+Twenty-seven components: five CONTRACTs, seven BACKENDs, eight LIBRARYs, two FOUNDATIONs, five
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
 test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
 and composition is the single most important runtime fact in this design, because it is the *only*
@@ -1374,15 +1539,18 @@ is actually established today.
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
-| `universe` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
-| `view` | core, base, platform, game, scene | **the simulation cannot name a presentation interface at all** |
+| `world` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
+| `universe` | core, base, platform, game, world | it manages worlds, so it names `world`; `world` never names it back |
+| `world_view` | core, base, platform, game, scene |
+| `universe_view` | core, base, platform, game, world_view | it decides which world you are in, so it constructs one | **the simulation cannot name a presentation interface at all** |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
-| `client` | core, base, platform, game, universe, view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `universe` because a hosting client runs one |
+| `client` | core, base, platform, game, world, universe, world_view, universe_view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `universe` because a hosting client runs one |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
 | `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
-| `server` | core, base, game, universe, platform | **no presentation slot, no `view`, and after tier 2 no `scene` either** |
+| `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
+| `world_sim` | core, base, game, world, platform | **no `universe` either** — residency comes from configuration, not from participants |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
