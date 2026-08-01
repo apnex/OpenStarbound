@@ -514,7 +514,7 @@ flowchart TD
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
-    repl["<b>replica</b><br/>LIBRARY<br/><i>the client's view of a world</i>"]
+    repl["<b>view</b><br/>LIBRARY<br/><i>one participant's local world</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the domain</i>"]
     subgraph auth ["<b>authority</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
@@ -564,7 +564,6 @@ flowchart TD
   scene --> base
   contract --> scene
   game --> base
-  game --> scene
   win --> game
   auth --> core
   auth --> base
@@ -766,12 +765,48 @@ generated composition above names `replica` in its *not linked* list, which is t
 does **not** buy is `scene`: the domain still grants it, because **118 of 500 `game` files name
 `Drawable`/`RenderCallback`** — appearance is woven through the entity model, not concentrated.
 
-**Tier 2, named and not attempted here.** `WorldServer.{hpp,cpp}` mention `Drawable`/`RenderCallback`
-**zero times** — the authority orchestrator is already clean. The only thing still dragging `scene` onto
-an authority is that *an entity knows how it looks*. Separating entity **state** from entity
-**appearance** across those 118 files would make the authority free of the presentation vocabulary
-entirely. That is a real target with a measured size, not a vague aspiration, and it is the largest
-single boundary improvement left in this design.
+### What `authority` and `view` mean
+
+Two words doing precise work, defined once because neither is self-evident:
+
+> **`authority`** — the component that owns the canonical world and **decides what happens in it**.
+> Exactly one exists per world. It persists that world and serves it. Nothing overrules it.
+>
+> **`view`** — the component that maintains **one participant's local world**: authoritative state as
+> it arrives, predicted forward between updates, plus detail that exists only for a viewer.
+
+`replica` was the first name for the second and it was wrong. Of its 43 files, a large share —
+particles, parallax, sky — **replicate nothing**; they are locally generated and have no authoritative
+counterpart. A word that describes half of what a component holds is worse than a plainer one.
+`view` covers both halves: what is mirrored *and* what is invented for the viewer.
+
+The pairing is the definition: **the authority decides, the view observes.** And it does not collide
+with the neighbouring words, because the three do different jobs — **`view` produces the scene**,
+**`presentation` carries it**, **`rendering` draws it**.
+
+### Tier 2 — an entity no longer knows how it looks. DONE.
+
+Measured, and it is an order of magnitude smaller than the first estimate. "118 files name
+`Drawable`/`RenderCallback`" counted every file that *mentions* the types. The files that actually
+**implement the hook** are **thirteen**, and their bodies run 23–66 lines — roughly **500 lines in
+total**.
+
+`RenderCallback` is already the sink, with a six-method surface that is exactly `scene`'s content:
+
+```
+addDrawable(Drawable, EntityRenderLayer)   addParticle(Particle)       addTilePreview(PreviewTile)
+addLightSource(LightSource)                addAudio(AudioInstancePtr)  addOverheadBar(OverheadBar)
+```
+
+**The change.** Those thirteen `render()` bodies leave `game` and land in `view`. Each entity instead
+exposes the state its old body read — `ItemDrop::render` reads `m_mode`, `m_drawRarityBeam`, `m_item`
+and `m_boundBox`, so those become the appearance input. The entity emits **state**; `view` turns state
+into drawables. That is the same shape as the scene delta itself, one altitude down.
+
+**What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
+links **six of twenty-four components and has no SEAM zone at all** — the generated `server` diagram
+above now names `scene` in its *not linked* list. An authority that cannot name the presentation
+vocabulary is not a claim about discipline; it is a compile error waiting for anyone who tries.
 
 **`client_headless` links `windowing` and `frontend` — NOT A DEFECT, and the design already resolves
 it.** In the target state these are scene producers, not drawers: their grant rows name `scene` and not
@@ -801,7 +836,7 @@ flowchart TD
     authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
-    replica["<b>replica</b><br/>LIBRARY"]
+    view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
@@ -823,8 +858,8 @@ flowchart TD
   client --> host
   client --> platform
   client --> presentation
-  client --> replica
   client --> scene
+  client --> view
   client --> windowing
   client_headless --> client
   client_headless --> core
@@ -840,7 +875,6 @@ flowchart TD
   game --> base
   game --> core
   game --> platform
-  game --> scene
   host --> core
   host --> platform
   host_null --> core
@@ -850,11 +884,6 @@ flowchart TD
   presentation --> base
   presentation --> core
   presentation --> scene
-  replica --> base
-  replica --> core
-  replica --> game
-  replica --> platform
-  replica --> scene
   scene --> base
   scene --> core
   transcript --> base
@@ -862,6 +891,11 @@ flowchart TD
   transcript --> host
   transcript --> presentation
   transcript --> scene
+  view --> base
+  view --> core
+  view --> game
+  view --> platform
+  view --> scene
   windowing --> base
   windowing --> core
   windowing --> game
@@ -876,7 +910,7 @@ flowchart TD
   class base,core kFoundation
   class host,platform,presentation,scene kContract
   class host_null,transcript kBackend
-  class authority,client,frontend,game,replica,windowing kLibrary
+  class authority,client,frontend,game,view,windowing kLibrary
   class client_headless kEntrypoint
 ```
 
@@ -904,7 +938,7 @@ flowchart TD
     authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
-    replica["<b>replica</b><br/>LIBRARY"]
+    view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
@@ -927,8 +961,8 @@ flowchart TD
   client --> host
   client --> platform
   client --> presentation
-  client --> replica
   client --> scene
+  client --> view
   client --> windowing
   client_opengl --> client
   client_opengl --> core
@@ -945,7 +979,6 @@ flowchart TD
   game --> base
   game --> core
   game --> platform
-  game --> scene
   gpu --> core
   gpu_opengl --> core
   gpu_opengl --> gpu
@@ -968,13 +1001,13 @@ flowchart TD
   rendering --> host
   rendering --> presentation
   rendering --> scene
-  replica --> base
-  replica --> core
-  replica --> game
-  replica --> platform
-  replica --> scene
   scene --> base
   scene --> core
+  view --> base
+  view --> core
+  view --> game
+  view --> platform
+  view --> scene
   windowing --> base
   windowing --> core
   windowing --> game
@@ -989,7 +1022,7 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_opengl,host_sdl,platform_pc,rendering kBackend
-  class authority,client,frontend,game,replica,windowing kLibrary
+  class authority,client,frontend,game,view,windowing kLibrary
   class client_opengl kEntrypoint
 ```
 
@@ -1017,7 +1050,7 @@ flowchart TD
     authority["<b>authority</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
-    replica["<b>replica</b><br/>LIBRARY"]
+    view["<b>view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
   end
   subgraph Z_PERIPHERY ["PERIPHERY"]
@@ -1040,8 +1073,8 @@ flowchart TD
   client --> host
   client --> platform
   client --> presentation
-  client --> replica
   client --> scene
+  client --> view
   client --> windowing
   client_sdl_gpu --> client
   client_sdl_gpu --> core
@@ -1058,7 +1091,6 @@ flowchart TD
   game --> base
   game --> core
   game --> platform
-  game --> scene
   gpu --> core
   host --> core
   host --> platform
@@ -1079,13 +1111,13 @@ flowchart TD
   rendering --> host
   rendering --> presentation
   rendering --> scene
-  replica --> base
-  replica --> core
-  replica --> game
-  replica --> platform
-  replica --> scene
   scene --> base
   scene --> core
+  view --> base
+  view --> core
+  view --> game
+  view --> platform
+  view --> scene
   windowing --> base
   windowing --> core
   windowing --> game
@@ -1100,7 +1132,7 @@ flowchart TD
   class base,core kFoundation
   class gpu,host,platform,presentation,scene kContract
   class gpu_sdl,host_sdl,platform_pc,rendering kBackend
-  class authority,client,frontend,game,replica,windowing kLibrary
+  class authority,client,frontend,game,view,windowing kLibrary
   class client_sdl_gpu kEntrypoint
 ```
 
@@ -1116,9 +1148,6 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     platform["<b>platform</b><br/>CONTRACT"]
   end
-  subgraph Z_SEAM ["SEAM"]
-    scene["<b>scene</b><br/>CONTRACT"]
-  end
   subgraph Z_INTERIOR ["INTERIOR"]
     authority["<b>authority</b><br/>LIBRARY"]
     game["<b>game</b><br/>LIBRARY"]
@@ -1133,10 +1162,7 @@ flowchart TD
   game --> base
   game --> core
   game --> platform
-  game --> scene
   platform --> core
-  scene --> base
-  scene --> core
   server --> authority
   server --> base
   server --> core
@@ -1148,12 +1174,12 @@ flowchart TD
   classDef kLibrary fill:#2e6da4,stroke:#1f4e79,color:#fff
   classDef kEntrypoint fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   class base,core kFoundation
-  class platform,scene kContract
+  class platform kContract
   class authority,game kLibrary
   class server kEntrypoint
 ```
 
-**server links 7 of 24 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `replica`, `transcript`, `windowing`
+**server links 6 of 24 components.** Not linked: `client`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `platform_pc`, `presentation`, `rendering`, `scene`, `transcript`, `view`, `windowing`
 <!-- END GENERATED: server -->
 
 ### The register — one row per box
@@ -1171,9 +1197,9 @@ Every component in the diagram, in the same reading order.
 | **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
 | **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
-| **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — the model both sides share |
+| **`game`** | LIBRARY | INTERIOR | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`authority`** | LIBRARY | INTERIOR | the simulation that owns truth | `WorldServer` and its agents: spawner, wire processor, falling blocks |
-| **`replica`** | LIBRARY | INTERIOR | the client's view of a world | `UniverseClient`, sky, parallax, particles, and the `RenderCallback` sink |
+| **`view`** | LIBRARY | INTERIOR | one participant's local world | `UniverseClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
 | **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
@@ -1340,16 +1366,16 @@ is actually established today.
 | `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
 | `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
-| `game` | core, base, platform, **scene** | the domain still names appearance — the tier-2 target below |
+| `game` | core, base, platform | **no `scene`** — tier 2 moved appearance out; an entity no longer knows how it looks |
 | `authority` | core, base, platform, game | **names no `scene`**: `WorldServer` mentions `Drawable`/`RenderCallback` zero times |
-| `replica` | core, base, platform, game, scene | **the simulation cannot name a presentation interface at all** |
+| `view` | core, base, platform, game, scene | **the simulation cannot name a presentation interface at all** |
 | `windowing` | core, base, platform, game, scene, host | emits into the frame and uses clipboard and cursor; does not draw |
 | `frontend` | core, base, platform, game, windowing, scene, host | this game's screens; does not draw |
-| `client` | core, base, platform, game, authority, replica, windowing, frontend, presentation, scene, host | **names no backend**; it grants `authority` because a hosting client *is* one |
+| `client` | core, base, platform, game, authority, view, windowing, frontend, presentation, scene, host | **names no backend**; it grants `authority` because a hosting client *is* one |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
 | `client_sdl_gpu` | core, client, host_sdl, rendering, gpu_sdl | identical to `client_opengl` except for the backend — which is the entire point |
-| `server` | core, base, game, authority, platform | **no presentation slot, and no `replica`** — that is what the split buys |
+| `server` | core, base, game, authority, platform | **no presentation slot, no `view`, and after tier 2 no `scene` either** |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
