@@ -378,20 +378,46 @@ Elements are drawn as rounded, dashed boxes attached to their owner with a dotte
 | **`*Loop`** | it has the `while` — it sets the cadence and decides when to stop | **yes** |
 | **`*Tick`** | one iteration's body, called by a loop | **no** |
 
-So **the number of `*Loop` elements is the number of clocks this codebase owns.** Today that is one,
-and it lives in `application` — which is exactly where the loop-relocation decision put it. Anyone
-proposing to move the loop into `client` has to add or relocate a `*Loop` box, which makes the change
-visible instead of implicit.
+So **the number of `*Loop` elements is the number of clocks this codebase owns**, and the count is
+checkable rather than asserted.
 
-Audio proves the rule rather than breaking it. It is a genuine rate authority, but the loop belongs to
-SDL — `SDL_OpenAudioDeviceStream` takes a callback and we supply the body — so `audioTick` is
-correctly a tick, not a loop.
+An earlier draft of this section claimed the count was one. **It is two today, and I had missed the
+second.** Reading `SdlPlatform::run()` line by line:
 
-**This naming will migrate.** Today the system runs **one loop and three governors**: the sim's rate
-authority is a `TickRateApproacher` that the host's loop *consults*, not a loop that runs itself. Under
-the scene model the sim and presentation clocks genuinely separate, at which point `simTick` and
-`presentTick` become **`simLoop`** and **`presentLoop`** — or acquire sibling `*Loop` elements. The
-rename is the visible signal that the clocks have split, and it is expected rather than a defect.
+```cpp
+while (true) {                                     // frameLoop      — clock: vsync + swap
+    for (event : processEvents())                  //   a DRAIN — no clock, it just empties a queue
+        m_application->processInput(event);
+    for (int i = 0; i < updatesBehind; ++i) {      //   A LOOP — clock: m_updateTicker @ 60Hz
+        m_application->update();                   //     simTick
+        m_updateRate = m_updateTicker.tick();
+    }
+    m_application->render();                       //   presentTick
+    SDL_GL_SwapWindow(m_sdlWindow);
+    Thread::sleepPrecise(m_updateTicker.spareTime());
+}
+```
+
+The inner `for` is the classic fixed-timestep accumulator and `TickRateApproacher` is unambiguously a
+clock — `targetTickRate()`, `ticksBehind()` (*"how many ticks we should perform so we would be as close
+to the target tick rate as possible"*), `ticksAhead()`, `spareTime()`. It iterates, it takes its count
+from a clock, it decides when to stop. The rule should have caught it; I named the body and stopped.
+
+The event pump is a third iteration construct that is deliberately **not** a loop by this rule: it
+drains a queue and owns no cadence.
+
+Two further facts fall out of reading it closely:
+
+- **The render side has no governing clock at all.** `m_renderTicker` exists but only *measures* —
+  nothing gates on `renderTicker.ticksBehind()`. Render cadence is a side effect of vsync inside
+  `SDL_GL_SwapWindow`. Giving presentation its own clock is therefore **creating one, not separating
+  two**.
+- **The frame loop is paced by the simulation's clock** — `sleepPrecise(m_updateTicker.spareTime())`.
+  That is the second weld, and it is subtler than the first.
+
+Audio proves the rule rather than breaking it: it is a genuine rate authority, but the loop belongs to
+SDL — `SDL_OpenAudioDeviceStream` takes a callback and we supply the body — so `audioTick` is correctly
+a tick.
 
 **`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
 "base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
@@ -405,10 +431,13 @@ both taxonomies at once without either being inferred from the other.
 flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
     shell["<b>client</b><br/>LIBRARY<br/><i>owns the client frame</i>"]
-    simtick(["<b>simTick</b> · ELEMENT<br/><i>the deterministic sim tick</i>"])
-    audiotick(["<b>audioTick</b> · ELEMENT<br/><i>fills a buffer for SDL's audio loop</i>"])
+    clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
+    simloop(["<b>simLoop</b> · LOOP<br/><i>fixed-timestep accumulator</i>"])
+    simtick(["<b>simTick</b> · TICK<br/><i>one deterministic step</i>"])
+    audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+    headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
     nullhost(["<b>nullHost</b> · ELEMENT<br/><i>a host that shows nothing</i>"])
   end
 
@@ -420,7 +449,7 @@ flowchart TD
 
   subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
     rend["<b>rendering</b><br/>BACKEND<br/><i>turns a scene into pixels</i>"]
-    presenttick(["<b>presentTick</b> · ELEMENT<br/><i>resample · camera · assemble · paint</i>"])
+    presenttick(["<b>presentTick</b> · TICK<br/><i>resample · camera · assemble · paint</i>"])
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
     glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
     sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
@@ -434,7 +463,7 @@ flowchart TD
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
     app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
-    frameloop(["<b>frameLoop</b> · ELEMENT<br/><i>pump · tick · swap · idle</i>"])
+    frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
     host["<b>host</b><br/>CONTRACT<br/><i>the host contract</i>"]
     platform["<b>platform</b><br/>CONTRACT<br/><i>platform-service contracts</i>"]
     base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
@@ -470,9 +499,12 @@ flowchart TD
   chl --> tr
 
   app -.- frameloop
+  shell -.- clienttick
+  shell -.- simloop
   shell -.- simtick
   shell -.- audiotick
   rend -.- presenttick
+  chl -.- headlessloop
   chl -.- nullhost
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
@@ -486,7 +518,7 @@ flowchart TD
   class app,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
-  class frameloop,simtick,audiotick,presenttick,nullhost kElement
+  class frameloop,headlessloop,simloop,clienttick,simtick,audiotick,presenttick,nullhost kElement
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
@@ -548,39 +580,93 @@ Every component in the diagram, in the same reading order.
 | **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
 | **`client`** | LIBRARY | SHELL | owns the client frame | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — thin |
-| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — thin, plus a null host implementation |
+| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — a ~10-line driver plus a null host; every other element is shared with the graphical client |
 
 Eighteen components: five CONTRACTs, five BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
 The kinds are what make the next finding visible.
 
 ### Element register
 
-| element | owner | duty |
+| element | kind | owner | clock | called by |
+|---|---|---|---|---|
+| **`frameLoop`** | LOOP | `application` | display / vsync | — it *is* a driver |
+| **`headlessLoop`** | LOOP | `client_headless` | wall clock or free-run | — it *is* a driver |
+| **`simLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
+| **`simTick`** | TICK | `client` | — | `simLoop`, zero-to-N times per driver step |
+| **`clientTick`** | TICK | `client` | — | whichever driver this process has |
+| **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
+| **`audioTick`** | TICK | `client` | — | SDL's audio loop, which is not ours |
+| **`nullHost`** | — | `client_headless` | — | 35 no-op methods over `host` |
+
+### The driver, and why there is no `presentLoop`
+
+A **driver** is the loop that owns a process's cadence. There is exactly one per process, it comes from
+whatever host that process has, and its whole shape is four lines:
+
+```
+frameLoop      while (running) { pump(); clientTick(now); presentTick(now); swap(); idle(); }
+headlessLoop   while (!done)   {         clientTick(now); presentTick(now);         }
+```
+
+**Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
+today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
+genuinely a tick and there is no `presentLoop` at any stage. An earlier draft of this section predicted
+one; that prediction was wrong.
+
+`simLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
+fixed step while real time does not cooperate: it runs `simTick` zero-to-N times to bring simulated
+time level with real time.
+
+### Two welds to cut
+
+Both are one-liners in `StarMainApplication_sdl.cpp`, and both are load-bearing:
+
+| weld | what it does | why it must go |
 |---|---|---|
-| **`frameLoop`** | `application` | pump · tick · swap · idle — the host keeps the outer loop |
-| **`simTick`** | `client` | the deterministic sim tick, fixed timestep |
-| **`audioTick`** | `client` | fills a buffer for SDL's audio loop — `ClientApplication::getAudioData` |
-| **`presentTick`** | `rendering` | resample · camera · assemble · paint, at display rate |
-| **`nullHost`** | `client_headless` | a host that shows nothing — 35 no-op methods over `host` |
+| `max(round(m_updateTicker.ticksBehind()), 1)` | forces **at least one** sim tick per driver step | presentation can never outrun the sim — at 144 Hz the simulation is dragged to 144 ticks/second |
+| `Thread::sleepPrecise(m_updateTicker.spareTime())` | the driver idles on the **simulation's** spare time | the pixel cadence stays hostage to the sim's; the driver must idle against its own target |
 
-### Three rate authorities, and assembly is not one
+The second is the subtler of the two and was not visible until the loop body was read line by line.
 
-Measured in `StarMainApplication_sdl.cpp` today:
+### Three clocks, of which we own two
 
-| authority | governed by | where |
+| clock | owned by | one per |
 |---|---|---|
-| **sim** | `TickRateApproacher(60.0f, 1.0f)` plus `maxFrameSkip` | the frame loop |
-| **paint** | vsync / `SDL_GL_SwapWindow` | the same loop |
-| **audio** | `SDL_OpenAudioDeviceStream` @ 44100 Hz | **already a separate thread** |
+| **driver** | the host this process happens to have | **process** |
+| **sim** | `client` — a fixed-timestep accumulator | client |
+| audio | SDL, via `SDL_OpenAudioDeviceStream` @ 44100 Hz | device |
 
-Three already, and a fourth when the server is remote. **Frame assembly is not one of them** — it has
-no clock, it is a transform whose rate is set by whoever pulls it. Giving it an authority would be
-inventing a governor with nothing to govern.
+The driver clock being *per process* is the move that makes the network case free: co-located there is
+one driver; split across a machine boundary there are two, one on each side, and **no element moves and
+none is added**.
 
-Today the sim and paint authorities are *nested and welded*: `updatesBehind = max(round(ticksBehind), 1)`
-means the sim may run ahead of the frame rate but never behind it, so at 144 Hz the simulation is
-forced to 144 ticks per second whether it wants them or not. Under the scene model they unweld — the
-sim keeps its own clock and presentation resamples.
+| | co-located | split |
+|---|---|---|
+| sim side | `frameLoop` → `clientTick` → `simLoop` | `headlessLoop` → `clientTick` → `simLoop` → scene delta **out** |
+| pixel side | same driver → `presentTick` | its own host's `frameLoop` → `presentTick` ← scene delta **in** |
+| the delta is | a memcpy on one thread | a packet |
+
+Same code, different transport. Crossings stay at one push per driver step, one-way and by value, which
+is what Section 3 asks for.
+
+**Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
+whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
+
+### Why this is fully deduplicated
+
+| | `client_opengl` | `client_headless` |
+|---|---|---|
+| driver | `frameLoop` — pump, step, swap, idle | `headlessLoop` — ~10 lines |
+| host | `application` | `nullHost` — 35 no-ops over an already-abstract interface |
+| presentation | `rendering` + `gpu_opengl` | `transcript` |
+| **everything else** | `client` · `simLoop` · `clientTick` · `simTick` · `audioTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` | **identical** |
+
+The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
+telemetry model cannot fork between the two clients — which was the whole reason the loop question
+mattered.
+
+The residual difference is the two drivers, and that is not duplication: pumping SDL versus not pumping
+SDL **is** the host's job. Three lines differ.
 
 ### The vocabulary that was missing: scene
 
