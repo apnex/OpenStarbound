@@ -424,10 +424,22 @@ Audio proves the rule rather than breaking it: it is a genuine rate authority, b
 SDL — `SDL_OpenAudioDeviceStream` takes a callback and we supply the body — so `audioTick` is correctly
 a tick.
 
-**`A --> B` means A includes B** — that is, B appears in A's grant list. Read `base --> core` as
-"base includes core". Arrows therefore point *at* dependencies, so the foundation sits at the bottom
-and the executables at the top, and an arrow that has to be added to make something compile is a
-dependency that has to be justified.
+Two arrow kinds, because they mean different things:
+
+| arrow | reads | rule |
+|---|---|---|
+| `A --> B` | **A includes B** — B is on A's grant list | ordinary dependency; read `base --> core` as "base includes core" |
+| `A ==> B` | **A implements B** — A satisfies that contract | **every BACKEND has exactly one**, and it points at a CONTRACT |
+
+Arrows point *at* dependencies, so the foundation sits at the bottom and the executables at the top,
+and an arrow that has to be added to make something compile is a dependency that has to be justified.
+
+**The second rule is the Law of One at component altitude, and it is checkable.** A backend with two
+`==>` edges is doing two jobs — which is exactly the shape of the `application` this design dissolves:
+it implemented `platform` and `host` both, and its duty string hid that behind a single noun.
+
+`gpu_sdl` is drawn faded and dashed: it is declared so the register shows where an SDL_GPU backend
+lands, but D2 places it out of scope for this spec.
 
 **The clusters are zones and colour is kind** — one axis per visual channel, so the diagram carries
 both taxonomies at once without either being inferred from the other.
@@ -479,10 +491,12 @@ flowchart TD
   base --> core
   platform --> core
   host --> platform
-  hostsdl --> host
+  hostsdl ==> host
   hostsdl --> platformpc
-  hostnull --> host
-  platformpc --> platform
+  hostnull ==> host
+  platformpc ==> platform
+  platformpc --> host
+  game --> platform
   win --> host
   shell --> host
   scene --> base
@@ -494,11 +508,11 @@ flowchart TD
   front --> win
   shell --> front
   shell --> contract
-  rend --> contract
+  rend ==> contract
   rend --> gpu
-  tr --> contract
-  glb --> gpu
-  sdlb --> gpu
+  tr ==> contract
+  glb ==> gpu
+  sdlb ==> gpu
   cgl --> shell
   cgl --> rend
   cgl --> glb
@@ -527,6 +541,8 @@ flowchart TD
   class game,win,front,shell kLibrary
   class cgl,chl kEntrypoint
   class frameloop,headlessloop,simloop,clienttick,simtick,audiotick,presenttick kElement
+  classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
+  class sdlb kOutOfScope
 ```
 
 The diagram is **transitively reduced**: every component reaches `core` and `base`, but only the
