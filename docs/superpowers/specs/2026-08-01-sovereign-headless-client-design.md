@@ -28,10 +28,13 @@ it becomes a backend swap precisely because the null case forced the contract to
 |---|---|
 | **D1** | **Purpose — all six.** Architectural forcing function · foundation for distributed Starbound · CI harness · bot/agent client · cleanup of legacy/dead code sitting inside boundaries · swappable presentation components. |
 | **D2** | **Scope of THIS spec.** Contract + null implementation + shell + the cleanup the contract exposes. SDL_GPU backend, CI harness, bot driver and distributed decomposition are each **follow-on specs that consume the contract**. |
-| **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = merely nullable. Each strength is the weakest thing serving a named purpose; nothing over-built. |
+| **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = **swappable contract** — *upgraded from "merely nullable"*: the register grew `sound`, `mixing`, `audio` and `audio_sdl`, and a modality with a backend is not a nullable afterthought. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
 | **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 1 and the risk in Section 7. |
+| **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 10. |
+| **D8** | **A seam's co-located path is an optimisation, never a different contract.** Either it performs the same encode and decode as the split path, or an oracle proves the two agree. Owned by `colocation`. Stated in full in Section 5. |
+| **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 4. |
 
 ### Why D6 is not a preference
 
@@ -1418,7 +1421,9 @@ flowchart TD
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
-    world["<b>world</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+    end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -1553,7 +1558,7 @@ flowchart TD
   class host_null,transcript kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
-  class host_null_headlessLoop,participant_clientLoop,universe_universeLoop kElement
+  class host_null_headlessLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
 ```
 
 **client_headless links 25 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `world_gen`, `world_sim`
@@ -1733,7 +1738,9 @@ flowchart TD
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
-    world["<b>world</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+    end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -1890,7 +1897,7 @@ flowchart TD
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
-  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop kElement
+  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
 ```
 
 **client_opengl links 31 of 40 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
@@ -1931,7 +1938,9 @@ flowchart TD
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
-    world["<b>world</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+    end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -2086,7 +2095,7 @@ flowchart TD
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
   class colocation,frontend,game,interaction,participant,script,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
-  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop kElement
+  class host_sdl_frameLoop,participant_clientLoop,universe_universeLoop,world_worldLoop kElement
 ```
 
 **client_sdl_gpu links 31 of 40 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
@@ -2174,7 +2183,9 @@ flowchart TD
   subgraph Z_INTERIOR ["INTERIOR"]
     game["<b>game</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
-    world["<b>world</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+    end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
@@ -2223,6 +2234,7 @@ flowchart TD
   class celestial,content,net,platform kContract
   class game,script,world,worldgen kLibrary
   class world_sim kEntrypoint
+  class world_worldLoop kElement
 ```
 
 **world_sim links 11 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
@@ -2248,7 +2260,9 @@ flowchart TD
     subgraph universe ["<b>universe</b> · LIBRARY"]
       universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
     end
-    world["<b>world</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+    end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
@@ -2306,7 +2320,7 @@ flowchart TD
   class celestial,content,net,platform kContract
   class game,script,universe,world,worldgen kLibrary
   class server kEntrypoint
-  class server_superviseLoop,universe_universeLoop kElement
+  class server_superviseLoop,universe_universeLoop,world_worldLoop kElement
 ```
 
 **server links 12 of 40 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
@@ -2823,16 +2837,25 @@ Two container columns, one per projection — the graft, in a table.
 | **`clientLoop`** | LOOP | FIXED | `participant` | `driver` | converts real time into fixed steps |
 | **`universeLoop`** | LOOP | FREE | `universe` | `universe` | supervises worlds and connections on a wakeup interval |
 | **`superviseLoop`** | LOOP | FREE | `server` | `main` | waits for shutdown; ticks nothing |
+| **`worldLoop`** | LOOP | FIXED | `world` | `world` | **one clock per resident world.** Where that clock *runs* is composition, not architecture — beside the universe, on a dedicated thread, or in its own process. D9 decides *whether* it runs; the entrypoint decides *where* |
 | **`inputTick`** | TICK | DERIVED | `host_sdl` | `driver` | drains the OS event queue |
 | **`clientTick`** | TICK | DERIVED | `participant` | `driver` | one driver step, sim side |
 | **`fixedTick`** | TICK | FIXED | `participant` | `driver` | one step of simulated time |
 | **`presentTick`** | TICK | DERIVED | `rendering` | `driver` | resample, camera, assemble, paint |
 | **`audioTick`** | TICK | EXTERNAL | `mixing` | `audio` | fills a PCM buffer; **pulled by `audio_sdl`**, not driven by any loop we own |
+| **`universeTick`** | TICK | FREE | `universe` | `universe` | one supervision step: world lifecycle, connections, warps |
+| **`worldTick`** | TICK | FIXED | `world` | `world` | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
+| **`recordTick`** | TICK | DERIVED | `transcript` | `driver` | the same scene `presentTick` would paint, written down instead |
 | **`swapTick`** | TICK | DISPLAY | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
 | **`resizeSignal`** | SIGNAL | EVENT | `participant` | `driver` | the window changed; surfaces must be rebuilt |
 | **`openglWiring`** | WIRING | ONCE | `client_opengl` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
 | **`headlessWiring`** | WIRING | ONCE | `client_headless` | `driver` | composes `host_null` + `participant` + `transcript` |
 | **`serverWiring`** | WIRING | ONCE | `server` | `main` | composes the universe and its query and rcon threads |
+| **`sdlGpuWiring`** | WIRING | ONCE | `client_sdl_gpu` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
+| **`agentWiring`** | WIRING | ONCE | `client_agent` | `driver` | composes `host_null` + `participant` + `interaction`. **No UI, no recorder, no authority** |
+| **`simWiring`** | WIRING | ONCE | `world_sim` | `main` | composes `world` and a configured residency; starts `worldLoop` |
+| **`genWiring`** | WIRING | ONCE | `world_gen` | `main` | generates and exits. **The only composition that starts no clock at all** |
+| **`colocateWiring`** | WIRING | ONCE | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
 
 *Called by* was a column here and is now the execution graph's edges, which is the only copy.
 
@@ -2863,13 +2886,38 @@ flowchart TD
       resizesignal["<b>resizeSignal</b> · SIGNAL<br/><i>participant</i>"]
       openglwiring["<b>openglWiring</b> · WIRING<br/><i>client_opengl</i>"]
       headlesswiring["<b>headlessWiring</b> · WIRING<br/><i>client_headless</i>"]
+      recordtick["<b>recordTick</b> · TICK<br/><i>transcript</i>"]
+      colocatewiring["<b>colocateWiring</b> · WIRING<br/><i>colocation</i>"]
+      sdlgpuwiring["<b>sdlGpuWiring</b> · WIRING<br/><i>client_sdl_gpu</i>"]
+      agentwiring["<b>agentWiring</b> · WIRING<br/><i>client_agent</i>"]
       device["<b>Device</b> calls<br/><i>gpu_opengl</i>"]
     end
     subgraph tuniverse ["universe thread — cadence FREE; only when THIS client hosts"]
       universeloop["<b>universeLoop</b> · LOOP<br/><i>universe</i>"]
+      universetick["<b>universeTick</b> · TICK<br/><i>universe</i>"]
+    end
+    subgraph tworld ["world thread — cadence FIXED, ONE PER RESIDENT WORLD"]
+      worldloop["<b>worldLoop</b> · LOOP<br/><i>world</i>"]
+      worldtick["<b>worldTick</b> · TICK<br/><i>world</i>"]
     end
     subgraph taudio ["audio thread — cadence EXTERNAL, SDL owns this clock"]
       audiotick["<b>audioTick</b> · TICK<br/><i>mixing</i>"]
+    end
+  end
+
+  subgraph pworldsim ["<b>world_sim</b> — a separate process; NO participant, NO universe"]
+    subgraph tsimmain ["main thread — cadence ONCE"]
+      simwiring["<b>simWiring</b> · WIRING<br/><i>world_sim</i>"]
+    end
+    subgraph tsimworld ["world thread — cadence FIXED"]
+      worldloop3["<b>worldLoop</b> · LOOP<br/><i>world</i>"]
+      worldtick3["<b>worldTick</b> · TICK<br/><i>world</i>"]
+    end
+  end
+
+  subgraph pworldgen ["<b>world_gen</b> — a separate process; <b>no clock of any kind</b>"]
+    subgraph tgenmain ["main thread — cadence ONCE, then exit"]
+      genwiring["<b>genWiring</b> · WIRING<br/><i>world_gen</i>"]
     end
   end
 
@@ -2880,6 +2928,11 @@ flowchart TD
     end
     subgraph tuniverse2 ["universe thread — cadence FREE, a wakeup interval"]
       universeloop2["<b>universeLoop</b> · LOOP<br/><i>universe</i>"]
+      universetick2["<b>universeTick</b> · TICK<br/><i>universe</i>"]
+    end
+    subgraph tworld2 ["world thread — cadence FIXED, ONE PER RESIDENT WORLD"]
+      worldloop2["<b>worldLoop</b> · LOOP<br/><i>world</i>"]
+      worldtick2["<b>worldTick</b> · TICK<br/><i>world</i>"]
     end
   end
 
@@ -2895,13 +2948,25 @@ flowchart TD
   presenttick ==>|RenderPrimitive · Device · SEAM 2| device
   clienttick -.->|1: UniverseConnection · addLocalClient — self-hosted| universeloop
   clienttick -.->|1: UniverseConnection · TcpPacketSocket — a guest| universeloop2
-  universeloop -.->|authoritative state · pull, not a reply| clienttick
-  universeloop2 -.->|authoritative state · pull, not a reply| clienttick
+  universeloop -->|1:| universetick
+  universeloop -.->|2: authoritative state · pull, not a reply| clienttick
+  universetick -.->|world lifecycle · start · stop · expire| worldloop
+  worldloop --> worldtick
+  universeloop2 -->|1:| universetick2
+  universeloop2 -.->|2: authoritative state · pull, not a reply| clienttick
+  universetick2 -.->|world lifecycle · start · stop · expire| worldloop2
+  worldloop2 --> worldtick2
+  simwiring -.->|constructs, then never runs again| worldloop3
+  worldloop3 --> worldtick3
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
   inputtick -.->|*: window changed| resizesignal
   frameloop -->|4:| swaptick
   openglwiring -.->|constructs, then never runs again| frameloop
   headlesswiring -.->|constructs, then never runs again| headlessloop
+  sdlgpuwiring -.->|constructs, then never runs again| frameloop
+  agentwiring -.->|constructs, then never runs again| headlessloop
+  colocatewiring -.->|constructs the embedded universe · D8 owes parity here| universeloop
+  clienttick -.->|4: scene delta · SceneSink — the recorder, not the painter| recordtick
   serverwiring -.->|constructs, then never runs again| superviseloop
   superviseloop -.->|supervises only; ticks nothing| universeloop2
 
@@ -2910,10 +2975,10 @@ flowchart TD
   classDef kDev  fill:#7a3e9d,stroke:#4d2763,color:#fff
   classDef kWire fill:#1d6b4f,stroke:#0e3a2a,color:#fff
   classDef kSig  fill:#8a5a1f,stroke:#4d310f,color:#fff
-  class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop kLoop
-  class clienttick,fixedtick,presenttick,audiotick,inputtick,swaptick kTick
+  class frameloop,headlessloop,clientloop,universeloop,universeloop2,superviseloop,worldloop,worldloop2,worldloop3 kLoop
+  class clienttick,fixedtick,presenttick,audiotick,inputtick,swaptick,universetick,universetick2,worldtick,worldtick2,worldtick3,recordtick kTick
   class device kDev
-  class openglwiring,headlesswiring,serverwiring kWire
+  class openglwiring,headlesswiring,serverwiring,sdlgpuwiring,agentwiring,simwiring,genwiring,colocatewiring kWire
   class resizesignal kSig
 ```
 

@@ -89,8 +89,12 @@ DECLARED = {
      "UniverseConnectionServer::UniverseConnectionServer", 2): ("connectionPump", "worker", None),
     ("game/StarWorldClient.cpp", "WorldClient::lightingCalc", 1): ("lightingCalc", "worker", None),
     ("game/StarWorldClient.cpp", "WorldClient::lightingMain", 1): ("lightingThread", "worker", None),
+    # --- ONE PER RESIDENT WORLD, and the spec models it as `worldLoop`. Until 2026-08-01 it modelled
+    #     nothing here: the runtime projection drew a universe thread and no world thread, while the
+    #     tree has had one clock per world all along. The element this whole design exists to run
+    #     without a participant was the one element missing from its own picture.
     ("game/StarWorldServerThread.cpp", "WorldServerThread::run", 1):
-        ("worldServerThread", "worker", None),
+        ("worldServerThread", "worker", "worldLoop"),
     ("game/scripting/StarScriptableThread.cpp", "ScriptableThread::run", 1):
         ("scriptThread", "worker", None),
     ("server/StarServerQueryThread.cpp", "ServerQueryThread::run", 1): ("queryThread", "worker", None),

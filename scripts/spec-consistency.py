@@ -100,6 +100,61 @@ SEQ = re.compile(r'^\s*(\d+|\*)\s*:')
 # compile register owns -- the GPU backend's draw calls being the one that exists. Declared, not guessed.
 EXTRA_ENDPOINTS = {"device": "gpu_opengl"}
 
+# ---------------------------------------------------------------------------------------------
+# RUNTIME COVERAGE. Section 4 grew from 21 components to 40 while Section 5 stayed at 15 elements,
+# and nothing noticed: this gate checked that every DECLARED element appears in the diagram, never
+# that a component which ought to own one does. The compile projection ran ahead of the runtime one
+# for a whole design session, and the omission was `worldLoop` -- one clock per resident world, the
+# single element this design exists to run without a participant, absent from its own picture.
+#
+# Two rules, both already stated in the document before they were checked:
+#
+#   1. "an ENTRYPOINT gets a single WIRING element" -- Section 5's taxonomy. Four of seven did not.
+#   2. A LIBRARY or BACKEND either owns a runtime element or is declared element-free WITH A REASON.
+#      Silence is not a claim; a component nobody drives should say so out loud.
+#
+# CONTRACTs and FOUNDATIONs are excluded structurally, not by listing: a contract is an interface
+# and has no body to run, and both foundations are pure vocabulary and containers.
+# ---------------------------------------------------------------------------------------------
+ELEMENT_FREE = {
+    "game": "the domain is called from inside other components' ticks; it owns no clock",
+    "worldgen": "generation is invoked per region by `world`; it is a service, not a schedule",
+    "world_view": "the replica steps inside `fixedTick`'s call tree, not on a clock of its own",
+    "universe_view": "same: driven by the participant's tick, never self-scheduled",
+    "interaction": "verbs are called by input and by scripts; a verb has no cadence",
+    "script": "the Lua host runs inside whatever tick calls into it -- deliberately no clock",
+    "windowing": "widgets emit into the frame when asked; the toolkit drives nothing",
+    "frontend": "screens are updated by the participant's tick",
+    "gpu_opengl": "executes device calls issued by `presentTick`",
+    "gpu_sdl": "same, other backend",
+    "audio_sdl": "opens the device and PULLS `audioTick`; the clock is SDL's, not ours",
+    "platform_pc": "vendor services answer when called",
+    "host_sdl_extra": "placeholder guard -- never matches a real component",
+}
+
+
+def check_runtime_coverage(comp, elem):
+    """Every ENTRYPOINT owns exactly one WIRING; every LIBRARY/BACKEND owns an element or declares why not."""
+    out = []
+    owned = {}
+    for name, e in elem.items():
+        owned.setdefault(e["owner"], []).append((name, e["kind"]))
+    for c, v in sorted(comp.items()):
+        kind = v["kind"]
+        mine = owned.get(c, [])
+        if kind == "ENTRYPOINT":
+            wirings = [n for n, k in mine if k == "WIRING"]
+            if len(wirings) != 1:
+                out.append(("UNWIRED",
+                            "ENTRYPOINT `%s` owns %d WIRING elements; the taxonomy says exactly one"
+                            % (c, len(wirings))))
+        elif kind in ("LIBRARY", "BACKEND"):
+            if not mine and c not in ELEMENT_FREE:
+                out.append(("UNDRIVEN",
+                            "`%s` is a %s with no runtime element and no ELEMENT_FREE reason -- "
+                            "say what drives it, or declare that nothing does" % (c, kind)))
+    return out
+
 
 def projections(text):
     """-> {'compile': body, 'runtime': body}. A missing or duplicated marker is a hard failure: the
@@ -280,6 +335,8 @@ def check(text):
         if counts[key] < floor:
             findings.append(("VACUOUS", "only %d %s parsed, floor is %d -- the parser has regressed"
                              % (counts[key], key, floor)))
+    findings.extend(check_runtime_coverage(comp, elem))
+
     return findings, counts
 
 
