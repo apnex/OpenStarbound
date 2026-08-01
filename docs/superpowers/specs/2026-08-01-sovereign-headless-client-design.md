@@ -284,48 +284,57 @@ Today the lattice is a tower: T0 → T1 → T2 → `game` → presentation → s
 
 In the target state it **forks at seam 1 and forks again at seam 2**.
 
-**One box, one component, one duty.** Every box below is a single directory carrying a single duty
-phrase. Those phrases are canonical: the diagram, the component register and the grant table use the
-same string for the same component, and no component appears in two boxes. Arrows point downstream —
-`A --> B` means **B may include A**.
+**Every component carries three fields: name, KIND, duty.** The name is the directory. The kind says
+what sort of thing it is, and therefore which rule governs it. The duty is one phrase, canonical — the
+same string appears in the diagram, the register and the grant table, and no component appears twice.
+
+| KIND | the rule it carries |
+|---|---|
+| **FOUNDATION** | depended on by everything above it; names nothing above itself |
+| **CONTRACT** | declarations only — no `.cpp`, no library target; may name only foundation types |
+| **BACKEND** | implements a contract; interchangeable with its siblings; named only by an entry point |
+| **LIBRARY** | ordinary code, named directly by its consumers, not interchangeable |
+| **ENTRY POINT** | an executable; the only place a backend may be named |
+
+Arrows point downstream — `A --> B` means **B may include A**.
 
 ```mermaid
 flowchart TD
   subgraph FOUND ["foundation and services"]
-    core["<b>core</b><br/><i>language and containers</i>"]
-    base["<b>base</b><br/><i>shared services</i>"]
-    platform["<b>platform</b><br/><i>platform-service contracts</i>"]
-    app["<b>application</b><br/><i>platform services and app lifecycle</i>"]
+    core["<b>core</b><br/>FOUNDATION<br/><i>language and containers</i>"]
+    base["<b>base</b><br/>FOUNDATION<br/><i>shared services</i>"]
+    platform["<b>platform</b><br/>CONTRACT<br/><i>host and platform services</i>"]
+    app["<b>application</b><br/>BACKEND<br/><i>the PC host implementation</i>"]
   end
 
   subgraph SEAM1 ["SEAM 1 — built by this design"]
-    contract["<b>presentation</b><br/><i>the presentation contract</i>"]
+    contract["<b>presentation</b><br/>CONTRACT<br/><i>the presentation contract</i>"]
   end
 
   subgraph SIM ["simulation side"]
-    game["<b>game</b><br/><i>the simulation</i>"]
-    win["<b>windowing</b><br/><i>the widget toolkit</i>"]
-    front["<b>frontend</b><br/><i>this game's screens</i>"]
+    game["<b>game</b><br/>LIBRARY<br/><i>the simulation</i>"]
+    win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
+    front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
   end
 
   subgraph PB ["presentation backends — implement seam 1"]
-    rend["<b>rendering</b><br/><i>draws the world</i>"]
-    tr["<b>transcript</b><br/><i>records instead of drawing</i>"]
+    rend["<b>rendering</b><br/>BACKEND<br/><i>draws the world</i>"]
+    tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
   end
 
   subgraph SEAM2 ["SEAM 2 — already exists"]
-    gpu["<b>gpu</b><br/><i>the GPU contract</i>"]
+    gpu["<b>gpu</b><br/>CONTRACT<br/><i>the GPU contract</i>"]
   end
 
   subgraph GB ["GPU backends — implement seam 2"]
-    glb["<b>gpu_opengl</b><br/><i>the OpenGL backend</i>"]
-    sdlb["<b>gpu_sdl</b><br/><i>the SDL_GPU backend</i>"]
+    glb["<b>gpu_opengl</b><br/>BACKEND<br/><i>the OpenGL backend</i>"]
+    sdlb["<b>gpu_sdl</b><br/>BACKEND<br/><i>the SDL_GPU backend</i>"]
   end
 
   subgraph SH ["shells"]
-    shell["<b>client</b><br/><i>composition and tick loop</i>"]
-    cgl["<b>client_opengl</b><br/><i>graphical entry point</i>"]
-    chl["<b>client_headless</b><br/><i>headless entry point</i>"]
+    shell["<b>client</b><br/>LIBRARY<br/><i>composition and tick loop</i>"]
+    cgl["<b>client_opengl</b><br/>ENTRY POINT<br/><i>graphical entry point</i>"]
+    chl["<b>client_headless</b><br/>ENTRY POINT<br/><i>headless entry point</i>"]
   end
 
   core --> base
@@ -393,29 +402,55 @@ reviewable by reading, not only by counting.
 because it lives inside `application` next to Steam and P2P networking. Splitting it out is a
 relocation of already-separated code, and it is independent of seam 1.
 
-### Component register
+### The register — one row per box
 
-One row per directory. The duty column is canonical — the same phrase appears in the diagram above
-and in the grant table below.
+Every component in the diagram, in the same reading order.
 
-| target name | duty | group | assembled from | action |
+| name | kind | duty | assembled from | action |
 |---|---|---|---|---|
-| **`core`** | language and containers | foundation | unchanged (216 files, 56,149 lines) | **KEEP** |
-| **`base`** | shared services | foundation | unchanged (29 files, 7,380 lines) | **KEEP** |
-| **`platform`** | platform-service contracts | foundation | unchanged (4 files, 142 lines) | **KEEP** — the model the contract dirs copy |
-| **`application`** | platform services and app lifecycle | foundation | today's `application` minus its 10 render files | **SPLIT** — sheds 4,291 lines, keeps 3,081 |
-| **`presentation`** | the presentation contract | seam 1 | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
-| **`game`** | the simulation | simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
-| **`windowing`** | the widget toolkit | simulation | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
-| **`frontend`** | this game's screens | simulation | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
-| **`rendering`** | draws the world | presentation backend | today's `rendering` minus the text-metrics split below | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
-| **`transcript`** | records instead of drawing | presentation backend | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
-| **`gpu`** | the GPU contract | seam 2 | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
-| **`gpu_opengl`** | the OpenGL backend | GPU backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
-| **`gpu_sdl`** | the SDL_GPU backend | GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
-| **`client`** | composition and tick loop | shell | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
-| **`client_opengl`** | graphical entry point | shell | today's client entry point | **NEW** — thin |
-| **`client_headless`** | headless entry point | shell | — | **NEW** — thin |
+| **`core`** | FOUNDATION | language and containers | unchanged (216 files, 56,149 lines) | **KEEP** |
+| **`base`** | FOUNDATION | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
+| **`platform`** | CONTRACT | host and platform services | today's 4 headers **+** `StarApplicationController.hpp` | **GAINS a contract** — see below |
+| **`application`** | BACKEND | the PC host implementation | today's `application` minus 10 render files and one contract header | **SPLIT** — sheds 4,291 lines, keeps ~3,000 |
+| **`presentation`** | CONTRACT | the presentation contract | — | **NEW** — headers only, no `.cpp`, no library target. **Contains no drawing code.** |
+| **`game`** | LIBRARY | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
+| **`windowing`** | LIBRARY | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
+| **`frontend`** | LIBRARY | this game's screens | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
+| **`rendering`** | BACKEND | draws the world | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
+| **`transcript`** | BACKEND | records instead of drawing | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
+| **`gpu`** | CONTRACT | the GPU contract | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
+| **`gpu_opengl`** | BACKEND | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
+| **`gpu_sdl`** | BACKEND | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
+| **`client`** | LIBRARY | composition and tick loop | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
+| **`client_opengl`** | ENTRY POINT | graphical entry point | today's client entry point | **NEW** — thin |
+| **`client_headless`** | ENTRY POINT | headless entry point | — | **NEW** — thin, plus a null host implementation |
+
+Three contracts, five backends, and the kinds are what make the next finding visible.
+
+### The pattern already exists — it just has one home out of three
+
+Assigning kinds surfaced something the duty phrases had hidden. **The codebase already uses
+contract-and-backend. It does it three times. Only one of the three has a directory.**
+
+| contract | pure virtuals | where it lives today | its backend |
+|---|---:|---|---|
+| `platform`'s four services | 27 | `source/platform` — **its own directory** | `application` (`PcP2PNetworkingService : public P2PNetworkingService`) |
+| `ApplicationController` | 35 | **inside** `application` | an anonymous `struct Controller` inside `StarMainApplication_sdl.cpp` |
+| `Renderer` | 42 | **inside** `application` | `OpenGlRenderer` |
+
+`source/application` is a BACKEND that has swallowed two CONTRACTs. That is the whole of the naming
+confusion in one sentence, and it means **this design is not introducing a pattern — it is finishing
+one the codebase started.**
+
+`ApplicationController` moves to `platform` rather than to a new directory: its 35 methods are window,
+cursor, clipboard, audio-device and vsync control, and four of them already return `platform` types
+(`statisticsService`, `userGeneratedContentService`, `desktopService`). It is a host contract sitting
+one directory too high, and `platform` is where it belongs.
+
+That relocation is also load-bearing for headless. `client` calls
+`applicationInit(ApplicationControllerPtr)`, so a headless shell needs a host implementation of its
+own. Because `ApplicationController` is already abstract, that is 35 no-op methods rather than a
+design problem — and it is why `client_headless` is "thin **plus a null host**" in the register above.
 
 **The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
 That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
