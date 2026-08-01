@@ -111,6 +111,46 @@ Two pieces of evidence that this runs with the grain rather than against it:
   GPU. The precedent for *metrics are data, not presentation* is already established in this codebase;
   font metrics follow the same path.
 
+### The pixel side has no name today
+
+Asked what the whole scope on the presentation side is called, the honest answer is that **it has no
+name, because it is not a unit.** It is 33 files and 8,704 lines spanning two libraries at two
+different tiers:
+
+| part | files | lines | tier |
+|---|---:|---:|---|
+| all of `source/rendering` — painters, passes, texture groups | 23 | 4,413 | T4 |
+| the render half of `source/application` — `Renderer`, the GL backend, L1 | 10 | 4,291 | **T2** |
+| *(`source/application` keeps: app/window lifecycle, SDL main, Steam/Discord, P2P)* | *15* | *3,081* | *not presentation* |
+
+Near half by volume on each side of a directory line. **The renderer is not in `source/rendering`:**
+the largest presentation file, `StarRenderer_opengl.cpp` at 1,824 lines, and the `Renderer` interface
+every painter draws through, both live in `application`.
+
+Consequently the word *presentation* is carrying three different meanings at once:
+
+| the name | what it actually covers | fits the pixel side? |
+|---|---|---|
+| `star_rendering` (T4) | painters and passes | **half** — misses the renderer itself |
+| tier T4 "presentation" | `{rendering, windowing, frontend}` | **wrong both ways** — includes the UI this section just placed on the game side, still misses the GL backend |
+| L1 / L2 / L3 | the render decomposition | **L1 straddles the directory line** — which is why `scripts/layering-lint.py` has to name `application/` paths |
+| `source/presentation` (§4) | the contract, interface-only | **no** — that is the seam, not the side |
+
+§4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
+
+**First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
+`${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line is the entire design
+stated as a build rule; everything else in this spec is the work that makes deletion possible.
+
+**Second: `RenderCallback` occurs in 39 files and all 39 are in `source/game`.** The claim above that
+it is game-internal frame assembly is not an assertion about intent — it is a measurement, and it
+satisfies test 2 (severability) already. Nothing needs to move for it.
+
+**And the GL backend has exactly one consumer outside its own `.cpp`:** `StarMainApplication_sdl.cpp`,
+the T2 shell that owns the GL context. Unifying the pixel side takes the backend away from that shell,
+which is precisely what D5 requires — so **the naming question and the injection question are the same
+question**, and they have to be answered in that order. See §4's ordering constraint.
+
 ---
 
 ## 2. The client Lua surface — context finding
@@ -208,21 +248,146 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 
 ---
 
-## 4. Structure — NOT YET DESIGNED
+## 4. Structure and the naming register — PROPOSED
 
-Working sketch only, carried forward from the brainstorm. Subject to §6's risk.
+These are the names the rest of the work is designed against. Adopting them forces renames,
+consolidations and splits; each is listed with its action so nothing arrives by surprise.
 
-- `source/presentation` — interface-only, modelled on `source/platform` (4 headers, 142 lines, zero
-  `.cpp`, granted by everyone, implemented by `application`). Target tier T2.
-- **The null recorder does not live there.** `platform`'s value is that it has zero implementations; a
-  three-mode recorder is real code and needs its own home.
-- `source/clientcore` — the shared shell: composition and tick loop, taking injected implementations.
-  Granted `game` and `presentation`, **not** `rendering`.
-- `source/client` — slims to "construct GL implementations, inject, run".
-- `source/client_headless` — new and tiny: "construct nulls, inject, run".
+### The shape stops being a stack
 
-Each new directory gets its own grant list, so the contract becomes **compile-enforced** (test 1 of the
-boundary document) rather than a lint.
+Today the lattice is a tower: T0 → T1 → T2 → `game` → presentation → shells. Presentation sits
+**above** the simulation, which is exactly why it cannot be removed — everything above depends on
+everything below.
+
+In the target state the lattice **forks**. Below the fork: language and services. At the fork: the
+contract. Above it, two arms that cannot see each other, rejoined only at a shell.
+
+```mermaid
+flowchart TD
+  core["core · base<br/><i>language + services</i>"]
+  contract["<b>presentation</b><br/>FrameSink · AudioSink · InputSource<br/><i>+ shared vocabulary</i>"]
+  game["game<br/><i>simulation</i>"]
+  ui["windowing · frontend<br/><i>widget toolkit · this game's screens</i>"]
+  gl["rendering<br/><i>GL backend</i>"]
+  tr["transcript<br/><i>discard · record · strict</i>"]
+  sdl["sdl_gpu<br/><i>future — a swap, not a rewrite</i>"]
+  shell["client<br/><i>composition + tick loop</i>"]
+  cgl["client_opengl"]
+  chl["client_headless"]
+
+  core --> contract
+  contract --> game --> ui --> shell
+  contract --> gl & tr & sdl
+  contract --> shell
+  shell --> cgl & chl
+  gl --> cgl
+  tr --> chl
+
+  classDef sim fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef pix fill:#5c2020,stroke:#a33,color:#ffe5e5
+  classDef joint fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef base fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  class game,ui sim
+  class gl,tr,sdl pix
+  class contract joint
+  class core,shell,cgl,chl base
+```
+
+Arrows point downstream: `A --> B` means B is granted A. **No arrow runs between the two arms.** That
+absence is the design; deleting either arm leaves the other compiling.
+
+### The three boundaries
+
+| name | direction | call | strength (D3) |
+|---|---|---|---|
+| **`FrameSink`** | one-way in | `present(Frame const&)` | swappable contract |
+| **`AudioSink`** | one-way in | `play(AudioBatch const&)` | merely nullable |
+| **`InputSource`** | one round trip out | `poll() -> InputBatch` | pluggable source |
+
+The sink/source vocabulary is chosen to carry §3's network constraint in the name itself: **a sink
+never answers, and there is exactly one source, polled once per frame.** A method that returns a value
+on something called a *Sink* is a naming error before it is a design error — which makes the constraint
+reviewable by reading, not only by counting.
+
+**The role name for the whole pixel side is "a presentation backend".** `rendering` is one; `transcript`
+is the second; SDL_GPU would be the third. That is the name §1 found missing.
+
+### Component register
+
+| target name | duty | side | assembled from | action |
+|---|---|---|---|---|
+| **`presentation`** | the contract: three interfaces and the shared vocabulary | the joint | — | **NEW** — interface-only, modelled on `platform` (4 files, 142 lines, no library target) |
+| **`rendering`** | the GL presentation backend: painters, passes, L1, and the `Renderer` itself | pixel | today's `rendering` (23 files, 4,413 lines) **+** the 10 render files in `application` (4,291 lines) | **CONSOLIDATE** — the name survives, its meaning becomes true |
+| **`application`** | platform services and app/window lifecycle — nothing that draws | services | today's `application` minus those 10 files | **SPLIT** — sheds 4,291 lines, keeps 3,081 |
+| **`transcript`** | the recording presentation backend: discard · record · strict | pixel | — | **NEW** — D4's recorder. It is an instrument, not a stub, which is why it does not live inside the contract |
+| **`client`** | the client itself: composition root and tick loop, backend-agnostic | shell | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all GL knowledge |
+| **`client_opengl`** | construct GL backends, inject, run | shell | today's client entry point | **NEW** — thin |
+| **`client_headless`** | construct transcript and scripted input, inject, run | shell | — | **NEW** — thin |
+| **`windowing`** | the widget toolkit | sim | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
+| **`frontend`** | this game's screens | sim | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
+| **`game`** | the simulation | sim | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
+
+`client` splits into three directories rather than one directory with three entry points **because
+grant lists are per-directory.** One directory means one grant list, and the rule that matters —
+*the shared client may not name a backend* — would stop being compile-enforced. The split is the
+enforcement.
+
+### Vocabulary register
+
+| type | today | target | action |
+|---|---|---|---|
+| `Drawable` | `game` | `presentation` | **MOVE** — six core includes, already carries `DataStream` operators |
+| `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
+| `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
+| `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
+| `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — §3: a pointer cannot cross |
+| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on §6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+
+### Renamed, and deliberately not renamed
+
+- **`StarRenderingLuaBindings`** (in `client`) — **RESHAPE.** §2's caveat: it binds to
+  `ClientApplication` methods and calls `app->renderer()`. It must address the contract, not a shell,
+  before a second shell can offer the same four Lua groups.
+- **The T4 tier label "presentation"** — **RETIRED.** In the target state `windowing`/`frontend` and
+  `rendering` no longer share a tier, so `TIERS` in `scripts/arch-graph.py` changes shape, not just
+  wording. The boundary document's §12 (the presentation tier's three duties) is rewritten by this.
+- **`RenderCallback`** — **NOT RENAMED.** It is tempting to rename it away from the contract's
+  vocabulary, but the measurement in §1 says it occurs in 39 files and all 39 are in `source/game`. It
+  never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
+  enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
+
+### What the grant lists say
+
+Each directory's `INCLUDE_DIRECTORIES` block is the complete statement of what it may include, so the
+register above is enforced by the build rather than by review:
+
+| directory | granted | the statement it makes |
+|---|---|---|
+| `presentation` | core, base | the contract cannot name a game type — D6, enforced |
+| `rendering` | core, base, platform, presentation | **`game` is revoked** |
+| `transcript` | core, base, presentation | the recorder cannot see GL either |
+| `game` | core, base, presentation | the simulation may speak the vocabulary, never a backend |
+| `windowing`, `frontend` | + game, presentation | they emit into the frame; they do not draw |
+| `client` | core, base, game, windowing, frontend, presentation | **not `rendering`** — the shell cannot know which backend it holds |
+| `client_opengl` | + rendering, application | the only place GL is named |
+| `client_headless` | + transcript | the only place the recorder is named |
+
+**One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
+today. Deleting it is the whole boundary, and the moment it is gone the pixel arm is severable by
+construction rather than by assertion.
+
+### Ordering constraint
+
+The consolidation cannot come first. The GL backend's only external consumer is
+`StarMainApplication_sdl.cpp` — the T2 shell that owns the GL context — so moving the backend to the
+pixel side takes it out of that shell's reach. That is the correct outcome under D5, but it fixes the
+order:
+
+1. `presentation` exists and the vocabulary moves down (gated by §6's assessment).
+2. `client` takes injected backends instead of constructing GL.
+3. **Only then** do the 10 files move and `${STAR_GAME_INCLUDES}` come out.
+
+Naming and injection are one move, and the naming cannot land first.
 
 ---
 
@@ -257,10 +422,11 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ## 7. What remains to be designed
 
-1. **§4 Structure** — directory layout, grant lists, where the recorder lives.
+1. **§4's naming register** — written and awaiting Director approval, and provisional until item 3
+   lands: the six unassessed types could add rows or move `presentation` to T3.5.
 2. **§5 Verification** — gates, oracles, the round-trip ratchet's exact metric and starting ceiling.
 3. **The vocabulary assessment** — the six unresolved types in §6; cheap-move vs needs-narrowing vs
-   cannot-move.
+   cannot-move. **This gates §4.**
 4. **Sequencing** — the order of extraction, each step provable and reversible.
 5. **Out-of-scope statement** — explicit list of what this spec does not cover.
 6. **Cleanup ledger** — what the contract exposes as dead, and where it gets removed.
