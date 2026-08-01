@@ -861,6 +861,26 @@ no view, no presentation, no `scene`.
 **Acceptance test, and it is falsifiable today:** load a world containing FU automation, attach no
 participant, tick it, and assert the machines advance.
 
+**One of the three utilities is this composition, not three.** An earlier claim here said all of
+`world_benchmark`, `dungeon_generation_benchmark` and `planet_mapgen` already *were* `world_sim`.
+Measured properly:
+
+| | includes `WorldServer` | ticks | so it is |
+|---|---|---|---|
+| `world_benchmark` | yes | **yes** | `world_sim` |
+| `dungeon_generation_benchmark` | yes | **no** | *generation* |
+| `planet_mapgen` | **no** | no | *generation*, and it does not even instantiate a world |
+
+The correction is worth more than the claim was: **the two that do not fit identify a third primitive.**
+Creating a world and ticking one are different jobs with different cardinalities — generation runs once
+per world (or on demand for a preview), simulation runs continuously — and `planet_mapgen` already
+proves generation stands alone, since it links neither `WorldServer` nor anything above it.
+
+`worldgen` is therefore a candidate component: `StarWorldTemplate`, `StarWorldGeneration`,
+`StarDungeonGenerator` and the 26-file `game/terrain/` tree — **32 files, of which exactly one names
+`WorldServer`** (`StarWorldGeneration.cpp`, line 2). One edge to invert and the boundary is clean.
+Not adopted here; recorded with its measurement so the decision is cheap when it is taken.
+
 ### Tier 2 — an entity no longer knows how it looks. DONE.
 
 Measured, and it is an order of magnitude smaller than the first estimate. "118 files name
