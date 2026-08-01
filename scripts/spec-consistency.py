@@ -52,6 +52,12 @@ KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 TALLY_ORDER = ("CONTRACT", "BACKEND", "LIBRARY", "FOUNDATION", "ENTRYPOINT")
 ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
 CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
+# CARDINALITY -- how many instances exist at once. Added 2026-08-01 after the Director asked whether
+# N worlds are N instances of the one `world` component. They are, and nothing in the taxonomy said
+# so: "one per resident world" lived in a note, as prose, unchecked. Cardinality is what makes a
+# thing distributable -- you can place the many, not the one -- so for D1's distributed purpose it is
+# not decoration, it is the axis that identifies the unit of placement.
+CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")
 # Runtime element kinds. WIRING and SIGNAL were added once the Application contract was measured:
 # of its ten virtuals only three are ticks, and six fit neither LOOP nor TICK.
 EKINDS = "LOOP|TICK|WIRING|SIGNAL"
@@ -73,7 +79,7 @@ COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
     r')\s*\|\s*([^|]+?)\s*\|')
 ELEMENT_ROW = re.compile(
-    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + EKINDS + r')\s*\|\s*(\w+)\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|')
+    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + EKINDS + r')\s*\|\s*(\w+)\s*\|\s*\*\*(\w+)\*\*\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|')
 GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
 TALLY = re.compile(r'([\w-]+) components: (\w+) CONTRACTs, (\w+) BACKENDs, (\w+) LIBRARYs, '
                    r'(\w+) FOUNDATIONs, (\w+)\s*\n?ENTRYPOINTs')
@@ -133,6 +139,18 @@ ELEMENT_FREE = {
 }
 
 
+def check_cardinality(elem):
+    """Every element declares a legal cardinality. An undeclared instance count is how `worldLoop`
+    came to be 'one per resident world' in a note nobody could check."""
+    out = []
+    for name, e in sorted(elem.items()):
+        if e.get("cardinality") not in CARDINALITIES:
+            out.append(("CARDINALITY",
+                        "`%s` declares cardinality %r, which is not one of %s"
+                        % (name, e.get("cardinality"), ", ".join(CARDINALITIES))))
+    return out
+
+
 def check_runtime_coverage(comp, elem):
     """Every ENTRYPOINT owns exactly one WIRING; every LIBRARY/BACKEND owns an element or declares why not."""
     out = []
@@ -177,8 +195,8 @@ def projections(text):
 def parse(text):
     components = {n: dict(kind=k, zone=z, duty=d.strip())
                   for n, k, z, d in COMPONENT_ROW.findall(text)}
-    elements = {n: dict(kind=k, cadence=c, owner=o, thread=t)
-                for n, k, c, o, t in ELEMENT_ROW.findall(text)}
+    elements = {n: dict(kind=k, cadence=c, cardinality=card, owner=o, thread=t)
+                for n, k, c, card, o, t in ELEMENT_ROW.findall(text)}
     grants = {n: set(re.findall(r'\w+', g.replace('*', '')))
               for n, g in GRANT_ROW.findall(text) if re.fullmatch(r'[\w,` *]+', g)}
     return components, elements, grants
@@ -335,6 +353,7 @@ def check(text):
         if counts[key] < floor:
             findings.append(("VACUOUS", "only %d %s parsed, floor is %d -- the parser has regressed"
                              % (counts[key], key, floor)))
+    findings.extend(check_cardinality(elem))
     findings.extend(check_runtime_coverage(comp, elem))
 
     return findings, counts

@@ -1334,7 +1334,7 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_null ["<b>host_null</b> · BACKEND"]
-      host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
   end
@@ -1355,7 +1355,7 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     client_agent["<b>client_agent</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
     end
   end
   celestial --> base
@@ -1446,7 +1446,7 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_null ["<b>host_null</b> · BACKEND"]
-      host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
   end
@@ -1464,12 +1464,12 @@ flowchart TD
     interaction["<b>interaction</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1480,7 +1480,7 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
     end
   end
   celestial --> base
@@ -1760,7 +1760,7 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
-      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>cadence DISPLAY</i>"])
+      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
@@ -1781,12 +1781,12 @@ flowchart TD
     interaction["<b>interaction</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -1800,7 +1800,7 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
     end
   end
   audio --> core
@@ -1960,7 +1960,7 @@ flowchart TD
     core["<b>core</b><br/>FOUNDATION"]
     host["<b>host</b><br/>CONTRACT"]
     subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
-      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>cadence DISPLAY</i>"])
+      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
     end
     platform["<b>platform</b><br/>CONTRACT"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
@@ -1981,12 +1981,12 @@ flowchart TD
     interaction["<b>interaction</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
     end
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     windowing["<b>windowing</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
     end
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
@@ -2000,7 +2000,7 @@ flowchart TD
   subgraph Z_SHELL ["SHELL"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
     end
   end
   audio --> core
@@ -2231,7 +2231,7 @@ flowchart TD
     game["<b>game</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
     subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
@@ -2305,16 +2305,16 @@ flowchart TD
     game["<b>game</b><br/>LIBRARY"]
     script["<b>script</b><br/>LIBRARY"]
     subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
     end
     subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>cadence FIXED</i>"])
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
   subgraph Z_SHELL ["SHELL"]
     subgraph server ["<b>server</b> · ENTRYPOINT"]
-      server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>cadence FREE</i>"])
+      server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
   end
   celestial --> base
@@ -2741,33 +2741,74 @@ An earlier draft named these `simLoop` and `simTick`. Both were dropped: `univer
 simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
 strings and profile frames, where the enclosing component is not visible to disambiguate them.
 
-### Three clocks, of which we own two
+### Five clocks, in two matched pairs
 
-| clock | owned by | one per |
+| clock | owned by | cadence | one per | the question it answers |
+|---|---|---|---|---|
+| **driver** | the host this process happens to have | DISPLAY, or FREE when headless | **process** | when do we produce output? |
+| **participant sim** | `participant` — a fixed-timestep accumulator | FIXED | **participant** | how many sim steps has real time earned? |
+| **universe** | `universe` | FREE | **universe** | when do we check what should exist? |
+| **world** | `world` | FIXED | **resident world — N of them** | when does *this* world advance? |
+| audio | the device, via `audio_sdl` @ 44100 Hz | EXTERNAL | **device** | when does the buffer need refilling? |
+
+**This section previously said "three clocks, of which we own two" and listed driver, sim and audio.**
+It was written before the runtime projection had a world clock at all, and before `universeLoop` had a
+tick to drive. The correction is not cosmetic: the two clocks it omitted are the entire authority side.
+
+**The four we own are two matched pairs, one on each side of the authority/view seam:**
+
+| | free-running — *should I act?* | fixed-timestep — *advance time* |
 |---|---|---|
-| **driver** | the host this process happens to have | **process** |
-| **sim** | `participant` — a fixed-timestep accumulator | client |
-| audio | SDL, via `SDL_OpenAudioDeviceStream` @ 44100 Hz | device |
+| **view side** | `headlessLoop` / `frameLoop` | `clientLoop` → advances the **prediction** |
+| **authority side** | `universeLoop` | `worldLoop` → advances the **truth** |
 
-The driver clock being *per process* is the move that makes the network case free: co-located there is
-one driver; split across a machine boundary there are two, one on each side, and **no element moves and
-none is added**.
+Each side gets exactly one loop that decides *whether* to do something and one that decides *how much
+simulated time has passed*. The view's fixed loop advances a prediction; the authority's advances the
+truth; they are different clocks synchronised only by the netcode. That is textbook client-side
+prediction, and **it is the divergence Section 6's composition oracle exists to catch.**
+
+**Why the pairing matters more than the count.** The driver clock being *per process* was already the
+move that makes the network case free. The pairing extends it to the authority: co-located, all four
+run in one process because `colocation` put them there; split, the pairs separate along the seam — two
+loops each side — and **no element moves and none is added.**
 
 | | co-located | split |
 |---|---|---|
-| sim side | `frameLoop` → `clientTick` → `clientLoop` | `headlessLoop` → `clientTick` → `clientLoop` → scene delta **out** |
+| view side | `frameLoop` → `clientTick` → `clientLoop` | `headlessLoop` → `clientTick` → `clientLoop` → scene delta **out** |
+| authority side | same process: `universeLoop` → `universeTick` → `worldLoop` | its own process, identical chain, reached over the wire |
 | pixel side | same driver → `presentTick` | its own host's `frameLoop` → `presentTick` ← scene delta **in** |
 | the delta is | a memcpy on one thread | a packet |
 
-Same code, different transport. Crossings stay at one push per driver step, one-way and by value, which
-is what Section 3 asks for.
+Same code, different transport. Crossings stay at one push per driver step, one-way and by value.
 
-**Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
-whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
+**Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set
+by whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
+
+### Component, instance, composition — three things named `world`-ish
+
+Worth separating explicitly, because the register uses one word at three altitudes:
+
+| | what it is | how many |
+|---|---|---|
+| **`world`** | a COMPONENT — the code that knows how to simulate one world. A directory, a library, linked once | **one**, in any binary that links it |
+| **a world** | an INSTANCE — a `WorldServer` with its own `worldLoop`, its own thread, its own state | **N**, one per resident world |
+| **`world_sim`** | an ENTRYPOINT — a *binary* that links `world` and nothing that watches | **one per process you start** |
+
+So N running worlds are N instances of the one `world` component, exactly as N open windows would be
+N instances of one widget class. `world_sim` is not a part of `client_headless` and does not appear in
+its diagram: **the two are siblings, not parent and child.** `client_headless` links `world` and runs
+`worldLoop`s itself — it does everything `world_sim` does, and more. `world_sim` is the *alternative*
+that does only that.
+
+**This is why CARDINALITY is an axis and not a footnote.** `worldLoop` is the only element in the
+register with cardinality `WORLD` — the only one there are many of *per universe*. The thing you can
+distribute is the thing there are many of, so cardinality is precisely what identifies the unit of
+placement. D1's second purpose — foundation for a distributed Starbound — rests on that one cell of
+the table.
 
 ### The runtime taxonomy
 
-Section 4 classifies boxes on three axes — ALTITUDE, KIND, ZONE. Run time needs its own three, and
+Section 4 classifies boxes on three axes — ALTITUDE, KIND, ZONE. Run time needs its own four, and
 they have to *graft*: a name that means one thing in one projection and something else in the other is
 worse than no name. The graft point is deliberate and singular.
 
@@ -2813,6 +2854,22 @@ order load-bearing — and teardown order is where this codebase's lifetime bugs
 
 **CADENCE — what drives it.** The runtime analogue of ZONE: ZONE places a component relative to the
 seams, CADENCE places an element relative to time.
+
+**CARDINALITY — how many exist at once.** Compile time has no need for this axis: a component is a
+directory, and there is one of it. Run time does, because an element can be instanced.
+
+| CARDINALITY | one per | elements |
+|---|---|---|
+| **PROCESS** | the process | every WIRING, plus `frameLoop`, `headlessLoop`, `superviseLoop`, `inputTick`, `swapTick`, `presentTick`, `recordTick`, `resizeSignal` |
+| **PARTICIPANT** | a participant | `clientLoop`, `clientTick`, `fixedTick` |
+| **UNIVERSE** | a universe | `universeLoop`, `universeTick` |
+| **WORLD** | **a resident world — N per universe** | `worldLoop`, `worldTick` |
+| **DEVICE** | an audio device | `audioTick` |
+
+It was added after the Director asked whether N worlds are N instances of the one `world` component.
+They are — and nothing in the taxonomy said so. "One per resident world" lived in a note, as prose,
+where no gate could read it. `spec_consistency` now rejects an element that declares no legal
+cardinality.
 
 | cadence | driven by | example |
 |---|---|---|
@@ -2877,32 +2934,32 @@ compile-time permission, resolved by changing the permission.**
 
 Two container columns, one per projection — the graft, in a table.
 
-| element | kind | cadence | owner *(compile)* | thread *(run)* | duty |
-|---|---|---|---|---|---|
-| **`frameLoop`** | LOOP | DISPLAY | `host_sdl` | `driver` | drives a process that has a display |
-| **`headlessLoop`** | LOOP | FREE | `host_null` | `driver` | drives a process that has none |
-| **`clientLoop`** | LOOP | FIXED | `participant` | `driver` | converts real time into fixed steps |
-| **`universeLoop`** | LOOP | FREE | `universe` | `universe` | supervises worlds and connections on a wakeup interval |
-| **`superviseLoop`** | LOOP | FREE | `server` | `main` | waits for shutdown; ticks nothing |
-| **`worldLoop`** | LOOP | FIXED | `world` | `world` | **one clock per resident world.** Where that clock *runs* is composition, not architecture — beside the universe, on a dedicated thread, or in its own process. D9 decides *whether* it runs; the entrypoint decides *where* |
-| **`inputTick`** | TICK | DERIVED | `host_sdl` | `driver` | drains the OS event queue |
-| **`clientTick`** | TICK | DERIVED | `participant` | `driver` | one driver step, sim side |
-| **`fixedTick`** | TICK | FIXED | `participant` | `driver` | one step of simulated time |
-| **`presentTick`** | TICK | DERIVED | `rendering` | `driver` | resample, camera, assemble, paint |
-| **`audioTick`** | TICK | EXTERNAL | `mixing` | `audio` | fills a PCM buffer; **pulled by `audio_sdl`**, not driven by any loop we own |
-| **`universeTick`** | TICK | FREE | `universe` | `universe` | one supervision step: world lifecycle, connections, warps |
-| **`worldTick`** | TICK | FIXED | `world` | `world` | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
-| **`recordTick`** | TICK | DERIVED | `transcript` | `driver` | the same scene `presentTick` would paint, written down instead |
-| **`swapTick`** | TICK | DISPLAY | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
-| **`resizeSignal`** | SIGNAL | EVENT | `participant` | `driver` | the window changed; surfaces must be rebuilt |
-| **`openglWiring`** | WIRING | ONCE | `client_opengl` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
-| **`headlessWiring`** | WIRING | ONCE | `client_headless` | `driver` | composes `host_null` + `participant` + `transcript` |
-| **`serverWiring`** | WIRING | ONCE | `server` | `main` | composes the universe and its query and rcon threads |
-| **`sdlGpuWiring`** | WIRING | ONCE | `client_sdl_gpu` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
-| **`agentWiring`** | WIRING | ONCE | `client_agent` | `driver` | composes `host_null` + `participant` + `interaction`. **No UI, no recorder, no authority** |
-| **`simWiring`** | WIRING | ONCE | `world_sim` | `main` | composes `world` and a configured residency; starts `worldLoop` |
-| **`genWiring`** | WIRING | ONCE | `world_gen` | `main` | generates and exits. **The only composition that starts no clock at all** |
-| **`colocateWiring`** | WIRING | ONCE | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
+| element | kind | cadence | **cardinality** | owner *(compile)* | thread *(run)* | duty |
+|---|---|---|---|---|---|---|
+| **`frameLoop`** | LOOP | DISPLAY | **PROCESS** | `host_sdl` | `driver` | drives a process that has a display |
+| **`headlessLoop`** | LOOP | FREE | **PROCESS** | `host_null` | `driver` | drives a process that has none |
+| **`clientLoop`** | LOOP | FIXED | **PARTICIPANT** | `participant` | `driver` | converts real time into fixed steps |
+| **`universeLoop`** | LOOP | FREE | **UNIVERSE** | `universe` | `universe` | supervises worlds and connections on a wakeup interval |
+| **`superviseLoop`** | LOOP | FREE | **PROCESS** | `server` | `main` | waits for shutdown; ticks nothing |
+| **`worldLoop`** | LOOP | FIXED | **WORLD** | `world` | `world` | **one clock per resident world.** Where that clock *runs* is composition, not architecture — beside the universe, on a dedicated thread, or in its own process. D9 decides *whether* it runs; the entrypoint decides *where* |
+| **`inputTick`** | TICK | DERIVED | **PROCESS** | `host_sdl` | `driver` | drains the OS event queue |
+| **`clientTick`** | TICK | DERIVED | **PARTICIPANT** | `participant` | `driver` | one driver step, sim side |
+| **`fixedTick`** | TICK | FIXED | **PARTICIPANT** | `participant` | `driver` | one step of simulated time |
+| **`presentTick`** | TICK | DERIVED | **PROCESS** | `rendering` | `driver` | resample, camera, assemble, paint |
+| **`audioTick`** | TICK | EXTERNAL | **DEVICE** | `mixing` | `audio` | fills a PCM buffer; **pulled by `audio_sdl`**, not driven by any loop we own |
+| **`universeTick`** | TICK | FREE | **UNIVERSE** | `universe` | `universe` | one supervision step: world lifecycle, connections, warps |
+| **`worldTick`** | TICK | FIXED | **WORLD** | `world` | `world` | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
+| **`recordTick`** | TICK | DERIVED | **PROCESS** | `transcript` | `driver` | the same scene `presentTick` would paint, written down instead |
+| **`swapTick`** | TICK | DISPLAY | **PROCESS** | `host_sdl` | `driver` | presents the backbuffer; **where vsync actually blocks** |
+| **`resizeSignal`** | SIGNAL | EVENT | **PROCESS** | `participant` | `driver` | the window changed; surfaces must be rebuilt |
+| **`openglWiring`** | WIRING | ONCE | **PROCESS** | `client_opengl` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
+| **`headlessWiring`** | WIRING | ONCE | **PROCESS** | `client_headless` | `driver` | composes `host_null` + `participant` + `transcript` |
+| **`serverWiring`** | WIRING | ONCE | **PROCESS** | `server` | `main` | composes the universe and its query and rcon threads |
+| **`sdlGpuWiring`** | WIRING | ONCE | **PROCESS** | `client_sdl_gpu` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
+| **`agentWiring`** | WIRING | ONCE | **PROCESS** | `client_agent` | `driver` | composes `host_null` + `participant` + `interaction`. **No UI, no recorder, no authority** |
+| **`simWiring`** | WIRING | ONCE | **PROCESS** | `world_sim` | `main` | composes `world` and a configured residency; starts `worldLoop` |
+| **`genWiring`** | WIRING | ONCE | **PROCESS** | `world_gen` | `main` | generates and exits. **The only composition that starts no clock at all** |
+| **`colocateWiring`** | WIRING | ONCE | **PROCESS** | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
 
 *Called by* was a column here and is now the execution graph's edges, which is the only copy.
 

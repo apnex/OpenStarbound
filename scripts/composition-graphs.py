@@ -79,14 +79,14 @@ GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
 # clock. A reader asking "what drives this?" could not answer it from these diagrams before; the
 # whole-system map showed the loops and the per-composition views dropped them.
 ELEMENT_ROW = re.compile(
-    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*LOOP\s*\|\s*(\w+)\s*\|\s*`(\w+)`\s*\|\s*`\w+`\s*\|')
+    r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*LOOP\s*\|\s*(\w+)\s*\|\s*\*\*(\w+)\*\*\s*\|\s*`(\w+)`\s*\|\s*`\w+`\s*\|')
 
 
 def loops_of(text):
     """-> owner component -> [(loop name, cadence)]. Empty is legal: most components own no clock."""
     out = {}
-    for name, cadence, owner in ELEMENT_ROW.findall(text):
-        out.setdefault(owner, []).append((name, cadence))
+    for name, cadence, card, owner in ELEMENT_ROW.findall(text):
+        out.setdefault(owner, []).append((name, cadence, card))
     return out
 
 
@@ -126,9 +126,9 @@ def diagram(entry, comp, grants, classdef, loops):
             # its loops inside. Subgraphs are legal edge endpoints in mermaid, so the id is unchanged
             # and every grant edge below still resolves.
             out.append('    subgraph %s ["<b>%s</b> · %s"]' % (n, n, comp[n]["kind"]))
-            for lname, cadence in sorted(mine):
-                out.append('      %s_%s(["<b>%s</b> · LOOP<br/><i>cadence %s</i>"])'
-                           % (n, lname, lname, cadence))
+            for lname, cadence, card in sorted(mine):
+                out.append('      %s_%s(["<b>%s</b> · LOOP<br/><i>%s · one per %s</i>"])'
+                           % (n, lname, lname, cadence, card.lower()))
             out.append("    end")
         out.append("  end")
     for a in sorted(linked):
@@ -140,7 +140,7 @@ def diagram(entry, comp, grants, classdef, loops):
         members = sorted(n for n in linked if comp[n]["kind"] == kind)
         if members:
             out.append("  class %s %s" % (",".join(members), CLASS_OF[kind]))
-    elems = ["%s_%s" % (n, ln) for n in sorted(linked) for ln, _c in loops.get(n, ())]
+    elems = ["%s_%s" % (n, ln) for n in sorted(linked) for ln, _c, _k in loops.get(n, ())]
     if elems:
         out.append("  class %s kElement" % ",".join(sorted(elems)))
     out.append("```")
