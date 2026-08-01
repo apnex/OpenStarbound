@@ -439,7 +439,6 @@ last grouping axis, and the one the clusters in the diagram draw:
 | ZONE | the rule it carries |
 |---|---|
 | **MACHINE** | below every seam; available to both arms and to the shells |
-| **SEAM** | a declared boundary — the only components both arms may name |
 | **DOMAIN** | inside seam 1; compiles and runs with no presentation linked at all |
 | **DEVICE** | outside seam 1; meets hardware or a recorder, and is swapped or deleted wholesale |
 | **COMPOSITION** | where the two arms rejoin into an executable |
@@ -1783,7 +1782,15 @@ it turns state into a `Drawable`. `game` is granted `sound` no more than it is g
 Four components for four files looks heavy until the separability test is applied to each, and each
 passes: `game` and `world_view` name `sound` and never `mixing`; a recorder would want `mixing`
 without `audio_sdl`, exactly as `transcript` wants a presentation backend without a GPU backend;
-and `client_headless` links **none of the four**, which is the entire point.
+and `client_headless` links **`sound` and none of the other three**, which is the entire point.
+
+That claim read "links **none of the four**" until 2026-08-02, and it was refuted by the clause
+immediately before it: if `game` names `sound`, then every composition that links `game` links
+`sound`, and `client_headless` links `game`. The corrected version is the stronger one anyway — it is
+the exact parallel of the `scene`/`rendering` split one modality over. **A headless client carries the
+audio *vocabulary* and none of the audio *machinery***, in the same way it carries `scene` and no
+painter. Carrying neither would mean entities could not describe the sounds they make, which is a
+simulation fact and has nothing to do with whether anyone is listening (D9).
 
 **One measured obstruction, recorded because it sizes the work.** `base/StarMixer.hpp` defines BOTH
 `AudioInstance` and `Mixer` — the contract and the backend in one header, which is precisely the state
@@ -1795,11 +1802,11 @@ composition — `server`, `world_sim`, `world_gen` included — links it uncondi
 **Acceptance test, falsifiable the day it lands:** `link_sweep` reports no `mixing` row for
 `starbound_server`, and the `("server", "mixing")` ratchet entry is deleted rather than lowered.
 
-### The reverse edge is always one misfiled file — three for three
+### The reverse edge is often one misfiled file — two for two
 
-Three components have now been carved out, and each looked at first like it had a dependency cycle
-with its neighbour. In all three cases the cycle was a single file filed with the data it describes
-instead of with the code that consumes it:
+Two components have been carved out where the carve-out first looked like a dependency cycle with its
+neighbour. In both cases the cycle was a single file filed with the data it describes instead of with
+the code that consumes it:
 
 | carved out | apparent cycle | the actual file | belongs to |
 |---|---|---|---|
@@ -3025,9 +3032,21 @@ A **driver** is the loop that owns a process's cadence. There is exactly one per
 whatever host that process has, and its whole shape is four lines:
 
 ```
-frameLoop      while (running) { pump(); clientTick(now); presentTick(now); swap(); idle(); }
-headlessLoop   while (!done)   {         clientTick(now); presentTick(now);         }
+frameLoop      while (running) { inputTick(); clientTick(now); present(now); idle(); }
+headlessLoop   while (!done)   {              clientTick(now); present(now);        }
 ```
+
+`present(now)` is a **dispatch through seam 1**, not a call. It lands in `presentTick` when the
+composition linked `rendering` and in `recordTick` when it linked `transcript`; neither the driver nor
+this summary knows which, and that is the point.
+
+**This block read `{ pump(); clientTick; presentTick; swap(); idle(); }` until 2026-08-02, and the
+`swap()` was not a naming slip.** It drew `frameLoop --> swapTick` — exactly the edge the graft rule
+rejected two subsections above, on the grounds that `host_sdl` has no grant to `gpu`. So the canonical
+four-line summary of the runtime was still showing the illegal shape the design had already replaced,
+which is the failure mode a summary is *for*: it is the part people read instead of the diagram.
+`swapTick` is reached from inside `presentTick`, by dispatch, and the generated drive table has said
+so all along.
 
 **Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
 today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
@@ -3132,10 +3151,21 @@ worse than no name. The graft point is deliberate and singular.
 
 **`ELEMENT` is the same word, and the same thing, as Section 4's ELEMENT.** That is the graft: the two
 projections share one vertex set and disagree only about what *contains* it. Compile time puts an
-element in a COMPONENT; run time puts it in a THREAD. Neither containment implies the other, and the
-places they cut across each other are exactly what one view can see and the other cannot — `participant`
-owns `clientTick` on the driver thread and `audioTick` on SDL's, which the dependency diagram has no
-way to show.
+element in a COMPONENT; run time puts it in a THREAD. Neither containment implies the other, and where
+they cut across each other is exactly what one view can see and the other cannot.
+
+**Measured, and the cross-cut runs one way only.** No component in the register owns elements on two
+threads — every one of the 17 owning components is thread-pure. The crossing is entirely the other
+direction: the **`driver` thread holds elements from 11 different components** (`host_sdl`,
+`participant`, `rendering`, `transcript`, `gpu`, `host_null`, `colocation` and the four client
+WIRINGs), while `universe`, `world` and `audio` hold one component each. A dependency diagram cannot
+draw that, because it is not a dependency — it is a *co-residency*, and it is the reason two
+components with no grant between them can still deadlock each other.
+
+This paragraph previously offered "`participant` owns `clientTick` on the driver thread and
+`audioTick` on SDL's" as the example. That was false twice: `audioTick` is owned by `mixing` in the
+register, in both diagrams and in the generated drive table, and no component spans two threads at
+all. The claim about cross-cutting was right; the instance was invented.
 
 There is deliberately **no runtime altitude below ELEMENT**. Statements, branches and expressions
 execute too, and modelling them would be a call graph rather than an architecture.

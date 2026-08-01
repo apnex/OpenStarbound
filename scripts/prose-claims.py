@@ -67,7 +67,13 @@ KINDWORD = r'(?:FOUNDATION|CONTRACT|BACKEND|LIBRARY|ENTRYPOINT)'
 # A dead zone name is also a live claim when the word "zone" is what sits beside it. The sentence
 # "the dedicated server ... has no SEAM zone at all" survived every run of this gate, because the
 # KIND-word adjacency test was the only trigger and that sentence names no KIND.
-TRIGGER = r'(?:%s|\bzones?\b)' % KINDWORD[3:-1]
+#
+# CASE-INSENSITIVE ON THE ZONE WORD, and that one flag is worth a defect. The first version wrote
+# `\bzones?\b` case-sensitively and stayed green over a live five-row zone TABLE headed `| ZONE |`,
+# whose `SEAM` row contradicted the sentence directly beneath it saying the zones were cut from five
+# to four. The gate could see the lowercase sentence it was written against and not the uppercase
+# table three hundred lines earlier.
+TRIGGER = r'(?:%s|\b[Zz][Oo][Nn][Ee][Ss]?\b)' % KINDWORD[3:-1]
 
 # Backticked lowercase tokens that are legitimately NOT components. Each carries its reason, so the
 # list cannot quietly become a place to bury a stale name -- which is the only way this gate fails.
@@ -103,6 +109,11 @@ ALLOWED = {
     "clipboard": "Lua callback group; binds the Application",
     "interface": "Lua callback group; binds MainInterface",
     "voice": "Lua callback group; defined in source/frontend",
+    # THREAD names from the runtime register's thread column -- a third namespace, alongside
+    # components and Lua groups. `driver`, `main`, `universe`, `world` and `audio`; only `driver`
+    # and `main` are not also component names, so only those two ever reach this list.
+    "driver": "runtime THREAD name, from the element register's thread column",
+    "main": "runtime THREAD name; the process's initial thread",
 }
 
 # Sentences that defer architecture to a later document, or declare something not covered. Under D2
@@ -170,7 +181,9 @@ LOCAL_COUNT = (
     # Both surfaced only once the scan became case-insensitive: a sentence-initial count is
     # capitalised, and every one of them had been invisible.
     ("Four components for four files", "the audio carve-out, not the register"),
-    ("Three components have now been carved out", "the running tally of that section"),
+    ("Two components have been carved out", "the two acyclic carve-outs, not the register"),
+    ("it is the reason two components with no grant between them",
+     "any two co-resident components, not a count"),
 )
 
 
@@ -198,13 +211,18 @@ def scan(text):
     # Historical blocks are exempt from every verdict that is a claim about NOW: a dead zone name and
     # a superseded count are the same kind of fact, and explaining either requires stating it.
     live = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
+    # THE WINDOW MUST CROSS LINES. `.` does not match a newline, so a ±60 window written against
+    # running prose never left the current line -- and the defect this verdict was extended to catch
+    # was a markdown TABLE whose `| ZONE |` header sat two rows above its stale `| **SEAM** |` row.
+    # Case-insensitivity alone did not find it; the window was the other half of the same blind spot.
+    flat = " ".join(live.split())
     for z in DEAD_ZONES:
-        for m in re.finditer(r'.{0,60}\b%s\b.{0,60}' % z, live):
+        for m in re.finditer(r'.{0,60}\b%s\b.{0,60}' % z, flat):
             ctx = m.group(0)
             if re.search(TRIGGER, ctx):
                 findings.append(("STALE_ZONE",
                                  "%r used as a zone beside a KIND or ZONE word: ...%s..."
-                                 % (z, ctx.strip().replace("\n", " ")[:96])))
+                                 % (z, ctx.strip()[:96])))
 
     prose = "\n".join(l for l in live.splitlines()
                       if not l.startswith(("|", " ", "```", "<!--", "%%")))
