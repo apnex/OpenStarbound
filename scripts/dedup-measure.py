@@ -29,6 +29,10 @@ exact:
     separately.
   - INLINED callees vanish into their caller, which attributes their cost to the caller's component.
     That makes the measure conservative in the right direction: it under-reports sharing, never over.
+  - TEMPLATE AND INLINE SYMBOLS emitted into several objects are attributed to whichever object the
+    scan reached first, which is arbitrary. Per-component symbol counts are therefore reliable in
+    aggregate and NOT reliable for a small count in one component. File-granularity conclusions do not
+    have this problem, because a file is named once.
 
 VERDICTS.
 

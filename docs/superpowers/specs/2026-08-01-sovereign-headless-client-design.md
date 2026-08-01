@@ -714,15 +714,47 @@ transitive closure of its grant list, so these are **derived from the grant tabl
 `scripts/composition-graphs.py` and gated by `composition_graphs`. Three hand-drawn diagrams would be
 three more things to drift; nothing below is a new decision.
 
-Two questions the whole-system map hides, and these raised on their first run. Neither is answered
-here — a generator shows the consequence of a decision, it does not make one:
+### Reasoning about a suspicious link
 
-- **`server` links `scene`**, the presentation vocabulary, in a process that never presents. It does so
-  because `game` grants `scene` and the server links `game`. Either the emission is genuinely dead
-  weight on an authority, or `scene` is more universal than "the presentation seam's vocabulary".
-- **`client_headless` links `windowing` and `frontend`** — a widget toolkit and this game's screens, in
-  a client that draws nothing. Pane *state* may well be needed by scripting; the toolkit is the part
-  worth interrogating.
+A composition links something surprising because *some edge in its closure* pulls it in. The endpoint
+is never the question; the edge is. So the method is three steps, and the third is the one that stops
+this becoming taste:
+
+1. **Name the path.** `server` → `game` → `scene`. The question was never about `server`.
+2. **Ask whether that edge is correct**, not whether the endpoint is wanted.
+3. **If the answer is "component X holds two roles", measure separability before proposing a split.**
+   A split that the code cannot support is a worse answer than an honest over-approximation.
+
+Both questions the composition diagrams raised were run through it, and they came out differently.
+
+**`server` links `scene` — ACCEPTED, and the fix is not available.** `game` grants `scene` because
+entities name the scene vocabulary; `server` links `game`; therefore `server` links `scene`. The
+obvious repair is to split `game` into an authority half and a replica half. Measured with the call
+graph, from `UniverseServer::run` and `ClientApplication::update`:
+
+| | authority-only | replica-only | **both** |
+|---|---|---|---|
+| `game` symbols | 1,053 | 1,573 | **3,624 — 58%** |
+| `game` **files** | **5** | 22 | **183** |
+
+**Five files of two hundred and ten are authority-exclusive.** `game` is not separable into halves at
+file granularity, and a split would have to cut *inside* 183 files. The measurement kills the repair,
+which is the point of taking it before proposing one.
+
+What is left is precise rather than alarming: the authority **links** the scene vocabulary and never
+**executes** the emission — a link-time over-approximation with no runtime consequence. And the cause
+is our own ALTITUDE choice. A COMPONENT is a directory because that is where `INCLUDE_DIRECTORIES`
+makes a boundary a compile error; the price is that a directory holding two roles must be granted the
+union of both. **`game` is the worst case in this design, and now it has a number.**
+
+**`client_headless` links `windowing` and `frontend` — NOT A DEFECT, and the design already resolves
+it.** In the target state these are scene producers, not drawers: their grant rows name `scene` and not
+`rendering`, and the removal ratchet takes `windowing → rendering` and `frontend → rendering` to zero.
+A headless client links them *because it needs what they emit* — a participant has an inventory and a
+UI state, and `transcript` records what those produce. The whole-system map made this look suspicious;
+the per-composition view plus the target grants make it correct. Measured corroboration: `windowing` is
+**0% shared** with the authority — 191 symbols, every one replica-side — which is exactly the clean
+separation `game` lacks.
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
 ```mermaid
