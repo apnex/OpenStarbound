@@ -378,6 +378,10 @@ Elements are drawn **inside** their owning component, which becomes a container 
 with no named internals stays a plain box — so the diagram distinguishes, at a glance, the
 components whose insides the design has something to say about from those it treats as opaque.
 
+**Container components show name and kind only.** Their duty line is dropped because the nested
+elements sit where it would render and occlude it; the duty is in the register below, which is the
+canonical copy in any case.
+
 **Element naming carries one more rule, and it is load-bearing:**
 
 | suffix | means | owns a cadence |
@@ -463,7 +467,7 @@ both taxonomies at once without either being inferred from the other.
 ```mermaid
 flowchart TD
   subgraph Z_SHELL ["SHELL — where the two arms rejoin"]
-    subgraph shell ["<b>client</b> · LIBRARY<br/><i>owns the client frame</i>"]
+    subgraph shell ["<b>client</b> · LIBRARY"]
       clienttick(["<b>clientTick</b> · TICK<br/><i>one driver step, sim side</i>"])
       simloop(["<b>simLoop</b> · LOOP<br/><i>fixed-timestep accumulator</i>"])
       simtick(["<b>simTick</b> · TICK<br/><i>one deterministic step</i>"])
@@ -471,7 +475,7 @@ flowchart TD
     end
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
-    subgraph srv ["<b>server</b> · ENTRYPOINT<br/><i>hosts a universe for remote players</i>"]
+    subgraph srv ["<b>server</b> · ENTRYPOINT"]
       serverloop(["<b>serverLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
   end
@@ -479,13 +483,13 @@ flowchart TD
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
-    subgraph game ["<b>game</b> · LIBRARY<br/><i>the simulation</i>"]
+    subgraph game ["<b>game</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
     end
   end
 
   subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
-    subgraph rend ["<b>rendering</b> · BACKEND<br/><i>turns a scene into pixels</i>"]
+    subgraph rend ["<b>rendering</b> · BACKEND"]
       presenttick(["<b>presentTick</b> · TICK<br/><i>resample · camera · assemble · paint</i>"])
     end
     tr["<b>transcript</b><br/>BACKEND<br/><i>records instead of drawing</i>"]
@@ -500,10 +504,10 @@ flowchart TD
   end
 
   subgraph Z_SUB ["SUBSTRATE — below every seam"]
-    subgraph hostsdl ["<b>host_sdl</b> · BACKEND<br/><i>the SDL host implementation</i>"]
+    subgraph hostsdl ["<b>host_sdl</b> · BACKEND"]
       frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
     end
-    subgraph hostnull ["<b>host_null</b> · BACKEND<br/><i>a host that shows nothing</i>"]
+    subgraph hostnull ["<b>host_null</b> · BACKEND"]
       headlessloop(["<b>headlessLoop</b> · LOOP<br/><i>the null driver</i>"])
     end
     platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
