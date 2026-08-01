@@ -468,12 +468,15 @@ flowchart TD
     audiotick(["<b>audioTick</b> · TICK<br/><i>fills a buffer for SDL's audio loop</i>"])
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
+    srv["<b>server</b><br/>ENTRYPOINT<br/><i>hosts a universe for remote players</i>"]
+    serverloop(["<b>serverLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
   end
 
   subgraph Z_INT ["INTERIOR — runs with no presentation linked"]
     front["<b>frontend</b><br/>LIBRARY<br/><i>this game's screens</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
     game["<b>game</b><br/>LIBRARY<br/><i>the simulation</i>"]
+    universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
   end
 
   subgraph Z_PER ["PERIPHERY — meets hardware or a recorder"]
@@ -534,6 +537,7 @@ flowchart TD
   chl --> shell
   chl --> tr
   chl --> hostnull
+  srv --> game
 
   hostsdl -.- frameloop
   shell -.- clienttick
@@ -542,6 +546,8 @@ flowchart TD
   shell -.- audiotick
   rend -.- presenttick
   hostnull -.- headlessloop
+  srv -.- serverloop
+  game -.- universeloop
 
   classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
   classDef kContract   fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
@@ -553,8 +559,8 @@ flowchart TD
   class platform,host,scene,contract,gpu kContract
   class hostsdl,hostnull,platformpc,rend,tr,glb,sdlb kBackend
   class game,win,front,shell kLibrary
-  class cgl,chl kEntrypoint
-  class frameloop,headlessloop,simloop,clienttick,simtick,audiotick,presenttick kElement
+  class cgl,chl,srv kEntrypoint
+  class frameloop,headlessloop,simloop,serverloop,universeloop,clienttick,simtick,audiotick,presenttick kElement
   classDef kOutOfScope stroke-dasharray:5 4,opacity:0.7
   class sdlb kOutOfScope
 ```
@@ -670,6 +676,7 @@ Every component in the diagram, in the same reading order.
 | **`client`** | LIBRARY | SHELL | owns the client frame | composition, `simLoop`, `clientTick`, `simTick`, `audioTick` |
 | **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
+| **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `serverLoop`, and the rcon and server-query threads |
 
 Twenty components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
 Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude is right.
@@ -682,6 +689,8 @@ The kinds are what make the next finding visible.
 | **`frameLoop`** | LOOP | `host_sdl` | display / vsync | — it *is* a driver |
 | **`headlessLoop`** | LOOP | `host_null` | wall clock or free-run | — it *is* a driver |
 | **`simLoop`** | LOOP | `client` | fixed 60 Hz accumulator | `clientTick` |
+| **`universeLoop`** | LOOP | `game` | its own thread | — `UniverseServer : public Thread`; this is where the authoritative world actually ticks |
+| **`serverLoop`** | LOOP | `server` | 100 ms poll | — it *is* a loop, but it supervises rather than drives: it waits for shutdown and ticks nothing |
 | **`simTick`** | TICK | `client` | — | `simLoop`, zero-to-N times per driver step |
 | **`clientTick`** | TICK | `client` | — | whichever driver this process has |
 | **`presentTick`** | TICK | `rendering` | — | whichever driver this process has |
@@ -729,6 +738,45 @@ is what Section 3 asks for.
 
 **Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set by
 whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
+
+### `server` is not a headless client
+
+The unifying frame — *a headless client is presentation-backend = null* — describes participants. **It
+does not describe the server**, and treating the two as the same thing is a category error the earlier
+drafts made by omission, since `server` was not in the register at all.
+
+Two orthogonal axes, and "headless" names only the second:
+
+| | role | presentation |
+|---|---|---|
+| `client_opengl` | **participant** — one player's view of a world | `rendering` + `gpu_opengl` |
+| `client_headless` | **participant** — one player's view of a world | `transcript` |
+| `server` | **authority** — hosts a universe for N remote players | **no slot at all** |
+
+The server is not "presentation = null". Presentation is not a concept in that product. Measured, the
+two shells share almost nothing:
+
+| | `server` | `client_headless` |
+|---|---|---|
+| depends on | **core, base, game — three** | eleven components |
+| host contract | **never touches it** | `host_null`, for clipboard, cursor and the audio device |
+| its loop | **supervision** — `while (isRunning()) { sleep(100); }` | **driver** — `clientTick` then `presentTick` per step |
+| what ticks the world | `game`'s `universeLoop`, a thread `UniverseServer` owns | `client`'s `simLoop`, a fixed-timestep accumulator |
+| simulates via | `UniverseServer` — authoritative | `UniverseClient` — a slave view |
+| players | N, remote | one, local |
+
+They share exactly one property: **they link `game` and draw nothing.** That is a negative property,
+not a shared design, and it is the whole of the resemblance.
+
+**What the server does prove** is the thing this design is trying to make true for the client: that a
+shell can link the simulation and have no presentation at all. It has shipped that way for a decade.
+`client_headless` is not inventing a shape — it is bringing the participant side up to a bar the
+authority side already meets.
+
+**And the server is where the fifth loop was hiding.** `UniverseServer : public Thread` runs
+`while (!m_stop)` on its own thread — the authoritative world tick, inside `game`, which the earlier
+element register missed entirely because the model was client-centric. `server`'s own loop supervises
+and ticks nothing.
 
 ### Why this is fully deduplicated
 
@@ -839,6 +887,7 @@ register above is enforced by the build rather than by review:
 | `client` | core, base, platform, game, windowing, frontend, presentation, scene, host | **names no backend** — not `rendering`, not `transcript`, not `gpu_opengl`, not `host_sdl` |
 | `client_opengl` | core, client, host_sdl, rendering, gpu_opengl | the only place GL and SDL are named together |
 | `client_headless` | core, client, host_null, transcript | the only place the recorder is named |
+| `server` | core, base, game | **three grants, and no presentation slot at all** |
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
