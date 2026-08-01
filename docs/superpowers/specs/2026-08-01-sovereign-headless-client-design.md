@@ -533,11 +533,20 @@ Two arrow kinds, because they mean different things:
 | arrow | reads | rule |
 |---|---|---|
 | `A --> B` | **A includes B** — B is on A's grant list | read `base --> core` as "base includes core" |
-| `A ==> B` | **A includes B *and* implements it** — a class in A derives from a base declared in B | **every BACKEND has at least one**, and every one points at a CONTRACT |
+| `A ==> B` | **A includes B and implements the contract that says what A *is*** — its identity | **every BACKEND has exactly one**, and it points at a CONTRACT |
+| `A --o B` | **A includes B and implements a *role* B declares, through which something else drives A** | unbounded — being driven is not a job |
 
-**`==>` implies `-->`; it does not replace it.** An implementer has to see the declaration in order to
-derive from it, so the grant is still required and `grant-sweep` still checks for it. The thick arrow
-classifies *why* a dependency exists — it does not remove one.
+**Both thick forms imply `-->`; neither replaces it.** An implementer has to see the declaration in
+order to derive from it, so the grant is still required and `grant-sweep` still checks for it. The
+arrows classify *why* a dependency exists — they do not remove one.
+
+**Why `--o` exists, and it is the Law of One's own doing.** Until 2026-08-02 there was one thick
+arrow, and `rendering` and `transcript` each carried two of them — `==> presentation` and `==> host`.
+Both are genuine derivations, so both were drawn the same way, and the rule below then read as
+violated by the design's two most important backends. **The defect was the notation, not the design.**
+`rendering ==> presentation` says *rendering is a presentation backend*; `rendering --o host` says
+*the host drives rendering through the `Presenter` role it declares*. One is identity, the other is
+invocation, and collapsing them lost the distinction the rule depends on.
 
 **The diagram is compile time, and only compile time.** Every arrow is an `#include` permitted by a
 grant list, enforced by `INCLUDE_DIRECTORIES`, and a violation is a compile error. **No arrow means
@@ -583,7 +592,15 @@ and an arrow that has to be added to make something compile is a dependency that
 
 **The second rule is the Law of One at component altitude, and it is checkable.** A backend with two
 `==>` edges is doing two jobs — which is exactly the shape of the `application` this design dissolves:
-it implemented `platform` and `host` both, and its duty string hid that behind a single noun.
+it implemented `platform` and `host` both, and its duty string hid that behind a single noun. That is
+a true two-identity component, and it is precisely what `--o` exists *not* to be confused with:
+`application` is not *driven through* `platform`, it **is** a platform backend as well as a host one.
+
+**"Checkable" is now literal.** `spec_consistency`'s IMPLEMENTS_ARITY verdict asserts that every
+BACKEND has exactly one `==>` and that it points at a CONTRACT. That check did not exist when the rule
+was written, which is the whole reason two backends sat at arity 2 through every green run — **not**
+because the instruments cannot see subgraph-drawn components, since they read both forms, but because
+nothing counted. A rule stated as checkable and left uncounted is a rule in name only.
 
 `gpu_sdl` is drawn like any other BACKEND, because in the target state it *is* one. It was previously
 faded to mark it as future work; that is a fact about today's tree and D7 forbids the target state
@@ -772,10 +789,10 @@ flowchart TD
   auth --> celest
   uview --> celest
   wgn --> celest
-  rend ==> host
+  rend --o host
   rend --> gpu
   tr ==> contract
-  tr ==> host
+  tr --o host
   glb ==> gpu
   sdlb ==> gpu
   csg --> core
@@ -3360,7 +3377,9 @@ not trigger the paint.** Routing it through `participant` instead would have bee
 split case the client is on another machine and cannot pace a remote display, so the code would have
 had to differ between compositions, which is precisely what this design claims never happens. The fix
 was compile-side — `rendering` and `transcript` gain `host`, and `host` declares `Presenter` alongside
-`Application` as the second role a host drives.
+`Application` as the second role a host drives. Both edges are drawn `--o` and not `==>`: implementing
+a role you are driven through is not the same act as implementing the contract that says what you are,
+and the Law of One counts only the second.
 
 That is the working loop the two projections are for: **a runtime requirement, checked against a
 compile-time permission, resolved by changing the permission.**

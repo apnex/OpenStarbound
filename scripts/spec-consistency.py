@@ -103,7 +103,12 @@ TALLY = re.compile(r'([\w-]+) components: (\w+) CONTRACTs, (\w+) BACKENDs, (\w+)
 # compile projection
 C_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b><br/>(\w+)<br/><i>([^<]+)</i>"\]', re.M)
 C_BOX = re.compile(r'^\s*subgraph (\w+) \["<b>(\w+)</b> · (\w+)"\]', re.M)
-C_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>)\s*(\w+)\s*$', re.M)
+# `--o` is the THIRD compile arrow: A implements a ROLE that B declares and is driven through it, as
+# distinct from `==>`, which is A implementing the contract that says what A *is*. Both are genuine
+# derivations, and both were once drawn `==>` -- which made `rendering` and `transcript` read as
+# two-job components under the Law of One. Order matters in the alternation only in that `-->` and
+# `--o` share a prefix; they differ at the last character, so either order parses. See IMPLEMENTS_ARITY.
+C_EDGE = re.compile(r'^\s*(\w+)\s*(-->|==>|--o)\s*(\w+)\s*$', re.M)
 # runtime projection
 R_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b> · (' + EKINDS + r')<br/><i>(\w+)</i>"\]', re.M)
 R_THREAD = re.compile(r'^\s*subgraph (t\w+) \["([^"]+)"\]', re.M)
@@ -317,6 +322,35 @@ def check(text):
         if a in ids and b in ids and ids[a] in grants and ids[b] not in grants[ids[a]]:
             findings.append(("UNGRANTED", "`%s --> %s` is drawn, but %s's grant list omits it"
                              % (ids[a], ids[b], ids[a])))
+
+    # IMPLEMENTS_ARITY -- the Law of One, counted at last.
+    #
+    # Section 4 states the rule as "a backend with two `==>` edges is doing two jobs" and calls it
+    # checkable. Nothing checked it. `rendering` and `transcript` each carried two -- `presentation`
+    # and `host` -- through every green run of every gate, because no instrument counted implements
+    # edges at all. Not a parser blind spot: `ids` above merges C_NODE and C_BOX, so subgraph-drawn
+    # components like `rendering` were always visible. The verdict simply did not exist.
+    #
+    # Resolved 2026-08-02 by splitting the arrow rather than the component: `==>` is identity, `--o`
+    # is a role you are driven through, and only `==>` counts here. Two clauses, because a backend
+    # that implements exactly one thing which is NOT a contract is just as wrong as one implementing
+    # two contracts.
+    implements = {}
+    for a, arrow, b in compile_edges:
+        if arrow == "==>" and a in ids and b in ids:
+            implements.setdefault(ids[a], []).append(ids[b])
+    for name, v in sorted(comp.items()):
+        got = sorted(implements.get(name, []))
+        if v["kind"] == "BACKEND" and len(got) != 1:
+            findings.append(("IMPLEMENTS_ARITY",
+                             "BACKEND `%s` has %d `==>` edge(s) (%s); the Law of One says exactly "
+                             "one. A role you are driven through is `--o`, not `==>`"
+                             % (name, len(got), ", ".join(got) or "none")))
+        for target in got:
+            if comp.get(target, {}).get("kind") != "CONTRACT":
+                findings.append(("IMPLEMENTS_ARITY",
+                                 "`%s ==> %s` implements a %s; `==>` may only point at a CONTRACT"
+                                 % (name, target, comp.get(target, {}).get("kind", "?"))))
 
     # ---- runtime projection -------------------------------------------------------------------
     rnodes = R_NODE.findall(exe)
