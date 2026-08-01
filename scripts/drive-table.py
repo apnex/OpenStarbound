@@ -72,13 +72,25 @@ def build(text):
     rt = rt[1].split("```", 1)[0]
     ids = {i: n for i, n, _k in NODE.findall(rt)}
 
-    incoming = {}
+    incoming, outgoing = {}, {}
     for a, arrow, label, b in EDGE.findall(rt):
         if a not in ids or b not in ids:
             continue
         seq = re.match(r'\s*(\d+|\*)\s*:\s*(.*)', label or "")
         note = (seq.group(2) if seq else (label or "")).strip()
         incoming.setdefault(ids[b], set()).add((ids[a], ARROW[arrow], note))
+        outgoing.setdefault(ids[a], set()).add(ids[b])
+
+    # A SIGNAL WITH NO CONSUMER IS NOT A SIGNAL. This gate asked "what drives this?" of every element
+    # and never asked "who receives it?", so `resizeSignal` -- duty "the window changed; surfaces must
+    # be rebuilt" -- sat with an incoming edge from `inputTick`, NO outgoing edge at all, and a
+    # permanently green run. Nothing rebuilt any surface, and no instrument could say so.
+    #
+    # The asymmetry is deliberate and applies to SIGNALs only. A LOOP or a TICK computes and returns;
+    # it is complete whether or not anything reads the result here. A signal exists ENTIRELY to reach
+    # someone, so an unreceived one is a hole by definition rather than a design choice -- which is
+    # why this verdict takes no declared exceptions, unlike NO_DRIVER above.
+    unheard = sorted(n for n, e in elem.items() if e["kind"] == "SIGNAL" and n not in outgoing)
 
     out = ["| element | kind | cadence | driven by | how | duty |", "|---|---|---|---|---|---|"]
     undriven = []
@@ -95,7 +107,7 @@ def build(text):
             by, how = "**nothing**", "*%s*" % reason
         out.append("| **`%s`** | %s | %s | %s | %s | %s |"
                    % (name, e["kind"], e["cadence"], by, how, e["duty"]))
-    return "\n".join(out), undriven
+    return "\n".join(out), undriven, unheard
 
 
 def main(argv):
@@ -107,7 +119,14 @@ def main(argv):
 
     path = MODEL.SPEC
     text = path.read_text(encoding="utf-8")
-    table, undriven = build(text)
+    table, undriven, unheard = build(text)
+
+    if unheard:
+        print("drive-table: FAIL -- %d SIGNAL(s) reach nobody: %s"
+              % (len(unheard), ", ".join(unheard)))
+        print("  A signal exists to be received. Draw the edge to its consumer in the runtime")
+        print("  projection, or it is not a signal -- it is a value the design forgot to deliver.")
+        return 1
 
     if undriven:
         print("drive-table: FAIL -- %d element(s) have no incoming edge and no declared reason: %s"

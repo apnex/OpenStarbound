@@ -824,8 +824,19 @@ edges that carry information are drawn. `extern` is omitted entirely. The full p
 is the grant table below, and every grant in it is reachable along these arrows.
 
 **No arrow runs between the simulation side and the presentation backends.** That absence is the
-design. `client_opengl` is the only box that touches both arms, which is what makes it the only box
-that has to be duplicated to get a headless client.
+design, and what each composition reaches into `device/` is the whole story:
+
+| composition | what it reaches in `device/` |
+|---|---|
+| `client_opengl` · `client_sdl_gpu` | `presentation`, `rendering`, `gpu`, a GPU backend, `audio`, `audio_sdl`, `mixing` |
+| `client_headless` | `presentation` and `transcript` — a backend that meets a **file**, not hardware |
+| `client_agent` | `presentation` **only**: the contract, and no implementation of it at all |
+| `server` · `world_sim` · `world_gen` | nothing — they do not enter `device/` |
+
+This read "`client_opengl` is the only box that touches both arms" until 2026-08-02, which was true
+when there was one client. Four compositions touch both arms now, and the gradient between them is
+the design working: `client_agent` proves the contract is severable by naming it and linking no
+implementation, and `client_headless` proves a backend need not be hardware.
 
 ### `transcript`'s three modes
 
@@ -3380,7 +3391,7 @@ device pulls it.
 | **`clientTick`** | TICK | DERIVED | `frameLoop` · `headlessLoop` · `inputTick` · `universeLoop` | DISPATCH · HANDOFF | one driver step, sim side |
 | **`fixedTick`** | TICK | FIXED | `clientLoop` | CALL | one step of simulated time |
 | **`inputTick`** | TICK | DERIVED | `frameLoop` | CALL | drains the OS event queue |
-| **`presentTick`** | TICK | DERIVED | `clientTick` · `frameLoop` · `headlessLoop` | DISPATCH · HANDOFF | resample, camera, assemble, paint |
+| **`presentTick`** | TICK | DERIVED | `clientTick` · `frameLoop` · `headlessLoop` · `resizeSignal` | DISPATCH · HANDOFF | resample, camera, assemble, paint |
 | **`recordTick`** | TICK | DERIVED | `clientTick` | HANDOFF | the same scene `presentTick` would paint, written down instead |
 | **`swapTick`** | TICK | DISPLAY | `presentTick` | DISPATCH | presents the backbuffer; **where vsync actually blocks**. Owned by the CONTRACT and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
 | **`universeTick`** | TICK | FREE | `universeLoop` | CALL | one supervision step: world lifecycle, connections, warps |
@@ -3501,6 +3512,7 @@ flowchart TD
   worldloop3 --> worldtick3
   inputtick -.->|*: input · InputSource · SEAM 1| clienttick
   inputtick -.->|*: window changed| resizesignal
+  resizesignal ==>|*: rebuild surfaces · SEAM 1| presenttick
   openglwiring -.->|constructs, then never runs again| frameloop
   headlesswiring -.->|constructs, then never runs again| headlessloop
   sdlgpuwiring -.->|constructs, then never runs again| frameloop
@@ -3901,8 +3913,13 @@ not a decision.
 
 - The graphical client must stay **byte-identical** throughout, proven by the existing
   `scripts/render-gate.sh` and `scripts/render-motion.sh`.
-- The null client must **link shell 2 only** (`extern + core + base + game` + the contract), which is
-  itself the proof that presentation is severable — the same move `render_surface_tests` makes for L1.
+- The null client must link **no GPU backend and no audio backend** — `client_headless` reaches
+  `presentation` and `transcript` in `device/` and nothing else — which is itself the proof that
+  presentation is severable, the same move `render_surface_tests` makes for L1. This constraint read
+  "link shell 2 only (`extern + core + base + game` + the contract)" until 2026-08-02; that was
+  written before the simulation split, and `client_headless` links 25 of the 41 components today.
+  Stating it as a *ceiling on `device/`* rather than a whitelist of four names is what makes it
+  survive the register growing.
 - The round-trip ratchet of Section 3 and the existing `boundary_ratchet` 213 both only go down.
 
 ---
