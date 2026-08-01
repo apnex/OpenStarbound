@@ -968,7 +968,9 @@ grant.
 ### What the grant lists say
 
 Each directory's `INCLUDE_DIRECTORIES` block is the complete statement of what it may include, so the
-register above is enforced by the build rather than by review:
+register above is **intended** to be enforced by the build rather than by review. That enforcement is a
+property of the finished system, not of this document — see the coverage note below the table for what
+is actually established today.
 
 | directory | granted | the statement it makes |
 |---|---|---|
@@ -995,6 +997,39 @@ register above is enforced by the build rather than by review:
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
 four such rows as missing the grants they appeared to have. A grant list that is not complete is not
 a grant list.
+
+### What is actually checked, and what is only asserted
+
+This section describes a system that does not exist. Nothing here can be verified in the sense that
+matters — *would the designed thing work* — and the checks that run against it do three different jobs
+that are easy to conflate. Stating them apart, because "all gates green" otherwise reads as far more
+than it is:
+
+| | what it establishes | coverage |
+|---|---|---|
+| **coherence** | the document does not contradict itself — diagram against register, drawn edges against the grant table, prose tallies against both | **all 21 components.** Says nothing about correctness |
+| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **14 of 21 components** |
+| **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
+
+The seven components with no files — `scene`, `presentation`, `transcript`, `host_null`, `gpu_sdl`,
+`client_opengl`, `client_headless` — have grant rows that are **pure assertion**. `grant-sweep` reports
+them UNVERIFIABLE rather than passing them, which is the only honest verdict available.
+
+Two limits apply even to the anchored fourteen:
+
+- **The file-to-owner map is itself a design assertion.** Placing 25 of `application`'s files into
+  five target components is a decision, not a measurement; a file placed in the wrong box yields
+  grants that are wrong in a way the sweep cannot see, because it would measure the wrong thing
+  consistently. `REGISTER_COUNTS` cross-checks the counts, which catches a miscount and not a
+  misplacement.
+- **The measurement is conditional on the revocations landing.** The sweep reads today's tree, in
+  which the 43 crossings the ratchet tracks still exist. It establishes that the grant table describes
+  the tree *as it will be once those are deleted* — not the tree as it stands.
+
+**So the honest reading of a green run is "no contradiction found", never "the design is correct."**
+The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
+assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
+That is a ratchet pointing the opposite way from the removal ratchet, and Section 5 should gate both.
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
@@ -1195,9 +1230,12 @@ and a grant list — `platform`, `host`, `gpu` — and `presentation` is the onl
 Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 4 as first
 published would not have compiled.**
 
-Every other artifact here was checked against an instrument: the diagram's edges came from a measured
-include sweep and are machine-verified against the register. The grant table's contents were derived
-from the design instead — and that is precisely where the defect sat. The rule the render work already
+The diagram's edges came from a measured include sweep, but the claim once made here — that they were
+"machine-verified against the register" — was itself false. Nothing compared the drawn edges to the
+grant table until 2026-08-01, and the first run of that comparison found `gpu --> base` drawn against a
+row granting `gpu` only `core`. Two artifacts of this section had been contradicting each other in
+plain sight. The grant table's contents were derived from the design rather than measured, and that is
+where the first two defects sat. The rule the render work already
 runs under, *no document may state a current-state number an instrument cannot measure*, applies to
 grants as well as numbers. Section 5 must gate the grant table against a measured sweep.
 
