@@ -283,10 +283,11 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 
 ---
 
-## 4. Structure and the naming register — PROVISIONAL
+## 4. The target state — PROVISIONAL
 
-These are the names the rest of the work is designed against. Adopting them forces renames,
-consolidations and splits; each is listed with its action so nothing arrives by surprise.
+**This section describes the target state and nothing else.** No migration, no actions against the
+current tree, no history — those live in Section 9, and the delta itself is a separate exercise. Read
+every table here as a description of the system we are building, not of the one we have.
 
 ### There are two seams, not one
 
@@ -536,6 +537,20 @@ is the grant table below, and every grant in it is reachable along these arrows.
 design. `client_opengl` is the only box that touches both arms, which is what makes it the only box
 that has to be duplicated to get a headless client.
 
+### `transcript`'s three modes
+
+D4's recorder was specified against a stream of frames. Against a stream of **scenes** it says more,
+because a scene is semantic where a frame is baked:
+
+| mode | keeps | serves |
+|---|---|---|
+| **discard** | nothing; the delta is accepted and dropped | bulk runs, where the point is that the simulation ran at all |
+| **record** | the scene deltas, replayable | assertions — *"the player was at (x,y), facing left"* — and an agent's perception |
+| **strict** | the deltas, and rejects any naming something outside the scene vocabulary | the forcing function: a contract violation becomes a test failure rather than a review comment |
+
+**strict is what keeps the contract honest.** Without it a type that should not cross can cross for
+months and nothing says so.
+
 ### Two roles, two names
 
 The word that was doing both jobs now splits:
@@ -603,28 +618,28 @@ relocation of already-separated code, and it is independent of seam 1.
 
 Every component in the diagram, in the same reading order.
 
-| name | kind | zone | duty | assembled from | action |
-|---|---|---|---|---|---|
-| **`core`** | FOUNDATION | SUBSTRATE | language and containers | unchanged (216 files, 56,149 lines) | **KEEP** |
-| **`base`** | FOUNDATION | SUBSTRATE | shared services | unchanged (29 files, 7,380 lines) | **KEEP** |
-| **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | unchanged (4 headers, 142 lines, 27 pure virtuals) | **KEEP** — the model the other contract directories copy |
-| **`host`** | CONTRACT | SUBSTRATE | the host contract | `StarApplication.hpp`, `StarApplicationController.hpp`, `StarApplication.cpp` — 3 files, 209 lines, out of `application` | **SPLIT OUT** — see below; already has 8 consumers in 3 directories |
-| **`host_sdl`** | BACKEND | SUBSTRATE | the SDL host implementation | `StarMainApplication.hpp` + `StarMainApplication_sdl.cpp` — 2 files, 1,491 lines, out of `application` | **SPLIT OUT** — owns `frameLoop` |
-| **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | — | **NEW** — owns `headlessLoop`; 35 no-ops over an already-abstract interface |
-| **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the 10 vendor files — 1,381 lines, out of `application` | **SPLIT OUT** — `application` ceases to exist |
-| **`scene`** | CONTRACT | SEAM | what exists, where, moving how | — | **NEW** — the payload vocabulary. Split from `presentation` so the simulation can be granted the vocabulary **without** the interfaces |
-| **`presentation`** | CONTRACT | SEAM | the presentation contract | — | **NEW** — headers only, no library target. **Contains no drawing code.** |
-| **`game`** | LIBRARY | INTERIOR | the simulation | today's `game` minus the vocabulary below | **SPLIT** — vocabulary moves down; nothing else moves |
-| **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | unchanged (61 files, 9,646 lines) | **KEEP** — grant changes only |
-| **`frontend`** | LIBRARY | INTERIOR | this game's screens | unchanged (102 files, 16,861 lines) | **KEEP** — grant changes only |
-| **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | today's `rendering` minus the text-metrics split | **KEEP the name, SPLIT the contents** — and lose the `game` grant |
-| **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | — | **NEW** — D4's three-mode recorder. An instrument, not a stub, which is why it is not inside the contract |
-| **`gpu`** | CONTRACT | SEAM | the GPU contract | `StarRenderer.hpp/.cpp`, `StarTextureAtlas.hpp`, `StarRenderDiagnostics.hpp` — 4 files, 835 lines, out of `application` | **SPLIT OUT** — gives an existing boundary a grant list |
-| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | `StarRenderer_opengl.*`, `StarGlRenderSurface.*`, `StarGlTexturePrimitives.*` — 6 files, 3,456 lines, out of `application` | **SPLIT OUT** |
-| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | — | **FUTURE** — out of scope here (D2); listed so the register shows where it lands |
-| **`client`** | LIBRARY | SHELL | owns the client frame | today's `StarClientApplication` | **SPLIT** — keeps the name, loses all backend knowledge |
-| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | today's client entry point | **NEW** — pure wiring: `host_sdl` + `rendering` + `gpu_opengl`. No elements |
-| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | — | **NEW** — pure wiring: `host_null` + `transcript`. No elements |
+| name | kind | zone | duty | contents |
+|---|---|---|---|---|
+| **`core`** | FOUNDATION | SUBSTRATE | language and containers | the language, containers and algorithms everything rests on |
+| **`base`** | FOUNDATION | SUBSTRATE | shared services | services shared by the simulation and the shells |
+| **`platform`** | CONTRACT | SUBSTRATE | platform-service contracts | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`host`** | CONTRACT | SUBSTRATE | the host contract | `Application` — what a host runs — and `ApplicationController` — what a host provides |
+| **`host_sdl`** | BACKEND | SUBSTRATE | the SDL host implementation | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
+| **`host_null`** | BACKEND | SUBSTRATE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
+| **`platform_pc`** | BACKEND | SUBSTRATE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
+| **`scene`** | CONTRACT | SEAM | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
+| **`presentation`** | CONTRACT | SEAM | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`game`** | LIBRARY | INTERIOR | the simulation | the simulation, and the `RenderCallback` sink entities push scene items into |
+| **`windowing`** | LIBRARY | INTERIOR | the widget toolkit | widgets, layout and `GuiContext` |
+| **`frontend`** | LIBRARY | INTERIOR | this game's screens | this game's panes, menus and screens |
+| **`rendering`** | BACKEND | PERIPHERY | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`transcript`** | BACKEND | PERIPHERY | records instead of drawing | the same scene, written down instead of drawn — three modes below |
+| **`gpu`** | CONTRACT | SEAM | the GPU contract | the `Renderer` interface, the texture atlas, render diagnostics |
+| **`gpu_opengl`** | BACKEND | PERIPHERY | the OpenGL backend | the OpenGL implementation of `Renderer` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | PERIPHERY | the SDL_GPU backend | the SDL_GPU implementation of `Renderer` |
+| **`client`** | LIBRARY | SHELL | owns the client frame | composition, `simLoop`, `clientTick`, `simTick`, `audioTick` |
+| **`client_opengl`** | ENTRYPOINT | SHELL | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
+| **`client_headless`** | ENTRYPOINT | SHELL | headless entry point | wiring only: `host_null` + `transcript` |
 
 Twenty components: five CONTRACTs, seven BACKENDs, four LIBRARYs, two FOUNDATIONs, two ENTRYPOINTs.
 Every ENTRYPOINT is pure wiring and owns no element — which is the test that the altitude is right.
@@ -660,17 +675,6 @@ one; that prediction was wrong.
 `simLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
 fixed step while real time does not cooperate: it runs `simTick` zero-to-N times to bring simulated
 time level with real time.
-
-### Two welds to cut
-
-Both are one-liners in `StarMainApplication_sdl.cpp`, and both are load-bearing:
-
-| weld | what it does | why it must go |
-|---|---|---|
-| `max(round(m_updateTicker.ticksBehind()), 1)` | forces **at least one** sim tick per driver step | presentation can never outrun the sim — at 144 Hz the simulation is dragged to 144 ticks/second |
-| `Thread::sleepPrecise(m_updateTicker.spareTime())` | the driver idles on the **simulation's** spare time | the pixel cadence stays hostage to the sim's; the driver must idle against its own target |
-
-The second is the subtler of the two and was not visible until the loop body was read line by line.
 
 ### Three clocks, of which we own two
 
@@ -756,22 +760,6 @@ fixed-rate recording — open); camera resolution moving to the presentation sid
 machinery than `present(Frame)`. The Director waived A3's Earned Exposure for this deliberately: the
 payoff is judged worth the forecast surface.
 
-### The pattern already exists — it just has one home out of three
-
-Assigning kinds surfaced something the duty phrases had hidden. **The codebase already uses
-contract-and-backend. It does it three times. Only one of the three has a directory.**
-
-| contract | pure virtuals | where it lives today | its backend |
-|---|---:|---|---|
-| `platform`'s four services | 27 | `source/platform` — **its own directory** | `application` (`PcP2PNetworkingService : public P2PNetworkingService`) |
-| `ApplicationController` | 35 | **inside** `application` | an anonymous `struct Controller` inside `StarMainApplication_sdl.cpp` |
-| `Renderer` | 42 | **inside** `application` | `OpenGlRenderer` |
-
-`source/application` is a BACKEND that has swallowed two CONTRACTs. That is the whole of the naming
-confusion in one sentence, and it means **this design is not introducing a pattern — it is finishing
-one the codebase started.** After the split those three pre-existing contracts each have a directory
-and a grant list — `platform`, `host`, `gpu` — and `presentation` is the only genuinely new one.
-
 ### Why `host` is its own directory and not part of `platform`
 
 A first draft folded `ApplicationController` into `platform`. Two measurements killed that:
@@ -796,92 +784,6 @@ would need a grant on `application` and could name SDL.
 `main()`/`WinMain()` — an entrypoint artifact, not a library one — so it belongs to `client_opengl`,
 and `client`'s current dependency on `application` disappears with the split rather than needing a
 grant.
-
-### The grant table was wrong, and the reason matters
-
-Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 4 as first
-published would not have compiled.**
-
-Every other artifact here was checked against an instrument: the diagram's edges came from a measured
-include sweep and are machine-verified against the register. The grant table's contents were derived
-from the design instead — and that is precisely where the defect sat. The rule the render work already
-runs under, *no document may state a current-state number an instrument cannot measure*, applies to
-grants as well as numbers. Section 5 must gate the grant table against a measured sweep.
-
-**The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
-That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
-the GPU-backend side of a working boundary. Merging them would dissolve a boundary that already passes
-in substance, in order to fix a naming problem. The register now splits three ways instead.
-
-`client` splits into three directories rather than one directory with three entry points **because
-grant lists are per-directory.** One directory means one grant list, and the rule that matters —
-*the shared client may not name a backend* — would stop being compile-enforced. The split is the
-enforcement.
-
-### The fine grain — three splits the measurements force
-
-**(1) `rendering` is two things, and the UI consumes one of them.** Measured:
-
-| edge | headers consumed |
-|---|---|
-| `windowing → rendering` (3 includes, 1 file — `GuiContext`) | `TextPainter`, `DrawablePainter`, `AssetTextureGroup` |
-| `frontend → rendering` (9 includes, 9 files) | `TextPainter` ×4, `WorldPainter` ×3, `AssetTextureGroup` ×1, `EnvironmentPainter` ×1 |
-
-Since `windowing` and `frontend` land on the simulation side of seam 1, every one of those has to
-resolve. Three of them resolve by themselves and one does not:
-
-- **`DrawablePainter` and `AssetTextureGroup`** — the UI's need disappears when the UI stops drawing
-  and starts emitting `Drawable`s into the frame. No split; the consumption simply ends.
-- **`WorldPainter` ×3 and `EnvironmentPainter` ×1** — the UI directly driving world drawing, from four
-  named files: `StarCraftingInterface.hpp`, `StarWireInterface.cpp`, `StarMainMixer.cpp`,
-  `StarTitleScreen.cpp`. Small enough to handle individually rather than architecturally.
-- **`TextPainter` genuinely splits.** Its method list is two jobs in one class: `stringWidth`,
-  `wrapText`, `wrapTextViews`, `determineTextSize`, `determineLineSize`, `glyphWidth` are **layout**;
-  `renderText`, `renderLine`, `renderGlyph`, `renderPrimitives` are **drawing**. Layout goes to the
-  simulation side under Section 1's *metrics are data* precedent; rasterisation stays in `rendering`.
-
-**(2) The GPU seam splits `application`'s render half in two**, along a line the includes already
-draw — `gpu` (4 files, 835 lines, abstract) and `gpu_opengl` (6 files, 3,456 lines, GL). See the
-register.
-
-**(3) Revoking `rendering`'s `game` grant is three jobs, not one.** The edge is 24 includes across 12
-files, and the 12 distinct headers cluster by difficulty:
-
-| cluster | headers | why it is that hard |
-|---|---|---|
-| **vocabulary** | `WorldRenderData` ×4, `WorldCamera` ×4, `Parallax` ×2, `Drawable` ×1, `SkyRenderData` ×1 | moves down into `presentation` — this is the work the vocabulary register describes |
-| **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
-| **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
-
-The middle cluster is the one this spec had not confronted: Section 6 listed `Root` coupling as a *secondary*
-risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
-runtime coupling, and `#include` counts alone would never have surfaced it.
-
-### Vocabulary register
-
-| type | today | target | action |
-|---|---|---|---|
-| `Drawable` | `game` | `presentation` | **MOVE** — six core includes, already carries `DataStream` operators |
-| `WorldCamera` | `game` | `presentation` | **MOVE** — view state, 4 includes from `rendering` |
-| text metrics (`stringWidth`, `wrapText`, `determineTextSize`, …) | `rendering/TextPainter` | simulation side | **SPLIT** — layout is data; rasterisation stays |
-| `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
-| `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
-| `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
-| `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
-| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
-
-### Renamed, and deliberately not renamed
-
-- **`StarRenderingLuaBindings`** (in `client`) — **RESHAPE.** Section 2's caveat: it binds to
-  `ClientApplication` methods and calls `app->renderer()`. It must address the contract, not a shell,
-  before a second shell can offer the same four Lua groups.
-- **The T4 tier label "presentation"** — **RETIRED.** In the target state `windowing`/`frontend` and
-  `rendering` no longer share a tier, so `TIERS` in `scripts/arch-graph.py` changes shape, not just
-  wording. The boundary document's Section 12 (the presentation tier's three duties) is rewritten by this.
-- **`RenderCallback`** — **NOT RENAMED.** It is tempting to rename it away from the contract's
-  vocabulary, but the measurement in Section 1 says it occurs in 39 files and all 39 are in `source/game`. It
-  never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
-  enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
 
 ### What the grant lists say
 
@@ -922,32 +824,6 @@ Two grants in that table are deliberately absent rather than forgotten. `renderi
 platform services are Steam and P2P, and its only `application` include was `StarRenderer.hpp`, which
 becomes `gpu`. Dropping both leaves the drawing code depending on nothing but the foundation and two
 contracts.
-
-### Ordering constraint
-
-Separating the two seams separates the ordering, and the useful consequence is that **seam 2 is
-unblocked today.**
-
-**Seam 2 — do it first, alone.** Splitting `gpu` and `gpu_opengl` out of `application` is a
-relocation of code that is already separated by its includes. Nothing needs injecting: the shell goes
-on constructing `OpenGlRenderer` exactly as it does now, and the only edits are grant lists. It does
-not depend on the contract, on the vocabulary assessment, or on Section 6. It is the cheapest step in this
-spec and it stands on its own merits even if seam 1 is never built.
-
-**Seam 1 — the order is forced.** The GL backend's only external consumer is
-`StarMainApplication_sdl.cpp`, the shell that owns the GL context, so taking the backend out of its
-reach is correct under D5 but must come last:
-
-1. `presentation` exists and the vocabulary moves down (gated by Section 6's assessment).
-2. `Root` reads leave the four painters — injected resource access, not a singleton reach.
-3. `client` takes injected backends instead of constructing GL.
-4. **Only then** does `${STAR_GAME_INCLUDES}` come out of `rendering`.
-
-Step 2 is new here, and it comes from the fine-grain measurement: the vocabulary can move down
-without the painters being able to draw, because they would still be reaching `Root` for assets.
-Types and runtime coupling have to be cut in that order.
-
----
 
 ## 5. Verification — NOT YET DESIGNED
 
@@ -1037,6 +913,8 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
    ceiling.
 3. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
    D6. See Section 6. Section 4 is no longer gated by it.
+4. **The delta from today** — Section 9, not yet computed. Section 4 is now target-state only, so the
+   move list, the removal ratchet and the cleanup ledger are a separate exercise.
 4. **Sequencing** — the order of extraction, each step provable and reversible.
 5. **Out-of-scope statement** — explicit list of what this spec does not cover.
 6. **Cleanup ledger** — what the contract exposes as dead, and where it gets removed.
@@ -1052,3 +930,167 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 - Task #199 — the sink-gating groundwork already landed (`WorldClient::setHeadless`,
   `ClientRenderCallback(wantView)`).
 - Task #191 — `TilePainter : TileDrawer`, the one inheritance edge leaving the render subsystem.
+
+---
+
+## 9. Delta from today — NOT YET COMPUTED
+
+**Section 4 describes the target state and nothing else** — no migration, no actions against the
+current tree, no history. Everything about *getting there* lives here, and the delta itself is a
+separate exercise.
+
+What a delta document has to produce:
+
+1. **The move list** — which of today's files become which target component, complete and file-level.
+   `scripts/grant-sweep.py` already carries a partial mapping and cross-checks its own file counts.
+2. **The removal ratchet** — `grant-sweep` measures **43 direct crossings across 10 edges** that the
+   target forbids. The delta is finished when that reaches zero.
+3. **The ordering** — below, as far as it is currently understood.
+4. **The cleanup ledger** — what the contract exposes as dead, and where it is deleted.
+
+### Ordering, as currently understood
+
+Three constraints fix most of the sequence.
+
+**Seam 2 is unblocked and independent.** Splitting `gpu` and `gpu_opengl` out is a relocation of code
+already separated by its includes — no injection, no contract, no vocabulary work, only grant lists. It
+stands on its own merits even if seam 1 is never built.
+
+**The vocabulary is a cascade, so order it accordingly.** `Drawable` and `GameTypes` come down first;
+`Animation`, `EntityDrawables`, `OverheadBar`, `WorldCamera`, `Particle` and `WeatherTypes` follow for
+free behind them. Starting anywhere else does the same work several times.
+
+**Seam 1's order is forced by what each step makes possible:**
+
+1. Delete the dead `StarEntity.hpp` include from `StarWorldRenderData.hpp` — byte-identical, and it
+   removes the one dependency that looked fatal.
+2. `scene` exists and the cascade lands in it.
+3. `Root` reads leave the four painters — injected resource access, not a singleton reach. Types can
+   move down without this, but the painters still will not compile without `game` until it is done.
+4. `presentation` exists **and `client_headless` lands with it**, not after. A3's Earned Exposure: a
+   contract shipped without its second consumer calcifies around its first.
+5. `host` splits from `application`, then `host_sdl` / `host_null` / `platform_pc`.
+6. `client` takes injected backends; the entrypoints become wiring.
+7. **Only then** `${STAR_GAME_INCLUDES}` comes out of `source/rendering/CMakeLists.txt`.
+
+Two welds must be cut somewhere in 5–7, and neither is a grant change:
+`max(round(m_updateTicker.ticksBehind()), 1)` forces at least one sim tick per driver step, and
+`Thread::sleepPrecise(m_updateTicker.spareTime())` paces the driver on the simulation's clock.
+
+### Raw material
+
+The measured findings that produced the target state, kept because they are the delta's inputs and
+would otherwise have to be rediscovered.
+
+### Two welds to cut
+
+Both are one-liners in `StarMainApplication_sdl.cpp`, and both are load-bearing:
+
+| weld | what it does | why it must go |
+|---|---|---|
+| `max(round(m_updateTicker.ticksBehind()), 1)` | forces **at least one** sim tick per driver step | presentation can never outrun the sim — at 144 Hz the simulation is dragged to 144 ticks/second |
+| `Thread::sleepPrecise(m_updateTicker.spareTime())` | the driver idles on the **simulation's** spare time | the pixel cadence stays hostage to the sim's; the driver must idle against its own target |
+
+The second is the subtler of the two and was not visible until the loop body was read line by line.
+
+### The pattern already exists — it just has one home out of three
+
+Assigning kinds surfaced something the duty phrases had hidden. **The codebase already uses
+contract-and-backend. It does it three times. Only one of the three has a directory.**
+
+| contract | pure virtuals | where it lives today | its backend |
+|---|---:|---|---|
+| `platform`'s four services | 27 | `source/platform` — **its own directory** | `application` (`PcP2PNetworkingService : public P2PNetworkingService`) |
+| `ApplicationController` | 35 | **inside** `application` | an anonymous `struct Controller` inside `StarMainApplication_sdl.cpp` |
+| `Renderer` | 42 | **inside** `application` | `OpenGlRenderer` |
+
+`source/application` is a BACKEND that has swallowed two CONTRACTs. That is the whole of the naming
+confusion in one sentence, and it means **this design is not introducing a pattern — it is finishing
+one the codebase started.** After the split those three pre-existing contracts each have a directory
+and a grant list — `platform`, `host`, `gpu` — and `presentation` is the only genuinely new one.
+
+### The grant table was wrong, and the reason matters
+
+Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 4 as first
+published would not have compiled.**
+
+Every other artifact here was checked against an instrument: the diagram's edges came from a measured
+include sweep and are machine-verified against the register. The grant table's contents were derived
+from the design instead — and that is precisely where the defect sat. The rule the render work already
+runs under, *no document may state a current-state number an instrument cannot measure*, applies to
+grants as well as numbers. Section 5 must gate the grant table against a measured sweep.
+
+**The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
+That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
+the GPU-backend side of a working boundary. Merging them would dissolve a boundary that already passes
+in substance, in order to fix a naming problem. The register now splits three ways instead.
+
+`client` splits into three directories rather than one directory with three entry points **because
+grant lists are per-directory.** One directory means one grant list, and the rule that matters —
+*the shared client may not name a backend* — would stop being compile-enforced. The split is the
+enforcement.
+
+### The fine grain — three splits the measurements force
+
+**(1) `rendering` is two things, and the UI consumes one of them.** Measured:
+
+| edge | headers consumed |
+|---|---|
+| `windowing → rendering` (3 includes, 1 file — `GuiContext`) | `TextPainter`, `DrawablePainter`, `AssetTextureGroup` |
+| `frontend → rendering` (9 includes, 9 files) | `TextPainter` ×4, `WorldPainter` ×3, `AssetTextureGroup` ×1, `EnvironmentPainter` ×1 |
+
+Since `windowing` and `frontend` land on the simulation side of seam 1, every one of those has to
+resolve. Three of them resolve by themselves and one does not:
+
+- **`DrawablePainter` and `AssetTextureGroup`** — the UI's need disappears when the UI stops drawing
+  and starts emitting `Drawable`s into the frame. No split; the consumption simply ends.
+- **`WorldPainter` ×3 and `EnvironmentPainter` ×1** — the UI directly driving world drawing, from four
+  named files: `StarCraftingInterface.hpp`, `StarWireInterface.cpp`, `StarMainMixer.cpp`,
+  `StarTitleScreen.cpp`. Small enough to handle individually rather than architecturally.
+- **`TextPainter` genuinely splits.** Its method list is two jobs in one class: `stringWidth`,
+  `wrapText`, `wrapTextViews`, `determineTextSize`, `determineLineSize`, `glyphWidth` are **layout**;
+  `renderText`, `renderLine`, `renderGlyph`, `renderPrimitives` are **drawing**. Layout goes to the
+  simulation side under Section 1's *metrics are data* precedent; rasterisation stays in `rendering`.
+
+**(2) The GPU seam splits `application`'s render half in two**, along a line the includes already
+draw — `gpu` (4 files, 835 lines, abstract) and `gpu_opengl` (6 files, 3,456 lines, GL). See the
+register.
+
+**(3) Revoking `rendering`'s `game` grant is three jobs, not one.** The edge is 24 includes across 12
+files, and the 12 distinct headers cluster by difficulty:
+
+| cluster | headers | why it is that hard |
+|---|---|---|
+| **vocabulary** | `WorldRenderData` ×4, `WorldCamera` ×4, `Parallax` ×2, `Drawable` ×1, `SkyRenderData` ×1 | moves down into `presentation` — this is the work the vocabulary register describes |
+| **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
+| **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
+
+The middle cluster is the one this spec had not confronted: Section 6 listed `Root` coupling as a *secondary*
+risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
+runtime coupling, and `#include` counts alone would never have surfaced it.
+
+### Vocabulary register
+
+| type | today | target | action |
+|---|---|---|---|
+| `Drawable` | `game` | `presentation` | **MOVE** — six core includes, already carries `DataStream` operators |
+| `WorldCamera` | `game` | `presentation` | **MOVE** — view state, 4 includes from `rendering` |
+| text metrics (`stringWidth`, `wrapText`, `determineTextSize`, …) | `rendering/TextPainter` | simulation side | **SPLIT** — layout is data; rasterisation stays |
+| `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
+| `Frame`, `AudioBatch`, `InputBatch` | — | `presentation` | **NEW** |
+| `AnchorTypes` | `rendering` (35 lines) | `presentation` | **MOVE** — text anchoring is vocabulary, not drawing |
+| `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
+| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 6** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+
+### Renamed, and deliberately not renamed
+
+- **`StarRenderingLuaBindings`** (in `client`) — **RESHAPE.** Section 2's caveat: it binds to
+  `ClientApplication` methods and calls `app->renderer()`. It must address the contract, not a shell,
+  before a second shell can offer the same four Lua groups.
+- **The T4 tier label "presentation"** — **RETIRED.** In the target state `windowing`/`frontend` and
+  `rendering` no longer share a tier, so `TIERS` in `scripts/arch-graph.py` changes shape, not just
+  wording. The boundary document's Section 12 (the presentation tier's three duties) is rewritten by this.
+- **`RenderCallback`** — **NOT RENAMED.** It is tempting to rename it away from the contract's
+  vocabulary, but the measurement in Section 1 says it occurs in 39 files and all 39 are in `source/game`. It
+  never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
+  enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
