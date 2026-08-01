@@ -45,6 +45,19 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 
+def _spec_model():
+    """Import the ONE table reader. Hyphenated filenames cannot be imported normally; restating its
+    regexes here instead is the defect it exists to delete -- three parsers once gave three different
+    counts of one table."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spec_model", str(REPO / "scripts" / "spec-model.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+MODEL = _spec_model()
+
 KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
 # The prose tally lists kinds in its own order, which is not KINDS'. Kept separate rather than
 # reordered: KINDS is the taxonomy, this is one sentence's phrasing, and conflating them made the
@@ -215,13 +228,9 @@ def projections(text):
 
 
 def parse(text):
-    components = {n: dict(kind=k, zone=z, duty=d.strip())
-                  for n, k, z, d in COMPONENT_ROW.findall(text)}
-    elements = {n: dict(kind=k, cadence=c, cardinality=card, owner=o, thread=t)
-                for n, k, c, card, o, t in ELEMENT_ROW.findall(text)}
-    grants = {n: set(re.findall(r'\w+', g.replace('*', '')))
-              for n, g in GRANT_ROW.findall(text) if re.fullmatch(r'[\w,` *]+', g)}
-    return components, elements, grants
+    # Delegates: see MODEL. Three tools once parsed the grant table three ways and reported 44, 62
+    # and 62 rows for it. There is one parser now, so there is one count.
+    return MODEL.components(text), MODEL.elements(text), MODEL.grants(text)
 
 
 def check(text):

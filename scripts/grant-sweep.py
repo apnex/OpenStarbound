@@ -35,6 +35,19 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 SRC = REPO / "source"
 
+def _spec_model():
+    """Import the ONE table reader. Hyphenated filenames cannot be imported normally; restating its
+    regexes here instead is the defect it exists to delete -- three parsers once gave three different
+    counts of one table."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spec_model", str(REPO / "scripts" / "spec-model.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+MODEL = _spec_model()
+
 INCLUDE = re.compile(r'^\s*#\s*include\s*"([^"]+)"', re.M)
 CODE_EXT = (".hpp", ".cpp", ".h")
 
@@ -176,23 +189,14 @@ def scan():
 
 
 def parse_grants():
-    """Pull the grant table out of the spec. Rows look like:
-         | `rendering` | core, base, presentation, scene, gpu | ...statement... |
-       Bold markers and an `extern` grant are stripped; `extern` is vendored and out of scope."""
+    """Delegates to the ONE table reader; see MODEL.
+
+    This function used to carry its own regex, and it disagreed with the two other tools that parsed
+    the same table: 44 rows here, 62 in spec-consistency, 62 in composition-graphs. Each was
+    internally consistent and printed only its own number, so the disagreement was invisible for a
+    whole design session. Returned as sorted lists because the reporting below joins them."""
     text = SPEC.read_text(encoding="utf-8")
-    grants = {}
-    for m in re.finditer(r"^\| ([`\w, ]+) \| ([^|]+) \| [^|]+ \|$", text, re.M):
-        names = re.findall(r"`([\w_]+)`", m.group(1))
-        if not names:
-            continue
-        raw = re.sub(r"\*\*", "", m.group(2))
-        listed = [x.strip(" `+*") for x in re.split(r"[,+]", raw)]
-        listed = [x for x in listed if x and x != "extern"]
-        if not listed or not all(re.fullmatch(r"[\w_]+", x) for x in listed):
-            continue
-        for n in names:
-            grants[n] = listed
-    return grants
+    return {n: sorted(v) for n, v in MODEL.grants(text).items()}
 
 
 def assert_register_counts(files, out):

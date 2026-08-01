@@ -30,6 +30,19 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SPEC = REPO / "docs/superpowers/specs/2026-08-01-sovereign-headless-client-design.md"
 
+def _spec_model():
+    """Import the ONE table reader. Hyphenated filenames cannot be imported normally; restating its
+    regexes here instead is the defect it exists to delete -- three parsers once gave three different
+    counts of one table."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spec_model", str(REPO / "scripts" / "spec-model.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+MODEL = _spec_model()
+
 MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/composition-graphs.py#%s -->"
 MARK_END = "<!-- END GENERATED: %s -->"
 
@@ -88,16 +101,16 @@ def loops_of(text):
     LOOP and TICK only. WIRING runs once and SIGNAL is an event; drawing them would answer a question
     nobody asks of a composition diagram. Empty is legal and common -- most components are called."""
     out = {}
-    for name, kind, cadence, card, owner in ELEMENT_ROW.findall(text):
-        out.setdefault(owner, []).append((name, kind, cadence, card))
+    for name, e in MODEL.elements(text).items():
+        if e["kind"] in ("LOOP", "TICK"):
+            out.setdefault(e["owner"], []).append((name, e["kind"], e["cadence"], e["cardinality"]))
     return out
 
 
 def parse(text):
-    comp = {n: dict(kind=k, zone=z, duty=d.strip()) for n, k, z, d in COMPONENT_ROW.findall(text)}
-    grants = {n: set(re.findall(r'\w+', g.replace('*', '')))
-              for n, g in GRANT_ROW.findall(text) if re.fullmatch(r'[\w,` *]+', g)}
-    return comp, grants
+    """Delegates: see MODEL. The local COMPONENT_ROW/GRANT_ROW regexes are gone, and with them the
+    22 rows from other tables that used to be read as grants."""
+    return MODEL.components(text), MODEL.grants(text)
 
 
 def closure(root, comp, grants):

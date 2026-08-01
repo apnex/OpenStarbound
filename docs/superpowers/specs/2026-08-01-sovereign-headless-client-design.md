@@ -2466,6 +2466,7 @@ flowchart TD
 
 Every component in the diagram, in the same reading order.
 
+<!-- TABLE: components -->
 | name | kind | zone | duty | contents |
 |---|---|---|---|---|
 | **`core`** | FOUNDATION | SUBSTRATE | language and containers | the language, containers and algorithms everything rests on |
@@ -2508,6 +2509,7 @@ Every component in the diagram, in the same reading order.
 | **`server`** | ENTRYPOINT | SHELL | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | SHELL | ticks one world with no participant | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | SHELL | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
+<!-- END TABLE: components -->
 
 Forty components: ten CONTRACTs, nine BACKENDs, twelve LIBRARYs, two FOUNDATIONs, seven
 ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
@@ -2649,6 +2651,7 @@ register above is **intended** to be enforced by the build rather than by review
 property of the finished system, not of this document — see the coverage note below the table for what
 is actually established today.
 
+<!-- TABLE: grants -->
 | directory | granted | the statement it makes |
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
@@ -2689,6 +2692,7 @@ is actually established today.
 | `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
 | `world_sim` | core, base, game, world, worldgen, platform | **no `universe` either** — residency comes from configuration, not from participants |
 | `world_gen` | core, base, game, worldgen, celestial, platform | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
+<!-- END TABLE: grants -->
 
 **Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
 above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
@@ -3058,6 +3062,7 @@ compile-time permission, resolved by changing the permission.**
 
 Two container columns, one per projection — the graft, in a table.
 
+<!-- TABLE: elements -->
 | element | kind | cadence | **cardinality** | owner *(compile)* | thread *(run)* | duty |
 |---|---|---|---|---|---|---|
 | **`frameLoop`** | LOOP | DISPLAY | **PROCESS** | `host_sdl` | `driver` | drives a process that has a display |
@@ -3084,6 +3089,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`simWiring`** | WIRING | ONCE | **PROCESS** | `world_sim` | `main` | composes `world` and a configured residency; starts `worldLoop` |
 | **`genWiring`** | WIRING | ONCE | **PROCESS** | `world_gen` | `main` | generates and exits. **The only composition that starts no clock at all** |
 | **`colocateWiring`** | WIRING | ONCE | **PROCESS** | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
+<!-- END TABLE: elements -->
 
 *Called by* was a column here and is now the execution graph's edges, which is the only copy.
 
