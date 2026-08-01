@@ -362,6 +362,17 @@ ENDIF ()
 #
 # ANY coupling routed through a third-party API is invisible to the include sweep. This is the first
 # instance found; it is unlikely to be the last, and Section 6 now says so.
+# DRIVE TABLE. The element register says what each element IS; it never said what STARTS it. That
+# relationship existed only as edges inside a mermaid diagram, so answering "what drives this?" meant
+# tracing arrows by eye -- and when the Director asked for it as a table it had to be assembled by
+# hand, which is the definition of a missing artifact. Derived from the runtime projection so it
+# cannot drift, and it FAILS on an element with neither an incoming edge nor a declared reason:
+# undriven is a design statement or a hole, never neither.
+IF (Python3_Interpreter_FOUND)
+  ADD_TEST (NAME drive_table COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/drive-table.py --check)
+ENDIF ()
+
 IF (Python3_Interpreter_FOUND)
   ADD_TEST (NAME host_api_neutral COMMAND ${Python3_EXECUTABLE}
             ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/layering-lint.py
@@ -415,7 +426,7 @@ IF (Python3_Interpreter_FOUND)
   IF (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     LIST (APPEND star_noassets_tests link_sweep)   # registered above only on Linux -- see there
   ENDIF ()
-  LIST (APPEND star_noassets_tests host_api_neutral)
+  LIST (APPEND star_noassets_tests host_api_neutral drive_table)
 ELSE ()
   LIST (APPEND star_noassets_tests render_gates_unavailable)
 ENDIF ()

@@ -3091,6 +3091,50 @@ Two container columns, one per projection — the graft, in a table.
 | **`colocateWiring`** | WIRING | ONCE | **PROCESS** | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
 <!-- END TABLE: elements -->
 
+### What drives what — GENERATED
+
+The register above says what each element *is*. This says what starts it, and it is derived from the
+runtime projection's edges rather than written, so the two cannot disagree.
+
+**The arrows carry the design.** `CALL` is a direct call inside one component. `DISPATCH` crosses a
+CONTRACT — the caller names an interface and never the implementation, which is what makes
+`client_opengl` and `client_sdl_gpu` differ by a grant rather than by a code path. `HANDOFF` crosses a
+thread or a process, and is the only kind that survives the network split unchanged.
+
+An element with **no** driver is listed as such with its reason. That is information, not a gap: the
+three drivers are the roots of their own cadence, and `audioTick` has no driver we own because the
+device pulls it.
+
+<!-- BEGIN GENERATED: scripts/drive-table.py -->
+| element | kind | cadence | driven by | how | duty |
+|---|---|---|---|---|---|
+| **`clientLoop`** | LOOP | FIXED | `clientTick` | CALL | converts real time into fixed steps |
+| **`frameLoop`** | LOOP | DISPLAY | `openglWiring` · `sdlGpuWiring` | HANDOFF | drives a process that has a display |
+| **`headlessLoop`** | LOOP | FREE | `agentWiring` · `headlessWiring` | HANDOFF | drives a process that has none |
+| **`superviseLoop`** | LOOP | FREE | `serverWiring` | HANDOFF | waits for shutdown; ticks nothing |
+| **`universeLoop`** | LOOP | FREE | `clientTick` · `colocateWiring` · `superviseLoop` | HANDOFF | supervises worlds and connections on a wakeup interval |
+| **`worldLoop`** | LOOP | FIXED | `simWiring` · `universeTick` | HANDOFF | **one clock per resident world.** Where that clock *runs* is composition, not architecture — beside the universe, on a dedicated thread, or in its own process. D9 decides *whether* it runs; the entrypoint decides *where* |
+| **`audioTick`** | TICK | EXTERNAL | `clientTick` | HANDOFF | fills a PCM buffer; **pulled by `audio_sdl`**, not driven by any loop we own |
+| **`clientTick`** | TICK | DERIVED | `frameLoop` · `headlessLoop` · `inputTick` · `universeLoop` | DISPATCH · HANDOFF | one driver step, sim side |
+| **`fixedTick`** | TICK | FIXED | `clientLoop` | CALL | one step of simulated time |
+| **`inputTick`** | TICK | DERIVED | `frameLoop` | CALL | drains the OS event queue |
+| **`presentTick`** | TICK | DERIVED | `clientTick` · `frameLoop` · `headlessLoop` | DISPATCH · HANDOFF | resample, camera, assemble, paint |
+| **`recordTick`** | TICK | DERIVED | `clientTick` | HANDOFF | the same scene `presentTick` would paint, written down instead |
+| **`swapTick`** | TICK | DISPLAY | `presentTick` | DISPATCH | presents the backbuffer; **where vsync actually blocks**. Owned by the CONTRACT and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
+| **`universeTick`** | TICK | FREE | `universeLoop` | CALL | one supervision step: world lifecycle, connections, warps |
+| **`worldTick`** | TICK | FIXED | `worldLoop` | CALL | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
+| **`resizeSignal`** | SIGNAL | EVENT | `inputTick` | HANDOFF | the window changed; surfaces must be rebuilt |
+| **`agentWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes `host_null` + `participant` + `interaction`. **No UI, no recorder, no authority** |
+| **`colocateWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | constructs the embedded universe and the local socket pair — the D8 seam |
+| **`genWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | generates and exits. **The only composition that starts no clock at all** |
+| **`headlessWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes `host_null` + `participant` + `transcript` |
+| **`openglWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
+| **`sdlGpuWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
+| **`serverWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes the universe and its query and rcon threads |
+| **`simWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | composes `world` and a configured residency; starts `worldLoop` |
+<!-- END GENERATED: drive-table -->
+
+
 *Called by* was a column here and is now the execution graph's edges, which is the only copy.
 
 **Two things the cadence column makes visible.** `participant` owns elements at three different cadences,
