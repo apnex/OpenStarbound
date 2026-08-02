@@ -355,7 +355,7 @@ def check(text):
     #   N1-N3   the north star, optionally .a/.b/.c
     #   P1-P7   principles
     #   D1-D13  decisions -- citable because a component may exist BECAUSE of a choice
-    CITES = re.compile(r'\*\*(A(?:[0-9]|1[0-4])|F[1-4]|N[1-3](?:\.[abc])?|P[1-7]|D(?:[1-9]|1[0-3]))\b')
+    CITES = re.compile(r'\*\*(A(?:[0-9]|1[0-4])|F[1-4]|N[1-3](?:\.[abc])?|P[1-2]|D(?:[1-9]|1[0-3]))\b')
     for name, v in sorted(comp.items()):
         if v["kind"] == "FOUNDATION":
             continue

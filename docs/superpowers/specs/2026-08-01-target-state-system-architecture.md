@@ -279,10 +279,10 @@ otherwise is assuming the half of this fact that is false.
 
 ## 3. North star
 
-### North star
-
 Three goals. Every decision in Section 5 is justified against at least one of them by name, and a
-decision that serves none of them does not belong in this document.
+decision that serves none of them does not belong in this document. Goals are what we *want* — unlike
+the facts in Section 2, a goal can be abandoned, and abandoning one would change the architecture
+rather than merely disappoint someone.
 
 #### N1 — A modern distributed Starbound
 
@@ -290,11 +290,27 @@ The universe, its worlds and its participants can run **on different machines**.
 behind a flag: the architecture has no seam that assumes co-residence, so placement is a deployment
 choice rather than a rewrite.
 
-This is the demanding goal, and it is demanding in a specific way. It means **every payload crossing
-a seam is a value** — never a pointer, never a handle, never a reference into someone else's memory.
-It means **every unit of placement is nameable**: you can place the many, not the one, so a component
-that exists once per world is placeable and a component that exists once per process is not. And it
-means a seam's co-located path is an *optimisation of* the split path, never a cheaper semantics.
+**N1 is demanding in four specific ways, and they are labelled because the rest of the document cites
+them individually.** A warrant that says "N1" without saying which clause has not said much; these
+four are what N1 actually costs.
+
+| | the clause | what it forbids | how you would know it failed |
+|---|---|---|---|
+| **N1.a** | **Every payload crossing a seam is a value.** Never a pointer, never a handle, never a reference into another component's memory. | a shared handle in a payload — it compiles, it works co-located, and it is a machine boundary that cannot be crossed | a payload type that cannot be serialised without following a pointer |
+| **N1.b** | **Every unit of placement is nameable.** You can place *the many*, not *the one*: a component existing once per world is placeable; one existing once per process is not. | a design whose only placeable unit is "the whole program" | asking to put one world on another machine and having no noun for it |
+| **N1.c** | **A co-located path is an optimisation of the split path, never a cheaper semantics.** Same encode, same decode, or an oracle proves the two agree. | a fast path that skips validation the slow path performs — the defect appears only once you distribute | the two paths producing different results for one input |
+| **N1.d** | **A seam is not chatty.** Crossings per unit of work are bounded and counted; a boundary needing many round trips per frame is in the wrong place. | an interface that is technically distributable and practically useless | round trips per frame growing with scene complexity |
+
+**N1.d grades the shape of an interface rather than merely its existence**, which makes it a stronger
+test than "does it compile without the other side". A seam can satisfy every other clause and still be
+unusable across a network if it demands twenty round trips per frame. It is also **countable** — and
+that is what makes it gateable rather than aspirational, because a count can ratchet.
+
+**F1 and F2 are why N1 is reachable at all**, and it is worth being exact about why that matters. If
+a simulation required a display there would be nothing to place on a headless machine; if two
+processes shared a physical clock, no seam between them could be honest about time. Both were
+*verified* rather than assumed. **N1 is therefore an engineering problem rather than a research one** —
+a considerably stronger position than this document could claim before those two were checked.
 
 #### N2 — A sovereign, comprehensible engine
 
@@ -340,37 +356,62 @@ anticipated — and N1 is a rewrite wearing a config file.
 
 ---
 
-**Director's constraint:** in theory the full render/graphical front end could run on one machine while
-client/world/server run on another, separated by a network. Therefore a goal of both the contract and
-the logic boundary is to **reduce ping-pongs at that boundary** — chattiness is evidence the boundary
-is in the wrong place.
+**The hardest placement N1 must survive**, stated concretely because it is the case that decides the
+presentation seam's shape: the whole graphical front end on one machine, the participant and the
+authority on another, a network between them. Everything crossing that line is subject to all four
+clauses at once — values only (N1.a), a nameable unit on each side (N1.b), a co-located path that is
+the same contract (N1.c), and few enough crossings per frame to be worth doing (N1.d).
 
-This is a better test than "does it compile without the other side", because it grades the *shape* of
-the interface rather than merely its existence. And it is **countable**, so it can be a gate.
+That case is the reason the presentation seam is where this design started. **A seam only proves
+itself when something runs with nothing on the other side of it**, and a seam that survives being
+stretched across a network has proved rather more than one that merely compiles apart.
 
 
 ---
 
 ## 4. Principles
 
-### Principles
+A principle is an **invariant the model must satisfy** — not a goal (that is Section 3) and not a
+choice (that is Section 5). A violation is a defect regardless of which decision produced it, and
+regardless of whether anyone minds.
 
-Decisions are choices — Section 5 could have gone another way. These are not choices. They are the
-invariants the model is built to satisfy, and a violation of one is a defect regardless of which
-decision produced it.
+That definition is strict, and applying it strictly leaves **two**.
 
-| | the invariant | the failure it forbids |
+| | the invariant | the failure it forbids | who enforces it |
+|---|---|---|---|
+| **P1** | **Dependencies point down and are declared.** Every component names what it may include; the grant graph is a DAG with no upward edge. | A boundary that is a convention rather than a build rule reverts to a suggestion within a release. | the build — `INCLUDE_DIRECTORIES`, so a violation is a compile error rather than a review comment |
+| **P2** | **Placement is wiring.** Which process a component runs in is decided by the composition that assembled it, never by the component itself. | A component that knows where it lives cannot be moved, and its knowing is invisible until you try. | the register — a component whose duty mentions a process has failed this before it is built |
+
+**P1 is the one that makes everything else enforceable**, and it is worth saying why it is a principle
+rather than a decision: no version of this model works without it. A grant graph with an upward edge
+is not a worse architecture, it is not an architecture — the layering it claims cannot be checked, and
+every other rule here is downstream of being checkable. **P2 is its runtime twin**: P1 says a
+component may not *name* what is above it, P2 says it may not *know where it is*.
+
+### What used to be here, and where it went
+
+Five entries have been removed from this section. **None was wrong**; each was a true statement filed
+one layer from where it belongs, and leaving them here made the document state the same rule twice —
+which is the drift this section is supposed to forbid.
+
+| was a principle | now lives at | why it moved |
 |---|---|---|
-| **P1** | **One duty per component.** A component's name is a duty, and the duty is singular. | `application` implemented a platform *and* a host, and its duty string hid that behind one noun. |
-| **P2** | **Dependencies point down and are declared.** Every component names what it may include; the layering is a DAG with no upward edge. | A boundary that is a convention rather than a build rule reverts to a suggestion within a release. |
-| **P3** | **A payload that crosses a seam is a value.** No pointer, no handle, no shared mutable state. | A pointer across a seam is a machine boundary that cannot be crossed, discovered at the worst moment. |
-| **P4** | **What ticks does not depend on who is watching.** Residency is an explicit input; a world runs because something *requires* it, not because an observer is counting. | Simulation coupled to presentation — the defect that makes a headless authority impossible. |
-| **P5** | **Placement is wiring.** Which process a component runs in is decided by the composition, never by the component. | A component that knows where it lives cannot be moved. |
-| **P6** | **One writer per fact.** A descriptor is written by the act it describes; nothing is declared twice in two places. | The same fact stated twice drifts, and the drift is silent. |
-| **P7** | **An instrument that cannot fail proves nothing.** Every rule stated as checkable is counted by something, and every check is proven to fire. | A rule called "checkable" that nothing counts is a rule in name only. |
+| One duty per component | **A3**, Law of One | an adopted axiom already says it, in stronger form: *"and"/"also" in a description is a violation*. Restating it here made the document, not the axiom, the authority |
+| A payload crossing a seam is a value | **N1.a** | it is not an invariant, it is what the distribution goal *costs*. Filed as a principle it looked unconditional; filed under N1 it is visibly the price of a goal we chose |
+| What ticks does not depend on who is watching | **D9** | verification showed this is not free — it must replace four separate uses of participant view rectangles. A thing with a price is a decision |
+| One writer per fact | **A1** + **A2** | A1 forbids private, opaque or transient truth; A2 makes the declaration the master. Together they say it about systems generally, not just about this one |
+| An instrument that cannot fail proves nothing | **A8**, Binary Certification | *"gates are pass/fail only; there is no partial credit and no mostly-verified credit"* |
 
-P6 and P7 are architectural, not editorial. A model whose registers disagree is not a model, and a
-boundary nothing enforces is not a boundary.
+**The reduction is the layer discipline working, not a loss.** Seven claims are still in force; five are
+now stated once, at the altitude where they are true, by the layer entitled to state them. A principle
+that restates an axiom gives a reader two places to look and two things to keep in sync — and when
+they drift, nothing catches it, because both are prose.
+
+**Principles are cited by gates, not by component warrants**, and that asymmetry is deliberate rather
+than an omission. A component exists *because of* a goal, a fact or a decision — that is what its
+warrant records. A principle is not a reason for a component to exist; it is a property every
+component must have. So the register cites A / F / N / D, and P1 and P2 are checked over the whole
+model at once by the layering and placement gates in Section 15.
 
 ---
 
@@ -740,7 +781,7 @@ authority may be on different machines; a trace that stops at the seam describes
 the target state carries an identity that survives a seam crossing, and a tick on one machine can be
 related to the tick that caused it on another.
 
-**The tracer's dependencies point down like everything else** (P2). This is the constraint that makes
+**The tracer's dependencies point down like everything else** (P1). This is the constraint that makes
 observability an architectural obligation rather than a feature request: an instrument is a component,
 it appears in the register, and it may not be granted something its subject is not. An architecture
 whose own diagnosis requires a boundary violation cannot be diagnosed in the target state — it can
