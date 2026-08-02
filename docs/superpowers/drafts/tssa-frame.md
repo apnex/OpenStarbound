@@ -24,17 +24,42 @@ OpenStarbound simulates a **universe** — a star map of systems, each holding *
 terrain simulation with entities in it. Worlds are generated from a seed, ticked on their own clock,
 and persisted.
 
-Three kinds of thing use that universe, and the distinction runs through everything below:
+### Three roles, and a fourth thing that is not a role
 
-| | what it is | how many |
+| | what it is | where it lives |
 |---|---|---|
-| **an authority** | owns the truth of a world or a universe, and answers to nobody about it | one per world, one per universe |
-| **a participant** | holds a *view* of a world, predicts against it, and asks the authority to change it | N, and they come and go |
-| **a device** | a display, a speaker, a file, a recorder — something outside the simulation entirely | zero or more, per participant |
+| **an authority** | owns the truth of a world or a universe, and answers to nobody about it | one per world, one per universe (A1) |
+| **a participant** | holds a *view*, predicts against it, and asks an authority to change things | in a process that composed one |
+| **a device** | a display, a speaker, a file, a recorder — outside the simulation entirely | attached to a participant, never to an authority |
 
-A **process** composes some of these. That composition — not a class, not a fork of the codebase — is
-what makes one binary a graphical client, another a dedicated server, another a recorder, and another
-an agent with no senses at all.
+**A player is not a participant.** A player is an **entity**, living in a world, owned by that world's
+authority exactly like a monster or a door. A participant *drives* a player; it does not contain one,
+and the player does not follow the participant home. Keeping these words apart is load-bearing: it is
+the difference between "who is connected" and "what is in the world", and those two sets change
+independently — a player entity outlives the participant's connection.
+
+### A process composes roles; it does not have them by nature
+
+The composition — not a class, not a build flag, not a fork — is what makes one binary a graphical
+client and another a dedicated server. Measured from the grant closures:
+
+| composition | authority | participant | devices |
+|---|---|---|---|
+| `client_opengl` · `client_sdl_gpu` | optional, embedded | **yes** | display, speaker |
+| `client_headless` | optional, embedded | **yes** | a recorder |
+| `client_agent` | **none** — it must connect to one | **yes** | **none** |
+| `server` | **yes** — universe and worlds | **none** | **none** |
+| `world_sim` | **yes** — one world | **none** | **none** |
+| `world_gen` | **none** — it generates and never ticks | **none** | **none** |
+
+**A server composes an authority and nothing else.** It has no participant, no agent, no player of
+its own. There are player *entities* in its worlds — but every participant driving one is in another
+process, usually on another machine. This is why `server` links neither `participant` nor either
+`*_view` component, and why it never enters the `device/` zone at all.
+
+Read the table the other way and N3 falls out of it: `client_agent` is a participant with no
+authority and no devices, `world_sim` is an authority with no participant, and neither is a
+cut-down version of a graphical client. They are different wirings of the same components.
 
 Two further things are first-class rather than incidental, because they are what makes it *Starbound*
 and not a physics demo:
