@@ -106,6 +106,13 @@ jobs:
       - name: spec_measures -- the load-bearing measurements still hold
         run: python3 scripts/spec-measures.py --check
 
+      # Counts whether each component is DERIVED, facet by facet. Every other gate here checks that a
+      # declaration is well-formed; this one checks that the declaration was ever REASONED FOR. A
+      # warranted register row looks finished, which is exactly why 32 of 41 components could carry a
+      # duty, a warrant and nothing else without one gate noticing.
+      - name: spec_derivations -- every component reasoned for, not merely declared
+        run: python3 scripts/spec-derivations.py --check
+
       # The only gate that reads the WORDS. The others check tables and were all green while the
       # prose said "three clocks", called `participant` `client`, and referenced undefined decisions.
       - name: prose_claims -- the prose agrees with the registers

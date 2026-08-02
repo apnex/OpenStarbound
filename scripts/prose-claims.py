@@ -85,6 +85,7 @@ ALLOWED = {
     "boundary_ratchet": "gate", "render_layering": "gate", "layer1_layering": "gate",
     "render_docs_fresh": "gate", "boundary_fresh": "gate", "arch_graph_fresh": "gate",
     "config_declared": "gate", "prose_claims": "gate", "render_surface_tests": "test",
+    "spec_derivations": "gate", "spec_measures": "gate", "spec_consistency": "gate",
     "core_tests": "test", "game_tests": "test",
     # binaries and today's directories, named as facts about the current tree
     "starbound_server": "binary that exists today", "application": "today's directory, being split",
@@ -189,6 +190,7 @@ LOCAL_COUNT = (
     ("it stands at **seven components today**", "the assertion-only subset of Section 4"),
     ("the client's three elements", "the three time-domain elements, not the register"),
     ("`frameLoop` reaching four elements", "that loop's out-degree"),
+    ("Thirty-two components had a duty", "the underived subset, not the register total"),
     # Both surfaced only once the scan became case-insensitive: a sentence-initial count is
     # capitalised, and every one of them had been invisible.
     ("Four components for four files", "the audio carve-out, not the register"),
