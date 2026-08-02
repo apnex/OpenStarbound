@@ -3992,6 +3992,128 @@ Two properties of that table are load-bearing:
 
 ---
 
+## 10b. Across a seam — failure, back-pressure, lifetime, concurrency, trust
+
+The seams say what crosses. This says what happens when crossing goes wrong, and it is the half of
+N1 that is easy to leave out: **distribution is mostly a failure-handling problem wearing a topology
+diagram.** A seam with a payload but no failure policy is a function call that has not noticed it may
+be a network.
+
+Every rule below is stated so it can be violated. Where a rule has history, the history is why it is
+the rule; where it has none, it says so.
+
+### Failure — what the far side dying means
+
+A1 and A2 make the two directions asymmetric, and the asymmetry is the whole design rather than an
+implementation detail.
+
+| the far side | what its loss means | why |
+|---|---|---|
+| **an authority, to a participant** | **terminal for that view.** The participant holds a prediction with nothing left to correct it; it converges to nothing. It surfaces the loss and stops predicting. | A2 — a view is only meaningful against a truth |
+| **a participant, to an authority** | **routine.** Its player entity remains, owned by the world, and is dealt with by the world's own rules. | A1 — the authority owned the truth already; nothing it owns was lost |
+| **a world, to its universe** | the world is unavailable and the universe says so; participants are told, not disconnected | A1 — one world's authority is not the universe's |
+| **a device, to a participant** | the participant continues without it | A5 — perception is optional, so losing it is not an error |
+
+**That last row is a design claim, not a platitude, and it has history.** A lost GPU device produced
+60,267 `GL_INVALID_OPERATION` calls and a black world — the process kept running and kept drawing
+nothing, because losing the device was not modelled as an event, only as a state that everything
+downstream silently inherited. Under A5 a device is a thing a composition may not have at all, so
+losing one at runtime lands in a case that already exists rather than a case nobody wrote.
+
+**A seam is not a failure boundary unless something states the timeout.** Every `HANDOFF` and every
+`DISPATCH` that may cross a machine declares how long the caller waits and what it does next. A
+caller with no timeout has assumed co-residence, which is exactly the assumption N1 forbids.
+
+### Back-pressure — the HANDOFF contract
+
+`HANDOFF` is defined as *the producer does not block on the consumer's body*. That says what does not
+happen and nothing about what does, and **no queue in this design had a stated bound.** An unbounded
+queue is not a queue, it is a memory leak with a scheduling policy.
+
+Every handoff declares three things — a bound, an overflow policy, and who observes the overflow:
+
+| handoff | bound | on overflow | why that policy |
+|---|---|---|---|
+| scene delta → presentation | **1** | **replace** | only the newest scene matters; an old one is not worth drawing. A5 makes dropping legal — nobody is owed a frame |
+| audio batch → mixing | small, in samples | **replace** | as above, and the device pulls on its own clock (A6) |
+| input → participant | bounded | **fail loudly** | dropped input is a wrong game, not a slow one. This one may not drop silently |
+| participant command → authority | bounded | **reject, and tell the sender** | A2 — a request that cannot be made must be known to have failed, or the view diverges believing it succeeded |
+| world state → participant | **1 per world** | **coalesce** | a later state supersedes an earlier one; replication is a convergence process, not a log |
+| resize → presentation | **1** | **coalesce** | only the final size is real |
+
+**Two rules follow, and both are P-level rather than local.** *Blocking is never an overflow policy* —
+a producer that blocks on a consumer has joined their clocks, and A6 says two processes never share
+one. And *a policy that drops must be legal under an axiom*, which is why scene may drop and input
+may not: A5 permits nobody to be watching; nothing permits a command to vanish.
+
+### Lifetime and ownership
+
+**Construction runs down the grant order and teardown reverses it.** A component is given what it
+depends on, fully constructed, before it exists; it therefore cannot outlive what it was given. This
+is P2 restated in time rather than in `#include`s, and it is why the layering being acyclic matters
+beyond compilation — an acyclic grant graph is a construction order.
+
+| | owns it | outlives |
+|---|---|---|
+| a world instance | its authority | every participant's view of it |
+| a participant's view | the participant | nothing — it dies with the participant |
+| a player entity | the world it is in | the participant driving it |
+| the store | the authority that writes it | the process, by definition |
+
+**The player row is the one that decides real behaviour**, and it follows from §0 rather than from
+convenience: a player is an entity in a world, so it is owned by that world's authority, so it
+survives the participant. Any other answer makes a save file a property of a connection.
+
+**A composition states its own teardown, because nothing else can.** The runtime projection admits it
+cannot sequence a composition — a `WIRING` constructs and then never runs again — so ordered shutdown
+is the entry point's duty, named in its wiring, and not a rule the components can enforce on each
+other.
+
+### Concurrency — what may be shared
+
+**One thread owns a component instance.** Cross-thread access happens through a declared `HANDOFF` and
+by no other route. There is no shared mutable state between threads that is not a handoff with a
+bound and a policy.
+
+The history here is specific and current: **`ServerGlobalTimestep` is a process-global float, written
+by `UniverseServer::setTickRate` and read by every world thread's ticker.** A misnamed setter on one
+component silently retunes the clock of every world in the process, across a thread boundary, with no
+declared handoff. It is P5 and P6 violated at once — a component reaching into another's cadence, and
+one fact written from a place that does not own it. In the target state a world's step is a property
+of that world, given to it at construction, and there is no global to write.
+
+**Determinism is a concurrency requirement, not just a numerical one.** A3 says the same inputs give
+the same next state; if two threads can interleave writes into one world's state, A3 is false no
+matter how careful the arithmetic. This is why the ownership rule is absolute rather than a
+guideline: it is what makes A3 checkable at all.
+
+### Trust — what may be asserted, and what may only be asked
+
+A2 plus N1 make every inbound payload untrusted input: a participant may be remote, may be modified,
+may be hostile, and is in any case running a *prediction* rather than the truth.
+
+**A participant requests; it never asserts.** The authority re-derives every consequence rather than
+accepting a stated one. "I moved to X" is a request to be at X; "I dealt 40 damage" is a request to
+attack, evaluated by the authority against its own state.
+
+| the participant says | the authority does |
+|---|---|
+| where it intends to be | validates against collision and speed it derives itself |
+| that it acted | re-runs the action against its own state and decides the outcome |
+| what it holds | checks against the inventory it owns |
+| its identity | authenticates it — assertion is not identity |
+
+**Every inbound payload has a named validator**, and the validator belongs to the authority's side of
+the seam. A payload accepted without one is a payload the authority has decided to trust, and that
+decision should be visible in the register rather than implied by an absent check.
+
+**Mod script is inside the trust boundary of whatever composed it, and not beyond.** Script running in
+a participant may request what a participant may request, and nothing more; the authority does not
+grant a script authority just because the script asked. Where a script runs when authority and view
+are split is a decision this document owes (§8).
+
+---
+
 ## 6. Verification — DESIGNED
 
 **What verification means here, given D7.** This document describes a system that does not exist, so
