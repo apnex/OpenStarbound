@@ -230,6 +230,67 @@ def dead_declarations(corpus, table=LOCAL_COUNT):
     return [ph for ph, _why in table if " ".join(ph.split()) not in flat]
 
 
+# A NAMED INSTRUMENT THAT IS NOT REGISTERED, OR DOES NOT EXIST.
+#
+# On 2026-08-02 this document named FOUR instruments that did not do what the sentence said: a
+# "placement gate" that had never been written, edges "machine-verified against the register" by
+# nothing, an UNVERIFIABLE count that "should fall to zero" as though that were a pass condition,
+# and a gap "listed in Section 18" that Section 18 had never carried. A fifth was mine, written an
+# hour earlier: `check_reachable_implementations` existed and was never called.
+#
+# An instrument NAME reads as evidence. A reader -- especially an agent building a plan from this --
+# stops checking at the word "gated", so a false instrument claim is STRONGER than no claim: it
+# closes the question instead of leaving it open. Vigilance is not a mechanism; this is.
+#
+# TWO VERDICTS, and the distinction matters because the document legitimately cites both:
+#   UNREGISTERED_GATE  "gated by `X`" where X is not a step in .github/workflows/gates.yml. A gate
+#                      that is not registered does not run, and `run-gates.sh` reads that file, so
+#                      unregistered means unrun on every machine including this one.
+#   MISSING_SCRIPT     a `scripts/X.py` named in the prose that is not on disk at all.
+#
+# A tool the document merely CITES ("`link_sweep` measures ...") is fine and is not checked here --
+# only the claim that something is GATED, which is a claim about what runs.
+_GATED_BY = re.compile(r'[Gg]ated (?:by|as) `([a-z_][a-z0-9_]*)`')
+_SCRIPT = re.compile(r'`(scripts/[a-z0-9_.-]+\.py)`')
+
+
+def registered_gates():
+    """The gate names `scripts/ci/run-gates.sh` actually runs, read from the same file it reads."""
+    wf = REPO / ".github" / "workflows" / "gates.yml"
+    if not wf.exists():
+        return None                        # nothing to check against; say so rather than pass
+    try:
+        import yaml
+    except ImportError:
+        return None
+    data = yaml.safe_load(wf.read_text(encoding="utf-8"))
+    return {s.get("name", "").split(" --")[0]
+            for job in data.get("jobs", {}).values()
+            for s in job.get("steps", []) if "run" in s}
+
+
+def check_instruments(text, gates=None):
+    """Every instrument the document says GATES something must be a registered gate that exists."""
+    out = []
+    gates = registered_gates() if gates is None else gates
+    if gates is None:
+        out.append(("MISSING_SCRIPT",
+                    "the gate workflow could not be read, so no instrument claim in this document "
+                    "can be checked -- which is itself the condition this verdict exists to report"))
+        return out
+    for m in _GATED_BY.finditer(text):
+        if m.group(1) not in gates:
+            out.append(("UNREGISTERED_GATE",
+                        "the document says something is gated by `%s`, which is not a step in "
+                        "gates.yml -- an unregistered gate is one that never runs. Register it, or "
+                        "say `%s` MEASURES rather than gates" % (m.group(1), m.group(1))))
+    for m in _SCRIPT.finditer(text):
+        if not (REPO / m.group(1)).exists():
+            out.append(("MISSING_SCRIPT",
+                        "`%s` is named in the document and is not on disk" % m.group(1)))
+    return out
+
+
 def _scope_claims(text):
     """Prose asserting something belongs to a later document. Historical blocks are exempt."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -342,6 +403,7 @@ def scan(text):
                              "references Section %s, which this document does not have: ...%s..."
                              % (m.group(1), " ".join(prose[max(0, m.start()-60):m.end()+40].split()))))
 
+    findings.extend(check_instruments(text))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -365,6 +427,8 @@ SELFTEST = [
     ("UNKNOWN_NAME", "The `client` component owns the prediction clock."),
     ("DANGLING_D",  "This follows directly from D14."),
     ("DANGLING_SECTION", "The rule is stated in full in Section 27."),
+    ("UNREGISTERED_GATE", "The closure is gated by `composition_freshness` on every push."),
+    ("MISSING_SCRIPT", "The figures come from `scripts/nonexistent-measure.py`."),
 ]
 # A gate that fires on everything is as useless as one that fires on nothing.
 SELFTEST_CONTROL = "The `world` component owns a fixed clock and `participant` predicts against it."
