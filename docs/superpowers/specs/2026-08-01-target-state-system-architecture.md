@@ -2598,6 +2598,7 @@ flowchart TD
   transcript --> host
   transcript --> presentation
   transcript --> scene
+  transcript --> sound
   universe --> base
   universe --> celestial
   universe --> core
@@ -2845,7 +2846,7 @@ is actually established today.
 | `audio_sdl` | core, audio, extern | `SDL_OpenAudioDeviceStream` is named here and nowhere above |
 | `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
 | `mixing` | core, base, presentation, sound, audio | implements `AudioSink`; **no `host`** — the device pulls it, nothing paints it |
-| `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
+| `transcript` | core, base, presentation, scene, sound, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes. It names `sound` for the same reason `presentation` does — `AudioSink::play` takes an `AudioBatch`, and a backend that cannot name the type cannot answer the call |
 | `scene` | core, base | the payload vocabulary; names no game type and no interface |
 | `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
 | `net` | core | replication vocabulary; **names no domain type** — 10 of its 11 headers already name none |
@@ -2993,9 +2994,9 @@ claim. **Ratification requires every cell to read yes.**
 | **boundary** | At the vendor's edge. Each service is something a store or platform offers — desktop integration, peer networking, statistics, user-generated content — and the contract is the shape of the *asking*, never of the answering. |
 | **rejected** | Linking vendor SDKs at the point of use. Rejected because a build configured without Steam would then fail to **link** rather than merely lack a feature, which makes an optional dependency mandatory by accident. |
 | **excludes** | Names only `core`. May not name `game`, `host` or any composition — a statistics service that knows what a statistic *means* has joined the domain. |
-| **falsified** | If a build with no platform services fails to link, or if any component must test for a service's presence rather than be handed a null one. |
+| **falsified** | If a build with no platform services fails to link, or if any component must test for a service's presence rather than be handed a null one. **Clause two is failing today**: the register's `host_null` row returns `nullptr` for all four services, so every consumer must check. See `owes`. |
 | **history** | Its only backend, `platform_pc`, bundles **Steam, Discord and P2P** — three duties behind one name, and one of the duty strings that still trips the Law of One. The contract is clean; its implementation is not, and that asymmetry is exactly what a contract is for. |
-| **owes** | nothing. |
+| **owes** | **Where the null services live.** `host_null` returns `nullptr` for all four, which is the second clause of this component's own falsifier, and there is nowhere in the register for a null object to come from: this contract may not implement, and `platform_pc` is its only backend. Two candidates, and the choice is the Director's: a `platform_null` BACKEND, which is what every other contract here has (`gpu` has two, `host` has two, `presentation` has two), or the contract carrying its own do-nothing default, which is cheaper and makes *the shape of the asking* answer. Until one is chosen, `platform` has one implementation and a falsifier it fails. |
 
 ### `host` — who owns `main`, and the split that named a defect
 
@@ -3050,7 +3051,7 @@ claim. **Ratification requires every cell to read yes.**
 | **excludes** | Names only `core`. May not name `sound`, `mixing`, or any domain type: this contract carries a format and a pull and knows nothing about what the samples mean. |
 | **falsified** | If a backend needs to know what it is playing. The moment `audio` names an `AudioInstance` it has stopped being a device contract and become a mixer. |
 | **history** | none bearing on the pull direction, which is the ordinary shape of audio hardware. The only history that touches it is the shared-header pattern recorded under `base`. |
-| **owes** | nothing. |
+| **owes** | **A second implementation.** `audio_sdl` is the only one, and this document's own standard is that a contract is proven honest by two — GL and null for `presentation`, SDL and null for `host`, two backends for `gpu`. One implementation means the interface is fitted to that implementation and nobody can tell. The candidate is a null audio device: a format and a pull that consumes on a timer and produces silence, which a headless composition needs anyway if it is ever to exercise the mixing path. |
 
 ### `gpu` — the last vendor-neutral point
 
@@ -3182,7 +3183,7 @@ claim. **Ratification requires every cell to read yes.**
 | **excludes** | Names `base`, `core`, `scene` and `sound` — the two value vocabularies and the substrate, and nothing else. May not name `rendering`, `gpu` or `game`: a presentation contract that names a renderer has described one implementation. |
 | **falsified** | **If a null backend cannot satisfy it.** Any method a recorder cannot answer, or any call whose meaning requires a display to exist, means a device has been smuggled into an interface. This is the cheap second implementation earning its keep. |
 | **history** | Where this document began: *a headless client is presentation-backend = null*. The seam proved itself by having something run with nothing on the other side of it, and the method that produced it — state the duty, name the contract, compose the participant — generated every other component here. |
-| **owes** | nothing. |
+| **owes** | **What `client_agent` holds.** That composition links this contract and no implementation of it, and Section 8 offers the absence as proof the contract is severable. Both cannot be true as stated: either `participant` tests whether it has a sink — which is the thing `platform`'s falsifier forbids one level down — or the absence is not an absence and `agentWiring` composes a null sink from somewhere. Two candidates, and the choice is the Director's: `transcript` in **discard** mode is already specified as accept-and-drop and would make the agent link it, or the contract carries its own null case, which its warrant already claims (*"the sink is an interface with a null case"*) and its `excludes` facet forbids by naming no implementation. |
 
 ### `rendering` — a scene becomes pixels
 
@@ -3201,8 +3202,8 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around the same scene, written down instead of drawn. Identical inputs to `rendering`, no device beneath it. |
 | **rejected** | A test harness that inspects the renderer's output. Rejected because it makes verification a property of the graphical build — a null implementation that only exists under test is not a peer, and the contract stays fitted to the one real backend. |
-| **excludes** | Names `base`, `core`, `host`, `presentation`, `scene`. May not name `gpu` — the entire point is a presentation implementation with no device at all. |
-| **falsified** | **If there is any call in `presentation` it cannot answer.** That is the same falsifier as the contract's, seen from the other side, and it is why the pair is worth having: the contract is proven honest exactly when this component can satisfy it. |
+| **excludes** | Names `base`, `core`, `host`, `presentation`, `scene` and `sound`. May not name `gpu` — the entire point is a presentation implementation with no device at all. |
+| **falsified** | **If there is any call in `presentation` it cannot answer.** That is the same falsifier as the contract's, seen from the other side, and it is why the pair is worth having: the contract is proven honest exactly when this component can satisfy it. The falsifier has already earned its place: with the grants at `presentation`, `scene`, `host` alone, `AudioSink::play(AudioBatch const&)` named a type this component could not see, so the contract had a call its second implementation could not answer — and nothing else in the document could see it, because both the grant row and the interface list were individually well-formed. |
 | **history** | This is the "cheap #2" the design was built around — GL is implementation #1, null is #2, and SDL_GPU is #3 precisely *because* #2 forced the contract to be honest first. |
 | **owes** | nothing. |
 
@@ -3657,9 +3658,9 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 
 | entrypoint | links | what it is |
 |---|---|---|
-| `client_opengl` | **27 of 36** | plays, draws, sounds |
-| `client_headless` | **21 of 36** | plays and **records** — keeps the UI because it records what the UI produces |
-| `client_agent` | **18 of 36** | plays. No UI, no recorder, no sound |
+| `client_opengl` | **32 of 41** | plays, draws, sounds |
+| `client_headless` | **26 of 41** | plays and **records** — keeps the UI because it records what the UI produces |
+| `client_agent` | **19 of 41** | plays. No UI, no recorder, no sound |
 | *(`participant` itself)* | — | grants none of `windowing`, `frontend`, `rendering`, `mixing` |
 
 `client_agent` links exactly `client_headless` minus `windowing`, `frontend` and `transcript`. That
@@ -5610,16 +5611,19 @@ rule that "owed" is an authoring state rather than a document feature.
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->
 
-**8 of 41 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
+**11 of 41 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
 
 | component | what it owes |
 |---|---|
+| `audio` | **A second implementation.** `audio_sdl` is the only one, and this document's own standard is that a contract is proven honest by two — GL and null for `presentation`, SDL and null for `host`, two backends for `gpu`. One implementation means the interface is fitted to that implementation and nobody can tell. The candidate is a null audio device: a format and a pull that consumes on a timer and produces silence, which a headless composition needs anyway if it is ever to exercise the mixing path. |
 | `base` | "Shared services" is the vaguest duty in the register: it names a *property* rather than a *duty*, so it cannot fail the Law of One by containing "and" — it fails by containing nothing. The falsifier above is the concrete form of that question and is owed a count. |
 | `celestial` | `StarCelestialDatabase.hpp` holds all three classes in one header, so the split cannot be enforced or even attributed by an instrument until the header is divided. Second instance of the same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer` — **the contract and its implementations sharing a file** — which is worth naming as a pattern, since two of the components adopted here are blocked on exactly it. |
 | `colocation` | The parity oracle itself. D8 requires either identical encode/decode or a proof the two agree, and neither exists yet. |
 | `content` | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 | `gpu` | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
+| `platform` | **Where the null services live.** `host_null` returns `nullptr` for all four, which is the second clause of this component's own falsifier, and there is nowhere in the register for a null object to come from: this contract may not implement, and `platform_pc` is its only backend. Two candidates, and the choice is the Director's: a `platform_null` BACKEND, which is what every other contract here has (`gpu` has two, `host` has two, `presentation` has two), or the contract carrying its own do-nothing default, which is cheaper and makes *the shape of the asking* answer. Until one is chosen, `platform` has one implementation and a falsifier it fails. |
 | `platform_pc` | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
+| `presentation` | **What `client_agent` holds.** That composition links this contract and no implementation of it, and Section 8 offers the absence as proof the contract is severable. Both cannot be true as stated: either `participant` tests whether it has a sink — which is the thing `platform`'s falsifier forbids one level down — or the absence is not an absence and `agentWiring` composes a null sink from somewhere. Two candidates, and the choice is the Director's: `transcript` in **discard** mode is already specified as accept-and-drop and would make the agent link it, or the contract carries its own null case, which its warrant already claims (*"the sink is an interface with a null case"*) and its `excludes` facet forbids by naming no implementation. |
 | `sound` | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
 | `storage` | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
 
