@@ -95,6 +95,13 @@ jobs:
       - name: round_trip_fires -- both round-trip assertions fire on a known defect
         run: python3 scripts/round-trip.py --selftest
 
+      # "Is every table generated from a source?" was answered three times from the command line and
+      # was wrong three times. This counts tables two independent ways, requires the two to agree,
+      # and reconciles the derivation tables against the register -- so the answer is reproducible
+      # rather than mine. A MEASUREMENT: there is no ceiling on unread tables.
+      - name: table_census -- every table counted two ways, derivations reconciled to the register
+        run: python3 scripts/table-census.py --check
+
       # The design is described twice on purpose -- Section 4 compile, Section 5 run time -- and two
       # descriptions of one model drift. The graft rule is the reason this is a gate: every runtime
       # edge must be legal in the compile projection, and its first run found the host unable to
