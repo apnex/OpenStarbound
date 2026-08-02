@@ -293,6 +293,16 @@ def check_placement(comp):
 #
 # This gate would have found the `platform` hole without anyone looking for it.
 UNANSWERED_OK = {
+    # `celestial` is the register's one MIXED contract -- its duty says so out loud, "the star map's
+    # vocabulary AND its lookup interface". These two compositions need the vocabulary (a world is
+    # generated from its `CelestialParameters`) and never call the database. They are declared here
+    # rather than given an implementation they would not use, and the entry is evidence FOR the
+    # split `celestial` already owes rather than a way of living without it: when the header divides,
+    # both lines here should disappear because the vocabulary half will not be an INTERFACE.
+    ("world_gen", "celestial"):
+        "it needs `CelestialParameters` to generate a world and never looks anything up",
+    ("world_sim", "celestial"):
+        "same: the vocabulary half only, reached through `game`",
     ("client_agent", "presentation"):
         "no call is made. An entity's `render()` runs in every composition because it emits "
         "particles and audio, but with the two view sinks discarding nothing accumulates and "
@@ -518,6 +528,13 @@ def check(text):
                                  "`%s ==> %s` implements a %s; `==>` may only point at an "
                                  "INTERFACE -- a VOCABULARY has nothing to implement"
                                  % (name, target, comp.get(target, {}).get("kind", "?"))))
+
+    # UNANSWERED reuses `implements` inverted: contract -> the backends that satisfy it.
+    by_contract = {}
+    for backend, targets in implements.items():
+        for c in targets:
+            by_contract.setdefault(c, []).append(backend)
+    findings.extend(check_reachable_implementations(comp, grants, by_contract))
 
     # ---- runtime projection -------------------------------------------------------------------
     rnodes = R_NODE.findall(exe)
