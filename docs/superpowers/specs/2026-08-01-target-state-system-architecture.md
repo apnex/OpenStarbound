@@ -330,8 +330,22 @@ four are what N1 actually costs.
 
 **N1.d grades the shape of an interface rather than merely its existence**, which makes it a stronger
 test than "does it compile without the other side". A seam can satisfy every other clause and still be
-unusable across a network if it demands twenty round trips per frame. It is also **countable** — and
-that is what makes it gateable rather than aspirational, because a count can ratchet.
+unusable across a network if it demands twenty round trips per frame.
+
+**It is also countable, and for a long time this document said so without counting anything.** Section
+3 called the clause gateable while Section 18 recorded that the ratchet had no metric and no starting
+ceiling — the two disagreeing about whether this document's own rule was enforceable, with Section 18
+the honest one. The definition was already written, one section away, in the seam table and the
+sentence beneath it: **a round trip is a seam call that returns a value.** `poll() -> InputBatch`
+returns; `accept(SceneDelta const&)` does not. Gated as `round_trip_ceiling`, at a ceiling of **one**,
+which is what "one query per frame in total" means when it is arithmetic rather than an aspiration.
+
+**The count is the weaker of its two assertions.** Section 18's objection to counting was that *a
+`poll()` that returns is one by construction, and the rule is meant to catch the ones that are not* —
+and that objection is answered by shape rather than by a cleverer count: the round trips worth fearing
+arrive as an answer on something that was supposed to be one-way. So the gate also asserts that **no
+`Sink` returns**, which is Section 8's naming rule made executable. A seam can sit at the ceiling and
+still be wrong.
 
 **F1 and F2 are why N1 is reachable at all**, and it is worth being exact about why that matters. If
 a simulation required a display there would be nothing to place on a headless machine; if two
@@ -1571,11 +1585,21 @@ is the claim this measurement refutes.
 
 ### Seam 1 — the three boundaries
 
+<!-- TABLE: seam-methods -->
+
 | name | direction | call | strength (D3) |
 |---|---|---|---|
 | **`SceneSink`** | one-way in | `accept(SceneDelta const&)` | swappable contract |
 | **`AudioSink`** | one-way in | `play(AudioBatch const&)` | swappable contract |
 | **`InputSource`** | one round trip out | `poll() -> InputBatch` | pluggable source |
+
+<!-- END TABLE: seam-methods -->
+
+**This table is what makes N1.d countable, and it is the definition the clause was missing.** A
+**round trip** is a seam call that *returns a value* — a `->` in the call column. Counting them is
+then arithmetic rather than judgement, the ceiling is **one**, and `round_trip_ceiling` reads this
+table and asserts it. The second assertion is the naming rule stated below, made executable: a `Sink`
+may not return.
 
 The sink/source vocabulary is chosen to carry Section 3's network constraint in the name itself: **a sink
 never answers, and there is exactly one source, polled once per frame.** A method that returns a value
@@ -6008,11 +6032,17 @@ rule that "owed" is an authoring state rather than a document feature.
    reasoned with together. The rule exists because a model change beneath a section can invalidate it
    after the fact — which is also why sealing is certification rather than freezing (A8, Law of
    Fallback).
-2. **The round-trip ratchet has no metric and no starting ceiling.** Section 3 states the rule and
-   Section 15 lists it beside `boundary_ratchet` 213, but *round trip* is not yet defined precisely
-   enough to count: a `poll()` that returns is one by construction, and the rule is meant to catch the
-   ones that are not. Until the metric exists the ratchet is a policy with no instrument, which is the
-   condition Section 15's own limits section says to record rather than assume.
+2. **The round-trip ratchet has a metric and a ceiling — CLOSED 2026-08-02, and the way it closed is
+   the point.** This entry read *"round trip is not yet defined precisely enough to count: a `poll()`
+   that returns is one by construction, and the rule is meant to catch the ones that are not."* The
+   definition needed no invention: Section 8's seam table declares each boundary's call, and **a round
+   trip is a call that returns a value**. Ceiling **one**, gated as `round_trip_ceiling`. The second
+   half of the objection — that the dangerous ones are not the honest `poll()` — is answered by a
+   second assertion rather than a better count: **no `Sink` may return**, Section 8's naming rule made
+   executable. **The metric was legible in the document for as long as the entry claiming it was
+   missing.** What was absent was not a definition but a reader. Residual, stated rather than implied:
+   this counts **seam 1**, whose calls are declared; seam 2 is described by a comparison table with no
+   method signatures, so it is not counted and the gate does not speak for it.
 3. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
    names five phases and the register models four. The fifth, `cpu.frame.finish.us`, calls
    `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE

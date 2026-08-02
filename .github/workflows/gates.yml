@@ -85,6 +85,16 @@ jobs:
       - name: loop_inventory -- every cadence loop is declared and the spec agrees
         run: python3 scripts/loop-inventory.py --check
 
+      # N1.d called itself "countable" and "gateable rather than aspirational" while Section 18
+      # recorded that the ratchet had no metric and no ceiling -- two writers disagreeing about
+      # whether the document's own rule was enforceable. The definition was already in the seam
+      # table: a round trip is a call that RETURNS. Ceiling 1, plus the assertion a total count
+      # cannot make on its own -- that no Sink answers.
+      - name: round_trip_ceiling -- seam 1 declares at most one call that returns
+        run: python3 scripts/round-trip.py --check
+      - name: round_trip_fires -- both round-trip assertions fire on a known defect
+        run: python3 scripts/round-trip.py --selftest
+
       # The design is described twice on purpose -- Section 4 compile, Section 5 run time -- and two
       # descriptions of one model drift. The graft rule is the reason this is a gate: every runtime
       # edge must be legal in the compile projection, and its first run found the host unable to

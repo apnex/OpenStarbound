@@ -78,15 +78,14 @@ TRIGGER = r'(?:%s|\b[Zz][Oo][Nn][Ee][Ss]?\b)' % KINDWORD[3:-1]
 # Backticked lowercase tokens that are legitimately NOT components. Each carries its reason, so the
 # list cannot quietly become a place to bury a stale name -- which is the only way this gate fails.
 ALLOWED = {
-    # gates and instruments
-    "spec_consistency": "gate", "grant_sweep": "gate", "loop_inventory": "gate",
-    "composition_graphs": "gate", "dedup_measure": "gate", "link_sweep": "gate",
-    "drive_table": "gate", "tree_map": "gate", "host_api_neutral": "gate",
-    "boundary_ratchet": "gate", "render_layering": "gate", "layer1_layering": "gate",
-    "render_docs_fresh": "gate", "boundary_fresh": "gate", "arch_graph_fresh": "gate",
-    "config_declared": "gate", "prose_claims": "gate", "render_surface_tests": "test",
-    "spec_derivations": "gate", "spec_measures": "gate", "spec_consistency": "gate",
-    "core_tests": "test", "game_tests": "test",
+    # INSTRUMENTS THAT ARE NOT REGISTERED GATES. Registered gate names are folded in below, read from
+    # gates.yml -- they were hand-listed here until 2026-08-02, and the hand list did what hand lists
+    # do: registering `round_trip_ceiling` in the workflow made the document red, because the second
+    # declaration of the same fact had not been updated. One writer. What stays here is what
+    # gates.yml does NOT know about.
+    "dedup_measure": "measurement, not a gate",
+    "link_sweep": "MEASURES containment; deliberately not gated -- it reads a build tree",
+    "render_surface_tests": "test", "core_tests": "test", "game_tests": "test",
     # binaries and today's directories, named as facts about the current tree
     "starbound_server": "binary that exists today", "application": "today's directory, being split",
     "extern": "vendored, deliberately outside the register",
@@ -138,6 +137,17 @@ ALLOWED = {
     "driver": "runtime THREAD name, from the element register's thread column",
     "main": "runtime THREAD name; the process's initial thread",
 }
+
+
+def _fold_in_registered_gates():
+    """Every name gates.yml runs is a legitimate backticked token, by construction.
+
+    Naming a gate in the prose is the OPPOSITE of the corpse UNKNOWN_NAME hunts: `check_instruments`
+    already fails a gate name that is NOT registered, so the two checks meet in the middle -- prose
+    may name a registered gate and may not name an unregistered one, and neither list is hand-kept.
+    """
+    for name in registered_gates() or ():
+        ALLOWED.setdefault(name, "registered gate, read from gates.yml")
 
 # Sentences that defer architecture to a later document, or declare something not covered. Under D2
 # the scope IS the whole target state, so each of these is a defect unless it appears below.
@@ -422,6 +432,7 @@ def _scope_claims(text):
 
 
 def scan(text):
+    _fold_in_registered_gates()
     comp, grants, elem = MODEL.components(text), MODEL.grants(text), MODEL.elements(text)
     findings = []
 

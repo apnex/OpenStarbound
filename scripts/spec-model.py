@@ -54,7 +54,7 @@ CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")
 
 # Floors, not targets. Raise when the design genuinely grows; never lower to make a red gate green.
-FLOOR = {"components": 35, "grants": 33, "elements": 20}
+FLOOR = {"components": 35, "grants": 33, "elements": 20, "seam-methods": 3}
 
 MARK = "<!-- TABLE: %s -->"
 ENDMARK = "<!-- END TABLE: %s -->"
@@ -143,6 +143,26 @@ def elements(text):
                              % (m.group(1), cells[1], cells[2]))
         out[m.group(1)] = dict(kind=cells[1], cadence=cells[2], cardinality=card,
                                owner=owner, thread=thread, duty=cells[6] if len(cells) > 6 else "")
+    return out
+
+
+def seam_methods(text):
+    """-> {name: {direction, call, strength, returns}} for seam 1's declared calls.
+
+    `returns` is the whole point. N1.d says a seam is not chatty and calls itself countable, and for a
+    year nothing counted: section 18 recorded "the round-trip ratchet has no metric and no starting
+    ceiling ... *round trip* is not yet defined precisely enough to count". The definition was sitting
+    in this table the whole time -- a ROUND TRIP IS A CALL THAT RETURNS A VALUE, which is a `->` in the
+    call column. `poll() -> InputBatch` is one; `accept(SceneDelta const&)` is not.
+    """
+    out = {}
+    for cells in _rows(text, "seam-methods"):
+        m = re.fullmatch(r'\*\*`([\w_]+)`\*\*', cells[0])
+        if not m:
+            continue
+        call = cells[2].strip("`")
+        out[m.group(1)] = dict(direction=cells[1], call=call, strength=cells[3],
+                               returns="->" in call)
     return out
 
 
