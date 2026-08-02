@@ -184,10 +184,8 @@ def _as_int(token):
 LOCAL_COUNT = (
     ("`client_opengl` names five components", "a closure size, not the register"),
     ("`game` is now three components", "the decomposition of one component"),
-    ("included by **197 files across four components**", "the four that include StarRoot.hpp"),
     ("two of the four components adopted today", "a subset of one day's adoptions"),
     ("A shared input consumed by two components", "the two consumers of that input"),
-    ("it stands at **seven components today**", "the assertion-only subset of Section 4"),
     ("the client's three elements", "the three time-domain elements, not the register"),
     ("`frameLoop` reaching four elements", "that loop's out-degree"),
     ("Thirty-two components had a duty", "the underived subset, not the register total"),
@@ -201,6 +199,27 @@ LOCAL_COUNT = (
     ("it is the reason two components with no grant between them",
      "any two co-resident components, not a count"),
 )
+
+
+# A DECLARATION THAT OUTLIVED ITS SENTENCE.
+#
+# LOCAL_COUNT is a list of permissions, each keyed on a literal phrase, and rewording is meant to
+# re-arm the gate. It does -- for the sentence. It does nothing about the permission, which stays in
+# the table matching nothing, ready to excuse some future sentence that happens to be worded like the
+# dead one. On 2026-08-02 two entries went dead within the hour: "197 files across four components"
+# was corrected to 211 across seven, and "it stands at seven components today" was deleted outright
+# once the generated figure said 27. Neither removal was noticed, because a whitelist that matches
+# nothing is indistinguishable from a whitelist that is not needed.
+#
+# This is the same class as the CITES regex that kept accepting `A1`-`A6` after those symbols were
+# retired: THE GATE'S VOCABULARY OUTLIVED THE DOCUMENT'S. The cure is the same in both places -- the
+# accepted set is checked against the document, not merely consulted by it.
+#
+# Matched against `prose`, the same corpus the permission is consulted on: a phrase that survives only
+# inside a table row could never suppress a finding anyway, so it is dead by the same measure.
+def dead_declarations(prose, table=LOCAL_COUNT):
+    flat = " ".join(prose.split())
+    return [ph for ph, _why in table if " ".join(ph.split()) not in flat]
 
 
 def _scope_claims(text):
@@ -279,6 +298,12 @@ def scan(text):
                              "not the register total, declare it in LOCAL_COUNT: ...%s..."
                              % (m.group(1), thing, actual, ctx[-100:])))
 
+    for ph in dead_declarations(prose):
+        findings.append(("DEAD_DECLARATION",
+                         "LOCAL_COUNT declares %r, which no longer appears in the document -- delete "
+                         "the entry with the sentence, or it will excuse the next one worded like it"
+                         % ph))
+
     # DANGLING_SECTION -- a cross-reference to a section this document does not have.
     #
     # WHY NOW. The document carries 72 "Section N" references and is about to be restructured, which
@@ -340,6 +365,19 @@ def selftest(text):
         ok = want in kinds
         bad += not ok
         print("  %-12s %-6s %s" % (want, "FIRES" if ok else "SILENT", injection[:64]))
+    # DEAD_DECLARATION cannot be injected as prose -- the defect is a table entry, not a sentence --
+    # so it is exercised directly, both ways round. A check that only ever runs against a table it
+    # has already been made to agree with proves nothing.
+    fake = (("a phrase this document does not contain anywhere", "proof the check can fail"),)
+    if dead_declarations("some prose", fake) != [fake[0][0]]:
+        bad += 1
+        print("  DEAD_DECLARATION SILENT -- an absent phrase was not reported")
+    elif dead_declarations("... a phrase this document does not contain anywhere ...", fake):
+        bad += 1
+        print("  DEAD_DECLARATION FIRED  -- a present phrase was reported dead")
+    else:
+        print("  %-12s %-6s %s" % ("DEAD_DECLARATION", "FIRES", "an entry matching nothing in the document"))
+
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
         bad += 1
