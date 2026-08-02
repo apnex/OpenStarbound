@@ -4014,11 +4014,10 @@ implementation detail.
 | **a world, to its universe** | the world is unavailable and the universe says so; participants are told, not disconnected | A1 — one world's authority is not the universe's |
 | **a device, to a participant** | the participant continues without it | A5 — perception is optional, so losing it is not an error |
 
-**That last row is a design claim, not a platitude, and it has history.** A lost GPU device produced
-60,267 `GL_INVALID_OPERATION` calls and a black world — the process kept running and kept drawing
-nothing, because losing the device was not modelled as an event, only as a state that everything
-downstream silently inherited. Under A5 a device is a thing a composition may not have at all, so
-losing one at runtime lands in a case that already exists rather than a case nobody wrote.
+**That last row rests on A5 alone and has no history behind it** — no device has ever been lost in
+this project. It is stated because A5 already decides it: a device is a thing a composition may not
+have at all, so losing one at runtime lands in a case that already exists rather than a case nobody
+wrote.
 
 **A seam is not a failure boundary unless something states the timeout.** Every `HANDOFF` and every
 `DISPATCH` that may cross a machine declares how long the caller waits and what it does next. A
