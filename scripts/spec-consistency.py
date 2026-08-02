@@ -339,7 +339,23 @@ def check(text):
     #
     # FOUNDATION is exempt and the exemption is narrow: `core` and `base` are the substrate every
     # layer names, and demanding a north-star warrant for a container library would be theatre.
-    CITES = re.compile(r'\*\*(A[1-6]|N[1-3](?:\.[abc])?|P[1-7])\b')
+    # THE CITABLE VOCABULARY, and why it is exactly this. On 2026-08-02 the six things this document
+    # called axioms were verified against a real implementation and NOT ONE survived as written --
+    # four false, two true only when narrowed. The test that separated them: if an implementation can
+    # violate a claim and still be Starbound, the claim is a DECISION, not a fact. Five moved to
+    # section 5 as a result.
+    #
+    # This regex accepted A1-A6 throughout, so every warrant citing one of the five stayed green while
+    # naming something that had ceased to exist -- the same blindness as DANGLING_SECTION accepting a
+    # number that still resolves to the wrong section. A gate whose vocabulary outlives the document's
+    # is worse than no gate: it certifies the stale.
+    #
+    #   A0-A14  adopted canonical axioms (mission-kit), in force by applicability tag
+    #   F1-F4   domain facts, each verified rather than assumed
+    #   N1-N3   the north star, optionally .a/.b/.c
+    #   P1-P7   principles
+    #   D1-D13  decisions -- citable because a component may exist BECAUSE of a choice
+    CITES = re.compile(r'\*\*(A(?:[0-9]|1[0-4])|F[1-4]|N[1-3](?:\.[abc])?|P[1-7]|D(?:[1-9]|1[0-3]))\b')
     for name, v in sorted(comp.items()):
         if v["kind"] == "FOUNDATION":
             continue
@@ -347,11 +363,13 @@ def check(text):
         if not w or w == "—":
             findings.append(("UNWARRANTED",
                              "`%s` has no warrant. Every non-FOUNDATION component states why it "
-                             "exists, citing an axiom, a north star or a principle" % name))
+                             "exists, citing an axiom, a fact, a north star, a principle or a "
+                             "decision" % name))
         elif not CITES.search(w):
             findings.append(("UNWARRANTED",
-                             "`%s`'s warrant cites nothing: %r. A warrant names A1-A6, N1-N3 or "
-                             "P1-P7 -- otherwise it restates the duty" % (name, w[:60])))
+                             "`%s`'s warrant cites nothing: %r. A warrant names A0-A14, F1-F4, "
+                             "N1-N3, P1-P7 or D1-D13 -- otherwise it restates the duty"
+                             % (name, w[:60])))
 
     # IMPLEMENTS_ARITY -- the Law of One, counted at last.
     #

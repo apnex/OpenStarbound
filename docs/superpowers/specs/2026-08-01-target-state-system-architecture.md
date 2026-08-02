@@ -202,24 +202,75 @@ finds a placement claim in this section has found a defect.
 
 ## 2. Axioms
 
-### Axioms
+Two kinds of thing are accepted here without being argued for: **adopted axioms**, which are standing
+engineering commitments that hold for any system this organisation builds, and **domain facts**, which
+are properties of Starbound itself. Neither is a choice. Everything downstream cites them by name.
 
-Facts about Starbound, accepted without argument. They are not choices and not goals — they are what
-the domain *is*, and an architecture that contradicts one is describing a different game. Everything
-downstream is justified against these plus the north star, in that order.
+**The test that separates a fact from a decision, and why it matters.**
 
-| | the axiom | what it forbids |
-|---|---|---|
-| **A1** | **A world's truth has exactly one owner.** At any instant, one authority decides what is true in a world. | Two authorities for one world. Not a topology — a bug. |
-| **A2** | **A participant's view is a prediction and may be wrong.** It runs ahead, it is corrected, it converges. | Treating a view as truth, which is what makes a client authoritative by accident. |
-| **A3** | **Simulation advances in discrete, deterministic steps.** The same inputs to the same state give the same next state. | A world whose outcome depends on frame rate, wall-clock, or who was watching. |
-| **A4** | **Content is data the engine does not understand.** The engine loads materials, items, species and dungeons; it does not know what any of them mean. | An engine that must be recompiled to add a rock. |
-| **A5** | **Perception is optional.** Nothing in the simulation requires that anything is looking or listening. | Simulation that cannot run without a display — the whole reason a headless authority was hard. |
-| **A6** | **Two processes never share a clock.** Time is local, always. | A seam that assumes both sides step together. |
+> If an implementation can violate the claim and still be Starbound, the claim is **not** a fact. It is
+> a decision, and it belongs in Section 5 with a cost beside it.
 
-Read them as a set and the north star stops being aspirational: **A5 and A6 are why N1 is reachable
-at all**, and **A1 with A2 is the reason `authority` and `participant` are different words** rather
-than two configurations of one thing.
+That test is stated first because it is load-bearing and because it is easy to fail. A claim can be
+true of every design *we would want to build*, obviously right, and still not be a fact — and filing
+it as one hides the cost of choosing it. The consequence is concrete: five claims that read as
+self-evident properties of the domain are in Section 5 instead, each with the price of choosing it
+named. Section 5 says which and why.
+
+### Adopted axioms
+
+These come from the organisation's canonical set and are adopted by **domain of validity** — a system
+is bound by an axiom if and only if its architecture satisfies that axiom's tags. Both the
+architecture described here and the practice of describing it satisfy `any-system`, so the
+unconditional set is in force for both.
+
+| | axiom | why it binds this system | what it forbids here |
+|---|---|---|---|
+| **A0** | **Sovereign Intelligence Engine** | umbrella | additions with no line of descent back to stated intent |
+| **A3** | **Sovereign Composition** — one concern per module, composed without leaking internals | `any-system` | god objects, dual-purpose modules, "and"/"also" in a duty |
+| **A4** | **Zero-Loss Knowledge** — expansion over summarisation, structure over prose | `any-system` | compressing a derivation to save space; prose that carries a rule no instrument can read |
+| **A8** | **Gated Recursive Integrity** — nothing ascends to layer N+1 until layer N is sealed | `any-system` | "mostly verified"; patching a symptom without auditing the layer beneath it |
+| **A9** | **Chaos-Validated Deployment** — unproven under injected adversity means it does not exist | `any-system` | a seam with no stated failure behaviour |
+| **A14** | **Compounding Learning** — capture the insight at the moment of discovery | `any-system` | a finding that lives only in a conversation |
+| **A1** | **Sovereign State Transparency** — no unit holds private, opaque or transient truth | `stateful` | a process-global that some component mutates on another's behalf |
+| **A2** | **Isomorphic Specification** — the declaration is the master | `declarative` | a rule that exists in prose and nowhere a machine can read |
+
+**A3's Law of One and A8's Gated Ascension do the most work below.** The first is why every component
+has exactly one duty and why a duty containing "and" is a defect rather than a wording problem; the
+second is why sections seal in dependency order and why a sealed layer is *certified*, not frozen.
+
+**The multi-agent axioms are deliberately absent.** A5–A7 and A10–A13 bind systems with multiple
+agents, an LLM in the loop, or autonomy. They govern how this document is *made*, not what it
+describes, and importing them here would put method into a document about architecture.
+
+### Domain facts
+
+Properties of Starbound, each verified against a real implementation rather than assumed. Where a
+narrower statement is what survives verification, the narrow one is what is stated — an overclaimed
+fact is worse than no fact, because everything citing it inherits the overclaim silently.
+
+| | the fact | how it is known | what it forbids |
+|---|---|---|---|
+| **F1** | **Devices are optional.** No display, speaker or input device is required for a simulation to advance. | proven at link time: the simulation libraries link and tick with no rendering, windowing or application objects present at all | a simulation that cannot be built without a display |
+| **F2** | **Physical time is local.** No two processes read the same physical clock; every clock is a process-local monotonic tick source of unspecified origin. | verified: no wire message is ever interpreted in the receiver's clock domain — remote timestamps are echoed to their originator or consumed purely as differences | a seam that compares two machines' raw timestamps |
+| **F3** | **Simulation advances in discrete, counted steps.** Cadence, wake scheduling and timers key on an integer step counter, not on elapsed real time. | verified in the step loop; the counter, not the clock, is what subsystems are scheduled against | a subsystem scheduled on wall-clock inside a stepped simulation |
+| **F4** | **Content instances are opaque.** The engine indexes materials, items, species, monsters and dungeons by names it never enumerates. | verified: no species, material, liquid, monster, object, dungeon or biome instance name appears anywhere in the game sources | an engine that must be recompiled to add a rock |
+
+**F1 and F2 are why a distributed Starbound is reachable at all.** If a simulation needed a display,
+there would be nothing to place on a headless machine; if two processes shared a clock, no seam
+between them could be honest. They are the two facts N1 stands on, and neither is a design
+achievement — both are already true.
+
+**F3 says less than it appears to, and the gap is deliberate.** It says the step *mechanism* is
+discrete and counted. It does **not** say the step *content* is a pure function of state and inputs —
+that is a far stronger claim, it is false of the implementation this fact was verified against, and it
+is therefore a decision with a real price. Section 5 states it as one.
+
+**F4 is similarly narrow, and for the same reason.** Content *instances* are opaque; content *kinds*
+are not. The engine owns a closed, compiled vocabulary of kinds — item types, object types, dungeon
+brushes, a metamaterial band, a handful of stat names with engine-defined meaning. Adding an instance
+of a known kind is a content change; adding a *kind* is an engine change. Any design that assumes
+otherwise is assuming the half of this fact that is false.
 
 ---
 
@@ -340,7 +391,142 @@ boundary nothing enforces is not a boundary.
 | **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 10 and the risk in Section 16. |
 | **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 17. |
 | **D8** | **A seam's co-located path is an optimisation, never a different contract.** Either it performs the same encode and decode as the split path, or an oracle proves the two agree. Owned by `colocation`. Stated in full in Section 13. |
-| **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 10. |
+| **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 10, and derived below. |
+| **D10** | **One authority per world, and it re-derives.** Exactly one authority decides what is true in a world; a participant's every effect on that world is a *request*, re-derived by the authority against its own state. No participant authors world truth. |
+| **D11** | **A view is a prediction, corrected by replacement.** A participant runs ahead locally to hide latency, and is corrected when truth arrives. Correction is whole-value replacement, not rollback-and-replay. |
+| **D12** | **Step content is deterministic.** The same state and the same inputs give the same next state: no wall-clock inside a step, no ambient random stream, no work-shedding that changes outcomes. |
+| **D13** | **Content extends the engine's kinds, not only its instances.** A new kind of thing is a content change, not an engine change. |
+
+### D9 to D13 — the five that read as facts and are not
+
+Each of these five reads like a property of Starbound. Each fails the test in Section 2: an
+implementation violates it and is still Starbound. So each is a **choice**, and a choice has a price
+the chooser owes the reader. What follows states, for each: what is chosen, what is rejected, which
+goal it serves, **what it costs**, and the history that makes the cost credible rather than
+theoretical.
+
+The history matters here more than anywhere else in the document. These five are the places where the
+obvious-looking answer is expensive, and the only reason we know *how* expensive is that a real
+implementation chose the other way and left its reasoning in the source.
+
+#### D10 — One authority per world, and it re-derives
+
+| | |
+|---|---|
+| **chosen** | Exactly one authority decides what is true in a world. Every effect a participant has on that world is a request, re-derived by the authority against its own state before it becomes true. |
+| **rejected** | Authority partitioned by entity ownership — each participant masters the entities in its own id range, and the authority mirrors them as replicas without re-deriving them. |
+| **serves** | **N1** — a seam whose trust model changes with placement is not placeable; if authority is partitioned, moving a participant to another machine moves *authority* with it. **N2** — one writer per fact is comprehensible; N co-equal writers is a system nobody can hold in their head. It is also the domain instance of **A1**: a partitioned design leaves world truth in a place no single unit owns. |
+| **costs** | **Input latency, paid on every action.** The rejected design exists precisely to avoid this. |
+
+**What it costs, precisely.** If a participant masters its own player entity, that player responds to
+input in zero time — the local machine *is* the authority for it, so there is nothing to wait for.
+Under D10 that is gone: the authority is elsewhere, and responsiveness has to be bought back with
+local prediction (D11) rather than had for free. **This decision does not remove latency; it moves it
+from a correctness problem to a perception problem**, and D11 is the bill.
+
+**The history, which is why the cost is credible.** The implementation this document supersedes chose
+the rejected option deliberately and documented it in the source: combat adjudication is distributed
+across machines, with player-versus-environment damage decided on the *participant* doing the hitting,
+and the authority applying the resulting damage verbatim without re-deriving it. The participant is
+the master of its own player; the authority holds the lagging copy. Entity spawns, world-property
+writes and interactions with participant-owned entities take the same shape — a request that is
+applied rather than adjudicated.
+
+**And the consequence of that choice is instructive**: there is no position validation anywhere in
+that design, and no anti-cheat surface. Not because it was overlooked — **because there is nowhere it
+could go.** A design in which the participant is authoritative for its player has no seat from which
+to disagree with it. That is what "authority is a topology property, not a component property" costs
+when you find out late, and it is the sharpest available argument for deciding it early and once.
+
+#### D11 — A view is a prediction, corrected by replacement
+
+| | |
+|---|---|
+| **chosen** | A participant runs ahead of confirmed truth to hide the latency D10 introduces, and converges when truth arrives. Correction is **whole-value replacement**: the authority's value wins, and the view stops predicting that fact. |
+| **rejected** | **Rollback-and-replay** — retain local input history, and on correction rewind to the authoritative state and re-apply inputs. |
+| **serves** | **N2** — replacement is one rule with no history to keep; rollback requires every predicted subsystem to be re-runnable and every input retained. **F3** — replay is only sound if the step is a pure function, which is D12, and D12 is not free either. |
+| **costs** | **Visible correction.** A replaced value can jump. Rollback hides that; replacement does not. |
+
+**Why replacement rather than replay**, stated as a dependency: rollback-and-replay is only correct if
+re-running the same inputs from the same state reproduces the same result — it *presupposes* D12. So
+choosing replay would make D12 load-bearing for basic correctness rather than for verification, and a
+determinism defect would stop being a reproducibility nuisance and start being a gameplay bug. **The
+cheaper correction rule is chosen so that the expensive determinism guarantee stays a verification
+property rather than a runtime dependency.**
+
+**The history.** The superseded implementation has no rollback machinery at all — a search of the
+simulation and core sources finds no resimulation, no replay, and no reconciliation in that sense.
+What it has is interpolation between received points, bounded blind extrapolation when a delta is
+missing, and whole-value overwrite on arrival — and interpolation is *configuration-gated*, defaulting
+off when its key is absent. The design chosen here is that shape, made unconditional and stated.
+
+#### D12 — Step content is deterministic
+
+| | |
+|---|---|
+| **chosen** | The same state and the same inputs give the same next state. No wall-clock reading inside a step; no ambient random stream; no work-shedding that changes outcomes rather than only timing. |
+| **rejected** | Best-effort stepping, in which a step may consult real time, draw from a process-global random source, and shed work adaptively under load. |
+| **serves** | **N1** — two machines that must agree about a world cannot agree if the same inputs give different answers. **N2** — a defect that reproduces is a defect that can be found. **A9** — chaos validation compares runs, and comparing runs requires runs to be comparable. |
+| **costs** | **An adaptive-fidelity governor becomes illegal**, and every random draw must be threaded from a seeded, owned stream rather than reached for. |
+
+**The cost is larger than it looks and is worth stating plainly.** Shedding work under load is how a
+simulation degrades gracefully; if shedding may not change outcomes, then under load the only legal
+responses are to run slower or to shed work that provably cannot affect state. That is a real
+constraint on the simulation's own design, and it is the reason this is a decision rather than a fact.
+
+**The history is unusually strong here, because we have already paid for the knowledge.** In the
+superseded implementation the step is discrete and counted — F3 — but its *content* is not a pure
+function, in at least three independent ways: a weather subsystem discards the fixed step and
+substitutes wall-clock elapsed time; gameplay randomness is drawn from a process-global stream that a
+maintenance thread re-seeds on a wall-clock schedule; and an adaptive governor driven by measured
+spare time changes which subsystems run on which step. **And this project already recorded the
+consequence, in its own render documentation: a cross-run golden hash is unusable, because two runs
+of the same scene diverge.** The render verification harness was redesigned around an in-process A/B
+of two code paths for exactly that reason. Determinism is not an aspiration this document invented;
+it is a property we have already been billed for lacking.
+
+#### D13 — Content extends the engine's kinds, not only its instances
+
+| | |
+|---|---|
+| **chosen** | A new *kind* of thing is a content change. The engine's understanding of what kinds exist is data it loads, not a vocabulary it compiles. |
+| **rejected** | A closed compiled vocabulary of kinds, with content free to add instances of the kinds that already exist. |
+| **serves** | **N2** — a closed vocabulary makes the engine the bottleneck for every content ambition. **F4** — the instance half of content opacity is already true; this extends the same property one level up. |
+| **costs** | **Every kind-specific behaviour must become declarative**, which is a large body of work and a real expressiveness question. |
+
+**What is actually at stake.** F4 records that content *instances* are opaque — genuinely, thoroughly
+so. What is closed is the set of *kinds*: item types with a compiled class each, object types, dungeon
+brushes, a metamaterial band whose connectivity and collision rules are compiled in, and a handful of
+stat names with engine-defined meaning. Adding an item *kind* means touching an enum, a name map, an
+extension map and a factory chain.
+
+**This is the decision most likely to be revisited, and it is stated so that revisiting it is
+possible.** The cost is not a detail — making kind behaviour declarative is a scripting-surface
+question as much as an architecture one, and a design that assumes D13 without paying for it will
+discover the compiled vocabulary at the worst moment. If this is later downgraded to "instances only",
+the register changes shape, and it should change here first.
+
+#### D9 — what ticks is not derived from who is watching
+
+D9 is stated in the table above; this is the evidence that makes it a decision with a price rather
+than a platitude.
+
+**What is rejected is not "using observers as a hint".** It is a design in which a participant's
+declared region of interest is the *only* thing that activates simulation. In the superseded
+implementation that region — derived from the render camera — is what activates and generates
+terrain sectors, what keeps them from unloading, what activates monster spawn cells (and *despawns*
+those monsters when the cell deactivates), what gates weather-projectile spawning entirely, and what
+sets liquid processing limits. A world with no participants is not idle; it is torn down.
+
+**So D9 costs a replacement, not a deletion.** Residency has to supply what four separate mechanisms
+currently take from view rectangles, and "a world runs because something requires it" is only half a
+design until that requirement input exists and says *which regions*. Section 10 owes that; this
+section owes the honesty that it is owed.
+
+**One nuance worth keeping, because it is easy to lose.** The dependency in the superseded design is
+not on a *display* — the region of interest is a plain rectangle, and headless tests set one directly
+with no camera in existence. That is what makes D9 reachable: the thing simulation depends on is
+already an abstract declaration, not a device. **F1 is safe; D9 is the work.**
 
 ### Why D6 is not a preference
 
@@ -1438,42 +1624,42 @@ Every component in the diagram, in the same reading order.
 | **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
 | **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
 | **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
-| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **A5** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
+| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
 | **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
-| **`net`** | CONTRACT | DOMAIN | what a replicated field is | **A2** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
-| **`content`** | CONTRACT | MACHINE | what a mod can change: data | **A4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
+| **`net`** | CONTRACT | DOMAIN | what a replicated field is | **D11** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
+| **`content`** | CONTRACT | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **A5** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **F1** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **A1 + A2** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **A1** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
-| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **A1** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
-| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **A3** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
+| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **D10** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
+| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **D12** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
 | **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
-| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **A2** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
-| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **A2** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
+| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **D11** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
+| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **D11** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
 | **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **A4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **F4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
 | **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
 | **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
-| **`mixing`** | BACKEND | DEVICE | turns sound into samples | **A5** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
-| **`transcript`** | BACKEND | DEVICE | records instead of drawing | **A5** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
+| **`mixing`** | BACKEND | DEVICE | turns sound into samples | **F1** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
+| **`transcript`** | BACKEND | DEVICE | records instead of drawing | **F1** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
 | **`gpu`** | CONTRACT | DEVICE | the GPU contract | **N3** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
-| **`audio`** | CONTRACT | DEVICE | the audio-device contract | **A5** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
+| **`audio`** | CONTRACT | DEVICE | the audio-device contract | **F1** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
 | **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
 | **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
 | **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
-| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **A2** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
+| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **D11** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
 | **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
-| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **A5** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
+| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **F1** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
 | **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | **N3** — a participant with no senses, which is what proves senses are optional | wiring only: `host_null`; an AI player that acts and neither draws nor records |
 | **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
-| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **A1** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
+| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **D10** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
-| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **A3** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
+| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **D12** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
 <!-- END TABLE: components -->
 
 ### The target directory structure — GENERATED
