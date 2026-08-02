@@ -102,7 +102,13 @@ TALLY = re.compile(r'([\w-]+) components: (\w+) CONTRACTs, (\w+) BACKENDs, (\w+)
 
 # compile projection
 C_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b><br/>(\w+)<br/><i>([^<]+)</i>"\]', re.M)
-C_BOX = re.compile(r'^\s*subgraph (\w+) \["<b>(\w+)</b> · (\w+)"\]', re.M)
+# The trailing descriptor is OPTIONAL. A plain node carries `<br/><i>what it does</i>`; a component
+# drawn as a subgraph -- which is how a component that owns elements is drawn -- had no way to keep
+# that line. `mixing` lost "turns sound into samples" the moment `audioTick` moved inside it, and the
+# gate then reported the component MISSING rather than saying its label was the wrong shape. Losing a
+# component's one-line duty to a parser's strictness is the wrong trade; the suffix is allowed here
+# and ignored, exactly as the plain-node descriptor is.
+C_BOX = re.compile(r'^\s*subgraph (\w+) \["<b>(\w+)</b> · (\w+)(?:<br/>[^"]*)?"\]', re.M)
 # `--o` is the THIRD compile arrow: A implements a ROLE that B declares and is driven through it, as
 # distinct from `==>`, which is A implementing the contract that says what A *is*. Both are genuine
 # derivations, and both were once drawn `==>` -- which made `rendering` and `transcript` read as

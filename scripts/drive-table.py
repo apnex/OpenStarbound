@@ -18,10 +18,25 @@ WHAT IT SHOWS, and the arrows are load-bearing:
     DISPATCH  ==>    through a CONTRACT -- the caller names an interface, never the implementation
     HANDOFF   -.->   across a thread or process boundary
 
-An element with NO incoming edge is reported as such rather than omitted. That is not an absence of
-information: `audioTick` has no driver we own because the device pulls it, and every WIRING is started
-by the process itself. Silence would make those look like oversights instead of the design decisions
-they are.
+A HANDOFF DELIVERS; IT DOES NOT DRIVE, and taking the document at its word here fixed a
+contradiction this table had been printing since it was written. The spec defines `-.->` as "a
+payload crosses; **the producer does not block on the consumer's body**" -- which is precisely the
+statement that the producer does not RUN that body. The first version counted every incoming edge as
+a drive, so the table said `audioTick` is *driven by* `clientTick` in the same row whose duty reads
+"pulled by `audio_sdl`, not driven by any loop we own"; said `clientTick` is driven by `universeLoop`
+across an edge the diagram labels "pull, not a reply"; and said `universeLoop` is driven by
+`superviseLoop` across an edge labelled "supervises only; ticks nothing". Three sections of prose
+said the opposite of the table they introduced.
+
+So the two relations are two columns, and no information is lost:
+
+    driven by   who runs this element's body -- CALL and DISPATCH edges only
+    receives    what is handed to it -- HANDOFF edges, each with its payload
+
+An element with NO driving edge is reported as such rather than omitted. That is not an absence of
+information: `audioTick` has no driver we own because the device pulls it, a LOOP on its own thread
+is the root of its own cadence, and every WIRING is started by the process itself. Silence would make
+those look like oversights instead of the design decisions they are.
 """
 import argparse
 import importlib.util
@@ -60,6 +75,15 @@ NO_DRIVER = {
     "headlessLoop": "same, for a process with no display",
     "superviseLoop": "same; `main` enters it and waits",
     "audioTick": "**the device pulls it.** EXTERNAL means the clock is not ours to see",
+    # Added when HANDOFF stopped counting as a drive. Each of these had an incoming handoff and was
+    # therefore reported as driven; each entry below is what that handoff actually is.
+    "universeLoop": "its own thread. The wiring constructs it; `superviseLoop` **supervises without "
+                    "ticking**, which its own edge label says",
+    "worldLoop": "its own thread, **one per resident world**. `universeTick` starts and stops it and "
+                 "never ticks it — lifecycle is not cadence",
+    "recordTick": "the sink's consumer runs it. That a recorder can be a separate process is exactly "
+                  "what makes seam 1 a handoff",
+    "resizeSignal": "a signal is **raised**, not driven; `inputTick` reports the window changed",
 }
 WIRING_RULE = "the process entry point runs it — composition is where a process begins"
 
@@ -72,13 +96,17 @@ def build(text):
     rt = rt[1].split("```", 1)[0]
     ids = {i: n for i, n, _k in NODE.findall(rt)}
 
-    incoming, outgoing = {}, {}
+    incoming, handed, outgoing = {}, {}, {}
     for a, arrow, label, b in EDGE.findall(rt):
         if a not in ids or b not in ids:
             continue
         seq = re.match(r'\s*(\d+|\*)\s*:\s*(.*)', label or "")
         note = (seq.group(2) if seq else (label or "")).strip()
-        incoming.setdefault(ids[b], set()).add((ids[a], ARROW[arrow], note))
+        kind = ARROW[arrow]
+        # THE SPLIT. A handoff is defined as "the producer does not block on the consumer's body",
+        # so it cannot be the thing that runs that body. It is delivery, and it is reported as such.
+        (handed if kind == "HANDOFF" else incoming).setdefault(ids[b], set()).add(
+            (ids[a], kind, note))
         outgoing.setdefault(ids[a], set()).add(ids[b])
 
     # A SIGNAL WITH NO CONSUMER IS NOT A SIGNAL. This gate asked "what drives this?" of every element
@@ -92,7 +120,8 @@ def build(text):
     # why this verdict takes no declared exceptions, unlike NO_DRIVER above.
     unheard = sorted(n for n, e in elem.items() if e["kind"] == "SIGNAL" and n not in outgoing)
 
-    out = ["| element | kind | cadence | driven by | how | duty |", "|---|---|---|---|---|---|"]
+    out = ["| element | kind | cadence | driven by | how | receives | duty |",
+           "|---|---|---|---|---|---|---|"]
     undriven = []
     for name, e in sorted(elem.items(), key=lambda kv: (ORDER[kv[1]["kind"]], kv[0])):
         got = sorted(incoming.get(name, ()))
@@ -105,8 +134,10 @@ def build(text):
                 undriven.append(name)
                 reason = "UNDECLARED"
             by, how = "**nothing**", "*%s*" % reason
-        out.append("| **`%s`** | %s | %s | %s | %s | %s |"
-                   % (name, e["kind"], e["cadence"], by, how, e["duty"]))
+        gets = sorted(handed.get(name, ()))
+        recv = " · ".join("`%s` → %s" % (s, n or "—") for s, _h, n in gets) if gets else "—"
+        out.append("| **`%s`** | %s | %s | %s | %s | %s | %s |"
+                   % (name, e["kind"], e["cadence"], by, how, recv, e["duty"]))
     return "\n".join(out), undriven, unheard
 
 
