@@ -294,6 +294,33 @@ def check_instruments(text, gates=None):
 _BARE_GOAL = re.compile(r'\*\*(N[123])\*\*')
 _REGISTER_ROW = re.compile(r'^\| \*\*`[a-z_]+`\*\* \|')
 _SERVES_ROW = re.compile(r'^\| \*\*serves\*\* \|')
+_CLAUSE_DEF = re.compile(r'^\| \*\*(N[123]\.[a-z])\*\* \|', re.M)
+_CLAUSE_CITE = re.compile(r'\b(N[123]\.[a-z])\b')
+
+
+def defined_clauses(text):
+    """The clause labels Section 3 actually defines, read from the clause tables' own rows."""
+    return set(_CLAUSE_DEF.findall(text))
+
+
+def check_clause_vocabulary(text):
+    """A cited clause must be one Section 3 defines.
+
+    BARE_GOAL asks whether a warrant NAMED a clause. It cannot ask whether the clause EXISTS, and a
+    check that accepts `N1.e` is a check that reads the shape of a citation rather than its meaning --
+    the same trap as a gate that greps for the wrong word and scores a screaming oracle as PASS.
+    `DANGLING_D` has always done this for decisions; goals had nothing until the clauses existed to
+    be dangling from.
+    """
+    known = defined_clauses(text)
+    if not known:
+        return [("DANGLING_CLAUSE",
+                 "Section 3 defines no goal clauses at all, so every clause citation in this "
+                 "document is dangling -- the clause tables are gone or their row shape changed")]
+    return [("DANGLING_CLAUSE",
+             "%s is cited but Section 3 defines no such clause (it defines %s)"
+             % (c, ", ".join(sorted(known))))
+            for c in sorted(set(_CLAUSE_CITE.findall(text)) - known)]
 
 
 def check_warrant_clauses(text):
@@ -440,6 +467,7 @@ def scan(text):
 
     findings.extend(check_instruments(text))
     findings.extend(check_warrant_clauses(text))
+    findings.extend(check_clause_vocabulary(text))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -466,6 +494,7 @@ SELFTEST = [
     ("UNREGISTERED_GATE", "The closure is gated by `composition_freshness` on every push."),
     ("MISSING_SCRIPT", "The figures come from `scripts/nonexistent-measure.py`."),
     ("BARE_GOAL", "| **serves** | **N3** — it composes, which is all anyone needs to know. |"),
+    ("DANGLING_CLAUSE", "| **serves** | **N1.e** — a fifth clause N1 does not have. |"),
 ]
 # A gate that fires on everything is as useless as one that fires on nothing.
 SELFTEST_CONTROL = "The `world` component owns a fixed clock and `participant` predicts against it."
