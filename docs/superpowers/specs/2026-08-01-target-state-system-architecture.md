@@ -1653,6 +1653,687 @@ transitive closure of its grant list, so these are **derived from the grant tabl
 `scripts/composition-graphs.py` and gated by `composition_graphs`. Three hand-drawn diagrams would be
 three more things to drift; nothing below is a new decision.
 
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
+```mermaid
+%% composition: client_opengl
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+    base["<b>base</b><br/>FOUNDATION"]
+    content["<b>content</b><br/>CONTRACT"]
+    core["<b>core</b><br/>FOUNDATION"]
+    host["<b>host</b><br/>CONTRACT"]
+    subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
+      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
+      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
+    platform["<b>platform</b><br/>CONTRACT"]
+    platform_pc["<b>platform_pc</b><br/>BACKEND"]
+    script["<b>script</b><br/>LIBRARY"]
+    storage["<b>storage</b><br/>LIBRARY"]
+  end
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+    colocation["<b>colocation</b><br/>LIBRARY"]
+    frontend["<b>frontend</b><br/>LIBRARY"]
+    game["<b>game</b><br/>LIBRARY"]
+    interaction["<b>interaction</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
+    subgraph universe ["<b>universe</b> · LIBRARY"]
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
+    end
+    universe_view["<b>universe_view</b><br/>LIBRARY"]
+    windowing["<b>windowing</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
+    end
+    world_view["<b>world_view</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    audio["<b>audio</b><br/>CONTRACT"]
+    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
+    gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
+    subgraph mixing ["<b>mixing</b> · BACKEND"]
+      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
+    end
+    presentation["<b>presentation</b><br/>CONTRACT"]
+    subgraph rendering ["<b>rendering</b> · BACKEND"]
+      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+    client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
+    subgraph participant ["<b>participant</b> · LIBRARY"]
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
+    end
+  end
+  audio --> core
+  audio_sdl --> audio
+  audio_sdl --> core
+  celestial --> base
+  celestial --> core
+  client_opengl --> audio_sdl
+  client_opengl --> colocation
+  client_opengl --> core
+  client_opengl --> frontend
+  client_opengl --> gpu_opengl
+  client_opengl --> host_sdl
+  client_opengl --> mixing
+  client_opengl --> participant
+  client_opengl --> rendering
+  client_opengl --> windowing
+  colocation --> base
+  colocation --> core
+  colocation --> game
+  colocation --> platform
+  colocation --> universe
+  colocation --> universe_view
+  colocation --> world
+  content --> base
+  content --> core
+  frontend --> base
+  frontend --> content
+  frontend --> core
+  frontend --> game
+  frontend --> host
+  frontend --> interaction
+  frontend --> platform
+  frontend --> scene
+  frontend --> windowing
+  game --> base
+  game --> celestial
+  game --> content
+  game --> core
+  game --> net
+  game --> platform
+  game --> script
+  game --> storage
+  gpu --> core
+  gpu_opengl --> core
+  gpu_opengl --> gpu
+  host --> core
+  host --> platform
+  host_sdl --> core
+  host_sdl --> host
+  host_sdl --> platform
+  host_sdl --> platform_pc
+  interaction --> base
+  interaction --> core
+  interaction --> game
+  interaction --> platform
+  interaction --> universe_view
+  interaction --> world_view
+  mixing --> audio
+  mixing --> base
+  mixing --> core
+  mixing --> presentation
+  mixing --> sound
+  net --> core
+  participant --> base
+  participant --> core
+  participant --> game
+  participant --> host
+  participant --> interaction
+  participant --> platform
+  participant --> presentation
+  participant --> scene
+  participant --> sound
+  participant --> storage
+  participant --> universe_view
+  participant --> world_view
+  platform --> core
+  platform_pc --> core
+  platform_pc --> host
+  platform_pc --> platform
+  presentation --> base
+  presentation --> core
+  presentation --> scene
+  presentation --> sound
+  rendering --> base
+  rendering --> core
+  rendering --> gpu
+  rendering --> host
+  rendering --> presentation
+  rendering --> scene
+  scene --> base
+  scene --> core
+  script --> base
+  script --> content
+  script --> core
+  sound --> base
+  sound --> core
+  storage --> base
+  storage --> content
+  storage --> core
+  storage --> script
+  universe --> base
+  universe --> celestial
+  universe --> core
+  universe --> game
+  universe --> platform
+  universe --> storage
+  universe --> world
+  universe --> worldgen
+  universe_view --> base
+  universe_view --> celestial
+  universe_view --> core
+  universe_view --> game
+  universe_view --> platform
+  universe_view --> world_view
+  windowing --> base
+  windowing --> content
+  windowing --> core
+  windowing --> game
+  windowing --> host
+  windowing --> platform
+  windowing --> scene
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world --> storage
+  world --> worldgen
+  world_view --> base
+  world_view --> core
+  world_view --> game
+  world_view --> platform
+  world_view --> scene
+  world_view --> sound
+  worldgen --> base
+  worldgen --> celestial
+  worldgen --> content
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class base,core kFoundation
+  class audio,celestial,content,gpu,host,net,platform,presentation,scene,sound kContract
+  class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
+  class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client_opengl kEntrypoint
+  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
+```
+
+**client_opengl links 32 of 41 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+<!-- END GENERATED: client_opengl -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
+```mermaid
+%% composition: client_sdl_gpu
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+    base["<b>base</b><br/>FOUNDATION"]
+    content["<b>content</b><br/>CONTRACT"]
+    core["<b>core</b><br/>FOUNDATION"]
+    host["<b>host</b><br/>CONTRACT"]
+    subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
+      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
+      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
+    platform["<b>platform</b><br/>CONTRACT"]
+    platform_pc["<b>platform_pc</b><br/>BACKEND"]
+    script["<b>script</b><br/>LIBRARY"]
+    storage["<b>storage</b><br/>LIBRARY"]
+  end
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+    colocation["<b>colocation</b><br/>LIBRARY"]
+    frontend["<b>frontend</b><br/>LIBRARY"]
+    game["<b>game</b><br/>LIBRARY"]
+    interaction["<b>interaction</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    scene["<b>scene</b><br/>CONTRACT"]
+    sound["<b>sound</b><br/>CONTRACT"]
+    subgraph universe ["<b>universe</b> · LIBRARY"]
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
+    end
+    universe_view["<b>universe_view</b><br/>LIBRARY"]
+    windowing["<b>windowing</b><br/>LIBRARY"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
+    end
+    world_view["<b>world_view</b><br/>LIBRARY"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+    audio["<b>audio</b><br/>CONTRACT"]
+    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
+    subgraph gpu ["<b>gpu</b> · CONTRACT"]
+      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
+    end
+    gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
+    subgraph mixing ["<b>mixing</b> · BACKEND"]
+      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
+    end
+    presentation["<b>presentation</b><br/>CONTRACT"]
+    subgraph rendering ["<b>rendering</b> · BACKEND"]
+      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
+    end
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+    client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
+    subgraph participant ["<b>participant</b> · LIBRARY"]
+      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
+      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
+      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
+    end
+  end
+  audio --> core
+  audio_sdl --> audio
+  audio_sdl --> core
+  celestial --> base
+  celestial --> core
+  client_sdl_gpu --> audio_sdl
+  client_sdl_gpu --> colocation
+  client_sdl_gpu --> core
+  client_sdl_gpu --> frontend
+  client_sdl_gpu --> gpu_sdl
+  client_sdl_gpu --> host_sdl
+  client_sdl_gpu --> mixing
+  client_sdl_gpu --> participant
+  client_sdl_gpu --> rendering
+  client_sdl_gpu --> windowing
+  colocation --> base
+  colocation --> core
+  colocation --> game
+  colocation --> platform
+  colocation --> universe
+  colocation --> universe_view
+  colocation --> world
+  content --> base
+  content --> core
+  frontend --> base
+  frontend --> content
+  frontend --> core
+  frontend --> game
+  frontend --> host
+  frontend --> interaction
+  frontend --> platform
+  frontend --> scene
+  frontend --> windowing
+  game --> base
+  game --> celestial
+  game --> content
+  game --> core
+  game --> net
+  game --> platform
+  game --> script
+  game --> storage
+  gpu --> core
+  gpu_sdl --> core
+  gpu_sdl --> gpu
+  host --> core
+  host --> platform
+  host_sdl --> core
+  host_sdl --> host
+  host_sdl --> platform
+  host_sdl --> platform_pc
+  interaction --> base
+  interaction --> core
+  interaction --> game
+  interaction --> platform
+  interaction --> universe_view
+  interaction --> world_view
+  mixing --> audio
+  mixing --> base
+  mixing --> core
+  mixing --> presentation
+  mixing --> sound
+  net --> core
+  participant --> base
+  participant --> core
+  participant --> game
+  participant --> host
+  participant --> interaction
+  participant --> platform
+  participant --> presentation
+  participant --> scene
+  participant --> sound
+  participant --> storage
+  participant --> universe_view
+  participant --> world_view
+  platform --> core
+  platform_pc --> core
+  platform_pc --> host
+  platform_pc --> platform
+  presentation --> base
+  presentation --> core
+  presentation --> scene
+  presentation --> sound
+  rendering --> base
+  rendering --> core
+  rendering --> gpu
+  rendering --> host
+  rendering --> presentation
+  rendering --> scene
+  scene --> base
+  scene --> core
+  script --> base
+  script --> content
+  script --> core
+  sound --> base
+  sound --> core
+  storage --> base
+  storage --> content
+  storage --> core
+  storage --> script
+  universe --> base
+  universe --> celestial
+  universe --> core
+  universe --> game
+  universe --> platform
+  universe --> storage
+  universe --> world
+  universe --> worldgen
+  universe_view --> base
+  universe_view --> celestial
+  universe_view --> core
+  universe_view --> game
+  universe_view --> platform
+  universe_view --> world_view
+  windowing --> base
+  windowing --> content
+  windowing --> core
+  windowing --> game
+  windowing --> host
+  windowing --> platform
+  windowing --> scene
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world --> storage
+  world --> worldgen
+  world_view --> base
+  world_view --> core
+  world_view --> game
+  world_view --> platform
+  world_view --> scene
+  world_view --> sound
+  worldgen --> base
+  worldgen --> celestial
+  worldgen --> content
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class base,core kFoundation
+  class audio,celestial,content,gpu,host,net,platform,presentation,scene,sound kContract
+  class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
+  class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client_sdl_gpu kEntrypoint
+  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
+```
+
+**client_sdl_gpu links 32 of 41 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
+<!-- END GENERATED: client_sdl_gpu -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
+```mermaid
+%% composition: world_gen
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+    base["<b>base</b><br/>FOUNDATION"]
+    content["<b>content</b><br/>CONTRACT"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
+    storage["<b>storage</b><br/>LIBRARY"]
+  end
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+    game["<b>game</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+    world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
+  end
+  celestial --> base
+  celestial --> core
+  content --> base
+  content --> core
+  game --> base
+  game --> celestial
+  game --> content
+  game --> core
+  game --> net
+  game --> platform
+  game --> script
+  game --> storage
+  net --> core
+  platform --> core
+  script --> base
+  script --> content
+  script --> core
+  storage --> base
+  storage --> content
+  storage --> core
+  storage --> script
+  world_gen --> base
+  world_gen --> celestial
+  world_gen --> core
+  world_gen --> game
+  world_gen --> platform
+  world_gen --> storage
+  world_gen --> worldgen
+  worldgen --> base
+  worldgen --> celestial
+  worldgen --> content
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class base,core kFoundation
+  class celestial,content,net,platform kContract
+  class game,script,storage,worldgen kLibrary
+  class world_gen kEntrypoint
+```
+
+**world_gen links 11 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+<!-- END GENERATED: world_gen -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
+```mermaid
+%% composition: world_sim
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+    base["<b>base</b><br/>FOUNDATION"]
+    content["<b>content</b><br/>CONTRACT"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
+    storage["<b>storage</b><br/>LIBRARY"]
+  end
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+    game["<b>game</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
+    end
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+    world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
+  end
+  celestial --> base
+  celestial --> core
+  content --> base
+  content --> core
+  game --> base
+  game --> celestial
+  game --> content
+  game --> core
+  game --> net
+  game --> platform
+  game --> script
+  game --> storage
+  net --> core
+  platform --> core
+  script --> base
+  script --> content
+  script --> core
+  storage --> base
+  storage --> content
+  storage --> core
+  storage --> script
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world --> storage
+  world --> worldgen
+  world_sim --> base
+  world_sim --> core
+  world_sim --> game
+  world_sim --> platform
+  world_sim --> storage
+  world_sim --> world
+  world_sim --> worldgen
+  worldgen --> base
+  worldgen --> celestial
+  worldgen --> content
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class base,core kFoundation
+  class celestial,content,net,platform kContract
+  class game,script,storage,world,worldgen kLibrary
+  class world_sim kEntrypoint
+  class world_worldLoop,world_worldTick kElement
+```
+
+**world_sim links 12 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
+<!-- END GENERATED: world_sim -->
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
+```mermaid
+%% composition: server
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+    base["<b>base</b><br/>FOUNDATION"]
+    content["<b>content</b><br/>CONTRACT"]
+    core["<b>core</b><br/>FOUNDATION"]
+    platform["<b>platform</b><br/>CONTRACT"]
+    script["<b>script</b><br/>LIBRARY"]
+    storage["<b>storage</b><br/>LIBRARY"]
+  end
+  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+    celestial["<b>celestial</b><br/>CONTRACT"]
+    game["<b>game</b><br/>LIBRARY"]
+    net["<b>net</b><br/>CONTRACT"]
+    subgraph universe ["<b>universe</b> · LIBRARY"]
+      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
+      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
+    end
+    subgraph world ["<b>world</b> · LIBRARY"]
+      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
+      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
+    end
+    worldgen["<b>worldgen</b><br/>LIBRARY"]
+  end
+  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+    subgraph server ["<b>server</b> · ENTRYPOINT"]
+      server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
+    end
+  end
+  celestial --> base
+  celestial --> core
+  content --> base
+  content --> core
+  game --> base
+  game --> celestial
+  game --> content
+  game --> core
+  game --> net
+  game --> platform
+  game --> script
+  game --> storage
+  net --> core
+  platform --> core
+  script --> base
+  script --> content
+  script --> core
+  server --> base
+  server --> core
+  server --> game
+  server --> platform
+  server --> universe
+  server --> world
+  storage --> base
+  storage --> content
+  storage --> core
+  storage --> script
+  universe --> base
+  universe --> celestial
+  universe --> core
+  universe --> game
+  universe --> platform
+  universe --> storage
+  universe --> world
+  universe --> worldgen
+  world --> base
+  world --> core
+  world --> game
+  world --> platform
+  world --> storage
+  world --> worldgen
+  worldgen --> base
+  worldgen --> celestial
+  worldgen --> content
+  worldgen --> core
+  worldgen --> game
+  worldgen --> platform
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class base,core kFoundation
+  class celestial,content,net,platform kContract
+  class game,script,storage,universe,world,worldgen kLibrary
+  class server kEntrypoint
+  class server_superviseLoop,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
+```
+
+**server links 13 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
+<!-- END GENERATED: server -->
+
 ### The register — one row per box
 
 Every component in the diagram, in the same reading order.
@@ -2845,686 +3526,6 @@ the second half misses the structure: **celestial parameters are the input contr
 Approaching a planet reads them; landing feeds the same type to the generator. A shared input consumed
 by two components at different times is a component, not loose vocabulary.
 
-<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
-```mermaid
-%% composition: client_opengl
-flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
-    base["<b>base</b><br/>FOUNDATION"]
-    content["<b>content</b><br/>CONTRACT"]
-    core["<b>core</b><br/>FOUNDATION"]
-    host["<b>host</b><br/>CONTRACT"]
-    subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
-      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
-      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
-    end
-    platform["<b>platform</b><br/>CONTRACT"]
-    platform_pc["<b>platform_pc</b><br/>BACKEND"]
-    script["<b>script</b><br/>LIBRARY"]
-    storage["<b>storage</b><br/>LIBRARY"]
-  end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
-    celestial["<b>celestial</b><br/>CONTRACT"]
-    colocation["<b>colocation</b><br/>LIBRARY"]
-    frontend["<b>frontend</b><br/>LIBRARY"]
-    game["<b>game</b><br/>LIBRARY"]
-    interaction["<b>interaction</b><br/>LIBRARY"]
-    net["<b>net</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-    subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
-      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
-    end
-    universe_view["<b>universe_view</b><br/>LIBRARY"]
-    windowing["<b>windowing</b><br/>LIBRARY"]
-    subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
-      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
-    end
-    world_view["<b>world_view</b><br/>LIBRARY"]
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
-  end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
-    audio["<b>audio</b><br/>CONTRACT"]
-    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
-    subgraph gpu ["<b>gpu</b> · CONTRACT"]
-      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
-    end
-    gpu_opengl["<b>gpu_opengl</b><br/>BACKEND"]
-    subgraph mixing ["<b>mixing</b> · BACKEND"]
-      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
-    end
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    subgraph rendering ["<b>rendering</b> · BACKEND"]
-      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
-    end
-  end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
-    client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
-    subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
-      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
-      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
-    end
-  end
-  audio --> core
-  audio_sdl --> audio
-  audio_sdl --> core
-  celestial --> base
-  celestial --> core
-  client_opengl --> audio_sdl
-  client_opengl --> colocation
-  client_opengl --> core
-  client_opengl --> frontend
-  client_opengl --> gpu_opengl
-  client_opengl --> host_sdl
-  client_opengl --> mixing
-  client_opengl --> participant
-  client_opengl --> rendering
-  client_opengl --> windowing
-  colocation --> base
-  colocation --> core
-  colocation --> game
-  colocation --> platform
-  colocation --> universe
-  colocation --> universe_view
-  colocation --> world
-  content --> base
-  content --> core
-  frontend --> base
-  frontend --> content
-  frontend --> core
-  frontend --> game
-  frontend --> host
-  frontend --> interaction
-  frontend --> platform
-  frontend --> scene
-  frontend --> windowing
-  game --> base
-  game --> celestial
-  game --> content
-  game --> core
-  game --> net
-  game --> platform
-  game --> script
-  game --> storage
-  gpu --> core
-  gpu_opengl --> core
-  gpu_opengl --> gpu
-  host --> core
-  host --> platform
-  host_sdl --> core
-  host_sdl --> host
-  host_sdl --> platform
-  host_sdl --> platform_pc
-  interaction --> base
-  interaction --> core
-  interaction --> game
-  interaction --> platform
-  interaction --> universe_view
-  interaction --> world_view
-  mixing --> audio
-  mixing --> base
-  mixing --> core
-  mixing --> presentation
-  mixing --> sound
-  net --> core
-  participant --> base
-  participant --> core
-  participant --> game
-  participant --> host
-  participant --> interaction
-  participant --> platform
-  participant --> presentation
-  participant --> scene
-  participant --> sound
-  participant --> storage
-  participant --> universe_view
-  participant --> world_view
-  platform --> core
-  platform_pc --> core
-  platform_pc --> host
-  platform_pc --> platform
-  presentation --> base
-  presentation --> core
-  presentation --> scene
-  presentation --> sound
-  rendering --> base
-  rendering --> core
-  rendering --> gpu
-  rendering --> host
-  rendering --> presentation
-  rendering --> scene
-  scene --> base
-  scene --> core
-  script --> base
-  script --> content
-  script --> core
-  sound --> base
-  sound --> core
-  storage --> base
-  storage --> content
-  storage --> core
-  storage --> script
-  universe --> base
-  universe --> celestial
-  universe --> core
-  universe --> game
-  universe --> platform
-  universe --> storage
-  universe --> world
-  universe --> worldgen
-  universe_view --> base
-  universe_view --> celestial
-  universe_view --> core
-  universe_view --> game
-  universe_view --> platform
-  universe_view --> world_view
-  windowing --> base
-  windowing --> content
-  windowing --> core
-  windowing --> game
-  windowing --> host
-  windowing --> platform
-  windowing --> scene
-  world --> base
-  world --> core
-  world --> game
-  world --> platform
-  world --> storage
-  world --> worldgen
-  world_view --> base
-  world_view --> core
-  world_view --> game
-  world_view --> platform
-  world_view --> scene
-  world_view --> sound
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> content
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
-  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
-  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
-  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
-  class base,core kFoundation
-  class audio,celestial,content,gpu,host,net,platform,presentation,scene,sound kContract
-  class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering kBackend
-  class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
-  class client_opengl kEntrypoint
-  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
-```
-
-**client_opengl links 32 of 41 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
-<!-- END GENERATED: client_opengl -->
-
-<!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
-```mermaid
-%% composition: client_sdl_gpu
-flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
-    base["<b>base</b><br/>FOUNDATION"]
-    content["<b>content</b><br/>CONTRACT"]
-    core["<b>core</b><br/>FOUNDATION"]
-    host["<b>host</b><br/>CONTRACT"]
-    subgraph host_sdl ["<b>host_sdl</b> · BACKEND"]
-      host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
-      host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
-    end
-    platform["<b>platform</b><br/>CONTRACT"]
-    platform_pc["<b>platform_pc</b><br/>BACKEND"]
-    script["<b>script</b><br/>LIBRARY"]
-    storage["<b>storage</b><br/>LIBRARY"]
-  end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
-    celestial["<b>celestial</b><br/>CONTRACT"]
-    colocation["<b>colocation</b><br/>LIBRARY"]
-    frontend["<b>frontend</b><br/>LIBRARY"]
-    game["<b>game</b><br/>LIBRARY"]
-    interaction["<b>interaction</b><br/>LIBRARY"]
-    net["<b>net</b><br/>CONTRACT"]
-    scene["<b>scene</b><br/>CONTRACT"]
-    sound["<b>sound</b><br/>CONTRACT"]
-    subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
-      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
-    end
-    universe_view["<b>universe_view</b><br/>LIBRARY"]
-    windowing["<b>windowing</b><br/>LIBRARY"]
-    subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
-      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
-    end
-    world_view["<b>world_view</b><br/>LIBRARY"]
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
-  end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
-    audio["<b>audio</b><br/>CONTRACT"]
-    audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
-    subgraph gpu ["<b>gpu</b> · CONTRACT"]
-      gpu_swapTick(["<b>swapTick</b> · TICK<br/><i>DISPLAY · one per process</i>"])
-    end
-    gpu_sdl["<b>gpu_sdl</b><br/>BACKEND"]
-    subgraph mixing ["<b>mixing</b> · BACKEND"]
-      mixing_audioTick(["<b>audioTick</b> · TICK<br/><i>EXTERNAL · one per device</i>"])
-    end
-    presentation["<b>presentation</b><br/>CONTRACT"]
-    subgraph rendering ["<b>rendering</b> · BACKEND"]
-      rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
-    end
-  end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
-    client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
-    subgraph participant ["<b>participant</b> · LIBRARY"]
-      participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
-      participant_clientTick(["<b>clientTick</b> · TICK<br/><i>DERIVED · one per participant</i>"])
-      participant_fixedTick(["<b>fixedTick</b> · TICK<br/><i>FIXED · one per participant</i>"])
-    end
-  end
-  audio --> core
-  audio_sdl --> audio
-  audio_sdl --> core
-  celestial --> base
-  celestial --> core
-  client_sdl_gpu --> audio_sdl
-  client_sdl_gpu --> colocation
-  client_sdl_gpu --> core
-  client_sdl_gpu --> frontend
-  client_sdl_gpu --> gpu_sdl
-  client_sdl_gpu --> host_sdl
-  client_sdl_gpu --> mixing
-  client_sdl_gpu --> participant
-  client_sdl_gpu --> rendering
-  client_sdl_gpu --> windowing
-  colocation --> base
-  colocation --> core
-  colocation --> game
-  colocation --> platform
-  colocation --> universe
-  colocation --> universe_view
-  colocation --> world
-  content --> base
-  content --> core
-  frontend --> base
-  frontend --> content
-  frontend --> core
-  frontend --> game
-  frontend --> host
-  frontend --> interaction
-  frontend --> platform
-  frontend --> scene
-  frontend --> windowing
-  game --> base
-  game --> celestial
-  game --> content
-  game --> core
-  game --> net
-  game --> platform
-  game --> script
-  game --> storage
-  gpu --> core
-  gpu_sdl --> core
-  gpu_sdl --> gpu
-  host --> core
-  host --> platform
-  host_sdl --> core
-  host_sdl --> host
-  host_sdl --> platform
-  host_sdl --> platform_pc
-  interaction --> base
-  interaction --> core
-  interaction --> game
-  interaction --> platform
-  interaction --> universe_view
-  interaction --> world_view
-  mixing --> audio
-  mixing --> base
-  mixing --> core
-  mixing --> presentation
-  mixing --> sound
-  net --> core
-  participant --> base
-  participant --> core
-  participant --> game
-  participant --> host
-  participant --> interaction
-  participant --> platform
-  participant --> presentation
-  participant --> scene
-  participant --> sound
-  participant --> storage
-  participant --> universe_view
-  participant --> world_view
-  platform --> core
-  platform_pc --> core
-  platform_pc --> host
-  platform_pc --> platform
-  presentation --> base
-  presentation --> core
-  presentation --> scene
-  presentation --> sound
-  rendering --> base
-  rendering --> core
-  rendering --> gpu
-  rendering --> host
-  rendering --> presentation
-  rendering --> scene
-  scene --> base
-  scene --> core
-  script --> base
-  script --> content
-  script --> core
-  sound --> base
-  sound --> core
-  storage --> base
-  storage --> content
-  storage --> core
-  storage --> script
-  universe --> base
-  universe --> celestial
-  universe --> core
-  universe --> game
-  universe --> platform
-  universe --> storage
-  universe --> world
-  universe --> worldgen
-  universe_view --> base
-  universe_view --> celestial
-  universe_view --> core
-  universe_view --> game
-  universe_view --> platform
-  universe_view --> world_view
-  windowing --> base
-  windowing --> content
-  windowing --> core
-  windowing --> game
-  windowing --> host
-  windowing --> platform
-  windowing --> scene
-  world --> base
-  world --> core
-  world --> game
-  world --> platform
-  world --> storage
-  world --> worldgen
-  world_view --> base
-  world_view --> core
-  world_view --> game
-  world_view --> platform
-  world_view --> scene
-  world_view --> sound
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> content
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
-  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
-  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
-  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
-  class base,core kFoundation
-  class audio,celestial,content,gpu,host,net,platform,presentation,scene,sound kContract
-  class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering kBackend
-  class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
-  class client_sdl_gpu kEntrypoint
-  class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
-```
-
-**client_sdl_gpu links 32 of 41 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `server`, `transcript`, `world_gen`, `world_sim`
-<!-- END GENERATED: client_sdl_gpu -->
-
-<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
-```mermaid
-%% composition: world_gen
-flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
-    base["<b>base</b><br/>FOUNDATION"]
-    content["<b>content</b><br/>CONTRACT"]
-    core["<b>core</b><br/>FOUNDATION"]
-    platform["<b>platform</b><br/>CONTRACT"]
-    script["<b>script</b><br/>LIBRARY"]
-    storage["<b>storage</b><br/>LIBRARY"]
-  end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
-    celestial["<b>celestial</b><br/>CONTRACT"]
-    game["<b>game</b><br/>LIBRARY"]
-    net["<b>net</b><br/>CONTRACT"]
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
-  end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
-    world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
-  end
-  celestial --> base
-  celestial --> core
-  content --> base
-  content --> core
-  game --> base
-  game --> celestial
-  game --> content
-  game --> core
-  game --> net
-  game --> platform
-  game --> script
-  game --> storage
-  net --> core
-  platform --> core
-  script --> base
-  script --> content
-  script --> core
-  storage --> base
-  storage --> content
-  storage --> core
-  storage --> script
-  world_gen --> base
-  world_gen --> celestial
-  world_gen --> core
-  world_gen --> game
-  world_gen --> platform
-  world_gen --> storage
-  world_gen --> worldgen
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> content
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
-  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
-  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
-  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
-  class base,core kFoundation
-  class celestial,content,net,platform kContract
-  class game,script,storage,worldgen kLibrary
-  class world_gen kEntrypoint
-```
-
-**world_gen links 11 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
-<!-- END GENERATED: world_gen -->
-
-<!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
-```mermaid
-%% composition: world_sim
-flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
-    base["<b>base</b><br/>FOUNDATION"]
-    content["<b>content</b><br/>CONTRACT"]
-    core["<b>core</b><br/>FOUNDATION"]
-    platform["<b>platform</b><br/>CONTRACT"]
-    script["<b>script</b><br/>LIBRARY"]
-    storage["<b>storage</b><br/>LIBRARY"]
-  end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
-    celestial["<b>celestial</b><br/>CONTRACT"]
-    game["<b>game</b><br/>LIBRARY"]
-    net["<b>net</b><br/>CONTRACT"]
-    subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
-      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
-    end
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
-  end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
-    world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
-  end
-  celestial --> base
-  celestial --> core
-  content --> base
-  content --> core
-  game --> base
-  game --> celestial
-  game --> content
-  game --> core
-  game --> net
-  game --> platform
-  game --> script
-  game --> storage
-  net --> core
-  platform --> core
-  script --> base
-  script --> content
-  script --> core
-  storage --> base
-  storage --> content
-  storage --> core
-  storage --> script
-  world --> base
-  world --> core
-  world --> game
-  world --> platform
-  world --> storage
-  world --> worldgen
-  world_sim --> base
-  world_sim --> core
-  world_sim --> game
-  world_sim --> platform
-  world_sim --> storage
-  world_sim --> world
-  world_sim --> worldgen
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> content
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
-  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
-  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
-  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
-  class base,core kFoundation
-  class celestial,content,net,platform kContract
-  class game,script,storage,world,worldgen kLibrary
-  class world_sim kEntrypoint
-  class world_worldLoop,world_worldTick kElement
-```
-
-**world_sim links 12 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `transcript`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
-<!-- END GENERATED: world_sim -->
-
-<!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
-```mermaid
-%% composition: server
-flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
-    base["<b>base</b><br/>FOUNDATION"]
-    content["<b>content</b><br/>CONTRACT"]
-    core["<b>core</b><br/>FOUNDATION"]
-    platform["<b>platform</b><br/>CONTRACT"]
-    script["<b>script</b><br/>LIBRARY"]
-    storage["<b>storage</b><br/>LIBRARY"]
-  end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
-    celestial["<b>celestial</b><br/>CONTRACT"]
-    game["<b>game</b><br/>LIBRARY"]
-    net["<b>net</b><br/>CONTRACT"]
-    subgraph universe ["<b>universe</b> · LIBRARY"]
-      universe_universeLoop(["<b>universeLoop</b> · LOOP<br/><i>FREE · one per universe</i>"])
-      universe_universeTick(["<b>universeTick</b> · TICK<br/><i>FREE · one per universe</i>"])
-    end
-    subgraph world ["<b>world</b> · LIBRARY"]
-      world_worldLoop(["<b>worldLoop</b> · LOOP<br/><i>FIXED · one per world</i>"])
-      world_worldTick(["<b>worldTick</b> · TICK<br/><i>FIXED · one per world</i>"])
-    end
-    worldgen["<b>worldgen</b><br/>LIBRARY"]
-  end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
-    subgraph server ["<b>server</b> · ENTRYPOINT"]
-      server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
-    end
-  end
-  celestial --> base
-  celestial --> core
-  content --> base
-  content --> core
-  game --> base
-  game --> celestial
-  game --> content
-  game --> core
-  game --> net
-  game --> platform
-  game --> script
-  game --> storage
-  net --> core
-  platform --> core
-  script --> base
-  script --> content
-  script --> core
-  server --> base
-  server --> core
-  server --> game
-  server --> platform
-  server --> universe
-  server --> world
-  storage --> base
-  storage --> content
-  storage --> core
-  storage --> script
-  universe --> base
-  universe --> celestial
-  universe --> core
-  universe --> game
-  universe --> platform
-  universe --> storage
-  universe --> world
-  universe --> worldgen
-  world --> base
-  world --> core
-  world --> game
-  world --> platform
-  world --> storage
-  world --> worldgen
-  worldgen --> base
-  worldgen --> celestial
-  worldgen --> content
-  worldgen --> core
-  worldgen --> game
-  worldgen --> platform
-  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
-  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
-  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
-  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
-  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
-  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
-  class base,core kFoundation
-  class celestial,content,net,platform kContract
-  class game,script,storage,universe,world,worldgen kLibrary
-  class server kEntrypoint
-  class server_superviseLoop,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
-```
-
-**server links 13 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
-<!-- END GENERATED: server -->
 
 ### `server` is not a headless client
 
