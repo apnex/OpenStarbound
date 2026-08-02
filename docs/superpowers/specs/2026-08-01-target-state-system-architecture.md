@@ -978,13 +978,29 @@ In the target state it **forks at seam 1 and forks again at seam 2**.
 what sort of thing it is, and therefore which rule governs it. The duty is one phrase, canonical — the
 same string appears in the diagram, the register and the grant table, and no component appears twice.
 
+<!-- TABLE: kind-rules -->
+
 | KIND | the rule it carries |
 |---|---|
 | **FOUNDATION** | depended on by everything above it; names nothing above itself |
-| **CONTRACT** | declares an interface and may name only foundation types. Any `.cpp` holds **value-type constructors and trivial defaults only** — never a backend's behaviour — and its size is metered: `platform` 0, `host` 41, `gpu` 89 lines, ratcheting down |
-| **BACKEND** | implements a contract; interchangeable with its siblings; named only by an ENTRYPOINT |
+| **INTERFACE** | declares operations, and may name only foundation types. A BACKEND implements it, and `==>` may point at nothing else. Any `.cpp` holds value-type constructors and trivial defaults only, never a backend's behaviour |
+| **VOCABULARY** | declares the types that cross a seam, and may name only foundation types. **It has no implementations and no `==>` edge** — there is nothing to implement, because it states what a thing *is* rather than what may be done to it |
+| **BACKEND** | implements exactly one INTERFACE; interchangeable with its siblings; named only by an ENTRYPOINT |
 | **LIBRARY** | ordinary code, named directly by its consumers, not interchangeable |
-| **ENTRYPOINT** | an executable; the only place a backend may be named |
+| **ENTRYPOINT** | an executable; the only place a BACKEND may be named |
+
+<!-- END TABLE: kind-rules -->
+
+**INTERFACE and VOCABULARY were one kind called CONTRACT until 2026-08-02, and this table was the last
+place still saying so.** The split is not a renaming: *only an INTERFACE can be implemented*. The
+distinction is what `platform` (eight operations, two backends) has and `scene` (a type language, no
+backends, and none possible) does not, and stating it as one kind made the "two implementations prove
+a contract" rule read as an accusation against `scene`, `sound` and `net`, which can never satisfy it.
+
+**The `.cpp` size figures that used to sit in this table have gone to Section 17**, where current-state
+measurements belong. A rule about what a kind may contain does not become truer by reciting how many
+lines `platform`, `host` and `gpu` spend on it today, and the rule reads the same with the numbers
+removed — which is the test for whether they belonged.
 
 **Kinds are single uppercase words.** A kind is a token: it has to survive being grepped, pasted into
 a CMake variable or a lint rule, and wrapped by a line break. `ENTRYPOINT`, never `ENTRY POINT`. The
@@ -1456,7 +1472,7 @@ The four that replace them each answer the same question — **what does this co
 
 | zone | faces | n |
 |---|---|---|
-| **`machine/`** | the OS, the vendor, the asset store, the disk | 10 |
+| **`machine/`** | the OS, the vendor, the asset store, the disk | 14 |
 | **`domain/`** | nothing outside; the game's own state and rules | 14 |
 | **`device/`** | a display, a speaker, a file, a recorder | 9 |
 | **`composition/`** | the other three; it wires them | 8 |
@@ -3555,7 +3571,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | An entry point that constructs and coordinates. Rejected by P2: placement and composition are wiring decisions, and the moment an entry point contains behaviour, that behaviour cannot be reused by any other composition. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_opengl`, `host_sdl`, `mixing`, `participant`, `rendering`, `transport_tcp` and `windowing`. May not contain a duty of its own. |
 | **falsified** | **If it contains a line that is not a construction or a connection.** |
-| **history** | It links 32 of 41 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
+| **history** | It links 35 of 45 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
 | **owes** | nothing. |
 
 ### `client_sdl_gpu` — the same participant, a different backend
@@ -3566,7 +3582,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3.a actually makes. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_sdl`, `host_sdl`, `mixing`, `participant`, `rendering`, `transport_tcp` and `windowing`. The two lists differ in exactly one entry, `gpu_sdl` for `gpu_opengl`, and that is the machine-checkable form of "the backend is swappable". |
 | **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
-| **history** | Also 32 of 41 components — same count, as it must be. |
+| **history** | Also 35 of 45 components — same count, as it must be. |
 | **owes** | nothing. |
 
 ### `client_headless` — a participant that records instead of drawing
@@ -3577,7 +3593,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A graphical client with rendering disabled at runtime. Rejected because the device stays linked and the dependency stays satisfied — the composition would prove nothing about whether a display is optional. |
 | **excludes** | Names `colocation`, `core`, `frontend`, `host_null`, `participant`, `transcript`, `transport_tcp` and `windowing`. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
 | **falsified** | If it links a GPU. Checkable by construction from the grant closure. |
-| **history** | 26 of 41 components — the gap to `client_opengl`'s 32 is the measured size of "what a display costs". |
+| **history** | 30 of 45 components — the gap to `client_opengl`'s 35 is the measured size of "what a display costs". |
 | **owes** | nothing. |
 
 ### `participant` — the view's clock, and the thing every composition is built around
@@ -3599,7 +3615,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Generation as a subcommand of the server binary. Rejected because it makes offline generation depend on a simulation being linkable, and it hides the fact that `worldgen` is severable behind an entry point that is not. |
 | **excludes** | Names `base`, `celestial`, `core`, `game`, `platform_null`, `storage` and `worldgen`. **May not name `world`, `universe` or `participant`** — if generating terrain required any of them, `worldgen`'s severability would be a claim rather than a demonstration. |
 | **falsified** | **If it needs to tick anything.** This composition exists to prove that generation is a function rather than a process, and a single tick would refute that. |
-| **history** | It links 11 of 41 components — **the smallest composition in the register**, below `world_sim`'s 12 and `server`'s 13 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
+| **history** | It links 12 of 45 components — **the smallest composition in the register**, below `world_sim`'s 13 and `server`'s 16 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
 | **owes** | nothing. |
 
 ### `client_agent` — a participant with no devices at all
@@ -3610,7 +3626,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still *produced* — the file is written, the deltas are assembled, and the composition would demonstrate only that output can be thrown away, not that a device is composed in. |
 | **excludes** | Names `core`, `host_null`, `participant` and `transport_tcp`. **The shortest grant list of any entry point, and that is its entire argument.** |
 | **falsified** | **If it needs a device to run**, or if `participant` has to test whether it has one. The first would falsify F1; the second would mean the discard is at the seam rather than at the emit sink, which is the arrangement Section 10's tier-2 subsection shows to be wrong. |
-| **history** | 19 of 41 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 11, `world_sim` 12 and `server` 13, none of which carry a participant. The 13 between 19 and `client_opengl`'s 32 are what **devices** cost. |
+| **history** | 22 of 45 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 12, `world_sim` 13 and `server` 16, none of which carry a participant. The 13 between 22 and `client_opengl`'s 35 are what **devices** cost — the same 13 this row recorded when the register held 41, because every composition grew by the same machine components. |
 | **owes** | nothing. |
 
 ### The T2 vocabulary
@@ -4366,7 +4382,7 @@ by two components at different times is a component, not loose vocabulary.
 | **rejected** | Building it as a headless client with the participant left in. Rejected because a server that holds a participant has confused watching with owning, and will eventually ask an authority to correct itself. Its players are **entities in its worlds**, not peers of it. |
 | **excludes** | Names `base`, `core`, `game`, `platform_null`, `transport_tcp`, `universe` and `world`. **May not name `participant`, `universe_view`, `world_view`, `presentation` or any device** — and that exclusion list is the whole argument of the section's title. |
 | **falsified** | If it ever needs a view of its own worlds. Diagnostics that require one are a telemetry duty, not an authority duty. |
-| **history** | It links 13 of 41 components against `client_opengl`'s 32, and the two lists are not nested — a server is not a subset of a client, which is what "not a headless client" means arithmetically. |
+| **history** | It links 16 of 45 components against `client_opengl`'s 35, and the two lists are not nested — a server is not a subset of a client, which is what "not a headless client" means arithmetically. |
 | **owes** | nothing. |
 
 The unifying frame — *a headless client is presentation-backend = null* — describes participants. **It
@@ -5559,7 +5575,7 @@ violated with extra steps.
 | the graphical client is unchanged | `render-gate.sh`, `render-motion.sh` | verification | **built** (from the render arc) |
 | a call tree stays inside its grants | full-fidelity graft rule | anchoring | **designed, not built** — needs a real call graph, not an include graph |
 | a composition can state its Lua surface | surface manifest + load-time check | verification | **designed, not built** — see Section 5 |
-| **every component is reasoned for, not merely declared** | `spec_derivations` | anchoring | **built** — 41/41 components, 246/246 facets |
+| **every component is reasoned for, not merely declared** | `spec_derivations` | anchoring | **built** — the coverage is generated in Section 10's ledger and is not restated here |
 | **every handoff states a bound, a policy and an observer** | `spec_consistency`, HANDOFF-edge clause | anchoring | **designed, not built** |
 | **every crossing that may span a machine states a timeout** | `spec_consistency`, DISPATCH/HANDOFF clause | anchoring | **designed, not built** |
 | **every inbound seam payload names a validator, or names its absence** | `spec_consistency`, payload clause | anchoring | **designed, not built** |
@@ -5733,7 +5749,7 @@ Tractable — four files, three call shapes — and invisible to every include c
 
 | facet | |
 |---|---|
-| **claim at risk** | The 41 components in the register are boundaries a build enforces (P1). |
+| **claim at risk** | The components in the register are boundaries a build enforces (P1). |
 | **how it shows** | Mechanically, from CMake. All eight Star libraries are `ADD_LIBRARY(... OBJECT ...)`, and an OBJECT library links **all** of its objects into every consumer — there is no per-object pruning. Containment is therefore decided entirely by which libraries an ENTRYPOINT names: an all-or-nothing, directory-granular switch. **27 of the 41 components are not yet their own directory**, which is exactly the set `grant_sweep` reports UNVERIFIABLE. |
 | **what it costs** | Nothing about the design, and everything about what a green run means today. Two numbers that look like two problems are one problem counted twice, and until a component is a directory its grant row is an assertion no instrument can check. |
 | **what settles it** | Building the directories — which is Section 17's move list, and the reason the UNVERIFIABLE count is a ratification condition rather than a metric to watch. |
@@ -5799,6 +5815,15 @@ What a delta document has to produce:
    makes the work look nearly done, and nobody re-checks a number that is moving the way they hoped.
 3. **The ordering** — below, as far as it is currently understood.
 4. **The cleanup ledger** — what the contract exposes as dead, and where it is deleted.
+5. **How far each INTERFACE is from a pure declaration.** Section 7's rule is that an INTERFACE's
+   `.cpp` holds value-type constructors and trivial defaults and nothing else. The distance from that
+   today, measured 2026-08-01: `platform` **0** lines, `host` **41**, `gpu` **89**. Zero is the target
+   and the number should only fall. **These three figures used to live inside Section 7's kind rule**,
+   where they made a rule about what a kind may contain read as a report on what three components
+   currently spend — the rule is the same sentence without them, which is what makes them delta rather
+   than definition. **No instrument recomputes them: `none`.** They are a hand measurement of one
+   afternoon, and a hand measurement quoted as a ratchet is the shape this document has been wrong
+   about before, so it is labelled rather than dressed up.
 
 **What narrowing `platform` costs, and it is on the ratchet rather than in prose.** The contract went
 from 18 grants to the components that call it, which turns three of today's crossings into

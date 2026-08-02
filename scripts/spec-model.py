@@ -54,7 +54,7 @@ CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")
 
 # Floors, not targets. Raise when the design genuinely grows; never lower to make a red gate green.
-FLOOR = {"components": 35, "grants": 33, "elements": 20, "seam-methods": 3}
+FLOOR = {"components": 35, "grants": 33, "elements": 20, "seam-methods": 3, "kind-rules": 6}
 
 MARK = "<!-- TABLE: %s -->"
 ENDMARK = "<!-- END TABLE: %s -->"
@@ -143,6 +143,23 @@ def elements(text):
                              % (m.group(1), cells[1], cells[2]))
         out[m.group(1)] = dict(kind=cells[1], cadence=cells[2], cardinality=card,
                                owner=owner, thread=thread, duty=cells[6] if len(cells) > 6 else "")
+    return out
+
+
+def kind_rules(text):
+    """-> {KIND: rule} from Section 7's kind table.
+
+    Section 7 defines what each kind MEANS, and for a day it defined a kind that no longer existed
+    while defining neither of the two it split into: five rows against six live kinds. Nothing
+    noticed, because the table was prose. It is delimited now, and `check_kind_rules` requires the
+    row set to equal KINDS exactly -- so adding a kind to this tuple without writing its rule is a
+    red gate rather than a silent gap.
+    """
+    out = {}
+    for cells in _rows(text, "kind-rules"):
+        m = re.fullmatch(r'\*\*([A-Z]+)\*\*', cells[0])
+        if m:
+            out[m.group(1)] = cells[1]
     return out
 
 

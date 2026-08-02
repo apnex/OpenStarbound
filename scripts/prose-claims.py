@@ -63,7 +63,12 @@ def _spec_model():
 MODEL = _spec_model()
 
 DEAD_ZONES = ("SUBSTRATE", "SEAM", "INTERIOR", "PERIPHERY", "SHELL")
-KINDWORD = r'(?:FOUNDATION|CONTRACT|BACKEND|LIBRARY|ENTRYPOINT)'
+# THE LIVE KINDS, from spec-model rather than retyped. This line read
+# `(?:FOUNDATION|CONTRACT|BACKEND|LIBRARY|ENTRYPOINT)` for a day after the CONTRACT split --
+# so the gate written to catch stale vocabulary could not see INTERFACE or VOCABULARY at all,
+# and treated CONTRACT as live. A gate's vocabulary outliving the document's is a defect this
+# project has now hit four times; the fix each time is to stop keeping a second copy.
+KINDWORD = r'(?:%s)' % '|'.join(MODEL.KINDS)
 # A dead zone name is also a live claim when the word "zone" is what sits beside it. The sentence
 # "the dedicated server ... has no SEAM zone at all" survived every run of this gate, because the
 # KIND-word adjacency test was the only trigger and that sentence names no KIND.
@@ -380,6 +385,21 @@ _SHARED_TABLE = re.compile(r'<!-- TABLE: shared-words -->(.*?)<!-- END TABLE: sh
 _SHARED_ROW = re.compile(r'^\| \*\*`([a-z_]+)`\*\* \|', re.M)
 
 
+def check_kind_rules(text):
+    """Section 7 must state a rule for every live KIND, and for no dead one."""
+    rules = MODEL.kind_rules(text)
+    if not rules:
+        return [("KIND_RULE", "Section 7's kind-rules table is missing or unparseable, so the "
+                              "document defines no kind at all")]
+    live = set(MODEL.KINDS)
+    return ([("KIND_RULE", "`%s` is a live KIND with no rule in Section 7 -- a component can be "
+                           "declared of a kind the document never defines" % k)
+             for k in sorted(live - set(rules))] +
+            [("KIND_RULE", "Section 7 states a rule for `%s`, which is not a KIND -- a retired kind "
+                           "still carrying a rule reads as live" % k)
+             for k in sorted(set(rules) - live)])
+
+
 def check_shared_words(text, components):
     """Section 1's reuse rule, made exact.
 
@@ -531,6 +551,7 @@ def scan(text):
     findings.extend(check_warrant_clauses(text))
     findings.extend(check_clause_vocabulary(text))
     findings.extend(check_shared_words(text, comp))
+    findings.extend(check_kind_rules(text))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -601,6 +622,18 @@ def selftest(text):
             print("  SHARED_WORD  SILENT -- %s was not reported" % label)
         else:
             print("  %-12s %-6s %s" % ("SHARED_WORD", "FIRES", label))
+
+    # KIND_RULE compares a declared set against spec-model's KINDS, so appended prose cannot reach
+    # it either. Both directions driven directly: a live kind whose rule is gone, and a rule for a
+    # kind that no longer exists -- which is exactly the state Section 7 was in for a day.
+    renamed = text.replace("| **VOCABULARY** | declares the types that cross a seam",
+                           "| **XXXX** | declares the types that cross a seam", 1)
+    kinds = {k for k, _ in check_kind_rules(renamed)}
+    if kinds == {"KIND_RULE"} and len(check_kind_rules(renamed)) == 2:
+        print("  %-12s %-6s %s" % ("KIND_RULE", "FIRES", "a live kind unruled, and a dead kind ruled"))
+    else:
+        bad += 1
+        print("  KIND_RULE    SILENT -- renaming a kind row was not reported both ways")
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
