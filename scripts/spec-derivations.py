@@ -120,6 +120,54 @@ def parse(text, components):
     return ({c: {f: found.get(c, {}).get(f, False) for f in FACETS} for c in components}, raw)
 
 
+# GRANT AGREEMENT. The `excludes` facet claims a grant list in prose; Section 9's register holds the
+# real one. On 2026-08-02 an ad-hoc version of this check caught `script` claiming it may name
+# `platform` when the register grants it only base/content/core -- a factual error introduced while
+# writing 41 derivations quickly, invisible to every other gate because both statements were
+# individually well-formed. It also caught `client_sdl_gpu` deferring its list to another entry
+# instead of stating it, which defeats the row's own claim.
+#
+# Only the LEADING enumeration counts. A comparative clause ("Names nothing, as `core` does") names a
+# component without claiming it, and an earlier version of this check produced three false positives
+# by reading those as claims.
+_CMP = re.compile(r'\b(as|than|like|unlike|exactly as)\b')
+
+
+def claimed_grants(cell, components):
+    head = cell.split(".", 1)[0]
+    m = _CMP.search(head)
+    if m:
+        head = head[:m.start()]
+    if not head.strip().lower().startswith("names"):
+        return None
+    return {x for x in re.findall(r'`(\w+)`', head) if x in components}
+
+
+def check_grants(text, components, grants):
+    """-> [(component, claimed_only, register_only)] where a derivation disagrees with the register."""
+    lines = text.splitlines()
+    lo, hi = derivation_region(lines)
+    out, cur = [], None
+    for i in range(lo, hi + 1):
+        line = lines[i - 1]
+        m = _H3.match(line)
+        if m:
+            named = [n for n in re.findall(r'`(\w+)`', m.group(1)) if n in components]
+            cur = named[0] if len(named) == 1 else None
+            continue
+        if cur and line.startswith("| **excludes**"):
+            r = _ROW.match(line)
+            if not r:
+                continue
+            claimed = claimed_grants(r.group(2).strip(), components)
+            if claimed is None:
+                continue
+            actual = set(grants.get(cur, set()))
+            if claimed != actual:
+                out.append((cur, sorted(claimed - actual), sorted(actual - claimed)))
+    return out
+
+
 def ledger(cov, components):
     """The generated block: one row per component, one column per facet."""
     order = sorted(components, key=lambda c: (components[c]["kind"], c))
@@ -200,6 +248,7 @@ def main(argv):
         raise SystemExit("spec-derivations: only %d components parsed -- the parse has regressed"
                          % len(components))
     cov, raw = parse(text, components)
+    disagree = check_grants(text, components, MODEL.grants(text))
     block = ledger(cov, components)
     owed = owed_block(raw)
 
@@ -212,6 +261,15 @@ def main(argv):
         print("spec-derivations: written -- %d/%d components derived, %d/%d facets"
               % (complete, len(components), answered, total))
         return 0
+
+    if disagree:
+        print("spec-derivations: FAIL -- %d derivation(s) disagree with the register's grant table"
+              % len(disagree))
+        for c, extra, missing in disagree:
+            print("  %-18s claims %s / register has %s"
+                  % (c, ", ".join(extra) or "-", ", ".join(missing) or "-"))
+        if args.check or args.inject:
+            return 1
 
     if args.check:
         if BEGIN not in text or END not in text:

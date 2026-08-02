@@ -3135,7 +3135,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around the Lua interpreter's *lifecycle* — roots, threads, components — and deliberately **not** the mod-facing API. What a script may call is a property of what its host composed, so it cannot be owned by the thing that merely runs the script. |
 | **rejected** | An interpreter that owns the standard binding set. Rejected because it makes the binding surface a fixed list held by one component, contradicting N3 directly: an agent composition and a graphical one must offer different surfaces without either being a stripped-down build of the other. |
-| **excludes** | Names `base`, `content`, `core`, `platform`. May not name `game`, `world` or any view — the interpreter must not know what its scripts will be given. |
+| **excludes** | Names `base`, `content` and `core`. May not name `game`, `world`, any view — or `platform`: an interpreter that can reach a vendor service has a second duty nobody granted it. |
 | **falsified** | If two compositions with different components end up with identical binding surfaces. That would prove the surface is owned here rather than composed. |
 | **history** | There are **two** Lua surfaces, not one, and the global one is injected by the shell rather than owned by the interpreter — measured evidence that the split this boundary asserts is the one already in use. |
 | **owes** | nothing. |
@@ -3278,7 +3278,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around a *wiring list*, and nothing else: `host_sdl` + `rendering` + `gpu_opengl`, plus the participant and the UI. An entry point contains no logic — if it does, that logic has no owner. |
 | **rejected** | An entry point that constructs and coordinates. Rejected by P2: placement and composition are wiring decisions, and the moment an entry point contains behaviour, that behaviour cannot be reused by any other composition. |
-| **excludes** | Names ten components and is named by none. May not contain a duty of its own. |
+| **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_opengl`, `host_sdl`, `mixing`, `participant`, `rendering`, `windowing`, and is named by none. May not contain a duty of its own. |
 | **falsified** | **If it contains a line that is not a construction or a connection.** |
 | **history** | It links 32 of 41 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
 | **owes** | nothing. |
@@ -3289,7 +3289,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Identical to `client_opengl` but for one substitution: `gpu_sdl` in place of `gpu_opengl`. |
 | **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3 actually makes. |
-| **excludes** | Names the same ten components as `client_opengl` with the one substitution. The two grant lists differing in exactly one entry is the machine-checkable form of "the backend is swappable". |
+| **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_sdl`, `host_sdl`, `mixing`, `participant`, `rendering`, `windowing` — enumerated rather than deferred to `client_opengl`'s entry, because a reader who must follow a cross-reference to learn a grant list cannot check the very claim this row makes. The two lists differ in exactly one entry, `gpu_sdl` for `gpu_opengl`, and that is the machine-checkable form of "the backend is swappable". |
 | **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
 | **history** | Also 32 of 41 components — same count, as it must be. |
 | **owes** | nothing. |
@@ -3300,7 +3300,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around the wiring `host_null` + `transcript` + the UI it records. A participant with no device that nonetheless produces an artefact. |
 | **rejected** | A graphical client with rendering disabled at runtime. Rejected because the device stays linked and the dependency stays satisfied — the composition would prove nothing about whether a display is optional. |
-| **excludes** | Names seven components. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
+| **excludes** | Names `colocation`, `core`, `frontend`, `host_null`, `participant`, `transcript`, `windowing`. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
 | **falsified** | If it links a GPU. Checkable by construction from the grant closure. |
 | **history** | 26 of 41 components — the gap to `client_opengl`'s 32 is the measured size of "what a display costs". |
 | **owes** | nothing. |
