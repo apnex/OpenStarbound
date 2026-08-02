@@ -736,9 +736,10 @@ column exists in this table at all.
 **Three steps to one, and the ratio is load-bearing.** A world advances three times for every
 system-world step. A design that assumes a single simulation cadence has not modelled the
 system-world at all — and the honest statement of the consequence is not a percentage but a
-structural one: **the system-world currently has no element, no cardinality and no owner anywhere in
-Part III.** That is a real gap, owed by Section 12, and it is listed in Section 18 rather than
-implied here.
+structural one: **the system-world has no element and no cardinality anywhere in Part III.** The
+owner is not in doubt — it is `universe`, which is the component that decides what exists at system
+scale — so this is a missing element rather than a missing decision, and it is recorded against
+`universe` in the generated owed ledger, where the ratification rule can see it.
 
 #### The owed figures, split by why they are owed
 
@@ -3114,7 +3115,7 @@ claim. **Ratification requires every cell to read yes.**
 | **excludes** | Names `base`, `celestial`, `core`, `game`, `platform`, `storage`, `world`, `worldgen`. May not name `universe_view` or any participant: an authority does not name views of itself. |
 | **falsified** | If a participant's arrival is what causes a world to become resident. That is D9 at universe scale — residency is an input this component receives, never a count it maintains. |
 | **history** | The superseded implementation tears a world down when it has no clients and starts one when a client arrives, so world lifetime is a function of observation. This boundary is reachable only because D9 replaces that with an explicit residency input — which is the clearest illustration of why D9 is a decision with a cost rather than a platitude. |
-| **owes** | nothing. |
+| **owes** | **The system-world's clock.** Section 6 sets a system-world step of **20 Hz**, one third of a world's, and names *each system-world* as its owner — and no element in the register carries it. Section 11's clock table has four clocks we own and none of them is this one. A rate with a number, a reason and no element is a cadence nobody runs: it belongs to this component, because deciding what exists at system scale is this component's duty and a system-world is the thing a universe contains. **The gap is a missing element, not a missing decision** — the rate is chosen, the owner is named, and what is absent is the row in Section 12 that would let an instrument see either. |
 
 ### `world_view` — one participant's picture of one world
 
@@ -5736,7 +5737,7 @@ rule that "owed" is an authoring state rather than a document feature.
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->
 
-**11 of 41 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
+**12 of 41 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
 
 | component | what it owes |
 |---|---|
@@ -5751,6 +5752,7 @@ rule that "owed" is an authoring state rather than a document feature.
 | `presentation` | **What `client_agent` holds.** That composition links this contract and no implementation of it, and Section 8 offers the absence as proof the contract is severable. Both cannot be true as stated: either `participant` tests whether it has a sink — which is the thing `platform`'s falsifier forbids one level down — or the absence is not an absence and `agentWiring` composes a null sink from somewhere. Two candidates, and the choice is the Director's: `transcript` in **discard** mode is already specified as accept-and-drop and would make the agent link it, or the contract carries its own null case, which its warrant already claims (*"the sink is an interface with a null case"*) and its `excludes` facet forbids by naming no implementation. |
 | `sound` | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
 | `storage` | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
+| `universe` | **The system-world's clock.** Section 6 sets a system-world step of **20 Hz**, one third of a world's, and names *each system-world* as its owner — and no element in the register carries it. Section 11's clock table has four clocks we own and none of them is this one. A rate with a number, a reason and no element is a cadence nobody runs: it belongs to this component, because deciding what exists at system scale is this component's duty and a system-world is the thing a universe contains. **The gap is a missing element, not a missing decision** — the rate is chosen, the owner is named, and what is absent is the row in Section 12 that would let an instrument see either. |
 
 <!-- END GENERATED: derivation-owed -->
 
