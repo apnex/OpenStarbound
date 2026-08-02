@@ -61,6 +61,11 @@ Read the table the other way and N3 falls out of it: `client_agent` is a partici
 authority and no devices, `world_sim` is an authority with no participant, and neither is a
 cut-down version of a graphical client. They are different wirings of the same components.
 
+**These six are examples, not an enumeration.** They are the aggregates that happen to have entry
+points today, chosen because between them they exercise every seam. The architecture is the component
+set and the rules about what may name what; the aggregates are what those rules permit, and the list
+of permitted aggregates is not something this document closes.
+
 Two further things are first-class rather than incidental, because they are what makes it *Starbound*
 and not a physics demo:
 
@@ -122,16 +127,37 @@ The test is not aesthetic. It is: **can one person hold a component in their hea
 what they have not broken?** A boundary that cannot be enforced is a convention, and conventions decay
 at exactly the rate the team turns over.
 
-### N3 — Composable clients
+### N3 — Aggregate functionality comes from composition
 
-A "client" is not a thing. It is a **composition** — a set of components wired together by an entry
-point. A graphical client composes a participant with a renderer and a GPU backend; a headless client
-composes the same participant with a recorder; an agent composes it with no senses at all; a CI
-harness composes it with assertions.
+The payoff of a modular system is not tidiness. It is that **components combine into aggregate
+functions that nobody wrote a code path for**. A client is one such aggregate. A server is another.
+Neither is the taxonomy of the system — they are two witnesses that the components compose, and if
+they were the only two the property would not be worth claiming.
 
-None of these is a special case of another, and none is a stripped-down build of the "real" one. They
-are peers, and the contract each shares is proven right precisely because more than one implementation
-satisfies it.
+So the components are the vocabulary and the compositions are sentences. The document enumerates the
+vocabulary exhaustively and the sentences only by example, because an architecture that can express a
+fixed list of aggregates has not achieved anything a build flag could not.
+
+**The test is falsifiable, and it is the one that matters.** Name a capability the system does not
+have. Ask whether it needs new *components* or only new *wiring*. A few, none of which is a shipped
+entry point today:
+
+| you want | it composes | new components needed |
+|---|---|---|
+| a dedicated shard for one busy world | one `world` authority + `net`, placed alone | none |
+| a load generator: 500 participants, no senses | `participant` × N, no `device` at all | none |
+| a replay verifier | `world` authority + `transcript`, no participant | none |
+| an offline map renderer | `worldgen` + `world_view` + `rendering`, nothing ticking | none |
+| a save-migration tool | `storage` + `content`, no simulation whatever | none |
+
+If the answer to that question is "new code" every time, the modularity is decorative. Every row
+above is wiring, and that — not the count of components — is what the target state is *for*.
+
+**N1 and N3 are one property seen at two scales.** Composition is placement inside one process;
+distribution is placement across several. Both demand exactly the same thing of a component: a
+declared boundary and a payload that is a value. Satisfy N3 honestly and N1 costs a deployment
+decision; satisfy it dishonestly — with components that only compose in the arrangements someone
+anticipated — and N1 is a rewrite wearing a config file.
 
 ---
 
