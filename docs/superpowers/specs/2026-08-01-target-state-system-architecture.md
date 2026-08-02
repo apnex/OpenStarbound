@@ -1,6 +1,6 @@
 # Target State System Architecture
 
-> **STATUS: WORK IN PROGRESS. NOTHING IS APPROVED.** Director's rule, adopted 2026-08-01:
+> **STATUS: WORK IN PROGRESS. NOTHING IS APPROVED.** Director's rule:
 > **approval is aggregate only — no section is approved until the whole can be reasoned with
 > together.** Sections seal individually — a sealed section is certified enough to build on, not
 > frozen — and a sealed section re-opens on a named trigger, per A8's Law of Fallback. Outstanding
@@ -288,9 +288,9 @@ there would be nothing to place on a headless machine; if two processes shared a
 between them could be honest. They are the two facts N1 stands on, and neither is a design
 achievement — both are already true.
 
-**F2's across-processes half was restated on 2026-08-02 because the old wording described a policy
-rather than the code.** It said remote timestamps were *"echoed to their originator or consumed purely
-as differences"*, and the tree does neither: it stores the remote value, advances it with local `dt`,
+**F2's across-processes half is worded against the mechanism, not against the intended policy, and
+the difference is why.** A policy statement would say remote timestamps are *"echoed to their
+originator or consumed purely as differences"*. The tree does neither: it stores the remote value, advances it with local `dt`,
 and differences it against a copy of itself. That reads like a violation and is in fact a stronger
 guarantee — **offset cancellation** — but the sentence claiming verification did not describe what had
 been verified. A fact whose evidence clause is a paraphrase of the intended rule is the same defect
@@ -922,7 +922,7 @@ and what shape it takes.
 
 ---
 
-## 7. Altitude and zones
+## 7. ALTITUDE and ZONEs
 
 ### The pixel side has no name today
 
@@ -1004,11 +1004,11 @@ stated the correct rule in three separate places the whole time. `CONTRACT_GRANT
 rather than the prose, so the rule and the model can no longer disagree quietly.
 
 <!-- HISTORICAL -->
-**INTERFACE and VOCABULARY were one kind called CONTRACT until 2026-08-02, and this table was the last
-place still saying so.** The split is not a renaming: *only an INTERFACE can be implemented*. The
-distinction is what `platform` (eight operations, two backends) has and `scene` (a type language, no
-backends, and none possible) does not, and stating it as one kind made the "two implementations prove
-a contract" rule read as an accusation against `scene`, `sound` and `net`, which can never satisfy it.
+**INTERFACE and VOCABULARY are two kinds and not one, because only an INTERFACE can be implemented.**
+The distinction is what `platform` (eight operations, two backends) has and `scene` (a type language,
+no backends, and none possible) does not. **One kind for both cannot state the rule that matters**: a
+contract is proven honest by two implementations, and said of a single kind that rule reads as an
+accusation against `scene`, `sound` and `net`, which can never satisfy it and were never meant to.
 <!-- END HISTORICAL -->
 
 **The `.cpp` size figures that used to sit in this table have gone to Section 17**, where current-state
@@ -1136,10 +1136,10 @@ Two arrow kinds, because they mean different things:
 order to derive from it, so the grant is still required and `grant-sweep` still checks for it. The
 arrows classify *why* a dependency exists — they do not remove one.
 
-**Why `--o` exists, and it is the Law of One's own doing.** Until 2026-08-02 there was one thick
-arrow, and `rendering` and `transcript` each carried two of them — `==> presentation` and `==> host`.
-Both are genuine derivations, so both were drawn the same way, and the rule below then read as
-violated by the design's two most important backends. **The defect was the notation, not the design.**
+**Why `--o` exists, and it is the Law of One's own doing.** With a single thick arrow, `rendering`
+and `transcript` each carry two — `==> presentation` and `==> host`. Both are genuine derivations, so
+both draw the same way, and the rule below then reads as violated by the design's two most important
+backends. **That defect is in the notation, not in the design**, which is what a second arrow fixes.
 `rendering ==> presentation` says *rendering is a presentation backend*; `rendering --o host` says
 *the host drives rendering through the `Presenter` role it declares*. One is identity, the other is
 invocation, and collapsing them lost the distinction the rule depends on.
@@ -1693,7 +1693,7 @@ Two consequences worth stating:
   already cross. Sending a lightmap would be sending a rendered artifact — the frame-streaming mistake
   in miniature.
 
-### The host owns a window; the backend owns everything drawn to it
+### The host owns a window; the BACKEND owns everything drawn to it
 
 `client_opengl` and `client_sdl_gpu` differ by one grant, and the register said that difference was
 "the entire point". **It was not true, and `grant_sweep` could not see why.**
@@ -3133,7 +3133,7 @@ that is not complete is not a grant list.**
 
 ---
 
-## 10. Component derivations
+## 10. COMPONENT derivations
 
 Section 9 declares *what the components are*. This section derives *why each boundary is where it
 is*, and those are different jobs — which is why they are different sections. A register row can be
@@ -3220,7 +3220,7 @@ claim. **Ratification requires every cell to read yes.**
 
 <!-- END GENERATED: derivation-ledger -->
 
-### `core` — the substrate, and the only component with nothing beneath it
+### `core` — the substrate, and the only COMPONENT with nothing beneath it
 
 | facet | |
 |---|---|
@@ -3594,7 +3594,7 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | It links 35 of 45 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
 | **owes** | nothing. |
 
-### `client_sdl_gpu` — the same participant, a different backend
+### `client_sdl_gpu` — the same participant, a different BACKEND
 
 | facet | |
 |---|---|
@@ -4330,7 +4330,7 @@ What does survive is the acyclicity, by a different route: the four contract hea
 `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`
 and `StarPerlin` — every one of them `core` — plus `StarWorldParameters`, which moves in (below).
 
-### `celestial` — an INTERFACE, because two components consume the star map and neither owns it
+### `celestial` — an INTERFACE, because two COMPONENTs consume the star map and neither owns it
 
 | facet | |
 |---|---|
@@ -4555,7 +4555,7 @@ Same code, different transport. Crossings stay at one push per driver step, one-
 **Frame assembly is not a clock** — it has no cadence of its own, it is a transform whose rate is set
 by whoever pulls it. Giving it an authority would be inventing a governor with nothing to govern.
 
-### Component, instance, composition — three things named `world`-ish
+### COMPONENT, instance, composition — three things named `world`-ish
 
 Worth separating explicitly, because the register uses one word at three altitudes:
 
@@ -4604,7 +4604,7 @@ not.
 
 ---
 
-## 12. Elements and what drives them
+## 12. ELEMENTs and what drives them
 
 ### The runtime taxonomy
 
@@ -4784,7 +4784,7 @@ and the Law of One counts only the second.
 That is the working loop the two projections are for: **a runtime requirement, checked against a
 compile-time permission, resolved by changing the permission.**
 
-### Element register
+### ELEMENT register
 
 Two container columns, one per projection — the graft, in a table.
 
@@ -5138,7 +5138,7 @@ That is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling
 open item rather than given an invented owner — the second defect of exactly this class, and both were
 found the same way: by drawing the runtime and asking the compile projection for permission.
 
-### Why `presentTick` is one element and not two
+### Why `presentTick` is one ELEMENT and not two
 
 `presentTick` does four things in order — **resample · camera · assemble · paint** — and the first two
 are a different job from the last two: resampling is a pure function of the scene, the target time and
@@ -5439,10 +5439,10 @@ two `*_view`s), the whole audio stack (`sound`, `mixing`, `audio`, `audio_sdl`),
 either diagram loses its `%% projection:` marker — a check that cannot find what it is checking must
 not report success. Ten injected defects were each confirmed to fire before it was registered.
 
-### The altitude every gate above was blind to
+### The ALTITUDE every gate above was blind to
 
-The three rows above all read the SOURCE. On 2026-08-01 a one-off sweep of the actual binaries showed
-what that misses:
+The three rows above all read the SOURCE. A sweep of the actual binaries shows what that misses, and
+is the reason a link-altitude instrument exists at all:
 
 ```
 starbound_server:  Renderer 0   Pane 0   Widget 0   GuiContext 0   TextPainter 0   WorldPainter 0
@@ -5771,7 +5771,7 @@ Tractable — four files, three call shapes — and invisible to every include c
 | **what it costs** | Until it is resolved, `rendering` cannot compile without `game`, which is the exact condition Section 15 states as seam 1's pass condition — `source/rendering/CMakeLists.txt` may not list `${STAR_GAME_INCLUDES}`. One inheritance edge is enough to keep that line in place. |
 | **what settles it** | Task #191, which is scoped and open. This is the **hardest residue** in the presentation split and the only item on this list that is a known defect rather than an uncertainty. |
 
-### R4 — a component is only enforceable if it is its own directory
+### R4 — a COMPONENT is only enforceable if it is its own directory
 
 | facet | |
 |---|---|
@@ -5825,6 +5825,15 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 "is this boundary in the right place" becomes **a number that only goes down**.
 
 ---
+
+**THIS IS THE ONLY SECTION THAT MAY CARRY A DATE, and the reason is the rule rather than an
+exception to it.** A target state has no date: it describes what the system should be, which is not a
+claim about any particular day. Everywhere else, a sentence of the form *"X was Y until <date>"* is
+either irrelevant now and should be cut, or it carries a reason the design is what it is — in which
+case the REASON is load-bearing and the date is scaffolding, so the sentence should state the warrant
+and drop the calendar. This section is different because its subject **is** the current tree: a
+measurement of what exists today is unfalsifiable without saying when it was taken. `prose_claims`
+checks it with the DATED_CLAIM verdict, which exempts this section by name and nothing else.
 
 **Part II describes the target state and nothing else** — no migration, no actions against the
 current tree, no history. Everything about *getting there* lives here, and the delta itself is a
@@ -6068,7 +6077,7 @@ entries that own the items; the second is hand-authored because it records oblig
 no single component. **Ratification requires both to be empty**, which is the concrete form of the
 rule that "owed" is an authoring state rather than a document feature.
 
-### What the components owe — GENERATED
+### What the COMPONENTs owe — GENERATED
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->
 
@@ -6090,17 +6099,17 @@ rule that "owed" is an authoring state rather than a document feature.
 
 <!-- END GENERATED: derivation-owed -->
 
-### What the design owes, belonging to no one component
+### What the design owes, belonging to no one COMPONENT
 
 
 1. **Aggregate review.** Per the status rule, no section is approved alone; the whole must be
    reasoned with together. The rule exists because a model change beneath a section can invalidate it
    after the fact — which is also why sealing is certification rather than freezing (A8, Law of
    Fallback).
-2. **The round-trip ratchet has a metric and a ceiling — CLOSED 2026-08-02, and the way it closed is
-   the point.** This entry read *"round trip is not yet defined precisely enough to count: a `poll()`
-   that returns is one by construction, and the rule is meant to catch the ones that are not."* The
-   definition needed no invention: Section 8's seam table declares each boundary's call, and **a round
+2. **The round-trip ratchet has a metric and a ceiling, and where the metric came from is the point.**
+   The objection that held this open was that *round trip is not defined precisely enough to count: a
+   `poll()` that returns is one by construction, and the rule is meant to catch the ones that are not.*
+   The definition needed no invention: Section 8's seam table declares each boundary's call, and **a round
    trip is a call that returns a value**. Ceiling **one**, gated as `round_trip_ceiling`. The second
    half of the objection — that the dangerous ones are not the honest `poll()` — is answered by a
    second assertion rather than a better count: **no `Sink` may return**, Section 8's naming rule made

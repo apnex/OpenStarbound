@@ -212,7 +212,7 @@ LOCAL_COUNT = (
     ("`game` is now three components", "the decomposition of one component"),
     ("two of the four components adopted today", "a subset of one day's adoptions"),
     ("A shared input consumed by two components", "the two consumers of that input"),
-    ("because two components consume the star map", "the two consumers of the star map"),
+    ("because two COMPONENTs consume the star map", "the two consumers of the star map"),
     ("the client's three elements", "the three time-domain elements, not the register"),
     ("`frameLoop` reaching four elements", "that loop's out-degree"),
     ("Thirty-two components had a duty", "the underived subset, not the register total"),
@@ -429,6 +429,33 @@ def check_contract_grants(comp, grants):
     return out
 
 
+# A TARGET STATE HAS NO DATE. It describes what the system should be, which is not a claim about a
+# particular day. A sentence of the form "X was Y until <date>" is either irrelevant now -- cut it --
+# or it carries the reason the design is what it is, in which case the REASON is load-bearing and the
+# date is scaffolding. Six such sentences were restructured to keep the warrant and drop the calendar;
+# the seventh is in Section 17, whose subject IS the current tree and whose measurements are
+# unfalsifiable without a date. That section is exempt BY NAME and nothing else is.
+_DATE = re.compile(r'\b20\d{2}-\d{2}-\d{2}\b')
+DATED_SECTION = "17"
+
+
+def check_no_dates(text):
+    """No calendar dates outside the one section whose subject is the current tree."""
+    lines, out, section = text.splitlines(), [], None
+    for i, ln in enumerate(lines, 1):
+        m = re.match(r'^## (\d+)\. ', ln)
+        if m:
+            section = m.group(1)
+        if section == DATED_SECTION:
+            continue
+        for d in _DATE.findall(ln):
+            out.append(("DATED_CLAIM",
+                        "line %d carries the date %s outside Section %s. A target state has no date: "
+                        "either the passage is irrelevant now and should be cut, or it carries a "
+                        "warrant -- state the warrant and drop the calendar" % (i, d, DATED_SECTION)))
+    return out
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -609,6 +636,7 @@ def scan(text):
     findings.extend(check_shared_words(text, comp))
     findings.extend(check_kind_rules(text))
     findings.extend(check_dead_kinds(text))
+    findings.extend(check_no_dates(text))
     findings.extend(check_contract_grants(comp, grants))
     findings.extend(_scope_claims(text))
     return findings
@@ -712,6 +740,14 @@ def selftest(text):
     else:
         bad += 1
         print("  CONTRACT_GRANT SILENT -- a contract granting a LIBRARY was not reported")
+
+    # DATED_CLAIM is positional -- it needs a date inside a section that is not the exempt one -- so
+    # it is driven by injecting one under Section 2 rather than appending at the end of the file.
+    if check_no_dates(text.replace("## 2. Axioms", "## 2. Axioms\n\nDecided on 2026-08-02.\n", 1)):
+        print("  %-12s %-6s %s" % ("DATED_CLAIM", "FIRES", "a date outside the delta section"))
+    else:
+        bad += 1
+        print("  DATED_CLAIM  SILENT -- a date in a load-bearing section was not reported")
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
