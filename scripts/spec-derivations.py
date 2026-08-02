@@ -59,6 +59,8 @@ SPEC = MODEL.SPEC
 FACETS = ["boundary", "rejected", "excludes", "falsified", "history", "owes"]
 
 BEGIN = "<!-- BEGIN GENERATED: scripts/spec-derivations.py#ledger -->"
+OWED_BEGIN = "<!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->"
+OWED_END = "<!-- END GENERATED: derivation-owed -->"
 END = "<!-- END GENERATED: derivation-ledger -->"
 
 # A facet row: | **boundary** | ... |   The label may carry trailing words ("falsified by").
@@ -91,7 +93,7 @@ def parse(text, components):
     lines = text.splitlines()
     lo, hi = derivation_region(lines)
 
-    found = {}
+    found, raw = {}, {}
     cur = None
     for i in range(lo, hi + 1):
         line = lines[i - 1]
@@ -109,10 +111,13 @@ def parse(text, components):
         if r:
             label = r.group(1).strip().lower()
             if label in FACETS:
-                value = r.group(2).strip().strip("*").strip()
-                found.setdefault(cur, {})[label] = value.lower() not in _EMPTY
+                value = r.group(2).strip()
+                probe = value.strip("* ").strip()
+                found.setdefault(cur, {})[label] = probe.lower() not in _EMPTY
+                if label == "owes":
+                    raw.setdefault(cur, value)
 
-    return {c: {f: found.get(c, {}).get(f, False) for f in FACETS} for c in components}
+    return ({c: {f: found.get(c, {}).get(f, False) for f in FACETS} for c in components}, raw)
 
 
 def ledger(cov, components):
@@ -137,6 +142,42 @@ def ledger(cov, components):
     return "\n".join(out)
 
 
+NOTHING = {"nothing", "nothing.", "none", "none.", "n/a"}
+
+
+def owed_block(raw):
+    """Everything a derivation records as unresolved -- generated, so the list cannot drift from
+    the derivations that own the items. `owes` is the one facet whose ANSWER may legitimately be
+    "nothing"; every other value is an open item and appears here."""
+    items = [(c, v) for c, v in sorted(raw.items()) if v.strip().lower() not in NOTHING]
+    out = [OWED_BEGIN, ""]
+    if not items:
+        out.append("**No component owes anything.** Every owes facet reads *nothing*, which is one "
+                   "of the two conditions Section 10 states for ratification.")
+    else:
+        out.append("**%d of %d components record something unresolved.** Generated from the owes "
+                   "facet of each derivation, so this list cannot drift from the entries that own "
+                   "the items. Ratification requires it to be empty." % (len(items), len(raw)))
+        out.append("")
+        out.append("| component | what it owes |")
+        out.append("|---|---|")
+        for c, v in items:
+            out.append("| `%s` | %s |" % (c, v))
+    out.append("")
+    out.append(OWED_END)
+    return "\n".join(out)
+
+
+def inject_pair(text, block, owed):
+    text = inject(text, block)
+    if OWED_BEGIN in text and OWED_END in text:
+        pre = text.split(OWED_BEGIN, 1)[0]
+        post = text.split(OWED_END, 1)[1]
+        return pre + owed + post
+    raise SystemExit("spec-derivations: no owed markers -- add %s / %s where the owed ledger belongs"
+                     % (OWED_BEGIN, OWED_END))
+
+
 def inject(text, block):
     if BEGIN in text and END in text:
         pre = text.split(BEGIN, 1)[0]
@@ -158,15 +199,16 @@ def main(argv):
     if len(components) < 30:
         raise SystemExit("spec-derivations: only %d components parsed -- the parse has regressed"
                          % len(components))
-    cov = parse(text, components)
+    cov, raw = parse(text, components)
     block = ledger(cov, components)
+    owed = owed_block(raw)
 
     complete = sum(1 for c in cov if all(cov[c].values()))
     answered = sum(1 for c in cov for f in FACETS if cov[c][f])
     total = len(components) * len(FACETS)
 
     if args.inject:
-        SPEC.write_text(inject(text, block), encoding="utf-8")
+        SPEC.write_text(inject_pair(text, block, owed), encoding="utf-8")
         print("spec-derivations: written -- %d/%d components derived, %d/%d facets"
               % (complete, len(components), answered, total))
         return 0
@@ -175,8 +217,12 @@ def main(argv):
         if BEGIN not in text or END not in text:
             print("spec-derivations: FAIL -- ledger markers absent")
             return 1
+        if OWED_BEGIN not in text or OWED_END not in text:
+            print("spec-derivations: FAIL -- owed-ledger markers absent")
+            return 1
         current = BEGIN + text.split(BEGIN, 1)[1].split(END, 1)[0] + END
-        if current.strip() != block.strip():
+        cur_owed = OWED_BEGIN + text.split(OWED_BEGIN, 1)[1].split(OWED_END, 1)[0] + OWED_END
+        if current.strip() != block.strip() or cur_owed.strip() != owed.strip():
             print("spec-derivations: STALE -- rerun `scripts/spec-derivations.py --inject`")
             return 1
         print("spec-derivations: OK -- ledger matches (%d/%d components derived, %d/%d facets)"

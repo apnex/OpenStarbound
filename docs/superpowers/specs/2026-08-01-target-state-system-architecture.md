@@ -5502,6 +5502,33 @@ keeps `camera` while losing `renderer` (Section 5). One placement decision answe
 
 ## 18. Owed, and related
 
+Two lists. The first is **generated from the derivations themselves**, so it cannot drift from the
+entries that own the items; the second is hand-authored because it records obligations that belong to
+no single component. **Ratification requires both to be empty**, which is the concrete form of the
+rule that "owed" is an authoring state rather than a document feature.
+
+### What the components owe — GENERATED
+
+<!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->
+
+**8 of 41 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
+
+| component | what it owes |
+|---|---|
+| `base` | "Shared services" is the vaguest duty in the register: it names a *property* rather than a *duty*, so it cannot fail the Law of One by containing "and" — it fails by containing nothing. The falsifier above is the concrete form of that question and is owed a count. |
+| `celestial` | `StarCelestialDatabase.hpp` holds all three classes in one header, so the split cannot be enforced or even attributed by an instrument until the header is divided. Second instance of the same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer` — **the contract and its implementations sharing a file** — which is worth naming as a pattern, since two of the components adopted here are blocked on exactly it. |
+| `colocation` | The parity oracle itself. D8 requires either identical encode/decode or a proof the two agree, and neither exists yet. |
+| `content` | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
+| `gpu` | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
+| `platform_pc` | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
+| `sound` | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
+| `storage` | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
+
+<!-- END GENERATED: derivation-owed -->
+
+### What the design owes, belonging to no one component
+
+
 1. **Aggregate review.** Per the status rule, no section is approved alone; the whole must be
    reasoned with together. The rule exists because a model change beneath a section can invalidate it
    after the fact — which is also why sealing is certification rather than freezing (A8, Law of
@@ -5532,6 +5559,26 @@ keeps `camera` while losing `renderer` (Section 5). One placement decision answe
    - **Cleanup ledger** — what the contracts expose as dead, and where it gets removed.
 
 ---
+
+### `system-boundaries.md` — the measured present, and why it stays separate
+
+Two whole-system architecture documents exist in this repository and their relationship has never been
+stated, which is how a reader comes to believe one supersedes the other.
+
+| | `system-boundaries.md` | this document |
+|---|---|---|
+| describes | **the tree as it is**, measured | **the target**, derived |
+| every number in it | generated from the source by `scripts/arch-graph.py` | chosen, and justified against an axiom or a goal |
+| what it may not do | choose a boundary | cite the current tree as a reason |
+
+**D7 is what keeps them apart, and it cuts both ways.** This document may not justify a boundary by
+what the code does today; that document may not propose a boundary at all. Merging them would give the
+present a vote on the target, which is the single failure mode D7 exists to prevent.
+
+**But Section 17 is exactly where the two meet.** A delta is the difference between a measured present
+and a derived target, so it needs both — and `system-boundaries.md` is the measured half it currently
+lacks. That is a relationship of *supply*, not of authority: the delta consumes the measurements, and
+the target consumes nothing from them.
 
 - `docs/architecture/system-boundaries.md` — the measured map this design sits inside. Sections 5
   (granted vs spent), 6 (shape), 9 (cohesion), 12 (presentation tier's three duties) and 13 (the one
