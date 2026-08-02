@@ -601,13 +601,13 @@ matters — the second column is the target-state component that would have to s
 | `team` | `m_universeClient->teamClient().get()` | `participant` |
 | `world` | `m_universeClient->worldClient().get()` | `world_view` |
 
-**This document said "exactly four" until 2026-08-02, and the seven it missed are the interesting
-ones.** The original four were `voice`, `renderer`, `clipboard` and `interface` — a tidy set that
-made the surface look like a presentation concern. The full 11 say something stronger and less
-comfortable: **`camera` binds a `WorldCamera` owned by the `WorldPainter` into the *global* script
-root**, so today every entity and player script in the game can reach a presentation object. That is
-not a hazard the design invented; it is the sharpest single instance of the coupling this design
-exists to remove, and it was invisible while the measurement said four.
+**Eleven is the number that matters, and the tempting subset is four.** Read only the groups whose
+names sound presentational — `voice`, `renderer`, `clipboard`, `interface` — and the surface looks
+like a presentation concern that removing presentation would remove. The full 11 say something
+stronger and less comfortable: **`camera` binds a `WorldCamera` owned by the `WorldPainter` into the
+*global* script root**, so every entity and player script in the game can reach a presentation
+object. That is not a hazard the design invented; it is the sharpest single instance of the coupling
+this design exists to remove, and it is invisible to any reading that counts four.
 
 It also makes the obligation below concrete rather than prudent. Reading the *supplied by* column
 against each composition's grant closure gives the surface each one can actually offer:
@@ -650,8 +650,10 @@ compile time*.
 
 - **Surface B is a non-problem.** Those scripts exist only because panes exist. Delete presentation and
   both go together. Nothing to null out.
-- **Surface A is the entire headless Lua question, and it is four named groups** — not a sprawling
-  surface.
+- **Surface A is the entire headless Lua question, and it is eleven named groups** — a bounded list,
+  not a sprawling surface, and the headless delta within it is **one group**: `client_headless`
+  supplies 10 of 11 and loses only `renderer`. The four-group loss belongs to `client_agent`, which
+  is a different composition answering a different question.
 
 ### This section already answered the mod-API question the register later raised — RESOLVED
 
@@ -2678,7 +2680,7 @@ Every component in the diagram, in the same reading order.
 | **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **D11** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
 | **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **F4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **N3** — the binding surface is a function of what got composed, so the interpreter cannot own it | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
 | **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
 | **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
 | **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
@@ -3142,7 +3144,7 @@ claim. **Ratification requires every cell to read yes.**
 | **boundary** | Around the Lua interpreter's *lifecycle* — roots, threads, components — and deliberately **not** the mod-facing API. What a script may call is a property of what its host composed, so it cannot be owned by the thing that merely runs the script. |
 | **rejected** | An interpreter that owns the standard binding set. Rejected because it makes the binding surface a fixed list held by one component, contradicting N3 directly: an agent composition and a graphical one must offer different surfaces without either being a stripped-down build of the other. |
 | **excludes** | Names `base`, `content` and `core`. May not name `game`, `world`, any view — or `platform`: an interpreter that can reach a vendor service has a second duty nobody granted it. |
-| **falsified** | If two compositions with different components end up with identical binding surfaces. That would prove the surface is owned here rather than composed. |
+| **falsified** | If any of the eleven groups is registered by `script` itself rather than by the component that supplies it. That is the countable form, and it is one grep. The composed form of the same test: two compositions whose closures differ **in a binding-contributing component** must differ in surface. The qualifier is load-bearing — `client_opengl` and `client_sdl_gpu` differ only in a GPU backend, which contributes no bindings, so their identical surfaces are this boundary holding rather than failing, and a falsifier that fired on the pair the design *requires* to exist would be testing nothing. |
 | **history** | There are **two** Lua surfaces, not one, and the global one is injected by the shell rather than owned by the interpreter — measured evidence that the split this boundary asserts is the one already in use. |
 | **owes** | nothing. |
 
@@ -3741,20 +3743,18 @@ lifecycle. **It is not the mod-facing API**, and that distinction is load-bearin
 game 36, frontend 6, base 2, participant 2, core 2, windowing 2 — counting headers and bodies alike,
 which is the convention `scripts/spec-measures.py` uses. Each component exposes its own
 bindings the way it exposes its own headers — `windowing` owns `widget.*`, `frontend` owns
-`interface.*`/`clipboard.*`/`voice.*`, `participant` owns `renderer.*`. Anyone later "consolidating the
-bindings" would be undoing the boundary, not tidying it.
+`interface.*` and `voice.*`, `platform` owns `clipboard.*`, `rendering` owns `renderer.*`,
+`participant` owns `team.*`. Section 5's table is the writer for all eleven; the point here is only
+that no one component holds them. Anyone later "consolidating the bindings" would be undoing the
+boundary, not tidying it.
 
-**OPEN DECISION: the mod API is now a composition property.**
-
-| composition | Lua bindings absent |
-|---|---|
-| `client_opengl`, `client_headless` | none |
-| `client_agent` | `widget.*`, `interface.*`, `clipboard.*`, `voice.*` |
-| `server`, `world_sim` | those plus `renderer.*` |
-
-A mod written against `interface.*` does not degrade on `client_agent` — **it is not there.** Defensible,
-and undecided. Three options: accept it, declare a guaranteed core surface every composition must
-provide, or stub the absentees. **Not resolved here.**
+**The mod API is therefore a composition property, and Section 5 resolved what to do about it:**
+accept the absence. A binding is the public surface of a component, so a composition that does not
+link the component does not have the binding — for the same reason it does not have the component's
+headers. Section 5 owns the per-composition surface table (11 groups, each with the component that
+supplies it) and this entry does not restate it; the obligation it creates — that a composition
+**declare** its surface rather than let a mod discover the absence at first call — is Section 15's
+*Lua surface obligation*.
 
 ### The real blocker is `Root`, and the render arc already found it
 
