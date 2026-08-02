@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**137 tasks** across 2 store(s): 1 in_progress, 23 pending, 113 completed
+**145 tasks** across 2 store(s): 3 in_progress, 27 pending, 115 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 136 tasks, ids 64–199
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 144 tasks, ids 64–208
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 130, of which **38 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 138, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -49,19 +49,20 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **1** — NOT YET INVESTIGATED
+- **2** — NOT YET INVESTIGATED
 
-**Unexplained ids: 1.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 2.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
 | [#199](#c29c1332-199) | `555c692b` |
+| [#207](#c29c1332-207) | `66b9715a` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 113.
+**Completed tasks citing no commit and no doc:** 79 of 115.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -186,7 +187,6 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
-| [#176](#c29c1332-176) | `c29c1332` | open | SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB) | — | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
 | [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
 | [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `e8d6860a` `7c0e8340` `c89be289` | — |
@@ -201,7 +201,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
 | [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
 | [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | — |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `2026-08-01-target-state-system-architecture.md` |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
@@ -210,6 +210,15 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | — |
+| [#200](#c29c1332-200) | `c29c1332` | open | ARCH-1: whole-system boundary document + arch-graph generator + gate | `7d22d2bb` | — |
+| [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
+| [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
+| [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
+| [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `tssa-frame.md` |
+| [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: adversarial-review closure + levelling pass | `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
+| [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2516,27 +2525,6 @@ SPUN OUT: #176 (publish-phase iterator invalidation, pre-existing UB, deliberate
 STILL OPEN elsewhere: SystemWorldServerThread has zero telemetry, so "sim closed at 99.76%" means the WORLD tick, not all server CPU. Do not let that claim drift.
 ```
 
-<a id="c29c1332-176"></a>
-
-#### #176 — SIM-2: publish phase mutates unerroredClientIds while range-for iterates it (pre-existing UB)
-
-status: **pending**
-
-```
-FOUND during #175 (adversarial critic, confirmed against the tree). Deliberately NOT fixed there: instrumenting a bug is not fixing it, and folding a behaviour change into a byte-identical telemetry change would bury it.
-
-source/game/StarWorldServerThread.cpp, WorldServerThread::update, publish phase:
-  for (auto clientId : unerroredClientIds) { ... catch { ... unerroredClientIds.remove(clientId); } }
-
-The catch block calls List::remove on the very container the range-for is iterating. Star's List is a std::vector wrapper (source/core/StarList.hpp), so remove() invalidates the iterator and the loop continues on a dangling one. Undefined behaviour.
-
-REACHABILITY: only on the exception path -- handleIncomingPackets throwing for a client. Rare but not unreachable; that catch exists because it happens. Note the list is now ALSO read by the sync phase later in the same tick, so a corrupted list has a second consumer.
-
-FIX OPTIONS: (a) collect failures into a second list and remove after the loop; (b) iterate a copy; (c) index-based loop with careful decrement. (a) is cleanest and keeps the removal ordering observable.
-
-MUST NOT be shipped as "byte-identical" -- it changes behaviour on the error path, which is the point. Wants its own commit and, ideally, a test that drives a throwing client.
-```
-
 <a id="c29c1332-177"></a>
 
 #### #177 — ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game
@@ -3058,6 +3046,7 @@ status: **pending**
 
 - `334bc38d` tools: measure the game&lt;-&gt;render boundary before anyone moves it
 - `b2ac6c27` render: EntityDrawables moves out of the header the slice exists to avoid
+- cited in `docs/superpowers/specs/2026-08-01-target-state-system-architecture.md`
 
 ```
 BLOCKER 2 -- DONE 2026-07-26, b2ac6c27. EntityDrawables moved from StarWorldRenderData.hpp to
@@ -3296,6 +3285,325 @@ WHAT A REAL HEADLESS CLIENT WOULD ADDITIONALLY NEED (none started):
 STILL LIVE AND CHEAP: the boundary_ratchet (ceiling 213) keeps the game layer's push-sink surface from
 growing while this is parked. That is the part worth keeping warm -- it costs nothing and it means the
 decision can be revisited from data rather than from memory.
+```
+
+<a id="c29c1332-200"></a>
+
+#### #200 — ARCH-1: whole-system boundary document + arch-graph generator + gate
+
+status: **pending**
+
+- `7d22d2bb` docs(arch): the whole-system boundary map, generated and gated
+
+```
+Built scripts/arch-graph.py and docs/architecture/system-boundaries.md: ten diagrams of the whole system's boundaries, nine of them GENERATED from the tree and gated by the new arch_graph_fresh ctest + Gates workflow step.
+
+METHOD DOCUMENTED (the hand-authored 10th diagram): four tests ranked by evidential strength -- (1) Refusal: the build's INCLUDE_DIRECTORIES grant lists are the authority, a #include outside the grant is a compile error, so the cross-directory graph is acyclic BY CONSTRUCTION not by discipline; (2) Severability: 12 live executables in 4 strictly-nested link shells, starbound_server proving game<->presentation; (3) Vocabulary: Root::singleton reach; (4) Duty: the cross-cutting subsystems the first three structurally cannot see.
+
+DIAGRAM TYPE SELECTION: flowchart TD (grant lattice, transitively reduced -> the Hasse diagram); flowchart w/ -.-> --> ==> (granted-vs-spent, three states mapping exactly onto Mermaid's three native arrow weights); sankey-beta (magnitude, caveated as non-conserving); nested subgraph (severability shells); treemap-beta + table (mass); xychart-beta (reach); flowchart+subgraphs (cross-cutting); mindmap (six top-level parts); classDiagram w/ namespace (render layers -- the only place inheritance is the real relationship).
+
+FINDINGS THE INSTRUMENT PRODUCED:
+- `application` is NOT a presentation library. Granted core+platform only; a SIBLING of base at tier 2. The lattice has two incomparable T2 branches joining at rendering.
+- The zero Root reads in core/base/application are a CONSEQUENCE of the grant list (Root lives in game and they cannot see it), not an achievement. L1 sovereignty is the narrower hand-enforced claim about an internal split.
+- 5 granted permissions are spent zero times -> free revocations.
+- game is ~44% of the engine in one directory with no sub-CMakeLists, so no internal boundary is compiler-enforceable.
+- Exactly 1 of 12 render inheritance edges leaves the subsystem: TilePainter : TileDrawer (#191).
+- General rule: to make a boundary real, give it a directory and a grant list -- converts a lint we maintain into a compile error we do not.
+
+VERIFICATION: gate proven to FIRE (tampered Root count -> STALE, exit 1); cwd-independent; all 7 script gates PASS; cmake reconfigure clean with Steam/Discord pinned OFF; arch_graph_fresh registered, NoAssets-labelled, passing through ctest. Memoized reads took the gate 5.56s -> 1.05s with --check still passing, which proves byte-identical output.
+```
+
+<a id="c29c1332-201"></a>
+
+#### #201 — CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator
+
+status: **pending**
+
+- `e7368000` fix(gates): boundary_fresh measured a different tree on Windows than on unix
+
+```
+ROOT CAUSE, proven not guessed. scripts/boundary-inventory.py game_files() built keys with str(p.relative_to(REPO)), which stringifies with the NATIVE separator. On windows-latest every key was `source\game\Star*.cpp` while VIEW_BY_DUTY is written with forward slashes, so nothing matched: the view-by-duty total reported 0 instead of 136 and all twenty table rows flipped from "view" to "sim". Simulated locally: 46-line diff between the Linux and Windows reports.
+
+BLAST RADIUS: boundary_fresh failed on the Windows job and passed on the four unix jobs, so Build has been red on integration for three consecutive runs (30194960202, 30195729180, 30198588776) since the gate was registered. It is NOT caused by #200 -- arch_graph_fresh PASSED on Windows (2.84s) in the same run, and the two earlier red runs predate that commit.
+
+FIX: p.relative_to(REPO).as_posix(). board-export.py already used this idiom; boundary-inventory did not. config-lint.py normalised to match, flagged in-comment as cosmetic there (its `rel` only reaches an error message that a passing run never prints, so it could not change a verdict).
+
+VERIFIED: Linux output byte-identical after the fix (the committed doc still matches, no regeneration needed); PureWindowsPath demonstration shows old code misses VIEW_BY_DUTY and new code hits; all 7 script gates pass.
+
+THE LESSON, which is the same one as #192 and the oracle-vocabulary trap: a measurement that depends on which machine ran it is not a measurement. Two of three such defects in this campaign have now been platform-conditional gate output.
+```
+
+<a id="c29c1332-202"></a>
+
+#### #202 — RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance
+
+status: **pending**
+
+- `52360eee` fix(render): claim the two L1 files the layer table never looked for
+
+```
+FOUND BY A DIRECTOR QUESTION about diagram 5 of the boundary doc ("is the rendering box where the whole L1/L2/L3 decomposition lives?"). Answer: no -- and chasing why exposed that StarTextureAtlas.hpp (418 lines) and StarRenderDiagnostics.hpp (77) are L1 by duty, sitting in source/application, claimed by no layer and therefore invisible to every count render-inventory.py produced. Identical to #137's finding for three helpers in source/rendering.
+
+WHY IT SURVIVED A SECOND TIME: the unassigned-file check that exists precisely to force this question only ever globbed source/rendering -- the directory the FIRST instance was found in. A check scoped to where the last bug was is a check that finds the last bug.
+
+THREE CHANGES + ONE G10 CORRECTION:
+1. Claimed both into LAYERS L1. L1 goes 8 files/3796 lines -> 10/4291. Moves NO coupling metric: zero Root reads, zero GL calls, zero telemetry handles, so the gated residual block is byte-unchanged and 17 is still 17. (StarRenderDiagnostics names OpenGlRenderer and Telemetry:: only in comments -- code_only() removes both.)
+2. Extended the unassigned check to source/application via APPLICATION_NON_RENDER, an explicit partition of that mixed directory (10 claimed + 15 declared non-render = all 25 files). A new file there now forces the question "is this render?".
+3. arch-graph.py namespace labels carry the owning library ("L1_substrate_in_star_application"), and docs/architecture/system-boundaries.md section 7 now states that the treemap shows DIRECTORIES, not layers -- the render decomposition is not contiguous in the tier lattice: L1 is below `game` at T2, L2/L3 above it at T4.
+4. G10: docs/render/layer1-architecture.md section 2 updated -- both files also joined the layer1_layering fence, which now holds six files rather than four, so the doc's "four sovereign components plus one shared texture primitive" was understating what it enforces.
+
+VERIFIED BOTH NEW CHECKS FIRE: a probe file in source/application reported as unassigned; an OpenGlRenderer reference appended to StarTextureAtlas.hpp failed layering-lint with the exact file and line. Both probes removed, tree clean. All 7 script gates pass, all 9 NoAssets ctests pass.
+```
+
+<a id="c29c1332-203"></a>
+
+#### #203 — ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect
+
+status: **pending**
+
+- `07d248f4` docs(arch): write the subsystem-leaving inheritance edge derived-first, so star_game renders outside
+- `cfa7603b` docs(arch): section 9 measured the wrong graph -- game's declarations are acyclic
+- `38a147d9` docs(arch): the presentation tier is three duties, and two of them blur
+- `80084408` docs(arch): full-depth directory tree, and the four directories it revealed are unmeasured
+- `c3ef055d` docs(arch): a depth-2 directory tree -- the one view of containment the document lacked
+- `7fdae50d` docs(arch): define "grant" -- a coined term used 24 times and never explained
+- `98b6692a` docs(arch): cohesion is orthogonal, not downstream -- and name the axis this ladder lacks
+- `5e893499` docs(arch): a shape test, a cohesion test, and the recommendation they falsified
+
+```
+Director approved items 1-3 from the qualitative self-review of the boundary document.
+
+ITEM 1 -- ACTIONS REORDERED BY VALUE. Was cheapest-first, which put "revoke 5 unused grants" at the top (it forbids things nobody does: no behaviour change, no coupling removed, no work enabled) and buried the only item that matters. Now value-ordered with cost stated separately, and the hygiene item is labelled as hygiene.
+
+ITEM 2 -- THE `game` RECOMMENDATION WAS WRONG, NOT UNDERSTATED. It said "not a refactor -- a CMakeLists.txt per cluster and a grant list each... costs no behavioural change at all". Measured: source/game has 226 of 264 translation units in ONE strongly-connected component (86%). There is no partition. A sub-directory cannot take a grant list while it has mutual includes with its neighbours. Rewritten to say the work is breaking the cycle, that it cannot be done byte-identically, cannot be verified by existing oracles, and that the first deliverable is a feasibility study.
+
+ITEM 3 -- TEST 5 (SHAPE) ADDED, and it is a SECOND-STAGE question, not a fifth rung: tests 1-4 ask whether a boundary exists, shape asks whether it is any good. Metric = for a data-dominant struct crossing a tier, how many members the consumer actually reads. First formulation was FALSIFIED in testing (WorldRenderData is 21/23 against source/rendering -- fine at directory granularity); the defect is per-consumer: WorldPass 6/23, TilePainter 3/23 while the orchestrator reads 20/23. Filters carry the meaning -- classes excluded (low fit there is encapsulation working; without the filter it reported 5 false findings on `Object`), same-tier excluded. The metric also finds WELL-shaped crossings (RenderTile 16/16), so it discriminates rather than only complaining.
+
+TEST 6 (COHESION) ADDED, unplanned, and it is the most valuable output: per-directory largest SCC as a share of the directory. game 86% and windowing 84% are single blobs -- unsplittable. core 3%, rendering 8%, frontend 12% are splittable. THE RENDER DECOMPOSITION SUCCEEDED BECAUSE `rendering` WAS ALREADY 92% ACYCLIC -- feasibility was a property of the ground, not the plan. This rehabilitates the hand-built instruments: for the blob directories they are not a workaround for a cheap mechanism nobody used, they are the ONLY enforcement available.
+
+DEFECT FOUND AND FIXED: arch-graph.py's files_in() walked only the top level, so every count in the published document excluded source/game/{interfaces,items,objects,scripting,terrain} -- 162 files, 19,230 lines, and 119 Root::singleton reads. game corrects from 338 files/96,002 lines/Root×521 to 500/115,233/Root×640. Found only because the cohesion prototype used os.walk and disagreed with the generator (264 units vs 172). Two implementations of one measurement disagreeing is the only reason anyone looked.
+
+ALSO: VENDORED_SUBTREES declared (extern/{curve25519,fmt,lua}, application/discord) -- recursing tripped the ambiguous-basename guard on core.h, correctly. And boundary-inventory.py's VOCAB said WorldRenderData was "the 35-member frame view model"; the tree says 23, and the wrong number had propagated into the generated boundary doc. Number removed -- it is measurable, so the shape block states it.
+
+VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 9/9 NoAssets ctests pass.
+```
+
+<a id="c29c1332-204"></a>
+
+#### #204 — TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work
+
+status: **in_progress**
+
+- `42b60f5d` spec: F4 was overclaimed, and the document warned about exactly this
+- `298bdd16` spec: eight wrong numbers, every one re-measured before changing
+- `1b5f6f00` gates: the excludes facet must agree with the register — and it did not
+- `c359fc30` spec: section 14's rules reach the instrument table, including the one with no instrument
+- `63248364` spec: section 14 closes its eight audit findings
+- `1a1c89d8` spec: section 18's owed list is generated, and the two documents' relationship is finally stated
+- `6a53b039` spec: all 41 components derived — 246 of 246 facets
+- `5388cbd0` spec: derive the ten libraries, including `game`
+- `b2db3904` spec: derive the two foundations and eight contracts
+- `7dc30a06` gates: count whether a component was REASONED FOR, not merely declared
+- `b0591b19` spec: the last two composition diagrams, and what section 10 actually is
+- `299e8b47` spec: celestial was never a 732-line monolith
+- `0acb3c7b` spec: sections 8-17 still spoke the retired axiom vocabulary
+- `a71484af` spec: N1 gains the clauses it was already being cited for; seven principles become two
+- `706e970f` spec: not one of the six axioms survived verification
+- `5d6f5b97` spec: section 6 closes six audit findings against itself
+- `94a3eec4` spec: section 1 says what OpenStarbound is, at depth
+- `e0a6cdec` artifact: render the parts, and stop hand-writing the design state
+- `ca7e0011` spec: renumber 74 cross-references the gates could not see
+- `a51b3659` spec: restructure to the ratified 18-section TOC
+- `364519c3` survey: capture Director intent on the TSSA's purpose
+- `2ed13794` spec: the device row has no history, and says so
+- `a3eaa447` fix: spec_measures depended on whether the machine had compiled
+- `6c30f710` ci: regenerate the taxonomy block, and stop checking a subset of the gates
+- `47e33692` spec: rename to "Target State System Architecture" [Director]
+- `6539382d` scripts: put the artifact renderer in the repo, where it should have been
+- `3751ccaa` spec: split the arrow, so the Law of One means what it says [Director-approved]
+- `f88ff14d` spec: the Root count omitted the one directory that matters
+- `351e7696` spec: resizeSignal reached nobody, and no gate could say so
+- `ad6426e7` spec: the vocabulary move list would not have compiled
+- `0fe309ee` spec: generate the honesty ledger, which was the least honest table in it
+- `c1e89fdc` spec: the four-line runtime summary drew the edge the graft rule rejected
+- `d15a3816` spec: measure the load-bearing numbers instead of remembering them
+- `56b9a1ca` spec: D1/D2 state the actual purpose — a full target-state refactor
+- `6956aab7` gates: PHASE 0 -- read the prose, which sixteen gates never did
+- `01694c2c` spec: ZONEs become four directories, and the design turns out to be perfectly layered
+- `bb04e8b5` fix: spec-consistency had an unterminated string literal — committed red
+- `91d18ec6` spec: adopt `storage` — and its Lua dependency independently validates `script`
+- `fbe4c41b` spec: generate the "what drives what" table — the register never said what starts anything
+- `1cf8987d` scripts: one reader for the spec's tables — three parsers gave three different counts
+- `50f09efe` spec: the SDL host owns a window, not a graphics API — swapTick moves to `gpu`
+- `94c1af57` spec: FREE conflated a paced loop with a busy loop; headlessLoop's pacing is wiring
+- `24c79ca8` spec: five clocks in two pairs, and CARDINALITY becomes the fourth runtime axis
+- `dc4dc3e7` spec: Sections 1 and 2 reconciled, Section 6 designed — five claims are one experiment
+- `4a333db7` spec: the runtime projection catches up, and D7 locks the framing that let it fall behind
+- `3ac919ed` spec: adopt `content` — Root becomes private, and the seam already existed
+- `4b4982bd` spec: adopt `net` + `script`, and find the thing that actually blocks splitting `game`
+- `736030b7` spec: `client` -&gt; `participant`, and the per-composition diagrams gain their clocks
+- `d8b8d550` spec: `colocation` — the client stops containing a server
+- `cb93b33f` spec: adopt `interaction` + `client_agent` — a client is not one thing
+- `a588e8ab` spec: client_sdl_gpu had no edge to `client`, and the gate skipped it silently
+- `8f9e1ce3` spec: celestial becomes a CONTRACT, audioTick moves to mixing, palette derived
+- `d7708b7a` arch: link-time grant gate, and the audio stack it proved was missing
+- `e0b827df` spec: adopt worldgen + world_gen, and correct the utility evidence
+- `beb51779` docs(spec): correct the world_sim utility claim -- one of three, and the other two are a third primitive
+- `8523181d` docs(spec): four halves, and D9 -- what ticks must not depend on who is watching
+- `a6c7dba1` docs(spec): `authority` -&gt; `universe`, because World means one planet here
+- `a513ef6f` docs(spec): tier 2 -- an entity no longer knows how it looks; `replica` renamed to `view`
+- `618f99e3` docs(spec): split `game` into domain, authority and replica -- my "not separable" was wrong
+- `3f07aeec` docs(spec): a method for suspicious links -- and it killed the repair I would have proposed
+- `b03248c5` feat(gates): one compile-time diagram per composition, derived from the grant table
+- `7155637b` docs(spec): D8 -- a co-located seam is an optimisation, never a cheaper contract
+- `a1911e89` docs(spec): the axis is who HOSTS the universe, not single-player vs multiplayer
+- `88bc52f2` docs(spec): the client could not reach the server's universeLoop -- multiplayer was undrawn
+- `7482dc5f` docs(spec): the netcode return is not a return -- and it is seam 1's precedent
+- `41047638` docs(spec): ORDER on runtime edges -- and the edge regex was dropping edges silently
+- `9882a77a` feat(gates): dedup-measure -- the north-star claim finally has a number
+- `1da322da` docs(spec): the tick is a root -- cadence by reachability, and the dedup measure
+- `77669e22` docs(spec): WIRING and SIGNAL kinds; the frame has five phases, not three
+- `1a0f118f` build(gates): spec_consistency -- both projections agree, and the graft holds
+- `d14f7f88` docs(spec): the runtime taxonomy, the graft rule, and the approved host fix
+- `c9c2770f` docs(spec): split run time out of Section 4 into its own Section 5
+- `739b4aba` docs(spec): add the execution graph -- the runtime view, clustered by thread
+- `14b941a6` docs(spec): seam 1 is bidirectional -- input returns; retract 'nothing returns'
+- `2e01529d` docs(spec): separate coherence from anchoring from correctness; retract an overclaim
+- `b3647d73` docs(spec): state that the diagram is compile-time only; fix three defects it hid
+- `6d181196` docs(spec): rename the gpu contract to Device; state what crosses each seam
+- `151b8d56` docs(spec): name the client's loop elements by time domain; fix the inventory's blind spot
+- `ebfe4547` docs(spec): container components drop their duty line
+- `5538062c` docs(spec): elements nest inside their owning component
+- `22c5e6d5` gates(loop-inventory): the loop count becomes a measurement
+- `02f2d8d6` docs(spec): add `server`, and stop conflating it with a headless client
+- `ac6cafd1` docs(spec): `==&gt;` implies `--&gt;`, and implements is measurable
+- `e7f5ab49` docs(spec): the diagram distinguishes implements from consumes
+- `8ffffc5e` docs(spec): section 4 becomes target state; the delta moves to section 9
+- `cc9a5532` docs(spec): headless client -- define `scene`, and stop contradicting ourselves
+- `2f42bca7` docs(spec): headless client -- the vocabulary assessment resolves
+- `f053671f` gates(grant-sweep): the grant table gets an instrument
+- `55da339e` docs(spec): headless client -- host backends need `platform` to compile
+- `a6342adb` docs(spec): headless client -- hosts become symmetric components
+- `376eb9c9` docs(spec): headless client -- the target-state loop model
+- `d1671a77` docs(spec): headless client -- the *Loop / *Tick rule, and audioTick
+- `e1107569` docs(spec): headless client -- scene, ALTITUDE, and nothing approved
+- `9823f106` docs(spec): headless client -- host becomes a sovereign component
+- `c71a06f3` docs(spec): headless client -- clusters are ZONEs, strictly named
+- `cd43f4ba` docs(spec): headless client -- arrows point at dependencies
+- `e635efbf` docs(spec): headless client -- ENTRYPOINT is one token, colour is by kind
+- `f0cb85d9` docs(spec): headless client -- name, KIND, duty per component
+- `4534874d` docs(spec): headless client -- drop the section symbol
+- `ab53f943` docs(spec): headless client -- two seams, one component per box
+- `998d52fe` docs(spec): headless client -- the naming register, section 4 proposed
+- `8fc507c0` docs(spec): sovereign headless client -- WIP design, section 1 approved
+
+```
+Branch integration, pushed through ca7e0011. Spec at docs/superpowers/specs/2026-08-01-target-state-system-architecture.md, 4607 lines, 18 sections / 4 parts, 41 components, 17 gates green.
+
+SETTLED: purpose (survey envelope surveys/tssa-purpose-survey.md) — the TSSA is the ratified upper layer of an A8 Sovereign Onion; design specs conform to it, not source; primary consumer is agentic technical designers producing implementation plans; seals without freezing; exhaustive completeness in machine-parseable structure; compression closed permanently. mission-kit/axioms canonical, any-system in force for both architecture and architect. TOC ratified and implemented.
+
+REMAINING: content. Part I is 312 lines of placeholder against section 10's 1691. Section 10 is the DEPTH STANDARD per Director — everything else is under-written, not section 10 over-written.
+
+Sub-tasks: #205 spine, #207 levelling pass, #208 aggregate review.
+```
+
+<a id="c29c1332-205"></a>
+
+#### #205 — TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions
+
+status: **completed** · blocks: #206, #207
+
+- `9c8eb88f` draft: N3 is composition, not composable clients
+- `f7e61c8e` draft: a server has no participant, and a player is not one either
+- `947a34b1` draft: the TSSA frame — axioms, north star, principles
+
+```
+All six sections of Part I written. Gates 17/17 throughout. Commits 94a3eec4, 5d6f5b97, 706e970f, a71484af.
+
+THE RESULT THAT MATTERED: ten read-only agents tried to falsify the six claimed domain facts. Four FALSE, two TRUE-only-when-narrowed, none survived as written. The test now stated in section 2: if an implementation can violate a claim and still be Starbound, it is a DECISION, not a fact. Five moved to section 5 as D9-D13 with costs named — D10 costs input latency, D12 makes an adaptive fidelity governor illegal, D9 must REPLACE four uses of client view rectangles.
+
+Section 2 = adopted canonical axioms by applicability tag + four verified domain facts (devices optional, physical time local, steps discrete, content INSTANCES opaque).
+Section 3 = N1 gained labelled clauses N1.a-d; a-c had been cited 6x and defined nowhere. N1.d absorbs the chattiness constraint.
+Section 4 = seven principles to two (P1 dependencies declared, P2 placement is wiring); five were restatements of A3/N1.a/D9/A1+A2/A8.
+Section 6 = six confirmed audit findings closed.
+
+GATE VOCABULARY FIXED TWICE: CITES accepted A1-A6 (retired axioms) and P1-P7 (retired principles). Now A0-A14/F1-F4/N1-N3/P1-P2/D1-D13, proven to fire on injection.
+
+Unpushed at completion: 6 commits.
+```
+
+<a id="c29c1332-206"></a>
+
+#### #206 — TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered
+
+status: **completed** · blocked by: #205 · blocks: #207
+
+- cited in `docs/superpowers/drafts/tssa-frame.md`
+
+```
+Director ratified 2026-08-02. Derived from four constraints rather than chosen: A3 Law of One over sections, A4 Expansionist Bias, A8 Gated Ascension (order is a dependency DAG), and the approved spine. Implemented in a51b3659 (byte-identical move, all 97 retained blocks proven verbatim, 4582 = 4516 + 66 dropped) and ca7e0011 (74 cross-refs renumbered by reading, 4 cross-document refs deliberately untouched, 2 pre-existing "Section 3"-means-Decisions defects surfaced). 17/17 gates green. Old sections 1/2/3 dissolved as ticket-era context-finding.
+```
+
+<a id="c29c1332-207"></a>
+
+#### #207 — TSSA-2: adversarial-review closure + levelling pass
+
+status: **in_progress** · blocked by: #206, #205 · blocks: #208
+
+- `12f08312` gates: P2 had no instrument, and Section 4 said it did
+- `0c96063d` spec: Section 16 was blocking a register row it had already unblocked
+- `b86a1ad0` spec: the last two first-person passages become properties of the model
+- `4011f1af` spec: `celestial` is placed by its duty, and two aspirations become pass conditions
+- `8e742ae7` spec: migration status leaves Part II, and Section 18 stops being a TODO list
+- `176d60be` spec: the document stops narrating its own drafting
+- `45af8da3` spec: F2 verified at the width it is cited, and ten dated changelog clauses removed
+- `a58ef402` spec: the contract that could not answer, and two the register cannot satisfy
+- `3f767902` spec: the payload has a name, and one seam needed two rows
+- `f6744d04` spec: a handoff delivers, it does not drive -- and three rosters disagreed
+- `6184248e` spec: the Lua surface had four writers and they disagreed four ways
+- `7952fb50` spec: two link-count conventions, and a grant the register does not hold
+- `669dbc29` gates: a whitelist entry that matches nothing is a defect, not a no-op
+- `fdad9c5d` spec: five references that resolved to the wrong thing
+- `b8f61e9f` spec: across a seam — failure, back-pressure, lifetime, concurrency, trust
+- `b69cd406` spec: Obligations — who this serves, what it must be good at, what was not chosen
+- `62fe4dbd` gates: catch a dangling section reference before the restructure creates 72 chances
+
+```
+ALL 38 confirmed findings from review wztsat52f are CLOSED and pushed (integration @ 12f08312). Fixed in ten commits: five stale citations; the Lua surface's four disagreeing writers (size/supplier/resolution + script's F4 warrant and its falsifier that fired on a mandated pair); two link-count conventions + the `scene` grant `game` does not hold; the drive table saying `clientTick` drives `audioTick` (a HANDOFF delivers, it does not drive -> `driven by` + `receives` columns); three participant element rosters; SceneDelta replacing `Frame` in the vocabulary register; one seam needing two back-pressure rows; `transcript` unable to answer `AudioSink::play` (granted `sound`); F2 widened to device clocks and re-verified in the tree; ten dated changelog clauses; seventeen retraction passages + five first-person; Section 16 rewritten to a four-facet risk shape (six risks) which unblocked Section 17's vocabulary register.
+
+THREE DESIGN TENSIONS RECORDED AS OWED, NOT DECIDED -- each names its candidates and is the Director's call. Owed ledger moved 8 -> 11 by generation: (1) `presentation` -- `client_agent` links the contract with no implementation, which Section 8 offers as PROOF the contract is severable while `platform`'s falsifier forbids exactly that null-check one level down; (2) `platform` -- `host_null` returns nullptr for all four services, clause two of its own falsifier, and there is nowhere for a null object to come from; (3) `audio` -- one implementation where this document's standard is two.
+
+TWO NEW GATE VERDICTS, both proven to fire: DEAD_DECLARATION (a LOCAL_COUNT or SCOPE_EXEMPT entry matching nothing is a defect, not a no-op -- found 3 dead entries including one predating the change) and PLACEMENT (P2 had NO instrument while Section 4 claimed one; no component may name a process/thread/machine in duty or contents, ENTRYPOINTs exempt by kind, `colocation` by name).
+
+18/18 gates green throughout. Artifact republished at the same URL (66b9715a).
+
+REMAINING: the levelling pass proper -- Sections 2 (77 hand-written lines), 3 (92), 6 (114), 11 (117) and 1 (134) against Section 10's per-unit depth standard. Section 16 is done (70 -> 115) and is the worked example of what levelling means here: a fixed facet shape per unit so two units can be compared.
+```
+
+<a id="c29c1332-208"></a>
+
+#### #208 — TSSA-3: register fields, aggregate review, re-home the anchoring gates
+
+status: **pending** · blocked by: #207
+
+```
+Blocked by #207.
+
+REGISTER FIELDS (decided by the survey, not yet done). Q6 machine-parseable structure means a rule no instrument can read is not a rule. The five audit findings where a normative rule points at a register field that does not exist are resolved by ADDING the fields, not softening the rules:
+  - consequence (the fault averted) on the component register — A4 Load-Bearing Context requires Mechanics + Rationale + Consequence; warrant supplies only Rationale
+  - bound / overflow-policy / observer on every HANDOFF edge
+  - timeout on every cross-machine edge
+  - validator on every inbound seam payload
+  - the corresponding rows in section 15's instrument table
+Then UNWARRANTED becomes a three-part completeness gate.
+
+COMPLETENESS STOPPING RULE (survey flag F5). "Exhaustive completeness" has no terminator, so the "finished" state Q5 asks for is unreachable. Define completeness as a closure property over the registers so it is computable rather than felt.
+
+AGGREGATE REVIEW. Approval is aggregate only.
+
+GATE RE-HOMING. grant_sweep, link_sweep, spec_measures, dedup_measure, host_api_neutral, boundary_ratchet currently anchor on current-state measurements inside a target-state document; they belong to section 17's delta.
+
+NOT IN SCOPE: the design-conformance instrument (survey flag F4). Director scoped it out 2026-08-02 — "we don't have a design spec yet, that tooling is currently out of scope." The obligation is still stated in the document; what must be said out loud is that nothing enforces it yet.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
