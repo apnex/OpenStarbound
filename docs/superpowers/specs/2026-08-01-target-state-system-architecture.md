@@ -2905,7 +2905,7 @@ claim. **Ratification requires every cell to read yes.**
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#ledger -->
 
-**10 of 41 components fully derived · 60 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
+**20 of 41 components fully derived · 120 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
 
 | component | kind | boundary | rejected | excludes | falsified | history | owes |
 |---|---|---|---|---|---|---|---|
@@ -2938,18 +2938,18 @@ claim. **Ratification requires every cell to read yes.**
 | `base` | FOUNDATION | yes | yes | yes | yes | yes | yes |
 | `core` | FOUNDATION | yes | yes | yes | yes | yes | yes |
 | `colocation` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `frontend` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `game` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `frontend` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `game` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `interaction` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `participant` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `script` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `storage` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `universe` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `universe_view` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `windowing` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `world` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `world_view` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `worldgen` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `script` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `storage` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `universe` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `universe_view` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `windowing` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `world` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `world_view` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `worldgen` | LIBRARY | yes | yes | yes | yes | yes | yes |
 
 <!-- END GENERATED: derivation-ledger -->
 
@@ -3051,6 +3051,116 @@ claim. **Ratification requires every cell to read yes.**
 | **falsified** | **If `gpu_sdl` needs something `gpu_opengl` does not and the contract must grow to admit it.** That is why two backends exist rather than one: the second implementation *is* the test, and a contract that has to change to accept it was fitted to the first. |
 | **history** | The render arc built this seam before it had a name. `StarRenderer_opengl.cpp` — at 1,824 lines the largest presentation file — lived in `application` beside the `Renderer` interface every painter drew through. The abstraction and its single implementation in one place is what made "swap the backend" sound harder than it is. |
 | **owes** | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
+
+### `game` — the domain, and the boundary everybody trips over
+
+| facet | |
+|---|---|
+| **boundary** | Around **state, not appearance**: entities, items, tiles, stats, damage. What a thing *is* and what happens to it — never what it looks or sounds like. That single cut is what lets one entity vocabulary serve both an authority and a view, because ownership differs between them and the vocabulary does not. |
+| **rejected** | **Splitting the domain by owner** — a `game_server` and a `game_client` with parallel entity types. Rejected because it duplicates every type across a seam, and two definitions of "what an item is" drift silently: the authority and the view would then agree by convention rather than by construction. Also rejected: keeping appearance here, which is the arrangement `world_view` exists to end. |
+| **excludes** | Names `base`, `celestial`, `content`, `core`, `net`, `platform`, `script`, `storage`. May name **no view, no authority and no device** — not `world`, not `world_view`, not `rendering`. Thirteen components name `game` and it names none of them: the most-depended-upon library in the register must be the least dependent. |
+| **falsified** | If a type here needs to know whether it is mastered locally. The moment an entity's definition branches on ownership, D10 and D11 have leaked into the vocabulary and the cut has failed. |
+| **history** | This is the component the whole decomposition circles — named by thirteen others, and the one nobody could previously derive. The `Root` god object, reachable from everywhere, is what made its boundary invisible: when anything can reach anything, no boundary is anywhere. Its warrant cites D10 *and* D11 because those two decisions together are what let one vocabulary serve both roles. |
+| **owes** | nothing. |
+
+### `world` — the unit that ticks, and the unit that can be placed
+
+| facet | |
+|---|---|
+| **boundary** | Around **one world's authority**: what happens inside a single world, ticked, and movable to another machine as a unit. Not the universe above it; not the view of it below. |
+| **rejected** | A world-manager owning every world in a process. Rejected by N1.b — if the placeable unit is "all worlds" you can place the one and not the many, and a busy world cannot leave a struggling machine without taking every other world with it. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `storage`, `worldgen`. May not name `universe` — a universe knows its worlds, never the reverse — nor `world_view`, `scene` or `sound`. |
+| **falsified** | If ticking one world requires another to exist, or if a world's step depends on a process-wide value. Either means the unit is the process, not the world. |
+| **history** | The second failure is live today: a process-global timestep, written through a misnamed setter, silently retunes every world in the process across a thread boundary. That is what "the unit is the process" looks like in practice, and it is why this component's step is a construction parameter rather than a global. |
+| **owes** | nothing. |
+
+### `universe` — which worlds exist, and who is where
+
+| facet | |
+|---|---|
+| **boundary** | Around the decisions no single world can make: which worlds exist, which are resident, who is connected, where a participant goes when it warps. A world knows what happens inside it; the universe knows which worlds there are. |
+| **rejected** | Folding these duties into `world` — letting the world a participant currently occupies own the transfer to the next. Rejected because it makes every world a router, and a world that can name other worlds cannot be placed alone. |
+| **excludes** | Names `base`, `celestial`, `core`, `game`, `platform`, `storage`, `world`, `worldgen`. May not name `universe_view` or any participant: an authority does not name views of itself. |
+| **falsified** | If a participant's arrival is what causes a world to become resident. That is D9 at universe scale — residency is an input this component receives, never a count it maintains. |
+| **history** | The superseded implementation tears a world down when it has no clients and starts one when a client arrives, so world lifetime is a function of observation. This boundary is reachable only because D9 replaces that with an explicit residency input — which is the clearest illustration of why D9 is a decision with a cost rather than a platitude. |
+| **owes** | nothing. |
+
+### `world_view` — one participant's picture of one world
+
+| facet | |
+|---|---|
+| **boundary** | Around **one participant's prediction of one world, and every entity's appearance**. Twin of `world`, and the asymmetry is the design: `world` owns what is true, `world_view` owns what is believed and what it looks like. |
+| **rejected** | Letting entities carry their own appearance in `game`. Rejected because appearance is the one part of an entity a headless composition never needs, and leaving it in the domain makes every authority link a renderer's worth of vocabulary. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `scene`, `sound` — the two value vocabularies, so it emits without naming a device. May not name `world`: a view names the *vocabulary* of truth, never the authority holding it. |
+| **falsified** | If it needs a pointer into the authority's state. Under N1.a a view receives values; the moment it holds a reference the two cannot be on different machines. |
+| **history** | Tier 2 moved the seventeen `render()` bodies out of the entities and into this component, and is done. Tier 3 owes the same move for audio and has not started. |
+| **owes** | nothing. |
+
+### `universe_view` — one participant's connection and star map
+
+| facet | |
+|---|---|
+| **boundary** | Around a participant's side of the universe: its connection, its copy of the star map, and the cross-world state — chat, team, statistics — that belongs to a participant rather than to any single world. |
+| **rejected** | Attaching connection state to `world_view`. Rejected because a participant survives changing worlds: its connection, chat and team do not restart when it warps, so they cannot live in a component whose lifetime is one world. |
+| **excludes** | Names `base`, `celestial`, `core`, `game`, `platform`, `world_view`. May not name `universe` — same authority/view direction as `world`/`world_view`. |
+| **falsified** | If warping between worlds forces this component to be rebuilt. That would prove its state is per-world and belongs one level down. |
+| **history** | `celestial` splits into an abstract database with master and slave implementations, and the slave belongs here. The tree drew this line before the register described it. |
+| **owes** | nothing. |
+
+### `worldgen` — a seed becomes terrain, and nothing ticks
+
+| facet | |
+|---|---|
+| **boundary** | Around the function from a seed and parameters to terrain. It runs and finishes; **it never ticks**, which is precisely what allows an entry point that generates worlds and simulates nothing. |
+| **rejected** | Generation as a phase inside `world`. Rejected because it welds a one-shot computation to a component that must run forever, and makes "generate a world offline" impossible without linking a simulation. |
+| **excludes** | Names `base`, `celestial`, `content`, `core`, `game`, `platform`. May not name `world` or `storage`: generation produces terrain; it does not decide where terrain is kept. |
+| **falsified** | **If generating the same seed twice produces different terrain.** D12 applied here, and the falsifier that matters most — a generator whose output drifts makes a shared universe impossible rather than merely untidy. |
+| **history** | `WorldTemplate` already takes a `CelestialDatabasePtr` rather than a concrete database, so this component already depends on the contract alone. That is what made `celestial`'s contract form derivable at all. |
+| **owes** | nothing. |
+
+### `storage` — durable state, and the duty string that argues with itself
+
+| facet | |
+|---|---|
+| **boundary** | Around persistence *and* the schema migration that keeps yesterday's file readable today. The claim is that these are one duty, not two: a store that cannot migrate breaks on the next release, so versioning is not an extra feature but what makes durability mean anything. |
+| **rejected** | A process-wide save system. Rejected by N1.b — a placed authority carries its own store, or moving a world to another machine means moving a global database with it. |
+| **excludes** | Names `base`, `content`, `core`, `script`. May not name `game`, `world` or `universe`: a store persists bytes under keys and does not know what a world is. |
+| **falsified** | If two placed authorities must share one store. That makes persistence global again and placeability a fiction. |
+| **history** | none. |
+| **owes** | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
+
+### `script` — the interpreter's lifecycle, and none of the bindings
+
+| facet | |
+|---|---|
+| **boundary** | Around the Lua interpreter's *lifecycle* — roots, threads, components — and deliberately **not** the mod-facing API. What a script may call is a property of what its host composed, so it cannot be owned by the thing that merely runs the script. |
+| **rejected** | An interpreter that owns the standard binding set. Rejected because it makes the binding surface a fixed list held by one component, contradicting N3 directly: an agent composition and a graphical one must offer different surfaces without either being a stripped-down build of the other. |
+| **excludes** | Names `base`, `content`, `core`, `platform`. May not name `game`, `world` or any view — the interpreter must not know what its scripts will be given. |
+| **falsified** | If two compositions with different components end up with identical binding surfaces. That would prove the surface is owned here rather than composed. |
+| **history** | There are **two** Lua surfaces, not one, and the global one is injected by the shell rather than owned by the interpreter — measured evidence that the split this boundary asserts is the one already in use. |
+| **owes** | nothing. |
+
+### `windowing` — the widget toolkit, composed in rather than assumed
+
+| facet | |
+|---|---|
+| **boundary** | Around the **general** toolkit: widgets, layout, `GuiContext`. Not this game's screens, which are `frontend`; not the pixels, which are `rendering`. A toolkit knows how to lay out a panel; it does not know which panels this game has. |
+| **rejected** | One UI component holding both toolkit and screens. Rejected because a composition wanting different screens would have to fork the toolkit, and one wanting no screens would still link them. |
+| **excludes** | Names `base`, `content`, `core`, `game`, `host`, `platform`, `scene`. May not name `rendering` or `gpu` — it emits scene items and lets something else draw them, which is what lets a participant with no display still compose it. |
+| **falsified** | If laying out a widget requires a live device. Layout needs metrics, not a GPU. |
+| **history** | `ImageMetadataDatabase` already lives in `game` so layout can know image sizes without a GPU. The precedent that **metrics are data, not presentation** is already established in this codebase; font metrics follow the same path. |
+| **owes** | nothing. |
+
+### `frontend` — this game's screens, and why they are severable
+
+| facet | |
+|---|---|
+| **boundary** | Around **this game's** panes, menus and screens — the specific, not the general. The line between a toolkit and a product built with one. |
+| **rejected** | Screens as part of `windowing`, or as part of the participant. Both rejected by N3: a participant that links its screens cannot be composed without them, which forecloses the agent and headless compositions this design exists to make possible. |
+| **excludes** | Names `base`, `content`, `core`, `game`, `host`, `interaction`, `platform`, `scene`, `windowing`. May not name `world`, `universe` or any authority: a screen shows a view, never the truth behind it. |
+| **falsified** | If a composition omits `frontend` and fails to build. Its entire warrant is that a participant may link none. |
+| **history** | none. |
+| **owes** | nothing. |
 
 ### `presentation` — the seam this whole design started from
 
