@@ -58,11 +58,11 @@ def _spec_model():
 MODEL = _spec_model()
 SPEC = MODEL.SPEC          # one declaration of where the document lives
 
-KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
+KINDS = ("FOUNDATION", "INTERFACE", "VOCABULARY", "BACKEND", "LIBRARY", "ENTRYPOINT")
 # The prose tally lists kinds in its own order, which is not KINDS'. Kept separate rather than
 # reordered: KINDS is the taxonomy, this is one sentence's phrasing, and conflating them made the
 # gate's first run report a drift that did not exist.
-TALLY_ORDER = ("CONTRACT", "BACKEND", "LIBRARY", "FOUNDATION", "ENTRYPOINT")
+TALLY_ORDER = ("INTERFACE", "VOCABULARY", "BACKEND", "LIBRARY", "FOUNDATION", "ENTRYPOINT")
 ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
 ZONE_ORDER = {z: i for i, z in enumerate(ZONES)}
 CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
@@ -97,10 +97,19 @@ COMPONENT_ROW = re.compile(
 ELEMENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + EKINDS + r')\s*\|\s*(\w+)\s*\|\s*\*\*(\w+)\*\*\s*\|\s*`(\w+)`\s*\|\s*`(\w+)`\s*\|')
 GRANT_ROW = re.compile(r'^\|\s*`(\w+)`\s*\|\s*([^|]+?)\s*\|', re.M)
-TALLY = re.compile(r'([\w-]+) components: (\w+) CONTRACTs, (\w+) BACKENDs, (\w+) LIBRARYs, '
-                   r'(\w+) FOUNDATIONs, (\w+)\s*\n?ENTRYPOINTs')
+# Whitespace-tolerant THROUGHOUT. An earlier form allowed a line break in exactly one position, so
+# re-wrapping the sentence anywhere else turned the gate VACUOUS -- it reported "the tally sentence
+# was not found", which reads like a missing sentence rather than a moved newline. A gate that
+# depends on where a paragraph wraps is measuring the typesetter.
+TALLY = re.compile(r'([\w-]+)\s+components:\s+(\w+)\s+INTERFACEs,\s+(\w+)\s+VOCABULARYs,'
+                   r'\s+(\w+)\s+BACKENDs,\s+(\w+)\s+LIBRARYs,\s+(\w+)\s+FOUNDATIONs,'
+                   r'\s+(\w+)\s+ENTRYPOINTs')
 
 # compile projection
+# The kind cell may carry a CONTRACT's SPECIES -- `CONTRACT · VOCABULARY`. The diagram must say it
+# too: the species exists to tell a reader which contracts can be implemented, and a distinction
+# that lives only in a register is one the picture hides. DRIFT compares the whole string, so the
+# two cannot disagree.
 C_NODE = re.compile(r'^\s*(\w+)\["<b>(\w+)</b><br/>(\w+)<br/><i>([^<]+)</i>"\]', re.M)
 # The trailing descriptor is OPTIONAL. A plain node carries `<br/><i>what it does</i>`; a component
 # drawn as a subgraph -- which is how a component that owns elements is drawn -- had no way to keep
@@ -163,6 +172,8 @@ ELEMENT_FREE = {
     "gpu_opengl": "executes device calls issued by `presentTick`",
     "gpu_sdl": "same, other backend",
     "audio_sdl": "opens the device and PULLS `audioTick`; the clock is SDL's, not ours",
+    "transport_local": "a socket is called, never scheduled -- whoever has a packet pushes it",
+    "transport_tcp": "same: the wire has no cadence of its own, only the callers' ",
     "platform_null": "answers vendor queries with nothing and schedules none of it -- a component "
                      "whose whole duty is to do nothing has no cadence to declare",
     "platform_pc": "vendor services answer when called",
@@ -262,6 +273,60 @@ def check_placement(comp):
                             "may not know where it runs: ...%s..."
                             % (c, m.group(0), field,
                                " ".join(text[max(0, m.start() - 40):m.end() + 40].split()))))
+    return out
+
+
+# EVERY CALL THAT WILL BE MADE HAS SOMETHING TO ANSWER IT.
+#
+# This is the rule three separate design questions turned out to share, and it is stated in terms of
+# CALLS rather than links, because that is what distinguishes the three:
+#
+#   `platform`      five compositions reached it and the call IS made (`Statistics` records), so
+#                   something had to answer -> `platform_null`
+#   `presentation`  `client_agent` reaches it and NO call is made: with the view sinks discarding,
+#                   nothing is assembled, so there is nothing to hand over -> no null, declared below
+#   `audio`         no composition reaches it without `audio_sdl` -> no call, no null
+#
+# Only an INTERFACE can be implemented. A VOCABULARY contract declares types everybody uses and
+# nobody implements -- you do not implement `Drawable` -- which is why the register makes each
+# contract declare its species rather than leaving a list in this file to drift.
+#
+# This gate would have found the `platform` hole without anyone looking for it.
+UNANSWERED_OK = {
+    ("client_agent", "presentation"):
+        "no call is made. An entity's `render()` runs in every composition because it emits "
+        "particles and audio, but with the two view sinks discarding nothing accumulates and "
+        "nothing is assembled -- so `participant` hands over nothing and tests nothing",
+}
+
+
+def check_reachable_implementations(comp, grants, impls):
+    """Every composition reaching an INTERFACE contract links an implementation of it."""
+    def closure(root):
+        seen, stack = set(), [root]
+        while stack:
+            c = stack.pop()
+            if c in seen:
+                continue
+            seen.add(c)
+            stack.extend(x for x in grants.get(c, ()) if x in comp and x not in seen)
+        return seen
+
+    out = []
+    for ep in sorted(c for c, v in comp.items() if v["kind"] == "ENTRYPOINT"):
+        reach = closure(ep)
+        for c in sorted(reach):
+            v = comp[c]
+            if v["kind"] != "INTERFACE":
+                continue
+            if set(impls.get(c, ())) & reach:
+                continue
+            if (ep, c) in UNANSWERED_OK:
+                continue
+            out.append(("UNANSWERED",
+                        "`%s` reaches the INTERFACE `%s` and links no implementation of it -- "
+                        "implementations are %s. Either compose one, or declare in UNANSWERED_OK "
+                        "why no call is ever made" % (ep, c, ", ".join(sorted(impls.get(c, ()))) or "NONE")))
     return out
 
 
@@ -448,9 +513,10 @@ def check(text):
                              "one. A role you are driven through is `--o`, not `==>`"
                              % (name, len(got), ", ".join(got) or "none")))
         for target in got:
-            if comp.get(target, {}).get("kind") != "CONTRACT":
+            if comp.get(target, {}).get("kind") != "INTERFACE":
                 findings.append(("IMPLEMENTS_ARITY",
-                                 "`%s ==> %s` implements a %s; `==>` may only point at a CONTRACT"
+                                 "`%s ==> %s` implements a %s; `==>` may only point at an "
+                                 "INTERFACE -- a VOCABULARY has nothing to implement"
                                  % (name, target, comp.get(target, {}).get("kind", "?"))))
 
     # ---- runtime projection -------------------------------------------------------------------
@@ -503,7 +569,7 @@ def check(text):
         if oa == ob or ob in grants.get(oa, set()):
             continue
         shared = [c for c in sorted(grants.get(oa, set()) & grants.get(ob, set()))
-                  if comp.get(c, {}).get("kind") == "CONTRACT"]
+                  if comp.get(c, {}).get("kind") == "INTERFACE"]
         if not shared:
             findings.append(("GRAFT", "`%s -> %s` runs at run time, but %s cannot reach %s: no grant "
                                       "and no shared contract" % (endpoints[a], endpoints[b], oa, ob)))

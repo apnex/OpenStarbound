@@ -46,13 +46,14 @@ SPEC = MODEL.SPEC          # one declaration of where the document lives
 MARK_BEGIN = "<!-- BEGIN GENERATED: scripts/composition-graphs.py#%s -->"
 MARK_END = "<!-- END GENERATED: %s -->"
 
-KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
+KINDS = ("FOUNDATION", "INTERFACE", "VOCABULARY", "BACKEND", "LIBRARY", "ENTRYPOINT")
 ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
 ZONE_TITLE = {"MACHINE": "MACHINE — the OS, the vendor, the asset store",
               "DOMAIN": "DOMAIN — the game's own state and rules",
               "DEVICE": "DEVICE — meets a display, a speaker, a file",
               "COMPOSITION": "COMPOSITION — wires the rest"}
-CLASS_OF = {"FOUNDATION": "kFoundation", "CONTRACT": "kContract", "BACKEND": "kBackend",
+CLASS_OF = {"FOUNDATION": "kFoundation", "INTERFACE": "kContract", "VOCABULARY": "kVocabulary",
+            "BACKEND": "kBackend",
             "LIBRARY": "kLibrary", "ENTRYPOINT": "kEntrypoint"}
 
 # The palette is READ FROM Section 4's map, never restated here.

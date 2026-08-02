@@ -44,7 +44,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 # delete for the tables. Consumers import SPEC; they do not restate it.
 SPEC = REPO / "docs/superpowers/specs/2026-08-01-target-state-system-architecture.md"
 
-KINDS = ("FOUNDATION", "CONTRACT", "BACKEND", "LIBRARY", "ENTRYPOINT")
+KINDS = ("FOUNDATION", "INTERFACE", "VOCABULARY", "BACKEND", "LIBRARY", "ENTRYPOINT")
 ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
 # Ordered: every grant edge points DOWN this list, verified at zero exceptions. That is what makes
 # zones directories rather than labels -- a path lint can enforce the layering.
@@ -95,6 +95,16 @@ def components(text):
         m = re.fullmatch(r'\*\*`([\w_]+)`\*\*', cells[0])
         if not m:
             continue                      # the header row, whose first cell is the word "name"
+        # INTERFACE and VOCABULARY are separate KINDS rather than one CONTRACT with a sub-field,
+        # and the reason is that a compound value hides its own exception. With one kind, every
+        # check written as `kind == "CONTRACT"` silently treats a vocabulary as implementable --
+        # `IMPLEMENTS_ARITY` would have accepted `X ==> scene`, and the graft rule would have let a
+        # runtime edge dispatch through a shared vocabulary that has no methods to dispatch. Both
+        # were live. With two kinds a check that forgets the distinction does not match at all,
+        # which fails loudly instead of wrongly.
+        #
+        # Only an INTERFACE can be implemented. A VOCABULARY declares types everybody uses and
+        # nobody implements: nothing implements `Drawable`.
         if cells[1] not in KINDS or cells[2] not in ZONES:
             raise SystemExit("spec-model: component `%s` has kind %r zone %r, which are not in the "
                              "taxonomy" % (m.group(1), cells[1], cells[2]))
