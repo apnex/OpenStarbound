@@ -1365,7 +1365,8 @@ neither works:
 | **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
 
 `Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
-exactly why it is on the unassessed list in Section 16.
+the risk Section 16 assesses as R1 — and the assessment is that five of the six move cleanly and one
+needs a header split first.
 
 With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
 the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
@@ -5345,12 +5346,31 @@ not a decision.
 
 ## 16. Risks
 
-### The vocabulary assessment — RESOLVED, and the risk shrank
+A risk here is a claim this design makes that could turn out to be false, stated with the observation
+that would show it. Anything with no such observation is not a risk — it is a worry, and worries are
+not tracked. Each entry answers the same four questions, in the same order, for the same reason
+Section 10's derivations do: a reader comparing two risks should be comparing like with like.
 
-The six types are now assessed against the tree rather than by name. **Five of six are clean and none
-blocks D6.** Every type crossing the seam was measured for virtuals, wire-readiness and its `game`
-dependency footprint; all twelve headers have **zero virtuals** — every one is data or a database,
-none is an interface.
+| facet | |
+|---|---|
+| **claim at risk** | the specific thing this design asserts, not the general area of concern |
+| **how it shows** | the observation that reveals the claim false. If there is none, the entry is deleted rather than softened |
+| **what it costs** | what has to change if it is false — a boundary, a tier, a schedule, or the design |
+| **what settles it** | the work that converts the risk into a fact, and who owns it |
+
+### R1 — the scene vocabulary may not move cleanly
+
+| facet | |
+|---|---|
+| **claim at risk** | The six game-named types that cross seam 1 are appearance data and move to `scene` without dragging simulation with them, so `presentation` sits at T2 (D6). |
+| **how it shows** | A type that cannot be extracted without pulling a simulation header behind it. The measurement below is the check, and it has been run: five of six are clean, one needs narrowing, none blocks D6. |
+| **what it costs** | If a type genuinely cannot move, the frame carries a small game-typed residue and `presentation` lands at T3.5 rather than T2 — which does not break the seam but does mean a null implementation must name a game type to satisfy the contract. |
+| **what settles it** | Settled for five. `RenderTileArray` is settled *conditionally*: on the header split named in R6. |
+
+**The assessment, measured rather than named.** Every type crossing the seam was checked for
+virtuals, wire-readiness and its `game` dependency footprint. All twelve headers involved have **zero
+virtuals** — every one is data or a database, none is an interface, which is what makes the question
+about dependencies rather than about polymorphism.
 
 | type | verdict | evidence |
 |---|---|---|
@@ -5358,58 +5378,84 @@ none is an interface.
 | `OverheadBar` | **CLEAN** | same header, same dependency set |
 | `SkyRenderData` | **CLEAN** | already carries `DataStream`; one dep (`SkyParameters`) |
 | `ParallaxLayer` | **CLEAN** | already carries `DataStream`; one dep — `PlantDatabase`, which is odd and worth a look |
-| `Particle` | **CLEAN as a type** | cascades to core: `Particle → Animation → Drawable → core`. Its problem is the raw `List<Particle> const*` pointer, which is a **shape** defect (Section 3), not a vocabulary one |
+| `Particle` | **CLEAN as a type** | cascades to core: `Particle → Animation → Drawable → core`. Its problem is the raw `List<Particle> const*` pointer, which is a **shape** defect (Section 3) and is fixed by the same reshape `AudioInstancePtr` needs |
 | `RenderTileArray` | **NEEDS NARROWING** | a clean `typedef MultiArray<RenderTile, 2>` trapped in `StarWorldTiles.hpp`, which drags in `WorldLayout`, `TileSectorArray`, `TileDamage`, `LiquidTypes` — simulation machinery. Extract the typedef and its `RenderTile` into their own header |
 
-**Two headers are already T2-clean today**, depending on `core` and nothing else: `Drawable` (6 core
+**Most of the rest is one cascade, not twelve jobs.** Move `Drawable` and `GameTypes` down and
+`Animation`, `EntityDrawables`, `OverheadBar`, `WorldCamera`, `Particle` and `WeatherTypes` all
+become clean behind them. `GameTypes` is the recurring dependency — coordinate and geometry
+vocabulary, already listed as ambient in `scripts/arch-graph.py` — and it belongs in `scene`. Two
+headers are **already T2-clean today**, depending on `core` and nothing else: `Drawable` (6 core
 includes, wire-ready) and `ImageMetadataDatabase` (6 core includes). They move for free.
 
-**And most of the rest is a cascade, not twelve separate jobs.** Move `Drawable` and `GameTypes` down
-and `Animation`, `EntityDrawables`, `OverheadBar`, `WorldCamera`, `Particle` and `WeatherTypes` all
-become clean behind them. `GameTypes` is the recurring dependency — it is coordinate and geometry
-vocabulary, already listed as ambient in `scripts/arch-graph.py`, and it belongs in `scene`.
+**A free win, and it is the first sequencing step.** `StarWorldRenderData.hpp` includes
+`StarEntity.hpp` — the simulation's polymorphic base, and on paper the single dependency that would
+kill D6. It is **vestigial**: the struct holds no member naming `Entity`, and no `Entity` token
+appears anywhere in the header outside comments and the include line itself. `EntityDrawables` moved
+to `StarEntityRenderingTypes.hpp` under task #191, which the header includes separately. Deleting one
+line removes the heaviest header's worst dependency, and it is byte-identical by construction.
 
-### A free win: the scariest edge is a dead include
+### R2 — the coupling that `#include` cannot see
 
-`StarWorldRenderData.hpp` includes `StarEntity.hpp` — the simulation's polymorphic base, and on paper
-the single dependency that would kill D6. **It is vestigial.** The struct holds no member naming
-`Entity`, and no `Entity` token appears anywhere in the header outside comments and the include line
-itself; `EntityDrawables` moved to `StarEntityRenderingTypes.hpp` under task #191, which the header
-includes separately.
+| facet | |
+|---|---|
+| **claim at risk** | The grant table describes the real coupling between components, so a green `grant_sweep` means the boundaries hold. |
+| **how it shows** | Two blind spots, both already exercised. **Template instantiation** crosses a boundary without an include, and **runtime coupling through `Root`'s databases** reaches whatever the database was built from. `dedup_measure` names the same limit from the other side: 62,540 indirect call sites are not followed, because a virtual call names no target. |
+| **what it costs** | A boundary that measures clean and is not. That is worse than a boundary known to be dirty, because the instrument's silence reads as evidence. |
+| **what settles it** | Nothing available today settles it in general. What is available is the composition oracle — observing behaviour rather than structure — which is why Section 15 says it has to carry the weight, and the needle ratchets (`host_api_neutral`, `render_layering`) for the known instances. **Recorded as a permanent limit, not a task.** |
 
-Deleting one line removes the heaviest header's worst dependency at zero cost. It is the first
-sequencing step and it is byte-identical by construction.
+**The measured instance, and it promotes a risk that was filed as secondary.** `Root` coupling is
+runtime, not include-graph, so no sweep in this document sees it. Measured directly, live
+`Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`,
+`TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or
+`registerReloadListener`. That is resource access, not simulation state, so **the fix is injection
+rather than relocation**: the painters receive what they need instead of reaching a singleton.
+Tractable — four files, three call shapes — and invisible to every include count in this document.
 
-### What remains genuinely hard
+### R3 — `TileDrawer` is the one inheritance edge leaving the render subsystem
 
-**Resources, not vocabulary.** `Root`, `MaterialDatabase`, `LiquidsDatabase` and
-`MaterialRenderProfile` do not move — they are **injected**. The painters receive what they need
-instead of reaching a singleton, which is the `Root` cluster already identified: four files,
-three call shapes.
+| facet | |
+|---|---|
+| **claim at risk** | Presentation depends on the domain through *values* only, so severing it is a matter of moving types and injecting resources. |
+| **how it shows** | It already does. `TilePainter : TileDrawer` is an inheritance edge from `rendering` into the game layer (task #191). Inheritance is not a value dependency and cannot be injected away: the base class is part of the derived class's definition. |
+| **what it costs** | Until it is resolved, `rendering` cannot compile without `game`, which is the exact condition Section 15 states as seam 1's pass condition — `source/rendering/CMakeLists.txt` may not list `${STAR_GAME_INCLUDES}`. One inheritance edge is enough to keep that line in place. |
+| **what settles it** | Task #191, which is scoped and open. This is the **hardest residue** in the presentation split and the only item on this list that is a known defect rather than an uncertainty. |
 
-**`TileDrawer`** — a singleton read plus the one inheritance edge leaving the render subsystem
-(task #191). Unchanged as the hardest residue.
+### R4 — a component is only enforceable if it is its own directory
 
-**`WorldTiles`** — must be split so `RenderTileArray` can leave without dragging the tile simulation
-with it.
+| facet | |
+|---|---|
+| **claim at risk** | The 41 components in the register are boundaries a build enforces (P1). |
+| **how it shows** | Mechanically, from CMake. All eight Star libraries are `ADD_LIBRARY(... OBJECT ...)`, and an OBJECT library links **all** of its objects into every consumer — there is no per-object pruning. Containment is therefore decided entirely by which libraries an ENTRYPOINT names: an all-or-nothing, directory-granular switch. **27 of the 41 components are not yet their own directory**, which is exactly the set `grant_sweep` reports UNVERIFIABLE. |
+| **what it costs** | Nothing about the design, and everything about what a green run means today. Two numbers that look like two problems are one problem counted twice, and until a component is a directory its grant row is an assertion no instrument can check. |
+| **what settles it** | Building the directories — which is Section 17's move list, and the reason the UNVERIFIABLE count is a ratification condition rather than a metric to watch. |
 
----
+### R5 — tier 3 is blocked on a value encoding that does not exist
 
-**Superseded.** `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`,
-`SkyRenderData` and `Particle` were unassessed when this section was written. Some are appearance data wearing a game name and
-will move as easily as `Drawable`. Others encode simulation concepts and will need **narrowing rather
-than relocation** — that is the shape work in the boundary document's Section 6, promoted into scope. One or two
-may not move at all, which would leave the frame carrying a small game-typed residue and push
-`presentation` to T3.5 after all.
+| facet | |
+|---|---|
+| **claim at risk** | `sound` is `scene`'s twin, so the audio half of the presentation seam follows the same path as the visual half. |
+| **how it shows** | Already false in one specific way. `Drawable` carries `DataStream` operators and is wire-ready; `AudioInstance` carries **none** — not one `DataStream` operator in `base/StarMixer.hpp`'s 172 lines. The two contracts are symmetric in *duty* and asymmetric in *readiness*. |
+| **what it costs** | `AudioBatch` needs a value encoding **designed**, not merely declared, before any audio type moves. `sound` satisfies N1.a on paper only until it exists, which is why it carries that as an owed item and why `AudioInstancePtr` is a RESHAPE rather than a MOVE in Section 17. |
+| **what settles it** | The encoding design, unscheduled. It is the reason tier 2 and tier 3 are sequenced rather than done together. |
 
-**This is the design's central unknown and the first thing implementation must confront rather than
-assume.**
+### R6 — one header split gates one type
 
-**Secondary.** `#include` cannot see template instantiation across a boundary, nor runtime coupling
-through `Root`'s databases. The vocabulary assessment cannot be done by include-graph alone.
+| facet | |
+|---|---|
+| **claim at risk** | `RenderTileArray` moves to `scene` (R1). |
+| **how it shows** | `StarWorldTiles.hpp` holds the clean typedef beside `WorldLayout`, `TileSectorArray`, `TileDamage` and `LiquidTypes`. Moving the typedef without splitting the header moves the tile simulation with it. |
+| **what it costs** | One header split, mechanical and byte-identical. It is on this list because it is a **prerequisite with a name** rather than a discovered obstacle: the third instance of the same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer`, and `StarCelestialDatabase.hpp` holding all three celestial classes in one file. |
+| **what settles it** | The split, sequenced ahead of the move. **The pattern is worth more than the instance:** a contract and its implementations sharing a file is the recurring blocker in this design, and three components are held up by it. |
 
----
+### What is deliberately not on this list
 
+**Schedule.** How long any of this takes is not a risk to the design, and D7 says cost never chooses
+a target. Cost is Section 17's subject.
+
+**Whether forty-one is the right forty-one.** That is a judgement the aggregate review makes, not an
+instrument. A gate can show the register is self-consistent and behaviour-preserving; nothing here
+shows it is *good*, and saying so is the difference between a limit and a hole.
 
 ---
 
@@ -5572,13 +5618,15 @@ files, and the 12 distinct headers cluster by difficulty:
 
 | cluster | headers | why it is that hard |
 |---|---|---|
-| **vocabulary** | `WorldRenderData` ×4, `WorldCamera` ×4, `Parallax` ×2, `Drawable` ×1, `SkyRenderData` ×1 | moves down into `presentation` — this is the work the vocabulary register describes |
+| **vocabulary** | `WorldRenderData` ×4, `WorldCamera` ×4, `Parallax` ×2, `Drawable` ×1, `SkyRenderData` ×1 | moves down into **`scene`** — a DOMAIN contract, not `presentation`, for the zone-order reason below. This is the work the vocabulary register describes |
 | **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
 | **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
 
-The middle cluster is the one this spec had not confronted: Section 16 listed `Root` coupling as a *secondary*
-risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
-runtime coupling, and `#include` counts alone would never have surfaced it.
+The middle cluster is the one an include sweep cannot reach, and Section 16 carries it as R2: `Root`
+coupling is runtime, so no measurement in this document sees it structurally. It is tractable — four
+files, three call shapes, all of them resource access — and the fix is injection rather than
+relocation. What makes it worth a risk entry rather than a task is the general form: an instrument
+that cannot see a kind of coupling reports its absence as cleanliness.
 
 ### Vocabulary register
 
@@ -5593,7 +5641,9 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `InputBatch` | — | `presentation` | **NEW** — the one payload that *is* device-side; see below |
 | `AnchorTypes` | `rendering` (35 lines) | `scene` | **MOVE** — text anchoring is vocabulary, not drawing |
 | `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
-| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 16** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+| `EntityDrawables`, `OverheadBar`, `SkyRenderData`, `ParallaxLayer` | `game` | `scene` | **MOVE** — assessed CLEAN in Section 16 R1; they name no entity, and two of the four already carry `DataStream` |
+| `Particle` | `game` | `scene` | **MOVE + RESHAPE** — clean as a type (it cascades to `core`), but it crosses today as a raw `List<Particle> const*`. Same reshape `AudioInstancePtr` needs, and Section 3's rule is the same one: a pointer cannot cross |
+| `RenderTileArray` | `game` | `scene` | **NARROW, then MOVE** — the typedef is clean and its header is not. Split `StarWorldTiles.hpp` first (Section 16 R6), or the tile simulation moves with it |
 
 **Not one of those targets is `presentation`, and that is a buildability constraint rather than a
 naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound` are CONTRACTs
