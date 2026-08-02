@@ -954,7 +954,9 @@ while (true) {                                     // frameLoop      — clock: 
 The inner `for` is the classic fixed-timestep accumulator and `TickRateApproacher` is unambiguously a
 clock — `targetTickRate()`, `ticksBehind()` (*"how many ticks we should perform so we would be as close
 to the target tick rate as possible"*), `ticksAhead()`, `spareTime()`. It iterates, it takes its count
-from a clock, it decides when to stop. The rule should have caught it; I named the body and stopped.
+from a clock, it decides when to stop — three clauses, all satisfied. **The rule catches it only if
+the rule is applied to the construct rather than to the name**: this loop has no name of its own, it
+is a `for` with a body, and reading for named loops finds one where there are two.
 
 The event pump is a third iteration construct that is deliberately **not** a loop by this rule: it
 drains a queue and owns no cadence.
@@ -4197,11 +4199,13 @@ them, so the name has to carry the distinction by itself.
 | **world** | `world` | FIXED | **resident world — N of them** | when does *this* world advance? |
 | audio | the device, via `audio_sdl` @ 44100 Hz | EXTERNAL | **device** | when does the buffer need refilling? |
 
-**This section previously said "three clocks, of which we own two" and listed driver, sim and audio.**
-It was written before the runtime projection had a world clock at all, and before `universeLoop` had a
-tick to drive. The correction is not cosmetic: the two clocks it omitted are the entire authority side.
+**Four clocks are owned here, not two, and the difference is the entire authority side.** A count
+taken before the runtime projection had a world clock — driver, sim, audio — reads as complete
+because the view side is complete: a participant genuinely has one free-running loop and one fixed
+one. The authority has the same pair, and a model that omits them can still describe every frame a
+player sees.
 
-**The four we own are two matched pairs, one on each side of the authority/view seam:**
+**The four are two matched pairs, one on each side of the authority/view seam:**
 
 | | free-running — *should I act?* | fixed-timestep — *advance time* |
 |---|---|---|
