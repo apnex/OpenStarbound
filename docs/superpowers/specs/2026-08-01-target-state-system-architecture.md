@@ -340,7 +340,7 @@ entry point today:
 | you want | it composes | new components needed |
 |---|---|---|
 | a dedicated shard for one busy world | one `world` authority + `net`, placed alone | none |
-| a load generator: 500 participants, no senses | `participant` × N, no `device` at all | none |
+| a load generator: 500 participants, no devices | `participant` × N, no `device` at all | none |
 | a replay verifier | `world` authority + `transcript`, no participant | none |
 | an offline map renderer | `worldgen` + `world_view` + `rendering`, nothing ticking | none |
 | a save-migration tool | `storage` + `content`, no simulation whatever | none |
@@ -439,7 +439,7 @@ does, the gate says so.
 | **D1** | **Purpose — a full target-state refactor.** Clean boundaries, decoupled components, sovereign duties, composable entry points. The six original drivers — architectural forcing function · foundation for distributed Starbound · CI harness · bot/agent client · cleanup of legacy and dead code sitting inside boundaries · swappable presentation components — are the **symptoms that made the need visible**, not six separate features. Each is satisfied *by* the target state rather than pursued beside it. |
 | **D2** | **Scope of THIS spec: the whole target state.** Every component, contract, clock and composition in the registers — including `client_sdl_gpu`, `client_agent`, `world_sim`, `world_gen` and `colocation`. **What is deferred is sequencing, not scope.** Section 17 records the order and the delta; follow-on *plans* consume this spec, and there are no follow-on *specs* for anything architectural. If it belongs in the perfect shape, it belongs here. |
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = **swappable contract** — *upgraded from "merely nullable"*: the register grew `sound`, `mixing`, `audio` and `audio_sdl`, and a modality with a backend is not a nullable afterthought. Each strength is the weakest thing serving a named purpose; nothing over-built. |
-| **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
+| **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. **It records the scene, which is appearance** — faithful, replayable, and not the same thing as an assertable account of what happened. What a recorder can assert about a world is owed, and recorded against `transcript`. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
 | **D6** | **The contract targets T2.** It may name only core, base and the payload vocabularies themselves — `scene` and `sound`. See Section 10 and the risk in Section 16. |
 | **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 17. |
@@ -633,7 +633,7 @@ against each composition's grant closure gives the surface each one can actually
 **The surface is not a fixed list the shell owns — it is a function of what got composed**, and the
 three numbers fall straight out of the grant table without anyone choosing them. Note the shape of
 what `client_agent` loses: every missing group is a *presentation or UI* group. It keeps `camera` and
-`world`, because a participant with no senses still needs to know where it is looking — which is the
+`world`, because a participant with no devices still needs to know where it is looking — which is the
 same conclusion the `interaction` component reached from the other direction.
 
 **Surface B — local, created by presentation for scripts presentation owns.**
@@ -1072,7 +1072,7 @@ both taxonomies at once without either being inferred from the other.
 %% projection: compile
 flowchart TD
   subgraph Z_COMPOSITION ["COMPOSITION — wires the other three; every binary is here"]
-    cagent["<b>client_agent</b><br/>ENTRYPOINT<br/><i>a participant with no senses</i>"]
+    cagent["<b>client_agent</b><br/>ENTRYPOINT<br/><i>a participant with no devices</i>"]
     chl["<b>client_headless</b><br/>ENTRYPOINT<br/><i>headless entry point</i>"]
     cgl["<b>client_opengl</b><br/>ENTRYPOINT<br/><i>graphical entry point</i>"]
     csg["<b>client_sdl_gpu</b><br/>ENTRYPOINT<br/><i>graphical entry point, SDL_GPU</i>"]
@@ -1307,7 +1307,7 @@ design, and what each composition reaches into `device/` is the whole story:
 |---|---|
 | `client_opengl` · `client_sdl_gpu` | `presentation`, `rendering`, `gpu`, a GPU backend, `audio`, `audio_sdl`, `mixing` |
 | `client_headless` | `presentation` and `transcript` — a backend that meets a **file**, not hardware |
-| `client_agent` | `presentation` **only**: the contract, and no implementation of it at all |
+| `client_agent` | `presentation` **only**: the contract, and no implementation of it — because nothing is assembled to send |
 | `server` · `world_sim` · `world_gen` | nothing — they do not enter `device/` |
 
 **Four compositions touch both arms, and the gradient between them is the design working.** With one
@@ -2685,14 +2685,14 @@ Every component in the diagram, in the same reading order.
 | **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
 | **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
 | **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard |
-| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
+| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — devices are optional, so a host that drives no device is legal | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
 | **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
 | **`net`** | CONTRACT | DOMAIN | what a replicated field is | **D11** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
 | **`content`** | CONTRACT | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **F1** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **F1** — devices are optional, so the sink is an interface whose implementations need not own one | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
 | **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **D10** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
@@ -2716,7 +2716,7 @@ Every component in the diagram, in the same reading order.
 | **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **D11** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick`, and `resizeSignal` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
 | **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **F1** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
-| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | **N3** — a participant with no senses, which is what proves senses are optional | wiring only: `host_null`; an AI player that acts and neither draws nor records |
+| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no devices | **N3** — a participant with no devices, which is what proves a device is composed in rather than assumed | wiring only: `host_null`; an AI player that acts, and whose view sinks discard |
 | **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **D10** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
@@ -3202,8 +3202,8 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | **`present(Frame const&)`** — handing the presentation side a finished, camera-resolved frame. Rejected on N1 grounds: it welds the pixel rate to the assembly rate, so presentation can only rasterise what it was given, when it was given it. Across a network that degrades to frame streaming — bandwidth O(screen), and every hitch in the simulation arrives as a hitch on the glass. |
 | **excludes** | Names `base`, `core`, `scene` and `sound` — the two value vocabularies and the substrate, and nothing else. May not name `rendering`, `gpu` or `game`: a presentation contract that names a renderer has described one implementation. |
 | **falsified** | **If a null backend cannot satisfy it.** Any method a recorder cannot answer, or any call whose meaning requires a display to exist, means a device has been smuggled into an interface. This is the cheap second implementation earning its keep. |
-| **history** | Where this document began: *a headless client is presentation-backend = null*. The seam proved itself by having something run with nothing on the other side of it, and the method that produced it — state the duty, name the contract, compose the participant — generated every other component here. |
-| **owes** | **What `client_agent` holds.** That composition links this contract and no implementation of it, and Section 8 offers the absence as proof the contract is severable. Both cannot be true as stated: either `participant` tests whether it has a sink — which is the thing `platform`'s falsifier forbids one level down — or the absence is not an absence and `agentWiring` composes a null sink from somewhere. Two candidates, and the choice is the Director's: `transcript` in **discard** mode is already specified as accept-and-drop and would make the agent link it, or the contract carries its own null case, which its warrant already claims (*"the sink is an interface with a null case"*) and its `excludes` facet forbids by naming no implementation. |
+| **history** | Where this document began: *a headless client is presentation-backend = null*. The seam proved itself by having something run with nothing on the other side of it, and the method that produced it — state the duty, name the contract, compose the participant — generated every other component here. **What a composition with no sink at all does was the last open question against this boundary, and it is closed by looking one level down**: an entity's `render()` must run everywhere, because it emits particles and audio, which are simulation. What an agent omits is not the call but the keeping. With the two view sinks discarding, nothing accumulates, nothing is assembled and `participant` hands over nothing — so the contract needs no null case and nobody tests for one. The discard belongs at the emit sink inside the domain, which is where the tree already puts it. |
+| **owes** | nothing. |
 
 ### `rendering` — a scene becomes pixels
 
@@ -3225,7 +3225,7 @@ claim. **Ratification requires every cell to read yes.**
 | **excludes** | Names `base`, `core`, `host`, `presentation`, `scene` and `sound`. May not name `gpu` — the entire point is a presentation implementation with no device at all. |
 | **falsified** | **If there is any call in `presentation` it cannot answer.** That is the same falsifier as the contract's, seen from the other side, and it is why the pair is worth having: the contract is proven honest exactly when this component can satisfy it. The falsifier has already earned its place: with the grants at `presentation`, `scene`, `host` alone, `AudioSink::play(AudioBatch const&)` named a type this component could not see, so the contract had a call its second implementation could not answer — and nothing else in the document could see it, because both the grant row and the interface list were individually well-formed. |
 | **history** | This is the "cheap #2" the design was built around — GL is implementation #1, null is #2, and SDL_GPU is #3 precisely *because* #2 forced the contract to be honest first. |
-| **owes** | nothing. |
+| **owes** | **The assertable account, which record mode promises and cannot deliver.** Its own mode table offers assertions of the form *"the player was at (x,y), facing left"*, and what it records is `scene` — appearance. `EntityDrawables` is a map of layers to drawables and, by Section 16's own R1 verdict, *names no entity*; no scene group carries an identity, a position or a facing. So a recording is **faithful and not assertable**, and the two are being sold as one. What is owed is a second payload — what *happened*, not what it *looked like* — and it is owed rather than designed because nothing consumes it yet: this document's standard is that a contract is proven by two implementations, and inventing a vocabulary with no reader would be a contract with none. |
 
 ### `mixing` — sound becomes samples, and two files are in the wrong place
 
@@ -3359,15 +3359,15 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | It links 11 of 41 components — **the smallest composition in the register**, below `world_sim`'s 12 and `server`'s 13 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
 | **owes** | nothing. |
 
-### `client_agent` — a participant with no senses at all
+### `client_agent` — a participant with no devices at all
 
 | facet | |
 |---|---|
-| **boundary** | Around the thinnest possible participant: `host_null` and nothing perceptual. It acts and neither draws nor records. |
-| **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still produced, and the composition would not demonstrate that senses are omissible — only that output can be discarded. |
+| **boundary** | Around the thinnest possible participant: `host_null` and no device of any kind. It acts, and it keeps nothing it is shown. **It is not senseless** — it runs the same simulation as every other participant, emits the same particles and the same sounds, and differs only in that its view sinks discard. What it lacks is devices, which is what F1 says is optional. |
+| **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still *produced* — the file is written, the deltas are assembled, and the composition would demonstrate only that output can be thrown away, not that a device is composed in. |
 | **excludes** | Names three components: `core`, `host_null`, `participant`. **The shortest grant list of any entry point, and that is its entire argument.** |
-| **falsified** | **If it needs anything perceptual to run.** This is the composition that proves senses are optional, so any perceptual dependency falsifies not just this component but N3. |
-| **history** | 19 of 41 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 11, `world_sim` 12 and `server` 13, none of which carry a participant. The 13 between 19 and `client_opengl`'s 32 are what perception costs. |
+| **falsified** | **If it needs a device to run**, or if `participant` has to test whether it has one. The first would falsify F1; the second would mean the discard is at the seam rather than at the emit sink, which is the arrangement Section 10's tier-2 subsection shows to be wrong. |
+| **history** | 19 of 41 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 11, `world_sim` 12 and `server` 13, none of which carry a participant. The 13 between 19 and `client_opengl`'s 32 are what **devices** cost. |
 | **owes** | nothing. |
 
 ### The T2 vocabulary
@@ -3587,12 +3587,35 @@ Measured, and it is an order of magnitude smaller than the estimate above. The 1
 bodies run 1–67 lines — **521 lines in total**. That count is generated in Section 15, because a
 mention count and an implementation count differ by 7× and only one of them bounds the work.
 
-`RenderCallback` is already the sink, with a six-method surface that is exactly `scene`'s content:
+`RenderCallback` is the sink an entity already emits into — but it is **not** `scene`'s content, and
+reading it as such is the mistake this subsection exists to prevent. **There are two surfaces here and
+they differ in kind:**
 
 ```
-addDrawable(Drawable, EntityRenderLayer)   addParticle(Particle)       addTilePreview(PreviewTile)
-addLightSource(LightSource)                addAudio(AudioInstancePtr)  addOverheadBar(OverheadBar)
+EMIT  RenderCallback, six sinks    what an entity produces each frame
+READ  WorldRenderData              what a painter consumes each frame
 ```
+
+The six sinks carry **two duties**, and the tree says so at the definition
+(`source/game/StarWorldClient.hpp:216`):
+
+| sink | duty | where it goes |
+|---|---|---|
+| `addDrawable`, `addOverheadBar` | **VIEW** | the frame — appearance |
+| `addLightSource` | **VIEW** | the lightmap, which nothing but a renderer reads |
+| `addParticle` | **SIM** | `m_particles->addParticles(...)` — into the particle manager, **which then simulates them** |
+| `addAudio` | **AUDIO** | `m_samples` — playback, a real side effect |
+| `addTilePreview` | **UI** | placement preview state |
+
+**So "skip `render()` when headless" is wrong**, in the tree's own words: entities would stop emitting
+particles and sounds, and the world would evolve differently. **The separable thing is not the call,
+it is the sink** — which is why the shipped gate (#199) is a `wantView` flag on the two view sinks
+rather than a branch around the loop.
+
+**`scene` never carried the emission.** Its particles group is `WorldRenderData::particles`, which is
+`&m_particles->particles()` — a pointer to the *simulated set*, not to what was emitted. Emitting a
+particle is the world changing; the particle set a painter draws is scene. **Same word, two things,
+and only the second crosses seam 1.**
 
 **The change.** Those 17 `render()` bodies leave `game` and land in `world_view`. Each entity instead
 exposes the state its old body read — `ItemDrop::render` reads `m_mode`, `m_drawRarityBeam`, `m_item`
@@ -3690,7 +3713,7 @@ an entrypoint, not a fork of the client.
 
 **It also settles *recorder or non-visual participant?* by refusing the question.** Those are two
 products, not two readings of one: `client_headless` is the recorder and `client_agent` is the
-participant with no senses. A register that forces a choice between them is a register with one
+participant with no devices. A register that forces a choice between them is a register with one
 composition too few, and the tell is that both answers had arguments.
 
 **Cost, measured, and it is a ratchet not a claim.** Today's `ClientApplication` names `frontend` 11
@@ -4917,7 +4940,7 @@ implementation detail.
 | **an authority, to a participant** | **terminal for that view.** The participant holds a prediction with nothing left to correct it; it converges to nothing. It surfaces the loss and stops predicting. | D11 — a view is only meaningful against a truth |
 | **a participant, to an authority** | **routine.** Its player entity remains, owned by the world, and is dealt with by the world's own rules. | D10 — the authority owned the truth already; nothing it owns was lost |
 | **a world, to its universe** | the world is unavailable and the universe says so; participants are told, not disconnected | D10 — one world's authority is not the universe's |
-| **a device, to a participant** | the participant continues without it | F1 — perception is optional, so losing it is not an error |
+| **a device, to a participant** | the participant continues without it | F1 — devices are optional, so losing one is not an error |
 
 **That last row rests on F1 alone and has no history behind it** — no device has ever been lost in
 this project. It is stated because F1 already decides it: a device is a thing a composition may not
@@ -5749,9 +5772,9 @@ rule that "owed" is an authoring state rather than a document feature.
 | `gpu` | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
 | `platform` | **Where the null services live.** `host_null` returns `nullptr` for all four, which is the second clause of this component's own falsifier, and there is nowhere in the register for a null object to come from: this contract may not implement, and `platform_pc` is its only backend. Two candidates, and the choice is the Director's: a `platform_null` BACKEND, which is what every other contract here has (`gpu` has two, `host` has two, `presentation` has two), or the contract carrying its own do-nothing default, which is cheaper and makes *the shape of the asking* answer. Until one is chosen, `platform` has one implementation and a falsifier it fails. |
 | `platform_pc` | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
-| `presentation` | **What `client_agent` holds.** That composition links this contract and no implementation of it, and Section 8 offers the absence as proof the contract is severable. Both cannot be true as stated: either `participant` tests whether it has a sink — which is the thing `platform`'s falsifier forbids one level down — or the absence is not an absence and `agentWiring` composes a null sink from somewhere. Two candidates, and the choice is the Director's: `transcript` in **discard** mode is already specified as accept-and-drop and would make the agent link it, or the contract carries its own null case, which its warrant already claims (*"the sink is an interface with a null case"*) and its `excludes` facet forbids by naming no implementation. |
 | `sound` | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
 | `storage` | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
+| `transcript` | **The assertable account, which record mode promises and cannot deliver.** Its own mode table offers assertions of the form *"the player was at (x,y), facing left"*, and what it records is `scene` — appearance. `EntityDrawables` is a map of layers to drawables and, by Section 16's own R1 verdict, *names no entity*; no scene group carries an identity, a position or a facing. So a recording is **faithful and not assertable**, and the two are being sold as one. What is owed is a second payload — what *happened*, not what it *looked like* — and it is owed rather than designed because nothing consumes it yet: this document's standard is that a contract is proven by two implementations, and inventing a vocabulary with no reader would be a contract with none. |
 | `universe` | **The system-world's clock.** Section 6 sets a system-world step of **20 Hz**, one third of a world's, and names *each system-world* as its owner — and no element in the register carries it. Section 11's clock table has four clocks we own and none of them is this one. A rate with a number, a reason and no element is a cadence nobody runs: it belongs to this component, because deciding what exists at system scale is this component's duty and a system-world is the thing a universe contains. **The gap is a missing element, not a missing decision** — the rate is chosen, the owner is named, and what is absent is the row in Section 12 that would let an instrument see either. |
 
 <!-- END GENERATED: derivation-owed -->
