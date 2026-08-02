@@ -145,8 +145,8 @@ SCOPE_EXEMPT = (
      "D2 itself -- the rule this verdict enforces has to be allowed to state itself"),
     ("there are no follow-on *specs* for anything architectural",
      "D2's own negation; naming the excluded thing is how the rule is written"),
-    ("nothing architectural is out of scope, so this is a **schedule, not a boundary**",
-     "Section 8's deferral item, which exists to keep sequencing from becoming scope again"),
+    ("Deferral is a schedule, never a boundary",
+     "Section 18's deferral item, which exists to keep sequencing from becoming scope again"),
 )
 
 
@@ -215,10 +215,17 @@ LOCAL_COUNT = (
 # retired: THE GATE'S VOCABULARY OUTLIVED THE DOCUMENT'S. The cure is the same in both places -- the
 # accepted set is checked against the document, not merely consulted by it.
 #
-# Matched against `prose`, the same corpus the permission is consulted on: a phrase that survives only
-# inside a table row could never suppress a finding anyway, so it is dead by the same measure.
-def dead_declarations(prose, table=LOCAL_COUNT):
-    flat = " ".join(prose.split())
+# BOTH permission tables are checked, and the second one earned its place the same day: rewriting
+# Section 18's deferral item left SCOPE_EXEMPT's entry matching nothing, and the only reason anyone
+# noticed is that SCOPE_CLAIM went red on the new wording. Had the rewrite happened to keep the old
+# phrase's shape, the exemption would have survived as a standing permission for a sentence nobody
+# had read. A check that covers one table of this kind and not the other is a half-applied lesson.
+#
+# `_scope_claims` matches against a flattened whole document rather than `prose`, so each table is
+# checked against the corpus its own permission is consulted on -- otherwise this verdict would fire
+# on entries that are alive.
+def dead_declarations(corpus, table=LOCAL_COUNT):
+    flat = " ".join(corpus.split())
     return [ph for ph, _why in table if " ".join(ph.split()) not in flat]
 
 
@@ -298,11 +305,19 @@ def scan(text):
                              "not the register total, declare it in LOCAL_COUNT: ...%s..."
                              % (m.group(1), thing, actual, ctx[-100:])))
 
-    for ph in dead_declarations(prose):
-        findings.append(("DEAD_DECLARATION",
-                         "LOCAL_COUNT declares %r, which no longer appears in the document -- delete "
-                         "the entry with the sentence, or it will excuse the next one worded like it"
-                         % ph))
+    # `_scope_claims` strips emphasis before matching, so SCOPE_EXEMPT is checked against the same
+    # stripped corpus; otherwise an entry carrying `**` reads as dead while being live.
+    def _strip(s):
+        return s.replace("**", "").replace("*", "").replace("~~", "")
+
+    stripped_table = tuple((_strip(ph), why) for ph, why in SCOPE_EXEMPT)
+    for table, name, corpus in ((LOCAL_COUNT, "LOCAL_COUNT", prose),
+                                (stripped_table, "SCOPE_EXEMPT", _strip(live))):
+        for ph in dead_declarations(corpus, table):
+            findings.append(("DEAD_DECLARATION",
+                             "%s declares %r, which no longer appears in the document -- delete the "
+                             "entry with the sentence, or it will excuse the next one worded like it"
+                             % (name, ph)))
 
     # DANGLING_SECTION -- a cross-reference to a section this document does not have.
     #

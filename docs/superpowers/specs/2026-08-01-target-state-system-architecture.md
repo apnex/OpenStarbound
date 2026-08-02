@@ -3109,7 +3109,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Letting entities carry their own appearance in `game`. Rejected because appearance is the one part of an entity a headless composition never needs, and leaving it in the domain makes every authority link a renderer's worth of vocabulary. |
 | **excludes** | Names `base`, `core`, `game`, `platform`, `scene`, `sound` — the two value vocabularies, so it emits without naming a device. May not name `world`: a view names the *vocabulary* of truth, never the authority holding it. |
 | **falsified** | If it needs a pointer into the authority's state. Under N1.a a view receives values; the moment it holds a reference the two cannot be on different machines. |
-| **history** | Tier 2 moved the seventeen `render()` bodies out of the entities and into this component, and is done. Tier 3 owes the same move for audio and has not started. |
+| **history** | Tier 2 moves the seventeen `render()` bodies out of the entities and into this component; tier 3 owes the same move for audio, and `sound`'s own `owes` row records why it cannot make it yet. The ordering between them is Section 17's, not this component's. |
 | **owes** | nothing. |
 
 ### `universe_view` — one participant's connection and star map
@@ -3564,7 +3564,7 @@ handed a finished world — generation is not a startup phase, it is a service `
 dev tool that renders a template to an image, it has zero references anywhere outside itself, and it is
 not built. `world_gen` is its replacement, as a first-class composition that cannot rot unnoticed.
 
-### Tier 2 — an entity no longer knows how it looks. DONE.
+### Tier 2 — an entity no longer knows how it looks
 
 Measured, and it is an order of magnitude smaller than the estimate above. The 117 files *mention*
 `Drawable`/`RenderCallback`; the files that actually **implement the hook** are **17**, and their
@@ -3902,13 +3902,13 @@ session a token pattern with an unlisted term produced a clean-looking wrong res
 
 
 
-### Tier 3 — an entity no longer knows how it *sounds*. NOT STARTED.
+### Tier 3 — an entity no longer knows how it *sounds*
 
-Tier 2 was found by asking where appearance lived. Nobody asked the same question about the second
-output modality, and the answer is that it was never asked in this document either: the register had
-five presentation components and **no audio component at all**, while `presentation` declared an
-`AudioSink` whose strength column read *merely nullable* beside `SceneSink`'s *swappable contract*.
-That asymmetry was the whole defect in one word.
+Tier 2 comes from asking where appearance lives. Asking the same question of the second output
+modality is the whole of tier 3, and the reason it is easy not to ask is that the register can look
+complete without it: five presentation components and **no audio component at all**, with
+`presentation` declaring an `AudioSink` whose strength reads *merely nullable* beside `SceneSink`'s
+*swappable contract*. **One word in a strength column is where a missing modality hides.**
 
 **It is the same defect, in the same files.** The same 117 `game` files hold `Drawable`/`RenderCallback`;
 **31 hold `AudioInstance`; 25 hold both.** `StarObject.hpp` carries `AudioInstancePtr m_soundEffect`
@@ -3955,12 +3955,12 @@ separately from `mixing`, so the link gate scores both files as `mixing` and the
 the leak. And `Mixer` lives in `base`, a FOUNDATION granted to everything, so today every
 composition — `server`, `world_sim`, `world_gen` included — links it unconditionally.
 
-**A second obstruction, and it is the one that stops `sound` being `scene`'s twin today.** `scene` was
-adopted on the strength of a measurement: `Drawable` **already carries `DataStream` operators**, so it
-"moves down essentially for free and is already wire-ready". `AudioInstance` carries **none** — there
-is not one `DataStream` operator in `base/StarMixer.hpp`'s 172 lines. The two contracts are therefore
-symmetric in *duty* and asymmetric in *readiness*, and calling `sound` "the audio twin of `scene`"
-without saying so overstated how much of tier 3 was already done.
+**A second obstruction, and it is the one that stops `sound` being `scene`'s twin.** `scene` is adopted
+on the strength of a measurement: `Drawable` **already carries `DataStream` operators**, so it moves
+down essentially for free and is already wire-ready. `AudioInstance` carries **none** — there is not
+one `DataStream` operator in `base/StarMixer.hpp`'s 172 lines. The two contracts are symmetric in
+*duty* and asymmetric in *readiness*, and "the audio twin of `scene`" is a claim about duty that reads
+as a claim about readiness unless the difference is said out loud.
 
 The consequence is specific rather than vague: **`AudioBatch` needs a value encoding designed, not
 merely declared.** `Drawable` needed a home; `AudioInstance` needs a wire format first. It is also why
@@ -5435,6 +5435,15 @@ What a delta document has to produce:
 3. **The ordering** — below, as far as it is currently understood.
 4. **The cleanup ledger** — what the contract exposes as dead, and where it is deleted.
 
+**Where the two modality tiers stand**, because Section 10 describes both as target-state properties
+and says nothing about progress: **tier 2 has landed** — the 17 `render()` bodies are out of `game`,
+which is why `game` names no `scene` and the server links 13 of 41 components. **Tier 3 has not
+started**,
+and it is blocked rather than merely unscheduled: `AudioBatch` needs a value encoding designed before
+anything can move, because `AudioInstance` carries no `DataStream` operators where `Drawable` already
+did. That asymmetry is the reason the two tiers are sequenced rather than done together, and it is
+recorded against `sound` as an owed item so the ratification rule can see it.
+
 ### Ordering, as currently understood
 
 Three constraints fix most of the sequence.
@@ -5650,13 +5659,12 @@ rule that "owed" is an authoring state rather than a document feature.
    reasoned with together. The rule exists because a model change beneath a section can invalidate it
    after the fact — which is also why sealing is certification rather than freezing (A8, Law of
    Fallback).
-2. **Section 15, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
-   ceiling.
-3. ~~**The input path**~~ — **DONE.** `InputSource::poll()` had nothing to return because no
-   presentation backend could reach the host that drained the events. Resolved by granting `rendering`
-   and `transcript` the `host` contract — the change the paint trigger required independently, so the
-   three candidate fixes collapsed to one for a reason rather than a preference.
-4. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
+2. **The round-trip ratchet has no metric and no starting ceiling.** Section 3 states the rule and
+   Section 15 lists it beside `boundary_ratchet` 213, but *round trip* is not yet defined precisely
+   enough to count: a `poll()` that returns is one by construction, and the rule is meant to catch the
+   ones that are not. Until the metric exists the ratchet is a policy with no instrument, which is the
+   condition Section 15's own limits section says to record rather than assume.
+3. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
    names five phases and the register models four. The fifth, `cpu.frame.finish.us`, calls
    `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE
    FRAME"* and *"the renderer cannot do this itself: it does not own this ordering."* So a host owns an
@@ -5664,16 +5672,16 @@ rule that "owed" is an authoring state rather than a document feature.
    no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
    **Both defects of this class were found the same way** — by drawing the runtime and asking the
    compile projection for permission — and neither was visible in the dependency graph alone.
-5. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
-   D6. See Section 16. Part II is no longer gated by it.
-6. **The delta from today** — Section 17, not yet computed. Part II is target-state only, so the
-   move list, the removal ratchet and the cleanup ledger are a separate exercise. It has three parts:
-   - **Sequencing** — the order of extraction, each step provable and reversible.
-   - **Deferral statement** — what is deferred, and until when. Per D2 nothing architectural is out of
-     scope, so this is a **schedule, not a boundary**; the distinction is load-bearing, because the
-     previous wording deferred `client_sdl_gpu`, `client_agent` and `colocation` to specs that were
-     never going to be written.
-   - **Cleanup ledger** — what the contracts expose as dead, and where it gets removed.
+4. **Section 17 states the delta's shape and not the delta.** It names what a delta document has to
+   produce and fixes three ordering constraints; what it does not contain is the **file-level move
+   list** — which of today's files becomes which target component, complete — and the sequencing
+   below the three constraints. `scripts/grant-sweep.py` carries a partial mapping and cross-checks
+   its own file counts, so the instrument for the move list exists and the list does not.
+5. **Deferral is a schedule, never a boundary.** Per D2 nothing architectural is out of scope, so
+   `client_sdl_gpu`, `client_agent` and `colocation` are sequenced rather than excluded. The
+   distinction is load-bearing in one direction only: a deferral written as a scope boundary defers
+   the work to a document nobody has committed to writing, and reads as a decision that it does not
+   belong here.
 
 ---
 
