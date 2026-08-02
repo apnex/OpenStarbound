@@ -49,10 +49,10 @@ choosing.
 
 | | cares that | the architecture answers with |
 |---|---|---|
-| **engine contributor** | a change can be made without breaking something unrelated | P1, P2 — one duty per component, and a boundary the build enforces |
-| **mod author** | their content and script keep working, and they can see what they may call | A4 and `content`; the composition's declared Lua surface |
-| **server operator** | it runs unattended, and a busy world does not sink the rest | A1, N1.b — a world is the unit of placement |
-| **CI / agent harness** | the game runs with no display, deterministically, and can be asserted against | A3, A5 — determinism and optional perception |
+| **engine contributor** | a change can be made without breaking something unrelated | **A3**, **P1** — one duty per component, and a boundary the build enforces |
+| **mod author** | their content and script keep working, and they can see what they may call | **F4**, **D13** and `content`; the composition's declared Lua surface |
+| **server operator** | it runs unattended, and a busy world does not sink the rest | **D9**, **N1.b** — a world runs because something requires it, and a world is the unit of placement |
+| **CI / agent harness** | the game runs with no display, deterministically, and can be asserted against | **F1**, **D12** — perception is optional (a verified fact) and determinism is chosen (a decision with a price) |
 | **player** | it is smooth, it loads, and their save survives | the budgets below, and `storage` |
 
 The mod author is first among these in one specific sense: a fork whose reason to exist is Frackin
@@ -2654,7 +2654,7 @@ Every component in the diagram, in the same reading order.
 | **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
 | **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
 | **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
-| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
+| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard |
 | **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
 | **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
 | **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
@@ -3232,7 +3232,7 @@ claim. **Ratification requires every cell to read yes.**
 
 | facet | |
 |---|---|
-| **boundary** | Around the SDL implementation of `host`: an SDL window, the `frameLoop` driver, cursor, clipboard, vsync. The concrete answers to who owns `main` and who pumps events. |
+| **boundary** | Around the SDL implementation of `host`: an SDL window, the `frameLoop` driver, cursor, clipboard. The concrete answers to who owns `main` and who pumps events. **Not the swap interval.** Vsync blocks in `swapTick`, which Section 12 gives to `gpu`; a host that owned it would own a cadence belonging to the device below it. |
 | **rejected** | A host that also owns rendering and vendor services — the shell this design started from. |
 | **excludes** | Names `core`, `host`, `platform`, `platform_pc`. May not name `gpu`, `rendering` or `game`: a host provides a surface and a loop, and does not know what is drawn into it. |
 | **falsified** | If a composition using this host cannot choose its GPU backend. Both `client_opengl` and `client_sdl_gpu` name `host_sdl`, so the host is proven backend-neutral by having two consumers that differ only below it. |
@@ -3324,7 +3324,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Generation as a subcommand of the server binary. Rejected because it makes offline generation depend on a simulation being linkable, and it hides the fact that `worldgen` is severable behind an entry point that is not. |
 | **excludes** | Names `base`, `celestial`, `core`, `game`, `platform`, `storage`, `worldgen`. **May not name `world`, `universe` or `participant`** — if generating terrain required any of them, `worldgen`'s severability would be a claim rather than a demonstration. |
 | **falsified** | **If it needs to tick anything.** This composition exists to prove that generation is a function rather than a process, and a single tick would refute that. |
-| **history** | It links 11 of 41 components — the second-smallest composition after `client_agent` — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
+| **history** | It links 11 of 41 components — **the smallest composition in the register**, below `world_sim`'s 12 and `server`'s 13 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
 | **owes** | nothing. |
 
 ### `client_agent` — a participant with no senses at all
@@ -3335,7 +3335,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still produced, and the composition would not demonstrate that senses are omissible — only that output can be discarded. |
 | **excludes** | Names three components: `core`, `host_null`, `participant`. **The shortest grant list of any entry point, and that is its entire argument.** |
 | **falsified** | **If it needs anything perceptual to run.** This is the composition that proves senses are optional, so any perceptual dependency falsifies not just this component but N3. |
-| **history** | 19 of 41 components — the floor. Everything between 19 and 32 is what perception costs. |
+| **history** | 19 of 41 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 11, `world_sim` 12 and `server` 13, none of which carry a participant. The 13 between 19 and `client_opengl`'s 32 are what perception costs. |
 | **owes** | nothing. |
 
 ### The T2 vocabulary
@@ -4887,7 +4887,7 @@ input may not: F1 permits nobody to be watching; nothing whatever permits a comm
 
 **Construction runs down the grant order and teardown reverses it.** A component is given what it
 depends on, fully constructed, before it exists; it therefore cannot outlive what it was given. This
-is P2 restated in time rather than in `#include`s, and it is why the layering being acyclic matters
+is P1 restated in time rather than in `#include`s, and it is why the layering being acyclic matters
 beyond compilation — an acyclic grant graph is a construction order.
 
 | | owns it | outlives |
