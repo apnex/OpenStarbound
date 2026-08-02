@@ -31,12 +31,38 @@ Section 10.
 
 ---
 
-## 0. Foundations
+### Who this serves
+
+| | cares that | the architecture answers with |
+|---|---|---|
+| **engine contributor** | a change can be made without breaking something unrelated | P1, P2 — one duty per component, and a boundary the build enforces |
+| **mod author** | their content and script keep working, and they can see what they may call | A4 and `content`; the composition's declared Lua surface |
+| **server operator** | it runs unattended, and a busy world does not sink the rest | A1, N1.b — a world is the unit of placement |
+| **CI / agent harness** | the game runs with no display, deterministically, and can be asserted against | A3, A5 — determinism and optional perception |
+| **player** | it is smooth, it loads, and their save survives | the budgets below, and `storage` |
+
+The mod author is first among these in one specific sense: a fork whose reason to exist is Frackin
+Universe answers to mods before it answers to elegance.
+
+
+---
+
+# Part I — Foundations
+
+
+---
+
+## 1. What OpenStarbound is
 
 Every claim in this document is justified by the layer above it: **axioms** are facts about
 the domain, the **north star** is what we want, **principles** are the invariants that follow,
 and **decisions** are the choices left over once those are satisfied. A boundary that cites
 none of them is not a boundary, it is a preference.
+
+
+---
+
+## 2. Axioms
 
 ### Axioms
 
@@ -58,6 +84,11 @@ at all**, and **A1 with A2 is the reason `authority` and `participant` are diffe
 than two configurations of one thing.
 
 ---
+
+
+---
+
+## 3. North star
 
 ### North star
 
@@ -120,6 +151,19 @@ anticipated — and N1 is a rewrite wearing a config file.
 
 ---
 
+**Director's constraint:** in theory the full render/graphical front end could run on one machine while
+client/world/server run on another, separated by a network. Therefore a goal of both the contract and
+the logic boundary is to **reduce ping-pongs at that boundary** — chattiness is evidence the boundary
+is in the wrong place.
+
+This is a better test than "does it compile without the other side", because it grades the *shape* of
+the interface rather than merely its existence. And it is **countable**, so it can be a gate.
+
+
+---
+
+## 4. Principles
+
 ### Principles
 
 Decisions are choices — Section 3 could have gone another way. These are not choices. They are the
@@ -140,6 +184,11 @@ P6 and P7 are architectural, not editorial. A model whose registers disagree is 
 boundary nothing enforces is not a boundary.
 
 ---
+
+
+---
+
+## 5. Decisions
 
 ### Decisions
 
@@ -163,243 +212,6 @@ compile. A T3.5 contract does not merely produce a less tidy result — **it def
 exists to serve.**
 
 ---
-
-## 0b. Obligations
-
-Who depends on this architecture, what it must be good at, and what it had no freedom over. A design
-that cannot be judged too slow, too big or too closed cannot be judged at all — so the figures below
-exist to be measured against, and a row with no number is marked as owing one.
-
-### Who this serves
-
-| | cares that | the architecture answers with |
-|---|---|---|
-| **engine contributor** | a change can be made without breaking something unrelated | P1, P2 — one duty per component, and a boundary the build enforces |
-| **mod author** | their content and script keep working, and they can see what they may call | A4 and `content`; the composition's declared Lua surface |
-| **server operator** | it runs unattended, and a busy world does not sink the rest | A1, N1.b — a world is the unit of placement |
-| **CI / agent harness** | the game runs with no display, deterministically, and can be asserted against | A3, A5 — determinism and optional perception |
-| **player** | it is smooth, it loads, and their save survives | the budgets below, and `storage` |
-
-The mod author is first among these in one specific sense: a fork whose reason to exist is Frackin
-Universe answers to mods before it answers to elegance.
-
-### What it must be good at
-
-Rates are facts about the simulation, not aspirations. Both are in the source today.
-
-| | budget | where the figure comes from |
-|---|---|---|
-| **world fixed step** | **60 Hz — 16.67 ms** | `ServerGlobalTimestep = 1.0f / 60.0f` |
-| **system-world step** | **20 Hz — 50 ms** | `SystemWorldTimestep = 1.0f / 20.0f` |
-| **frame** | display rate, vsync-bound | the driver blocks in `swapTick`; the rate is the device's, not ours |
-| **headless throughput** | ≥ real time with no participant | A5 — the acceptance test below |
-| worlds resident per universe | **owed** | not measured; the figure a placement decision needs |
-| participants per universe | **owed** | as above |
-| split-path latency and bandwidth | **owed** | N1's cost, and the number that decides whether a seam may really cross |
-
-**Two fixed rates, not one, and the difference is load-bearing.** A world steps three times for every
-system-world step, so a design that assumes one simulation cadence is wrong about a third of the
-simulation. Both are FIXED under A3; only the number differs.
-
-**The four owed figures are owed, not omitted.** Three of them describe a system that has never run
-distributed, and inventing them would be the exact failure this document was reframed to avoid —
-aspiration wearing a measurement's clothes. They are named so their absence is visible.
-
-**The acceptance test, because a quality attribute that cannot fail is decoration.** Load a world
-containing Frackin Universe automation, attach no participant, tick it, and assert the machines
-advance. It exercises A3, A4 and A5 at once, and no composition that fails it is a target state.
-
-### What could not be chosen
-
-A constraint is a fact about the world or the toolchain. **A fact about the current directory tree is
-never a constraint** — that is inertia wearing a constraint's hat, and it is the route by which a
-target state quietly becomes a description of today.
-
-| | the constraint | why it is one |
-|---|---|---|
-| **a fork, not a product** | upstream keeps moving and its changes must remain mergeable | a fact about the world; nothing here can change it |
-| **vanilla compatibility** | assets, protocol and saves keep loading | the players exist and their saves are real |
-| **Lua is the mod language** | not a choice this document may reopen | the mods exist |
-| **six-platform CI** | inherited, and Linux Clang plus the gates are the signals acted on | a fact about the toolchain |
-| **OBJECT libraries link whole** | every object of a library enters every consumer; there is no per-object pruning | a fact about CMake, and the reason **a component is enforceable if and only if it is its own directory** |
-
-That last row is the one constraint that shapes the model rather than merely bounding it, which is
-why it is repeated beside the directory tree where it does its work.
-
-**Observability is an obligation, not a feature.** A split deployment is traceable as one system, and
-the instrument that traces it may not create the upward coupling the grant table exists to forbid.
-Telemetry is how `finishTick` was found to have no legal home; an architecture whose own diagnosis
-requires a boundary violation cannot be diagnosed in the target state.
-
----
-
-## 1. Where the boundary goes — PROVISIONAL
-
-### The boundary is at *drawing*, not at *UI*
-
-Everything that decides **what** to draw stays on the game side — simulation, UI logic, widget layout.
-Everything that turns descriptions into **pixels** is presentation.
-
-`windowing` and `frontend` therefore land on the **game** side of the new boundary. Only the painters,
-the passes and L1 sit on the presentation side.
-
-That sounds like a large restructure. It is not, and the measurement in
-`docs/architecture/system-boundaries.md` Section 5 says why:
-
-| edge | includes | files |
-|---|---:|---:|
-| `windowing → rendering` | 3 | **1** (`GuiContext`) |
-| `frontend → rendering` | 9 | 9 |
-
-**Twelve includes across ten files** — the thinnest live cross-tier edge in the entire tree is exactly
-where *this* seam wants to be cut. The UI already does its own layout and already emits `Drawable`s;
-it simply hands them to a painter directly today instead of into a stream. Per D7 the thinness is
-not why the boundary belongs here — it is why this boundary happens to be cheap, which is a Section 10
-fact that arrived for free.
-
-### `RenderCallback` is not part of the contract
-
-This is the simplification that makes everything else work.
-
-`RenderCallback` is how the game **assembles** a frame — entities push into a sink and
-`ClientRenderCallback` accumulates. That is game-internal from start to finish. It stays exactly where
-it is and crosses nothing.
-
-**The contract begins after assembly:** *here is a finished frame, present it.*
-
-*(Superseded in part — see the end of this section. Under the scene model there are **two** assemblies:
-the simulation assembles a **scene**, presentation assembles a **frame** from it. `RenderCallback` is
-still the first one and still crosses nothing.)*
-
-Which is why the video contract is one call per frame with one value, and why it passes the network
-test in Section 5 without redesign.
-
-### The three contracts, as streams
-
-```
-simulation side                    │  seam 1  (T2)          │  presentation side
-───────────────────────────────────┼────────────────────────┼──────────────────────────
-world sim, entities                │                        │  resample scene to now
-  ↓ RenderCallback (internal)      │                        │    ↓ apply the camera
-SCENE assembly                     │  accept(SceneDelta) →  │  FRAME assembly
-UI logic, widget layout            │  play(AudioBatch)   →  │    ↓ paint
-  ↓ emits scene items              │  ← poll() InputBatch   │  rendering · transcript
-```
-
-- **Video** — `accept(SceneDelta const&)`. One call, one value, per driver step. The MVP rung is
-  `present(Frame const&)`: the same call with the scene already camera-resolved.
-- **Audio** — `play(AudioBatch const&)`. One-way. Fixes `AudioInstancePtr`: the batch carries values,
-  not handles.
-- **Input** — `poll() -> InputBatch`. The single permitted round trip, once per frame, returning a batch.
-
-One query per frame in total. That is a boundary a network could pass through.
-
-### The T2 vocabulary
-
-`Frame`, `AudioBatch` and `InputBatch` may name **only core, base and presentation-vocabulary types**.
-That constraint is what forces the cleanup, and it is what lets the contract sit at T2 where no
-implementation needs `game`.
-
-Two pieces of evidence that this runs with the grain rather than against it:
-
-- **`Drawable` depends on six core headers and nothing else** — `StarString`, `StarDataStream`,
-  `StarPoly`, `StarColor`, `StarJson`, `StarAssetPath` — and **already carries `DataStream`
-  operators**. It moves down essentially for free and is already wire-ready. That is not a
-  coincidence; the vocabulary was always closer to a protocol than to an API.
-- **`ImageMetadataDatabase` already lives in `game`** so that layout can know image sizes without a
-  GPU. The precedent for *metrics are data, not presentation* is already established in this codebase;
-  font metrics follow the same path.
-
-### The pixel side has no name today
-
-Asked what the whole scope on the presentation side is called, the honest answer is that **it has no
-name, because it is not a unit.** It is 33 files and 8,704 lines spanning two libraries at two
-different tiers:
-
-| part | files | lines | tier |
-|---|---:|---:|---|
-| all of `source/rendering` — painters, passes, texture groups | 23 | 4,413 | T4 |
-| the render half of `source/application` — `Renderer`, the GL backend, L1 | 10 | 4,291 | **T2** |
-| *(`source/application` keeps: app/window lifecycle, SDL main, Steam/Discord, P2P)* | *15* | *3,081* | *not presentation* |
-
-Near half by volume on each side of a directory line. **The renderer is not in `source/rendering`:**
-the largest presentation file, `StarRenderer_opengl.cpp` at 1,824 lines, and the `Renderer` interface
-every painter draws through, both live in `application`.
-
-Consequently the word *presentation* is carrying three different meanings at once:
-
-| the name | what it actually covers | fits the pixel side? |
-|---|---|---|
-| `star_rendering` (T4) | painters and passes | **half** — misses the renderer itself |
-| tier T4 "presentation" | `{rendering, windowing, frontend}` | **wrong both ways** — includes the UI this section just placed on the game side, still misses the GL backend |
-| L1 / L2 / L3 | the render decomposition | **L1 straddles the directory line** — which is why `scripts/layering-lint.py` has to name `application/` paths |
-| `source/presentation` (Section 4) | the contract, interface-only | **no** — that is the seam, not the side |
-
-Section 4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
-
-**First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
-`${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line states **this seam** as a
-build rule, and the rest of Section 1 is the work that makes the deletion possible. It is not the
-whole design — the target state deletes an equivalent line for every one of the 41 components, and
-`tree-map.py` exists to make that the same kind of statement everywhere rather than a special
-argument about presentation.
-
-**Second: `RenderCallback` occurs in 39 files and all 39 are in `source/game`.** The claim above that
-it is game-internal frame assembly is not an assertion about intent — it is a measurement, and it
-satisfies test 2 (severability) already. Nothing needs to move for it.
-
-**And the GL backend has exactly one consumer outside its own `.cpp`:** `StarMainApplication_sdl.cpp`,
-the T2 shell that owns the GL context. Unifying the pixel side takes the backend away from that shell,
-which is precisely what D5 requires — so **the naming question and the injection question are the same
-question**, and they have to be answered in that order. See Section 4's ordering constraint.
-
-### What supersedes this section
-
-Everything measured above stands. **The contract shape does not.**
-
-`present(Frame const&)` hands the presentation side a finished, camera-resolved frame. That welds the
-pixel rate to the assembly rate: presentation can only rasterise what it was given, when it was given
-it. Over a network it degrades to frame streaming — bandwidth O(screen), and every hitch in the sim
-appears as a hitch on the glass.
-
-Section 4 replaces it with a **scene delta**, which lets the presentation side own its own clock and
-resample locally. Under that model:
-
-- **frame assembly moves to the presentation side.** The claim above — *"the contract begins after
-  assembly"* — reverses.
-- **`present(Frame const&)` becomes the degenerate case**: a scene delta already resolved for one
-  camera at one instant, with the delta being "everything". It is the MVP rung of a taller ladder, not
-  a wrong answer.
-- **`RenderCallback` is unaffected.** The measurement holds — 39 files, all in `game` — it simply
-  pushes scene items rather than drawables.
-
-The `windowing`/`frontend` placement, the twelve-includes measurement, and the `Drawable` and
-`ImageMetadataDatabase` evidence are all independent of which payload crosses, so they carry forward
-unchanged.
-
-**And a second supersession, larger than the first: this section asks where THE boundary goes,
-singular. The design now has 41 components and roughly a dozen boundaries** — which is the same
-supersession D1 and D2 record at the top of the document, met here first and in miniature.
-
-Every measurement in this section re-verified and still stands — `RenderCallback` is in **exactly 39
-`game` files**, checked again at 41 components. What has changed is the frame around them:
-
-| this section says | still true? | what supersedes it |
-|---|---|---|
-| the boundary is at *drawing*, not at *UI* | **yes** | but `windowing`/`frontend` are no longer granted by the participant — an ENTRYPOINT composes them, so "which side" became "which composition" |
-| `windowing` + `frontend` sit on the game side | **yes** — both are INTERIOR | `client_agent` links neither, which the single-boundary framing had no way to express |
-| `RenderCallback` is unaffected | **shape yes, home no** | tier 2 moves the 17 implementing bodies to `world_view`; tier 3 does the same for its `addAudio` counterpart |
-| the pixel side has no name today | **superseded** | it has five: `rendering`, `gpu`, `gpu_opengl`, `gpu_sdl`, `transcript` |
-| three contracts | **superseded** | ten, and the third one — audio — was upgraded from "merely nullable" to a swappable contract with its own backend (D3) |
-
-**This section is kept as written, not patched into agreement.** It is the record of the question the
-design started from — *where does one boundary go* — and the answer it reached. Rewriting it to match
-the current register would erase the reasoning that produced the register, and the reasoning is the
-part worth keeping. Read it as history with a live measurement set, not as the current design.
-
----
-
-## 2. The client Lua surface — context finding
 
 Recorded here because it was the decisive fact behind D4, and because it is documented nowhere else.
 
@@ -512,82 +324,117 @@ in Section 6 as a verification duty, and it is added there.
 
 ---
 
-## 3. The network constraint — the sharper forcing function
-
-**Director's constraint:** in theory the full render/graphical front end could run on one machine while
-client/world/server run on another, separated by a network. Therefore a goal of both the contract and
-the logic boundary is to **reduce ping-pongs at that boundary** — chattiness is evidence the boundary
-is in the wrong place.
-
-This is a better test than "does it compile without the other side", because it grades the *shape* of
-the interface rather than merely its existence. And it is **countable**, so it can be a gate.
-
-### The main path already passes
-
-Every `RenderCallback` method returns `void`, takes by value, and has a batch form:
-
-```cpp
-virtual void addDrawable(Drawable drawable, EntityRenderLayer renderLayer) = 0;
-void addDrawables(List<Drawable> drawables, EntityRenderLayer, Vec2F translate = Vec2F());
-```
-
-Zero round trips, already batched. Nobody designed this for the thought experiment; it survives it.
-
-### Where it fails, and the list is short
-
-- **Pointers crossing.** `addAudio(AudioInstancePtr)` passes a shared handle.
-  `WorldRenderData::particles` is a raw `List<Particle> const*`. Neither survives a wire — and neither
-  is visible to any existing instrument, because Section 6 of the boundary document measures *how much* of a
-  type is used and nothing measures *whether it could be sent*.
-- **Query-shaped Lua callbacks.** Four of the seven in `makeRenderingCallbacks` return values:
-  `framesSkipped()`, `postProcessGroupEnabled(String)`, `getEffectParameter(...)`,
-  `postProcessGroups()`. Each is a round trip whose frequency is set by mod code.
-
-### Proposed ratchet (design not yet approved)
-
-Countable, so it should become a gate alongside the existing `boundary_ratchet` of 213:
-
-| crossing kind | treatment |
-|---|---|
-| returns a value | ratchet toward zero — the true ping-pongs |
-| passes a pointer or reference | ratchet toward zero — the un-sendables |
-| one-way value write | counted, not penalised — these batch |
-
-A boundary that is one-way, by-value and batched is one a network could pass through. The test for
-"is this boundary in the right place" becomes **a number that only goes down**.
 
 ---
 
-## 4. The target state — PROVISIONAL
+## 6. Requirements and given constraints
 
-**This section describes the target state and nothing else.** No migration, no actions against the
-current tree, no history — those live in Section 10, and the delta itself is a separate exercise. Read
-every table here as a description of the system we are building, not of the one we have.
+Who depends on this architecture, what it must be good at, and what it had no freedom over. A design
+that cannot be judged too slow, too big or too closed cannot be judged at all — so the figures below
+exist to be measured against, and a row with no number is marked as owing one.
 
-### There are two seams, not one
+### What it must be good at
 
-The first draft of this register treated the pixel side as one layer with one boundary. It is two,
-and the second boundary **already exists and already works**:
+Rates are facts about the simulation, not aspirations. Both are in the source today.
 
-| | seam | declared by | implemented by | status |
-|---|---|---|---|---|
-| **1** | `SceneSink` · `AudioSink` · `InputSource` — game ↔ presentation | `presentation` | `rendering`, `transcript` | **does not exist** — this design builds it |
-| **2** | `Device` — primitives ↔ GPU API (`Renderer` today) | `StarRenderer.hpp` | `OpenGlRenderer`, later SDL_GPU | **exists, and measures clean** |
+| | budget | where the figure comes from |
+|---|---|---|
+| **world fixed step** | **60 Hz — 16.67 ms** | `ServerGlobalTimestep = 1.0f / 60.0f` |
+| **system-world step** | **20 Hz — 50 ms** | `SystemWorldTimestep = 1.0f / 20.0f` |
+| **frame** | display rate, vsync-bound | the driver blocks in `swapTick`; the rate is the device's, not ours |
+| **headless throughput** | ≥ real time with no participant | A5 — the acceptance test below |
+| worlds resident per universe | **owed** | not measured; the figure a placement decision needs |
+| participants per universe | **owed** | as above |
+| split-path latency and bandwidth | **owed** | N1's cost, and the number that decides whether a seam may really cross |
 
-Four measurements say seam 2 is real rather than nominal:
+**Two fixed rates, not one, and the difference is load-bearing.** A world steps three times for every
+system-world step, so a design that assumes one simulation cadence is wrong about a third of the
+simulation. Both are FIXED under A3; only the number differs.
 
-- `Renderer` declares **42 pure virtuals**, and `OpenGlRenderer : public Renderer`.
-- `rendering → application` is **`StarRenderer.hpp` × 9 across 9 files and nothing else** — the
-  painters and passes see the abstract header and none of the GL implementation.
-- `source/rendering` names `OpenGlRenderer` **zero times in code**; the single occurrence is a comment
-  in `StarWorldPass.cpp`.
-- `game` touches none of it. `windowing`, `frontend` and `participant` touch `StarRenderer.hpp` once each.
+**The four owed figures are owed, not omitted.** Three of them describe a system that has never run
+distributed, and inventing them would be the exact failure this document was reframed to avoid —
+aspiration wearing a measurement's clothes. They are named so their absence is visible.
 
-**Consequence: SDL_GPU enters *below* seam 2, not beside `rendering`.** It replaces `OpenGlRenderer`
-and keeps every painter and pass, so in the target state it costs exactly one BACKEND (`gpu_sdl`) and
-one composition (`client_sdl_gpu`) — both of which are in the register and in scope per D2. An earlier
-diagram drew it as a peer of `rendering`, which would have implied reimplementing the painters; that
-is the claim this measurement refutes.
+**The acceptance test, because a quality attribute that cannot fail is decoration.** Load a world
+containing Frackin Universe automation, attach no participant, tick it, and assert the machines
+advance. It exercises A3, A4 and A5 at once, and no composition that fails it is a target state.
+
+### What could not be chosen
+
+A constraint is a fact about the world or the toolchain. **A fact about the current directory tree is
+never a constraint** — that is inertia wearing a constraint's hat, and it is the route by which a
+target state quietly becomes a description of today.
+
+| | the constraint | why it is one |
+|---|---|---|
+| **a fork, not a product** | upstream keeps moving and its changes must remain mergeable | a fact about the world; nothing here can change it |
+| **vanilla compatibility** | assets, protocol and saves keep loading | the players exist and their saves are real |
+| **Lua is the mod language** | not a choice this document may reopen | the mods exist |
+| **six-platform CI** | inherited, and Linux Clang plus the gates are the signals acted on | a fact about the toolchain |
+| **OBJECT libraries link whole** | every object of a library enters every consumer; there is no per-object pruning | a fact about CMake, and the reason **a component is enforceable if and only if it is its own directory** |
+
+That last row is the one constraint that shapes the model rather than merely bounding it, which is
+why it is repeated beside the directory tree where it does its work.
+
+**Observability is an obligation, not a feature.** A split deployment is traceable as one system, and
+the instrument that traces it may not create the upward coupling the grant table exists to forbid.
+Telemetry is how `finishTick` was found to have no legal home; an architecture whose own diagnosis
+requires a boundary violation cannot be diagnosed in the target state.
+
+---
+
+
+---
+
+# Part II — The model
+
+
+---
+
+## 7. Altitude and zones
+
+### The pixel side has no name today
+
+Asked what the whole scope on the presentation side is called, the honest answer is that **it has no
+name, because it is not a unit.** It is 33 files and 8,704 lines spanning two libraries at two
+different tiers:
+
+| part | files | lines | tier |
+|---|---:|---:|---|
+| all of `source/rendering` — painters, passes, texture groups | 23 | 4,413 | T4 |
+| the render half of `source/application` — `Renderer`, the GL backend, L1 | 10 | 4,291 | **T2** |
+| *(`source/application` keeps: app/window lifecycle, SDL main, Steam/Discord, P2P)* | *15* | *3,081* | *not presentation* |
+
+Near half by volume on each side of a directory line. **The renderer is not in `source/rendering`:**
+the largest presentation file, `StarRenderer_opengl.cpp` at 1,824 lines, and the `Renderer` interface
+every painter draws through, both live in `application`.
+
+Consequently the word *presentation* is carrying three different meanings at once:
+
+| the name | what it actually covers | fits the pixel side? |
+|---|---|---|
+| `star_rendering` (T4) | painters and passes | **half** — misses the renderer itself |
+| tier T4 "presentation" | `{rendering, windowing, frontend}` | **wrong both ways** — includes the UI this section just placed on the game side, still misses the GL backend |
+| L1 / L2 / L3 | the render decomposition | **L1 straddles the directory line** — which is why `scripts/layering-lint.py` has to name `application/` paths |
+| `source/presentation` (Section 4) | the contract, interface-only | **no** — that is the seam, not the side |
+
+Section 4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
+
+**First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
+`${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line states **this seam** as a
+build rule, and the rest of Section 1 is the work that makes the deletion possible. It is not the
+whole design — the target state deletes an equivalent line for every one of the 41 components, and
+`tree-map.py` exists to make that the same kind of statement everywhere rather than a special
+argument about presentation.
+
+**Second: `RenderCallback` occurs in 39 files and all 39 are in `source/game`.** The claim above that
+it is game-internal frame assembly is not an assertion about intent — it is a measurement, and it
+satisfies test 2 (severability) already. Nothing needs to move for it.
+
+**And the GL backend has exactly one consumer outside its own `.cpp`:** `StarMainApplication_sdl.cpp`,
+the T2 shell that owns the GL context. Unifying the pixel side takes the backend away from that shell,
+which is precisely what D5 requires — so **the naming question and the injection question are the same
+question**, and they have to be answered in that order. See Section 4's ordering constraint.
 
 ### The shape stops being a stack
 
@@ -1034,20 +881,6 @@ when there was one client. Four compositions touch both arms now, and the gradie
 the design working: `client_agent` proves the contract is severable by naming it and linking no
 implementation, and `client_headless` proves a backend need not be hardware.
 
-### `transcript`'s three modes
-
-D4's recorder was specified against a stream of frames. Against a stream of **scenes** it says more,
-because a scene is semantic where a frame is baked:
-
-| mode | keeps | serves |
-|---|---|---|
-| **discard** | nothing; the delta is accepted and dropped | bulk runs, where the point is that the simulation ran at all |
-| **record** | the scene deltas, replayable | assertions — *"the player was at (x,y), facing left"* — and an agent's perception |
-| **strict** | the deltas, and rejects any naming something outside the scene vocabulary | the forcing function: a contract violation becomes a test failure rather than a review comment |
-
-**strict is what keeps the contract honest.** Without it a type that should not cross can cross for
-months and nothing says so.
-
 ### Two roles, two names
 
 The word that was doing both jobs now splits:
@@ -1056,6 +889,159 @@ The word that was doing both jobs now splits:
 - **GPU backend** — implements seam 2. `gpu_opengl` and `gpu_sdl` are peers; neither is privileged.
 
 A presentation backend need not have a GPU backend at all: `transcript` has none.
+
+### ZONE is a directory, and the four are a layering
+
+<!-- HISTORICAL -->
+The zones used to be five and they mixed three metaphors: SUBSTRATE/SHELL is vertical, INTERIOR/
+PERIPHERY is radial, SEAM is topological. Three of the five did not parse on reading, and measurement
+found the deeper problem: **ZONE was 80% determined by KIND** — only 8 of 41 components deviated from
+their kind's default, so the axis was mostly restating something already stated.
+<!-- END HISTORICAL -->
+
+The four that replace them each answer the same question — **what does this component face?**
+
+| zone | faces | n |
+|---|---|---|
+| **`machine/`** | the OS, the vendor, the asset store, the disk | 10 |
+| **`domain/`** | nothing outside; the game's own state and rules | 14 |
+| **`device/`** | a display, a speaker, a file, a recorder | 9 |
+| **`composition/`** | the other three; it wires them | 8 |
+
+**SEAM is gone, and no `boundary/` directory replaces it.** A CONTRACT already declares that it is a
+boundary, so a directory saying it again would be the second-declaration defect this document has
+removed repeatedly. The rule instead:
+
+> **A contract lives in the zone of what it abstracts, not in a zone of its own.**
+
+`host`, `platform` and `content` abstract the machine. `scene`, `sound`, `net` and `celestial` are the
+domain describing itself. `gpu`, `audio` and `presentation` abstract devices and their sinks. That
+also keeps each interface beside its implementations — `gpu` next to `gpu_opengl` and `gpu_sdl` is the
+entire point of a swappable backend, and a `boundary/` directory would have put them in different
+trees.
+
+**Every grant edge points down that order, at zero exceptions across 41 components**, checked by
+`spec_consistency`'s `ZONE_ORDER` verdict. That is what makes zones directories rather than labels:
+`domain/ must not include device/` becomes a statement about paths, checkable without parsing C++.
+
+**The layering earned its keep before it was even written down.** The first four-zone assignment had
+exactly one upward edge — `storage` (machine) granting `script` (domain). That was not a placement to
+paper over. `script` grants only `core`, `base` and `content` and names **no domain type at all**: it
+is the Lua interpreter host, infrastructure like the allocator. It had been filed in the domain by
+association with `game/scripting/`, which is where the files sit *today* — a D7 violation made without
+noticing, and caught by the layering rather than by reading.
+
+### The vocabulary that was missing: scene
+
+The reason a sovereign pixel loop looked impossible is that only two vocabularies were named, and
+neither works:
+
+| | what it is | interpolatable | names game types |
+|---|---|---|---|
+| **entity state** | the simulation | yes | **yes** — cannot cross, D6 |
+| **scene** | what exists, where, moving how, in which layer, plus the camera target | **yes** | **no** |
+| **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
+
+`Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
+exactly why it is on the unassessed list in Section 7.
+
+With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
+the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
+
+**And the pattern is already proven in this codebase.** `game/StarInterpolationTracker.{hpp,cpp}` —
+held by both `WorldServer` (per client) and `WorldClient` — does exactly this clock reconciliation
+between server and client today: `receiveTimeUpdate(remoteTime)`, `interpolationLeadTime()`,
+`extrapolationHint()`. Applying it at the client↔presentation seam is the same pattern one seam
+further out, not a new invention.
+
+
+---
+
+## 8. Seams and what crosses them
+
+### The boundary is at *drawing*, not at *UI*
+
+Everything that decides **what** to draw stays on the game side — simulation, UI logic, widget layout.
+Everything that turns descriptions into **pixels** is presentation.
+
+`windowing` and `frontend` therefore land on the **game** side of the new boundary. Only the painters,
+the passes and L1 sit on the presentation side.
+
+That sounds like a large restructure. It is not, and the measurement in
+`docs/architecture/system-boundaries.md` Section 5 says why:
+
+| edge | includes | files |
+|---|---:|---:|
+| `windowing → rendering` | 3 | **1** (`GuiContext`) |
+| `frontend → rendering` | 9 | 9 |
+
+**Twelve includes across ten files** — the thinnest live cross-tier edge in the entire tree is exactly
+where *this* seam wants to be cut. The UI already does its own layout and already emits `Drawable`s;
+it simply hands them to a painter directly today instead of into a stream. Per D7 the thinness is
+not why the boundary belongs here — it is why this boundary happens to be cheap, which is a Section 10
+fact that arrived for free.
+
+### `RenderCallback` is not part of the contract
+
+This is the simplification that makes everything else work.
+
+`RenderCallback` is how the game **assembles** a frame — entities push into a sink and
+`ClientRenderCallback` accumulates. That is game-internal from start to finish. It stays exactly where
+it is and crosses nothing.
+
+**The contract begins after assembly:** *here is a finished frame, present it.*
+
+*(Superseded in part — see the end of this section. Under the scene model there are **two** assemblies:
+the simulation assembles a **scene**, presentation assembles a **frame** from it. `RenderCallback` is
+still the first one and still crosses nothing.)*
+
+Which is why the video contract is one call per frame with one value, and why it passes the network
+test in Section 5 without redesign.
+
+### The three contracts, as streams
+
+```
+simulation side                    │  seam 1  (T2)          │  presentation side
+───────────────────────────────────┼────────────────────────┼──────────────────────────
+world sim, entities                │                        │  resample scene to now
+  ↓ RenderCallback (internal)      │                        │    ↓ apply the camera
+SCENE assembly                     │  accept(SceneDelta) →  │  FRAME assembly
+UI logic, widget layout            │  play(AudioBatch)   →  │    ↓ paint
+  ↓ emits scene items              │  ← poll() InputBatch   │  rendering · transcript
+```
+
+- **Video** — `accept(SceneDelta const&)`. One call, one value, per driver step. The MVP rung is
+  `present(Frame const&)`: the same call with the scene already camera-resolved.
+- **Audio** — `play(AudioBatch const&)`. One-way. Fixes `AudioInstancePtr`: the batch carries values,
+  not handles.
+- **Input** — `poll() -> InputBatch`. The single permitted round trip, once per frame, returning a batch.
+
+One query per frame in total. That is a boundary a network could pass through.
+
+### There are two seams, not one
+
+The first draft of this register treated the pixel side as one layer with one boundary. It is two,
+and the second boundary **already exists and already works**:
+
+| | seam | declared by | implemented by | status |
+|---|---|---|---|---|
+| **1** | `SceneSink` · `AudioSink` · `InputSource` — game ↔ presentation | `presentation` | `rendering`, `transcript` | **does not exist** — this design builds it |
+| **2** | `Device` — primitives ↔ GPU API (`Renderer` today) | `StarRenderer.hpp` | `OpenGlRenderer`, later SDL_GPU | **exists, and measures clean** |
+
+Four measurements say seam 2 is real rather than nominal:
+
+- `Renderer` declares **42 pure virtuals**, and `OpenGlRenderer : public Renderer`.
+- `rendering → application` is **`StarRenderer.hpp` × 9 across 9 files and nothing else** — the
+  painters and passes see the abstract header and none of the GL implementation.
+- `source/rendering` names `OpenGlRenderer` **zero times in code**; the single occurrence is a comment
+  in `StarWorldPass.cpp`.
+- `game` touches none of it. `windowing`, `frontend` and `participant` touch `StarRenderer.hpp` once each.
+
+**Consequence: SDL_GPU enters *below* seam 2, not beside `rendering`.** It replaces `OpenGlRenderer`
+and keeps every painter and pass, so in the target state it costs exactly one BACKEND (`gpu_sdl`) and
+one composition (`client_sdl_gpu`) — both of which are in the register and in scope per D2. An earlier
+diagram drew it as a peer of `rendering`, which would have implied reimplementing the painters; that
+is the claim this measurement refutes.
 
 ### Seam 1 — the three boundaries
 
@@ -1190,6 +1176,60 @@ them measured:
 `Device` rather than `Rasterizer` because the contract also owns texture creation, framebuffer
 targets, blend and scissor state — the whole drawing device, not the rasterisation step alone.
 
+### What the payload choice actually buys
+
+| payload | pixel rate | assembly lives | what can be plugged in | network cost |
+|---|---|---|---|---|
+| finished `Frame` | == sim rate | game side | **any rasteriser** — GL, SDL_GPU, null | O(screen) |
+| **scene delta** | free, resampled | presentation side | **any presentation** — a rasteriser, a text renderer, an audio-only client, a debug visualiser, a bot's perception | **O(change)** |
+
+Because the payload is semantic rather than baked, presentation stops meaning *"something that draws"*
+and starts meaning *"something that experiences"*. A transcript of scene deltas is assertable —
+*"player at (x,y), facing left"* — where a transcript of drawables is a list of quads nobody can test
+against. **The scene model makes D4's recorder genuinely useful rather than merely faithful.**
+
+Co-located, the delta is a memcpy on one thread. Split, it is a packet. Same code, different
+transport — which makes the transport a second implementation proving the contract, exactly as null
+proves the backend.
+
+**Accepted costs**, recorded rather than glossed: a scene vocabulary and delta encoding; a resampler on
+any presentation wanting a free-running rate (an ELEMENT, or a LIBRARY if `transcript` also wants
+fixed-rate recording — open); camera resolution moving to the presentation side; and materially more
+machinery than `present(Frame)`. The Director waived A3's Earned Exposure for this deliberately: the
+payoff is judged worth the forecast surface.
+
+### What actually crosses each seam
+
+The two seams carry different currency, and conflating them is the frame-streaming mistake in another
+costume. Naming both precisely is what keeps the split honest:
+
+| | seam 1 — `presentation` | seam 2 — `gpu` |
+|---|---|---|
+| **currency** | a **scene delta** | a **`RenderPrimitive`** |
+| **shape** | what exists, where, moving how, plus the camera *target* | `Variant<RenderTriangle, RenderQuad, RenderPoly>` of `RenderVertex { screenCoordinate, textureCoordinate, color, param1 }` |
+| **register** | declarative — names no game type, and is interpolatable | imperative — screen-space, already projected |
+| **crosses** | `participant` → `rendering` | `rendering` → a `gpu_*` backend |
+
+Two properties of that table are load-bearing:
+
+- **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
+  returns `participant` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
+  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
+  list said "flow is one-way and nothing returns", which contradicted this section's own contract
+  table. Seam 2 genuinely is one-way.
+- **An entrypoint is never in the frame path.** It wires the components together once at composition
+  and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
+  frame would be a component with behaviour, and the kind would be a lie.
+- **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
+  knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
+
+---
+
+
+---
+
+## 9. The register
+
 ### One diagram per composition — GENERATED
 
 The map above answers *what exists*. It cannot answer *what does this binary actually link*, and that
@@ -1197,6 +1237,265 @@ is the question someone building `client_headless` has. A composition is an ENTR
 transitive closure of its grant list, so these are **derived from the grant table** by
 `scripts/composition-graphs.py` and gated by `composition_graphs`. Three hand-drawn diagrams would be
 three more things to drift; nothing below is a new decision.
+
+### The register — one row per box
+
+Every component in the diagram, in the same reading order.
+
+<!-- TABLE: components -->
+| name | kind | zone | duty | warrant | contents |
+|---|---|---|---|---|---|
+| **`core`** | FOUNDATION | MACHINE | language and containers | — | the language, containers and algorithms everything rests on |
+| **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
+| **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
+| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
+| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **A5** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
+| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
+| **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
+| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
+| **`net`** | CONTRACT | DOMAIN | what a replicated field is | **A2** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
+| **`content`** | CONTRACT | MACHINE | what a mod can change: data | **A4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
+| **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
+| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **A5** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`game`** | LIBRARY | DOMAIN | the domain | **A1 + A2** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
+| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **A1** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **A1** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
+| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **A3** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
+| **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
+| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **A2** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
+| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **A2** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
+| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
+| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **A4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
+| **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
+| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`mixing`** | BACKEND | DEVICE | turns sound into samples | **A5** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
+| **`transcript`** | BACKEND | DEVICE | records instead of drawing | **A5** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
+| **`gpu`** | CONTRACT | DEVICE | the GPU contract | **N3** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
+| **`audio`** | CONTRACT | DEVICE | the audio-device contract | **A5** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
+| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
+| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
+| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **A2** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
+| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
+| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **A5** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
+| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | **N3** — a participant with no senses, which is what proves senses are optional | wiring only: `host_null`; an AI player that acts and neither draws nor records |
+| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
+| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **A1** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
+| **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
+| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **A3** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
+<!-- END TABLE: components -->
+
+### The target directory structure — GENERATED
+
+One directory per component, grouped by zone. Derived from the register above, because a hand-written
+tree beside a 41-row table is a second declaration of the same fact.
+
+**Two facts stack to make this enforceable rather than aspirational.** A component is enforceable if
+and only if it is its own directory — the OBJECT-library finding, since every Star library links all
+of its objects into every consumer. And every grant points down the zone order. Together they turn the
+architecture into something an `#include` can violate and a lint can catch.
+
+<!-- BEGIN GENERATED: scripts/tree-map.py -->
+```
+source/
+  machine/       # 10 components
+    ├── base/            FOUNDATION
+    ├── content/         CONTRACT
+    ├── core/            FOUNDATION
+    ├── host/            CONTRACT
+    ├── host_null/       BACKEND
+    ├── host_sdl/        BACKEND
+    ├── platform/        CONTRACT
+    ├── platform_pc/     BACKEND
+    ├── script/          LIBRARY
+    └── storage/         LIBRARY
+  domain/        # 14 components
+    ├── celestial/       CONTRACT
+    ├── colocation/      LIBRARY
+    ├── frontend/        LIBRARY
+    ├── game/            LIBRARY
+    ├── interaction/     LIBRARY
+    ├── net/             CONTRACT
+    ├── scene/           CONTRACT
+    ├── sound/           CONTRACT
+    ├── universe/        LIBRARY
+    ├── universe_view/   LIBRARY
+    ├── windowing/       LIBRARY
+    ├── world/           LIBRARY
+    ├── world_view/      LIBRARY
+    └── worldgen/        LIBRARY
+  device/        # 9 components
+    ├── audio/           CONTRACT
+    ├── audio_sdl/       BACKEND
+    ├── gpu/             CONTRACT
+    ├── gpu_opengl/      BACKEND
+    ├── gpu_sdl/         BACKEND
+    ├── mixing/          BACKEND
+    ├── presentation/    CONTRACT
+    ├── rendering/       BACKEND
+    └── transcript/      BACKEND
+  composition/   # 8 components
+    ├── client_agent/    ENTRYPOINT
+    ├── client_headless/ ENTRYPOINT
+    ├── client_opengl/   ENTRYPOINT
+    ├── client_sdl_gpu/  ENTRYPOINT
+    ├── participant/     LIBRARY
+    ├── server/          ENTRYPOINT
+    ├── world_gen/       ENTRYPOINT
+    └── world_sim/       ENTRYPOINT
+
+source/extern/     # vendored third-party sources we do not architect: lua, fmt, xxhash, rpmalloc
+source/test/       # the gates and unit tests; links whatever it measures
+scripts/           # the instruments -- every gate in Section 6 lives here
+assets/            # content, which `content` abstracts and no C++ component owns
+```
+
+**41 components in 4 zone directories.** Reading top to bottom is reading the dependency order: every grant points down this list, checked by `spec_consistency`'s ZONE_ORDER verdict at zero exceptions.
+<!-- END GENERATED: tree-map -->
+
+
+Forty-one components: ten CONTRACTs, nine BACKENDs, thirteen LIBRARYs, two FOUNDATIONs, seven
+ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
+test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
+and composition is the single most important runtime fact in this design, because it is the *only*
+thing that differs between `client_opengl` and `client_headless`. The claim was true only while the
+taxonomy had no kind capable of expressing its counterexample — a claim propped up by a blind spot,
+which is the fourth time that shape has appeared in this document.
+The kinds are what make the next finding visible.
+
+### Why this is fully deduplicated
+
+| | `client_opengl` | `client_headless` |
+|---|---|---|
+| host | `host_sdl` — owns `frameLoop`: pump, step, swap, idle | `host_null` — owns `headlessLoop`, ~10 lines plus 35 no-ops |
+| presentation | `rendering` + `gpu_opengl` | `transcript` |
+| **everything else** | `participant` · `clientLoop` · `clientTick` · `fixedTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
+
+The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
+telemetry model cannot fork between the two clients — which was the whole reason the loop question
+mattered.
+
+The residual difference is the two drivers, and that is not duplication: pumping SDL versus not pumping
+SDL **is** the host's job. Three lines differ.
+
+### Why `host` is its own directory and not part of `platform`
+
+A first draft folded `ApplicationController` into `platform`. Two measurements killed that:
+
+- **It is a consumer of `platform`, not a peer.** `StarApplicationController.hpp` includes all four
+  platform service headers and returns all four types. Folding it in would put a thing and its own
+  dependency inside one directory — dissolving the boundary rather than moving it.
+- **`platform`'s duty would have become "host **and** platform services"** — a Law-of-One violation by
+  the axiom's own test.
+
+`host` is also not a new component. **`ApplicationController` is already named in 8 files across 3
+directories outside `application`:** `participant` (2, `applicationInit`), `frontend` (4, clipboard and
+audio input), `windowing` (2, cursor and clipboard). What is new is a directory and a grant list.
+
+`Application` moves with it, because the two are halves of one contract: the host runs an
+`Application` and hands it an `ApplicationController`, and they share the `WindowMode` enum. Splitting
+them would leave a cycle between `host` and `application`. `Application` is also what makes
+`participant` sovereign: `class ClientApplication : public Application` today, so without the move `participant`
+would need a grant on `application` and could name SDL.
+
+`StarMainApplication.hpp` stays behind. It is the `STAR_MAIN_APPLICATION` macro that defines
+`main()`/`WinMain()` — an entrypoint artifact, not a library one — so it belongs to `client_opengl`,
+and `participant`'s current dependency on `application` disappears with the split rather than needing a
+grant.
+
+### What the grant lists say
+
+Each directory's `INCLUDE_DIRECTORIES` block is the complete statement of what it may include, so the
+register above is **intended** to be enforced by the build rather than by review. That enforcement is a
+property of the finished system, not of this document — see the coverage note below the table for what
+is actually established today.
+
+<!-- TABLE: grants -->
+| directory | granted | the statement it makes |
+|---|---|---|
+| `platform` | core | vendor services declared, never implemented here |
+| `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
+| `host_sdl` | core, host, platform, platform_pc | the SDL host. It owns the window **as an OS object** and nothing about how that window is drawn to. **NOT the only place SDL is named** — a backend that draws through SDL names it too |
+| `host_null` | core, host, platform | names no device at all — returns `nullptr` for all four services, but must still name their types to override |
+| `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
+| `presentation` | core, base, scene, sound | the interfaces are stated in scene and sound terms — D6, enforced |
+| `gpu` | core | the GPU contract cannot name a game type either |
+| `audio` | core | nor can the audio-device contract — a sample format is not a domain type |
+| `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above — **including the context, its eight attributes, its swap interval and its present**, all of which sit in `host_sdl` today |
+| `gpu_sdl` | core, gpu, extern | claims the window for a GPU device and presents through it. **No GL context exists in this composition** — which is the whole test of whether the backend is really swappable |
+| `audio_sdl` | core, audio, extern | `SDL_OpenAudioDeviceStream` is named here and nowhere above |
+| `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
+| `mixing` | core, base, presentation, sound, audio | implements `AudioSink`; **no `host`** — the device pulls it, nothing paints it |
+| `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
+| `scene` | core, base | the payload vocabulary; names no game type and no interface |
+| `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
+| `net` | core | replication vocabulary; **names no domain type** — 10 of its 11 headers already name none |
+| `content` | core, base | the data seam; names `Assets` and `Configuration`, both already in `base` and both domain-free |
+| `storage` | core, base, content, script | **names no domain type** — `BTreeDatabase` and `VersioningDatabase` both score zero for World/Entity/Player. It names `script` because **migrations are Lua**, which is independent evidence that `script` belongs below the domain |
+| `game` | core, base, platform, celestial, net, script, content, storage | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it. **It is the only component that may name `Root`** — the 38 content databases are its private table, and it publishes them by *implementing* `content` |
+| `celestial` | core, base | a CONTRACT names only foundations and other contracts; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
+| `worldgen` | core, base, platform, game, celestial, content | **names no `world`** — generation knows nothing that ticks |
+| `world` | core, base, platform, game, worldgen, storage | **names no `scene`**; it calls generation lazily, per region |
+| `universe` | core, base, platform, game, world, worldgen, celestial, storage | it manages worlds, so it names `world`; `world` never names it back. **Implements `CelestialMasterDatabase`**, and holds `CelestialGraphics` — which needs `worldgen`'s biome and terrain databases |
+| `world_view` | core, base, platform, game, scene, sound | **the simulation cannot name a presentation interface at all** — it names the vocabulary, never the sink |
+| `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one. **Implements `CelestialSlaveDatabase`** — the same contract, the replica side |
+| `windowing` | core, base, platform, game, scene, host, content | emits into the frame and uses clipboard and cursor; does not draw |
+| `script` | core, base, content | **names no `game`.** Measured: `LuaRoot`'s only tie to `game` is `Root::singleton()` used as a service locator — configuration, a storage path, a reload listener and `assets()`. Not one domain type, and all four are `content`'s job |
+| `interaction` | core, base, platform, game, world_view, universe_view | **names no `windowing` and no `frontend`** — acting on the world is not a UI concern |
+| `colocation` | core, base, platform, game, world, universe, universe_view | **the only component that names both an authority and a view**; it exists to join them in one process, and D8 governs it |
+| `frontend` | core, base, platform, game, windowing, scene, host, interaction, content | this game's screens; does not draw, and drives the verbs rather than owning them |
+| `participant` | core, base, platform, game, world_view, universe_view, interaction, presentation, scene, sound, host, storage | **a participant, and nothing else.** Names no backend, no UI, and — now — **no `world` and no `universe`**: a client that cannot name an authority cannot accidentally embed one |
+| `client_opengl` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_opengl, mixing, audio_sdl | the only place GL and SDL are named together; composes in the authority, the UI, the pixels and the sound |
+| `client_headless` | core, participant, colocation, host_null, windowing, frontend, transcript | the only place the recorder is named; it keeps the UI **because it records what the UI produces**, and `colocation` so it can record a single-player session |
+| `client_agent` | core, participant, host_null | the smallest participant that can still play: no UI, no recorder, no sound — and **no authority**, so it must connect to one over the wire |
+| `client_sdl_gpu` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_sdl, mixing, audio_sdl | identical to `client_opengl` except for the backend — which is the entire point |
+| `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
+| `world_sim` | core, base, game, world, worldgen, platform, storage | **no `universe` either** — residency comes from configuration, not from participants |
+| `world_gen` | core, base, game, worldgen, celestial, platform, storage | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
+<!-- END TABLE: grants -->
+
+**Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
+above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
+four such rows as missing the grants they appeared to have. A grant list that is not complete is not
+a grant list.
+
+
+---
+
+## 10. Component derivations
+
+### The T2 vocabulary
+
+`Frame`, `AudioBatch` and `InputBatch` may name **only core, base and presentation-vocabulary types**.
+That constraint is what forces the cleanup, and it is what lets the contract sit at T2 where no
+implementation needs `game`.
+
+Two pieces of evidence that this runs with the grain rather than against it:
+
+- **`Drawable` depends on six core headers and nothing else** — `StarString`, `StarDataStream`,
+  `StarPoly`, `StarColor`, `StarJson`, `StarAssetPath` — and **already carries `DataStream`
+  operators**. It moves down essentially for free and is already wire-ready. That is not a
+  coincidence; the vocabulary was always closer to a protocol than to an API.
+- **`ImageMetadataDatabase` already lives in `game`** so that layout can know image sizes without a
+  GPU. The precedent for *metrics are data, not presentation* is already established in this codebase;
+  font metrics follow the same path.
+
+### `transcript`'s three modes
+
+D4's recorder was specified against a stream of frames. Against a stream of **scenes** it says more,
+because a scene is semantic where a frame is baked:
+
+| mode | keeps | serves |
+|---|---|---|
+| **discard** | nothing; the delta is accepted and dropped | bulk runs, where the point is that the simulation ran at all |
+| **record** | the scene deltas, replayable | assertions — *"the player was at (x,y), facing left"* — and an agent's perception |
+| **strict** | the deltas, and rejects any naming something outside the scene vocabulary | the forcing function: a contract violation becomes a test failure rather than a review comment |
+
+**strict is what keeps the contract honest.** Without it a type that should not cross can cross for
+months and nothing says so.
 
 ### Reasoning about a suspicious link
 
@@ -2812,175 +3111,6 @@ flowchart TD
 **server links 13 of 41 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `transcript`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
-### The register — one row per box
-
-Every component in the diagram, in the same reading order.
-
-<!-- TABLE: components -->
-| name | kind | zone | duty | warrant | contents |
-|---|---|---|---|---|---|
-| **`core`** | FOUNDATION | MACHINE | language and containers | — | the language, containers and algorithms everything rests on |
-| **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
-| **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
-| **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
-| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
-| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **A5** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
-| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
-| **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
-| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
-| **`net`** | CONTRACT | DOMAIN | what a replicated field is | **A2** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
-| **`content`** | CONTRACT | MACHINE | what a mod can change: data | **A4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
-| **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **A5** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
-| **`game`** | LIBRARY | DOMAIN | the domain | **A1 + A2** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **A1** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
-| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **A1** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
-| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **A3** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
-| **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
-| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **A2** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
-| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **A2** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
-| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
-| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **A4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
-| **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
-| **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
-| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
-| **`mixing`** | BACKEND | DEVICE | turns sound into samples | **A5** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
-| **`transcript`** | BACKEND | DEVICE | records instead of drawing | **A5** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
-| **`gpu`** | CONTRACT | DEVICE | the GPU contract | **N3** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
-| **`audio`** | CONTRACT | DEVICE | the audio-device contract | **A5** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
-| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
-| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
-| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
-| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **A2** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
-| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
-| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **A5** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
-| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | **N3** — a participant with no senses, which is what proves senses are optional | wiring only: `host_null`; an AI player that acts and neither draws nor records |
-| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
-| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **A1** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
-| **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
-| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **A3** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
-<!-- END TABLE: components -->
-
-### ZONE is a directory, and the four are a layering
-
-<!-- HISTORICAL -->
-The zones used to be five and they mixed three metaphors: SUBSTRATE/SHELL is vertical, INTERIOR/
-PERIPHERY is radial, SEAM is topological. Three of the five did not parse on reading, and measurement
-found the deeper problem: **ZONE was 80% determined by KIND** — only 8 of 41 components deviated from
-their kind's default, so the axis was mostly restating something already stated.
-<!-- END HISTORICAL -->
-
-The four that replace them each answer the same question — **what does this component face?**
-
-| zone | faces | n |
-|---|---|---|
-| **`machine/`** | the OS, the vendor, the asset store, the disk | 10 |
-| **`domain/`** | nothing outside; the game's own state and rules | 14 |
-| **`device/`** | a display, a speaker, a file, a recorder | 9 |
-| **`composition/`** | the other three; it wires them | 8 |
-
-**SEAM is gone, and no `boundary/` directory replaces it.** A CONTRACT already declares that it is a
-boundary, so a directory saying it again would be the second-declaration defect this document has
-removed repeatedly. The rule instead:
-
-> **A contract lives in the zone of what it abstracts, not in a zone of its own.**
-
-`host`, `platform` and `content` abstract the machine. `scene`, `sound`, `net` and `celestial` are the
-domain describing itself. `gpu`, `audio` and `presentation` abstract devices and their sinks. That
-also keeps each interface beside its implementations — `gpu` next to `gpu_opengl` and `gpu_sdl` is the
-entire point of a swappable backend, and a `boundary/` directory would have put them in different
-trees.
-
-**Every grant edge points down that order, at zero exceptions across 41 components**, checked by
-`spec_consistency`'s `ZONE_ORDER` verdict. That is what makes zones directories rather than labels:
-`domain/ must not include device/` becomes a statement about paths, checkable without parsing C++.
-
-**The layering earned its keep before it was even written down.** The first four-zone assignment had
-exactly one upward edge — `storage` (machine) granting `script` (domain). That was not a placement to
-paper over. `script` grants only `core`, `base` and `content` and names **no domain type at all**: it
-is the Lua interpreter host, infrastructure like the allocator. It had been filed in the domain by
-association with `game/scripting/`, which is where the files sit *today* — a D7 violation made without
-noticing, and caught by the layering rather than by reading.
-
-### The target directory structure — GENERATED
-
-One directory per component, grouped by zone. Derived from the register above, because a hand-written
-tree beside a 41-row table is a second declaration of the same fact.
-
-**Two facts stack to make this enforceable rather than aspirational.** A component is enforceable if
-and only if it is its own directory — the OBJECT-library finding, since every Star library links all
-of its objects into every consumer. And every grant points down the zone order. Together they turn the
-architecture into something an `#include` can violate and a lint can catch.
-
-<!-- BEGIN GENERATED: scripts/tree-map.py -->
-```
-source/
-  machine/       # 10 components
-    ├── base/            FOUNDATION
-    ├── content/         CONTRACT
-    ├── core/            FOUNDATION
-    ├── host/            CONTRACT
-    ├── host_null/       BACKEND
-    ├── host_sdl/        BACKEND
-    ├── platform/        CONTRACT
-    ├── platform_pc/     BACKEND
-    ├── script/          LIBRARY
-    └── storage/         LIBRARY
-  domain/        # 14 components
-    ├── celestial/       CONTRACT
-    ├── colocation/      LIBRARY
-    ├── frontend/        LIBRARY
-    ├── game/            LIBRARY
-    ├── interaction/     LIBRARY
-    ├── net/             CONTRACT
-    ├── scene/           CONTRACT
-    ├── sound/           CONTRACT
-    ├── universe/        LIBRARY
-    ├── universe_view/   LIBRARY
-    ├── windowing/       LIBRARY
-    ├── world/           LIBRARY
-    ├── world_view/      LIBRARY
-    └── worldgen/        LIBRARY
-  device/        # 9 components
-    ├── audio/           CONTRACT
-    ├── audio_sdl/       BACKEND
-    ├── gpu/             CONTRACT
-    ├── gpu_opengl/      BACKEND
-    ├── gpu_sdl/         BACKEND
-    ├── mixing/          BACKEND
-    ├── presentation/    CONTRACT
-    ├── rendering/       BACKEND
-    └── transcript/      BACKEND
-  composition/   # 8 components
-    ├── client_agent/    ENTRYPOINT
-    ├── client_headless/ ENTRYPOINT
-    ├── client_opengl/   ENTRYPOINT
-    ├── client_sdl_gpu/  ENTRYPOINT
-    ├── participant/     LIBRARY
-    ├── server/          ENTRYPOINT
-    ├── world_gen/       ENTRYPOINT
-    └── world_sim/       ENTRYPOINT
-
-source/extern/     # vendored third-party sources we do not architect: lua, fmt, xxhash, rpmalloc
-source/test/       # the gates and unit tests; links whatever it measures
-scripts/           # the instruments -- every gate in Section 6 lives here
-assets/            # content, which `content` abstracts and no C++ component owns
-```
-
-**41 components in 4 zone directories.** Reading top to bottom is reading the dependency order: every grant points down this list, checked by `spec_consistency`'s ZONE_ORDER verdict at zero exceptions.
-<!-- END GENERATED: tree-map -->
-
-
-Forty-one components: ten CONTRACTs, nine BACKENDs, thirteen LIBRARYs, two FOUNDATIONs, seven
-ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
-test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
-and composition is the single most important runtime fact in this design, because it is the *only*
-thing that differs between `client_opengl` and `client_headless`. The claim was true only while the
-taxonomy had no kind capable of expressing its counterexample — a claim propped up by a blind spot,
-which is the fourth time that shape has appeared in this document.
-The kinds are what make the next finding visible.
-
 ### `server` is not a headless client
 
 The unifying frame — *a headless client is presentation-backend = null* — describes participants. **It
@@ -3028,260 +3158,15 @@ authority side already meets.
 element register missed entirely because the model was client-centric. `server`'s own loop supervises
 and ticks nothing.
 
-### Why this is fully deduplicated
 
-| | `client_opengl` | `client_headless` |
-|---|---|---|
-| host | `host_sdl` — owns `frameLoop`: pump, step, swap, idle | `host_null` — owns `headlessLoop`, ~10 lines plus 35 no-ops |
-| presentation | `rendering` + `gpu_opengl` | `transcript` |
-| **everything else** | `participant` · `clientLoop` · `clientTick` · `fixedTick` · `game` · `windowing` · `frontend` · `scene` · `presentation` · `host` · `platform` | **identical** |
+---
 
-The simulation path is **100% shared**, and the frame budget is defined once in `clientTick`, so the
-telemetry model cannot fork between the two clients — which was the whole reason the loop question
-mattered.
+# Part III — Run time
 
-The residual difference is the two drivers, and that is not duplication: pumping SDL versus not pumping
-SDL **is** the host's job. Three lines differ.
 
-### The vocabulary that was missing: scene
+---
 
-The reason a sovereign pixel loop looked impossible is that only two vocabularies were named, and
-neither works:
-
-| | what it is | interpolatable | names game types |
-|---|---|---|---|
-| **entity state** | the simulation | yes | **yes** — cannot cross, D6 |
-| **scene** | what exists, where, moving how, in which layer, plus the camera target | **yes** | **no** |
-| **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
-
-`Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
-exactly why it is on the unassessed list in Section 7.
-
-With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
-the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
-
-**And the pattern is already proven in this codebase.** `game/StarInterpolationTracker.{hpp,cpp}` —
-held by both `WorldServer` (per client) and `WorldClient` — does exactly this clock reconciliation
-between server and client today: `receiveTimeUpdate(remoteTime)`, `interpolationLeadTime()`,
-`extrapolationHint()`. Applying it at the client↔presentation seam is the same pattern one seam
-further out, not a new invention.
-
-### What the payload choice actually buys
-
-| payload | pixel rate | assembly lives | what can be plugged in | network cost |
-|---|---|---|---|---|
-| finished `Frame` | == sim rate | game side | **any rasteriser** — GL, SDL_GPU, null | O(screen) |
-| **scene delta** | free, resampled | presentation side | **any presentation** — a rasteriser, a text renderer, an audio-only client, a debug visualiser, a bot's perception | **O(change)** |
-
-Because the payload is semantic rather than baked, presentation stops meaning *"something that draws"*
-and starts meaning *"something that experiences"*. A transcript of scene deltas is assertable —
-*"player at (x,y), facing left"* — where a transcript of drawables is a list of quads nobody can test
-against. **The scene model makes D4's recorder genuinely useful rather than merely faithful.**
-
-Co-located, the delta is a memcpy on one thread. Split, it is a packet. Same code, different
-transport — which makes the transport a second implementation proving the contract, exactly as null
-proves the backend.
-
-**Accepted costs**, recorded rather than glossed: a scene vocabulary and delta encoding; a resampler on
-any presentation wanting a free-running rate (an ELEMENT, or a LIBRARY if `transcript` also wants
-fixed-rate recording — open); camera resolution moving to the presentation side; and materially more
-machinery than `present(Frame)`. The Director waived A3's Earned Exposure for this deliberately: the
-payoff is judged worth the forecast surface.
-
-### Why `host` is its own directory and not part of `platform`
-
-A first draft folded `ApplicationController` into `platform`. Two measurements killed that:
-
-- **It is a consumer of `platform`, not a peer.** `StarApplicationController.hpp` includes all four
-  platform service headers and returns all four types. Folding it in would put a thing and its own
-  dependency inside one directory — dissolving the boundary rather than moving it.
-- **`platform`'s duty would have become "host **and** platform services"** — a Law-of-One violation by
-  the axiom's own test.
-
-`host` is also not a new component. **`ApplicationController` is already named in 8 files across 3
-directories outside `application`:** `participant` (2, `applicationInit`), `frontend` (4, clipboard and
-audio input), `windowing` (2, cursor and clipboard). What is new is a directory and a grant list.
-
-`Application` moves with it, because the two are halves of one contract: the host runs an
-`Application` and hands it an `ApplicationController`, and they share the `WindowMode` enum. Splitting
-them would leave a cycle between `host` and `application`. `Application` is also what makes
-`participant` sovereign: `class ClientApplication : public Application` today, so without the move `participant`
-would need a grant on `application` and could name SDL.
-
-`StarMainApplication.hpp` stays behind. It is the `STAR_MAIN_APPLICATION` macro that defines
-`main()`/`WinMain()` — an entrypoint artifact, not a library one — so it belongs to `client_opengl`,
-and `participant`'s current dependency on `application` disappears with the split rather than needing a
-grant.
-
-### What the grant lists say
-
-Each directory's `INCLUDE_DIRECTORIES` block is the complete statement of what it may include, so the
-register above is **intended** to be enforced by the build rather than by review. That enforcement is a
-property of the finished system, not of this document — see the coverage note below the table for what
-is actually established today.
-
-<!-- TABLE: grants -->
-| directory | granted | the statement it makes |
-|---|---|---|
-| `platform` | core | vendor services declared, never implemented here |
-| `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `host_sdl` | core, host, platform, platform_pc | the SDL host. It owns the window **as an OS object** and nothing about how that window is drawn to. **NOT the only place SDL is named** — a backend that draws through SDL names it too |
-| `host_null` | core, host, platform | names no device at all — returns `nullptr` for all four services, but must still name their types to override |
-| `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
-| `presentation` | core, base, scene, sound | the interfaces are stated in scene and sound terms — D6, enforced |
-| `gpu` | core | the GPU contract cannot name a game type either |
-| `audio` | core | nor can the audio-device contract — a sample format is not a domain type |
-| `gpu_opengl` | core, gpu, extern | GL is named here and nowhere above — **including the context, its eight attributes, its swap interval and its present**, all of which sit in `host_sdl` today |
-| `gpu_sdl` | core, gpu, extern | claims the window for a GPU device and presents through it. **No GL context exists in this composition** — which is the whole test of whether the backend is really swappable |
-| `audio_sdl` | core, audio, extern | `SDL_OpenAudioDeviceStream` is named here and nowhere above |
-| `rendering` | core, base, presentation, scene, gpu, host | **`game` is revoked**; `host` is what lets its driver paint it and its input reach the client |
-| `mixing` | core, base, presentation, sound, audio | implements `AudioSink`; **no `host`** — the device pulls it, nothing paints it |
-| `transcript` | core, base, presentation, scene, host | the recorder cannot see a GPU at all; `host` is the same driver role `rendering` takes |
-| `scene` | core, base | the payload vocabulary; names no game type and no interface |
-| `sound` | core, base | the same rule, one modality over: audible form, named without a mixer |
-| `net` | core | replication vocabulary; **names no domain type** — 10 of its 11 headers already name none |
-| `content` | core, base | the data seam; names `Assets` and `Configuration`, both already in `base` and both domain-free |
-| `storage` | core, base, content, script | **names no domain type** — `BTreeDatabase` and `VersioningDatabase` both score zero for World/Entity/Player. It names `script` because **migrations are Lua**, which is independent evidence that `script` belongs below the domain |
-| `game` | core, base, platform, celestial, net, script, content, storage | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it. **It is the only component that may name `Root`** — the 38 content databases are its private table, and it publishes them by *implementing* `content` |
-| `celestial` | core, base | a CONTRACT names only foundations and other contracts; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
-| `worldgen` | core, base, platform, game, celestial, content | **names no `world`** — generation knows nothing that ticks |
-| `world` | core, base, platform, game, worldgen, storage | **names no `scene`**; it calls generation lazily, per region |
-| `universe` | core, base, platform, game, world, worldgen, celestial, storage | it manages worlds, so it names `world`; `world` never names it back. **Implements `CelestialMasterDatabase`**, and holds `CelestialGraphics` — which needs `worldgen`'s biome and terrain databases |
-| `world_view` | core, base, platform, game, scene, sound | **the simulation cannot name a presentation interface at all** — it names the vocabulary, never the sink |
-| `universe_view` | core, base, platform, game, world_view, celestial | it decides which world you are in, so it constructs one. **Implements `CelestialSlaveDatabase`** — the same contract, the replica side |
-| `windowing` | core, base, platform, game, scene, host, content | emits into the frame and uses clipboard and cursor; does not draw |
-| `script` | core, base, content | **names no `game`.** Measured: `LuaRoot`'s only tie to `game` is `Root::singleton()` used as a service locator — configuration, a storage path, a reload listener and `assets()`. Not one domain type, and all four are `content`'s job |
-| `interaction` | core, base, platform, game, world_view, universe_view | **names no `windowing` and no `frontend`** — acting on the world is not a UI concern |
-| `colocation` | core, base, platform, game, world, universe, universe_view | **the only component that names both an authority and a view**; it exists to join them in one process, and D8 governs it |
-| `frontend` | core, base, platform, game, windowing, scene, host, interaction, content | this game's screens; does not draw, and drives the verbs rather than owning them |
-| `participant` | core, base, platform, game, world_view, universe_view, interaction, presentation, scene, sound, host, storage | **a participant, and nothing else.** Names no backend, no UI, and — now — **no `world` and no `universe`**: a client that cannot name an authority cannot accidentally embed one |
-| `client_opengl` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_opengl, mixing, audio_sdl | the only place GL and SDL are named together; composes in the authority, the UI, the pixels and the sound |
-| `client_headless` | core, participant, colocation, host_null, windowing, frontend, transcript | the only place the recorder is named; it keeps the UI **because it records what the UI produces**, and `colocation` so it can record a single-player session |
-| `client_agent` | core, participant, host_null | the smallest participant that can still play: no UI, no recorder, no sound — and **no authority**, so it must connect to one over the wire |
-| `client_sdl_gpu` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_sdl, mixing, audio_sdl | identical to `client_opengl` except for the backend — which is the entire point |
-| `server` | core, base, game, world, universe, platform | **no presentation slot, no view, and after tier 2 no `scene` either** |
-| `world_sim` | core, base, game, world, worldgen, platform, storage | **no `universe` either** — residency comes from configuration, not from participants |
-| `world_gen` | core, base, game, worldgen, celestial, platform, storage | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
-<!-- END TABLE: grants -->
-
-**Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
-above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
-four such rows as missing the grants they appeared to have. A grant list that is not complete is not
-a grant list.
-
-### What is actually checked, and what is only asserted
-
-This section describes a system that does not exist. Nothing here can be verified in the sense that
-matters — *would the designed thing work* — and the checks that run against it do three different jobs
-that are easy to conflate. Stating them apart, because "all gates green" otherwise reads as far more
-than it is:
-
-<!-- BEGIN GENERATED: spec-measures coverage -->
-| | what it establishes | coverage |
-|---|---|---|
-| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 41 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
-| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 39 grant rows.** Gated as `grant_sweep` |
-| **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 7 ENTRYPOINTs** — the ones that exist. Gated as `link_sweep` |
-| **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
-
-**27 of the 41 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
-<!-- END GENERATED: spec-measures coverage -->
-
-<!-- HISTORICAL -->
-**Every number in that table was hand-written, and every one had drifted** — it read "all 34
-components and all 15 elements" (41 and 24), "12 of 35 grant rows" (of 39), "2 of 6 ENTRYPOINTs" (of
-7) and "the 23 components with no files yet" (27). A coverage claim that understates its own
-denominator is worse than no coverage claim at all, because it is the sentence a reader trusts
-*instead of* checking. It is generated now, from the same three gates it describes.
-<!-- END HISTORICAL -->
-
-The unverifiable set is the whole simulation split (`world`, `universe`, `worldgen`, `celestial`, the
-two `*_view`s), the whole audio stack (`sound`, `mixing`, `audio`, `audio_sdl`), the presentation seam
-(`scene`, `presentation`, `transcript`), and every ENTRYPOINT except `server` and `client_opengl`.
-
-`spec_consistency` also refuses to pass on a parse that found implausibly little, and hard-fails if
-either diagram loses its `%% projection:` marker — a check that cannot find what it is checking must
-not report success. Ten injected defects were each confirmed to fire before it was registered.
-
-### The altitude every gate above was blind to
-
-The three rows above all read the SOURCE. On 2026-08-01 a one-off sweep of the actual binaries showed
-what that misses:
-
-```
-starbound_server:  Renderer 0   Pane 0   Widget 0   GuiContext 0   TextPainter 0   WorldPainter 0
-                   Drawable 249   RenderCallback 87   Image 209   AudioInstance 159   Mixer 98   Songbook 126
-```
-
-**Every boundary that held is a directory. Every boundary that failed is a type inside `game`.** And a
-source-altitude gate is right to pass all of it: `server` IS granted `game`, and `Mixer` IS in `base`.
-The declaration is satisfied and the binary is still wrong.
-
-**Why the boundaries behave that way is mechanical, not accidental.** All eight Star libraries are
-declared `ADD_LIBRARY(... OBJECT ...)` — core, base, game, rendering, frontend, windowing, application,
-extern. An OBJECT library links **all** of its objects into every consumer; there is no per-object
-pruning. `starbound_server` therefore contains all 237 `star_game` objects unconditionally, including
-`WorldClient` — the *client-side replica* — at 308 symbols. `rendering`, `windowing` and `frontend`
-are absent only because the server's CMakeLists does not name those libraries.
-
-**The consequence is a hard constraint on this entire design, and it deserves to be stated as one:**
-
-> Under OBJECT-library semantics, containment is decided entirely by which libraries an ENTRYPOINT
-> names. That is an all-or-nothing, directory-granular switch. **A component in this register is
-> enforceable if and only if it is its own directory.** 27 of the 41 are not yet, which is exactly the
-> set `grant-sweep` calls UNVERIFIABLE — so the two numbers are not two problems, they are one problem
-> counted twice.
-
-`link_sweep` closes the altitude. It attributes each symbol to its unique defining object file, maps
-that to a component, and asserts membership of the ENTRYPOINT's grant closure. Symbols defined by
-several objects (templates, inlines, vtables) are **not** attributed — first-wins attribution was
-tried during the tier-2 measurement and produced spuriously-reachable files — so they are reported as
-AMBIGUOUS rather than guessed. Coverage is printed before verdicts, and the gate refuses to report OK
-if it found no binary to measure.
-
-Two leaks are ratcheted today, both on `starbound_server`: **`mixing` 186** and **`scene` 48**. Both
-UNDERSTATE the defect, because only eight files can be attributed to those target components so far;
-the rest of the same leak sits inside the 27,645 `game` symbols every binary links. As tiers 2 and 3
-land, symbols will migrate out of `game` into those rows, so **the ceilings will rise before they
-fall** — a raise is legitimate only with the migration named in the reason.
-
-Two limits apply even to the anchored fourteen:
-
-- **The file-to-owner map is itself a design assertion.** Placing 25 of `application`'s files into
-  five target components is a decision, not a measurement; a file placed in the wrong box yields
-  grants that are wrong in a way the sweep cannot see, because it would measure the wrong thing
-  consistently. `REGISTER_COUNTS` cross-checks the counts, which catches a miscount and not a
-  misplacement.
-- **The measurement is conditional on the revocations landing.** The sweep reads today's tree, in
-  which the crossings the ratchet tracks still exist. It establishes that the grant table describes
-  the tree *as it will be once those are deleted* — not the tree as it stands.
-
-**So the honest reading of a green run is "no contradiction found", never "the design is correct."**
-The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
-assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
-That is a ratchet pointing the opposite way from the removal ratchet, and Section 6 should gate both.
-
-**One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
-today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
-severable by construction rather than by assertion.
-
-Two grants in that table are deliberately absent rather than forgotten. `rendering` currently holds
-`${STAR_PLATFORM_INCLUDES}` and `${STAR_APPLICATION_INCLUDES}`; in the target state it needs neither —
-platform services are Steam and P2P, and its only `application` include was `StarRenderer.hpp`, which
-becomes `gpu`. Dropping both leaves the drawing code depending on nothing but the foundation and two
-contracts.
-
-## 5. Run time — PROVISIONAL
-
-Section 4 answers *who may name whom*: a compile-time question, enforced by `INCLUDE_DIRECTORIES`,
-where a violation is a build failure. This section answers a different one — **what executes, on which
-thread, in what order, and what it hands to what.** They are different graphs over the same register,
-and the design's value lives in the places where they disagree; Section 4's arrow legend tabulates
-three such places.
-
-Keeping them apart is not tidiness. Every previous attempt to describe run time in prose alongside the
-dependency picture produced a contradiction within a day — most recently a claim that nothing returns
-across seam 1, which this section's own contract table had already refuted.
+## 11. Clocks and the driver
 
 ### The driver, and why there is no `presentLoop`
 
@@ -3391,6 +3276,11 @@ register with cardinality `WORLD` — the only one there are many of *per univer
 distribute is the thing there are many of, so cardinality is precisely what identifies the unit of
 placement. D1's second purpose — foundation for a distributed Starbound — rests on that one cell of
 the table.
+
+
+---
+
+## 12. Elements and what drives them
 
 ### The runtime taxonomy
 
@@ -3647,6 +3537,11 @@ so "the client's clock" is not a thing that exists. And **neither modelled serve
 `universeLoop` sleeps a wakeup interval and `superviseLoop` polls at 100 ms, so the authoritative
 fixed tick is `worldServerThread`, which this design does not yet model. That gap is real and named
 rather than implied by an empty column.
+
+
+---
+
+## 13. The execution graph
 
 ### The execution graph
 
@@ -3965,34 +3860,10 @@ Both need a real call graph rather than an include graph — `grant-sweep` measu
 closure measures *use*. They are different questions, and the gap between them is where dead grants and
 undeclared coupling both hide.
 
-### What actually crosses each seam
-
-The two seams carry different currency, and conflating them is the frame-streaming mistake in another
-costume. Naming both precisely is what keeps the split honest:
-
-| | seam 1 — `presentation` | seam 2 — `gpu` |
-|---|---|---|
-| **currency** | a **scene delta** | a **`RenderPrimitive`** |
-| **shape** | what exists, where, moving how, plus the camera *target* | `Variant<RenderTriangle, RenderQuad, RenderPoly>` of `RenderVertex { screenCoordinate, textureCoordinate, color, param1 }` |
-| **register** | declarative — names no game type, and is interpolatable | imperative — screen-space, already projected |
-| **crosses** | `participant` → `rendering` | `rendering` → a `gpu_*` backend |
-
-Two properties of that table are load-bearing:
-
-- **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
-  returns `participant` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
-  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
-  list said "flow is one-way and nothing returns", which contradicted this section's own contract
-  table. Seam 2 genuinely is one-way.
-- **An entrypoint is never in the frame path.** It wires the components together once at composition
-  and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
-  frame would be a component with behaviour, and the kind would be a lie.
-- **Projection happens before seam 2, not at it.** This is why `gpu` can stay device-shaped without
-  knowing anything about the game, and why swapping a `gpu_*` backend cannot change what is on screen.
 
 ---
 
-## 10b. Across a seam — failure, back-pressure, lifetime, concurrency, trust
+## 14. Across a seam
 
 The seams say what crosses. This says what happens when crossing goes wrong, and it is the half of
 N1 that is easy to leave out: **distribution is mostly a failure-handling problem wearing a topology
@@ -4113,7 +3984,138 @@ are split is a decision this document owes (§8).
 
 ---
 
-## 6. Verification — DESIGNED
+
+---
+
+# Part IV — Proof and delta
+
+
+---
+
+## 15. Verification
+
+### The main path already passes
+
+Every `RenderCallback` method returns `void`, takes by value, and has a batch form:
+
+```cpp
+virtual void addDrawable(Drawable drawable, EntityRenderLayer renderLayer) = 0;
+void addDrawables(List<Drawable> drawables, EntityRenderLayer, Vec2F translate = Vec2F());
+```
+
+Zero round trips, already batched. Nobody designed this for the thought experiment; it survives it.
+
+### Where it fails, and the list is short
+
+- **Pointers crossing.** `addAudio(AudioInstancePtr)` passes a shared handle.
+  `WorldRenderData::particles` is a raw `List<Particle> const*`. Neither survives a wire — and neither
+  is visible to any existing instrument, because Section 6 of the boundary document measures *how much* of a
+  type is used and nothing measures *whether it could be sent*.
+- **Query-shaped Lua callbacks.** Four of the seven in `makeRenderingCallbacks` return values:
+  `framesSkipped()`, `postProcessGroupEnabled(String)`, `getEffectParameter(...)`,
+  `postProcessGroups()`. Each is a round trip whose frequency is set by mod code.
+
+### What is actually checked, and what is only asserted
+
+This section describes a system that does not exist. Nothing here can be verified in the sense that
+matters — *would the designed thing work* — and the checks that run against it do three different jobs
+that are easy to conflate. Stating them apart, because "all gates green" otherwise reads as far more
+than it is:
+
+<!-- BEGIN GENERATED: spec-measures coverage -->
+| | what it establishes | coverage |
+|---|---|---|
+| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 41 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
+| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 39 grant rows.** Gated as `grant_sweep` |
+| **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 7 ENTRYPOINTs** — the ones that exist. Gated as `link_sweep` |
+| **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
+
+**27 of the 41 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
+<!-- END GENERATED: spec-measures coverage -->
+
+<!-- HISTORICAL -->
+**Every number in that table was hand-written, and every one had drifted** — it read "all 34
+components and all 15 elements" (41 and 24), "12 of 35 grant rows" (of 39), "2 of 6 ENTRYPOINTs" (of
+7) and "the 23 components with no files yet" (27). A coverage claim that understates its own
+denominator is worse than no coverage claim at all, because it is the sentence a reader trusts
+*instead of* checking. It is generated now, from the same three gates it describes.
+<!-- END HISTORICAL -->
+
+The unverifiable set is the whole simulation split (`world`, `universe`, `worldgen`, `celestial`, the
+two `*_view`s), the whole audio stack (`sound`, `mixing`, `audio`, `audio_sdl`), the presentation seam
+(`scene`, `presentation`, `transcript`), and every ENTRYPOINT except `server` and `client_opengl`.
+
+`spec_consistency` also refuses to pass on a parse that found implausibly little, and hard-fails if
+either diagram loses its `%% projection:` marker — a check that cannot find what it is checking must
+not report success. Ten injected defects were each confirmed to fire before it was registered.
+
+### The altitude every gate above was blind to
+
+The three rows above all read the SOURCE. On 2026-08-01 a one-off sweep of the actual binaries showed
+what that misses:
+
+```
+starbound_server:  Renderer 0   Pane 0   Widget 0   GuiContext 0   TextPainter 0   WorldPainter 0
+                   Drawable 249   RenderCallback 87   Image 209   AudioInstance 159   Mixer 98   Songbook 126
+```
+
+**Every boundary that held is a directory. Every boundary that failed is a type inside `game`.** And a
+source-altitude gate is right to pass all of it: `server` IS granted `game`, and `Mixer` IS in `base`.
+The declaration is satisfied and the binary is still wrong.
+
+**Why the boundaries behave that way is mechanical, not accidental.** All eight Star libraries are
+declared `ADD_LIBRARY(... OBJECT ...)` — core, base, game, rendering, frontend, windowing, application,
+extern. An OBJECT library links **all** of its objects into every consumer; there is no per-object
+pruning. `starbound_server` therefore contains all 237 `star_game` objects unconditionally, including
+`WorldClient` — the *client-side replica* — at 308 symbols. `rendering`, `windowing` and `frontend`
+are absent only because the server's CMakeLists does not name those libraries.
+
+**The consequence is a hard constraint on this entire design, and it deserves to be stated as one:**
+
+> Under OBJECT-library semantics, containment is decided entirely by which libraries an ENTRYPOINT
+> names. That is an all-or-nothing, directory-granular switch. **A component in this register is
+> enforceable if and only if it is its own directory.** 27 of the 41 are not yet, which is exactly the
+> set `grant-sweep` calls UNVERIFIABLE — so the two numbers are not two problems, they are one problem
+> counted twice.
+
+`link_sweep` closes the altitude. It attributes each symbol to its unique defining object file, maps
+that to a component, and asserts membership of the ENTRYPOINT's grant closure. Symbols defined by
+several objects (templates, inlines, vtables) are **not** attributed — first-wins attribution was
+tried during the tier-2 measurement and produced spuriously-reachable files — so they are reported as
+AMBIGUOUS rather than guessed. Coverage is printed before verdicts, and the gate refuses to report OK
+if it found no binary to measure.
+
+Two leaks are ratcheted today, both on `starbound_server`: **`mixing` 186** and **`scene` 48**. Both
+UNDERSTATE the defect, because only eight files can be attributed to those target components so far;
+the rest of the same leak sits inside the 27,645 `game` symbols every binary links. As tiers 2 and 3
+land, symbols will migrate out of `game` into those rows, so **the ceilings will rise before they
+fall** — a raise is legitimate only with the migration named in the reason.
+
+Two limits apply even to the anchored fourteen:
+
+- **The file-to-owner map is itself a design assertion.** Placing 25 of `application`'s files into
+  five target components is a decision, not a measurement; a file placed in the wrong box yields
+  grants that are wrong in a way the sweep cannot see, because it would measure the wrong thing
+  consistently. `REGISTER_COUNTS` cross-checks the counts, which catches a miscount and not a
+  misplacement.
+- **The measurement is conditional on the revocations landing.** The sweep reads today's tree, in
+  which the crossings the ratchet tracks still exist. It establishes that the grant table describes
+  the tree *as it will be once those are deleted* — not the tree as it stands.
+
+**So the honest reading of a green run is "no contradiction found", never "the design is correct."**
+The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
+assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
+That is a ratchet pointing the opposite way from the removal ratchet, and Section 6 should gate both.
+
+**One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
+today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
+severable by construction rather than by assertion.
+
+Two grants in that table are deliberately absent rather than forgotten. `rendering` currently holds
+`${STAR_PLATFORM_INCLUDES}` and `${STAR_APPLICATION_INCLUDES}`; in the target state it needs neither —
+platform services are Steam and P2P, and its only `application` include was `StarRenderer.hpp`, which
+becomes `gpu`. Dropping both leaves the drawing code depending on nothing but the foundation and two
+contracts.
 
 **What verification means here, given D7.** This document describes a system that does not exist, so
 nothing here can show *the designed thing works*. What it can do is name, for each claim the design
@@ -4277,7 +4279,10 @@ not a decision.
 
 ---
 
-## 7. Risks
+
+---
+
+## 16. Risks
 
 ### The vocabulary assessment — RESOLVED, and the risk shrank
 
@@ -4344,51 +4349,25 @@ through `Root`'s databases. The vocabulary assessment cannot be done by include-
 
 ---
 
-## 8. What remains to be designed
-
-1. **Aggregate review.** Per the status rule, Sections 1 and 4 are both PROVISIONAL and neither can be
-   approved alone. The scene model changed Section 1 after it had been stamped approved, which is the
-   reason the rule exists.
-2. **Section 6, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
-   ceiling.
-3. ~~**The input path**~~ — **DONE.** `InputSource::poll()` had nothing to return because no
-   presentation backend could reach the host that drained the events. Resolved by granting `rendering`
-   and `transcript` the `host` contract — the change the paint trigger required independently, so the
-   three candidate fixes collapsed to one for a reason rather than a preference.
-4. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
-   names five phases and the register models four. The fifth, `cpu.frame.finish.us`, calls
-   `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE
-   FRAME"* and *"the renderer cannot do this itself: it does not own this ordering."* So a host owns an
-   ordering constraint over the GPU, and the graft rule rejects it: `host_sdl` and `gpu_opengl` share
-   no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
-   **Both defects of this class were found the same way** — by drawing the runtime and asking the
-   compile projection for permission — and neither was visible in the dependency graph alone.
-5. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
-   D6. See Section 7. Section 4 is no longer gated by it.
-6. **The delta from today** — Section 10, not yet computed. Section 4 is target-state only, so the
-   move list, the removal ratchet and the cleanup ledger are a separate exercise. It has three parts:
-   - **Sequencing** — the order of extraction, each step provable and reversible.
-   - **Deferral statement** — what is deferred, and until when. Per D2 nothing architectural is out of
-     scope, so this is a **schedule, not a boundary**; the distinction is load-bearing, because the
-     previous wording deferred `client_sdl_gpu`, `client_agent` and `colocation` to specs that were
-     never going to be written.
-   - **Cleanup ledger** — what the contracts expose as dead, and where it gets removed.
 
 ---
 
-## 9. Related
+## 17. Delta from today
 
-- `docs/architecture/system-boundaries.md` — the measured map this design sits inside. Sections 5
-  (granted vs spent), 6 (shape), 9 (cohesion), 12 (presentation tier's three duties) and 13 (the one
-  inheritance edge that leaves).
-- `scripts/boundary-inventory.py` — the 213 push-sink ratchet this design should drive down.
-- Task #199 — the sink-gating groundwork already landed (`WorldClient::setHeadless`,
-  `ClientRenderCallback(wantView)`).
-- Task #191 — `TilePainter : TileDrawer`, the one inheritance edge leaving the render subsystem.
+### Proposed ratchet (design not yet approved)
+
+Countable, so it should become a gate alongside the existing `boundary_ratchet` of 213:
+
+| crossing kind | treatment |
+|---|---|
+| returns a value | ratchet toward zero — the true ping-pongs |
+| passes a pointer or reference | ratchet toward zero — the un-sendables |
+| one-way value write | counted, not penalised — these batch |
+
+A boundary that is one-way, by-value and batched is one a network could pass through. The test for
+"is this boundary in the right place" becomes **a number that only goes down**.
 
 ---
-
-## 10. Delta from today — NOT YET COMPUTED
 
 **Section 4 describes the target state and nothing else** — no migration, no actions against the
 current tree, no history. Everything about *getting there* lives here, and the delta itself is a
@@ -4580,3 +4559,49 @@ keeps `camera` while losing `renderer` (Section 2). One placement decision answe
   vocabulary, but the measurement in Section 1 says it occurs in 39 files and all 39 are in `source/game`. It
   never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
   enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
+
+
+---
+
+## 18. Owed, and related
+
+1. **Aggregate review.** Per the status rule, Sections 1 and 4 are both PROVISIONAL and neither can be
+   approved alone. The scene model changed Section 1 after it had been stamped approved, which is the
+   reason the rule exists.
+2. **Section 6, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
+   ceiling.
+3. ~~**The input path**~~ — **DONE.** `InputSource::poll()` had nothing to return because no
+   presentation backend could reach the host that drained the events. Resolved by granting `rendering`
+   and `transcript` the `host` contract — the change the paint trigger required independently, so the
+   three candidate fixes collapsed to one for a reason rather than a preference.
+4. **`finishTick` has no legal home — a live defect of the same class.** The frame loop's telemetry
+   names five phases and the register models four. The fifth, `cpu.frame.finish.us`, calls
+   `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE
+   FRAME"* and *"the renderer cannot do this itself: it does not own this ordering."* So a host owns an
+   ordering constraint over the GPU, and the graft rule rejects it: `host_sdl` and `gpu_opengl` share
+   no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
+   **Both defects of this class were found the same way** — by drawing the runtime and asking the
+   compile projection for permission — and neither was visible in the dependency graph alone.
+5. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
+   D6. See Section 7. Section 4 is no longer gated by it.
+6. **The delta from today** — Section 10, not yet computed. Section 4 is target-state only, so the
+   move list, the removal ratchet and the cleanup ledger are a separate exercise. It has three parts:
+   - **Sequencing** — the order of extraction, each step provable and reversible.
+   - **Deferral statement** — what is deferred, and until when. Per D2 nothing architectural is out of
+     scope, so this is a **schedule, not a boundary**; the distinction is load-bearing, because the
+     previous wording deferred `client_sdl_gpu`, `client_agent` and `colocation` to specs that were
+     never going to be written.
+   - **Cleanup ledger** — what the contracts expose as dead, and where it gets removed.
+
+---
+
+- `docs/architecture/system-boundaries.md` — the measured map this design sits inside. Sections 5
+  (granted vs spent), 6 (shape), 9 (cohesion), 12 (presentation tier's three duties) and 13 (the one
+  inheritance edge that leaves).
+- `scripts/boundary-inventory.py` — the 213 push-sink ratchet this design should drive down.
+- Task #199 — the sink-gating groundwork already landed (`WorldClient::setHeadless`,
+  `ClientRenderCallback(wantView)`).
+- Task #191 — `TilePainter : TileDrawer`, the one inheritance edge leaving the render subsystem.
+
+---
+
