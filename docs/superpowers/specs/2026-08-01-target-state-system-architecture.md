@@ -411,7 +411,19 @@ they drift, nothing catches it, because both are prose.
 than an omission. A component exists *because of* a goal, a fact or a decision — that is what its
 warrant records. A principle is not a reason for a component to exist; it is a property every
 component must have. So the register cites A / F / N / D, and P1 and P2 are checked over the whole
-model at once by the layering and placement gates in Section 15.
+model at once:
+
+| | instrument | what it reads |
+|---|---|---|
+| **P1** | `grant_sweep`, `render_layering` | the measured include closure against the grant table, and the layer boundary in the build |
+| **P2** | `spec_consistency`'s `PLACEMENT` verdict | every component's duty and contents, for a process, thread or machine it may not name |
+
+**P2's instrument is the row above made executable**, and the two exemptions are the rule rather than
+holes in it: an **ENTRYPOINT** is exempt by kind, because composition *is* placement and an entrypoint
+that could not say "process" could not describe what it composes; `colocation` is exempt by name,
+because it is the one component whose duty is placement — deciding whether the authority runs in the
+participant's process is D8's entire subject. Every other component names neither, and the day one
+does, the gate says so.
 
 ---
 

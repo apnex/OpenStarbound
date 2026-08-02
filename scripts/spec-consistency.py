@@ -218,6 +218,51 @@ def check_granted(comp, grants):
     return out
 
 
+# P2 -- PLACEMENT IS WIRING, and until now nothing checked it.
+#
+# Section 4 said P1 and P2 are "checked over the whole model at once by the layering and placement
+# gates in Section 15". P1 is real: `grant_sweep` and `render_layering` measure it. There was no
+# placement gate, and Section 15's instrument table never listed one -- so half of a two-principle
+# section rested on an instrument that did not exist, which is the same defect this file exists to
+# catch one altitude down. Either the claim goes or the gate arrives; the gate is cheaper and leaves
+# the document truer.
+#
+# The rule is P2 stated mechanically: a component may not know where it runs, so its duty and its
+# contents may not name a process, a thread or a machine. Section 4 already says the register is
+# what enforces this -- "a component whose duty mentions a process has failed this before it is
+# built" -- and this is that sentence made executable.
+#
+# TWO EXEMPTIONS, and both are the rule rather than holes in it:
+#   ENTRYPOINT   composition IS placement. An entrypoint that could not say "process" could not
+#                describe what it composes, and every entrypoint is a wiring decision by kind.
+#   colocation   the one LIBRARY whose duty is placement -- it exists to decide whether the
+#                authority runs in the participant's process. Naming it here is D8's whole subject.
+PLACEMENT_WORDS = re.compile(
+    r'\b(process(?:es)?|thread(?:s|ed)?|machine(?:s)?|remote(?:ly)?|in-process|out-of-process|'
+    r'server-side|client-side)\b', re.I)
+PLACEMENT_EXEMPT = {
+    "colocation": "its duty IS placement -- D8's subject is whether the authority is co-located",
+}
+
+
+def check_placement(comp):
+    """P2: a component may not name where it runs. ENTRYPOINTs are exempt by kind."""
+    out = []
+    for c, v in sorted(comp.items()):
+        if v["kind"] == "ENTRYPOINT" or c in PLACEMENT_EXEMPT:
+            continue
+        for field in ("duty", "contents"):
+            text = v.get(field) or ""
+            m = PLACEMENT_WORDS.search(text)
+            if m:
+                out.append(("PLACEMENT",
+                            "`%s` names %r in its %s -- P2 says placement is wiring, so a component "
+                            "may not know where it runs: ...%s..."
+                            % (c, m.group(0), field,
+                               " ".join(text[max(0, m.start() - 40):m.end() + 40].split()))))
+    return out
+
+
 def check_cardinality(elem):
     """Every element declares a legal cardinality. An undeclared instance count is how `worldLoop`
     came to be 'one per resident world' in a note nobody could check."""
@@ -507,6 +552,7 @@ def check(text):
                              % (counts[key], key, floor)))
     findings.extend(check_zone_order(comp, grants))
     findings.extend(check_granted(comp, grants))
+    findings.extend(check_placement(comp))
     findings.extend(check_cardinality(elem))
     findings.extend(check_runtime_coverage(comp, elem))
 
