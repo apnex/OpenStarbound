@@ -322,6 +322,27 @@ The test is not aesthetic. It is: **can one person hold a component in their hea
 what they have not broken?** A boundary that cannot be enforced is a convention, and conventions decay
 at exactly the rate the team turns over.
 
+**N2 has four clauses, for the same reason N1 does.** Its title names two properties, not one —
+*sovereign* and *comprehensible* — and the warrants citing it below divide cleanly along that line.
+Two clauses are what sovereignty costs, two are what comprehension costs.
+
+| | the clause | what it forbids | how you would know it failed |
+|---|---|---|---|
+| **N2.a** | **One fact has one writer.** For any value the system holds, *"what sets this?"* has exactly one answer, and the answer is a component's name. | N co-equal writers of one fact. It compiles, it works, and it is a protocol nobody wrote down | asking who sets a value and having to answer *"it depends which path ran"* |
+| **N2.b** | **No component is the bottleneck for another's ambition.** A component owns its duty; it does not also hold the vocabulary someone else must extend to express something new. | a closed compiled list, held by one component, that every new capability must pass through | an ambition whose first step is an engine change rather than a content or wiring change |
+| **N2.c** | **A mechanism carries no history it does not need.** Prefer the rule stated once over the rule that is correct only in the light of what came before. | a subsystem whose behaviour cannot be stated without narrating the states that preceded it | needing a *sequence* rather than a *rule* to say what a component does |
+| **N2.d** | **A defect reproduces.** The same inputs give the same answer, so a failure can be hunted rather than waited for. | a defect reachable only by luck — which is indistinguishable, to a reader, from no defect | a bug report that cannot be turned back into a run |
+
+**N2.a and N2.b are the sovereign half; N2.c and N2.d the comprehensible half.** The split is worth
+naming because the two halves fail differently: a sovereignty breach is visible in the register — some
+component's duty grew a second noun — whereas a comprehension breach is visible only to whoever next
+has to change the thing, which is to say *after* the cost has been paid.
+
+**No instrument reads these four clauses, and that is written here rather than left to silence.**
+A3's Law of One overlaps N2.a and is read by `spec_consistency`, but it is checking the axiom, not the
+clause. N2.b, N2.c and N2.d have **none** — they are reviewable and not gated. A goal whose clauses are
+enumerated looks checked, which is precisely why the absence has to be stated beside them.
+
 #### N3 — Aggregate functionality comes from composition
 
 The payoff of a modular system is not tidiness. It is that **components combine into aggregate
@@ -332,6 +353,31 @@ they were the only two the property would not be worth claiming.
 So the components are the vocabulary and the compositions are sentences. The document enumerates the
 vocabulary exhaustively and the sentences only by example, because an architecture that can express a
 fixed list of aggregates has not achieved anything a build flag could not.
+
+**N3 has three clauses, and they were found by reading its own citations rather than by design.**
+Twenty-six warrants below cite N3, and they are making three different arguments: *this contract has a
+second implementation*, *this component can be left out*, and *this component may not hold the list of
+what composes with it*. All three are N3 and none implies another — a contract can have two
+implementations and still be mandatory, and a component can be omissible while still enumerating its
+peers.
+
+| | the clause | what it forbids | how you would know it failed |
+|---|---|---|---|
+| **N3.a** | **A contract has two implementations.** One is a habit with an interface drawn around it; the second is what demonstrates the boundary is at a real joint. | an INTERFACE whose only implementation is the one it was extracted from | being asked to name the second thing that satisfies it, and having no answer |
+| **N3.b** | **Nothing is linked that the composition did not ask for.** A component arrives because an entry point named it, never because a peer wanted it and dragged it in. | a dependency that a composition acquires without naming — the route by which "optional" subsystems become mandatory | a binary containing a subsystem its composition never named |
+| **N3.c** | **No component holds the list of what composes with it.** What a composition offers is computed at the wiring from what got composed, not enumerated in advance by any participant in it. | a component that names its peers, or an aggregate list that a new capability must be added to | adding a capability by editing a list rather than by writing a composition |
+
+**N3.b is the clause the null objects exist to satisfy**, and it is the reason a null is not automatic
+charity. A null implementation is warranted exactly when a call *will be made* and some composition has
+nothing real to answer it with; where no call is made, a null is a component nobody asked for, which is
+N3.b failing in the other direction. Section 5 states the same rule for the Lua surface, in the
+sentence this one generalises — *"delete presentation and both go together. Nothing to null out"* —
+and the derivations that turned on it carry it in their **falsified** facets.
+
+**N3.b is measured rather than gated.** `link_sweep` attributes every symbol in a built binary back to
+a component, which is precisely a test of what a composition asked for — but it reads a build tree, so
+it is an instrument this document reports rather than a gate that can ratchet. Section 15 says so in
+the row that owns it.
 
 **The test is falsifiable, and it is the one that matters.** Name a capability the system does not
 have. Ask whether it needs new *components* or only new *wiring*. A few, none of which is a shipped
