@@ -1673,7 +1673,7 @@ Every component in the diagram, in the same reading order.
 | **`content`** | CONTRACT | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
 | **`presentation`** | CONTRACT | DEVICE | the presentation contract | **F1** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
-| **`game`** | LIBRARY | DOMAIN | the domain | **A1 + A2** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
+| **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
 | **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **D10** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
 | **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **D12** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
@@ -4290,18 +4290,18 @@ the rule; where it has none, it says so.
 
 ### Failure — what the far side dying means
 
-A1 and A2 make the two directions asymmetric, and the asymmetry is the whole design rather than an
+D10 and D11 make the two directions asymmetric, and the asymmetry is the whole design rather than an
 implementation detail.
 
 | the far side | what its loss means | why |
 |---|---|---|
-| **an authority, to a participant** | **terminal for that view.** The participant holds a prediction with nothing left to correct it; it converges to nothing. It surfaces the loss and stops predicting. | A2 — a view is only meaningful against a truth |
-| **a participant, to an authority** | **routine.** Its player entity remains, owned by the world, and is dealt with by the world's own rules. | A1 — the authority owned the truth already; nothing it owns was lost |
-| **a world, to its universe** | the world is unavailable and the universe says so; participants are told, not disconnected | A1 — one world's authority is not the universe's |
-| **a device, to a participant** | the participant continues without it | A5 — perception is optional, so losing it is not an error |
+| **an authority, to a participant** | **terminal for that view.** The participant holds a prediction with nothing left to correct it; it converges to nothing. It surfaces the loss and stops predicting. | D11 — a view is only meaningful against a truth |
+| **a participant, to an authority** | **routine.** Its player entity remains, owned by the world, and is dealt with by the world's own rules. | D10 — the authority owned the truth already; nothing it owns was lost |
+| **a world, to its universe** | the world is unavailable and the universe says so; participants are told, not disconnected | D10 — one world's authority is not the universe's |
+| **a device, to a participant** | the participant continues without it | F1 — perception is optional, so losing it is not an error |
 
-**That last row rests on A5 alone and has no history behind it** — no device has ever been lost in
-this project. It is stated because A5 already decides it: a device is a thing a composition may not
+**That last row rests on F1 alone and has no history behind it** — no device has ever been lost in
+this project. It is stated because F1 already decides it: a device is a thing a composition may not
 have at all, so losing one at runtime lands in a case that already exists rather than a case nobody
 wrote.
 
@@ -4319,17 +4319,17 @@ Every handoff declares three things — a bound, an overflow policy, and who obs
 
 | handoff | bound | on overflow | why that policy |
 |---|---|---|---|
-| scene delta → presentation | **1** | **replace** | only the newest scene matters; an old one is not worth drawing. A5 makes dropping legal — nobody is owed a frame |
-| audio batch → mixing | small, in samples | **replace** | as above, and the device pulls on its own clock (A6) |
+| scene delta → presentation | **1** | **replace** | only the newest scene matters; an old one is not worth drawing. F1 makes dropping legal — nobody is owed a frame |
+| audio batch → mixing | small, in samples | **replace** | as above, and the device pulls on its own clock (F2) |
 | input → participant | bounded | **fail loudly** | dropped input is a wrong game, not a slow one. This one may not drop silently |
-| participant command → authority | bounded | **reject, and tell the sender** | A2 — a request that cannot be made must be known to have failed, or the view diverges believing it succeeded |
+| participant command → authority | bounded | **reject, and tell the sender** | D11 — a request that cannot be made must be known to have failed, or the view diverges believing it succeeded |
 | world state → participant | **1 per world** | **coalesce** | a later state supersedes an earlier one; replication is a convergence process, not a log |
 | resize → presentation | **1** | **coalesce** | only the final size is real |
 
 **Two rules follow, and both are P-level rather than local.** *Blocking is never an overflow policy* —
-a producer that blocks on a consumer has joined their clocks, and A6 says two processes never share
+a producer that blocks on a consumer has joined their clocks, and F2 says two processes never share
 one. And *a policy that drops must be legal under an axiom*, which is why scene may drop and input
-may not: A5 permits nobody to be watching; nothing permits a command to vanish.
+may not: F1 permits nobody to be watching; nothing permits a command to vanish.
 
 ### Lifetime and ownership
 
@@ -4367,14 +4367,14 @@ declared handoff. It is P5 and P6 violated at once — a component reaching into
 one fact written from a place that does not own it. In the target state a world's step is a property
 of that world, given to it at construction, and there is no global to write.
 
-**Determinism is a concurrency requirement, not just a numerical one.** A3 says the same inputs give
-the same next state; if two threads can interleave writes into one world's state, A3 is false no
+**Determinism is a concurrency requirement, not just a numerical one.** D12 says the same inputs give
+the same next state; if two threads can interleave writes into one world's state, D12 is false no
 matter how careful the arithmetic. This is why the ownership rule is absolute rather than a
-guideline: it is what makes A3 checkable at all.
+guideline: it is what makes D12 checkable at all.
 
 ### Trust — what may be asserted, and what may only be asked
 
-A2 plus N1 make every inbound payload untrusted input: a participant may be remote, may be modified,
+D11 plus N1 make every inbound payload untrusted input: a participant may be remote, may be modified,
 may be hostile, and is in any case running a *prediction* rather than the truth.
 
 **A participant requests; it never asserts.** The authority re-derives every consequence rather than
