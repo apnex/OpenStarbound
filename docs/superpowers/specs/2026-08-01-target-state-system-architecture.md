@@ -4012,7 +4012,7 @@ What does survive is the acyclicity, by a different route: the four contract hea
 `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`
 and `StarPerlin` — every one of them `core` — plus `StarWorldParameters`, which moves in (below).
 
-### `celestial` — a CONTRACT, because the code already split it
+### `celestial` — a CONTRACT, because two components consume the star map and neither owns it
 
 | facet | |
 |---|---|
@@ -4020,7 +4020,7 @@ and `StarPerlin` — every one of them `core` — plus `StarWorldParameters`, wh
 | **rejected** | **A LIBRARY holding the star map itself.** That was the first draft's answer and it fails N1.b: a library carrying the database cannot be looked up across a machine, so a placed authority would have to carry the whole star map with it. Also rejected: leaving these types loose in `game`, which makes every consumer of a planet's description name the entire domain. |
 | **excludes** | May not name `world`, `worldgen` or `game`. A CONTRACT that names a LIBRARY is not a seam — it is a coupling wearing a seam's label — and every other contract here (`scene`, `sound`, `gpu`, `audio`, `host`, `platform`) names only foundations and other contracts. It carries **no database implementation**: the master belongs to `universe`, the slave to `universe_view`. |
 | **falsified** | If `world` ever needs it. `WorldServer` and its agents name `Celestial` **zero** times and `WorldTemplate` takes a `CelestialDatabasePtr` rather than a concrete database — so the day a world authority needs the star map, this boundary is in the wrong place. |
-| **history** | The tree had already made this split before the document noticed: `CelestialDatabase` is abstract, with `CelestialMasterDatabase` and `CelestialSlaveDatabase` beneath it. That is the authority/view split this design adopts, sitting inside a component the first draft called indivisible. The seam was in the code; the register was simply not describing it. |
+| **history** | The same split exists in the tree already: `CelestialDatabase` is abstract, with `CelestialMasterDatabase` and `CelestialSlaveDatabase` beneath it — the authority/view division this design applies everywhere else, sitting inside a component that reads as indivisible from its name. **Corroboration, not the reason.** The boundary is placed by the duty above; that the code independently arrived at the same shape is evidence the duty is real, and it would still be placed there if the code had not. |
 | **owes** | `StarCelestialDatabase.hpp` holds all three classes in one header, so the split cannot be enforced or even attributed by an instrument until the header is divided. Second instance of the same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer` — **the contract and its implementations sharing a file** — which is worth naming as a pattern, since two of the components adopted here are blocked on exactly it. |
 
 Measured, and it separates cleanly in both directions: `WorldServer` and its agents name `Celestial`
@@ -4028,7 +4028,10 @@ Measured, and it separates cleanly in both directions: `WorldServer` and its age
 `CelestialDatabase` directly. So `world` does not need it and `worldgen` does, which is exactly the
 2×2 the separability test asks for.
 
-**But it is a CONTRACT, not a LIBRARY, and that was not a choice — the tree had already made it:**
+**It is a CONTRACT rather than a LIBRARY because of what it must survive**, and the tree happens to
+agree. N1.b requires a star map to be *looked up*, possibly across a machine; a LIBRARY carrying the
+database cannot be, so a placed authority would have to take the whole map with it. That decides the
+kind on its own. What the tree adds is corroboration, and it is worth having:
 
 ```
 class CelestialDatabase                       // abstract
@@ -4036,14 +4039,14 @@ class CelestialMasterDatabase : public ...    // UniverseServer, VersioningDatab
 class CelestialSlaveDatabase  : public ...    // UniverseClient, SystemWorldClient
 ```
 
-That is the **authority/view split this document already adopted**, sitting inside a component the
-first draft declared indivisible. So `celestial` is the interface and the vocabulary; the master
-implementation belongs to `universe` and the slave to `universe_view`, exactly as `WorldServer` and
-`WorldClient` divide.
+That is the **authority/view split this document applies everywhere else**, arrived at independently
+inside a component whose name suggests one indivisible thing. So `celestial` is the interface and the
+vocabulary; the master implementation belongs to `universe` and the slave to `universe_view`, exactly
+as `WorldServer` and `WorldClient` divide.
 
-It also explains a detail noted earlier without being understood: `WorldTemplate` takes a
-`CelestialDatabasePtr`, not a concrete database. **`worldgen` already depends on the contract alone.**
-The seam is in the code; the register was simply not describing it.
+The same corroboration appears one level down: `WorldTemplate` takes a `CelestialDatabasePtr`, not a
+concrete database. **`worldgen` depends on the contract alone**, which is what the boundary asks of it
+and what it would have to be changed to do if it did not.
 
 **`WorldParameters` moves into `celestial`, and that is what makes the contract clean.** The four
 headers' only non-`core` include is `StarWorldParameters.hpp`, and a CONTRACT that names a LIBRARY is
@@ -5136,13 +5139,17 @@ Two limits apply even to the anchored fourteen:
 
 **So the honest reading of a green run is "no contradiction found", never "the design is correct."**
 The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
-assertion alone, it stands at the figure the generated block above reports, and it should fall to zero as components
-are built.
-That is a ratchet pointing the opposite way from the removal ratchet, and Section 15 should gate both.
+assertion alone, and it stands at the figure the generated block above reports. **Zero is a
+ratification condition, not an aspiration** — the same shape as the owed ledger in Section 18, and
+for the same reason: a document ratified with either one non-zero has certified something no
+instrument examined. It is a ratchet pointing the opposite way from the removal ratchet, and this
+section gates both.
 
-**One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
-today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
-severable by construction rather than by assertion.
+**One line carries the design, and it is a pass condition rather than a plan.**
+`source/rendering/CMakeLists.txt` may not list `${STAR_GAME_INCLUDES}`. That is the whole of seam 1
+stated as something a build either satisfies or does not: while the line is present the presentation
+backends are severable by assertion, and once it is absent they are severable by construction. When
+the line comes out is Section 17's business; that it must is this section's.
 
 Two grants in that table are deliberately absent rather than forgotten. `rendering` currently holds
 `${STAR_PLATFORM_INCLUDES}` and `${STAR_APPLICATION_INCLUDES}`; in the target state it needs neither —

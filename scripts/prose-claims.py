@@ -186,6 +186,7 @@ LOCAL_COUNT = (
     ("`game` is now three components", "the decomposition of one component"),
     ("two of the four components adopted today", "a subset of one day's adoptions"),
     ("A shared input consumed by two components", "the two consumers of that input"),
+    ("because two components consume the star map", "the two consumers of the star map"),
     ("the client's three elements", "the three time-domain elements, not the register"),
     ("`frameLoop` reaching four elements", "that loop's out-degree"),
     ("Thirty-two components had a duty", "the underived subset, not the register total"),
