@@ -189,6 +189,7 @@ ELEMENT_FREE = {
     "audio_sdl": "opens the device and PULLS `audioTick`; the clock is SDL's, not ours",
     "transport_local": "a socket is called, never scheduled -- whoever has a packet pushes it",
     "transport_tcp": "same: the wire has no cadence of its own, only the callers' ",
+    "transport_p2p": "same again: a peer socket is pushed and pulled by whoever holds a packet. The vendor SDK it wraps has its own pump, and that pump is the vendor's cadence, not a clock this design schedules",
     "platform_null": "answers vendor queries with nothing and schedules none of it -- a component "
                      "whose whole duty is to do nothing has no cadence to declare",
     "platform_pc": "vendor services answer when called",
