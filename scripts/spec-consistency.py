@@ -80,16 +80,31 @@ EKINDS = "LOOP|TICK|WIRING|SIGNAL"
 # design genuinely grows, and never lower them to make a red gate green.
 FLOOR = {"components": 15, "elements": 13, "compile_edges": 20, "runtime_edges": 13, "grants": 15}
 
-WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
-         "nine": 9, "ten": 10, "Nineteen": 19, "Twenty": 20, "Twenty-one": 21, "Twenty-two": 22,
-         "Twenty-three": 23, "Twenty-four": 24, "Twenty-five": 25,
-         "Twenty-six": 26, "Twenty-seven": 27, "Twenty-eight": 28,
-         "Twenty-nine": 29, "Thirty": 30, "Thirty-one": 31, "Thirty-two": 32,
-         "Thirty-three": 33, "Thirty-four": 34, "Thirty-five": 35, "Thirty-six": 36,
-         "Thirty-seven": 37, "Thirty-eight": 38, "Thirty-nine": 39, "Forty": 40, "Forty-one": 41, "Forty-two": 42,
-         "Forty-three": 43, "Forty-four": 44, "Forty-five": 45,
-         "thirteen": 13, "fourteen": 14,
-         "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13}
+# NUMBER WORDS, GENERATED RATHER THAN LISTED. This was a hand-written dict that had been extended,
+# one entry at a time, to exactly whatever number the document currently said -- it stopped at
+# "Forty-five" on the day the register held 45 components, so the FIRST component added past that
+# made the tally gate report "-1" instead of a count. A lookup table grown to match today's value is
+# the same defect as a claim that was true when written.
+_UNITS = ("zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+          "fifteen sixteen seventeen eighteen nineteen").split()
+_TENS = ("", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety")
+
+
+def _spell(n):
+    if n < 20:
+        return _UNITS[n]
+    tens, unit = divmod(n, 10)
+    return _TENS[tens] + ("-" + _UNITS[unit] if unit else "")
+
+
+# Both cases: the tally sentence starts with a capitalised word and continues in lower case.
+# Bounded at 99 because `_TENS` stops there. Past that the tally reports -1, which is a LOUD failure
+# rather than a silent one -- the same reason the table is generated instead of extended by hand.
+WORDS = {}
+for _n in range(0, 100):
+    _w = _spell(_n)
+    WORDS[_w] = _n
+    WORDS[_w[0].upper() + _w[1:]] = _n
 
 COMPONENT_ROW = re.compile(
     r'\|\s*\*\*`(\w+)`\*\*\s*\|\s*(' + "|".join(KINDS) + r')\s*\|\s*(' + "|".join(ZONES) +
@@ -177,6 +192,10 @@ ELEMENT_FREE = {
     "platform_null": "answers vendor queries with nothing and schedules none of it -- a component "
                      "whose whole duty is to do nothing has no cadence to declare",
     "platform_pc": "vendor services answer when called",
+    "starmap_authority": "answers a lookup when asked and generates on demand; the star map has "
+                         "no cadence -- a system exists whether or not anyone is looking at it",
+    "starmap_participant": "same, from the other side: it caches what it was sent and asks when "
+                           "it is missing something. The ASKING is driven by whoever is looking",
     "host_sdl_extra": "placeholder guard -- never matches a real component",
 }
 
@@ -299,10 +318,6 @@ UNANSWERED_OK = {
     # rather than given an implementation they would not use, and the entry is evidence FOR the
     # split `celestial` already owes rather than a way of living without it: when the header divides,
     # both lines here should disappear because the vocabulary half will not be an INTERFACE.
-    ("world_gen", "celestial"):
-        "it needs `CelestialParameters` to generate a world and never looks anything up",
-    ("world_sim", "celestial"):
-        "same: the vocabulary half only, reached through `game`",
     ("client_agent", "presentation"):
         "no call is made. An entity's `render()` runs in every composition because it emits "
         "particles and audio, but with the two view sinks discarding nothing accumulates and "

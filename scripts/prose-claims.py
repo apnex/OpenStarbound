@@ -212,7 +212,6 @@ LOCAL_COUNT = (
     ("`game` is now three components", "the decomposition of one component"),
     ("two of the four components adopted today", "a subset of one day's adoptions"),
     ("A shared input consumed by two components", "the two consumers of that input"),
-    ("because two COMPONENTs consume the star map", "the two consumers of the star map"),
     ("the client's three elements", "the three time-domain elements, not the register"),
     ("`frameLoop` reaching four elements", "that loop's out-degree"),
     ("Thirty-two components had a duty", "the underived subset, not the register total"),
@@ -479,9 +478,11 @@ SINGLE_DUTY = {
     "participant": "a participant IS a clock and the parts it drives; separate them and the clock "
                    "has no subject. The `and` joins a thing to what it is made of, not two jobs",
 }
-# TWO, and both are violations the document ALREADY RECORDS as undecided:
-#   `celestial`    "the star map's vocabulary and its lookup interface" -- the two halves are now two
-#                  KINDs, so the split is finally expressible. Owed.
+# ONE. `celestial` came off this list by being SPLIT, not by being reworded: its duty read "the star
+# map's vocabulary and its lookup interface" and it is now four components -- the VOCABULARY keeps the
+# name, and the lookup is an INTERFACE with two BACKENDs. The ratchet fell 2 -> 1 because the
+# architecture changed, which is the only way a ratchet is allowed to fall.
+#
 #   `platform_pc`  "Steam, Discord and P2P services" -- its own `owes` facet calls this "the plainest
 #                  Law-of-One violation in the register ... three backends, or `platform` should be
 #                  three contracts, and neither has been decided".
@@ -490,7 +491,7 @@ SINGLE_DUTY = {
 # EVIDENCE of the open question; rewording it to "the vendor implementations of `platform`" would have
 # retired a recorded defect by renaming it, which is the failure this whole file exists to catch. A
 # ratchet that can be satisfied by editing the thing it measures is not a ratchet.
-LAW_OF_ONE_CEILING = 2
+LAW_OF_ONE_CEILING = 1
 _CONJUNCTION = re.compile(r'\b(and|also)\b', re.I)
 
 
