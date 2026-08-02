@@ -702,12 +702,12 @@ exist to be measured against, and a row with no number is marked as owing one.
 
 ### What it must be good at
 
-**The two simulation rates are CHOICES, not observations.** An earlier draft of this section called
-them "facts about the simulation… both are in the source today", and that was wrong twice over: the
-source figure it pointed at is a *mutable process-global*, not a constant, and Section 14 says so
-3,800 lines later — so the document contradicted itself about the same variable. The rates below are
-stated as target-state decisions, justified, and the symbols they resemble in today's tree are
-evidence about today and belong in Section 17.
+**The two simulation rates are CHOICES, not observations.** Calling them facts because the numbers
+appear in today's source fails twice over: the source figure is a *mutable process-global* rather than
+a constant — Section 14 says so, of the same variable — and a fact nobody chose is a fact nobody may
+change, which is the opposite of what a rate needs to be. The rates below are target-state decisions
+with reasons attached; the symbols they resemble in today's tree are evidence about today and belong
+in Section 17.
 
 | | budget | why this value | owner |
 |---|---|---|---|
@@ -745,9 +745,9 @@ nothing to do with distribution.
 the first pair is closed by measuring, the second by building the thing that can be measured, and
 until both are closed this section is not sealed. Marking a gap is honest; *shipping* the mark is not.
 
-**The acceptance test, stated so it can fail.** An earlier version of this test asserted only that the
-simulation advanced — which is not the budget above it. The budget is a *ratio*, so the test measures
-one:
+**The acceptance test, stated so it can fail.** A test that asserts only *the simulation advanced* is
+not a test of the budget above it — an empty loop advances. The budget is a **ratio**, so the test
+measures one:
 
 > Load a world containing Frackin Universe automation. Attach no participant, no display, no audio
 > device. Tick it for **N** simulated seconds and record wall-clock elapsed. **Assert wall-clock ≤ N.**
@@ -933,8 +933,9 @@ canonical copy in any case.
 So **the number of `*Loop` elements is the number of clocks this codebase owns**, and the count is
 checkable rather than asserted.
 
-An earlier draft of this section claimed the count was one. **It is two today, and I had missed the
-second.** Reading `SdlPlatform::run()` line by line:
+**There are two loops in `SdlPlatform::run()`, not one, and the second is easy to read past** — it is
+four lines, nested inside the first, and it is the fixed-timestep clock the whole simulation side
+hangs off. Reading the function line by line:
 
 ```cpp
 while (true) {                                     // frameLoop      — clock: vsync + swap
@@ -1549,10 +1550,10 @@ operation, so the CONTRACT owns the element and each backend implements it: `SDL
 one, a device present in the other. **One element, one name, two implementations** — rather than a
 `glSwapTick` and a `gpuSwapTick` that would have to be kept in step by hand.
 
-**The graft rule then rejected my first attempt, which is the useful part.** With `swapTick` owned by
-`gpu`, the runtime edge `frameLoop --> swapTick` became illegal: `host_sdl` has no grant to `gpu`, and
-adding one would restore the very edge the ratchet exists to delete. The fix is better than the
-proposal:
+**The graft rule then rejects the obvious wiring, which is the useful part.** With `swapTick` owned by
+`gpu`, the runtime edge `frameLoop --> swapTick` is illegal: `host_sdl` has no grant to `gpu`, and
+adding one would restore the very edge the ratchet exists to delete. What the rule forces instead is
+better than what it rejected:
 
 > **The host does not drive the swap. `presentTick` does.** Painting ends in presenting, both reached
 > through seam 2, and the host merely calls the presenter and waits however long that takes.
@@ -1635,9 +1636,9 @@ Two properties of that table are load-bearing:
 
 - **The scene flows one way; the seam does not.** Nothing about the scene comes back — `rendering`
   returns `participant` no picture, no frame, no acknowledgement. But `InputSource::poll()` is a round trip
-  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. An earlier draft of this
-  list said "flow is one-way and nothing returns", which contradicted this section's own contract
-  table. Seam 2 genuinely is one-way.
+  *out*, so **seam 1 is bidirectional**: scene and audio leave, input returns. "Flow is one-way and
+  nothing returns" is true of the scene and false of the seam, and the contract table three
+  subsections up is what settles it — two sinks and one source. Seam 2 genuinely is one-way.
 - **An entrypoint is never in the frame path.** It wires the components together once at composition
   and then does nothing — which is what its ENTRYPOINT kind means. A `client_*` that relayed data per
   frame would be a component with behaviour, and the kind would be a lie.
@@ -2776,13 +2777,13 @@ assets/            # content, which `content` abstracts and no C++ component own
 
 
 Forty-one components: ten CONTRACTs, nine BACKENDs, thirteen LIBRARYs, two FOUNDATIONs, seven
-ENTRYPOINTs. An earlier draft claimed **every ENTRYPOINT owns no element**, and offered that as the
-test that the altitude was right. It is retracted: each entrypoint owns exactly one `WIRING` element,
-and composition is the single most important runtime fact in this design, because it is the *only*
-thing that differs between `client_opengl` and `client_headless`. The claim was true only while the
-taxonomy had no kind capable of expressing its counterexample — a claim propped up by a blind spot,
-which is the fourth time that shape has appeared in this document.
-The kinds are what make the next finding visible.
+ENTRYPOINTs. **Each entrypoint owns exactly one element, and it is a `WIRING`** — not zero, which is
+the tempting rule and the wrong one. Composition is the single most important runtime fact in this
+design, because it is the *only* thing that differs between `client_opengl` and `client_headless`; a
+taxonomy in which entrypoints own nothing cannot say that, and would read as clean precisely because
+it had no kind capable of expressing its own counterexample. **A rule that holds only while the
+vocabulary is too small to state its exception is propped up by a blind spot, not by evidence** — a
+shape this document has produced four times, and the reason `WIRING` is a kind at all.
 
 ### Why this is fully deduplicated
 
@@ -2801,7 +2802,8 @@ SDL **is** the host's job. Three lines differ.
 
 ### Why `host` is its own directory and not part of `platform`
 
-A first draft folded `ApplicationController` into `platform`. Two measurements killed that:
+Folding `ApplicationController` into `platform` is the obvious economy — both are vendor-adjacent,
+both live at the machine's edge. Two measurements refuse it:
 
 - **It is a consumer of `platform`, not a peer.** `StarApplicationController.hpp` includes all four
   platform service headers and returns all four types. Folding it in would put a thing and its own
@@ -2875,10 +2877,11 @@ is actually established today.
 | `world_gen` | core, base, game, worldgen, celestial, platform, storage | **no `world`** — it cannot tick anything, and that is enforced rather than promised |
 <!-- END TABLE: grants -->
 
-**Every row is a complete list.** An earlier draft used `+ …` to mean "in addition to the row
-above", which reads fine in prose and is meaningless to a build — `scripts/grant-sweep.py` reported
-four such rows as missing the grants they appeared to have. A grant list that is not complete is not
-a grant list.
+**Every row is a complete list**, and the elision that would shorten it is banned. Writing `+ …` to
+mean "in addition to the row above" reads fine in prose and is meaningless to a build: a linker
+resolves what is named, not what was implied by adjacency. `scripts/grant-sweep.py` reads these rows
+as literal lists, so an elided row measures as missing the grants it appears to have. **A grant list
+that is not complete is not a grant list.**
 
 
 ---
@@ -3040,7 +3043,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Shipping `AudioInstancePtr`. A handle is a pointer into another component's memory, which N1.a forbids outright: it compiles, it works co-located, and it is a machine boundary that cannot be crossed. |
 | **excludes** | Names `base` and `core` only. May not name a device, a mixer, or `game`. |
 | **falsified** | If a mixer must reach back through the seam for anything the batch did not carry. |
-| **history** | The symmetry with `scene` is **asserted and not yet earned**: `Drawable` carries `DataStream` operators and `AudioInstance` does not. An adversarial review found this — tier 3 is not tier 2 with the nouns swapped, and an earlier draft treating it that way was a real defect. |
+| **history** | The symmetry with `scene` is **asserted and not yet earned**: `Drawable` carries `DataStream` operators and `AudioInstance` does not. The symmetry of the two names is exactly what makes the asymmetry of the two types easy to miss — tier 3 is not tier 2 with the nouns swapped, and reading it as such is a defect the `owes` row below exists to hold open. |
 | **owes** | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
 
 ### `audio` — the device contract, and why the device pulls
@@ -3395,9 +3398,9 @@ this becoming taste:
 
 Both questions the composition diagrams raised were run through it, and they came out differently.
 
-**`server` links `scene` — the split IS available, and `game` is now three components.** An earlier
-draft of this section concluded the repair was impossible. That conclusion came from a bad measurement
-and is retracted twice over:
+**`server` links `scene` — the split IS available, and `game` is now three components.** The reading
+that says otherwise, and concludes the repair is impossible, rests on a measurement wrong in two
+independent ways:
 
 - The replica was rooted at `ClientApplication::update`, which in a **self-hosted** client reaches the
   embedded authority too. It was measuring "replica plus authority" against "authority".
@@ -3643,13 +3646,14 @@ Granted `game`, `world_view`, `universe_view`; **never `windowing`, never `front
 | `StarMainMixer`, `StarVoice` | **move to `mixing`** | 0 UI references; they are audio, misfiled in the UI component |
 | `StarChat` | **stays** | 15 UI references in .hpp, 29 in .cpp |
 
-**A correction to my own filter, because it nearly shipped a wrong set.** The sweep that produced the
-"14 frontend headers name no UI type" list used the pattern `Pane|Widget|GuiContext|Drawable|
-TextPainter` — **with no `MainInterface`**. `StarClientCommandProcessor.hpp` names `MainInterface`
-three times and holds a raw `MainInterfacePaneManager*`. It reached the clean bucket through a hole in
-the filter, not on its merits, and only the .cpp call-site check caught it. **An instrument's blind
-spot looks exactly like a clean result** — the same lesson the loop inventory taught, now in a filter
-I wrote the same day.
+**The filter that produces this table has a hole in it, and it is named here because it nearly
+shipped a wrong set.** The sweep behind "14 frontend headers name no UI type" matches
+`Pane|Widget|GuiContext|Drawable|TextPainter` — **and not `MainInterface`**.
+`StarClientCommandProcessor.hpp` names `MainInterface` three times and holds a raw
+`MainInterfacePaneManager*`, so it reaches the clean bucket through the gap rather than on its
+merits; only the second pass over .cpp call sites catches it. **An instrument's blind spot looks
+exactly like a clean result**, which is why every list in this section is produced twice by two
+patterns and only the intersection is trusted.
 
 Half the inversion is already done, which is why the split is cheap: `previewQuestPane` takes
 `function<PanePtr(QuestPtr)> createPane` — a factory injected by the caller. The residue is the raw
@@ -3668,9 +3672,10 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 subtraction is the whole point: the difference between a recorder and an agent is now three grants on
 an entrypoint, not a fork of the client.
 
-**This also retires a question this document could not previously answer.** Section 10 asked whether
-`client_headless` was a *recorder* or a *non-visual participant* and had silently assumed the first.
-It is the first, and the second is `client_agent`. Neither interpretation had to lose.
+**It also settles *recorder or non-visual participant?* by refusing the question.** Those are two
+products, not two readings of one: `client_headless` is the recorder and `client_agent` is the
+participant with no senses. A register that forces a choice between them is a register with one
+composition too few, and the tell is that both answers had arguments.
 
 **Cost, measured, and it is a ratchet not a claim.** Today's `ClientApplication` names `frontend` 11
 times directly and `windowing` once. Those are now `REMOVING` entries in `grant-sweep` — edges the
@@ -3837,7 +3842,7 @@ not a coincidence; it is the difference between *content* and *domain tables*.
 | **rejected** | `Root` as it stands: a god object reachable from everywhere that offers content access *and* is the ambient answer to every other question. Rejected because when anything can reach anything, no boundary is anywhere — which is why `game` was underivable until this contract existed. |
 | **excludes** | Names `base` and `core` only. May not name `game`: **`game`'s `Root` implements this contract**, so the dependency runs downward from implementation to interface and never back. |
 | **falsified** | If the engine must enumerate a content instance by name in order to work. |
-| **history** | It leaks in **three** places, and they share a shape: `perfectlygenericitem` (the item-recovery fallback, complete with a user-facing string), `money` (the quest-reward currency) and `human` (the default species). Each is a name the engine reaches for when content supplies none. **The species case is the live one** — the lookup throws on a miss, so an installation without the `human` species faults rather than degrades, which is F4's own "what it forbids" clause firing on the current tree. An earlier draft called `perfectlygenericitem` the *single* counter-example; a one-line sweep refutes that, and the overclaim is recorded here because F4's own preamble warns that everything citing an overclaimed fact inherits it silently. |
+| **history** | It leaks in **three** places, and they share a shape: `perfectlygenericitem` (the item-recovery fallback, complete with a user-facing string), `money` (the quest-reward currency) and `human` (the default species). Each is a name the engine reaches for when content supplies none. **The species case is the live one** — the lookup throws on a miss, so an installation without the `human` species faults rather than degrades, which is F4's own "what it forbids" clause firing on the current tree. Calling `perfectlygenericitem` the *single* counter-example is the tempting form and a one-line sweep refutes it; the count is recorded here rather than in prose because F4's own preamble warns that everything citing an overclaimed fact inherits the overclaim silently. |
 | **owes** | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 
 Adopted as a CONTRACT in `machine/`: `assets()`, `configuration()`, and — target state — the two
@@ -3984,8 +3989,9 @@ adapter code get filed next to the data they describe, because that is where the
 dependency they create is an artifact of filing, not of design. Each time, deleting the file's
 membership — not the boundary — made the edge acyclic.
 
-**RETRACTED: `StarCelestialGraphics` was listed here as a third instance and it is not one.** The claim
-was that it is view-side and refiles to `world_view`. Two measurements kill that:
+**`StarCelestialGraphics` is the near-miss that proves the rule needs measuring, not reading.** It has
+the shape of a third instance — a *Graphics* file on the authority side, apparently view-code needing
+to refile to `world_view`. Two measurements refuse it:
 
 - its consumer at `StarSystemWorldServer.cpp:452,456` is an **authority**, filling
   `skyParameters.nearbyMoons` and `horizonImages` for replication to clients;
@@ -4156,8 +4162,9 @@ inside `presentTick`, by dispatch, which is what the generated drive table says.
 
 **Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
 today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
-genuinely a tick and there is no `presentLoop` at any stage. An earlier draft of this section predicted
-one; that prediction was wrong.
+genuinely a tick, and **there is no `presentLoop` at any stage, including the split one**. Splitting
+presentation onto another machine looks like it must produce a loop over there; what it produces is a
+host over there, which already has one.
 
 `clientLoop` is the one loop that is not a driver. It has to be a loop because determinism requires a
 fixed step while real time does not cooperate: it runs `fixedTick` zero-to-N times to bring simulated
@@ -4172,9 +4179,10 @@ names record:
 | `clientLoop` | — | the converter: real time in, fixed steps out |
 | `fixedTick` | **simulated** time, fixed 60 Hz | one step of the simulation |
 
-An earlier draft named these `simLoop` and `simTick`. Both were dropped: `universeLoop` is also
-simulation, so "sim" never said *which* one — and these names are read in grep output, telemetry owner
-strings and profile frames, where the enclosing component is not visible to disambiguate them.
+**Not `simLoop` and `simTick`**, which is the shorter pair and the wrong one: `universeLoop` is also
+simulation, so "sim" never says *which* one. These names are read in grep output, telemetry owner
+strings and profile frames — contexts where the enclosing component is not visible to disambiguate
+them, so the name has to carry the distinction by itself.
 
 ### Five clocks, in two matched pairs
 
@@ -4273,16 +4281,17 @@ WIRINGs), while `universe`, `world` and `audio` hold one component each. A depen
 draw that, because it is not a dependency — it is a *co-residency*, and it is the reason two
 components with no grant between them can still deadlock each other.
 
-This paragraph previously offered "`participant` owns `clientTick` on the driver thread and
-`audioTick` on SDL's" as the example. That was false twice: `audioTick` is owned by `mixing` in the
-register, in both diagrams and in the generated drive table, and no component spans two threads at
-all. The claim about cross-cutting was right; the instance was invented.
+**No component in the register spans two threads**, so the cross-cutting claim above has no instance
+here and is stated without one. The example that suggests itself — `participant` owning `clientTick`
+on the driver thread and `audioTick` on the audio thread — is not available: `audioTick` belongs to
+`mixing`, in the register, in both diagrams and in the generated drive table. An illustration that has
+to be invented is evidence the property it illustrates is absent.
 
 There is deliberately **no runtime altitude below ELEMENT**. Statements, branches and expressions
 execute too, and modelling them would be a call graph rather than an architecture.
 
-**KIND — what an element is with respect to time.** Four values. An earlier draft had two, and the
-`Application` contract this design already depends on refutes that directly: of its ten virtuals, three
+**KIND — what an element is with respect to time.** Four values, and two is not enough: the
+`Application` contract this design already depends on settles it directly — of its ten virtuals, three
 are ticks, one is a query, and **six fit neither**.
 
 | kind | what it is | fails by |
@@ -4692,9 +4701,8 @@ pattern, already shipping, one boundary further in.
 
 ### The co-located path must not be a cheaper semantics — D8
 
-An earlier draft of this section listed four reasons a dedicated universe process would be expensive.
-Three of them were not costs. They were **smells**, and naming them as costs would have argued for
-keeping a defect:
+Four things look like reasons a dedicated universe process would be expensive. Only one is a cost;
+the other three are **smells**, and counting them as costs argues for keeping a defect:
 
 | listed as a cost | what it actually is |
 |---|---|
@@ -4742,14 +4750,16 @@ Four things this view shows that the dependency view structurally cannot:
   by side because exactly one of them exists in any given process, and both make the *identical two
   calls* into `clientTick` and `presentTick` through the same `Application` contract. `client_headless`
   substitutes `host_null` for `host_sdl` and `transcript` for `rendering`; **no element moves and none
-  is added.** That claim was previously asserted in prose; here it is visible.
+  is added.** The diagram is what makes that checkable rather than asserted — two substitutions, one
+  picture, and any element that had to move would have nowhere to be drawn.
 - **`superviseLoop` supervises nothing it drives.** Its only edge is a dashed label; the authority in
   the server process is `universeLoop`, on another thread.
 
-**The input path, resolved.** An earlier draft drew `inputTick` dashed and red: `InputSource` is
-declared by `presentation` and implemented by `rendering` and `transcript`, but input originates at the
-**host** and neither backend was granted `host`, so `poll()` had nothing to return. Granting both
-backends `host` — the change the paint trigger needed anyway — closed it, and the edge is now ordinary.
+**The input path, and why both presentation backends are granted `host`.** `InputSource` is declared
+by `presentation` and implemented by `rendering` and `transcript`, but input originates at the
+**host** — so without that grant `poll()` has nothing to return, and the edge is a hole rather than a
+seam. The grant is the same one the paint trigger needs, so it costs nothing extra and the edge is
+ordinary.
 `InputSource` stays on seam 1 rather than moving into `host`, because seam 1 is the boundary that
 crosses machines and the human sits at the display; routing input through `host` would need a second
 network-spanning seam, which D3 forbids.
