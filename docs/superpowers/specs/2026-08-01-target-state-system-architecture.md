@@ -4831,27 +4831,47 @@ wrote.
 `DISPATCH` that may cross a machine declares how long the caller waits and what it does next. A
 caller with no timeout has assumed co-residence, which is exactly the assumption N1 forbids.
 
+| crossing that may span a machine | the caller waits | and then |
+|---|---|---|
+| participant command → authority | one world step (16.67 ms) | reports the command unacknowledged; the view stops predicting its effect |
+| participant → universe, on warp | 5 s | surfaces the failure and stays where it is; a half-completed warp is the one outcome forbidden |
+| world state → participant | three world steps | the view marks itself stale and stops extrapolating (D11's bounded blind window) |
+| celestial lookup → star map | one system step (50 ms) | answers from the last known value and marks it stale |
+
+Four crossings, four numbers. **Any other crossing that acquires a machine boundary acquires a row
+here first**, and a `HANDOFF` or `DISPATCH` reaching a wire without one is a defect this table exists
+to make nameable.
+
 ### Back-pressure — the HANDOFF contract
 
 `HANDOFF` is defined as *the producer does not block on the consumer's body*. That says what does not
-happen and nothing about what does, and **no queue in this design had a stated bound.** An unbounded
-queue is not a queue, it is a memory leak with a scheduling policy.
+happen and nothing about what does. **An unbounded queue is not a queue; it is a memory leak with a
+scheduling policy.**
 
-Every handoff declares three things — a bound, an overflow policy, and who observes the overflow:
+Every handoff declares four things — a bound, an overflow policy, who observes the overflow, and why
+that policy is legal. The fourth column is not commentary: a policy that drops must be *permitted* by
+something, and the entry names what permits it.
 
-| handoff | bound | on overflow | why that policy |
-|---|---|---|---|
-| scene delta → presentation | **1** | **replace** | only the newest scene matters; an old one is not worth drawing. F1 makes dropping legal — nobody is owed a frame |
-| audio batch → mixing | small, in samples | **replace** | as above, and the device pulls on its own clock (F2) |
-| input → participant | bounded | **fail loudly** | dropped input is a wrong game, not a slow one. This one may not drop silently |
-| participant command → authority | bounded | **reject, and tell the sender** | D11 — a request that cannot be made must be known to have failed, or the view diverges believing it succeeded |
-| world state → participant | **1 per world** | **coalesce** | a later state supersedes an earlier one; replication is a convergence process, not a log |
-| resize → presentation | **1** | **coalesce** | only the final size is real |
+| handoff | bound | on overflow | observed by | why that policy is legal |
+|---|---|---|---|---|
+| scene delta → presentation | **1** | **chosen by the composition** — *replace* for a display, *block-free append* for a recorder | the presentation backend, counter `scene.dropped` | F1 permits nobody to be watching, so a display is owed no particular frame. **A transcript is owed every one**: a recording with gaps is not a recording, so the policy is the composition's rather than the seam's — the same shape the driver already uses for pacing |
+| audio batch → mixing | **2 device periods**, in samples | **replace** | `mixing`, counter `audio.batch.dropped` | the device pulls on its own clock (F2); two periods is one being consumed and one ready |
+| input → participant | **one step's worth, 64 events** | **fail loudly** | `participant`, counter `input.overflow` — and it raises, never merely counts | dropped input is a *wrong game*, not a slow one. Nothing in the axioms or the goals permits an input to vanish, so this row has no legal drop |
+| participant command → authority | **32 commands** | **reject, and tell the sender** | the authority, counter `command.rejected` | D11 — a request that cannot be made must be *known* to have failed, or the view diverges believing it succeeded |
+| world state → participant | **1 per world** | **coalesce** | the authority, counter `state.coalesced` | a later state supersedes an earlier one; replication is a convergence process, not a log |
+| resize → presentation | **1** | **coalesce** | the presentation backend, counter `resize.coalesced` | only the final size is real |
 
-**Two rules follow, and both are P-level rather than local.** *Blocking is never an overflow policy* —
-a producer that blocks on a consumer has joined their clocks, and F2 says two processes never share
-one. And *a policy that drops must be legal under an axiom*, which is why scene may drop and input
-may not: F1 permits nobody to be watching; nothing permits a command to vanish.
+**The scene-delta row is the one that changed under scrutiny, and it is worth saying why.** An earlier
+version declared a single policy — *replace* — which is correct for a display and **wrong for a
+recorder**: a transcript that silently drops scene deltas is not a transcript. The justification cited
+F1, and F1 says perception is optional, not that *records* are. So the policy belongs to the
+composition, exactly as the driver's pacing does: same element, same code, behaviour chosen by the
+entry point that assembled it.
+
+**Two rules follow, and both are model-wide rather than local.** *Blocking is never an overflow
+policy* — a producer that blocks on a consumer has joined their clocks, and F2 says physical time is
+local. And *a policy that drops must be permitted by something named*, which is why scene may drop and
+input may not: F1 permits nobody to be watching; nothing whatever permits a command to vanish.
 
 ### Lifetime and ownership
 
@@ -4879,15 +4899,25 @@ other.
 ### Concurrency — what may be shared
 
 **One thread owns a component instance.** Cross-thread access happens through a declared `HANDOFF` and
-by no other route. There is no shared mutable state between threads that is not a handoff with a
-bound and a policy.
+by no other route. There is no shared mutable state between *components* on different threads that is
+not a handoff with a bound and a policy.
+
+**The exception, stated because the rule reads absolute and is not.** Section 12's altitude table lists
+a lock among the ways a thread boundary can be crossed, and left unqualified the two statements
+contradict each other. The reconciliation: **a lock internal to one component instance, held on one
+thread's own state, is not cross-component shared state** and is legal. What is forbidden is a lock
+that two *components* both name — because that lock is then a seam with no declared payload, no bound
+and no policy, and it will not survive the two components being placed on different machines. The test
+is not "is there a mutex" but "do two components both know about it".
 
 The history here is specific and current: **`ServerGlobalTimestep` is a process-global float, written
 by `UniverseServer::setTickRate` and read by every world thread's ticker.** A misnamed setter on one
 component silently retunes the clock of every world in the process, across a thread boundary, with no
-declared handoff. It is P5 and P6 violated at once — a component reaching into another's cadence, and
-one fact written from a place that does not own it. In the target state a world's step is a property
-of that world, given to it at construction, and there is no global to write.
+declared handoff. It violates **A1** — a process-global that one component
+mutates on another's behalf is precisely the private, opaque, transient truth that axiom forbids — and
+it violates the concurrency rule above, since a write crossing a thread boundary with no declared
+handoff is the definition of shared mutable state. In the target state a world's step is a property of
+that world, given to it at construction, and **there is no global to write**.
 
 **Determinism is a concurrency requirement, not just a numerical one.** D12 says the same inputs give
 the same next state; if two threads can interleave writes into one world's state, D12 is false no
@@ -4910,9 +4940,21 @@ attack, evaluated by the authority against its own state.
 | what it holds | checks against the inventory it owns |
 | its identity | authenticates it — assertion is not identity |
 
-**Every inbound payload has a named validator**, and the validator belongs to the authority's side of
-the seam. A payload accepted without one is a payload the authority has decided to trust, and that
-decision should be visible in the register rather than implied by an absent check.
+**Every inbound payload has a named validator on the authority's side of the seam**, and the payloads
+are enumerable rather than gestured at — the trust surface of this design is four payload classes, not
+an open set:
+
+| inbound payload | crosses | validated by | what the validator re-derives |
+|---|---|---|---|
+| `InputBatch` | device → participant | `participant` | nothing to re-derive — it originates inside the same trust boundary, and this row exists to say so rather than to leave the reader wondering |
+| participant command | participant → authority | `world` for world effects, `universe` for warps and connections | the whole consequence: collision, speed, reach, inventory, cooldown. The command names an *intent*, never an outcome |
+| `SceneDelta` / `AudioBatch` | authority side → presentation | **none, by design** | these flow *outward* to a component with no power to change anything. A validator here would be theatre |
+| connection handshake | remote → authority | `universe` | identity. Assertion is not identity, which is the one row where "the participant says" and "the authority does" are furthest apart |
+
+**A payload with no row is a payload nobody has decided about.** The third row is the interesting one:
+it declares an *absence* of validation and says why, because "we did not write a validator" and "no
+validator is needed" are indistinguishable from the outside — and the whole point of naming validators
+is to make the difference visible.
 
 **Mod script is inside the trust boundary of whatever composed it, and not beyond.** Script running in
 a participant may request what a participant may request, and nothing more; the authority does not
