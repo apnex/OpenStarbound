@@ -5185,6 +5185,22 @@ violated with extra steps.
 | the graphical client is unchanged | `render-gate.sh`, `render-motion.sh` | verification | **built** (from the render arc) |
 | a call tree stays inside its grants | full-fidelity graft rule | anchoring | **designed, not built** — needs a real call graph, not an include graph |
 | a composition can state its Lua surface | surface manifest + load-time check | verification | **designed, not built** — see Section 5 |
+| **every component is reasoned for, not merely declared** | `spec_derivations` | anchoring | **built** — 41/41 components, 246/246 facets |
+| **every handoff states a bound, a policy and an observer** | `spec_consistency`, HANDOFF-edge clause | anchoring | **designed, not built** |
+| **every crossing that may span a machine states a timeout** | `spec_consistency`, DISPATCH/HANDOFF clause | anchoring | **designed, not built** |
+| **every inbound seam payload names a validator, or names its absence** | `spec_consistency`, payload clause | anchoring | **designed, not built** |
+| **no two components name one lock** | — | anchoring | **not designed.** The concurrency rule in Section 14 is the one rule in this document with no instrument even sketched, and saying so is the honest alternative to implying otherwise |
+
+**Four of the five new rows read "designed, not built", and that is a statement about this document
+rather than about the tree.** Section 14 declares bounds, policies, observers, timeouts and validators
+in tables an instrument could read directly — the shape was chosen so the clause is mechanical rather
+than clever. What does not exist is the clause. Until it does, those four rules are enforced by
+reading, which is exactly the condition this section exists to end.
+
+**The fifth is worse and is recorded as worse.** "No two components name one lock" is a rule with no
+instrument and no sketch of one, because the check needs a real call graph rather than an include
+graph — the same missing capability the full-fidelity graft rule waits on. Naming it here rather than
+omitting it is the difference between a known gap and a silent one.
 
 ### The Lua surface obligation
 

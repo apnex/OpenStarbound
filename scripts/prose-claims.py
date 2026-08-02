@@ -193,6 +193,7 @@ LOCAL_COUNT = (
     ("Thirty-two components had a duty", "the underived subset, not the register total"),
     ("not survive the two components being placed", "the two sharing a lock, not the register"),
     ("do two components both know about it", "the two sharing a lock, not the register"),
+    ("No two components name one lock", "the two sharing a lock, not the register"),
     # Both surfaced only once the scan became case-insensitive: a sentence-initial count is
     # capitalised, and every one of them had been invisible.
     ("Four components for four files", "the audio carve-out, not the register"),
