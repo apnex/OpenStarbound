@@ -78,6 +78,14 @@ nav{display:none}
   nav a:hover{color:var(--accent)}
   nav a:hover .n{color:var(--accent)}
   nav a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+  /* PART labels group the rail the way the TOC groups the document. The first one sits flush;
+     the rest get separation, so the four parts read as four blocks rather than one long list. */
+  .navpart{margin:1.15rem 0 .4rem; padding-top:.7rem; border-top:1px solid var(--rule-soft)}
+  .navpart:first-of-type{margin-top:0; padding-top:0; border-top:none}
+  .navpart a{display:block; grid-template-columns:none; padding:0; font-family:var(--mono);
+             font-size:.635rem; letter-spacing:.13em; text-transform:uppercase;
+             color:var(--faint); text-decoration:none}
+  .navpart a:hover{color:var(--accent)}
   .navkey{margin-top:1.4rem; padding-top:1rem; border-top:1px solid var(--rule-soft);
           display:flex; flex-direction:column; gap:.4rem}
   .navkey span{display:flex; align-items:center; gap:.45rem; font-family:var(--mono);
@@ -132,6 +140,19 @@ main{min-width:0; padding:0 1.15rem 6rem}
 .chip.todo{background:none; color:var(--faint); box-shadow:inset 0 0 0 1px var(--rule)}
 
 /* ---- headings + text ------------------------------------------------------ */
+/* PART dividers are the top level of the ratified TOC. They must read as a break in the document,
+   not as a bigger section heading -- so they get a rule above, a mono eyebrow, and generous air. */
+h1.part{
+  display:block; margin:5.5rem 0 0; padding-top:2.2rem; scroll-margin-top:1.5rem;
+  border-top:2px solid var(--ink); font-weight:680;
+  font-size:clamp(1.9rem,4vw,2.6rem); line-height:1.1; letter-spacing:-.026em;
+}
+h1.part:first-of-type{margin-top:3rem}
+h1.part .partnum{display:block; font-family:var(--mono); font-size:.72rem; font-weight:500;
+                 letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+                 margin-bottom:.5rem}
+h1.part .partt{display:block; text-wrap:balance}
+h1.part + h2{margin-top:2.2rem}
 h2{
   display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:.55rem; align-items:baseline;
   font-weight:640; font-size:clamp(1.35rem,2.7vw,1.75rem); line-height:1.2; letter-spacing:-.018em;
