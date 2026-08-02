@@ -514,7 +514,7 @@ implementation chose the other way and left its reasoning in the source.
 |---|---|
 | **chosen** | Exactly one authority decides what is true in a world. Every effect a participant has on that world is a request, re-derived by the authority against its own state before it becomes true. |
 | **rejected** | Authority partitioned by entity ownership — each participant masters the entities in its own id range, and the authority mirrors them as replicas without re-deriving them. |
-| **serves** | **N1** — a seam whose trust model changes with placement is not placeable; if authority is partitioned, moving a participant to another machine moves *authority* with it. **N2** — one writer per fact is comprehensible; N co-equal writers is a system nobody can hold in their head. It is also the domain instance of **A1**: a partitioned design leaves world truth in a place no single unit owns. |
+| **serves** | **N1** — a seam whose trust model changes with placement is not placeable; if authority is partitioned, moving a participant to another machine moves *authority* with it. **N2.a** — one writer per fact is comprehensible; N co-equal writers is a system nobody can hold in their head. It is also the domain instance of **A1**: a partitioned design leaves world truth in a place no single unit owns. |
 | **costs** | **Input latency, paid on every action.** The rejected design exists precisely to avoid this. |
 
 **What it costs, precisely.** If a participant masters its own player entity, that player responds to
@@ -543,7 +543,7 @@ when you find out late, and it is the sharpest available argument for deciding i
 |---|---|
 | **chosen** | A participant runs ahead of confirmed truth to hide the latency D10 introduces, and converges when truth arrives. Correction is **whole-value replacement**: the authority's value wins, and the view stops predicting that fact. |
 | **rejected** | **Rollback-and-replay** — retain local input history, and on correction rewind to the authoritative state and re-apply inputs. |
-| **serves** | **N2** — replacement is one rule with no history to keep; rollback requires every predicted subsystem to be re-runnable and every input retained. **F3** — replay is only sound if the step is a pure function, which is D12, and D12 is not free either. |
+| **serves** | **N2.c** — replacement is one rule with no history to keep; rollback requires every predicted subsystem to be re-runnable and every input retained. **F3** — replay is only sound if the step is a pure function, which is D12, and D12 is not free either. |
 | **costs** | **Visible correction.** A replaced value can jump. Rollback hides that; replacement does not. |
 
 **Why replacement rather than replay**, stated as a dependency: rollback-and-replay is only correct if
@@ -565,7 +565,7 @@ off when its key is absent. The design chosen here is that shape, made unconditi
 |---|---|
 | **chosen** | The same state and the same inputs give the same next state. No wall-clock reading inside a step; no ambient random stream; no work-shedding that changes outcomes rather than only timing. |
 | **rejected** | Best-effort stepping, in which a step may consult real time, draw from a process-global random source, and shed work adaptively under load. |
-| **serves** | **N1** — two machines that must agree about a world cannot agree if the same inputs give different answers. **N2** — a defect that reproduces is a defect that can be found. **A9** — chaos validation compares runs, and comparing runs requires runs to be comparable. |
+| **serves** | **N1** — two machines that must agree about a world cannot agree if the same inputs give different answers. **N2.d** — a defect that reproduces is a defect that can be found. **A9** — chaos validation compares runs, and comparing runs requires runs to be comparable. |
 | **costs** | **An adaptive-fidelity governor becomes illegal**, and every random draw must be threaded from a seeded, owned stream rather than reached for. |
 
 **The cost is larger than it looks and is worth stating plainly.** Shedding work under load is how a
@@ -590,7 +590,7 @@ it is a property we have already been billed for lacking.
 |---|---|
 | **chosen** | A new *kind* of thing is a content change. The engine's understanding of what kinds exist is data it loads, not a vocabulary it compiles. |
 | **rejected** | A closed compiled vocabulary of kinds, with content free to add instances of the kinds that already exist. |
-| **serves** | **N2** — a closed vocabulary makes the engine the bottleneck for every content ambition. **F4** — the instance half of content opacity is already true; this extends the same property one level up. |
+| **serves** | **N2.b** — a closed vocabulary makes the engine the bottleneck for every content ambition. **F4** — the instance half of content opacity is already true; this extends the same property one level up. |
 | **costs** | **Every kind-specific behaviour must become declarative**, which is a large body of work and a real expressiveness question. |
 
 **What is actually at stake.** F4 records that content *instances* are opaque apart from three named
@@ -2800,15 +2800,15 @@ Every component in the diagram, in the same reading order.
 |---|---|---|---|---|---|
 | **`core`** | FOUNDATION | MACHINE | language and containers | — | the language, containers and algorithms everything rests on |
 | **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
-| **`platform`** | INTERFACE | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
-| **`host`** | INTERFACE | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
-| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard |
+| **`platform`** | INTERFACE | MACHINE | platform-service contracts | **N3.b** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`host`** | INTERFACE | MACHINE | the host contract | **N3.a** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
+| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3.a** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard |
 | **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — devices are optional, so a host that drives no device is legal | the `headlessLoop` driver and a controller that shows nothing |
-| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
-| **`platform_null`** | BACKEND | MACHINE | platform services that do nothing | **N3** — the second implementation, so no consumer discovers a vendor by its absence | do-nothing `DesktopService`, `P2PNetworkingService`, `StatisticsService` and `UserGeneratedContentService` |
+| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3.b** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
+| **`platform_null`** | BACKEND | MACHINE | platform services that do nothing | **N3.a** — the second implementation, so no consumer discovers a vendor by its absence | do-nothing `DesktopService`, `P2PNetworkingService`, `StatisticsService` and `UserGeneratedContentService` |
 | **`transport`** | INTERFACE | MACHINE | how packets cross | **N1.b** — a participant and its authority may be on different machines, so what carries a packet is a substitution point rather than an assumption | `push(List<PacketPtr>)` and `pull()`. **Nothing about what crosses** — that is `net`'s vocabulary and this contract never names it |
 | **`transport_local`** | BACKEND | MACHINE | the co-located packet pair | **N1.c** — the co-located path is an optimisation of the split path, so it is a *backend*, never a shortcut around the seam | the socket pair `colocation` wires when both ends of the seam were composed together |
-| **`transport_tcp`** | BACKEND | MACHINE | the wire | **N3** — two implementations are what prove a contract, and these two are the whole distributed claim | `TcpPacketSocket` — the same push and pull, over a network |
+| **`transport_tcp`** | BACKEND | MACHINE | the wire | **N3.a** — two implementations are what prove a contract, and these two are the whole distributed claim | `TcpPacketSocket` — the same push and pull, over a network |
 | **`scene`** | VOCABULARY | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
 | **`sound`** | VOCABULARY | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
 | **`net`** | VOCABULARY | DOMAIN | what a replicated field is | **D11** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
@@ -2822,24 +2822,24 @@ Every component in the diagram, in the same reading order.
 | **`celestial`** | INTERFACE | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
 | **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **D11** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
 | **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **D11** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
-| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
-| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **N3** — the binding surface is a function of what got composed, so the interpreter cannot own it | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3.b** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
+| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3.b** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **N3.c** — the binding surface is a function of what got composed, so the interpreter cannot own it | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
 | **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
-| **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
-| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3.b** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
+| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3.a** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
 | **`mixing`** | BACKEND | DEVICE | turns sound into samples | **F1** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
 | **`transcript`** | BACKEND | DEVICE | records instead of drawing | **F1** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
-| **`gpu`** | INTERFACE | DEVICE | the GPU contract | **N3** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
+| **`gpu`** | INTERFACE | DEVICE | the GPU contract | **N3.a** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
 | **`audio`** | INTERFACE | DEVICE | the audio-device contract | **F1** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
-| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
-| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
-| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
+| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3.a** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3.a** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
+| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3.b** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
 | **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **D11** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick`, and `resizeSignal` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
-| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
+| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3.b** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
 | **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **F1** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
-| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no devices | **N3** — a participant with no devices, which is what proves a device is composed in rather than assumed | wiring only: `host_null`; an AI player that acts, and whose view sinks discard |
-| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
+| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no devices | **N3.b** — a participant with no devices, which is what proves a device is composed in rather than assumed | wiring only: `host_null`; an AI player that acts, and whose view sinks discard |
+| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3.a** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **D10** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
 | **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **D12** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
@@ -3149,7 +3149,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Linking vendor SDKs at the point of use. Rejected because a build configured without Steam would then fail to **link** rather than merely lack a feature, which makes an optional dependency mandatory by accident. |
 | **excludes** | Names only `core`. May not name `game`, `host` or any composition — a statistics service that knows what a statistic *means* has joined the domain. |
 | **falsified** | If a build with no platform services fails to link, or if any component must test for a service's presence rather than be handed a null one. **Both clauses hold**: `platform_null` is the second implementation, and every composition that reaches this contract is granted one of the two — `platform_pc` through `host_sdl`, `platform_null` through `host_null` or directly. A consumer that could tell which it was given would falsify `platform_null` rather than this contract, which is where that falsifier lives. |
-| **history** | Its vendor backend, `platform_pc`, bundles **Steam, Discord and P2P** — three duties behind one name, and one of the duty strings that still trips the Law of One. The contract is clean; that implementation is not, and the asymmetry is exactly what a contract is for. The tree also hands out `nullptr` and lets every consumer check, which is the arrangement `platform_null` exists to end — **evidence, not warrant**: the second implementation is required by N3 and by this component's own falsifier, and would be here had the tree never done it that way. |
+| **history** | Its vendor backend, `platform_pc`, bundles **Steam, Discord and P2P** — three duties behind one name, and one of the duty strings that still trips the Law of One. The contract is clean; that implementation is not, and the asymmetry is exactly what a contract is for. The tree also hands out `nullptr` and lets every consumer check, which is the arrangement `platform_null` exists to end — **evidence, not warrant**: the second implementation is required by N3.a and by this component's own falsifier, and would be here had the tree never done it that way. |
 | **owes** | nothing. |
 
 ### `host` — who owns `main`, and the split that named a defect
@@ -3212,7 +3212,7 @@ claim. **Ratification requires every cell to read yes.**
 | facet | |
 |---|---|
 | **boundary** | At the last place that is still vendor-neutral. Above it, *what* to draw; below it, how one particular API draws it. It carries the `Device` interface, the texture atlas and render diagnostics. |
-| **rejected** | One implementation with conditional compilation per API. Rejected by N3 on a specific argument rather than a stylistic one: **a contract satisfied by one implementation has never been tested as a contract**, and every assumption that implementation makes is baked in invisibly. |
+| **rejected** | One implementation with conditional compilation per API. Rejected by N3.a on a specific argument rather than a stylistic one: **a contract satisfied by one implementation has never been tested as a contract**, and every assumption that implementation makes is baked in invisibly. |
 | **excludes** | Names only `core`. May not name `scene`, `rendering` or any domain type — it takes primitives, never meanings. |
 | **falsified** | **If `gpu_sdl` needs something `gpu_opengl` does not and the contract must grow to admit it.** That is why two backends exist rather than one: the second implementation *is* the test, and a contract that has to change to accept it was fitted to the first. |
 | **history** | The render arc built this seam before it had a name. `StarRenderer_opengl.cpp` — at 1,824 lines the largest presentation file — lived in `application` beside the `Renderer` interface every painter drew through. The abstraction and its single implementation in one place is what made "swap the backend" sound harder than it is. |
@@ -3300,7 +3300,7 @@ claim. **Ratification requires every cell to read yes.**
 | facet | |
 |---|---|
 | **boundary** | Around the Lua interpreter's *lifecycle* — roots, threads, components — and deliberately **not** the mod-facing API. What a script may call is a property of what its host composed, so it cannot be owned by the thing that merely runs the script. |
-| **rejected** | An interpreter that owns the standard binding set. Rejected because it makes the binding surface a fixed list held by one component, contradicting N3 directly: an agent composition and a graphical one must offer different surfaces without either being a stripped-down build of the other. |
+| **rejected** | An interpreter that owns the standard binding set. Rejected because it makes the binding surface a fixed list held by one component, contradicting N3.c directly: an agent composition and a graphical one must offer different surfaces without either being a stripped-down build of the other. |
 | **excludes** | Names `base`, `content` and `core`. May not name `game`, `world`, any view — or `platform`: an interpreter that can reach a vendor service has a second duty nobody granted it. |
 | **falsified** | If any of the eleven groups is registered by `script` itself rather than by the component that supplies it. That is the countable form, and it is one grep. The composed form of the same test: two compositions whose closures differ **in a binding-contributing component** must differ in surface. The qualifier is load-bearing — `client_opengl` and `client_sdl_gpu` differ only in a GPU backend, which contributes no bindings, so their identical surfaces are this boundary holding rather than failing, and a falsifier that fired on the pair the design *requires* to exist would be testing nothing. |
 | **history** | There are **two** Lua surfaces, not one, and the global one is injected by the shell rather than owned by the interpreter — measured evidence that the split this boundary asserts is the one already in use. |
@@ -3322,7 +3322,7 @@ claim. **Ratification requires every cell to read yes.**
 | facet | |
 |---|---|
 | **boundary** | Around **this game's** panes, menus and screens — the specific, not the general. The line between a toolkit and a product built with one. |
-| **rejected** | Screens as part of `windowing`, or as part of the participant. Both rejected by N3: a participant that links its screens cannot be composed without them, which forecloses the agent and headless compositions this design exists to make possible. |
+| **rejected** | Screens as part of `windowing`, or as part of the participant. Both rejected by N3.b: a participant that links its screens cannot be composed without them, which forecloses the agent and headless compositions this design exists to make possible. |
 | **excludes** | Names `base`, `content`, `core`, `game`, `host`, `interaction`, `platform`, `scene`, `windowing`. May not name `world`, `universe` or any authority: a screen shows a view, never the truth behind it. |
 | **falsified** | If a composition omits `frontend` and fails to build. Its entire warrant is that a participant may link none. |
 | **history** | none. |
@@ -3446,7 +3446,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | **A null-check at each call site**, which is what a `nullptr` service forces and what the contract's falsifier forbids. Rejected because absence would then be discovered rather than composed: every consumer would carry a branch, every new service would add one to each consumer, and a build's capabilities would be a property of what happened to be non-null at runtime rather than of what was wired. Also rejected: do-nothing defaults inside `platform` itself. A contract that answers has stopped being the shape of the asking, and a default written beside the interface is not an independent second implementation — it cannot do the job two implementations exist to do. |
 | **excludes** | Names `core` and `platform`. **Names no `host`**, unlike `platform_pc` — the vendor backend needs the host because Steam's overlay and callbacks are bound to a window, and answering nothing needs nothing. That asymmetry is the clearest statement of what this component is: the contract minus every reason the real one is complicated. |
 | **falsified** | **If any consumer can tell which backend it was given without asking a capability.** A do-nothing service that reports failure, or throws, or leaves an out-parameter untouched, has made absence detectable by accident — and a caller that can detect it will branch on it, which puts the null-check back one level down. |
-| **history** | The tree hands out `nullptr` and every consumer checks: `Statistics` makes absence a lifecycle state (`m_initialized = !m_service`), and the mods menu makes it a UI branch. Both are the shape this component removes, and both are **evidence rather than warrant** — the boundary is placed by N3 and by `platform`'s own falsifier, and it would sit here if the tree had never been written. |
+| **history** | The tree hands out `nullptr` and every consumer checks: `Statistics` makes absence a lifecycle state (`m_initialized = !m_service`), and the mods menu makes it a UI branch. Both are the shape this component removes, and both are **evidence rather than warrant** — the boundary is placed by N3.a and by `platform`'s own falsifier, and it would sit here if the tree had never been written. |
 | **owes** | nothing. |
 
 ### `transport` — how packets cross, and nothing about what crosses
@@ -3498,7 +3498,7 @@ claim. **Ratification requires every cell to read yes.**
 | facet | |
 |---|---|
 | **boundary** | Identical to `client_opengl` but for one substitution: `gpu_sdl` in place of `gpu_opengl`. |
-| **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3 actually makes. |
+| **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3.a actually makes. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_sdl`, `host_sdl`, `mixing`, `participant`, `rendering`, `transport_tcp` and `windowing`. The two lists differ in exactly one entry, `gpu_sdl` for `gpu_opengl`, and that is the machine-checkable form of "the backend is swappable". |
 | **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
 | **history** | Also 32 of 41 components — same count, as it must be. |
