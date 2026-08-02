@@ -3403,7 +3403,7 @@ with two authority components and two view components orchestrating it. `univers
 
 **What the split buys, and what it does not.** `server` stops linking the replica half entirely — the
 generated composition above names both view components in its *not linked* list, which is the point. What it
-does **not** buy is `scene`: the domain still grants it, because **118 of 500 `game` files name
+does **not** buy is `scene`: the domain still grants it, because **117 of 500 `game` files name
 `Drawable`/`RenderCallback`** — appearance is woven through the entity model, not concentrated.
 
 ### The four halves, and why there are four
@@ -3563,7 +3563,7 @@ and `m_boundBox`, so those become the appearance input. The entity emits **state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
 
 **What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
-links **12 of 41 components, reaches only the MACHINE and DOMAIN zones, and does not name `scene` at
+links **13 of 41 components, reaches only the MACHINE and DOMAIN zones, and does not name `scene` at
 all** — the generated `server` diagram above lists `scene` under *not linked*. An authority that cannot name the presentation
 vocabulary is not a claim about discipline; it is a compile error waiting for anyone who tries.
 
@@ -3687,13 +3687,13 @@ and a view — which is precisely why it is the one that owes the proof.
 
 | entrypoint | links | authority? |
 |---|---|---|
-| `client_opengl` / `client_sdl_gpu` | 28 of 37 | **yes** — the desktop game hosts single-player |
-| `client_headless` | 22 of 37 | **yes** — so it can record a single-player session |
-| `client_agent` | **15 of 37** | **no** — it must connect to one over the wire |
+| `client_opengl` / `client_sdl_gpu` | 32 of 41 | **yes** — the desktop game hosts single-player |
+| `client_headless` | 26 of 41 | **yes** — so it can record a single-player session |
+| `client_agent` | **19 of 41** | **no** — it must connect to one over the wire |
 
 `client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
 cannot name an authority cannot accidentally embed one, and the composition is 19 of 41 components against
-the graphical client's 28.
+the graphical client's 32.
 
 **Why `colocation` and not `hosting`.** `host`, `host_sdl` and `host_null` already mean the *driver
 and window* host in this register. A second, unrelated meaning of "host" — the authority — in the same
@@ -3727,8 +3727,9 @@ view, which is the definition of a seam here.
 it: it names no domain type at all)*. `LuaRoot`, `ScriptableThread`, `LuaComponents`: the interpreter's
 lifecycle. **It is not the mod-facing API**, and that distinction is load-bearing.
 
-**The Lua surface is per-component and must stay that way.** 25 binding files across **six** components:
-game 36 files, frontend 6, base 2, participant 2, core 2, windowing 2. Each component exposes its own
+**The Lua surface is per-component and must stay that way.** **50** binding files across **six** components:
+game 36, frontend 6, base 2, participant 2, core 2, windowing 2 — counting headers and bodies alike,
+which is the convention `scripts/spec-measures.py` uses. Each component exposes its own
 bindings the way it exposes its own headers — `windowing` owns `widget.*`, `frontend` owns
 `interface.*`/`clipboard.*`/`voice.*`, `participant` owns `renderer.*`. Anyone later "consolidating the
 bindings" would be undoing the boundary, not tidying it.
@@ -3762,14 +3763,23 @@ services injected rather than fetched.
 
 **And that generalises past `script`.** `Root` is a **40-accessor singleton** holding every content
 database — Assets, Configuration, ItemDatabase, MonsterDatabase, TerrainDatabase, SpeciesDatabase,
-VersioningDatabase and 33 more — and `StarRoot.hpp` is included by **197 files across four components**:
+VersioningDatabase and 33 more — and `StarRoot.hpp` is included by **211 files across seven directories**:
 
-| | files including `StarRoot.hpp` |
+| directory | files including `StarRoot.hpp` |
 |---|---|
-| `game` | 139 |
-| `frontend` | 40 |
-| `windowing` | 17 |
-| `participant` | 1 |
+| `source/game` | 139 |
+| `source/frontend` | 40 |
+| `source/windowing` | 17 |
+| `source/test` | 7 |
+| **`source/rendering`** | **4** |
+| `source/server` | 3 |
+| `source/client` | 1 |
+
+**The `rendering` row is the one that matters, and an earlier count omitted it** — reporting 197
+across four directories by dropping `source/rendering`, `source/server` and `source/test`. That is the identical omission
+recorded eighty lines below about the sibling `Root::singleton` figure, and it fails the same way:
+`rendering` is the single component this design must sever from the simulation, so its `Root` coupling
+is the one whose size decides the work. Including it does not weaken the argument; it is the argument.
 
 **That is why `game` is 263 headers and cannot be split.** Every candidate decomposition — `net`,
 `script`, `storage`, or any other — reaches `Root`, and `Root` transitively owns everything. The
@@ -3878,7 +3888,7 @@ five presentation components and **no audio component at all**, while `presentat
 `AudioSink` whose strength column read *merely nullable* beside `SceneSink`'s *swappable contract*.
 That asymmetry was the whole defect in one word.
 
-**It is the same defect, in the same files.** 111 `game` files hold `Drawable`/`RenderCallback`;
+**It is the same defect, in the same files.** The same 117 `game` files hold `Drawable`/`RenderCallback`;
 **31 hold `AudioInstance`; 25 hold both.** `StarObject.hpp` carries `AudioInstancePtr m_soundEffect`
 twenty lines from its `Drawable` cache. `RenderCallback`'s six-method surface already interleaves the
 two — `addDrawable`, `addParticle`, `addLightSource`, **`addAudio`**, `addTilePreview`, `addOverheadBar`
@@ -5083,7 +5093,8 @@ Two limits apply even to the anchored fourteen:
 
 **So the honest reading of a green run is "no contradiction found", never "the design is correct."**
 The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
-assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
+assertion alone, it stands at the figure the generated block above reports, and it should fall to zero as components
+are built.
 That is a ratchet pointing the opposite way from the removal ratchet, and Section 15 should gate both.
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
