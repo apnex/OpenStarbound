@@ -274,6 +274,28 @@ def scan(text):
                              "not the register total, declare it in LOCAL_COUNT: ...%s..."
                              % (m.group(1), thing, actual, ctx[-100:])))
 
+    # DANGLING_SECTION -- a cross-reference to a section this document does not have.
+    #
+    # WHY NOW. The document carries 72 "Section N" references and is about to be restructured, which
+    # renumbers all of them. Hand-renumbering 72 references is how a document acquires a reference to
+    # a section that no longer exists, and nothing here would have noticed: prose_claims checked
+    # decision references (DANGLING_D) and never section references.
+    #
+    # THE QUALIFIER RULE, and it is the whole difficulty. Not every "Section N" is about THIS
+    # document -- L4388 reads "The boundary document's Section 12", which is a live, correct
+    # reference to docs/architecture/system-boundaries.md. A naive check flags it and gets
+    # suppressed, and a suppressed verdict is worse than none. So a reference qualified by another
+    # document is skipped, and the qualifier must appear in the sentence rather than be inferred.
+    own = set(re.findall(r'^## (\d+)\.', text, re.M))
+    for m in re.finditer(r'Section (\d+)', prose):
+        before = prose[max(0, m.start() - 70):m.start()]
+        if re.search(r"document's\s*$|\.md[^.]*$|boundary document\S*\s*$", before):
+            continue
+        if m.group(1) not in own:
+            findings.append(("DANGLING_SECTION",
+                             "references Section %s, which this document does not have: ...%s..."
+                             % (m.group(1), " ".join(prose[max(0, m.start()-60):m.end()+40].split()))))
+
     findings.extend(_scope_claims(text))
     return findings
 
@@ -296,6 +318,7 @@ SELFTEST = [
     ("STALE_ZONE",  "`content` is a LIBRARY, SUBSTRATE."),
     ("UNKNOWN_NAME", "The `client` component owns the prediction clock."),
     ("DANGLING_D",  "This follows directly from D14."),
+    ("DANGLING_SECTION", "The rule is stated in full in Section 27."),
 ]
 # A gate that fires on everything is as useless as one that fires on nothing.
 SELFTEST_CONTROL = "The `world` component owns a fixed clock and `participant` predicts against it."
