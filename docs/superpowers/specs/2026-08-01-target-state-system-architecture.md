@@ -1653,6 +1653,12 @@ transitive closure of its grant list, so these are **derived from the grant tabl
 `scripts/composition-graphs.py` and gated by `composition_graphs`. Three hand-drawn diagrams would be
 three more things to drift; nothing below is a new decision.
 
+**One counting convention, stated once.** *Links N of 41* is the closure INCLUDING the entrypoint —
+`server` links 13 because it is itself plus 12 dependencies. Prose that counts dependencies instead
+says so in the sentence, and the two readings differ by exactly one. Both figures are true and the
+document uses both; what it may not do is leave the reader to guess which is meant, because a
+one-component discrepancy between two true statements is indistinguishable from a stale number.
+
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_opengl -->
 ```mermaid
 %% composition: client_opengl
@@ -3402,9 +3408,14 @@ with two authority components and two view components orchestrating it. `univers
 `UniverseServer::run`, so it belongs to `universe`, not to the domain.
 
 **What the split buys, and what it does not.** `server` stops linking the replica half entirely — the
-generated composition above names both view components in its *not linked* list, which is the point. What it
-does **not** buy is `scene`: the domain still grants it, because **117 of 500 `game` files name
-`Drawable`/`RenderCallback`** — appearance is woven through the entity model, not concentrated.
+generated composition above names both view components in its *not linked* list, which is the point.
+
+What it does **not** buy is the `scene` grant. In the target state `game` names no `scene` — the
+register row says so — but this split is not what removes it. Tier 2 below is: the 17 `render()`
+bodies leaving `game` for `world_view`. The two moves are independent, and separating them is what
+makes the second one honest, because **117 of 500 `game` files name `Drawable`/`RenderCallback`**.
+Appearance is woven through the entity model rather than concentrated in the bodies that move, so a
+split along *who decides* passes straight through it and changes nothing about who may say `Drawable`.
 
 ### The four halves, and why there are four
 
@@ -3544,11 +3555,10 @@ not built. `world_gen` is its replacement, as a first-class composition that can
 
 ### Tier 2 — an entity no longer knows how it looks. DONE.
 
-Measured, and it is an order of magnitude smaller than the first estimate. "118 files name
-`Drawable`/`RenderCallback`" counted every file that *mentions* the types. The files that actually
-**implement the hook** are **17**, and their bodies run 1–67 lines — **521 lines in total**. That
-count is generated in Section 15; it read "thirteen" for most of this document's life, which is
-exactly why it is now measured instead of quoted.
+Measured, and it is an order of magnitude smaller than the estimate above. The 117 files *mention*
+`Drawable`/`RenderCallback`; the files that actually **implement the hook** are **17**, and their
+bodies run 1–67 lines — **521 lines in total**. That count is generated in Section 15, because a
+mention count and an implementation count differ by 7× and only one of them bounds the work.
 
 `RenderCallback` is already the sink, with a six-method surface that is exactly `scene`'s content:
 
@@ -4077,7 +4087,7 @@ two shells share almost nothing:
 
 | | `server` | `client_headless` |
 |---|---|---|
-| depends on | **12 components**, none of them in `device/` | **25 components**, two of them in `device/` |
+| depends on, excluding itself | **12 components**, none of them in `device/` | **25 components**, two of them in `device/` |
 | zones reached | `machine/` and `domain/` only | all four |
 | host contract | **never touches it** | `host_null`, for clipboard and cursor — **not audio**; it links neither `audio` nor `mixing` |
 | its loop | **supervision** — `superviseLoop`, `while (isRunning()) { sleep(100); }` | **driver** — `headlessLoop`: `clientTick` then `present` per step |
