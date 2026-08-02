@@ -254,7 +254,7 @@ fact is worse than no fact, because everything citing it inherits the overclaim 
 | **F1** | **Devices are optional.** No display, speaker or input device is required for a simulation to advance. | proven at link time: the simulation libraries link and tick with no rendering, windowing or application objects present at all | a simulation that cannot be built without a display |
 | **F2** | **Physical time is local.** No two processes read the same physical clock; every clock is a process-local monotonic tick source of unspecified origin. | verified: no wire message is ever interpreted in the receiver's clock domain — remote timestamps are echoed to their originator or consumed purely as differences | a seam that compares two machines' raw timestamps |
 | **F3** | **Simulation advances in discrete, counted steps.** Cadence, wake scheduling and timers key on an integer step counter, not on elapsed real time. | verified in the step loop; the counter, not the clock, is what subsystems are scheduled against | a subsystem scheduled on wall-clock inside a stepped simulation |
-| **F4** | **Content instances are opaque.** The engine indexes materials, items, species, monsters and dungeons by names it never enumerates. | verified: no species, material, liquid, monster, object, dungeon or biome instance name appears anywhere in the game sources | an engine that must be recompiled to add a rock |
+| **F4** | **Content instances are opaque, with three named exceptions.** The engine indexes materials, items, species, monsters, dungeons and biomes by names it never enumerates — except where it must survive that content's *absence*. | verified by sweep: no material, liquid, monster, object, dungeon or biome instance name appears in the game sources. **Three do**, and all three are fallbacks — `human` (the species of an identity built from a config that omits one), `money` (the currency the quest-reward path names), `perfectlygenericitem` (the item-recovery fallback) | an engine that must be recompiled to add a rock |
 
 **F1 and F2 are why a distributed Starbound is reachable at all.** If a simulation needed a display,
 there would be nothing to place on a headless machine; if two processes shared a clock, no seam
@@ -535,8 +535,8 @@ it is a property we have already been billed for lacking.
 | **serves** | **N2** — a closed vocabulary makes the engine the bottleneck for every content ambition. **F4** — the instance half of content opacity is already true; this extends the same property one level up. |
 | **costs** | **Every kind-specific behaviour must become declarative**, which is a large body of work and a real expressiveness question. |
 
-**What is actually at stake.** F4 records that content *instances* are opaque — genuinely, thoroughly
-so. What is closed is the set of *kinds*: item types with a compiled class each, object types, dungeon
+**What is actually at stake.** F4 records that content *instances* are opaque apart from three named
+fallbacks. What is closed is the set of *kinds*: item types with a compiled class each, object types, dungeon
 brushes, a metamaterial band whose connectivity and collision rules are compiled in, and a handful of
 stat names with engine-defined meaning. Adding an item *kind* means touching an enum, a name map, an
 extension map and a factory chain.
@@ -3821,7 +3821,7 @@ not a coincidence; it is the difference between *content* and *domain tables*.
 | **rejected** | `Root` as it stands: a god object reachable from everywhere that offers content access *and* is the ambient answer to every other question. Rejected because when anything can reach anything, no boundary is anywhere — which is why `game` was underivable until this contract existed. |
 | **excludes** | Names `base` and `core` only. May not name `game`: **`game`'s `Root` implements this contract**, so the dependency runs downward from implementation to interface and never back. |
 | **falsified** | If the engine must enumerate a content instance by name in order to work. |
-| **history** | It already leaks in exactly one place: **`perfectlygenericitem` is hardcoded by name** as the universal item-recovery fallback, complete with a user-facing string. Verification found it, and it is the single counter-example to F4's otherwise strong result of zero content-instance names across the game sources. |
+| **history** | It leaks in **three** places, and they share a shape: `perfectlygenericitem` (the item-recovery fallback, complete with a user-facing string), `money` (the quest-reward currency) and `human` (the default species). Each is a name the engine reaches for when content supplies none. **The species case is the live one** — the lookup throws on a miss, so an installation without the `human` species faults rather than degrades, which is F4's own "what it forbids" clause firing on the current tree. An earlier draft called `perfectlygenericitem` the *single* counter-example; a one-line sweep refutes that, and the overclaim is recorded here because F4's own preamble warns that everything citing an overclaimed fact inherits it silently. |
 | **owes** | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 
 Adopted as a CONTRACT in `machine/`: `assets()`, `configuration()`, and — target state — the two
