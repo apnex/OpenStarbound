@@ -391,10 +391,15 @@ _SHARED_ROW = re.compile(r'^\| \*\*`([a-z_]+)`\*\* \|', re.M)
 # rule were stated over "contract" in a form `spec-consistency` had already narrowed to INTERFACE,
 # so the document and its gate disagreed about the document's own rules, and the gate was right.
 #
-# A ceiling rather than a ban, because the remaining sites need READING, not replacing: some mean
-# INTERFACE, some mean VOCABULARY, and some are ordinary English about a contract. Each one decided
-# lowers this number. It may fall and may never rise. Zero is the target.
-DEAD_KIND_CEILING = 25
+# THE RATCHET REACHED ZERO ON THE DAY IT WAS SET. All 25 sites were read and decided: most meant
+# INTERFACE, four meant VOCABULARY (`net`, `scene`, `sound`), and the last two were narration OF THE
+# RENAME ITSELF -- the one thing that cannot be said without naming the retired kind, which is what
+# the HISTORICAL fence is for.
+#
+# At zero this stops being a ratchet and becomes a ban, and that is the right shape now: there is no
+# longer a legitimate live use, so the next appearance is a regression rather than a leftover. Raising
+# this number is not a way to make a build green.
+DEAD_KIND_CEILING = 0
 DEAD_KINDS = ("CONTRACT",)
 
 

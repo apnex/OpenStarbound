@@ -1003,11 +1003,13 @@ it was not a tightening, it was false, and it contradicted the grant table's own
 stated the correct rule in three separate places the whole time. `CONTRACT_GRANT` reads the register
 rather than the prose, so the rule and the model can no longer disagree quietly.
 
+<!-- HISTORICAL -->
 **INTERFACE and VOCABULARY were one kind called CONTRACT until 2026-08-02, and this table was the last
 place still saying so.** The split is not a renaming: *only an INTERFACE can be implemented*. The
 distinction is what `platform` (eight operations, two backends) has and `scene` (a type language, no
 backends, and none possible) does not, and stating it as one kind made the "two implementations prove
 a contract" rule read as an accusation against `scene`, `sound` and `net`, which can never satisfy it.
+<!-- END HISTORICAL -->
 
 **The `.cpp` size figures that used to sit in this table have gone to Section 17**, where current-state
 measurements belong. A rule about what a kind may contain does not become truer by reciting how many
@@ -1029,10 +1031,16 @@ last grouping axis, and the one the clusters in the diagram draw:
 | **COMPOSITION** | where the two arms rejoin into an executable |
 
 Zone is not a synonym for kind, but it is close enough that the closeness had to be measured:
-`platform` is a CONTRACT in `machine/` while `scene` is a CONTRACT in `domain/`, and `host_sdl` is a
-BACKEND in `machine/` while `rendering` is a BACKEND in `device/`. **ZONE is 80% determined by KIND —
-only 8 of 45 components deviate from their kind's default**, and the axis earns its place on those
-eight. That measurement is why the zones were cut from five to four; see the zone section below.
+`platform` is an INTERFACE in `machine/`, `celestial` is an INTERFACE in `domain/` and `gpu` is an
+INTERFACE in `device/` — one KIND across three ZONEs. `host_sdl` is a BACKEND in `machine/` while
+`rendering` is a BACKEND in `device/`. **13 of 45 components deviate from their KIND's modal ZONE**,
+and BACKEND has no modal zone at all: it splits exactly six MACHINE to six DEVICE. See the zone section below.
+
+<!-- HISTORICAL -->
+The measurement that drove cutting the zones from five to four was 8 of 45 deviating. Splitting
+CONTRACT into INTERFACE and VOCABULARY and adding the transport components moved it to 13, so the
+axis carries more of its own weight now than it did when the decision to keep it was taken.
+<!-- END HISTORICAL -->
 
 Neither axis reuses **TIER** (T0–T5, `docs/architecture/system-boundaries.md`) or **LAYER** (L1/L2/L3,
 the render decomposition). Both words are already load-bearing elsewhere in this repository and mean
@@ -1185,7 +1193,7 @@ a true two-identity component, and it is precisely what `--o` exists *not* to be
 `application` is not *driven through* `platform`, it **is** a platform backend as well as a host one.
 
 **"Checkable" is now literal.** `spec_consistency`'s IMPLEMENTS_ARITY verdict asserts that every
-BACKEND has exactly one `==>` and that it points at a CONTRACT. That check did not exist when the rule
+BACKEND has exactly one `==>` and that it points at an INTERFACE. That check did not exist when the rule
 was written, which is the whole reason two backends sat at arity 2 through every green run — **not**
 because the instruments cannot see subgraph-drawn components, since they read both forms, but because
 nothing counted. A rule stated as checkable and left uncounted is a rule in name only.
@@ -1489,8 +1497,8 @@ The four that replace them each answer the same question — **what does this co
 | **`device/`** | a display, a speaker, a file, a recorder | 9 |
 | **`composition/`** | the other three; it wires them | 8 |
 
-**SEAM is gone, and no `boundary/` directory replaces it.** A CONTRACT already declares that it is a
-boundary, so a directory saying it again would be the second-declaration defect this document has
+**SEAM is gone, and no `boundary/` directory replaces it.** An INTERFACE or VOCABULARY already
+declares that it is a boundary, so a directory saying it again would be the second-declaration defect this document has
 removed repeatedly. The rule instead:
 
 > **A contract lives in the zone of what it abstracts, not in a zone of its own.**
@@ -1718,7 +1726,7 @@ clipboard. It owns nothing about how that window is drawn to. Everything else be
 | **wiring** | the window creation flags — the entrypoint names both host and backend, so it supplies them, exactly as it supplies `headlessLoop`'s pacing |
 
 **`swapTick` moves from `host_sdl` to `gpu`, and that is the deduplication.** Present is a device
-operation, so the CONTRACT owns the element and each backend implements it: `SDL_GL_SwapWindow` in
+operation, so the INTERFACE owns the element and each backend implements it: `SDL_GL_SwapWindow` in
 one, a device present in the other. **One element, one name, two implementations** — rather than a
 `glSwapTick` and a `gpuSwapTick` that would have to be kept in step by hand.
 
@@ -3095,7 +3103,7 @@ is actually established today.
 | `content` | core, base | the data seam; names `Assets` and `Configuration`, both already in `base` and both domain-free |
 | `storage` | core, base, content, script | **names no domain type** — `BTreeDatabase` and `VersioningDatabase` both score zero for World/Entity/Player. It names `script` because **migrations are Lua**, which is independent evidence that `script` belongs below the domain |
 | `game` | core, base, platform, celestial, net, script, content, storage | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it. **It is the only component that may name `Root`** — the 38 content databases are its private table, and it publishes them by *implementing* `content` |
-| `celestial` | core, base | a CONTRACT names only foundations and other contracts; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
+| `celestial` | core, base | an INTERFACE names only FOUNDATION, INTERFACE and VOCABULARY components; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
 | `worldgen` | core, base, game, celestial, content | **names no `world`** — generation knows nothing that ticks |
 | `world` | core, base, game, worldgen, storage | **names no `scene`**; it calls generation lazily, per region |
 | `universe` | core, base, game, net, world, worldgen, celestial, storage, transport | it manages worlds, so it names `world`; `world` never names it back. **Implements `CelestialMasterDatabase`**, and holds `CelestialGraphics` — which needs `worldgen`'s biome and terrain databases |
@@ -3147,7 +3155,7 @@ repeated here, because one fact gets one writer.
 
 **Length is a consequence of the questions, never a target.** `core` answers the boundary question in
 a sentence — it is the substrate, there is no inward step. `presentation` needs a page, because its
-boundary is the one this design turns on. A BACKEND genuinely has less to say than a CONTRACT, and a
+boundary is the one this design turns on. A BACKEND genuinely has less to say than an INTERFACE, and a
 fixed shape shows that as brevity rather than hiding it as an omission.
 
 **Why this is counted rather than asserted.** Nothing could previously tell a derived component from
@@ -4051,8 +4059,8 @@ representation at all. `LuaEngine` is 4,681 symbols in `starbound_server` — th
 thing after `game` itself — and it was invisible.
 <!-- END HISTORICAL -->
 
-**`net`** — CONTRACT, `domain/`. The 11 `NetElement*` headers, **already in `core` and already domain-free**
-(10 of 11 name no domain type). It is a CONTRACT rather than a library because domain types *derive
+**`net`** — VOCABULARY, `domain/`. The 11 `NetElement*` headers, **already in `core` and already domain-free**
+(10 of 11 name no domain type). It is a VOCABULARY rather than a library because domain types *derive
 from* `NetElement`: it is the vocabulary of replication, used identically by the authority and the
 view, which is the definition of a seam here.
 
@@ -4155,7 +4163,7 @@ not a coincidence; it is the difference between *content* and *domain tables*.
 | **history** | It leaks in **three** places, and they share a shape: `perfectlygenericitem` (the item-recovery fallback, complete with a user-facing string), `money` (the quest-reward currency) and `human` (the default species). Each is a name the engine reaches for when content supplies none. **The species case is the live one** — the lookup throws on a miss, so an installation without the `human` species faults rather than degrades, which is F4's own "what it forbids" clause firing on the current tree. Calling `perfectlygenericitem` the *single* counter-example is the tempting form and a one-line sweep refutes it; the count is recorded here rather than in prose because F4's own preamble warns that everything citing an overclaimed fact inherits the overclaim silently. |
 | **owes** | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 
-Adopted as a CONTRACT in `machine/`: `assets()`, `configuration()`, and — target state — the two
+Adopted as an INTERFACE in `machine/`: `assets()`, `configuration()`, and — target state — the two
 services `LuaRoot` currently reaches into `Root` for, `toStoragePath()` and `registerReloadListener()`.
 `Assets` and `Configuration` both already live in `base` and both name World/Entity/Player **zero**
 times, so the contract costs nothing to state.
@@ -4240,9 +4248,9 @@ it turns state into a `Drawable`. `game` is granted `sound` no more than it is g
 
 | render | audio | duty |
 |---|---|---|
-| `scene` CONTRACT | **`sound`** CONTRACT | what exists / what is audible — vocabulary, no engine |
+| `scene` VOCABULARY | **`sound`** VOCABULARY | what exists / what is audible — a type language, no engine |
 | `rendering` BACKEND | **`mixing`** BACKEND | turns that vocabulary into pixels / into PCM |
-| `gpu` CONTRACT | **`audio`** CONTRACT | the device interface |
+| `gpu` INTERFACE | **`audio`** INTERFACE | the device interface |
 | `gpu_opengl` BACKEND | **`audio_sdl`** BACKEND | the one place a device is opened |
 
 Four components for four files looks heavy until the separability test is applied to each, and each
@@ -4322,13 +4330,13 @@ What does survive is the acyclicity, by a different route: the four contract hea
 `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`
 and `StarPerlin` — every one of them `core` — plus `StarWorldParameters`, which moves in (below).
 
-### `celestial` — a CONTRACT, because two components consume the star map and neither owns it
+### `celestial` — an INTERFACE, because two components consume the star map and neither owns it
 
 | facet | |
 |---|---|
 | **boundary** | At the star map's *vocabulary and lookup interface*, not at its data. A world's description — where it is, what kind it is, what parameters generate it — is consumed by two components at different times and owned by neither: approaching a planet reads it, landing feeds the same type to the generator. A shared input consumed by two components is a component. |
 | **rejected** | **A LIBRARY holding the star map itself.** That was the first draft's answer and it fails N1.b: a library carrying the database cannot be looked up across a machine, so a placed authority would have to carry the whole star map with it. Also rejected: leaving these types loose in `game`, which makes every consumer of a planet's description name the entire domain. |
-| **excludes** | May not name `world`, `worldgen` or `game`. A CONTRACT that names a LIBRARY is not a seam — it is a coupling wearing a seam's label — and every other contract here (`scene`, `sound`, `gpu`, `audio`, `host`, `platform`) names only foundations and other contracts. It carries **no database implementation**: the master belongs to `universe`, the slave to `universe_view`. |
+| **excludes** | May not name `world`, `worldgen` or `game`. An INTERFACE that names a LIBRARY is not a seam — it is a coupling wearing a seam's label — and every other contract here (`scene`, `sound`, `gpu`, `audio`, `host`, `platform`) names only foundations and other contracts. It carries **no database implementation**: the master belongs to `universe`, the slave to `universe_view`. |
 | **falsified** | If `world` ever needs it. `WorldServer` and its agents name `Celestial` **zero** times and `WorldTemplate` takes a `CelestialDatabasePtr` rather than a concrete database — so the day a world authority needs the star map, this boundary is in the wrong place. |
 | **history** | The same split exists in the tree already: `CelestialDatabase` is abstract, with `CelestialMasterDatabase` and `CelestialSlaveDatabase` beneath it — the authority/view division this design applies everywhere else, sitting inside a component that reads as indivisible from its name. **Corroboration, not the reason.** The boundary is placed by the duty above; that the code independently arrived at the same shape is evidence the duty is real, and it would still be placed there if the code had not. |
 | **owes** | **The vocabulary/interface split**, and there are now two independent reasons for it. Its duty reads *"the star map's vocabulary **and** its lookup interface"* — an "and", which is A3's own test — and `spec_consistency`'s `UNANSWERED` verdict adds the second: `world_gen` and `world_sim` reach this INTERFACE for `CelestialParameters` and never call the database, so both have to be declared exceptions. When the halves separate, the vocabulary half stops being an INTERFACE and both declarations disappear. `StarCelestialDatabase.hpp` holds all three classes in one header, so the split cannot be enforced or even attributed by an instrument until the header is divided. Second instance of the same shape as `base/StarMixer.hpp` holding `AudioInstance` beside `Mixer` — **the contract and its implementations sharing a file** — which is worth naming as a pattern, since two of the components adopted here are blocked on exactly it. |
@@ -4338,7 +4346,7 @@ Measured, and it separates cleanly in both directions: `WorldServer` and its age
 `CelestialDatabase` directly. So `world` does not need it and `worldgen` does, which is exactly the
 2×2 the separability test asks for.
 
-**It is a CONTRACT rather than a LIBRARY because of what it must survive**, and the tree happens to
+**It is an INTERFACE rather than a LIBRARY because of what it must survive**, and the tree happens to
 agree. N1.b requires a star map to be *looked up*, possibly across a machine; a LIBRARY carrying the
 database cannot be, so a placed authority would have to take the whole map with it. That decides the
 kind on its own. What the tree adds is corroboration, and it is worth having:
@@ -4359,7 +4367,7 @@ concrete database. **`worldgen` depends on the contract alone**, which is what t
 and what it would have to be changed to do if it did not.
 
 **`WorldParameters` moves into `celestial`, and that is what makes the contract clean.** The four
-headers' only non-`core` include is `StarWorldParameters.hpp`, and a CONTRACT that names a LIBRARY is
+headers' only non-`core` include is `StarWorldParameters.hpp`, and an INTERFACE that names a LIBRARY is
 not a seam — it is a coupling with a seam's label. Every other contract in the register
 (`scene`, `sound`, `gpu`, `audio`, `host`, `platform`) names only foundations and other contracts, so
 the invariant is real and worth keeping. Measured cost of the move: `StarWorldParameters.hpp` is
@@ -4367,8 +4375,8 @@ included by exactly **three** files — `StarCelestialParameters.hpp`, `scriptin
 and itself — and `WorldServer`/`WorldClient` name it **zero** times. It was never a `world` type. It is
 the star map's description of a world, which is the definition of `celestial`.
 
-The residue is one edge: `game --> celestial`, for that single Lua binding file. A LIBRARY naming a
-CONTRACT is legal and cheap, and because `celestial` carries no database implementation, `world_sim`
+The residue is one edge: `game --> celestial`, for that single Lua binding file. A LIBRARY naming an
+INTERFACE is legal and cheap, and because `celestial` carries no database implementation, `world_sim`
 transitively naming it costs nothing — it gets types, never a star map. That is precisely the value of
 the contract form over the library form.
 
@@ -4797,7 +4805,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`universeTick`** | TICK | FREE | **UNIVERSE** | `universe` | `universe` | one supervision step: world lifecycle, connections, warps |
 | **`worldTick`** | TICK | FIXED | **WORLD** | `world` | `world` | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
 | **`recordTick`** | TICK | DERIVED | **PROCESS** | `transcript` | `driver` | the same scene `presentTick` would paint, written down instead |
-| **`swapTick`** | TICK | DISPLAY | **PROCESS** | `gpu` | `driver` | presents the backbuffer; **where vsync actually blocks**. Owned by the CONTRACT and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
+| **`swapTick`** | TICK | DISPLAY | **PROCESS** | `gpu` | `driver` | presents the backbuffer; **where vsync actually blocks**. Owned by the INTERFACE and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
 | **`resizeSignal`** | SIGNAL | EVENT | **PROCESS** | `participant` | `driver` | the window changed; surfaces must be rebuilt |
 | **`openglWiring`** | WIRING | ONCE | **PROCESS** | `client_opengl` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
 | **`headlessWiring`** | WIRING | ONCE | **PROCESS** | `client_headless` | `driver` | composes `host_null` + `participant` + `transcript` |
@@ -4815,7 +4823,7 @@ The register above says what each element *is*. This says what starts it, and it
 runtime projection's edges rather than written, so the two cannot disagree.
 
 **The arrows carry the design.** `CALL` is a direct call inside one component. `DISPATCH` crosses a
-CONTRACT — the caller names an interface and never the implementation, which is what makes
+INTERFACE — the caller names it and never the implementation, which is what makes
 `client_opengl` and `client_sdl_gpu` differ by a grant rather than by a code path. `HANDOFF` crosses a
 thread or a process, and is the only kind that survives the network split unchanged.
 
@@ -4848,7 +4856,7 @@ split hides nothing the single column showed.
 | **`inputTick`** | TICK | DERIVED | `frameLoop` | CALL | — | drains the OS event queue |
 | **`presentTick`** | TICK | DERIVED | `frameLoop` · `headlessLoop` · `resizeSignal` | DISPATCH | `clientTick` → scene delta · SceneSink · SEAM 1 | resample, camera, assemble, paint |
 | **`recordTick`** | TICK | DERIVED | **nothing** | *the sink's consumer runs it. That a recorder can be a separate process is exactly what makes seam 1 a handoff* | `clientTick` → scene delta · SceneSink — the recorder, not the painter | the same scene `presentTick` would paint, written down instead |
-| **`swapTick`** | TICK | DISPLAY | `presentTick` | DISPATCH | — | presents the backbuffer; **where vsync actually blocks**. Owned by the CONTRACT and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
+| **`swapTick`** | TICK | DISPLAY | `presentTick` | DISPATCH | — | presents the backbuffer; **where vsync actually blocks**. Owned by the INTERFACE and *dispatched*: `SDL_GL_SwapWindow` in `gpu_opengl`, a device present in `gpu_sdl`. **One element, one name, two implementations** |
 | **`universeTick`** | TICK | FREE | `universeLoop` | CALL | — | one supervision step: world lifecycle, connections, warps |
 | **`worldTick`** | TICK | FIXED | `worldLoop` | CALL | — | one step of ONE world. **The element this whole design exists to run without a participant**, and the unit a distributed Starbound would place — which is D1's second purpose, reachable only because placement is wiring |
 | **`resizeSignal`** | SIGNAL | EVENT | **nothing** | *a signal is **raised**, not driven; `inputTick` reports the window changed* | `inputTick` → window changed | the window changed; surfaces must be rebuilt |
@@ -6015,7 +6023,7 @@ that cannot see a kind of coupling reports its absence as cleanliness.
 | `RenderTileArray` | `game` | `scene` | **NARROW, then MOVE** — the typedef is clean and its header is not. Split `StarWorldTiles.hpp` first (Section 16 R6), or the tile simulation moves with it |
 
 **Not one of those targets is `presentation`, and that is a buildability constraint rather than a
-naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound` are CONTRACTs
+naming preference.** `presentation` is an INTERFACE in **`device/`**; `scene` and `sound` are VOCABULARYs
 in **`domain/`**. Grants point `COMPOSITION → DEVICE → DOMAIN → MACHINE`, so a DOMAIN component may
 never name a DEVICE one. `game` and `world_view` are both DOMAIN and both name
 `Drawable` on nearly every page of this design — so with `Drawable` in `presentation`, `game` would
@@ -6105,7 +6113,7 @@ rule that "owed" is an authoring state rather than a document feature.
    `finishFrame()` and then lets the overlay draw; the source annotates it *"THE TRUE END OF THE
    FRAME"* and *"the renderer cannot do this itself: it does not own this ordering."* So a host owns an
    ordering constraint over the GPU, and the graft rule rejects it: `host_sdl` and `gpu_opengl` share
-   no CONTRACT. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
+   no INTERFACE. This is the `host_sdl -> gpu` crossing already on the removal ratchet at ceiling 1.
    **Both defects of this class were found the same way** — by drawing the runtime and asking the
    compile projection for permission — and neither was visible in the dependency graph alone.
 4. **Section 17 states the delta's shape and not the delta.** It names what a delta document has to
