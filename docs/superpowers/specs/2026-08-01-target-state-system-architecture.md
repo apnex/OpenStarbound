@@ -429,7 +429,7 @@ model at once by the layering and placement gates in Section 15.
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = **swappable contract** — *upgraded from "merely nullable"*: the register grew `sound`, `mixing`, `audio` and `audio_sdl`, and a modality with a backend is not a nullable afterthought. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
-| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 10 and the risk in Section 16. |
+| **D6** | **The contract targets T2.** It may name only core, base and the payload vocabularies themselves — `scene` and `sound`. See Section 10 and the risk in Section 16. |
 | **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 17. |
 | **D8** | **A seam's co-located path is an optimisation, never a different contract.** Either it performs the same encode and decode as the split path, or an oracle proves the two agree. Owned by `colocation`. Stated in full in Section 13. |
 | **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 10, and derived below. |
@@ -1474,10 +1474,12 @@ never answers, and there is exactly one source, polled once per frame.** A metho
 on something called a *Sink* is a naming error before it is a design error — which makes the constraint
 reviewable by reading, not only by counting.
 
-**`SceneSink` replaces the `FrameSink` an earlier draft named.** `present(Frame const&)` hands over a
-finished, camera-resolved frame, which welds the pixel rate to the assembly rate; `accept(SceneDelta)`
-does not. Both this table and Section 8 still said `Frame` after the payload had already changed — an
-inconsistency inside one document, and exactly what the aggregate-approval rule exists to catch.
+**The sink is named for its payload, and `SceneSink` rather than `FrameSink` is the whole argument in
+one word.** `present(Frame const&)` hands over a finished, camera-resolved frame, which welds the
+pixel rate to the assembly rate; `accept(SceneDelta const&)` does not. A sink named for the frame
+would carry that welding in its type name, where every reader would learn it and no instrument would
+question it — so the payload's name is the one thing in this design that may not drift, and every
+register that names it is checked against this one.
 
 ### What `scene` actually contains
 
@@ -3349,7 +3351,8 @@ claim. **Ratification requires every cell to read yes.**
 
 ### The T2 vocabulary
 
-`Frame`, `AudioBatch` and `InputBatch` may name **only core, base and presentation-vocabulary types**.
+`SceneDelta`, `AudioBatch` and `InputBatch` may name **only core, base and the payload vocabularies
+themselves** — `scene` and `sound`, both DOMAIN contracts.
 That constraint is what forces the cleanup, and it is what lets the contract sit at T2 where no
 implementation needs `game`.
 
@@ -4885,19 +4888,25 @@ something, and the entry names what permits it.
 
 | handoff | bound | on overflow | observed by | why that policy is legal |
 |---|---|---|---|---|
-| scene delta → presentation | **1** | **chosen by the composition** — *replace* for a display, *block-free append* for a recorder | the presentation backend, counter `scene.dropped` | F1 permits nobody to be watching, so a display is owed no particular frame. **A transcript is owed every one**: a recording with gaps is not a recording, so the policy is the composition's rather than the seam's — the same shape the driver already uses for pacing |
+| scene delta → **a display** | **1** | **replace** | the presentation backend, counter `scene.dropped` | F1 permits nobody to be watching, so a display is owed no particular frame; a newer scene supersedes an older one |
+| scene delta → **a recorder** | **N deltas, declared by the composition** | **stop the recording and raise** | `transcript`, counters `record.depth` and `record.aborted` | **A transcript is owed every delta** — a recording with gaps is not a recording, so no drop is permitted here. Nor is *unbounded*, which is the memory leak this section opens by naming. A recording that stops and says so is still a recording; one that silently truncates is not, and the raise is what makes the difference observable |
 | audio batch → mixing | **2 device periods**, in samples | **replace** | `mixing`, counter `audio.batch.dropped` | the device pulls on its own clock (F2); two periods is one being consumed and one ready |
 | input → participant | **one step's worth, 64 events** | **fail loudly** | `participant`, counter `input.overflow` — and it raises, never merely counts | dropped input is a *wrong game*, not a slow one. Nothing in the axioms or the goals permits an input to vanish, so this row has no legal drop |
 | participant command → authority | **32 commands** | **reject, and tell the sender** | the authority, counter `command.rejected` | D11 — a request that cannot be made must be *known* to have failed, or the view diverges believing it succeeded |
 | world state → participant | **1 per world** | **coalesce** | the authority, counter `state.coalesced` | a later state supersedes an earlier one; replication is a convergence process, not a log |
 | resize → presentation | **1** | **coalesce** | the presentation backend, counter `resize.coalesced` | only the final size is real |
 
-**The scene-delta row is the one that changed under scrutiny, and it is worth saying why.** An earlier
-version declared a single policy — *replace* — which is correct for a display and **wrong for a
-recorder**: a transcript that silently drops scene deltas is not a transcript. The justification cited
-F1, and F1 says perception is optional, not that *records* are. So the policy belongs to the
-composition, exactly as the driver's pacing does: same element, same code, behaviour chosen by the
-entry point that assembled it.
+**One seam, two rows, and that is the point.** Seam 1 carries scene deltas to a display and to a
+recorder, and a single policy cannot serve both: *replace* is correct for a display and wrong for a
+recorder, because a transcript that silently drops deltas is not a transcript. F1 does not rescue it —
+F1 says perception is optional, not that *records* are.
+
+Writing it as one row with the policy deferred to the composition looks like the same move the driver
+makes for pacing, and it is not. It leaves the recorder half with a bound of 1 it never enforces and a
+`scene.dropped` counter that can never be non-zero, so the row states a limit nothing can violate.
+**A bound that cannot be exceeded is not a bound**, and the fourth column would then be arguing why
+the recorder must not drop rather than why its policy is legal. Two rows, two bounds, two legal
+failures.
 
 **Two rules follow, and both are model-wide rather than local.** *Blocking is never an overflow
 policy* — a producer that blocks on a consumer has joined their clocks, and F2 says physical time is
@@ -5543,8 +5552,8 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `Drawable` | `game` | `scene` | **MOVE** — six core includes, already carries `DataStream` operators |
 | `WorldCamera` | `game` | `scene` | **MOVE** — view state, 4 includes from `rendering` |
 | text metrics (`stringWidth`, `wrapText`, `determineTextSize`, …) | `rendering/TextPainter` | simulation side | **SPLIT** — layout is data; rasterisation stays |
-| `WorldRenderData` | `game` | folded into `Frame` | **RENAME + RESHAPE** — it is already the frame view model |
-| `Frame` | — | `scene` | **NEW** — the scene payload itself |
+| `WorldRenderData` | `game` | **decomposed into the eight scene groups** | **RESHAPE** — its members are where the groups came from, but it is one struct assembled per frame and the payload is a delta; it is the delta's *source*, not the delta |
+| `SceneDelta` | — | `scene` | **NEW** — the scene payload itself, and the type `SceneSink::accept` takes |
 | `AudioBatch` | — | `sound` | **NEW** — `sound` is declared "`AudioInstance` and its batch encoding"; this is that encoding |
 | `InputBatch` | — | `presentation` | **NEW** — the one payload that *is* device-side; see below |
 | `AnchorTypes` | `rendering` (35 lines) | `scene` | **MOVE** — text anchoring is vocabulary, not drawing |
