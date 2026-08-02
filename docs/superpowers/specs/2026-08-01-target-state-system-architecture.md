@@ -252,7 +252,7 @@ fact is worse than no fact, because everything citing it inherits the overclaim 
 | | the fact | how it is known | what it forbids |
 |---|---|---|---|
 | **F1** | **Devices are optional.** No display, speaker or input device is required for a simulation to advance. | proven at link time: the simulation libraries link and tick with no rendering, windowing or application objects present at all | a simulation that cannot be built without a display |
-| **F2** | **Physical time is local.** No two processes read the same physical clock; every clock is a process-local monotonic tick source of unspecified origin. | verified: no wire message is ever interpreted in the receiver's clock domain — remote timestamps are echoed to their originator or consumed purely as differences | a seam that compares two machines' raw timestamps |
+| **F2** | **Physical time is local.** No two independent clock sources share a time base — neither two processes, nor a process and a device. Every clock is a monotonic tick source of unspecified origin, local to whatever owns it. | verified in two halves, because the fact is cited at both widths. **Across processes:** no wire message is ever interpreted in the receiver's clock domain — remote timestamps are echoed to their originator or consumed purely as differences. **Across a device boundary in one process:** the device is the party that asks. `SDL_OpenAudioDeviceStream` takes a callback we fill, so the sound card's sample clock decides when mixing happens; `SDL_GL_SwapWindow` blocks on the display's refresh, so the panel decides when a frame lands. Neither rate is readable from the simulation's clock, and both run when they run | a seam that compares two machines' raw timestamps — and equally, a producer that drives a device from its own cadence |
 | **F3** | **Simulation advances in discrete, counted steps.** Cadence, wake scheduling and timers key on an integer step counter, not on elapsed real time. | verified in the step loop; the counter, not the clock, is what subsystems are scheduled against | a subsystem scheduled on wall-clock inside a stepped simulation |
 | **F4** | **Content instances are opaque, with three named exceptions.** The engine indexes materials, items, species, monsters, dungeons and biomes by names it never enumerates — except where it must survive that content's *absence*. | verified by sweep: no material, liquid, monster, object, dungeon or biome instance name appears in the game sources. **Three do**, and all three are fallbacks — `human` (the species of an identity built from a config that omits one), `money` (the currency the quest-reward path names), `perfectlygenericitem` (the item-recovery fallback) | an engine that must be recompiled to add a rock |
 
@@ -1294,10 +1294,11 @@ design, and what each composition reaches into `device/` is the whole story:
 | `client_agent` | `presentation` **only**: the contract, and no implementation of it at all |
 | `server` · `world_sim` · `world_gen` | nothing — they do not enter `device/` |
 
-This read "`client_opengl` is the only box that touches both arms" until 2026-08-02, which was true
-when there was one client. Four compositions touch both arms now, and the gradient between them is
-the design working: `client_agent` proves the contract is severable by naming it and linking no
-implementation, and `client_headless` proves a backend need not be hardware.
+**Four compositions touch both arms, and the gradient between them is the design working.** With one
+client the interesting fact is that a single box touches both; with four it is the shape of the
+staircase — `client_agent` reaches the contract and no implementation of it, `client_headless` reaches
+a backend that is a file, the two graphical clients reach hardware. Each rung removes one thing and
+the composition still stands, which is what "severable" has to mean if it means anything.
 
 ### Two roles, two names
 
@@ -3867,11 +3868,12 @@ outside `source/game/`** — `frontend` 43, `windowing` 17, `source/test/` 8, **
 every one of which should be reading `content`. Inside `game` the `StarRoot.hpp` includes are
 legitimate and stay.
 
-**That count read 66 until 2026-08-02, and the omission was the load-bearing one.** The old breakdown
-listed frontend, windowing, utility and server, and left out `rendering` — the single component this
-design must sever from the simulation, and therefore the one whose `Root` coupling matters most. It
-also dropped `source/test/` and `source/client/`. A number labelled "outside `game`" that quietly means "outside
-`game`, and also outside four other directories I did not think of" is worse than no number.
+**The denominator is every directory, and naming them is the point.** A breakdown of frontend,
+windowing, utility and server omits `rendering` — the single component this design must sever from the
+simulation, and therefore the one whose `Root` coupling matters most — along with `source/test/` and
+`source/client/`. A number labelled "outside `game`" that quietly means "outside `game`, and also
+outside four other directories nobody listed" is worse than no number, because the omission always
+lands on whatever was not front of mind, and what is not front of mind is what a design misses.
 
 **Live reads, not raw occurrences**, and the distinction costs three files: `rendering` matches
 `Root::singleton` in 7 files by plain grep and in 4 after comments are stripped, which is the same
@@ -3933,13 +3935,13 @@ passes: `game` and `world_view` name `sound` and never `mixing`; a recorder woul
 without `audio_sdl`, exactly as `transcript` wants a presentation backend without a GPU backend;
 and `client_headless` links **`sound` and none of the other three**, which is the entire point.
 
-That claim read "links **none of the four**" until 2026-08-02, and it was refuted by the clause
-immediately before it: if `game` names `sound`, then every composition that links `game` links
-`sound`, and `client_headless` links `game`. The corrected version is the stronger one anyway — it is
-the exact parallel of the `scene`/`rendering` split one modality over. **A headless client carries the
-audio *vocabulary* and none of the audio *machinery***, in the same way it carries `scene` and no
-painter. Carrying neither would mean entities could not describe the sounds they make, which is a
-simulation fact and has nothing to do with whether anyone is listening (D9).
+**One of the four, not none of them**, and the arithmetic forces it: `game` names `sound`, so every
+composition that links `game` links `sound`, and `client_headless` links `game`. The stronger claim is
+the true one anyway — it is the exact parallel of the `scene`/`rendering` split one modality over.
+**A headless client carries the audio *vocabulary* and none of the audio *machinery***, in the same
+way it carries `scene` and no painter. Carrying neither would mean entities could not describe the
+sounds they make, which is a simulation fact and has nothing to do with whether anyone is listening
+(D9).
 
 **One measured obstruction, recorded because it sizes the work.** `base/StarMixer.hpp` defines BOTH
 `AudioInstance` and `Mixer` — the contract and the backend in one header, which is precisely the state
@@ -3959,7 +3961,8 @@ The consequence is specific rather than vague: **`AudioBatch` needs a value enco
 merely declared.** `Drawable` needed a home; `AudioInstance` needs a wire format first. It is also why
 `AudioInstancePtr` sits in the vocabulary register as **RESHAPE** and not MOVE — Section 3's rule that
 a pointer cannot cross a seam bites on the audio side and does not bite on the scene side. **Tier 3 is
-not tier 2 with the nouns swapped**, and until 2026-08-02 this document implied it was.
+not tier 2 with the nouns swapped**, and the symmetry of the two names is exactly what makes that easy
+to assume and expensive to assume wrongly.
 
 **Acceptance test, falsifiable the day it lands:** `link_sweep` reports no `mixing` row for
 `starbound_server`, and the `("server", "mixing")` ratchet entry is deleted rather than lowered.
@@ -4100,12 +4103,12 @@ two shells share almost nothing:
 | simulates via | `UniverseServer` — authoritative | `UniverseClient` — a slave view |
 | players | N, remote | one, local |
 
-**This table read "core, base, game — three" against "eleven" until 2026-08-02, and both numbers
-predate the simulation split.** They are 12 and 25 now, so the gap it was drawn to dramatise
-is *narrower* than it claimed, not wider — and the honest form of the contrast is the second row
-rather than the first. The distinction that survives the register growing is **which zones each one
-enters**, not how many components it happens to name. It also credited `host_null` to "the audio
-device", which `client_headless` does not link at all.
+**The first row is the weakest one in the table, and it is worth saying why it stays.** 12 against 25
+is a factor of two, and a factor of two is not an argument — grow the register and it shrinks, split
+one component and it moves, and nothing about *what these two products are* has changed. The
+distinction that survives the register growing is the second row: **which zones each one enters**. A
+server that never enters `device/` is a different kind of thing from a participant that enters all
+four, at any component count. The first row is kept as scale, not as evidence.
 
 They share exactly one property: **they link `game` and draw nothing.** That is a negative property,
 not a shared design, and it is the whole of the resemblance.
@@ -4144,13 +4147,12 @@ headlessLoop   while (!done)   {              clientTick(now); present(now);    
 composition linked `rendering` and in `recordTick` when it linked `transcript`; neither the driver nor
 this summary knows which, and that is the point.
 
-**This block read `{ pump(); clientTick; presentTick; swap(); idle(); }` until 2026-08-02, and the
-`swap()` was not a naming slip.** It drew `frameLoop --> swapTick` — exactly the edge the graft rule
-rejected two subsections above, on the grounds that `host_sdl` has no grant to `gpu`. So the canonical
-four-line summary of the runtime was still showing the illegal shape the design had already replaced,
-which is the failure mode a summary is *for*: it is the part people read instead of the diagram.
-`swapTick` is reached from inside `presentTick`, by dispatch, and the generated drive table has said
-so all along.
+**There is no `swap()` in that block, and its absence is the whole graft rule in one line.** Writing
+`{ pump(); clientTick; presentTick; swap(); idle(); }` draws `frameLoop --> swapTick` — exactly the
+edge the graft rule rejects two subsections above, because `host_sdl` has no grant to `gpu`. A
+four-line summary is the part people read *instead of* the diagram, so an illegal edge here
+propagates further than an illegal edge anywhere else in the document. `swapTick` is reached from
+inside `presentTick`, by dispatch, which is what the generated drive table says.
 
 **Presentation never owns a clock.** Its cadence always comes from the driver in its process — vsync
 today, and when it runs on a separate machine it gets a driver from *its own* host. So `presentTick` is
@@ -5307,11 +5309,12 @@ not a decision.
   `scripts/render-gate.sh` and `scripts/render-motion.sh`.
 - The null client must link **no GPU backend and no audio backend** — `client_headless` reaches
   `presentation` and `transcript` in `device/` and nothing else — which is itself the proof that
-  presentation is severable, the same move `render_surface_tests` makes for L1. This constraint read
-  "link shell 2 only (`extern + core + base + game` + the contract)" until 2026-08-02; that was
-  written before the simulation split, and `client_headless` links 25 of the 41 components today.
-  Stating it as a *ceiling on `device/`* rather than a whitelist of four names is what makes it
-  survive the register growing.
+  presentation is severable, the same move `render_surface_tests` makes for L1. **It is a ceiling on
+  `device/`, not a whitelist of names.** A whitelist — *link `extern + core + base + game` and the
+  contract* — says the same thing for exactly as long as the register holds five components;
+  `client_headless` links 26 of 41, and every one added after the whitelist was written would falsify
+  it while changing nothing about severability. What the constraint is *about* is what a null client
+  reaches in `device/`, so that is what it counts.
 - The round-trip ratchet of Section 3 and the existing `boundary_ratchet` 213 both only go down.
 
 ---
@@ -5416,9 +5419,9 @@ What a delta document has to produce:
    `scripts/grant-sweep.py` already carries a partial mapping and cross-checks its own file counts.
 2. **The removal ratchet** — `grant-sweep` measures the direct crossings the target forbids; the
    current figure is generated in Section 15 and stands at **55 across 12 edges**. The delta is
-   finished when that reaches zero. This read **43 across 10** until 2026-08-02, which is the wrong
-   direction to be wrong in: a completion criterion that drifts *downward* on paper while the tree
-   grows makes the work look nearly done.
+   finished when that reaches zero. **This figure is generated and never quoted**, and the asymmetry
+   of the failure is why: a completion criterion that drifts *downward* on paper while the tree grows
+   makes the work look nearly done, and nobody re-checks a number that is moving the way they hoped.
 3. **The ordering** — below, as far as it is currently understood.
 4. **The cleanup ledger** — what the contract exposes as dead, and where it is deleted.
 
@@ -5488,14 +5491,15 @@ and a grant list — `platform`, `host`, `gpu` — and `presentation` is the onl
 Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 9 as first
 published would not have compiled.**
 
-The diagram's edges came from a measured include sweep, but the claim once made here — that they were
-"machine-verified against the register" — was itself false. Nothing compared the drawn edges to the
-grant table until 2026-08-01, and the first run of that comparison found `gpu --> base` drawn against a
-row granting `gpu` only `core`. Two artifacts of this section had been contradicting each other in
-plain sight. The grant table's contents were derived from the design rather than measured, and that is
-where the first two defects sat. The rule the render work already
-runs under, *no document may state a current-state number an instrument cannot measure*, applies to
-grants as well as numbers. Section 15 must gate the grant table against a measured sweep.
+The diagram's edges came from a measured include sweep, and a claim that they were "machine-verified
+against the register" is a different claim entirely — one no instrument was making. The first run of
+that comparison found `gpu --> base` drawn against a row granting `gpu` only `core`: two artifacts of
+this section contradicting each other in plain sight, each individually well-formed. The grant table's
+contents are derived from the design rather than measured, which is where both defects sat. The rule
+the render work already runs under — *no document may state a current-state number an instrument
+cannot measure* — applies to grants as much as to counts, and **"verified" is itself a claim that
+needs a verifier**: `spec_consistency` now compares every drawn edge to the grant table on every run,
+which is what makes the sentence true rather than confident.
 
 **The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
 That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
@@ -5561,10 +5565,10 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
 | `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 16** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
 
-**Every one of those targets read `presentation` until 2026-08-02, and it was a buildability defect
-rather than a naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound`
-are CONTRACTs in **`domain/`**. Grants point `COMPOSITION → DEVICE → DOMAIN → MACHINE`, so a DOMAIN
-component may never name a DEVICE one. `game` and `world_view` are both DOMAIN and both name
+**Not one of those targets is `presentation`, and that is a buildability constraint rather than a
+naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound` are CONTRACTs
+in **`domain/`**. Grants point `COMPOSITION → DEVICE → DOMAIN → MACHINE`, so a DOMAIN component may
+never name a DEVICE one. `game` and `world_view` are both DOMAIN and both name
 `Drawable` on nearly every page of this design — so with `Drawable` in `presentation`, `game` would
 need a grant that `spec_consistency`'s ZONE_ORDER verdict rejects at zero exceptions. **The design as
 written would not have compiled**, and the register already said so: `scene`'s contents column reads
