@@ -28,6 +28,21 @@ scope** — `content`, `storage`, `net`, `script`, `celestial`, `interaction`, `
 does today, and none is gated on what it would cost to reach. Cost is a consequence, recorded in
 Section 17.
 
+**How every claim below is justified.** The document argues in one direction, and each layer may cite
+only the layers above it: **the domain** (Section 1) is what Starbound is · **axioms** (Section 2) are
+facts, adopted or observed, that hold whatever we build · **the north star** (Section 3) is what we
+want · **principles** (Section 4) are the invariants that follow · **decisions** (Section 5) are the
+choices left over once all of that is satisfied · and **the model** (Part II onward) is what those
+decisions produce. A boundary that cites none of them is not a boundary, it is a preference.
+
+**Who this is written for.** The primary consumer is an **agentic technical designer building a
+detailed implementation plan from this document**. That sets the completeness bar rather than the
+length limit: a human who hits a gap notices it and asks, whereas an agent that lacks context does not
+know it lacks context — it infers, plausibly, and the fiction propagates. So every rule lands in a
+register or a table where an instrument can read it, and nothing normative lives in prose alone. No
+other reader is traded off against that one; where they conflict the document expands rather than
+choosing.
+
 ---
 
 ### Who this serves
@@ -53,10 +68,134 @@ Universe answers to mods before it answers to elegance.
 
 ## 1. What OpenStarbound is
 
-Every claim in this document is justified by the layer above it: **axioms** are facts about
-the domain, the **north star** is what we want, **principles** are the invariants that follow,
-and **decisions** are the choices left over once those are satisfied. A boundary that cites
-none of them is not a boundary, it is a preference.
+**This section describes the domain, not the design.** Nothing here is a choice anyone made about
+software: it is what Starbound *is*, and it would remain true if every line of the engine were thrown
+away and rewritten. It seals first because everything above it cites it — the domain facts in Section
+2 are facts *about these nouns*, and a component register that uses a word this section has not
+defined is naming something the domain does not contain.
+
+Read it as a vocabulary with consequences. Each noun below is load-bearing somewhere later, and where
+two nouns are nearly the same thing the difference is stated explicitly, because every one of those
+near-collisions has already produced a defect in this document.
+
+### The universe, and what is inside it
+
+OpenStarbound simulates a **universe**: a persistent star map, generated from a seed, that outlives
+any process observing it.
+
+| noun | what it is | how many | persists? |
+|---|---|---|---|
+| **universe** | the star map entire — every system, every world that could be visited | exactly one | yes |
+| **system** | a star and the bodies orbiting it; itself simulated, on a slower cadence than a world | many per universe | yes |
+| **world** | a terrain simulation with entities in it — a planet's surface, a moon, a ship interior, a dungeon instance | many per system | yes, once visited |
+| **entity** | a thing *in* a world — a player, monster, NPC, object, projectile, plant, vehicle, item drop | many per world | depends on kind |
+
+A world is generated from a seed rather than stored, which is why a universe can be vast and a save
+file small: **a world that has never been visited does not exist yet, and costs nothing.** Once
+visited it is ticked, mutated and persisted, and from then on it is data.
+
+The distinction between *system* and *world* is not cosmetic. They run on different clocks — a system
+advances far more slowly than the worlds inside it, because a system simulates orbits and a world
+simulates a player swinging a pickaxe. Section 11 gives both a name and a rate; here it is enough to
+know they are two kinds of simulation, not one kind at two speeds.
+
+### The three roles, and why they are three words
+
+Three kinds of thing relate to a universe. The whole architecture turns on keeping them apart.
+
+| role | what it does | how many | needs the others? |
+|---|---|---|---|
+| **authority** | owns the truth of a world or of the universe, and answers to nobody about it | one per world, one per universe | no |
+| **participant** | holds a *view* of a world, predicts against it, and asks the authority to change it | zero or more, and they come and go | needs an authority |
+| **device** | a display, a speaker, a file, a recorder — something outside the simulation entirely | zero or more, per participant | needs a participant |
+
+**An authority requires neither of the others.** That is not an aspiration; it is the property that
+makes a dedicated server possible at all, and Section 2 states it as a domain fact rather than a
+design goal. A universe with no participants is not degraded, idle or waiting — it is simply a
+universe, ticking.
+
+**A participant is not a person and not a process.** It is a *view-holder*: the thing that carries a
+prediction of some world and the right to make requests of that world's authority. One process may
+compose several; a process may compose none.
+
+### `player` and `participant` are different nouns
+
+This is the near-collision that has cost the most, so it is stated flatly:
+
+| | `player` | `participant` |
+|---|---|---|
+| what it is | an **entity**, living in a world | a **view-holder**, living in a process |
+| owned by | the world's authority | the process that composed it |
+| persists | yes — it is in the save file | no — it dies with the process |
+| survives the other? | **yes** — a player remains when its participant disconnects | no |
+| how many | one per player-character in a world | one per view |
+
+A player is a thing the world contains, like a monster or a chest. A participant is a thing that
+*watches and asks*. They are usually paired — a person plays by having a participant that drives a
+player — but the pairing is a runtime relationship, not an identity, and the two ends have different
+lifetimes.
+
+**A server has neither.** It composes an authority and nothing else: no participant, because it holds
+no view, and no player, because a player is an entity that belongs to a world rather than to a
+process. Worlds a server owns may contain player entities — persisted, unattended, or driven by
+participants in other processes entirely — and that is a fact about those *worlds*, not about the
+server. Any design that gives a server a participant has confused watching with owning, and will
+eventually ask an authority to correct itself.
+
+### Content, and the mod surface
+
+Two more things are first-class rather than incidental, because they are what makes this Starbound
+and not a physics demo.
+
+| | what it is | what the engine knows about it |
+|---|---|---|
+| **content** | materials, items, species, dungeons, biomes, monsters, recipes — declared as data | that it exists, its declared shape, and how to index it. **Not what it means.** |
+| **the mod surface** | Lua, running against a declared set of bindings | which bindings a host offers. Not what a script will do with them. |
+
+A mod is content plus script. **The bindings a script may call are a function of what its host
+composed** — a script running where there is no display cannot ask about a display, not because it is
+forbidden but because there is nothing there to bind. That single sentence is why the mod surface
+belongs in this section rather than in a later one about scripting: it is a property of composition,
+and composition is the next noun.
+
+### Composition is the point
+
+A **process** is one running program. It contains no roles inherently; it *composes* them.
+
+```
+authority  ──┐
+participant ─┼──►  a composition  ──►  a process that does a particular job
+device     ──┘        (chosen by an entry point, at wiring time)
+```
+
+This is the load-bearing idea of the whole document, and it is easy to read past. **"Client" and
+"server" are not kinds of thing.** They are names for particular compositions that turned out to be
+useful enough to name:
+
+| the familiar name | what it actually composes |
+|---|---|
+| a graphical client | a participant, a display device, a speaker device |
+| a dedicated server | an authority, and nothing else |
+| a listen server | an authority *and* a participant, in one process |
+| a headless client | a participant, and no device at all |
+| a recorder | a participant, and a file device |
+| an agent | a participant, and no device — the same shape as a headless client, different consumer |
+
+Read down that right-hand column and the taxonomy dissolves. There is no client/server *dichotomy* —
+there is a small set of roles, and the useful combinations get names after the fact. A listen server
+is not a hybrid of two things; it is one process that composed two roles. A headless client is not a
+client with its rendering removed; it is a composition that never had a display in it.
+
+**The consequence is that "which side does X live on?" is usually a malformed question.** The right
+question is *which role owns X* — and then any composition containing that role has it. This document
+asks the second question everywhere, and Section 7 turns it into a placement rule.
+
+### What this section does not settle
+
+The domain says there are authorities, participants and devices. It does **not** say how many
+processes there are, which machine each runs on, or what crosses between them. Those are design
+questions, answered against the north star in Section 3 and the decisions in Section 5. A reader who
+finds a placement claim in this section has found a defect.
 
 
 ---
