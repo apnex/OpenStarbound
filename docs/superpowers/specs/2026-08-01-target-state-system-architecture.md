@@ -2,10 +2,9 @@
 
 > **STATUS: WORK IN PROGRESS. NOTHING IS APPROVED.** Director's rule, adopted 2026-08-01:
 > **approval is aggregate only — no section is approved until the whole can be reasoned with
-> together.** Section 1 was stamped approved earlier and has been returned to PROVISIONAL, because
-> the model beneath it moved. Sections marked PROVISIONAL are designed and awaiting that aggregate
-> review; sections marked NOT YET DESIGNED are outstanding work, listed in Section 8. Do not treat
-> either as an omission.
+> together.** Sections seal individually — a sealed section is certified enough to build on, not
+> frozen — and a sealed section re-opens on a named trigger, per A8's Law of Fallback. Outstanding
+> work is listed in Section 18; its absence from a section is not an omission.
 
 **Goal.** Describe the **perfect target state of the Starbound client**: every duty owned by exactly
 one component, every dependency declared and enforceable, every composition a choice rather than an
@@ -27,7 +26,7 @@ scope** — `content`, `storage`, `net`, `script`, `celestial`, `interaction`, `
 
 **What "target state" means here (D7).** No boundary in this document is justified by what the code
 does today, and none is gated on what it would cost to reach. Cost is a consequence, recorded in
-Section 10.
+Section 17.
 
 ---
 
@@ -92,7 +91,7 @@ than two configurations of one thing.
 
 ### North star
 
-Three goals. Every decision in Section 3 is justified against at least one of them by name, and a
+Three goals. Every decision in Section 5 is justified against at least one of them by name, and a
 decision that serves none of them does not belong in this document.
 
 #### N1 — A modern distributed Starbound
@@ -166,7 +165,7 @@ the interface rather than merely its existence. And it is **countable**, so it c
 
 ### Principles
 
-Decisions are choices — Section 3 could have gone another way. These are not choices. They are the
+Decisions are choices — Section 5 could have gone another way. These are not choices. They are the
 invariants the model is built to satisfy, and a violation of one is a defect regardless of which
 decision produced it.
 
@@ -195,14 +194,14 @@ boundary nothing enforces is not a boundary.
 | # | Decision |
 |---|---|
 | **D1** | **Purpose — a full target-state refactor.** Clean boundaries, decoupled components, sovereign duties, composable entry points. The six original drivers — architectural forcing function · foundation for distributed Starbound · CI harness · bot/agent client · cleanup of legacy and dead code sitting inside boundaries · swappable presentation components — are the **symptoms that made the need visible**, not six separate features. Each is satisfied *by* the target state rather than pursued beside it. |
-| **D2** | **Scope of THIS spec: the whole target state.** Every component, contract, clock and composition in the registers — including `client_sdl_gpu`, `client_agent`, `world_sim`, `world_gen` and `colocation`. **What is deferred is sequencing, not scope.** Section 10 records the order and the delta; follow-on *plans* consume this spec, and there are no follow-on *specs* for anything architectural. If it belongs in the perfect shape, it belongs here. |
+| **D2** | **Scope of THIS spec: the whole target state.** Every component, contract, clock and composition in the registers — including `client_sdl_gpu`, `client_agent`, `world_sim`, `world_gen` and `colocation`. **What is deferred is sequencing, not scope.** Section 17 records the order and the delta; follow-on *plans* consume this spec, and there are no follow-on *specs* for anything architectural. If it belongs in the perfect shape, it belongs here. |
 | **D3** | **Three contracts at natural strengths.** Video = swappable contract. Input = pluggable source. Audio = **swappable contract** — *upgraded from "merely nullable"*: the register grew `sound`, `mixing`, `audio` and `audio_sdl`, and a modality with a backend is not a nullable afterthought. Each strength is the weakest thing serving a named purpose; nothing over-built. |
 | **D4** | **Null behaviour: record.** The null implementation captures what it was asked to do, with a **discard** mode (fast CI bulk runs) and a **strict** mode (dev-time forcing function). One object, three modes. Serves CI assertions and agent perception from the same code. |
 | **D5** | **Unify, do not run parallel.** `ClientApplication` is refactored so presentation is *injected*. GL becomes implementation #1 rather than staying privileged. The graphical client is held byte-identical throughout by the existing render and motion gates. This is the only shape in which "swappable" is true. |
-| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 1 and the risk in Section 7. |
-| **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 10. |
-| **D8** | **A seam's co-located path is an optimisation, never a different contract.** Either it performs the same encode and decode as the split path, or an oracle proves the two agree. Owned by `colocation`. Stated in full in Section 5. |
-| **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 4. |
+| **D6** | **The contract targets T2.** It may name only core, base and presentation-vocabulary types. See Section 10 and the risk in Section 16. |
+| **D7** | **The target state is not derived from the tree.** This document describes the perfect shape of the next Starbound, with time, effort and resources unconstrained. **Measurement reveals facts and bounds cost; it never chooses the target.** A boundary is right because it is right, not because it is cheap or close to what exists. No design question here waits on an estimate, and "this is how the code does it today" is evidence about today, never a justification for tomorrow. Cost is a consequence, recorded in Section 17. |
+| **D8** | **A seam's co-located path is an optimisation, never a different contract.** Either it performs the same encode and decode as the split path, or an oracle proves the two agree. Owned by `colocation`. Stated in full in Section 13. |
+| **D9** | **What ticks must not be derived from who is watching.** A world runs because something *requires* it — residency is an explicit input, not a count of observers. Stated in full in Section 10. |
 
 ### Why D6 is not a preference
 
@@ -276,9 +275,9 @@ flowchart LR
   class Shell,Panes,PS pres
 ```
 
-**Arrows here are calls, not includes** — the opposite convention to Section 4's dependency graph,
+**Arrows here are calls, not includes** — the opposite convention to Section 9's dependency graph,
 which is why every edge in this one is labelled with the call it represents. The two diagrams answer
-different questions: this one asks *who invokes whom at runtime*, Section 4 asks *who may name whom at
+different questions: this one asks *who invokes whom at runtime*, Section 9 asks *who may name whom at
 compile time*.
 
 **Consequences.**
@@ -314,7 +313,7 @@ composed, like everything else in this design** — which makes it consistent ra
 What this *does* require, and it is now a named obligation rather than a discovered surprise: **a
 composition must be able to state its Lua surface**, so a mod can declare what it needs and fail at
 load with a clear reason rather than at first call with `attempt to index a nil value`. That belongs
-in Section 6 as a verification duty, and it is added there.
+in Section 15 as a verification duty, and it is added there.
 - **The injection point is already dependency injection, already in the game layer.** `UniverseClient`
   exposes a slot; the shell fills it. That is precisely the shape this design wants, and it already
   exists.
@@ -416,13 +415,13 @@ Consequently the word *presentation* is carrying three different meanings at onc
 | `star_rendering` (T4) | painters and passes | **half** — misses the renderer itself |
 | tier T4 "presentation" | `{rendering, windowing, frontend}` | **wrong both ways** — includes the UI this section just placed on the game side, still misses the GL backend |
 | L1 / L2 / L3 | the render decomposition | **L1 straddles the directory line** — which is why `scripts/layering-lint.py` has to name `application/` paths |
-| `source/presentation` (Section 4) | the contract, interface-only | **no** — that is the seam, not the side |
+| `source/presentation` (Section 9) | the contract, interface-only | **no** — that is the seam, not the side |
 
-Section 4 resolves this by splitting the word rather than stretching it. Two measurements decide how.
+Section 7 resolves this by splitting the word rather than stretching it. Two measurements decide how.
 
 **First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
 `${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line states **this seam** as a
-build rule, and the rest of Section 1 is the work that makes the deletion possible. It is not the
+build rule, and the rest of Section 8 is the work that makes the deletion possible. It is not the
 whole design — the target state deletes an equivalent line for every one of the 41 components, and
 `tree-map.py` exists to make that the same kind of statement everywhere rather than a special
 argument about presentation.
@@ -434,7 +433,7 @@ satisfies test 2 (severability) already. Nothing needs to move for it.
 **And the GL backend has exactly one consumer outside its own `.cpp`:** `StarMainApplication_sdl.cpp`,
 the T2 shell that owns the GL context. Unifying the pixel side takes the backend away from that shell,
 which is precisely what D5 requires — so **the naming question and the injection question are the same
-question**, and they have to be answered in that order. See Section 4's ordering constraint.
+question**, and they have to be answered in that order. See Section 7's ordering constraint.
 
 ### The shape stops being a stack
 
@@ -576,7 +575,7 @@ invocation, and collapsing them lost the distinction the rule depends on.
 
 **The diagram is compile time, and only compile time.** Every arrow is an `#include` permitted by a
 grant list, enforced by `INCLUDE_DIRECTORIES`, and a violation is a compile error. **No arrow means
-"calls" and no arrow means "sends data to."** The runtime model is **Section 5**, and nothing in this
+"calls" and no arrow means "sends data to."** The runtime model is **Part III**, and nothing in this
 section describes it. That separation is deliberate: every attempt to carry both here produced a
 contradiction within a day. They are *different graphs* over the same register, and the design's value
 lives in the places where they disagree:
@@ -584,7 +583,7 @@ lives in the places where they disagree:
 | | compile-time graph | runtime graph |
 |---|---|---|
 | edge means | A may include B | A calls B, or sends data to B |
-| lives in | **Section 4** — this diagram and the grant table | **Section 5** — the element register, the driver shape, the execution graph |
+| lives in | **Sections 7 and 9** — this diagram and the grant table | **Part III** — the element register, the driver shape, the execution graph |
 | enforced by | `INCLUDE_DIRECTORIES` — a compile error | nothing mechanical; it is a description |
 | `participant` ↔ `rendering` | **no edge in either direction** | `participant` → `rendering`, every frame |
 | `host_sdl` ↔ `participant` | `host_sdl --> host`, and `client --> host` | `host_sdl`'s `frameLoop` **calls** `participant` |
@@ -630,7 +629,7 @@ nothing counted. A rule stated as checkable and left uncounted is a rule in name
 
 `gpu_sdl` is drawn like any other BACKEND, because in the target state it *is* one. It was previously
 faded to mark it as future work; that is a fact about today's tree and D7 forbids the target state
-from carrying one. Which backend gets written first is sequencing, and sequencing lives in Section 10.
+from carrying one. Which backend gets written first is sequencing, and sequencing lives in Section 17.
 
 **The clusters are zones and colour is kind** — one axis per visual channel, so the diagram carries
 both taxonomies at once without either being inferred from the other.
@@ -943,7 +942,7 @@ neither works:
 | **frame** | a scene resolved for one camera at one instant → screen-space drawables | no, already baked | no |
 
 `Drawable` sits at the frame level. `WorldRenderData` is scene-shaped but carries game types, which is
-exactly why it is on the unassessed list in Section 7.
+exactly why it is on the unassessed list in Section 16.
 
 With `scene` named, the seam carries **scene deltas**: presentation resamples at display rate, applies
 the camera locally, assembles and paints. D6 holds because scene is a T2 vocabulary.
@@ -978,7 +977,7 @@ That sounds like a large restructure. It is not, and the measurement in
 **Twelve includes across ten files** — the thinnest live cross-tier edge in the entire tree is exactly
 where *this* seam wants to be cut. The UI already does its own layout and already emits `Drawable`s;
 it simply hands them to a painter directly today instead of into a stream. Per D7 the thinness is
-not why the boundary belongs here — it is why this boundary happens to be cheap, which is a Section 10
+not why the boundary belongs here — it is why this boundary happens to be cheap, which is a Section 17
 fact that arrived for free.
 
 ### `RenderCallback` is not part of the contract
@@ -996,7 +995,7 @@ the simulation assembles a **scene**, presentation assembles a **frame** from it
 still the first one and still crosses nothing.)*
 
 Which is why the video contract is one call per frame with one value, and why it passes the network
-test in Section 5 without redesign.
+constraint in Section 3 without redesign.
 
 ### The three contracts, as streams
 
@@ -1058,7 +1057,7 @@ reviewable by reading, not only by counting.
 
 **`SceneSink` replaces the `FrameSink` an earlier draft named.** `present(Frame const&)` hands over a
 finished, camera-resolved frame, which welds the pixel rate to the assembly rate; `accept(SceneDelta)`
-does not. Both this table and Section 1 still said `Frame` after the payload had already changed — an
+does not. Both this table and Section 8 still said `Frame` after the payload had already changed — an
 inconsistency inside one document, and exactly what the aggregate-approval rule exists to catch.
 
 ### What `scene` actually contains
@@ -1569,7 +1568,7 @@ thing would be naming it after the smallest part inside it.
 
 The requirement: **a world exists and ticks — Frackin Universe automation machines running — with no
 player present.** It is a target-state decoupling in its own right, and it is a far better acceptance
-test than anything Section 6 holds today, because it fails loudly right now for two measurable reasons.
+test than anything Section 15 holds today, because it fails loudly right now for two measurable reasons.
 
 **One is already solvable.** Entity dormancy is not hard-wired to viewers:
 
@@ -1667,7 +1666,7 @@ not built. `world_gen` is its replacement, as a first-class composition that can
 Measured, and it is an order of magnitude smaller than the first estimate. "118 files name
 `Drawable`/`RenderCallback`" counted every file that *mentions* the types. The files that actually
 **implement the hook** are **17**, and their bodies run 1–67 lines — **521 lines in total**. That
-count is generated in Section 6; it read "thirteen" for most of this document's life, which is
+count is generated in Section 15; it read "thirteen" for most of this document's life, which is
 exactly why it is now measured instead of quoted.
 
 `RenderCallback` is already the sink, with a six-method surface that is exactly `scene`'s content:
@@ -1761,7 +1760,7 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 subtraction is the whole point: the difference between a recorder and an agent is now three grants on
 an entrypoint, not a fork of the client.
 
-**This also retires a question this document could not previously answer.** Section 4 asked whether
+**This also retires a question this document could not previously answer.** Section 10 asked whether
 `client_headless` was a *recorder* or a *non-visual participant* and had silently assumed the first.
 It is the first, and the second is `client_agent`. Neither interpretation had to lose.
 
@@ -3236,7 +3235,7 @@ tick to drive. The correction is not cosmetic: the two clocks it omitted are the
 Each side gets exactly one loop that decides *whether* to do something and one that decides *how much
 simulated time has passed*. The view's fixed loop advances a prediction; the authority's advances the
 truth; they are different clocks synchronised only by the netcode. That is textbook client-side
-prediction, and **it is the divergence Section 6's composition oracle exists to catch.**
+prediction, and **it is the divergence Section 15's composition oracle exists to catch.**
 
 **Why the pairing matters more than the count.** The driver clock being *per process* was already the
 move that makes the network case free. The pairing extends it to the authority: co-located, all four
@@ -3284,7 +3283,7 @@ the table.
 
 ### The runtime taxonomy
 
-Section 4 classifies boxes on three axes — ALTITUDE, KIND, ZONE. Run time needs its own four, and
+Section 7 classifies boxes on three axes — ALTITUDE, KIND, ZONE. Run time needs its own four, and
 they have to *graft*: a name that means one thing in one projection and something else in the other is
 worse than no name. The graft point is deliberate and singular.
 
@@ -3296,7 +3295,7 @@ worse than no name. The graft point is deliberate and singular.
 | **THREAD** | one flow of control; owns **at most one** clock | a handoff — a queue, a lock, or a packet | ELEMENTs |
 | **ELEMENT** | a named unit of execution: a loop, or one iteration's body | an ordinary call | — |
 
-**`ELEMENT` is the same word, and the same thing, as Section 4's ELEMENT.** That is the graft: the two
+**`ELEMENT` is the same word, and the same thing, as Section 7's ELEMENT.** That is the graft: the two
 projections share one vertex set and disagree only about what *contains* it. Compile time puts an
 element in a COMPONENT; run time puts it in a THREAD. Neither containment implies the other, and where
 they cut across each other is exactly what one view can see and the other cannot.
@@ -3740,7 +3739,7 @@ produces this, and `LocalPacketSocket` is the worked example of what goes wrong.
 > the same encode/decode the split path does, or an oracle proves the two produce identical results.
 > "It is faster because it skips the boundary" is a boundary that does not exist.
 
-D8 has no instrument yet. It belongs in Section 6 alongside the other two.
+D8 has no instrument yet. It belongs in Section 15 alongside the other two.
 
 Four things this view shows that the dependency view structurally cannot:
 
@@ -3837,7 +3836,7 @@ dead, or reachable only from a loop this design does not yet model.
 |---|---|---|
 | a **SEAM** | the call is virtual; the callee is whichever backend was composed | the tree **branches per composition** — `client_headless` is the same tree with a different branch taken |
 | a **HANDOFF** | the payload crosses a thread or a process; the producer never enters the consumer's body | the consumer is a **separate tree**, rooted at its own element |
-| a **SCRIPT** call | Lua; not statically resolvable at all | the one genuinely opaque terminator — its surface is measured in Section 2 |
+| a **SCRIPT** call | Lua; not statically resolvable at all | the one genuinely opaque terminator — its surface is measured in Section 5 |
 
 That is not a coincidence and it is worth stating plainly: **the leaves of the call tree are the design's
 boundaries.** A boundary is exactly a place where static reachability stops. If a boundary is not a
@@ -3930,7 +3929,7 @@ beyond compilation — an acyclic grant graph is a construction order.
 | a player entity | the world it is in | the participant driving it |
 | the store | the authority that writes it | the process, by definition |
 
-**The player row is the one that decides real behaviour**, and it follows from §0 rather than from
+**The player row is the one that decides real behaviour**, and it follows from §1 rather than from
 convenience: a player is an entity in a world, so it is owned by that world's authority, so it
 survives the participant. Any other answer makes a save file a property of a connection.
 
@@ -3980,7 +3979,7 @@ decision should be visible in the register rather than implied by an absent chec
 **Mod script is inside the trust boundary of whatever composed it, and not beyond.** Script running in
 a participant may request what a participant may request, and nothing more; the authority does not
 grant a script authority just because the script asked. Where a script runs when authority and view
-are split is a decision this document owes (§8).
+are split is a decision this document owes (§18).
 
 ---
 
@@ -4105,7 +4104,7 @@ Two limits apply even to the anchored fourteen:
 **So the honest reading of a green run is "no contradiction found", never "the design is correct."**
 The UNVERIFIABLE count is the better number to watch: it is the fraction of this section resting on
 assertion alone, it stands at **seven components today**, and it should fall to zero as they are built.
-That is a ratchet pointing the opposite way from the removal ratchet, and Section 6 should gate both.
+That is a ratchet pointing the opposite way from the removal ratchet, and Section 15 should gate both.
 
 **One line carries the design.** `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}`
 today. Deleting it is the whole of seam 1, and the moment it is gone the presentation backends are
@@ -4137,7 +4136,7 @@ ones — each is a measurement a **design decision** stands on, so each is measu
 
 The reason is a defect this document produced four times. "The thirteen `render()` bodies" was tier
 2's headline and there are 17. "`ClientApplication` pushes in exactly four" is the whole evidentiary
-basis of D4 and it pushes 11. "43 direct crossings across 10 edges" was Section 10's completion
+basis of D4 and it pushes 11. "43 direct crossings across 10 edges" was Section 17's completion
 criterion and `grant-sweep` reports 55 across 12. Every one was true when written, and every one had
 since become an argument resting on a memory.
 
@@ -4187,7 +4186,7 @@ is the run most likely to fail — which is the point of building it.
 
 ### The acceptance test, stated so it can fail
 
-Section 4 already states it: *load a world containing FU automation, attach no participant, tick it,
+Section 10 already states it: *load a world containing FU automation, attach no participant, tick it,
 and assert the machines advance.* Sharpened by the oracle above: **run C must not merely advance, it
 must produce the same hashes as run A.** A world that ticks but ticks differently unobserved is D9
 violated with extra steps.
@@ -4205,11 +4204,11 @@ violated with extra steps.
 | **evolution is independent of composition** | **the composition oracle above** | **verification** | **designed, not built** |
 | the graphical client is unchanged | `render-gate.sh`, `render-motion.sh` | verification | **built** (from the render arc) |
 | a call tree stays inside its grants | full-fidelity graft rule | anchoring | **designed, not built** — needs a real call graph, not an include graph |
-| a composition can state its Lua surface | surface manifest + load-time check | verification | **designed, not built** — see Section 2 |
+| a composition can state its Lua surface | surface manifest + load-time check | verification | **designed, not built** — see Section 5 |
 
 ### The Lua surface obligation
 
-Section 2 resolved the mod-API question as *accept the absence*, on the grounds that a binding is a
+Section 5 resolved the mod-API question as *accept the absence*, on the grounds that a binding is a
 component's public surface and an unlinked component has none. That resolution creates one duty: a
 composition must be able to **declare** its Lua surface, so a mod states what it needs and fails at
 load with a clear reason — never at first call with `attempt to index a nil value`. The manifest is
@@ -4220,7 +4219,7 @@ not a decision.
 
 - **`dedup_measure` reports a LOWER BOUND.** 62,540 indirect call sites are not followed, because a
   virtual call names no target. That blind spot is not incidental: a virtual call through a contract
-  *is* a seam, and Section 5 says the call tree is supposed to stop there. **The instrument's limit
+  *is* a seam, and Section 13 says the call tree is supposed to stop there. **The instrument's limit
   and the design's boundary are the same place** — which is why the composition oracle, which observes
   behaviour rather than structure, is the one that has to carry the weight.
 - **Include sweeps cannot see through a third party.** `grant_sweep` measures coupling between our
@@ -4369,7 +4368,7 @@ A boundary that is one-way, by-value and batched is one a network could pass thr
 
 ---
 
-**Section 4 describes the target state and nothing else** — no migration, no actions against the
+**Part II describes the target state and nothing else** — no migration, no actions against the
 current tree, no history. Everything about *getting there* lives here, and the delta itself is a
 separate exercise.
 
@@ -4378,7 +4377,7 @@ What a delta document has to produce:
 1. **The move list** — which of today's files become which target component, complete and file-level.
    `scripts/grant-sweep.py` already carries a partial mapping and cross-checks its own file counts.
 2. **The removal ratchet** — `grant-sweep` measures the direct crossings the target forbids; the
-   current figure is generated in Section 6 and stands at **55 across 12 edges**. The delta is
+   current figure is generated in Section 15 and stands at **55 across 12 edges**. The delta is
    finished when that reaches zero. This read **43 across 10** until 2026-08-02, which is the wrong
    direction to be wrong in: a completion criterion that drifts *downward* on paper while the tree
    grows makes the work look nearly done.
@@ -4448,7 +4447,7 @@ and a grant list — `platform`, `host`, `gpu` — and `presentation` is the onl
 
 ### The grant table was wrong, and the reason matters
 
-Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 4 as first
+Before this fix the table granted `host` to nobody, while 8 files needed it. **Section 9 as first
 published would not have compiled.**
 
 The diagram's edges came from a measured include sweep, but the claim once made here — that they were
@@ -4458,7 +4457,7 @@ row granting `gpu` only `core`. Two artifacts of this section had been contradic
 plain sight. The grant table's contents were derived from the design rather than measured, and that is
 where the first two defects sat. The rule the render work already
 runs under, *no document may state a current-state number an instrument cannot measure*, applies to
-grants as well as numbers. Section 6 must gate the grant table against a measured sweep.
+grants as well as numbers. Section 15 must gate the grant table against a measured sweep.
 
 **The previous draft said CONSOLIDATE for `rendering`** — fold `application`'s 10 render files into it.
 That was wrong, and the seam-2 measurement is why: those 10 files are not a spill, they are precisely
@@ -4490,7 +4489,7 @@ resolve. Three of them resolve by themselves and one does not:
 - **`TextPainter` genuinely splits.** Its method list is two jobs in one class: `stringWidth`,
   `wrapText`, `wrapTextViews`, `determineTextSize`, `determineLineSize`, `glyphWidth` are **layout**;
   `renderText`, `renderLine`, `renderGlyph`, `renderPrimitives` are **drawing**. Layout goes to the
-  simulation side under Section 1's *metrics are data* precedent; rasterisation stays in `rendering`.
+  simulation side under Section 8's *metrics are data* precedent; rasterisation stays in `rendering`.
 
 **(2) The GPU seam splits `application`'s render half in two**, along a line the includes already
 draw — `gpu` (4 files, 835 lines, abstract) and `gpu_opengl` (6 files, 3,456 lines, GL). See the
@@ -4505,7 +4504,7 @@ files, and the 12 distinct headers cluster by difficulty:
 | **assets and config** | `Root` ×4, `MaterialDatabase`, `LiquidsDatabase`, `MaterialRenderProfile`, `ImageMetadataDatabase` | **not a type problem.** Live `Root::singleton()` reads sit in exactly four files — `AssetTextureGroup`, `TextPainter`, `TilePainter`, `WorldPainter` — and every one is `assets()`, `configuration()` or `registerReloadListener`. Resource access, not simulation state, so it can be injected. The L3 passes are already `Root`-free from earlier hardening |
 | **game logic** | `TileDrawer` ×2, `Animation` ×2 | the hard residue. `TilePainter : TileDrawer` is task #191, the one inheritance edge leaving the render subsystem |
 
-The middle cluster is the one this spec had not confronted: Section 7 listed `Root` coupling as a *secondary*
+The middle cluster is the one this spec had not confronted: Section 16 listed `Root` coupling as a *secondary*
 risk, and the measurement promotes it. It is tractable — four files, three call shapes — but it is
 runtime coupling, and `#include` counts alone would never have surfaced it.
 
@@ -4522,7 +4521,7 @@ runtime coupling, and `#include` counts alone would never have surfaced it.
 | `InputBatch` | — | `presentation` | **NEW** — the one payload that *is* device-side; see below |
 | `AnchorTypes` | `rendering` (35 lines) | `scene` | **MOVE** — text anchoring is vocabulary, not drawing |
 | `AudioInstancePtr` | crosses as a shared handle | a value inside `AudioBatch` | **RESHAPE** — Section 3: a pointer cannot cross |
-| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 7** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
+| `RenderTileArray`, `EntityDrawables`, `OverheadBar`, `ParallaxLayer`, `SkyRenderData`, `Particle` | `game` | undecided | **BLOCKED on Section 16** — cheap-move vs narrow vs cannot-move is unassessed, and this register is provisional until it is |
 
 **Every one of those targets read `presentation` until 2026-08-02, and it was a buildability defect
 rather than a naming preference.** `presentation` is a CONTRACT in **`device/`**; `scene` and `sound`
@@ -4545,18 +4544,18 @@ screen-space click become a world coordinate, if the simulation may not name a d
 not resolve it from an `InputBatch` at all. `WorldCamera` moving to `scene` puts the screen↔world
 transform on the *domain* side of seam 1, where `participant` already holds it — which is why the
 `camera` Lua group can survive in a composition with no `rendering` linked, and why `client_agent`
-keeps `camera` while losing `renderer` (Section 2). One placement decision answers both.
+keeps `camera` while losing `renderer` (Section 5). One placement decision answers both.
 
 ### Renamed, and deliberately not renamed
 
-- **`StarRenderingLuaBindings`** (in `participant`) — **RESHAPE.** Section 2's caveat: it binds to
+- **`StarRenderingLuaBindings`** (in `participant`) — **RESHAPE.** Section 5's caveat: it binds to
   `ClientApplication` methods and calls `app->renderer()`. It must address the contract, not a shell,
   before a second shell can offer the same four Lua groups.
 - **The T4 tier label "presentation"** — **RETIRED.** In the target state `windowing`/`frontend` and
   `rendering` no longer share a tier, so `TIERS` in `scripts/arch-graph.py` changes shape, not just
   wording. The boundary document's Section 12 (the presentation tier's three duties) is rewritten by this.
 - **`RenderCallback`** — **NOT RENAMED.** It is tempting to rename it away from the contract's
-  vocabulary, but the measurement in Section 1 says it occurs in 39 files and all 39 are in `source/game`. It
+  vocabulary, but the measurement in Section 8 says it occurs in 39 files and all 39 are in `source/game`. It
   never crosses, so there is no boundary reason to touch it, and a rename of 39 files with no
   enforcement value is churn. Recorded here so the decision is visible rather than forgotten.
 
@@ -4565,10 +4564,11 @@ keeps `camera` while losing `renderer` (Section 2). One placement decision answe
 
 ## 18. Owed, and related
 
-1. **Aggregate review.** Per the status rule, Sections 1 and 4 are both PROVISIONAL and neither can be
-   approved alone. The scene model changed Section 1 after it had been stamped approved, which is the
-   reason the rule exists.
-2. **Section 6, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
+1. **Aggregate review.** Per the status rule, no section is approved alone; the whole must be
+   reasoned with together. The rule exists because a model change beneath a section can invalidate it
+   after the fact — which is also why sealing is certification rather than freezing (A8, Law of
+   Fallback).
+2. **Section 15, Verification** — gates, oracles, the round-trip ratchet's exact metric and starting
    ceiling.
 3. ~~**The input path**~~ — **DONE.** `InputSource::poll()` had nothing to return because no
    presentation backend could reach the host that drained the events. Resolved by granting `rendering`
@@ -4583,8 +4583,8 @@ keeps `camera` while losing `renderer` (Section 2). One placement decision answe
    **Both defects of this class were found the same way** — by drawing the runtime and asking the
    compile projection for permission — and neither was visible in the dependency graph alone.
 5. ~~**The vocabulary assessment**~~ — **DONE.** Five of six clean, one needs narrowing, none blocks
-   D6. See Section 7. Section 4 is no longer gated by it.
-6. **The delta from today** — Section 10, not yet computed. Section 4 is target-state only, so the
+   D6. See Section 16. Part II is no longer gated by it.
+6. **The delta from today** — Section 17, not yet computed. Part II is target-state only, so the
    move list, the removal ratchet and the cleanup ledger are a separate exercise. It has three parts:
    - **Sequencing** — the order of extraction, each step provable and reversible.
    - **Deferral statement** — what is deferred, and until when. Per D2 nothing architectural is out of
