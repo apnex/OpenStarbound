@@ -2905,7 +2905,7 @@ claim. **Ratification requires every cell to read yes.**
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#ledger -->
 
-**1 of 41 components fully derived · 6 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
+**10 of 41 components fully derived · 60 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
 
 | component | kind | boundary | rejected | excludes | falsified | history | owes |
 |---|---|---|---|---|---|---|---|
@@ -2918,15 +2918,15 @@ claim. **Ratification requires every cell to read yes.**
 | `platform_pc` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `rendering` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `transcript` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `audio` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `audio` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `celestial` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `content` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `gpu` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `host` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `net` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `platform` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `presentation` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `scene` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `gpu` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `host` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `net` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `platform` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `presentation` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `scene` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `sound` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `client_agent` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `client_headless` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
@@ -2935,8 +2935,8 @@ claim. **Ratification requires every cell to read yes.**
 | `server` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `world_gen` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `world_sim` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `base` | FOUNDATION | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `core` | FOUNDATION | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `base` | FOUNDATION | yes | yes | yes | yes | yes | yes |
+| `core` | FOUNDATION | yes | yes | yes | yes | yes | yes |
 | `colocation` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `frontend` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 | `game` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
@@ -2952,6 +2952,116 @@ claim. **Ratification requires every cell to read yes.**
 | `worldgen` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
 
 <!-- END GENERATED: derivation-ledger -->
+
+### `core` — the substrate, and the only component with nothing beneath it
+
+| facet | |
+|---|---|
+| **boundary** | There is no inward step. `core` is what remains once every duty has been named and moved out: the language, the containers, the algorithms. Its boundary is not chosen — it is the residue of choosing all the others. |
+| **rejected** | Nothing. A foundation is the one component with no alternative placement, because "one step further in" is not a location that exists. |
+| **excludes** | Names **nothing** — zero grants, by construction, and that is what makes it a foundation rather than a very low library. All forty other components name it; it names none of them. |
+| **falsified** | If anything in it carries a domain meaning. A container that knows what a tile is has stopped being core, and the give-away is that it would need `game` to compile. |
+| **history** | none. |
+| **owes** | nothing. |
+
+### `base` — shared services, and the one duty string that hides a question
+
+| facet | |
+|---|---|
+| **boundary** | Above `core`, below everything with a duty: what both the simulation and the shells need that is not the language itself. The boundary is defined by **plurality of consumer** — a service belongs here when two components that do not name each other both need it. |
+| **rejected** | Two alternatives, rejected for the same reason. Folding it into `core` puts services beside containers and loses the distinction between the language and what is built with it. Distributing each service to its consumer duplicates it — and duplication across a seam is drift with a delay. |
+| **excludes** | Names **nothing**, as `core` does. Twenty-four components name it. |
+| **falsified** | **If any service here has exactly one consumer.** A "shared" service with one user is not shared — it is that user's, misfiled one layer down, and the layering hides the coupling rather than removing it. This is the sharpest falsifier in the register, and nothing counts it yet. |
+| **history** | `base/StarMixer.hpp` holds `AudioInstance` beside `Mixer` — a contract's vocabulary sharing a file with an unrelated implementation. Second instance of the pattern that also blocks `celestial`. |
+| **owes** | "Shared services" is the vaguest duty in the register: it names a *property* rather than a *duty*, so it cannot fail the Law of One by containing "and" — it fails by containing nothing. The falsifier above is the concrete form of that question and is owed a count. |
+
+### `platform` — vendor services, so a build without them still links
+
+| facet | |
+|---|---|
+| **boundary** | At the vendor's edge. Each service is something a store or platform offers — desktop integration, peer networking, statistics, user-generated content — and the contract is the shape of the *asking*, never of the answering. |
+| **rejected** | Linking vendor SDKs at the point of use. Rejected because a build configured without Steam would then fail to **link** rather than merely lack a feature, which makes an optional dependency mandatory by accident. |
+| **excludes** | Names only `core`. May not name `game`, `host` or any composition — a statistics service that knows what a statistic *means* has joined the domain. |
+| **falsified** | If a build with no platform services fails to link, or if any component must test for a service's presence rather than be handed a null one. |
+| **history** | Its only backend, `platform_pc`, bundles **Steam, Discord and P2P** — three duties behind one name, and one of the duty strings that still trips the Law of One. The contract is clean; its implementation is not, and that asymmetry is exactly what a contract is for. |
+| **owes** | nothing. |
+
+### `host` — who owns `main`, and the split that named a defect
+
+| facet | |
+|---|---|
+| **boundary** | Between the program and the operating system's idea of a program: who owns `main`, who owns the window, who pumps events, who decides when the process ends. Above it, roles that do work; below it, an OS. |
+| **rejected** | A shell that owns everything — main *and* the window *and* the render loop *and* the vendor services. That is the arrangement this design started from, and rejecting it is what produced both this contract and `platform`. |
+| **excludes** | Names `core` and `platform` only. It drives two roles — `Application` and `Presenter` — and provides an `ApplicationController`; it may not name what runs inside either. A host that names `game` has become the program rather than its shell. |
+| **falsified** | If a composition needs a host that is neither SDL nor null, and the contract must grow to express what that third host needs. |
+| **history** | **`application` implemented a platform *and* a host, and its duty string hid that behind one noun.** The first Law-of-One violation this design found, and the one that demonstrated a duty string can conceal a defect rather than reveal it. |
+| **owes** | nothing. |
+
+### `net` — what a replicated field is, and nothing about transport
+
+| facet | |
+|---|---|
+| **boundary** | At the **vocabulary** of replication, not at the wire. A `NetElement` declares that a field is replicated and versioned; it says nothing about sockets, framing or peers. |
+| **rejected** | Leaving replication inside `game`, beside the domain types that derive from it. Rejected because every consumer of a replicated field would then name the entire domain to obtain one base class — and a vocabulary that drags a domain behind it is not a vocabulary. |
+| **excludes** | Names only `core`. Critically it may not name `game`: domain types derive **from** `net`, never the reverse, and an upward edge here would make the domain a prerequisite of replication rather than a user of it. |
+| **falsified** | If a replicated field needs to know its transport, or if `net` ever needs a domain type to express what a field is. |
+| **history** | The eleven `NetElement*` headers are **already domain-free and already in `core`**. The seam is in the code and the register was simply not describing it — the same shape as `celestial`, where the tree made the split before the document noticed. |
+| **owes** | nothing. |
+
+### `scene` — what exists, where, moving how
+
+| facet | |
+|---|---|
+| **boundary** | At what a painter needs and not one thing more: what exists, where it is, how it is moving, how it looks. Not the entity that *has* those properties — a scene item is a description, and the thing described stays behind the seam. |
+| **rejected** | Shipping drawables. A `Drawable` is already resolved for one camera at one instant, so a contract carrying drawables welds the pixel rate to the assembly rate and reduces the presentation side to a passive rasteriser. |
+| **excludes** | Names `base` and `core` only. May not name `game`: the moment a scene item *is* an entity, every painter needs the domain and the seam is decorative. |
+| **falsified** | If a painter has to ask a question — if presentation ever needs a round trip in order to draw. One value per step, one direction, or the boundary is misplaced (N1.d). |
+| **history** | `Drawable` depends on six core headers and nothing else, and **already carries `DataStream` operators**. The vocabulary was always closer to a protocol than to an API; this contract names what was already true rather than inventing it. |
+| **owes** | nothing. |
+
+### `sound` — the audio twin of `scene`, and the one that is not ready
+
+| facet | |
+|---|---|
+| **boundary** | Exactly `scene`'s boundary, one modality over: what is audible, where, how loud. The symmetry is the point — if the two modalities need differently-shaped boundaries, one of them is wrong. |
+| **rejected** | Shipping `AudioInstancePtr`. A handle is a pointer into another component's memory, which N1.a forbids outright: it compiles, it works co-located, and it is a machine boundary that cannot be crossed. |
+| **excludes** | Names `base` and `core` only. May not name a device, a mixer, or `game`. |
+| **falsified** | If a mixer must reach back through the seam for anything the batch did not carry. |
+| **history** | The symmetry with `scene` is **asserted and not yet earned**: `Drawable` carries `DataStream` operators and `AudioInstance` does not. An adversarial review found this — tier 3 is not tier 2 with the nouns swapped, and an earlier draft treating it that way was a real defect. |
+| **owes** | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
+
+### `audio` — the device contract, and why the device pulls
+
+| facet | |
+|---|---|
+| **boundary** | At the point where samples leave the program. Below it a vendor API; above it, sample production. The interface is a sample format and a **pull**. |
+| **rejected** | A push interface, in which the mixer writes to the device whenever it has samples ready. Rejected because it forces the producer to know the consumer's cadence, which joins two clocks — and F2 says time is local. A sound card runs on its own clock and must therefore be the party that asks. |
+| **excludes** | Names only `core`. May not name `sound`, `mixing`, or any domain type: this contract carries a format and a pull and knows nothing about what the samples mean. |
+| **falsified** | If a backend needs to know what it is playing. The moment `audio` names an `AudioInstance` it has stopped being a device contract and become a mixer. |
+| **history** | none bearing on the pull direction, which is the ordinary shape of audio hardware. The only history that touches it is the shared-header pattern recorded under `base`. |
+| **owes** | nothing. |
+
+### `gpu` — the last vendor-neutral point
+
+| facet | |
+|---|---|
+| **boundary** | At the last place that is still vendor-neutral. Above it, *what* to draw; below it, how one particular API draws it. It carries the `Device` interface, the texture atlas and render diagnostics. |
+| **rejected** | One implementation with conditional compilation per API. Rejected by N3 on a specific argument rather than a stylistic one: **a contract satisfied by one implementation has never been tested as a contract**, and every assumption that implementation makes is baked in invisibly. |
+| **excludes** | Names only `core`. May not name `scene`, `rendering` or any domain type — it takes primitives, never meanings. |
+| **falsified** | **If `gpu_sdl` needs something `gpu_opengl` does not and the contract must grow to admit it.** That is why two backends exist rather than one: the second implementation *is* the test, and a contract that has to change to accept it was fitted to the first. |
+| **history** | The render arc built this seam before it had a name. `StarRenderer_opengl.cpp` — at 1,824 lines the largest presentation file — lived in `application` beside the `Renderer` interface every painter drew through. The abstraction and its single implementation in one place is what made "swap the backend" sound harder than it is. |
+| **owes** | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
+
+### `presentation` — the seam this whole design started from
+
+| facet | |
+|---|---|
+| **boundary** | Between deciding *what exists* and turning it into pixels and samples. Three interfaces — `SceneSink`, `AudioSink`, `InputSource` — and **no drawing code whatever**. |
+| **rejected** | **`present(Frame const&)`** — handing the presentation side a finished, camera-resolved frame. Rejected on N1 grounds: it welds the pixel rate to the assembly rate, so presentation can only rasterise what it was given, when it was given it. Across a network that degrades to frame streaming — bandwidth O(screen), and every hitch in the simulation arrives as a hitch on the glass. |
+| **excludes** | Names `base`, `core`, `scene` and `sound` — the two value vocabularies and the substrate, and nothing else. May not name `rendering`, `gpu` or `game`: a presentation contract that names a renderer has described one implementation. |
+| **falsified** | **If a null backend cannot satisfy it.** Any method a recorder cannot answer, or any call whose meaning requires a display to exist, means a device has been smuggled into an interface. This is the cheap second implementation earning its keep. |
+| **history** | Where this document began: *a headless client is presentation-backend = null*. The seam proved itself by having something run with nothing on the other side of it, and the method that produced it — state the duty, name the contract, compose the participant — generated every other component here. |
+| **owes** | nothing. |
 
 ### The T2 vocabulary
 
