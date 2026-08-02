@@ -163,6 +163,8 @@ ELEMENT_FREE = {
     "gpu_opengl": "executes device calls issued by `presentTick`",
     "gpu_sdl": "same, other backend",
     "audio_sdl": "opens the device and PULLS `audioTick`; the clock is SDL's, not ours",
+    "platform_null": "answers vendor queries with nothing and schedules none of it -- a component "
+                     "whose whole duty is to do nothing has no cadence to declare",
     "platform_pc": "vendor services answer when called",
     "host_sdl_extra": "placeholder guard -- never matches a real component",
 }

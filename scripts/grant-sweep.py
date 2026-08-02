@@ -115,6 +115,12 @@ REMOVING = {
     ("participant", "host_sdl"): (1, "the STAR_MAIN_APPLICATION macro moves to client_opengl"),
     ("participant", "frontend"): (11, "the UI is composed in by an entrypoint that wants one"),
     ("participant", "windowing"): (1, "same: `client_agent` must link no widget toolkit"),
+    # Added when `platform` was narrowed from 18 grants to the components that call it. Each of
+    # these is a component naming vendor services it has no business asking for -- and the ceiling
+    # is the measured size of the habit, not an estimate.
+    ("windowing", "platform"): (228, "widgets reach the controller for services; a toolkit asks a store nothing"),
+    ("participant", "platform"): (12, "the shell's vendor calls move to the entrypoint that wants a store"),
+    ("server", "platform"): (4, "a dedicated server has no storefront; it links `platform_null`"),
     ("host_sdl", "gpu"): (1, "the host should not know what a Renderer is"),
     ("host_sdl", "gpu_opengl"): (1, "the entrypoint constructs the backend, not the host"),
 }
