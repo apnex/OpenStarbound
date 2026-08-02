@@ -192,7 +192,7 @@ mindmap
       18 CI gates
     Governance
       docs/
-      35 markdown documents
+      36 markdown documents
 ```
 
 A mindmap because this genuinely is a tree: six independent children of one root with no cross-links. Five of the six are invisible to any tool that only reads `source/`.

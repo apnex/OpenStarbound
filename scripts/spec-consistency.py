@@ -323,6 +323,36 @@ def check(text):
             findings.append(("UNGRANTED", "`%s --> %s` is drawn, but %s's grant list omits it"
                              % (ids[a], ids[b], ids[a])))
 
+    # UNWARRANTED -- every boundary cites the layer above it, and something counts.
+    #
+    # WHY THIS IS A GATE AND NOT A STYLE NOTE. The document's chain is axioms -> north star ->
+    # principles -> decisions -> model, and a component that cites none of them is not a boundary,
+    # it is a preference. Measured on 2026-08-02, before this verdict existed: 13 of 41 components
+    # had a derivation and 28 did not -- including `game`, the god object the whole design exists to
+    # dissolve, and `rendering`, `participant` and `universe`. The 13 that had one were the ones that
+    # had been ARGUED ABOUT in session; the load-bearing ones were assumed.
+    #
+    # Placement cannot fix that. Pooling derivations at the back hides the silence and weaving them
+    # inline merely makes it visible -- you can still write a register row with no prose beside it,
+    # and 28 times we effectively did. So the warrant is a COLUMN, generated with the row it
+    # justifies, and this verdict fails when one is missing. P7 turned on the document itself.
+    #
+    # FOUNDATION is exempt and the exemption is narrow: `core` and `base` are the substrate every
+    # layer names, and demanding a north-star warrant for a container library would be theatre.
+    CITES = re.compile(r'\*\*(A[1-6]|N[1-3](?:\.[abc])?|P[1-7])\b')
+    for name, v in sorted(comp.items()):
+        if v["kind"] == "FOUNDATION":
+            continue
+        w = (v.get("warrant") or "").strip()
+        if not w or w == "—":
+            findings.append(("UNWARRANTED",
+                             "`%s` has no warrant. Every non-FOUNDATION component states why it "
+                             "exists, citing an axiom, a north star or a principle" % name))
+        elif not CITES.search(w):
+            findings.append(("UNWARRANTED",
+                             "`%s`'s warrant cites nothing: %r. A warrant names A1-A6, N1-N3 or "
+                             "P1-P7 -- otherwise it restates the duty" % (name, w[:60])))
+
     # IMPLEMENTS_ARITY -- the Law of One, counted at last.
     #
     # Section 4 states the rule as "a backend with two `==>` edges is doing two jobs" and calls it

@@ -99,7 +99,8 @@ def components(text):
             raise SystemExit("spec-model: component `%s` has kind %r zone %r, which are not in the "
                              "taxonomy" % (m.group(1), cells[1], cells[2]))
         out[m.group(1)] = dict(kind=cells[1], zone=cells[2], duty=cells[3],
-                               contents=cells[4] if len(cells) > 4 else "")
+                               warrant=cells[4] if len(cells) > 4 else "",
+                               contents=cells[5] if len(cells) > 5 else "")
     return out
 
 

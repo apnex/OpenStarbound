@@ -109,6 +109,17 @@ ALLOWED = {
     "clipboard": "Lua callback group; binds the Application",
     "interface": "Lua callback group; binds MainInterface",
     "voice": "Lua callback group; defined in source/frontend",
+    # ROLE names from section 0 -- the fourth namespace, and the one the document argues in before
+    # any component exists. `authority`, `device` and `player` are what the SYSTEM is made of;
+    # components are what the CODE is made of, and the two vocabularies are deliberately different.
+    #
+    # Worth recording that `participant` is BOTH -- a role in section 0 and a component in
+    # `composition/` -- so it reaches the clean bucket as a component and its role sense is never
+    # checked. That is a homonym of exactly the kind the index review flagged as needing an explicit
+    # declaration, and it is the reason section 0 says a role is not a component in so many words.
+    "authority": "section 0 role: owns the truth of a world or universe",
+    "device": "section 0 role: a display, speaker, file or recorder",
+    "player": "section 0: an ENTITY in a world, emphatically not a participant",
     # THREAD names from the runtime register's thread column -- a third namespace, alongside
     # components and Lua groups. `driver`, `main`, `universe`, `world` and `audio`; only `driver`
     # and `main` are not also component names, so only those two ever reach this list.

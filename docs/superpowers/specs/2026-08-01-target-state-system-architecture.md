@@ -31,7 +31,117 @@ Section 10.
 
 ---
 
-## 0. Decisions locked in brainstorm
+## 0. Foundations
+
+Every claim in this document is justified by the layer above it: **axioms** are facts about
+the domain, the **north star** is what we want, **principles** are the invariants that follow,
+and **decisions** are the choices left over once those are satisfied. A boundary that cites
+none of them is not a boundary, it is a preference.
+
+### Axioms
+
+Facts about Starbound, accepted without argument. They are not choices and not goals — they are what
+the domain *is*, and an architecture that contradicts one is describing a different game. Everything
+downstream is justified against these plus the north star, in that order.
+
+| | the axiom | what it forbids |
+|---|---|---|
+| **A1** | **A world's truth has exactly one owner.** At any instant, one authority decides what is true in a world. | Two authorities for one world. Not a topology — a bug. |
+| **A2** | **A participant's view is a prediction and may be wrong.** It runs ahead, it is corrected, it converges. | Treating a view as truth, which is what makes a client authoritative by accident. |
+| **A3** | **Simulation advances in discrete, deterministic steps.** The same inputs to the same state give the same next state. | A world whose outcome depends on frame rate, wall-clock, or who was watching. |
+| **A4** | **Content is data the engine does not understand.** The engine loads materials, items, species and dungeons; it does not know what any of them mean. | An engine that must be recompiled to add a rock. |
+| **A5** | **Perception is optional.** Nothing in the simulation requires that anything is looking or listening. | Simulation that cannot run without a display — the whole reason a headless authority was hard. |
+| **A6** | **Two processes never share a clock.** Time is local, always. | A seam that assumes both sides step together. |
+
+Read them as a set and the north star stops being aspirational: **A5 and A6 are why N1 is reachable
+at all**, and **A1 with A2 is the reason `authority` and `participant` are different words** rather
+than two configurations of one thing.
+
+---
+
+### North star
+
+Three goals. Every decision in Section 3 is justified against at least one of them by name, and a
+decision that serves none of them does not belong in this document.
+
+#### N1 — A modern distributed Starbound
+
+The universe, its worlds and its participants can run **on different machines**. Not as a mode, not
+behind a flag: the architecture has no seam that assumes co-residence, so placement is a deployment
+choice rather than a rewrite.
+
+This is the demanding goal, and it is demanding in a specific way. It means **every payload crossing
+a seam is a value** — never a pointer, never a handle, never a reference into someone else's memory.
+It means **every unit of placement is nameable**: you can place the many, not the one, so a component
+that exists once per world is placeable and a component that exists once per process is not. And it
+means a seam's co-located path is an *optimisation of* the split path, never a cheaper semantics.
+
+#### N2 — A sovereign, comprehensible engine
+
+Every duty is owned by exactly one component. Every dependency is declared, and the declaration is
+enforced by the build rather than by discipline. No god objects, no ambient singletons, no component
+whose name is a noun covering three jobs.
+
+The test is not aesthetic. It is: **can one person hold a component in their head, change it, and know
+what they have not broken?** A boundary that cannot be enforced is a convention, and conventions decay
+at exactly the rate the team turns over.
+
+#### N3 — Aggregate functionality comes from composition
+
+The payoff of a modular system is not tidiness. It is that **components combine into aggregate
+functions that nobody wrote a code path for**. A client is one such aggregate. A server is another.
+Neither is the taxonomy of the system — they are two witnesses that the components compose, and if
+they were the only two the property would not be worth claiming.
+
+So the components are the vocabulary and the compositions are sentences. The document enumerates the
+vocabulary exhaustively and the sentences only by example, because an architecture that can express a
+fixed list of aggregates has not achieved anything a build flag could not.
+
+**The test is falsifiable, and it is the one that matters.** Name a capability the system does not
+have. Ask whether it needs new *components* or only new *wiring*. A few, none of which is a shipped
+entry point today:
+
+| you want | it composes | new components needed |
+|---|---|---|
+| a dedicated shard for one busy world | one `world` authority + `net`, placed alone | none |
+| a load generator: 500 participants, no senses | `participant` × N, no `device` at all | none |
+| a replay verifier | `world` authority + `transcript`, no participant | none |
+| an offline map renderer | `worldgen` + `world_view` + `rendering`, nothing ticking | none |
+| a save-migration tool | `storage` + `content`, no simulation whatever | none |
+
+If the answer to that question is "new code" every time, the modularity is decorative. Every row
+above is wiring, and that — not the count of components — is what the target state is *for*.
+
+**N1 and N3 are one property seen at two scales.** Composition is placement inside one process;
+distribution is placement across several. Both demand exactly the same thing of a component: a
+declared boundary and a payload that is a value. Satisfy N3 honestly and N1 costs a deployment
+decision; satisfy it dishonestly — with components that only compose in the arrangements someone
+anticipated — and N1 is a rewrite wearing a config file.
+
+---
+
+### Principles
+
+Decisions are choices — Section 3 could have gone another way. These are not choices. They are the
+invariants the model is built to satisfy, and a violation of one is a defect regardless of which
+decision produced it.
+
+| | the invariant | the failure it forbids |
+|---|---|---|
+| **P1** | **One duty per component.** A component's name is a duty, and the duty is singular. | `application` implemented a platform *and* a host, and its duty string hid that behind one noun. |
+| **P2** | **Dependencies point down and are declared.** Every component names what it may include; the layering is a DAG with no upward edge. | A boundary that is a convention rather than a build rule reverts to a suggestion within a release. |
+| **P3** | **A payload that crosses a seam is a value.** No pointer, no handle, no shared mutable state. | A pointer across a seam is a machine boundary that cannot be crossed, discovered at the worst moment. |
+| **P4** | **What ticks does not depend on who is watching.** Residency is an explicit input; a world runs because something *requires* it, not because an observer is counting. | Simulation coupled to presentation — the defect that makes a headless authority impossible. |
+| **P5** | **Placement is wiring.** Which process a component runs in is decided by the composition, never by the component. | A component that knows where it lives cannot be moved. |
+| **P6** | **One writer per fact.** A descriptor is written by the act it describes; nothing is declared twice in two places. | The same fact stated twice drifts, and the drift is silent. |
+| **P7** | **An instrument that cannot fail proves nothing.** Every rule stated as checkable is counted by something, and every check is proven to fire. | A rule called "checkable" that nothing counts is a rule in name only. |
+
+P6 and P7 are architectural, not editorial. A model whose registers disagree is not a model, and a
+boundary nothing enforces is not a boundary.
+
+---
+
+### Decisions
 
 | # | Decision |
 |---|---|
@@ -2638,49 +2748,49 @@ flowchart TD
 Every component in the diagram, in the same reading order.
 
 <!-- TABLE: components -->
-| name | kind | zone | duty | contents |
-|---|---|---|---|---|
-| **`core`** | FOUNDATION | MACHINE | language and containers | the language, containers and algorithms everything rests on |
-| **`base`** | FOUNDATION | MACHINE | shared services | services shared by the simulation and the shells |
-| **`platform`** | CONTRACT | MACHINE | platform-service contracts | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
-| **`host`** | CONTRACT | MACHINE | the host contract | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
-| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
-| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | the `headlessLoop` driver and a controller that shows nothing |
-| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | the Steam, Discord and P2P implementations of `platform` |
-| **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | the scene vocabulary and its delta encoding — see below |
-| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
-| **`net`** | CONTRACT | DOMAIN | what a replicated field is | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
-| **`content`** | CONTRACT | MACHINE | what a mod can change: data | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
-| **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`presentation`** | CONTRACT | DEVICE | the presentation contract | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
-| **`game`** | LIBRARY | DOMAIN | the domain | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | `UniverseServer` — world lifecycle, connections, celestial, warping |
-| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
-| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
-| **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
-| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | `UniverseClient`, chat, team, statistics |
-| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
-| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | widgets, layout and `GuiContext` |
-| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
-| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
-| **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
-| **`frontend`** | LIBRARY | DOMAIN | this game's screens | this game's panes, menus and screens |
-| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
-| **`mixing`** | BACKEND | DEVICE | turns sound into samples | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
-| **`transcript`** | BACKEND | DEVICE | records instead of drawing | the same scene, written down instead of drawn — three modes below |
-| **`gpu`** | CONTRACT | DEVICE | the GPU contract | the `Device` interface, the texture atlas, render diagnostics |
-| **`audio`** | CONTRACT | DEVICE | the audio-device contract | the `AudioDevice` interface: a sample format and a pull |
-| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | the OpenGL implementation of `Device` and its surface substrate |
-| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | the SDL_GPU implementation of `Device` |
-| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
-| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
-| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
-| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | wiring only: `host_null` + `transcript` + the UI it records |
-| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | wiring only: `host_null`; an AI player that acts and neither draws nor records |
-| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
-| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | `main`, `superviseLoop`, and the rcon and server-query threads |
-| **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | wiring only: `world` + a configured residency |
-| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | wiring only: `worldgen`; replaces two dead utilities |
+| name | kind | zone | duty | warrant | contents |
+|---|---|---|---|---|---|
+| **`core`** | FOUNDATION | MACHINE | language and containers | — | the language, containers and algorithms everything rests on |
+| **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
+| **`platform`** | CONTRACT | MACHINE | platform-service contracts | **N2** — vendor services behind a contract, so a build without them still links | `DesktopService`, `P2PNetworkingService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`host`** | CONTRACT | MACHINE | the host contract | **N3** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
+| **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard, vsync |
+| **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **A5** — perception is optional, so a host that shows nothing is legal | the `headlessLoop` driver and a controller that shows nothing |
+| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
+| **`scene`** | CONTRACT | DOMAIN | what exists, where, moving how | **N1.a** — what to draw crosses as a value, so a painter may be elsewhere | the scene vocabulary and its delta encoding — see below |
+| **`sound`** | CONTRACT | DOMAIN | what is audible, where, how loud | **N1.a** — audible facts cross as values, so a mixer may be elsewhere | `AudioInstance` and its batch encoding — the audio twin of `scene`, **but not yet wire-ready**; see below |
+| **`net`** | CONTRACT | DOMAIN | what a replicated field is | **A2** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
+| **`content`** | CONTRACT | MACHINE | what a mod can change: data | **A4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
+| **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
+| **`presentation`** | CONTRACT | DEVICE | the presentation contract | **A5** — perception is optional, so the sink is an interface with a null case | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
+| **`game`** | LIBRARY | DOMAIN | the domain | **A1 + A2** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
+| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **A1** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **A1** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
+| **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **A3** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
+| **`celestial`** | CONTRACT | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
+| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **A2** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
+| **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **A2** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
+| **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
+| **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
+| **`script`** | LIBRARY | MACHINE | hosts Lua; owns no bindings | **A4** — a mod is data plus script; the interpreter owns no bindings | `LuaRoot`, `ScriptableThread`, `LuaComponents` — the interpreter's lifecycle, **not** the mod-facing API |
+| **`colocation`** | LIBRARY | DOMAIN | runs the authority in the participant's own process | **N1.c** — the co-located path is an optimisation of the split one, not a shortcut | the embedded `UniverseServer`, the local socket pair, and the D8 encode/decode parity it owes |
+| **`frontend`** | LIBRARY | DOMAIN | this game's screens | **N3** — screens are a composition's choice; a participant may link none | this game's panes, menus and screens |
+| **`rendering`** | BACKEND | DEVICE | turns a scene into pixels | **N3** — one presentation implementation; `transcript` is the second that proves it | painters and passes: resample a scene, apply the camera, assemble a frame, paint it |
+| **`mixing`** | BACKEND | DEVICE | turns sound into samples | **A5** — sample production is device-side; a silent composition omits it | `Mixer` and the `Audio` decoder, plus `MainMixer` and `Voice` — both measured UI-free and both currently misfiled in `frontend` |
+| **`transcript`** | BACKEND | DEVICE | records instead of drawing | **A5** — recording is perception without hardware, and the cheap second implementation | the same scene, written down instead of drawn — three modes below |
+| **`gpu`** | CONTRACT | DEVICE | the GPU contract | **N3** — two backends satisfy it; one implementation would prove nothing | the `Device` interface, the texture atlas, render diagnostics |
+| **`audio`** | CONTRACT | DEVICE | the audio-device contract | **A5** — a composition may have no ears; the device sits behind a contract | the `AudioDevice` interface: a sample format and a pull |
+| **`gpu_opengl`** | BACKEND | DEVICE | the OpenGL backend | **N3** — one of two GPU backends; a contract two implementations satisfy | the OpenGL implementation of `Device` and its surface substrate |
+| **`gpu_sdl`** | BACKEND | DEVICE | the SDL_GPU backend | **N3** — the second GPU backend; without it `gpu` is a habit, not a contract | the SDL_GPU implementation of `Device` |
+| **`audio_sdl`** | BACKEND | DEVICE | the SDL audio backend | **N3** — the vendor audio device, separable from the mixing that feeds it | the SDL implementation of `AudioDevice` — the only place an audio device is opened |
+| **`participant`** | LIBRARY | COMPOSITION | owns the participant's clock and composes its parts | **A2** — the view's clock and parts: one participant, one prediction | `clientLoop`, `clientTick`, `fixedTick` — **and no audio tick**; the device pulls `mixing` directly. Holds no UI, no authority, no backend |
+| **`client_opengl`** | ENTRYPOINT | COMPOSITION | graphical entry point | **N3** — a participant with sight and sound; embedded authority optional | wiring only: `host_sdl` + `rendering` + `gpu_opengl` |
+| **`client_headless`** | ENTRYPOINT | COMPOSITION | headless entry point | **A5** — a participant that records instead of drawing: perception without hardware | wiring only: `host_null` + `transcript` + the UI it records |
+| **`client_agent`** | ENTRYPOINT | COMPOSITION | a participant with no senses | **N3** — a participant with no senses, which is what proves senses are optional | wiring only: `host_null`; an AI player that acts and neither draws nor records |
+| **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
+| **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **A1** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
+| **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
+| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **A3** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
 <!-- END TABLE: components -->
 
 ### ZONE is a directory, and the four are a layering
