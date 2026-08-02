@@ -18,7 +18,7 @@ Number 5 is the one that matters most, and it is the reason this is a gate and n
 GRAFT RULE, and it is what makes the two projections one design:
 
     every runtime edge must be legal in the compile projection --
-    same component, a direct grant, or a shared CONTRACT to dispatch through
+    same component, a direct grant, or a shared INTERFACE to dispatch through
 
 VERDICTS. Any of these fails the gate.
 

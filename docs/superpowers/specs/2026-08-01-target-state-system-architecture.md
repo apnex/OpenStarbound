@@ -1109,7 +1109,7 @@ Two arrow kinds, because they mean different things:
 | arrow | reads | rule |
 |---|---|---|
 | `A --> B` | **A includes B** — B is on A's grant list | read `base --> core` as "base includes core" |
-| `A ==> B` | **A includes B and implements the contract that says what A *is*** — its identity | **every BACKEND has exactly one**, and it points at a CONTRACT |
+| `A ==> B` | **A includes B and implements the INTERFACE that says what A *is*** — its identity | **every BACKEND has exactly one**, and it points at an INTERFACE. Never at a VOCABULARY, which has nothing to implement |
 | `A --o B` | **A includes B and implements a *role* B declares, through which something else drives A** | unbounded — being driven is not a job |
 
 **Both thick forms imply `-->`; neither replaces it.** An implementer has to see the declaration in
@@ -4742,7 +4742,13 @@ notation that would only look like coverage.
 
 > **Every runtime edge must be legal in the compile projection.** For an edge from element *a* to
 > element *b*: either they share a component, or *a*'s component grants *b*'s, or both grant a common
-> CONTRACT to dispatch through.
+> **INTERFACE** to dispatch through.
+
+**INTERFACE, not merely a shared contract, and the difference is load-bearing.** Dispatching through
+something means calling it, and a VOCABULARY has nothing to call — `world_view` and `rendering` both
+naming `scene` share a type language, not a route. Written as *contract* this clause admitted a graft that
+cannot exist, and `spec_consistency` has always required the narrower thing:
+`if comp.get(c, {}).get("kind") == "INTERFACE"`. The prose was the stale writer, not the gate.
 
 This is what makes the two views one design rather than two documents. It is mechanical, it runs in the
 standing verification, and its first run rejected two edges — `frameLoop → presentTick` and

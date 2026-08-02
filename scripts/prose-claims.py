@@ -385,6 +385,31 @@ _SHARED_TABLE = re.compile(r'<!-- TABLE: shared-words -->(.*?)<!-- END TABLE: sh
 _SHARED_ROW = re.compile(r'^\| \*\*`([a-z_]+)`\*\* \|', re.M)
 
 
+# THE DEAD-KIND RATCHET. `CONTRACT` was retired on 2026-08-02 when it split into INTERFACE and
+# VOCABULARY, and the split reached the register, the diagrams, the tally and the tree while leaving
+# the prose alone. Two of those leftovers were not cosmetic -- the GRAFT rule and the `==>` arity
+# rule were stated over "contract" in a form `spec-consistency` had already narrowed to INTERFACE,
+# so the document and its gate disagreed about the document's own rules, and the gate was right.
+#
+# A ceiling rather than a ban, because the remaining sites need READING, not replacing: some mean
+# INTERFACE, some mean VOCABULARY, and some are ordinary English about a contract. Each one decided
+# lowers this number. It may fall and may never rise. Zero is the target.
+DEAD_KIND_CEILING = 25
+DEAD_KINDS = ("CONTRACT",)
+
+
+def check_dead_kinds(text):
+    """Uses of a retired KIND, ratcheting toward zero."""
+    body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
+    n = sum(len(re.findall(r'\b%s\b' % k, body)) for k in DEAD_KINDS)
+    if n > DEAD_KIND_CEILING:
+        return [("DEAD_KIND",
+                 "%d uses of a retired KIND (%s), above the ceiling of %d. The kind was split into "
+                 "INTERFACE and VOCABULARY; a rule stated over the retired word can be true of one "
+                 "and false of the other" % (n, ", ".join(DEAD_KINDS), DEAD_KIND_CEILING))]
+    return []
+
+
 def check_kind_rules(text):
     """Section 7 must state a rule for every live KIND, and for no dead one."""
     rules = MODEL.kind_rules(text)
@@ -552,6 +577,7 @@ def scan(text):
     findings.extend(check_clause_vocabulary(text))
     findings.extend(check_shared_words(text, comp))
     findings.extend(check_kind_rules(text))
+    findings.extend(check_dead_kinds(text))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -634,6 +660,15 @@ def selftest(text):
     else:
         bad += 1
         print("  KIND_RULE    SILENT -- renaming a kind row was not reported both ways")
+
+    # DEAD_KIND is a ceiling, so it can only be exercised by pushing the count UP -- appending two
+    # more uses of the retired word. A ratchet that has never been seen to fail is a number, not a
+    # gate.
+    if check_dead_kinds(text + "\n\nA CONTRACT is a CONTRACT.\n"):
+        print("  %-12s %-6s %s" % ("DEAD_KIND", "FIRES", "two more uses of the retired kind"))
+    else:
+        bad += 1
+        print("  DEAD_KIND    SILENT -- the retired-kind count rose and was not reported")
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
