@@ -1017,6 +1017,21 @@ stated the correct rule in three separate places the whole time. `CONTRACT_GRANT
 rather than the prose, so the rule and the model can no longer disagree quietly.
 
 <!-- HISTORICAL -->
+**WHEN A THING HAS TWO SIDES, SYMMETRY DECIDES ITS KIND.** The register carries three authority /
+participant pairs and models them two different ways, which looks inconsistent and is not:
+
+| the two sides | shape | why |
+|---|---|---|
+| `world` / `world_view` | two LIBRARYs | **asymmetric.** One owns what is *true*, the other what is *believed* and what it *looks like*. They answer different questions, so there is no contract to state |
+| `universe` / `universe_view` | two LIBRARYs | asymmetric for the same reason, and the tree agrees — `UniverseClient` and `UniverseServer` share no base type |
+| the star map's two lookups | one INTERFACE, two BACKENDs | **symmetric.** Both answer *the same questions* — parameters, name, children — differing only in where the answer comes from. A caller holding the contract cannot tell which it has, which is precisely what a contract means |
+
+**Asymmetry is a design; symmetry is a contract.** Two sides that do different jobs are two components
+and the asymmetry is the point. Two sides that answer one set of questions are one INTERFACE with two
+BACKENDs, and modelling them as separate components would hide the substitution the design depends on.
+A pair is not classified by *feeling* like a client/server split — it is classified by whether one
+caller can hold both behind one name.
+
 **INTERFACE and VOCABULARY are two kinds and not one, because only an INTERFACE can be implemented.**
 The distinction is what `platform` (eight operations, two backends) has and `scene` (a type language,
 no backends, and none possible) does not. **One kind for both cannot state the rule that matters**: a
@@ -6149,9 +6164,15 @@ rule that "owed" is an authoring state rather than a document feature.
    claims another's work. **Completeness is not**, and cannot be by the same means: nothing here can
    tell whether some duty the system performs is owned by no component at all. A register can be
    perfectly non-overlapping and still have a hole, and a hole is invisible precisely because no row
-   describes it. Until there is a rule for when the decomposition is DONE, *"45 components"* is a
-   count of what was written down rather than a claim that it is all of them. The instrument is
-   **none**, and this is the largest unmeasured property of the model.
+   describes it. **No external oracle can supply this**: nothing outside the design knows what the
+   system is supposed to do, so nothing outside it can report a missing duty.
+
+   **THE STOPPING RULE IS THEREFORE A DECISION, NOT A DISCOVERY — the count is complete when the
+   architecture says it is.** That is not an evasion, and it is checkable in the one direction that
+   matters: the architecture may only say so when **every derivation owes nothing**. The owed ledger
+   is generated, it is not empty, and while it is not empty the decomposition has declared itself
+   unfinished in its own words. *"45 components"* is a count of what has been written down; it becomes
+   a claim of completeness at ratification and not before.
 
 6. **Deferral is a schedule, never a boundary.** Per D2 nothing architectural is out of scope, so
    `client_sdl_gpu`, `client_agent` and `colocation` are sequenced rather than excluded. The
