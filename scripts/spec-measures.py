@@ -162,11 +162,17 @@ def _sweep_counts():
         raise SystemExit("spec-measures: grant-sweep reported no UNVERIFIABLE lines -- refusing to "
                          "report full anchoring coverage on a parse that found nothing.")
 
-    ls = subprocess.run([sys.executable, str(REPO / "scripts/link-sweep.py"), "--check"],
-                        capture_output=True, text=True, cwd=str(REPO))
-    unbuilt = len(re.findall(r'^\s+UNBUILT\s', ls.stdout + ls.stderr, re.M))
-    return (len(comp), len(elem), len(grants) - unver, len(grants),
-            entrypoints - unbuilt, entrypoints)
+    # BUILT is read from link-sweep's ENTRYPOINT_BINARY DECLARATION, not from its UNBUILT output.
+    # Counting the output made this block depend on whether the machine happened to have compiled:
+    # green here with a build tree, STALE in CI with none, which is how it went red on 2026-08-02
+    # after passing locally. A generated block whose content varies with the state of dist/ can never
+    # be green in both places. The map is the build DEFINITION -- which entrypoints have a binary
+    # target at all -- and that is the same in every checkout.
+    ls = importlib.util.spec_from_file_location("link_sweep", str(REPO / "scripts/link-sweep.py"))
+    lsm = importlib.util.module_from_spec(ls)
+    ls.loader.exec_module(lsm)
+    built = len(lsm.ENTRYPOINT_BINARY)
+    return (len(comp), len(elem), len(grants) - unver, len(grants), built, entrypoints)
 
 
 def build_coverage():
