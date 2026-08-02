@@ -983,13 +983,25 @@ same string appears in the diagram, the register and the grant table, and no com
 | KIND | the rule it carries |
 |---|---|
 | **FOUNDATION** | depended on by everything above it; names nothing above itself |
-| **INTERFACE** | declares operations, and may name only foundation types. A BACKEND implements it, and `==>` may point at nothing else. Any `.cpp` holds value-type constructors and trivial defaults only, never a backend's behaviour |
-| **VOCABULARY** | declares the types that cross a seam, and may name only foundation types. **It has no implementations and no `==>` edge** — there is nothing to implement, because it states what a thing *is* rather than what may be done to it |
+| **INTERFACE** | declares operations, and may name only FOUNDATION, INTERFACE and VOCABULARY components. A BACKEND implements it, and `==>` may point at nothing else. Any `.cpp` holds value-type constructors and trivial defaults only, never a backend's behaviour |
+| **VOCABULARY** | declares the types that cross a seam, and may name only FOUNDATION, INTERFACE and VOCABULARY components. **It has no implementations and no `==>` edge** — there is nothing to implement, because it states what a thing *is* rather than what may be done to it |
 | **BACKEND** | implements exactly one INTERFACE; interchangeable with its siblings; named only by an ENTRYPOINT |
 | **LIBRARY** | ordinary code, named directly by its consumers, not interchangeable |
 | **ENTRYPOINT** | an executable; the only place a BACKEND may be named |
 
 <!-- END TABLE: kind-rules -->
+
+**The KINDs are written in upper case because they are the literal kinds, not adjectives.**
+`FOUNDATION` is the KIND held by `core` and `base`; it is not a category of C++ type. This table said
+"may name only foundation types" for a day, which reads as a property a type might have and is
+checkable against nothing. Naming the kinds makes the rule a statement about the grant table, and the
+grant table is where it is now checked.
+
+**An INTERFACE may name another INTERFACE or a VOCABULARY, and two do.** `host` names `platform`;
+`presentation` names `scene` and `sound`. A rule of FOUNDATIONs only would have made both illegal — so
+it was not a tightening, it was false, and it contradicted the grant table's own rationale, which had
+stated the correct rule in three separate places the whole time. `CONTRACT_GRANT` reads the register
+rather than the prose, so the rule and the model can no longer disagree quietly.
 
 **INTERFACE and VOCABULARY were one kind called CONTRACT until 2026-08-02, and this table was the last
 place still saying so.** The split is not a renaming: *only an INTERFACE can be implemented*. The

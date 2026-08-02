@@ -398,6 +398,32 @@ DEAD_KIND_CEILING = 25
 DEAD_KINDS = ("CONTRACT",)
 
 
+# A contract may name FOUNDATIONs and other contracts, and nothing else. Section 7 said "only
+# foundation types" for a day -- a rule two of the eight INTERFACEs already broke, `host` naming
+# `platform` and `presentation` naming `scene` and `sound`. It was not a tightening, it was false,
+# and it sat in a table three gates could see while the grant table's own rationale stated the
+# correct rule three separate times. Prose said one thing, the register did another, nothing
+# compared them. This compares them.
+CONTRACT_KINDS = ("INTERFACE", "VOCABULARY")
+
+
+def check_contract_grants(comp, grants):
+    """An INTERFACE or VOCABULARY may grant only a FOUNDATION or another contract."""
+    allowed = ("FOUNDATION",) + CONTRACT_KINDS
+    out = []
+    for name, v in sorted(comp.items()):
+        if v.get("kind") not in CONTRACT_KINDS:
+            continue
+        for g in sorted(grants.get(name, set())):
+            k = comp.get(g, {}).get("kind", "?")
+            if k not in allowed:
+                out.append(("CONTRACT_GRANT",
+                            "`%s` is a %s and grants `%s`, which is a %s. A contract may name only "
+                            "FOUNDATIONs and other contracts -- naming a %s makes it a coupling "
+                            "wearing a seam's label" % (name, v["kind"], g, k, k)))
+    return out
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -578,6 +604,7 @@ def scan(text):
     findings.extend(check_shared_words(text, comp))
     findings.extend(check_kind_rules(text))
     findings.extend(check_dead_kinds(text))
+    findings.extend(check_contract_grants(comp, grants))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -669,6 +696,17 @@ def selftest(text):
     else:
         bad += 1
         print("  DEAD_KIND    SILENT -- the retired-kind count rose and was not reported")
+
+    # CONTRACT_GRANT reads the register, not the prose, so it is driven by mutating the grant map:
+    # a VOCABULARY given a LIBRARY grant, which is the coupling the rule exists to forbid.
+    comp_g, grants_g = MODEL.components(text), MODEL.grants(text)
+    injected = dict(grants_g)
+    injected["scene"] = set(grants_g.get("scene", set())) | {"world"}
+    if check_contract_grants(comp_g, injected):
+        print("  %-12s %-6s %s" % ("CONTRACT_GRANT", "FIRES", "a VOCABULARY granted a LIBRARY"))
+    else:
+        bad += 1
+        print("  CONTRACT_GRANT SILENT -- a contract granting a LIBRARY was not reported")
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
