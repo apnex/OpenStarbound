@@ -110,17 +110,28 @@ ALLOWED = {
     "clipboard": "Lua callback group; binds the Application",
     "interface": "Lua callback group; binds MainInterface",
     "voice": "Lua callback group; defined in source/frontend",
-    # ROLE names from section 0 -- the fourth namespace, and the one the document argues in before
-    # any component exists. `authority`, `device` and `player` are what the SYSTEM is made of;
-    # components are what the CODE is made of, and the two vocabularies are deliberately different.
+    # DOMAIN NOUNS from Section 1 -- the fourth namespace, and the one the document argues in before
+    # any component exists. These are what the SYSTEM is made of; components are what the CODE is
+    # made of, and the two vocabularies are deliberately different. Section 1 says so in the same
+    # words, and did NOT until 2026-08-02: it claimed instead that a register name it had not defined
+    # was "naming something the domain does not contain", which this list has always contradicted.
+    # Two writers, one fact. Section 1 now states the narrower rule it was actually protecting --
+    # where the register REUSES one of these words, both senses must be stated -- and
+    # `check_shared_words` reads it.
+    #
+    # The list holds the nouns that are NOT also component names. `universe`, `world`, `content` and
+    # `participant` are both, so they reach the clean bucket as components and never arrive here --
+    # which is exactly the intersection the shared-words table has to declare.
     #
     # Worth recording that `participant` is BOTH -- a role in section 0 and a component in
     # `composition/` -- so it reaches the clean bucket as a component and its role sense is never
     # checked. That is a homonym of exactly the kind the index review flagged as needing an explicit
     # declaration, and it is the reason section 0 says a role is not a component in so many words.
-    "authority": "section 0 role: owns the truth of a world or universe",
-    "device": "section 0 role: a display, speaker, file or recorder",
-    "player": "section 0: an ENTITY in a world, emphatically not a participant",
+    "authority": "Section 1 role: owns the truth of a world or universe",
+    "device": "Section 1 role: a display, speaker, file or recorder",
+    "player": "Section 1: an ENTITY in a world, emphatically not a participant",
+    "entity": "Section 1 noun: a thing IN a world -- player, monster, object, projectile",
+    "system": "Section 1 noun: a star and its bodies, simulated on a slower cadence than a world",
     # THREAD names from the runtime register's thread column -- a third namespace, alongside
     # components and Lua groups. `driver`, `main`, `universe`, `world` and `audio`; only `driver`
     # and `main` are not also component names, so only those two ever reach this list.
@@ -353,6 +364,46 @@ def check_warrant_clauses(text):
     return out
 
 
+_SEC1 = re.compile(r'^## 1\. .*?^## 2\. ', re.M | re.S)
+_SEC1_NOUN = re.compile(r'^\| \*\*([a-z][a-z ]*)\*\* \|', re.M)
+_SHARED_TABLE = re.compile(r'<!-- TABLE: shared-words -->(.*?)<!-- END TABLE: shared-words -->', re.S)
+_SHARED_ROW = re.compile(r'^\| \*\*`([a-z_]+)`\*\* \|', re.M)
+
+
+def check_shared_words(text, components):
+    """Section 1's reuse rule, made exact.
+
+    Section 1 once claimed that a register name it had not defined was "naming something the domain
+    does not contain" -- false of 41 of 45 rows, and flatly contradicted by the ROLE-name comment in
+    this file, which is two writers for one fact. The rule was narrowed to what it was actually
+    protecting: where the register REUSES a Section 1 noun, the two senses must both be stated.
+
+    The declared set is not a matter of taste, so it is not trusted: it must equal the intersection of
+    Section 1's own bolded noun definitions with the register's names. A component named `entity`
+    tomorrow makes the table stale in one direction; deleting `content` makes it stale in the other.
+    Both are the same defect and both are reported.
+    """
+    sec1 = _SEC1.search(text)
+    if not sec1:
+        return [("SHARED_WORD", "Section 1 could not be located, so its reuse rule cannot be "
+                                "checked -- the heading shape changed or the section is gone")]
+    body = sec1.group(0)
+    table = _SHARED_TABLE.search(body)
+    if not table:
+        return [("SHARED_WORD", "Section 1 states the reuse rule and declares no shared-words table, "
+                                "so the rule names no words and checks nothing")]
+    want = {n for n in _SEC1_NOUN.findall(body) if n in components}
+    have = set(_SHARED_ROW.findall(table.group(1)))
+    return ([("SHARED_WORD",
+              "`%s` is both a Section 1 noun and a register name, and the shared-words table does "
+              "not carry it -- a reused word with only one sense stated" % w)
+             for w in sorted(want - have)] +
+            [("SHARED_WORD",
+              "the shared-words table carries `%s`, which is no longer both a Section 1 noun and a "
+              "register name -- the row is stale" % w)
+             for w in sorted(have - want)])
+
+
 def _scope_claims(text):
     """Prose asserting something belongs to a later document. Historical blocks are exempt."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -468,6 +519,7 @@ def scan(text):
     findings.extend(check_instruments(text))
     findings.extend(check_warrant_clauses(text))
     findings.extend(check_clause_vocabulary(text))
+    findings.extend(check_shared_words(text, comp))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -523,6 +575,21 @@ def selftest(text):
         print("  DEAD_DECLARATION FIRED  -- a present phrase was reported dead")
     else:
         print("  %-12s %-6s %s" % ("DEAD_DECLARATION", "FIRES", "an entry matching nothing in the document"))
+
+    # SHARED_WORD is directional -- it compares a declared set against a computed intersection -- so
+    # appending prose cannot exercise it. Both directions are driven directly, because a check that
+    # only ever runs against a table it has already been made to agree with proves nothing.
+    comp = MODEL.components(text)
+    no_row = text.replace("| **`content`** | materials, items, species, dungeons, biomes, monsters, "
+                          "recipes — declared as data", "| **`REMOVED`** | x", 1)
+    stale = text.replace("<!-- END TABLE: shared-words -->",
+                         "| **`gpu`** | x | x | x |\n\n<!-- END TABLE: shared-words -->", 1)
+    for label, mutated in (("a reused word with no row", no_row), ("a row for an unshared word", stale)):
+        if not check_shared_words(mutated, comp):
+            bad += 1
+            print("  SHARED_WORD  SILENT -- %s was not reported" % label)
+        else:
+            print("  %-12s %-6s %s" % ("SHARED_WORD", "FIRES", label))
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:

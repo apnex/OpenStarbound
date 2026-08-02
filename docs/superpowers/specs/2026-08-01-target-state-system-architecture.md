@@ -71,12 +71,39 @@ Universe answers to mods before it answers to elegance.
 **This section describes the domain, not the design.** Nothing here is a choice anyone made about
 software: it is what Starbound *is*, and it would remain true if every line of the engine were thrown
 away and rewritten. It seals first because everything above it cites it — the domain facts in Section
-2 are facts *about these nouns*, and a component register that uses a word this section has not
-defined is naming something the domain does not contain.
+2 are facts *about these nouns*.
 
-Read it as a vocabulary with consequences. Each noun below is load-bearing somewhere later, and where
-two nouns are nearly the same thing the difference is stated explicitly, because every one of those
-near-collisions has already produced a defect in this document.
+**The register does not draw its names from this section, and the rule that binds is narrower than it
+first looks.** These nouns are what the *system* is made of; components are what the *code* is made
+of, and the two vocabularies are deliberately different — `core`, `net`, `storage` and `gpu` name no
+domain noun and are not meant to. The rule is about **reuse**:
+
+> Where the register reuses a word this section defines, it must mean what this section means by it.
+
+That is the rule worth having, because the expensive failures have all been collisions rather than
+inventions. Nobody was ever confused by `gpu`. The four words below are the whole exposure, and the
+list is not a matter of taste — it is the intersection of this section's nouns with the register's
+names, so a component named `entity` or `player` tomorrow adds a row or fails the SHARED_WORD check.
+
+<!-- TABLE: shared-words -->
+
+| the word | what this section means | what the register means | are they the same thing? |
+|---|---|---|---|
+| **`universe`** | the star map entire — every system, every world that could be visited | the component that decides which worlds exist and who is where | **no** — the domain noun is the *thing*, the component is its *authority*. One universe, one `universe` authority owning it |
+| **`world`** | a terrain simulation with entities in it | the component that ticks one of them and can be placed alone | **no**, and identically: the noun is the simulated thing, the component is the unit that owns and advances it |
+| **`participant`** | a view-holder — a prediction of some world plus the right to ask its authority for changes | the component that *is* that view-holder | **yes.** This is the one word where the domain noun and the component are the same thing, which is why `player` versus `participant` is the near-collision that has cost the most |
+| **`content`** | materials, items, species, dungeons, biomes, monsters, recipes — declared as data | the component that indexes them without knowing what they mean | **no** — the noun is the data, the component is the index over it |
+
+<!-- END TABLE: shared-words -->
+
+**Three of the four are a thing and its owner, and saying so is the point.** A reader who assumes
+`world` the component *is* `world` the noun will look for terrain in it; a reader who assumes they are
+unrelated will not know where the terrain went. Only `participant` is genuinely one thing under one
+name, and that is exactly the word the document has already had to defend twice.
+
+Read the rest as a vocabulary with consequences. Each noun below is load-bearing somewhere later, and
+where two nouns are nearly the same thing the difference is stated explicitly, because every one of
+those near-collisions has already produced a defect in this document.
 
 ### The universe, and what is inside it
 
