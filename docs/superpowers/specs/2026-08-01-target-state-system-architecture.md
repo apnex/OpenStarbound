@@ -978,6 +978,19 @@ In the target state it **forks at seam 1 and forks again at seam 2**.
 what sort of thing it is, and therefore which rule governs it. The duty is one phrase, canonical — the
 same string appears in the diagram, the register and the grant table, and no component appears twice.
 
+**READ THE DUTY COLUMN ALONE AND IT IS AN INDEX OF EVERYTHING THE SYSTEM DOES AT COMPONENT ALTITUDE.**
+That is what the column is for, and it is why the Law of One is a rule about the register and not a
+matter of taste: **a duty containing *and* cannot be an index entry**, because the row has stopped
+denoting one thing. One such row does not merely look untidy — it makes the column a description
+instead of a decomposition, and a reader can no longer ask *"who owns X?"* and expect exactly one
+answer. `ELEMENT` altitude carries the same index for run time, which is the second reason ALTITUDE is
+an axis: two indexes of one system, at two altitudes, neither of which is a summary of the other.
+
+The property this buys is checkable in one direction and owed in the other. **Non-overlap** is what
+the Law of One gives: `LAW_OF_ONE` reads every duty and fails on an undeclared *and*. **Completeness**
+— that nothing the system does is owned by nobody — has no instrument, and is recorded in Section 18
+as the stopping rule this document still owes.
+
 <!-- TABLE: kind-rules -->
 
 | KIND | the rule it carries |
@@ -1221,7 +1234,7 @@ flowchart TD
     subgraph srv ["<b>server</b> · ENTRYPOINT"]
       superviseloop(["<b>superviseLoop</b> · LOOP<br/><i>supervises; ticks nothing</i>"])
     end
-    wgn["<b>world_gen</b><br/>ENTRYPOINT<br/><i>generates terrain and never ticks it</i>"]
+    wgn["<b>world_gen</b><br/>ENTRYPOINT<br/><i>turns a seed into written terrain</i>"]
     wsim["<b>world_sim</b><br/>ENTRYPOINT<br/><i>ticks one world with no participant</i>"]
   end
 
@@ -1253,7 +1266,7 @@ flowchart TD
     subgraph auth ["<b>universe</b> · LIBRARY"]
       universeloop(["<b>universeLoop</b> · LOOP<br/><i>UniverseServer's own thread</i>"])
     end
-    uview["<b>universe_view</b><br/>LIBRARY<br/><i>one participant's connection and star map</i>"]
+    uview["<b>universe_view</b><br/>LIBRARY<br/><i>a participant's side of the universe</i>"]
     win["<b>windowing</b><br/>LIBRARY<br/><i>the widget toolkit</i>"]
     world["<b>world</b><br/>LIBRARY<br/><i>decides what happens inside one world</i>"]
     wview["<b>world_view</b><br/>LIBRARY<br/><i>one participant's picture of one world</i>"]
@@ -2917,11 +2930,11 @@ Every component in the diagram, in the same reading order.
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
 | **`presentation`** | INTERFACE | DEVICE | the presentation contract | **F1** — devices are optional, so the sink is an interface whose implementations need not own one | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
-| **`universe`** | LIBRARY | DOMAIN | decides which worlds exist and who is where | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
+| **`universe`** | LIBRARY | DOMAIN | the decisions no single world can make | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
 | **`world`** | LIBRARY | DOMAIN | decides what happens inside one world | **D10** — one world, one authority: the unit that ticks and can be placed | `WorldServer`, its agents (spawner, wire processor, falling blocks) and `StarWorldGeneration`'s world-side adapters |
 | **`worldgen`** | LIBRARY | DOMAIN | turns a seed into terrain | **D12** — generation is deterministic from a seed, so it need never tick | `WorldTemplate`, `DungeonGenerator`, and the 26-file `terrain/` selector tree |
 | **`celestial`** | INTERFACE | DOMAIN | the star map's vocabulary and its lookup interface | **N1.b** — a star map is looked up, so the lookup may cross a machine | `CelestialCoordinate`, `CelestialTypes`, `CelestialParameters`, `WorldParameters`, and the **abstract** `CelestialDatabase` — no implementation |
-| **`universe_view`** | LIBRARY | DOMAIN | one participant's connection and star map | **D11** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
+| **`universe_view`** | LIBRARY | DOMAIN | a participant's side of the universe | **D11** — one participant's connection and star map, distinct from the authority's | `UniverseClient`, chat, team, statistics |
 | **`world_view`** | LIBRARY | DOMAIN | one participant's picture of one world | **D11** — a prediction is owned separately from the truth it predicts | `WorldClient`, sky, parallax, particles, and **every entity's appearance** |
 | **`windowing`** | LIBRARY | DOMAIN | the widget toolkit | **N3.b** — the toolkit is composed in, so a headless participant omits it | widgets, layout and `GuiContext` |
 | **`interaction`** | LIBRARY | DOMAIN | how a participant acts on the world | **N3.b** — verbs without UI, so an agent may act with no screen | `ContainerInteractor` and the 35 UI-free command handlers — verbs, never widgets |
@@ -2943,7 +2956,7 @@ Every component in the diagram, in the same reading order.
 | **`client_sdl_gpu`** | ENTRYPOINT | COMPOSITION | graphical entry point, SDL_GPU | **N3.a** — the same participant on a different GPU backend, which proves the swap | wiring only: `host_sdl` + `rendering` + `gpu_sdl` |
 | **`server`** | ENTRYPOINT | COMPOSITION | hosts a universe for remote players | **D10** — an authority with no participant; its players are entities, not peers | `main`, `superviseLoop`, and the rcon and server-query threads |
 | **`world_sim`** | ENTRYPOINT | COMPOSITION | ticks one world with no participant | **N1.b** — one world placed alone: the unit of placement made into a binary | wiring only: `world` + a configured residency |
-| **`world_gen`** | ENTRYPOINT | COMPOSITION | generates terrain and never ticks it | **D12** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
+| **`world_gen`** | ENTRYPOINT | COMPOSITION | turns a seed into written terrain | **D12** — deterministic generation with nothing ticking; `worldgen` is severable | wiring only: `worldgen`; replaces two dead utilities |
 <!-- END TABLE: components -->
 
 ### The target directory structure — GENERATED
@@ -6130,7 +6143,17 @@ rule that "owed" is an authoring state rather than a document feature.
    list** — which of today's files becomes which target component, complete — and the sequencing
    below the three constraints. `scripts/grant-sweep.py` carries a partial mapping and cross-checks
    its own file counts, so the instrument for the move list exists and the list does not.
-5. **Deferral is a schedule, never a boundary.** Per D2 nothing architectural is out of scope, so
+5. **The completeness stopping rule — the register's other half, and it has no instrument.** The duty
+   column is an index of what the system does at COMPONENT ALTITUDE, and an index has two properties.
+   **Non-overlap** is checked: `LAW_OF_ONE` fails on a duty joining two things with *and*, so no row
+   claims another's work. **Completeness is not**, and cannot be by the same means: nothing here can
+   tell whether some duty the system performs is owned by no component at all. A register can be
+   perfectly non-overlapping and still have a hole, and a hole is invisible precisely because no row
+   describes it. Until there is a rule for when the decomposition is DONE, *"45 components"* is a
+   count of what was written down rather than a claim that it is all of them. The instrument is
+   **none**, and this is the largest unmeasured property of the model.
+
+6. **Deferral is a schedule, never a boundary.** Per D2 nothing architectural is out of scope, so
    `client_sdl_gpu`, `client_agent` and `colocation` are sequenced rather than excluded. The
    distinction is load-bearing in one direction only: a deferral written as a scope boundary defers
    the work to a document nobody has committed to writing, and reads as a decision that it does not

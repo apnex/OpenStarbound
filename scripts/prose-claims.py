@@ -456,6 +456,58 @@ def check_no_dates(text):
     return out
 
 
+# A3'S LAW OF ONE, WHICH THE DOCUMENT CITES MORE THAN ANY OTHER RULE AND NEVER CHECKED. Section 2
+# states that A3 forbids *"god objects, dual-purpose modules, 'and'/'also' in a duty"*, and eight duty
+# strings carried "and".
+#
+# WHY IT MATTERS MORE THAN TIDINESS: the register IS A DUTY INDEX AT COMPONENT ALTITUDE -- 45 rows,
+# one duty each -- and the element register is the same index at ELEMENT altitude. A row whose duty
+# says "and" cannot be read as an index entry, because the row no longer denotes one thing. The column
+# stops being a decomposition and becomes a description.
+#
+# Of the eight, four NAMED EXAMPLES RATHER THAN THE CONCERN and were rewritten to their own `boundary`
+# facet: `universe` ("decides which worlds exist and who is where" -> "the decisions no single world
+# can make"), `universe_view`, `platform_pc`, `world_gen`. Three are genuinely one duty and are
+# declared below WITH THE REASON, because an undeclared exemption is where the next real violation
+# hides. One is a real violation and is left standing as this ratchet's target.
+SINGLE_DUTY = {
+    "core": "defined by SUBTRACTION -- what remains once every duty has been named and moved out. "
+            "Its boundary facet says so: the language, the containers, the algorithms are three "
+            "examples of one residue, not three duties",
+    "storage": "the derivation argues this explicitly -- *a store that cannot read yesterday's file "
+               "is not a store* -- so persistence and migration are one duty stated in two clauses",
+    "participant": "a participant IS a clock and the parts it drives; separate them and the clock "
+                   "has no subject. The `and` joins a thing to what it is made of, not two jobs",
+}
+# TWO, and both are violations the document ALREADY RECORDS as undecided:
+#   `celestial`    "the star map's vocabulary and its lookup interface" -- the two halves are now two
+#                  KINDs, so the split is finally expressible. Owed.
+#   `platform_pc`  "Steam, Discord and P2P services" -- its own `owes` facet calls this "the plainest
+#                  Law-of-One violation in the register ... three backends, or `platform` should be
+#                  three contracts, and neither has been decided".
+#
+# I REWROTE `platform_pc`'S DUTY TO MAKE THIS GATE GREEN AND HAD TO REVERT IT. The duty string is the
+# EVIDENCE of the open question; rewording it to "the vendor implementations of `platform`" would have
+# retired a recorded defect by renaming it, which is the failure this whole file exists to catch. A
+# ratchet that can be satisfied by editing the thing it measures is not a ratchet.
+LAW_OF_ONE_CEILING = 2
+_CONJUNCTION = re.compile(r'\b(and|also)\b', re.I)
+
+
+def check_law_of_one(comp):
+    """A duty names ONE thing. A3's most-cited rule, finally read."""
+    offenders = sorted(n for n, v in comp.items()
+                       if n not in SINGLE_DUTY and _CONJUNCTION.search(v.get("duty", "")))
+    if len(offenders) > LAW_OF_ONE_CEILING:
+        return [("LAW_OF_ONE",
+                 "%d duty strings join two things with and/also, above the ceiling of %d: %s. A duty "
+                 "names ONE thing -- split the component, rewrite the duty to the concern its "
+                 "boundary facet names, or declare it in SINGLE_DUTY with the reason"
+                 % (len(offenders), LAW_OF_ONE_CEILING,
+                    ", ".join("`%s`" % o for o in offenders)))]
+    return []
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -638,6 +690,7 @@ def scan(text):
     findings.extend(check_dead_kinds(text))
     findings.extend(check_no_dates(text))
     findings.extend(check_contract_grants(comp, grants))
+    findings.extend(check_law_of_one(comp))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -748,6 +801,18 @@ def selftest(text):
     else:
         bad += 1
         print("  DATED_CLAIM  SILENT -- a date in a load-bearing section was not reported")
+
+    # LAW_OF_ONE reads the register, so it is driven by mutating a duty -- giving a component with a
+    # clean single duty an "and", which is the shape the four rewrites removed.
+    comp_l = MODEL.components(text)
+    dirty = {k: dict(v) for k, v in comp_l.items()}
+    dirty["core"] = dict(dirty["core"], duty="the substrate")          # declared -> now clean
+    dirty["gpu"] = dict(dirty["gpu"], duty="the GPU contract and its atlas")
+    if check_law_of_one(dirty):
+        print("  %-12s %-6s %s" % ("LAW_OF_ONE", "FIRES", "a clean duty given a second job"))
+    else:
+        bad += 1
+        print("  LAW_OF_ONE   SILENT -- a duty joining two things was not reported")
 
     control = scan(text + "\n\n" + SELFTEST_CONTROL)
     if control:
