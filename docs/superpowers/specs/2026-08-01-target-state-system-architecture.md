@@ -2905,43 +2905,43 @@ claim. **Ratification requires every cell to read yes.**
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#ledger -->
 
-**20 of 41 components fully derived · 120 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
+**41 of 41 components fully derived · 246 of 246 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
 
 | component | kind | boundary | rejected | excludes | falsified | history | owes |
 |---|---|---|---|---|---|---|---|
-| `audio_sdl` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `gpu_opengl` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `gpu_sdl` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `host_null` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `host_sdl` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `mixing` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `platform_pc` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `rendering` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `transcript` | BACKEND | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `audio_sdl` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `gpu_opengl` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `gpu_sdl` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `host_null` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `host_sdl` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `mixing` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `platform_pc` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `rendering` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `transcript` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `audio` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `celestial` | CONTRACT | yes | yes | yes | yes | yes | yes |
-| `content` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `content` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `gpu` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `host` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `net` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `platform` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `presentation` | CONTRACT | yes | yes | yes | yes | yes | yes |
 | `scene` | CONTRACT | yes | yes | yes | yes | yes | yes |
-| `sound` | CONTRACT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `client_agent` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `client_headless` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `client_opengl` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `client_sdl_gpu` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `server` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `world_gen` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `world_sim` | ENTRYPOINT | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `sound` | CONTRACT | yes | yes | yes | yes | yes | yes |
+| `client_agent` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `client_headless` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `client_opengl` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `client_sdl_gpu` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `server` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `world_gen` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `world_sim` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `base` | FOUNDATION | yes | yes | yes | yes | yes | yes |
 | `core` | FOUNDATION | yes | yes | yes | yes | yes | yes |
-| `colocation` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `colocation` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `frontend` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `game` | LIBRARY | yes | yes | yes | yes | yes | yes |
-| `interaction` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
-| `participant` | LIBRARY | **owed** | **owed** | **owed** | **owed** | **owed** | **owed** |
+| `interaction` | LIBRARY | yes | yes | yes | yes | yes | yes |
+| `participant` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `script` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `storage` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `universe` | LIBRARY | yes | yes | yes | yes | yes | yes |
@@ -3019,7 +3019,7 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | `Drawable` depends on six core headers and nothing else, and **already carries `DataStream` operators**. The vocabulary was always closer to a protocol than to an API; this contract names what was already true rather than inventing it. |
 | **owes** | nothing. |
 
-### `sound` — the audio twin of `scene`, and the one that is not ready
+### `sound` — the audio twin of scene, and the one that is not ready
 
 | facet | |
 |---|---|
@@ -3173,6 +3173,171 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | Where this document began: *a headless client is presentation-backend = null*. The seam proved itself by having something run with nothing on the other side of it, and the method that produced it — state the duty, name the contract, compose the participant — generated every other component here. |
 | **owes** | nothing. |
 
+### `rendering` — a scene becomes pixels
+
+| facet | |
+|---|---|
+| **boundary** | Around everything between receiving a scene and handing primitives to a GPU: resample the scene to now, apply the camera, assemble a frame, paint it. Above it, what exists; below it, an API. |
+| **rejected** | Rendering as part of the participant. Rejected because the participant would then link a GPU to exist, and every headless composition would carry a rasteriser it never calls. |
+| **excludes** | Names `base`, `core`, `gpu`, `host`, `presentation`, `scene`. **May not name `game`** — and that single exclusion is the whole point of the presentation seam, because a renderer that names the domain is a renderer no second implementation can replace. |
+| **falsified** | If it needs a domain type to draw. The moment `rendering` names an entity rather than a scene item, the seam has been crossed in the wrong direction. |
+| **history** | `source/rendering/CMakeLists.txt` lists `${STAR_GAME_INCLUDES}` today: **`rendering` is granted `game`**, and deleting that one line states this boundary as a build rule rather than a wish. The rest of the presentation work is what makes that deletion possible. |
+| **owes** | nothing. |
+
+### `transcript` — recording is perception without hardware
+
+| facet | |
+|---|---|
+| **boundary** | Around the same scene, written down instead of drawn. Identical inputs to `rendering`, no device beneath it. |
+| **rejected** | A test harness that inspects the renderer's output. Rejected because it makes verification a property of the graphical build — a null implementation that only exists under test is not a peer, and the contract stays fitted to the one real backend. |
+| **excludes** | Names `base`, `core`, `host`, `presentation`, `scene`. May not name `gpu` — the entire point is a presentation implementation with no device at all. |
+| **falsified** | **If there is any call in `presentation` it cannot answer.** That is the same falsifier as the contract's, seen from the other side, and it is why the pair is worth having: the contract is proven honest exactly when this component can satisfy it. |
+| **history** | This is the "cheap #2" the design was built around — GL is implementation #1, null is #2, and SDL_GPU is #3 precisely *because* #2 forced the contract to be honest first. |
+| **owes** | nothing. |
+
+### `mixing` — sound becomes samples, and two files are in the wrong place
+
+| facet | |
+|---|---|
+| **boundary** | Around sample production: turn what is audible into samples a device can consume. Above it, `sound` says what is audible; below it, `audio` takes samples. |
+| **rejected** | Mixing inside the participant, driven by the participant's clock. Rejected because the device pulls on its own clock (F2) — a mixer ticked by a simulation cannot serve a device that asks when *it* is ready, and the participant deliberately has **no audio tick** for this reason. |
+| **excludes** | Names `audio`, `base`, `core`, `presentation`, `sound`. May not name `game` or any view. |
+| **falsified** | If it must be ticked by something other than the device pulling. That would prove the clocks are joined. |
+| **history** | `MainMixer` and `Voice` are **measured UI-free and currently misfiled in `frontend`** — two files whose contents already satisfy this boundary while living behind the wrong one. The measurement is what moved them; nothing about their code had to change. |
+| **owes** | nothing. |
+
+### `gpu_opengl` — implementation #1, no longer privileged
+
+| facet | |
+|---|---|
+| **boundary** | Around the OpenGL implementation of `Device` and its surface substrate. Everything API-specific, and nothing that is not. |
+| **rejected** | Leaving it where it is — the renderer living in `application` beside the shell that owns the GL context. Rejected because that arrangement makes the backend a property of the shell, so swapping it means swapping the program's entry point. |
+| **excludes** | Names `core` and `gpu` only. May not name `scene`, `rendering` or `host`: a backend receives primitives and owns no policy about what to draw or when. |
+| **falsified** | If `rendering` has to branch on which backend is present. |
+| **history** | `StarRenderer_opengl.cpp` is 1,824 lines and has **exactly one consumer outside its own translation unit** — the SDL shell that owns the context. One consumer is what makes this a clean lift rather than an untangling. |
+| **owes** | nothing. |
+
+### `gpu_sdl` — the second implementation, which is the point
+
+| facet | |
+|---|---|
+| **boundary** | Around the SDL_GPU implementation of `Device`. Same shape as `gpu_opengl`, different API. |
+| **rejected** | Not building it — treating one backend as sufficient. Rejected because **without a second implementation `gpu` is a habit, not a contract**: every assumption the first implementation makes stays invisible until something else has to satisfy the same interface. |
+| **excludes** | Names `core` and `gpu` only, exactly as `gpu_opengl` does. The symmetry is not tidiness — an asymmetric grant list would mean the contract admits one backend more deeply than the other. |
+| **falsified** | If it needs `gpu` to grow. Documented under `gpu` as that contract's falsifier; this is the component that performs the test. |
+| **history** | none — it does not exist yet, and that is honest rather than a gap. It is the third implementation of the presentation ladder and the second of this contract. |
+| **owes** | nothing. |
+
+### `host_sdl` — a window, a loop, and the vendor edge
+
+| facet | |
+|---|---|
+| **boundary** | Around the SDL implementation of `host`: an SDL window, the `frameLoop` driver, cursor, clipboard, vsync. The concrete answers to who owns `main` and who pumps events. |
+| **rejected** | A host that also owns rendering and vendor services — the shell this design started from. |
+| **excludes** | Names `core`, `host`, `platform`, `platform_pc`. May not name `gpu`, `rendering` or `game`: a host provides a surface and a loop, and does not know what is drawn into it. |
+| **falsified** | If a composition using this host cannot choose its GPU backend. Both `client_opengl` and `client_sdl_gpu` name `host_sdl`, so the host is proven backend-neutral by having two consumers that differ only below it. |
+| **history** | none beyond `application`'s split, recorded under `host`. |
+| **owes** | nothing. |
+
+### `host_null` — a host that shows nothing, and shows it deliberately
+
+| facet | |
+|---|---|
+| **boundary** | Around a host that provides a loop and no surface: the `headlessLoop` driver and a controller that shows nothing. |
+| **rejected** | Running the graphical host with an invisible window. Rejected because it keeps a real device in the composition — the window still exists, the driver still blocks on it, and any dependency on a display remains satisfied by accident rather than removed. |
+| **excludes** | Names `core`, `host`, `platform`. May not name `gpu`, `rendering` or `windowing`. |
+| **falsified** | **If anything above it behaves differently because no surface exists.** A composition on this host should differ from a graphical one only in what it composed, never in how the pieces behave. |
+| **history** | F1 is what makes it legal, and F1 was *verified* rather than assumed: the simulation libraries link and tick with no rendering, windowing or application objects present at all. |
+| **owes** | nothing. |
+
+### `audio_sdl` — the only place an audio device is opened
+
+| facet | |
+|---|---|
+| **boundary** | Around the SDL implementation of `AudioDevice`, and the sentence that defines it is a *cardinality* claim: **the only place an audio device is opened.** One opener, one owner. |
+| **rejected** | Opening a device wherever sound is needed. Rejected because two openers means two device clocks and no single answer to "who pulls" — F2 again, at hardware scale. |
+| **excludes** | Names `audio` and `core` only. May not name `sound`, `mixing` or any domain type. |
+| **falsified** | If a device is opened anywhere else. This is the rare falsifier that could be counted directly by grep, and nothing counts it yet. |
+| **history** | none. |
+| **owes** | nothing. |
+
+### `platform_pc` — the vendor half, and three duties behind one name
+
+| facet | |
+|---|---|
+| **boundary** | Around the Steam, Discord and P2P implementations of `platform` — the vendor half, separable so a composition may omit it entirely. |
+| **rejected** | Vendor code inside the host or beside its callers. Rejected because a build without Steam would then fail to link, and because the shell would grow a second duty — which is precisely what `application` did. |
+| **excludes** | Names `core`, `host`, `platform`. Named only by `host_sdl`, which is what makes it omissible: one consumer, one line to cut. |
+| **falsified** | If a composition without vendor services fails to build. |
+| **history** | Its predecessor arrangement is the origin of the `host`/`platform` split. |
+| **owes** | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
+
+### `client_opengl` — the graphical entry point, and wiring only
+
+| facet | |
+|---|---|
+| **boundary** | Around a *wiring list*, and nothing else: `host_sdl` + `rendering` + `gpu_opengl`, plus the participant and the UI. An entry point contains no logic — if it does, that logic has no owner. |
+| **rejected** | An entry point that constructs and coordinates. Rejected by P2: placement and composition are wiring decisions, and the moment an entry point contains behaviour, that behaviour cannot be reused by any other composition. |
+| **excludes** | Names ten components and is named by none. May not contain a duty of its own. |
+| **falsified** | **If it contains a line that is not a construction or a connection.** |
+| **history** | It links 32 of 41 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
+| **owes** | nothing. |
+
+### `client_sdl_gpu` — the same participant, a different backend
+
+| facet | |
+|---|---|
+| **boundary** | Identical to `client_opengl` but for one substitution: `gpu_sdl` in place of `gpu_opengl`. |
+| **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3 actually makes. |
+| **excludes** | Names the same ten components as `client_opengl` with the one substitution. The two grant lists differing in exactly one entry is the machine-checkable form of "the backend is swappable". |
+| **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
+| **history** | Also 32 of 41 components — same count, as it must be. |
+| **owes** | nothing. |
+
+### `client_headless` — a participant that records instead of drawing
+
+| facet | |
+|---|---|
+| **boundary** | Around the wiring `host_null` + `transcript` + the UI it records. A participant with no device that nonetheless produces an artefact. |
+| **rejected** | A graphical client with rendering disabled at runtime. Rejected because the device stays linked and the dependency stays satisfied — the composition would prove nothing about whether a display is optional. |
+| **excludes** | Names seven components. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
+| **falsified** | If it links a GPU. Checkable by construction from the grant closure. |
+| **history** | 26 of 41 components — the gap to `client_opengl`'s 32 is the measured size of "what a display costs". |
+| **owes** | nothing. |
+
+### `participant` — the view's clock, and the thing every composition is built around
+
+| facet | |
+|---|---|
+| **boundary** | Around **one participant: its clock and the parts it composes**. `clientLoop`, `clientTick`, `fixedTick` — and deliberately **no audio tick**, because the device pulls `mixing` on its own clock rather than being driven from here. It holds no UI, no authority and no backend. |
+| **rejected** | The arrangement this design started from: one `ClientApplication` owning the loop, the window, the renderer, the UI and an embedded server. Rejected because a composition-of-everything cannot be composed — every variant becomes a fork, and "headless" becomes a build configuration rather than a wiring choice. |
+| **excludes** | Names twelve components: `base`, `core`, `game`, `host`, `interaction`, `platform`, `presentation`, `scene`, `sound`, `storage`, `universe_view`, `world_view`. **May not name `rendering`, `gpu`, `frontend`, `windowing`, `world` or `universe`** — it names the presentation *contract* and never an implementation of it, which is exactly what lets the same participant serve a graphical client, a recorder and an agent unchanged. |
+| **falsified** | **If any composition needs a different participant.** One participant serving every entry point is the claim; a `participant_headless` appearing anywhere would mean the boundary failed and the variants are forks after all. |
+| **history** | The absence of an audio tick is a derived result, not an omission: a device that pulls on its own clock cannot be driven by a simulation's, so a tick here would join two clocks that F2 says are separate. Recorded because it looks like a gap and is a conclusion. |
+| **owes** | nothing. |
+
+### `world_gen` — generation as a binary, and two dead utilities replaced
+
+| facet | |
+|---|---|
+| **boundary** | Around the wiring `worldgen` and nothing else: turn a seed into terrain, write it, exit. A composition with **no tick at all** — the only one in the register. |
+| **rejected** | Generation as a subcommand of the server binary. Rejected because it makes offline generation depend on a simulation being linkable, and it hides the fact that `worldgen` is severable behind an entry point that is not. |
+| **excludes** | Names `base`, `celestial`, `core`, `game`, `platform`, `storage`, `worldgen`. **May not name `world`, `universe` or `participant`** — if generating terrain required any of them, `worldgen`'s severability would be a claim rather than a demonstration. |
+| **falsified** | **If it needs to tick anything.** This composition exists to prove that generation is a function rather than a process, and a single tick would refute that. |
+| **history** | It links 11 of 41 components — the second-smallest composition after `client_agent` — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
+| **owes** | nothing. |
+
+### `client_agent` — a participant with no senses at all
+
+| facet | |
+|---|---|
+| **boundary** | Around the thinnest possible participant: `host_null` and nothing perceptual. It acts and neither draws nor records. |
+| **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still produced, and the composition would not demonstrate that senses are omissible — only that output can be discarded. |
+| **excludes** | Names three components: `core`, `host_null`, `participant`. **The shortest grant list of any entry point, and that is its entire argument.** |
+| **falsified** | **If it needs anything perceptual to run.** This is the composition that proves senses are optional, so any perceptual dependency falsifies not just this component but N3. |
+| **history** | 19 of 41 components — the floor. Everything between 19 and 32 is what perception costs. |
+| **owes** | nothing. |
+
 ### The T2 vocabulary
 
 `Frame`, `AudioBatch` and `InputBatch` may name **only core, base and presentation-vocabulary types**.
@@ -3272,6 +3437,15 @@ of "the game world" is what the code calls the **universe**. A `World`-prefixed 
 thing would be naming it after the smallest part inside it.
 
 ### `world_sim`, and the rule it forced out
+
+| facet | |
+|---|---|
+| **boundary** | Around the wiring `world` + a configured residency, and nothing else: one world, ticked, with no participant anywhere. It is **N1.b made into a binary** — the unit of placement, proven placeable by being placed alone. |
+| **rejected** | Testing world simulation inside a client with rendering disabled. Rejected because it never demonstrates that a world can run *alone*: the participant is still there, still holding a view, still supplying the region of interest the simulation quietly depends on. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `storage`, `world`, `worldgen`. May not name `universe` — a single world placed alone must not need the universe above it, or the placeable unit is the universe. |
+| **falsified** | **If it needs a participant to advance.** That is D9's falsifier at binary scale, and this composition is the instrument that would detect it: a world that will not tick here has an observation dependency somewhere above. |
+| **history** | This composition is what forced D9 out into the open. Building it required asking what makes a world tick when nothing is watching, and the answer in the superseded implementation was *nothing does* — worlds are torn down when the last client leaves. |
+| **owes** | nothing. |
 
 The requirement: **a world exists and ticks — Frackin Universe automation machines running — with no
 player present.** It is a target-state decoupling in its own right, and it is a far better acceptance
@@ -3404,6 +3578,15 @@ separation `game` lacks.
 
 ### A client is not one thing — `interaction`, and the composability rule
 
+| facet | |
+|---|---|
+| **boundary** | Around **verbs, never widgets**: how a participant acts on the world, as commands rather than as UI. `ContainerInteractor` and the thirty-five UI-free command handlers. |
+| **rejected** | Leaving the verbs inside the screens that invoke them. Rejected because it makes acting on the world a property of having a UI — and then an agent cannot act at all without linking panels it will never draw. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `universe_view`, `world_view`. **May not name `windowing` or `frontend`** — the exclusion is the entire content of the boundary, and it is what lets `client_agent` compose this and nothing perceptual. |
+| **falsified** | If a verb needs a widget to be expressible. |
+| **history** | The thirty-five handlers were **measured** UI-free rather than assumed so; the component is a name for a set that already existed and had no home. |
+| **owes** | nothing. |
+
 The paragraph above answers "is this a defect" and stops there. The Director's question went further:
 **could a non-visual participant still move around the world, like an AI player?** Measuring that
 produced a component, and a rule the whole section should have been following.
@@ -3477,6 +3660,15 @@ design exists to delete — rather than grants, because granting them would decl
 permanent and re-charge every composition for the UI.
 
 ### `colocation` — the client stops containing a server
+
+| facet | |
+|---|---|
+| **boundary** | Around running an authority inside a participant's own process — the embedded universe, the local socket pair, and the encode/decode parity that keeps it honest. It is a **placement adapter**, not a mode. |
+| **rejected** | A client that simply *contains* a server, calling into it directly. Rejected by N1.c: a direct call is a cheaper semantics, not an optimisation, and every assumption it lets you make is one the split path cannot satisfy. The failure would surface only when you distribute, which is the worst possible time. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `universe`, `universe_view`, `world`. Named only by the three graphical and headless entry points — never by `participant` itself, because a participant must not know whether its authority is local. |
+| **falsified** | **If the co-located path and the split path ever produce different results for one input.** D8 states it and this component owns it; an oracle proving the two agree is the only acceptable alternative to performing the same encode and decode. |
+| **history** | Single-player today runs the universe server inside the client process and connects it with a local client — so the arrangement exists; what it lacks is the parity guarantee that makes it an optimisation rather than a second implementation. |
+| **owes** | The parity oracle itself. D8 requires either identical encode/decode or a proof the two agree, and neither exists yet. |
 
 The same rule applied once more, to the largest grant `participant` was spending on everyone's behalf.
 `participant` named `world` and `universe` — the authority — **because single-player hosting was folded
@@ -3612,6 +3804,15 @@ The 948 call sites say why it is the right one:
 not a coincidence; it is the difference between *content* and *domain tables*.
 
 ### `content` — the data half of the mod surface
+
+| facet | |
+|---|---|
+| **boundary** | Around **the store, never the contents**. `RootBase` offers assets, configuration, a storage path and reload registration — the shape of *asking for* content. What any particular asset means is a question this component cannot answer and must not try to. |
+| **rejected** | `Root` as it stands: a god object reachable from everywhere that offers content access *and* is the ambient answer to every other question. Rejected because when anything can reach anything, no boundary is anywhere — which is why `game` was underivable until this contract existed. |
+| **excludes** | Names `base` and `core` only. May not name `game`: **`game`'s `Root` implements this contract**, so the dependency runs downward from implementation to interface and never back. |
+| **falsified** | If the engine must enumerate a content instance by name in order to work. |
+| **history** | It already leaks in exactly one place: **`perfectlygenericitem` is hardcoded by name** as the universal item-recovery fallback, complete with a user-facing string. Verification found it, and it is the single counter-example to F4's otherwise strong result of zero content-instance names across the game sources. |
+| **owes** | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 
 Adopted as a CONTRACT in `machine/`: `assets()`, `configuration()`, and — target state — the two
 services `LuaRoot` currently reaches into `Root` for, `toStoragePath()` and `registerReloadListener()`.
@@ -3839,6 +4040,15 @@ by two components at different times is a component, not loose vocabulary.
 
 
 ### `server` is not a headless client
+
+| facet | |
+|---|---|
+| **boundary** | Around a composition that is **an authority and nothing else** — `main`, `superviseLoop`, and the rcon and query threads. Not a client with its display removed: a different shape entirely, holding no view. |
+| **rejected** | Building it as a headless client with the participant left in. Rejected because a server that holds a participant has confused watching with owning, and will eventually ask an authority to correct itself. Its players are **entities in its worlds**, not peers of it. |
+| **excludes** | Names `base`, `core`, `game`, `platform`, `universe`, `world`. **May not name `participant`, `universe_view`, `world_view`, `presentation` or any device** — and that exclusion list is the whole argument of the section's title. |
+| **falsified** | If it ever needs a view of its own worlds. Diagnostics that require one are a telemetry duty, not an authority duty. |
+| **history** | It links 13 of 41 components against `client_opengl`'s 32, and the two lists are not nested — a server is not a subset of a client, which is what "not a headless client" means arithmetically. |
+| **owes** | nothing. |
 
 The unifying frame — *a headless client is presentation-backend = null* — describes participants. **It
 does not describe the server**, and treating the two as the same thing is a category error the earlier
