@@ -279,7 +279,7 @@ fact is worse than no fact, because everything citing it inherits the overclaim 
 | | the fact | how it is known | what it forbids |
 |---|---|---|---|
 | **F1** | **Devices are optional.** No display, speaker or input device is required for a simulation to advance. | proven at link time: the simulation libraries link and tick with no rendering, windowing or application objects present at all | a simulation that cannot be built without a display |
-| **F2** | **Physical time is local.** No two independent clock sources share a time base — neither two processes, nor a process and a device. Every clock is a monotonic tick source of unspecified origin, local to whatever owns it. | verified in two halves, because the fact is cited at both widths. **Across processes:** no wire message is ever interpreted in the receiver's clock domain — remote timestamps are echoed to their originator or consumed purely as differences. **Across a device boundary in one process:** the device is the party that asks. `SDL_OpenAudioDeviceStream` takes a callback we fill, so the sound card's sample clock decides when mixing happens; `SDL_GL_SwapWindow` blocks on the display's refresh, so the panel decides when a frame lands. Neither rate is readable from the simulation's clock, and both run when they run | a seam that compares two machines' raw timestamps — and equally, a producer that drives a device from its own cadence |
+| **F2** | **Physical time is local.** No two independent clock sources share a time base — neither two processes, nor a process and a device. Every clock is a monotonic tick source of unspecified origin, local to whatever owns it. | verified in two halves, because the fact is cited at both widths. **Across processes:** a remote timestamp is never compared against a *local* clock. It is differenced against a locally-advanced estimate **of the same remote clock**, so the unknown offset between the two origins cancels. `StepUpdatePacket` carries the sender's `m_currentTime` — accumulated `+= dt` from zero at *its own* construction, which is the "unspecified origin" this fact names. `InterpolationTracker::receiveTimeUpdate` stores it, advances it by the receiver's own `dt`, and returns `m_lastTimeUpdate - m_predictedTime`, where the second is seeded from the first. Both sides of that subtraction live in the remote origin, which is what makes the difference meaningful and the absolute value meaningless. **Across a device boundary in one process:** the device is the party that asks. `SDL_OpenAudioDeviceStream` takes a callback we fill, so the sound card's sample clock decides when mixing happens; `SDL_GL_SwapWindow` blocks on the display's refresh, so the panel decides when a frame lands. Neither rate is readable from the simulation's clock, and both run when they run | a seam that compares two machines' raw timestamps — and equally, a producer that drives a device from its own cadence |
 | **F3** | **Simulation advances in discrete, counted steps.** Cadence, wake scheduling and timers key on an integer step counter, not on elapsed real time. | verified in the step loop; the counter, not the clock, is what subsystems are scheduled against | a subsystem scheduled on wall-clock inside a stepped simulation |
 | **F4** | **Content instances are opaque, with three named exceptions.** The engine indexes materials, items, species, monsters, dungeons and biomes by names it never enumerates — except where it must survive that content's *absence*. | verified by sweep: no material, liquid, monster, object, dungeon or biome instance name appears in the game sources. **Three do**, and all three are fallbacks — `human` (the species of an identity built from a config that omits one), `money` (the currency the quest-reward path names), `perfectlygenericitem` (the item-recovery fallback) | an engine that must be recompiled to add a rock |
 
@@ -287,6 +287,20 @@ fact is worse than no fact, because everything citing it inherits the overclaim 
 there would be nothing to place on a headless machine; if two processes shared a clock, no seam
 between them could be honest. They are the two facts N1 stands on, and neither is a design
 achievement — both are already true.
+
+**F2's across-processes half was restated on 2026-08-02 because the old wording described a policy
+rather than the code.** It said remote timestamps were *"echoed to their originator or consumed purely
+as differences"*, and the tree does neither: it stores the remote value, advances it with local `dt`,
+and differences it against a copy of itself. That reads like a violation and is in fact a stronger
+guarantee — **offset cancellation** — but the sentence claiming verification did not describe what had
+been verified. A fact whose evidence clause is a paraphrase of the intended rule is the same defect
+class as an instrument that does not measure what its name says.
+
+**Nothing enforces it — the instrument is *none*.** Offset cancellation is a property of two lines in
+`InterpolationTracker`, and no gate reads C++ for clock-domain mixing. A seam that compared a remote
+stamp against a local clock would compile, pass every gate here, and work perfectly until the two
+machines were genuinely apart. That is the largest unguarded claim in this section, and it is written
+down rather than left to be discovered.
 
 **F3 says less than it appears to, and the gap is deliberate.** It says the step *mechanism* is
 discrete and counted. It does **not** say the step *content* is a pure function of state and inputs —
