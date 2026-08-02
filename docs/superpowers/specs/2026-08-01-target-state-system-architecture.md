@@ -164,6 +164,75 @@ exists to serve.**
 
 ---
 
+## 0b. Obligations
+
+Who depends on this architecture, what it must be good at, and what it had no freedom over. A design
+that cannot be judged too slow, too big or too closed cannot be judged at all — so the figures below
+exist to be measured against, and a row with no number is marked as owing one.
+
+### Who this serves
+
+| | cares that | the architecture answers with |
+|---|---|---|
+| **engine contributor** | a change can be made without breaking something unrelated | P1, P2 — one duty per component, and a boundary the build enforces |
+| **mod author** | their content and script keep working, and they can see what they may call | A4 and `content`; the composition's declared Lua surface |
+| **server operator** | it runs unattended, and a busy world does not sink the rest | A1, N1.b — a world is the unit of placement |
+| **CI / agent harness** | the game runs with no display, deterministically, and can be asserted against | A3, A5 — determinism and optional perception |
+| **player** | it is smooth, it loads, and their save survives | the budgets below, and `storage` |
+
+The mod author is first among these in one specific sense: a fork whose reason to exist is Frackin
+Universe answers to mods before it answers to elegance.
+
+### What it must be good at
+
+Rates are facts about the simulation, not aspirations. Both are in the source today.
+
+| | budget | where the figure comes from |
+|---|---|---|
+| **world fixed step** | **60 Hz — 16.67 ms** | `ServerGlobalTimestep = 1.0f / 60.0f` |
+| **system-world step** | **20 Hz — 50 ms** | `SystemWorldTimestep = 1.0f / 20.0f` |
+| **frame** | display rate, vsync-bound | the driver blocks in `swapTick`; the rate is the device's, not ours |
+| **headless throughput** | ≥ real time with no participant | A5 — the acceptance test below |
+| worlds resident per universe | **owed** | not measured; the figure a placement decision needs |
+| participants per universe | **owed** | as above |
+| split-path latency and bandwidth | **owed** | N1's cost, and the number that decides whether a seam may really cross |
+
+**Two fixed rates, not one, and the difference is load-bearing.** A world steps three times for every
+system-world step, so a design that assumes one simulation cadence is wrong about a third of the
+simulation. Both are FIXED under A3; only the number differs.
+
+**The four owed figures are owed, not omitted.** Three of them describe a system that has never run
+distributed, and inventing them would be the exact failure this document was reframed to avoid —
+aspiration wearing a measurement's clothes. They are named so their absence is visible.
+
+**The acceptance test, because a quality attribute that cannot fail is decoration.** Load a world
+containing Frackin Universe automation, attach no participant, tick it, and assert the machines
+advance. It exercises A3, A4 and A5 at once, and no composition that fails it is a target state.
+
+### What could not be chosen
+
+A constraint is a fact about the world or the toolchain. **A fact about the current directory tree is
+never a constraint** — that is inertia wearing a constraint's hat, and it is the route by which a
+target state quietly becomes a description of today.
+
+| | the constraint | why it is one |
+|---|---|---|
+| **a fork, not a product** | upstream keeps moving and its changes must remain mergeable | a fact about the world; nothing here can change it |
+| **vanilla compatibility** | assets, protocol and saves keep loading | the players exist and their saves are real |
+| **Lua is the mod language** | not a choice this document may reopen | the mods exist |
+| **six-platform CI** | inherited, and Linux Clang plus the gates are the signals acted on | a fact about the toolchain |
+| **OBJECT libraries link whole** | every object of a library enters every consumer; there is no per-object pruning | a fact about CMake, and the reason **a component is enforceable if and only if it is its own directory** |
+
+That last row is the one constraint that shapes the model rather than merely bounding it, which is
+why it is repeated beside the directory tree where it does its work.
+
+**Observability is an obligation, not a feature.** A split deployment is traceable as one system, and
+the instrument that traces it may not create the upward coupling the grant table exists to forbid.
+Telemetry is how `finishTick` was found to have no legal home; an architecture whose own diagnosis
+requires a boundary violation cannot be diagnosed in the target state.
+
+---
+
 ## 1. Where the boundary goes — PROVISIONAL
 
 ### The boundary is at *drawing*, not at *UI*
