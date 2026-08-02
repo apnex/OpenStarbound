@@ -473,29 +473,60 @@ exist to be measured against, and a row with no number is marked as owing one.
 
 ### What it must be good at
 
-Rates are facts about the simulation, not aspirations. Both are in the source today.
+**The two simulation rates are CHOICES, not observations.** An earlier draft of this section called
+them "facts about the simulation… both are in the source today", and that was wrong twice over: the
+source figure it pointed at is a *mutable process-global*, not a constant, and Section 14 says so
+3,800 lines later — so the document contradicted itself about the same variable. The rates below are
+stated as target-state decisions, justified, and the symbols they resemble in today's tree are
+evidence about today and belong in Section 17.
 
-| | budget | where the figure comes from |
+| | budget | why this value | owner |
+|---|---|---|---|
+| **world step** | **60 Hz — 16.67 ms**, fixed | a fixed step is required by the determinism fact; 60 Hz is chosen to match the rate the content was authored and balanced against, so vanilla compatibility survives | each world, as a construction parameter |
+| **system-world step** | **20 Hz — 50 ms**, fixed | orbital and system-scale state changes slowly; a third of the world rate is the coarsest step that still resolves the content's own cadences | each system-world |
+| **frame** | the device's rate, not ours | a frame is produced when a device is ready for one; the presentation clock is owned by the device and is not a simulation budget at all | the device |
+| **headless throughput** | **N simulated seconds complete in ≤ N wall-clock seconds**, no participant attached | this is what "perception is optional" has to mean *operationally*; a simulation that only keeps up when watched has coupled the two | the composition under test |
+
+**Both rates are per-instance construction parameters, not globals.** A world is given its step when
+it is built; nothing writes another world's cadence, and there is no process-global to write. This is
+the target-state statement of a defect Section 14 records in full, and it is the reason the "owner"
+column exists in this table at all.
+
+**Three steps to one, and the ratio is load-bearing.** A world advances three times for every
+system-world step. A design that assumes a single simulation cadence has not modelled the
+system-world at all — and the honest statement of the consequence is not a percentage but a
+structural one: **the system-world currently has no element, no cardinality and no owner anywhere in
+Part III.** That is a real gap, owed by Section 12, and it is listed in Section 18 rather than
+implied here.
+
+#### The owed figures, split by why they are owed
+
+A previous draft called four figures owed and gave one excuse for all of them. The excuse was wrong
+for half: two of these are measurable **today**, against a binary that already exists, and have
+nothing to do with distribution.
+
+| figure | why owed | who can close it |
 |---|---|---|
-| **world fixed step** | **60 Hz — 16.67 ms** | `ServerGlobalTimestep = 1.0f / 60.0f` |
-| **system-world step** | **20 Hz — 50 ms** | `SystemWorldTimestep = 1.0f / 20.0f` |
-| **frame** | display rate, vsync-bound | the driver blocks in `swapTick`; the rate is the device's, not ours |
-| **headless throughput** | ≥ real time with no participant | A5 — the acceptance test below |
-| worlds resident per universe | **owed** | not measured; the figure a placement decision needs |
-| participants per universe | **owed** | as above |
-| split-path latency and bandwidth | **owed** | N1's cost, and the number that decides whether a seam may really cross |
+| worlds resident per universe | **not yet measured.** Measurable now, against a running server — this is a missing measurement, not an unknowable | an anchoring instrument, per Section 15 |
+| participants per universe | **not yet measured.** As above | an anchoring instrument, per Section 15 |
+| split-path latency | **not yet measurable.** No split deployment has ever run; there is nothing to measure | only a real split |
+| split-path bandwidth | **not yet measurable.** As above | only a real split |
 
-**Two fixed rates, not one, and the difference is load-bearing.** A world steps three times for every
-system-world step, so a design that assumes one simulation cadence is wrong about a third of the
-simulation. Both are FIXED under A3; only the number differs.
+**"Owed" is an authoring state, not a document feature.** A ratified section carries zero owed rows:
+the first pair is closed by measuring, the second by building the thing that can be measured, and
+until both are closed this section is not sealed. Marking a gap is honest; *shipping* the mark is not.
 
-**The four owed figures are owed, not omitted.** Three of them describe a system that has never run
-distributed, and inventing them would be the exact failure this document was reframed to avoid —
-aspiration wearing a measurement's clothes. They are named so their absence is visible.
+**The acceptance test, stated so it can fail.** An earlier version of this test asserted only that the
+simulation advanced — which is not the budget above it. The budget is a *ratio*, so the test measures
+one:
 
-**The acceptance test, because a quality attribute that cannot fail is decoration.** Load a world
-containing Frackin Universe automation, attach no participant, tick it, and assert the machines
-advance. It exercises A3, A4 and A5 at once, and no composition that fails it is a target state.
+> Load a world containing Frackin Universe automation. Attach no participant, no display, no audio
+> device. Tick it for **N** simulated seconds and record wall-clock elapsed. **Assert wall-clock ≤ N.**
+> Assert the machines advanced — same start state, same tick count, same end state on a re-run.
+
+The ratio assertion is what makes the throughput row falsifiable; the machines-advanced assertion is
+what makes it about *Starbound* rather than about an empty loop. Together they exercise determinism,
+content-opacity and optional-perception at once, and no composition that fails this is a target state.
 
 ### What could not be chosen
 
@@ -508,16 +539,35 @@ target state quietly becomes a description of today.
 | **a fork, not a product** | upstream keeps moving and its changes must remain mergeable | a fact about the world; nothing here can change it |
 | **vanilla compatibility** | assets, protocol and saves keep loading | the players exist and their saves are real |
 | **Lua is the mod language** | not a choice this document may reopen | the mods exist |
-| **six-platform CI** | inherited, and Linux Clang plus the gates are the signals acted on | a fact about the toolchain |
+| **the platforms are inherited** | the fork carries upstream's build targets: Windows, Linux x64 and arm64, macOS Intel and Apple Silicon | a fact about the fork's origin. It bounds what may be *assumed* about a platform; it is not a workflow this document depends on |
 | **OBJECT libraries link whole** | every object of a library enters every consumer; there is no per-object pruning | a fact about CMake, and the reason **a component is enforceable if and only if it is its own directory** |
 
 That last row is the one constraint that shapes the model rather than merely bounding it, which is
-why it is repeated beside the directory tree where it does its work.
+why it is repeated beside the directory tree where it does its work. It is also the reason the
+component count and the directory count are the same number: in this toolchain, a boundary that is
+not a directory is not enforceable, and an unenforceable boundary is a convention.
 
-**Observability is an obligation, not a feature.** A split deployment is traceable as one system, and
-the instrument that traces it may not create the upward coupling the grant table exists to forbid.
-Telemetry is how `finishTick` was found to have no legal home; an architecture whose own diagnosis
-requires a boundary violation cannot be diagnosed in the target state.
+#### Observability, and who owns it
+
+**A split deployment is one system, so it is traceable as one system.** Under N1 a participant and its
+authority may be on different machines; a trace that stops at the seam describes half a program. So
+the target state carries an identity that survives a seam crossing, and a tick on one machine can be
+related to the tick that caused it on another.
+
+**The tracer's dependencies point down like everything else** (P2). This is the constraint that makes
+observability an architectural obligation rather than a feature request: an instrument is a component,
+it appears in the register, and it may not be granted something its subject is not. An architecture
+whose own diagnosis requires a boundary violation cannot be diagnosed in the target state — it can
+only be diagnosed in a tree that has already stopped being the target state.
+
+| what it requires | what it forbids |
+|---|---|
+| one identity that survives a crossing | a trace that restarts at each process |
+| every declared instrument owned by a named component | telemetry as an ambient global that anything may reach |
+| the instrument's grants a subset of its subject's | an instrument that sees what its subject may not name |
+
+The duty and its owner are named in the register; this section states only that the obligation exists
+and what shape it takes.
 
 ---
 
