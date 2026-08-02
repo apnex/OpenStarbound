@@ -4202,7 +4202,7 @@ simulation, so "sim" never says *which* one. These names are read in grep output
 strings and profile frames — contexts where the enclosing component is not visible to disambiguate
 them, so the name has to carry the distinction by itself.
 
-### Five clocks, in two matched pairs
+### Five clocks, four of them ours, in two matched pairs
 
 | clock | owned by | cadence | one per | the question it answers |
 |---|---|---|---|---|
@@ -4210,7 +4210,12 @@ them, so the name has to carry the distinction by itself.
 | **participant sim** | `participant` — a fixed-timestep accumulator | FIXED | **participant** | how many sim steps has real time earned? |
 | **universe** | `universe` | FREE | **universe** | when do we check what should exist? |
 | **world** | `world` | FIXED | **resident world — N of them** | when does *this* world advance? |
-| audio | the device, via `audio_sdl` @ 44100 Hz | EXTERNAL | **device** | when does the buffer need refilling? |
+| *audio* | **not ours** — the device, via `audio_sdl` @ 44100 Hz | EXTERNAL | **device** | when does the buffer need refilling? |
+
+The fifth row is in the table and outside the count: **the audio clock is the device's**, which is
+what EXTERNAL means and why `audioTick` has no driver in the generated drive table. It is listed
+because a clock we do not own still constrains us — F2 says its rate is not readable from ours, so
+the only legal relationship is the one `mixing` has: wait to be asked.
 
 **Four clocks are owned here, not two, and the difference is the entire authority side.** A count
 taken before the runtime projection had a world clock — driver, sim, audio — reads as complete
@@ -4268,6 +4273,30 @@ register with cardinality `WORLD` — the only one there are many of *per univer
 distribute is the thing there are many of, so cardinality is precisely what identifies the unit of
 placement. D1's second purpose — foundation for a distributed Starbound — rests on that one cell of
 the table.
+
+### How this model would be shown wrong
+
+The claims above are strong and cheap to check, so they are stated with the observation that breaks
+each one. Every check reads the element register or the runtime projection, both of which are gated.
+
+| claim | what would falsify it | instrument |
+|---|---|---|
+| **Exactly one driver per process** | a second root of cadence in one composition's closure | **`drive_table`, indirectly but genuinely.** An element with no driver must appear in `NO_DRIVER` with a reason, so a second driver cannot arrive quietly — it has to announce itself in the generator to make the gate pass |
+| **Frame assembly has no cadence of its own** | a rate anywhere in `rendering` not read from the driver — a timer, a sleep, an accumulator | **`loop_inventory`**, which reports every construct that yields to time, in the tree rather than in the model |
+| **There is no `presentLoop`, at any stage** | a LOOP owned by `rendering` or by a `gpu` backend | **none.** Adding one would be *visible* — it would need a register row and a driver — but nothing rejects it |
+| **Four clocks, in two matched pairs** | a side of the authority/view seam with two free-running loops or with none. The pairing is what makes the split symmetric; an odd side means one role is doing two jobs | **none.** The runtime projection's thread subgraphs show it and nothing counts it |
+| **`worldLoop` is the only `WORLD`-cardinality element** | a second one — two things scaling per world, so the unit of placement is no longer a world | **none.** `check_cardinality` verifies each value is *legal*, not that this one is *unique* |
+
+**Two of five have an instrument and three do not, which is the honest state and is recorded rather
+than rounded up.** All three gaps are one check away — a uniqueness assertion on `WORLD`, a kind
+assertion on presentation-owned elements, a pair count per thread subgraph — and none is written,
+because a check that was written to make this table look finished would be the thing Section 15 warns
+about: a green run that means nothing.
+
+**The two claims worth watching are the first and the third**, because both fail *by addition*.
+Nothing breaks when a second driver or a `presentLoop` appears; the process simply acquires a second
+cadence, and the symptom is jitter rather than an error. One of those has a gate and the other does
+not.
 
 
 ---
