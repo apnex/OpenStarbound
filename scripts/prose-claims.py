@@ -291,6 +291,41 @@ def check_instruments(text, gates=None):
     return out
 
 
+_BARE_GOAL = re.compile(r'\*\*(N[123])\*\*')
+_REGISTER_ROW = re.compile(r'^\| \*\*`[a-z_]+`\*\* \|')
+_SERVES_ROW = re.compile(r'^\| \*\*serves\*\* \|')
+
+
+def check_warrant_clauses(text):
+    """A WARRANT must name a clause, not a goal.
+
+    Section 3 states the rule about itself -- *"a warrant that says N1 without saying which clause has
+    not said much"* -- and then, for a year, every N2 and N3 warrant in the document was exactly that.
+    The rule could not be enforced while two of the three goals had no clauses to name; now all three
+    do, so the rule is checkable and this is the check.
+
+    Only WARRANT POSITIONS are read: field 5 of a register row, and the whole cell of a `serves` facet.
+    Prose that discusses a goal as a whole -- Section 3's own headings, "N1 and N3 are one property
+    seen at two scales" -- is not a warrant and is left alone. Narrowing the check to the position is
+    what keeps it from becoming a ban on ever writing the goal's name.
+    """
+    out = []
+    for line in text.splitlines():
+        if _REGISTER_ROW.match(line):
+            cells = line.split("|")
+            cell = cells[5] if len(cells) > 6 else ""
+        elif _SERVES_ROW.match(line):
+            cell = line.split("|", 2)[2]
+        else:
+            continue
+        for m in _BARE_GOAL.finditer(cell):
+            out.append(("BARE_GOAL",
+                        "a warrant cites **%s** with no clause. Every goal now has clauses, and a "
+                        "warrant naming only the goal has not said which cost it is paying: %s"
+                        % (m.group(1), " ".join(cell.split())[:110])))
+    return out
+
+
 def _scope_claims(text):
     """Prose asserting something belongs to a later document. Historical blocks are exempt."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -404,6 +439,7 @@ def scan(text):
                              % (m.group(1), " ".join(prose[max(0, m.start()-60):m.end()+40].split()))))
 
     findings.extend(check_instruments(text))
+    findings.extend(check_warrant_clauses(text))
     findings.extend(_scope_claims(text))
     return findings
 
@@ -429,6 +465,7 @@ SELFTEST = [
     ("DANGLING_SECTION", "The rule is stated in full in Section 27."),
     ("UNREGISTERED_GATE", "The closure is gated by `composition_freshness` on every push."),
     ("MISSING_SCRIPT", "The figures come from `scripts/nonexistent-measure.py`."),
+    ("BARE_GOAL", "| **serves** | **N3** — it composes, which is all anyone needs to know. |"),
 ]
 # A gate that fires on everything is as useless as one that fires on nothing.
 SELFTEST_CONTROL = "The `world` component owns a fixed clock and `participant` predicts against it."

@@ -514,7 +514,7 @@ implementation chose the other way and left its reasoning in the source.
 |---|---|
 | **chosen** | Exactly one authority decides what is true in a world. Every effect a participant has on that world is a request, re-derived by the authority against its own state before it becomes true. |
 | **rejected** | Authority partitioned by entity ownership — each participant masters the entities in its own id range, and the authority mirrors them as replicas without re-deriving them. |
-| **serves** | **N1** — a seam whose trust model changes with placement is not placeable; if authority is partitioned, moving a participant to another machine moves *authority* with it. **N2.a** — one writer per fact is comprehensible; N co-equal writers is a system nobody can hold in their head. It is also the domain instance of **A1**: a partitioned design leaves world truth in a place no single unit owns. |
+| **serves** | **N1.c** — a seam whose trust model changes with placement is a co-located path with cheaper semantics, which is the one thing that clause forbids. **N1.b** — and the consequence is a naming failure: if authority is partitioned, moving a participant to another machine moves *authority* with it, so the participant was never the placeable unit it appeared to be. **N2.a** — one writer per fact is comprehensible; N co-equal writers is a system nobody can hold in their head. It is also the domain instance of **A1**: a partitioned design leaves world truth in a place no single unit owns. |
 | **costs** | **Input latency, paid on every action.** The rejected design exists precisely to avoid this. |
 
 **What it costs, precisely.** If a participant masters its own player entity, that player responds to
@@ -565,7 +565,7 @@ off when its key is absent. The design chosen here is that shape, made unconditi
 |---|---|
 | **chosen** | The same state and the same inputs give the same next state. No wall-clock reading inside a step; no ambient random stream; no work-shedding that changes outcomes rather than only timing. |
 | **rejected** | Best-effort stepping, in which a step may consult real time, draw from a process-global random source, and shed work adaptively under load. |
-| **serves** | **N1** — two machines that must agree about a world cannot agree if the same inputs give different answers. **N2.d** — a defect that reproduces is a defect that can be found. **A9** — chaos validation compares runs, and comparing runs requires runs to be comparable. |
+| **serves** | **N1.c** — two machines that must agree about a world cannot agree if the same inputs give different answers, which is that clause's own failure symptom read across a network rather than across two code paths. **N2.d** — a defect that reproduces is a defect that can be found. **A9** — chaos validation compares runs, and comparing runs requires runs to be comparable. |
 | **costs** | **An adaptive-fidelity governor becomes illegal**, and every random draw must be threaded from a seeded, owned stream rather than reached for. |
 
 **The cost is larger than it looks and is worth stating plainly.** Shedding work under load is how a
