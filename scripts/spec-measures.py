@@ -196,7 +196,10 @@ def build_coverage():
         % (anchored, ngrants),
         "| **containment** | what each built ENTRYPOINT's binary actually contains, attributed "
         "symbol-by-symbol back to a component | **%d of %d ENTRYPOINTs** — the ones that exist. "
-        "Gated as `link_sweep` |" % (built, neps),
+        "**Measured by `link_sweep`, and deliberately not gated**: it reads a build tree, and a gate "
+        "that reads a build tree passes or fails on what someone last compiled rather than on what "
+        "the repository says. This is the one row here whose coverage cannot ratchet in CI, and "
+        "saying so is the difference between a limit and a hole |" % (built, neps),
         "| **correctness** | the designed system compiles, runs, and does what it claims | **zero.** "
         "Not obtainable before it is built |",
         "",
