@@ -17,9 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 50 | needs a call |
-| **accepted** | 11 | work is committed to; `task` names where it is tracked |
+| **accepted** | 10 | work is committed to; `task` names where it is tracked |
 | **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 3 | we will not do this; `reason` is mandatory |
+| **done** | 1 | finished; `task` or `commit` says where |
 | closed | 88 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -40,7 +41,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **C11** | **accepted** | point lights: cost versus fidelity — simplicity | #213 |
 | **C14** | **declined** | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … |
 | **C16** | **accepted** | Proving the cellular lighting correct and fast — quality | #216 |
-| **C17** | **accepted** | Proving the cellular lighting correct and fast — simplicity | #215 |
+| **C17** | **done** | Proving the cellular lighting correct and fast — simplicity | f5088933 |
 | **D13** | **deferred** | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… |
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
 | **D55** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
@@ -197,7 +198,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **C14** | declined · The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | theirs | For the one defect BOTH actually fixed, theirs is the smaller correct shape: one line in one file, one place to change, and the policy cannot be mis-declared because there is no declaration. Ours spl… | CLOSE THE GAP · DECLINE · DEFER |
 | **C15** | closed | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — performance | tie | Neither side measured a performance delta for this change, and there is essentially nothing to measure: both fixes run once per settings toggle inside loadConfig, which already destroys and reallocat… | NO ACTION |
 | **C16** | accepted · #216 | Proving the cellular lighting correct and fast — quality | theirs | Three concrete gaps in ours that theirs closes. (1) GROUND TRUTH: every assertion in lighting_point_test.cpp/lighting_spread_test.cpp compares a reference against production `calculate()` — productio… | CLOSE THE GAP · DECLINE · DEFER |
-| **C17** | accepted · #215 | Proving the cellular lighting correct and fast — simplicity | theirs | 436 lines total (364 test + 72 bench), one file, four local helpers, zero additions to production classes for testability — they call setObstacle/addPointLight/calculate/getLight/scroll/applyPointLig… | CLOSE THE GAP · DECLINE · DEFER |
+| **C17** | done · f5088933 | Proving the cellular lighting correct and fast — simplicity | theirs | 436 lines total (364 test + 72 bench), one file, four local helpers, zero additions to production classes for testability — they call setObstacle/addPointLight/calculate/getLight/scroll/applyPointLig… | CLOSE THE GAP · DECLINE · DEFER |
 | **C18** | closed | Proving the cellular lighting correct and fast — performance | ours | Both measured; ours measured better, theirs measured more reproducibly. Ours: A-B-A interleaved 90s runs at a fixed warp point with an untouched control phase and a stated noise floor — export 123.9/… | NO ACTION |
 | **C19** | closed | Lightmap computed relative to the frame: sync-by-default + … — quality | ours | Their gate is defeated by an input that changes every frame by ~1e-5. `tilesOrEnvChanged` compares `m_sky->environmentLight().toRgbF()` by exact float equality (tree StarWorldClient.cpp:1844); Color … | NO ACTION |
 | **C20** | closed | Lightmap computed relative to the frame: sync-by-default + … — simplicity | ours | Ours: one 64-line self-contained header, two inputs plus a floor, one call site, one file to change to change behaviour. Theirs (skip half only): 3 free comparators in an anonymous namespace (~45 lin… | NO ACTION |

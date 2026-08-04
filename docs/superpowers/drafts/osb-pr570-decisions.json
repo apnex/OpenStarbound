@@ -41,9 +41,9 @@
     "note": "closed-form assertions. The judge's 'production IS the oracle' was REVERSED by the challenge; what survives is that a differential oracle pins drift, not truth."
   },
   "C17": {
-    "status": "accepted",
-    "task": "#215",
-    "note": "same complaint from the test side. Closed by the relocation."
+    "status": "done",
+    "commit": "f5088933",
+    "note": "the CI half is closed -- the lighting tests now run in core_tests on every push, asserted at 257->277 and guarded at configure time. The production-additions-for-testability half remains under #215."
   },
   "D31": {
     "status": "accepted",
