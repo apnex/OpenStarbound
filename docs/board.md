@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 147, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 148, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -221,16 +221,16 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
-| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | — | — |
+| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | `b1e66be4` | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
 | [#214](#c29c1332-214) | `c29c1332` | open | GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns | — | — |
 | [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
-| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING | `817e54e8` | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + lever RE-MEASURED: 31.4% region, 11.2% lighting CPU. Give-back still unmeasured (wrong scene) | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
-| [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | — | — |
+| [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3795,6 +3795,8 @@ OPEN FOLLOW-UPS:
 
 status: **pending**
 
+- `b1e66be4` fix(gl): guard the GL 4.0 sample-shading calls; enforce the A/B config rule
+
 ```
 FOUND 2026-08-04 comparing against OpenStarbound PR 570. Live in our tree; their remedy is WRONG for
 us and must not be ported.
@@ -4114,32 +4116,38 @@ so in the commit.
 
 <a id="c29c1332-217"></a>
 
-#### #217 — BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING
+#### #217 — BORDER-1 DONE (817e54e8) + lever RE-MEASURED: 31.4% region, 11.2% lighting CPU. Give-back still unmeasured (wrong scene)
 
 status: **completed**
 
 - `817e54e8` fix(lighting): adaptive border under-sized coloured lights, dropping them
 
 ```
-FIXED at 817e54e8. #170's border estimator measured reach from the channel MEAN while the engine uses the channel MAX, under-crediting saturated lights up to 3x and causing them to be DROPPED (not dimmed) when 32-48 cells outside the query rect. Live and default-on: lightingAdaptiveBorder + lightingGpu both default true, neither pinned, and GpuLightmapPass replicates the off-grid drop.
+FIX: 817e54e8. The #170 adaptive border estimator measured point-light reach from the channel MEAN while the engine uses the channel MAX, so saturated coloured lights 32-48 cells outside the query rect were DROPPED, not dimmed. Fixed with three changes: color.max(), a half-open +1, and a geometry wrap. Five tests in core_tests, each proven to fire by injection.
 
-THREE FIXES, now in CellularLightingCalculator::pointBorderFor (source/base/StarCellularLighting.cpp) rather than hand-written at the call sites:
-1. reach = color.max() * pointMaxAir, matching ColoredLightTraits::maxIntensity.
-2. +1 on the returned border -- the array spans [min-b, max+b), so a max-side light at distance d needs b >= d+1; ceil(d) put the farthest constraining light one index past the array end.
-3. wrap via m_geometry.nearestTo before measuring, as the add loop already did.
+RE-MEASURED 2026-08-04 on the headless live-profile harness (scripts/render-profile.sh, real Intel Arc GPU via offscreen EGL, sim running, unattended). Two adjacent 60s legs at bookmark 'explore', both confirmed warping to CelestialWorld:703932736:-540577746:42942814:9:1, config pin echoed True then False.
 
-DE-DUPLICATION: the arithmetic existed twice, live and in the lighting.border.needed telemetry probe. The probe carried the SAME wrong metric, so the instrument that existed to watch this quantity could never have revealed the defect. Both call the one function now.
+  lighting.calc.cells        24576 vs 35840   -31.4%  (lever engaged -- this is the acceptance test)
+  lighting.cpu.total.us      136.3 vs 153.5   -11.2%
+  lighting.cpu.gather.us      51.3 vs  79.9   -35.9%
+  lighting.cpu.begin.us       18.1 vs  28.8   -37.1%
+  lighting.gpu.spread.gpu_us 483.3 vs 573.9   -15.8%
+  lighting.gpu.cpu_cost.us   343.9 vs 420.9   -18.3%
 
-COMMENTS: all three false copies corrected in place (StarWorldClient.cpp, StarCellularLighting.hpp, StarCellularLighting.cpp). The containment half is true and KEPT -- the clamp caps the region at the historic 48-padding, so #210's loaded-sector hazard is not reintroduced. What was false is inferring correctness from containment.
+THE LEVER SURVIVES THE FIX. The 31.4% region reduction matches #170's original 4.375x -> 3.000x exactly, so the correctness fix did not cost the region win at this location.
 
-VERIFICATION: source/test/lighting_border_test.cpp, in core_tests so CI runs it (#212). Five cases, EACH PROVEN TO FIRE by injection -- reverting max->mean fails two, dropping the +1 fails the max-side case. 282 core_tests + 69 game_tests pass; 22/22 gates green.
+WHAT THIS DOES NOT MEASURE, AND WHY. lighting.border.needed is 4 in BOTH legs -- far below the 32-cell spread floor, so the clamp pins the border at the floor and the mean-vs-max correction changes nothing at 'explore'. This establishes the lever's CURRENT VALUE, not the give-back from #217. The give-back appears only where saturated lights sit 32-48 cells outside the query rect.
 
-NOTE ON THE INSTRUMENT'S OWN HOLE: the first draft was min-side only and the injection run showed the +1 could be deleted with every test still green. MaxSideBindingLightLandsInsideTheArray was added for that reason -- the half-open correction was derived, not observed, until it existed.
+HOW TO FIND THAT SCENE: lighting.border.needed between 32 and 48 is the search key. Any location where it pins at 4 is silent on the question. Sweep the bookmarks reading that gauge, then A/B there.
 
-OUTSTANDING (the reason this is not fully closed in substance):
-1. RE-PROFILE. The fixes RAISE the border for saturated scenes, giving back some of #170's -23.6% lighting CPU. Magnitude unmeasured. Read lighting.border.needed / lighting.calc.cells from a play session and compare against #170's baseline. If the give-back is large, the lever's value needs re-deciding.
-2. Defect 3 (wrap) is fixed but NOT covered by a test -- world geometry is not reachable from a core_tests unit test. Needs either a seam scene in game_tests or an in-game check on an x-wrapping world.
-3. No in-game visual confirmation that the previously-missing edge light is now present. Dim and screen-edge, so easy to miss; worth a deliberate look at a saturated light source near the screen boundary.
+THREE INVALID ATTEMPTS PRECEDED THIS, both causes now fixed in b1e66be4:
+1. Stale --warp preflight cache: it listed a bookmark the live save no longer has, so the preflight passed and the engine rejected it after a full world load. Message widened to cover deletions, not just additions.
+2. Config pin inheritance: --set persists to storage-perf/starbound.config, so a leg that relies on the CODE DEFAULT silently inherits the previous leg's value. Both legs ran with the lever off and produced a full table of plausible deltas that were pure recompute-count artefact. The config is now snapshot/restored via trap.
+
+STILL OUTSTANDING:
+- The give-back measurement above (needs a border.needed 32-48 scene).
+- Defect 3 (unwrapped positions) is fixed but has no test -- world geometry is not reachable from a core_tests unit test. Needs a seam scene in game_tests or an x-wrapping world in the harness.
+- No visual/pixel confirmation that previously-dropped edge lights are back. The GATE (scripts/render-gate.sh) can do this as a byte-identical A/B and does not need the Director; it was not run.
 ```
 
 <a id="c29c1332-218"></a>
@@ -4217,6 +4225,8 @@ EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcryp
 ```
 
 status: **pending**
+
+- `4e4ced84` ledger: decide the last 15 rows; delete two dead vendored artefacts
 
 ```
 Three PR-570 ledger items that land in the same area, accepted 2026-08-04.
