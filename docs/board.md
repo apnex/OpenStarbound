@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**158 tasks** across 2 store(s): 3 in_progress, 34 pending, 121 completed
+**159 tasks** across 2 store(s): 3 in_progress, 35 pending, 121 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 157 tasks, ids 64–221
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 158 tasks, ids 64–222
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 149, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 151, of which **42 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -49,15 +49,16 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **3** — NOT YET INVESTIGATED
+- **5** — NOT YET INVESTIGATED
 
-**Unexplained ids: 3.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 5.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
 | [#199](#c29c1332-199) | `555c692b` |
 | [#207](#c29c1332-207) | `66b9715a` |
 | [#214](#c29c1332-214) | `471488eed310861f` |
+| [#222](#c29c1332-222) | `b38dbf0013b9a35b` `f54e552bb76407a4` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
@@ -215,7 +216,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -233,6 +234,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
 | [#221](#c29c1332-221) | `c29c1332` | open | GATHER-2: the gather-cache cluster #214 unblocked — E02 counters, E03 L-region zero, E01 scroll-math extraction, E04 fu… | — | — |
+| [#222](#c29c1332-222) | `c29c1332` | open | BORDER-2: the adaptive border costs 13.2% of pixels at Ocean Factory, and the cause is SPREAD boundary, not point lights | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3479,6 +3481,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `1899aa71` ledger: C05 done at 9429b14d; E01-E04 repointed to #221 -- closing #214 had orphaned two accepted rows [#204]
 - `eab2c181` board: #214 closed at 9429b14d; render-gate A/B fixed at cb17d323 [#204]
 - `d7cdce50` board: #170's -23.6% re-scoped; my 'work moved to GPU' explanation REFUTED by the CPU-solve A/B [#204]
 - `73277aaf` board: #217 measured at 04-Ocean Factory -- lever -27.8% region/-10.1% CPU; fix costs +5.3% region [#204]
@@ -4278,6 +4281,45 @@ E01 -- EXTRACT THE A2 SCROLL MATH (delta -> overlap copy + the two margin rects)
 E04 -- FULL-RECALC ORACLE for the gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is identical to a from-scratch gather at each step. This is the one that would have caught a scroll-shift defect; the A9 sweep noted the cache key is (epoch, dims, anchor) and does NOT track sector load/unload, and unloadSector bumps no epoch -- so a cell retained in the shifted overlap whose sector has since unloaded keeps its last-gathered value. That residual is currently only visible through lighting.gather.calc_outside_loaded (#210). E04 is where it gets pinned.
 
 CONSTRAINT INHERITED FROM #214: the per-tile arithmetic is byte-identity-critical. environmentLight is folded LAST, after fg + liquid + bg, in both sinks. Float addition is not associative. Any change here must clear the render-gate A/B, not just the unit tests.
+```
+
+<a id="c29c1332-222"></a>
+
+#### #222 — BORDER-2: the adaptive border costs 13.2% of pixels at Ocean Factory, and the cause is SPREAD boundary, not point lights
+
+status: **pending**
+
+```
+FOUND 2026-08-04 by the first pixel A/B of this lever at a scene that exercises it.
+
+  render-gate in-process A/B, frozen world, warped to 04-Ocean Factory:
+  lightingAdaptiveBorder true|false -> A/B DIFF: 463562 px (13.2078%) maxAbs=0.050781
+  legA (adaptive, border 34) hash=b38dbf0013b9a35b   legB (static 48) hash=f54e552bb76407a4
+
+WHY THIS WAS NEVER SEEN. #170 certified this lever PIXEL-IDENTICAL through this same gate, and said why in its own commit: "In the frozen harness world no light sat far enough outside the region for 48 to have been doing anything." The gate ran at the harness default location, which has no far-out lights. This is the FIRST pixel comparison of the adaptive border at a scene that exercises it. Same trap as the explore-vs-machine-bases measurement earlier the same day: the instrument was pointed where the effect does not exist.
+
+THE CAUSE IS NOT POINT LIGHTS -- REFUTED, from telemetry already on disk (harness/profiles/of-true.json vs of-false.json, the 60s live A/B at the same bookmark):
+  lighting.lights.point       50.00 per recompute in BOTH legs
+  lighting.gpu.point.lights   50.00 per recompute in BOTH legs
+  lighting.lights.sources     50.00 per recompute in BOTH legs
+  lighting.calc.cells         22.79 vs 31.74 per recompute (+39.3%)
+Widening the border 34 -> 48 admits ZERO additional point lights. CellularLightingCalculator::pointBorderFor is correct and #217's channel-max fix holds; no point light beyond 34 cells can reach the query region at this scene.
+
+SO THE DIFFERENCE IS THE SPREAD SOLVE'S BOUNDARY CONDITION. Cells outside the calculation region are absent and read as unlit, so spread light that would have propagated inward from beyond the boundary is missing. That deficit reaches up to spreadMaxAir (32) cells inward, and with spreadPasses=4 the effective reach is what needs measuring. At border 48 the artefact cannot reach the query rect; at 34 it can.
+
+THIS IS EXACTLY THE HALF #170 DISCLAIMED: "NOT CLAIMED: the floor of 32 is the spread requirement, which this change does not measure and does not touch. Going below it needs the spread half measured first." The disclaimer was honest. Nobody measured it, and it is where the visual cost lives.
+
+WHAT IS NOT ESTABLISHED, and must not be asserted:
+  - whether 13.2% px at maxAbs 0.0508 (~13/255) is PERCEPTIBLE in play. It is a frozen-frame hash diff, not a judgement about what a player sees. The Director has not reported any artefact, and the lever has been default-ON since 2026-07-25.
+  - whether the correct floor is 32, 48, or something derived from the actual spread requirement of the scene. spreadBorderCells() = ceil(spreadMaxAir) = 32 was ASSUMED sufficient; the measurement says it is not sufficient for byte-identity.
+  - whether the diff is concentrated at the screen edge (consistent with a boundary artefact) or distributed. The gate does not dump per-leg PNGs; a spatial diff map would settle it and is the cheapest next evidence.
+
+DECISION OWED BY THE DIRECTOR: is this an accepted approximation (the lever buys 27.8% region and ~10% lighting CPU for a subtle edge artefact) or a defect to close? Standing rationale so far has been "correct + beats vanilla = keep ON", and this is the first evidence that bears on the "correct" half.
+
+CANDIDATE WORK IF IT IS TO BE CLOSED:
+  1. Spatial diff map of the two legs -- edge band or not. One run, needs per-leg PNG dump added to the A/B.
+  2. Measure the real spread requirement the way #170 measured the point requirement, and derive the floor from it instead of assuming ceil(spreadMaxAir).
+  3. Sweep the floor (32/40/48) at Ocean Factory for the pixel/region trade curve.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
