@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**160 tasks** across 2 store(s): 3 in_progress, 35 pending, 122 completed
+**161 tasks** across 2 store(s): 3 in_progress, 36 pending, 122 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 159 tasks, ids 64–223
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 160 tasks, ids 64–224
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -233,8 +233,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
 | [#221](#c29c1332-221) | `c29c1332` | open | GATHER-2: the gather-cache cluster #214 unblocked — E02 counters, E03 L-region zero, E01 scroll-math extraction, E04 fu… | — | — |
-| [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `6e66f36e` | — |
+| [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | open | ORACLE-PARALLEL-1: paralloracle fails 100% at Ocean Factory and passes at the default location -- 4 runs, unexplained | — | — |
+| [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3481,6 +3482,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `62b6cc67` board: #222 closed -- 13.2% was the harness measuring its own sun rays; #223 opened for paralloracle [#204]
 - `b55cc5ce` board: #222 -- adaptive border costs 13.2% of pixels at Ocean Factory; cause is SPREAD boundary, point lights identical [#204]
 - `1899aa71` ledger: C05 done at 9429b14d; E01-E04 repointed to #221 -- closing #214 had orphaned two accepted rows [#204]
 - `eab2c181` board: #214 closed at 9429b14d; render-gate A/B fixed at cb17d323 [#204]
@@ -4290,6 +4292,7 @@ CONSTRAINT INHERITED FROM #214: the per-tile arithmetic is byte-identity-critica
 
 status: **completed**
 
+- `c9f7f524` arch-graph: regenerate system-boundaries blocks after the harness change [#222]
 - `6e66f36e` harness: the A/B had no null control, and in daylight it measured its own sun rays [#222]
 
 ```
@@ -4343,6 +4346,63 @@ WHY IT MATTERS: paralloracle is the instrument that certifies the parallel light
 NOT ESTABLISHED: whether the divergence is scene-dependent (light count, light density) or location-dependent; whether it predates any of today's work; which side (parallel or serial) is the outlier; whether it is order-of-accumulation or a genuine race.
 
 FIRST STEPS: bisect by scene -- run the gate at 00-Ocean-Lab, 03-Surface Outpost, 01-Lava Refinery and the default, and correlate the failure with lighting.lights.point per recompute. Then read what paralloracle actually compares before theorising further.
+```
+
+<a id="c29c1332-224"></a>
+
+#### #224 — SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the shipped cap truncat…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the shipped cap truncates exactly there
+```
+
+status: **pending**
+
+```
+This is what survived the refutation of #222. It is NOT the 13.2% story (that was the harness); it is a separate, code-proven question that the investigation turned up on the way.
+
+VERIFIED BY ME, by reading the code:
+
+  source/rendering/StarGpuLightmapPass.cpp:12-20
+    unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, LightmapParams const& lp) {
+      float maxEmission = 0.0f; ... scan ...
+      return std::min(lp.spreadIterationCap,
+          std::max(8u, (unsigned)std::ceil(maxEmission * lp.point.spreadMaxAir)));
+    }
+  source/game/StarRootLoader.cpp:145        "lightingGpuSpreadIterations" : 32
+  spreadMaxAir = 32 (lighting.config)
+
+ceil(maxEmission * 32) exceeds the cap of 32 exactly when maxEmission > 1.0. So the pass computes how many Jacobi iterations it needs, and is then silently clamped below that number for any scene whose peak emission is above 1. The GPU spread under-iterates precisely in the bright scenes the cap was presumably meant to bound.
+
+ALSO VERIFIED BY ME: the fallback default for the same key disagrees between two call sites --
+  source/game/StarRootLoader.cpp:145               32
+  source/frontend/StarClientCommandProcessor.cpp:766   cfg->get("lightingGpuSpreadIterations", 64)
+One of those is wrong, and per the runtime-config trap already recorded, storage/starbound.config can pin either.
+
+AGENT-REPORTED WITH file:line, NOT YET VERIFIED BY ME -- treat as leads, confirm before acting:
+  - the CPU spread is a sequential Gauss-Seidel sweep whose reach is bounded by ATTENUATION, not pass
+    count: a seed of max-channel M dies at Chebyshev distance M*spreadMaxAir. So the floor of 32 =
+    ceil(spreadMaxAir) is only correct when M <= 1.0 (StarCellularLightArray.hpp:247-258, 467-526)
+  - the CPU sweep self-clips its domain to query +/- ceil(spreadMaxAir) and is therefore BORDER-INVARIANT
+    for any border >= 32, while the GPU spread runs over the whole calculation region -- so the two
+    executors do not agree on spread's spatial extent (StarCellularLightArray.hpp:476-479)
+  - the gather sums block light + environmentLight with no clamp, and brightnessLimit is applied only
+    AFTER the solve, so maxEmission > 1 is reachable rather than hypothetical
+  - lighting.gpu.spread.passes is published per recompute, but it is the CLAMPED value, so it saturates
+    at 32 exactly where the question lives; maxEmission itself is never recorded
+
+WHY THIS IS NOT URGENT: the visible consequence measured at 04-Ocean Factory is 5894 px (0.168%) at
+maxAbs 0.000488 -- one fp16 LSB. Nothing here is a player-visible defect on current evidence. It is a
+correctness-of-derivation question, not a rendering bug.
+
+FIRST STEP IF PICKED UP: record maxEmission as a counter alongside lighting.gpu.spread.passes and read
+it at the machine bases. If maxEmission never exceeds 1.0 in practice, the cap never binds and this
+closes cheaply. If it does, the cap is silently changing the solve and the two default values need
+reconciling first.
+
+Do NOT re-derive the spread border floor on the strength of #222 -- that ticket's premise is refuted.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
