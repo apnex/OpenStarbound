@@ -106,9 +106,11 @@ void CellularLightingCalculator::begin(RectI const& queryRegion, Maybe<unsigned>
   // pointMaxAir)). `floorCells` is the part of it no scene can adapt away: ambient light propagating
   // inward from the region boundary, which is a property of the boundary rather than of any light.
   //
-  // Clamping BETWEEN them is what makes this safe. An adaptive value can only ever SHRINK the region,
-  // never grow it, so a caller that computes `pointBorderNeeded` badly degrades to exactly today's
-  // behaviour instead of producing an under-sized region and dark edges.
+  // The clamp is ASYMMETRIC, and this comment used to claim it was not (#217). Only the CEILING is a
+  // degrade-to-today: an over-estimate lands on `full` and reproduces the static border exactly. An
+  // under-estimate lands on `floorCells`, a third narrower than the point requirement the config can
+  // express -- and since the border decides whether an off-region point light is in the grid at all,
+  // that deletes lights rather than dimming edges. Callers derive the value with pointBorderFor.
   auto adaptedBorder = [&pointBorderNeeded](size_t full, size_t floorCells) -> int {
     if (!pointBorderNeeded)
       return (int)full;
@@ -126,6 +128,29 @@ void CellularLightingCalculator::begin(RectI const& queryRegion, Maybe<unsigned>
 
   cellsGauge.set((int64_t)m_queryRegion.width() * (int64_t)m_queryRegion.height());
   calcCellsGauge.set((int64_t)m_calculationRegion.width() * (int64_t)m_calculationRegion.height());
+}
+
+unsigned CellularLightingCalculator::pointBorderFor(
+    RectI const& queryRegion, Vec2F const& position, Vec3F const& color, float pointMaxAir) {
+  // REACH USES THE CHANNEL MAX, because that is what the engine uses: calculatePointLighting computes
+  // maxRange = maxIntensity * pointMaxAir, and ColoredLightTraits::maxIntensity is value.max(). The two
+  // hand-rolled copies this replaces used the channel mean, which credits a saturated (1,0,0) light with
+  // a reach of 16 against its true 48 (#217).
+  float reach = color.max() * pointMaxAir;
+
+  // Chebyshev distance from the query rect out to the light; 0 when it is inside.
+  float dx = max(0.0f, max((float)queryRegion.xMin() - position[0], position[0] - (float)queryRegion.xMax()));
+  float dy = max(0.0f, max((float)queryRegion.yMin() - position[1], position[1] - (float)queryRegion.yMax()));
+  float d = max(dx, dy);
+
+  if (d >= reach)
+    return 0;
+
+  // +1 BECAUSE THE ARRAY IS HALF-OPEN ON THE MAX SIDE. The region is queryRegion padded by b, so the
+  // array spans world [min-b, max+b) and its last valid index is max+b-1. A light d beyond queryRegion's
+  // max edge therefore needs b >= d+1 to land inside it; a border of exactly ceil(d) puts the farthest
+  // constraining light one index past the end, where calculatePointLighting's guard discards it.
+  return (unsigned)std::ceil(d) + 1;
 }
 
 RectI CellularLightingCalculator::calculationRegion() const {

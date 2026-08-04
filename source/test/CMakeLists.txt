@@ -75,6 +75,7 @@ SET (star_core_tests_SOURCES
       lighting_telemetry_test.cpp
       lighting_spread_test.cpp
       lighting_point_test.cpp
+      lighting_border_test.cpp
       temporal_light_gate_test.cpp
       cellular_lighting_test.cpp
 
@@ -550,6 +551,7 @@ SET (star_ci_gated_test_files
       lighting_telemetry_test.cpp
       lighting_spread_test.cpp
       lighting_point_test.cpp
+      lighting_border_test.cpp
       temporal_light_gate_test.cpp
       cellular_lighting_test.cpp)
 SET (star_ungated_lighting_tests "")

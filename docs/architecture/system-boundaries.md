@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       989 files
-      239636 lines
+      239680 lines
       6 tiers
     Content
       assets/
@@ -219,12 +219,12 @@ source/
 │   └── lua/             vendored — excluded from every count here
 ├── core/            T1   216 files    56,149 lines
 │   └── scripting/          2 files       258 lines
-├── base/            T2    29 files     7,380 lines
+├── base/            T2    29 files     7,421 lines
 │   └── scripting/          2 files        55 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,372 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,264 lines
+├── game/            T3   500 files   115,267 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -237,14 +237,14 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     69 files    13,204 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     70 files    13,371 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
 
 **Every directory that holds code of ours, at every depth — and no files.** Counts are recursive and exclude vendored subtrees, matching every other number in this document. Vendored trees are named but not descended into, since the whole subtree is out of scope and listing its internals would be noise about code that is not ours. Set those aside and the tree is only 2 levels deep: the engine's structure is flatter than its size suggests, which is itself the finding — `source/game` carries 500 files with exactly five subdirectories and no boundary between them.
 
-Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (96 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
+Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (97 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
 <!-- END GENERATED: tree -->
 
 Three things are worth noticing before the edges.
@@ -279,13 +279,13 @@ flowchart TD
   end
   subgraph T2["T2 services"]
     direction LR
-    base["base<br/><small>29 files · 7,380 lines · Root×0</small>"]
+    base["base<br/><small>29 files · 7,421 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,372 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,264 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,267 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -582,11 +582,11 @@ treemap-beta
     "T1 language"
         "core": 56149
     "T2 services"
-        "base": 7380
+        "base": 7421
         "application": 7372
         "platform": 142
     "T3 simulation"
-        "game": 115264
+        "game": 115267
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -602,10 +602,10 @@ treemap-beta
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 18 | 19,243 | 8.0% |
 | T1 language | `core` | 216 | 56,149 | 23.4% |
-| T2 services | `base` | 29 | 7,380 | 3.1% |
+| T2 services | `base` | 29 | 7,421 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,372 | 3.1% |
-| T3 simulation | `game` | 500 | 115,264 | 48.1% |
+| T3 simulation | `game` | 500 | 115,267 | 48.1% |
 | T4 presentation | `rendering` | 23 | 4,413 | 1.8% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,861 | 7.0% |

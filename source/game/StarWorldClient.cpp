@@ -2164,8 +2164,11 @@ void WorldClient::lightingCalc() {
     // every O(cells) lighting phase walks.
     //
     // Recomputed every recompute, so a bright distant light appearing pushes the border straight back
-    // up on the next one. begin() clamps into [spreadBorderCells(), borderCells()], so this can only
-    // ever SHRINK the region: getting the arithmetic wrong here costs performance, never correctness.
+    // up on the next one. An OVER-estimate is free (begin() clamps it to the historic 48); an UNDER-
+    // estimate deletes point lights, because the border is what decides whether an off-region light is
+    // in the grid at all. That asymmetry is why the per-light arithmetic belongs to the calculator --
+    // this loop used to compute reach from the channel mean while the engine used the channel max, and
+    // silently dropped saturated lights 32-48 cells out (#217).
     //
     // Kill-switch, default ON: lightingAdaptiveBorder.
     Maybe<unsigned> adaptiveBorder;
@@ -2173,13 +2176,14 @@ void WorldClient::lightingCalc() {
       float pointMaxAir = root.assets()->json("/lighting.config:lighting").getFloat("pointMaxAir");
       unsigned needed = 0;
       for (auto const& l : lights) {
-        float intensity = l.color.sum() / 3.0f;
-        float dx = max(0.0f, max((float)lightRange.xMin() - l.position[0], l.position[0] - (float)lightRange.xMax()));
-        float dy = max(0.0f, max((float)lightRange.yMin() - l.position[1], l.position[1] - (float)lightRange.yMax()));
-        float d = max(dx, dy);
-        // Only a light that can still REACH the region constrains the border.
-        if (d < intensity * pointMaxAir)
-          needed = max(needed, (unsigned)ceil(d));
+        // Wrap first, as the add loop below does. On an x-wrapping world a seam-adjacent light has an
+        // enormous raw distance, fails the reach test, and never constrains the border -- yet the add
+        // loop wraps it to within a few cells and expects it to be in the grid. Anchor on the query
+        // region because the calculation region does not exist until begin() runs, and the two differ
+        // by at most the border, far below the half-world distance that could change which image is
+        // nearest.
+        Vec2F position = m_geometry.nearestTo(Vec2F(lightRange.min()), l.position);
+        needed = max(needed, CellularLightingCalculator::pointBorderFor(lightRange, position, l.color, pointMaxAir));
       }
       adaptiveBorder = needed;
     }
@@ -2291,15 +2295,14 @@ void WorldClient::lightingCalc() {
     float maxIntensity = 0.0f;
     int borderNeeded = 0;
     float const pointMaxAir = 48.0f;   // probe-local mirror of /lighting.config:lighting.pointMaxAir
+    // Shares pointBorderFor with the live path deliberately. This probe used to carry its own copy of
+    // the arithmetic, so when that arithmetic was wrong the gauge reported the same wrong number and
+    // could never have revealed it (#217) -- an instrument that duplicates its subject measures nothing.
     for (auto const& l : lights) {
-      float intensity = l.color.sum() / 3.0f;
-      maxIntensity = max(maxIntensity, intensity);
-      // Chebyshev distance from the query rect out to the light; 0 when it is inside.
-      float dx = max(0.0f, max((float)lightRange.xMin() - l.position[0], l.position[0] - (float)lightRange.xMax()));
-      float dy = max(0.0f, max((float)lightRange.yMin() - l.position[1], l.position[1] - (float)lightRange.yMax()));
-      float d = max(dx, dy);
-      if (d < intensity * pointMaxAir)
-        borderNeeded = max(borderNeeded, (int)ceil(d));
+      maxIntensity = max(maxIntensity, l.color.max());
+      Vec2F position = m_geometry.nearestTo(Vec2F(lightRange.min()), l.position);
+      borderNeeded = max(borderNeeded,
+          (int)CellularLightingCalculator::pointBorderFor(lightRange, position, l.color, pointMaxAir));
     }
     // RUNNING MAXIMA, not last-value. A gauge holds whatever was written last, so reading one after a
     // window gives the FINAL recompute's requirement -- which is not a bound and cannot size a border

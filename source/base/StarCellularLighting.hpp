@@ -137,14 +137,30 @@ public:
   // intensity 1.0: the worst case the CONFIG can express, not the worst case a SCENE contains. Measured
   // across four bookmarks the point requirement was 20-28.
   //
-  // Pass `pointBorderNeeded` -- max over lights of the distance from the query rect out to a light that
-  // can still reach in -- and the border is clamped into [spreadBorderCells(), borderCells()]. The floor
-  // is not negotiable: ambient light propagates inward from the boundary by spreadMaxAir regardless of
-  // what lights exist. The ceiling means this can only ever SHRINK the region, never grow it, so no
-  // caller can be made wrong by passing a bad value -- worst case it does what it does today.
+  // Pass `pointBorderNeeded` -- max over lights of pointBorderFor() below -- and the border is clamped
+  // into [spreadBorderCells(), borderCells()]. The floor is not negotiable: ambient light propagates
+  // inward from the boundary by spreadMaxAir regardless of what lights exist.
   //
-  // Omit the argument for the static, unconditional border.
+  // THE CLAMP IS NOT SYMMETRIC, AND THE TEXT HERE USED TO CLAIM IT WAS (#217). Only the CEILING is a
+  // degrade-to-today: an over-estimate is clamped to borderCells() and reproduces the static border
+  // exactly. An UNDER-estimate is clamped to spreadBorderCells(), which is NOT today's behaviour -- and
+  // the border is the membership test for off-region point lights, not a work budget. Both executors
+  // discard a light whose centre falls outside the grid (CellularLightArray::calculatePointLighting,
+  // both specializations; GpuLightmapPass), so an under-sized border silently DELETES lights from the
+  // frame. Soundness of the estimate is the caller's obligation: derive it with pointBorderFor, or the
+  // caller and the engine will disagree about how far a light reaches.
+  //
+  // Omit the argument for the static, unconditional border. Covered by lighting_border_test.cpp.
   void begin(RectI const& queryRegion, Maybe<unsigned> pointBorderNeeded = {});
+
+  // The border, in cells, that this one light requires of `queryRegion` -- 0 if it cannot reach at all.
+  // Fold the max over the scene and hand that to begin().
+  //
+  // It lives here, beside the engine it has to agree with, because both places that computed it by hand
+  // used the channel MEAN while the engine's reach uses the channel MAX (ColoredLightTraits::
+  // maxIntensity), under-crediting a saturated light threefold (#217). `position` must already be
+  // wrapped into the query region's frame by the caller -- world geometry is not visible from here.
+  static unsigned pointBorderFor(RectI const& queryRegion, Vec2F const& position, Vec3F const& color, float pointMaxAir);
 
   // Once begin is called, this will return the region that could possibly
   // affect the target calculation region.  All lighting values should be set
