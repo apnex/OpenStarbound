@@ -17,10 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 50 | needs a call |
-| **accepted** | 10 | work is committed to; `task` names where it is tracked |
+| **accepted** | 8 | work is committed to; `task` names where it is tracked |
 | **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 3 | we will not do this; `reason` is mandatory |
-| **done** | 1 | finished; `task` or `commit` says where |
+| **done** | 3 | finished; `task` or `commit` says where |
 | closed | 88 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -32,7 +32,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 
 | row | status | item | where |
 |---|---|---|---|
-| **A05** | **accepted** | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | #210 |
+| **A05** | **done** | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | 66ec860b |
 | **A07** | **accepted** | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | #211 |
 | **C05** | **accepted** | Recomputing only the changed part of the lightmap: their cd… — simplicity | #214 |
 | **C07** | **declined** | Cutting the CPU cost of the cellular light computation — quality | Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… |
@@ -47,7 +47,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D55** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
 | **D59** | **deferred** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | someone is already touching source/extern for another reason. tinyformat.h is verified de… |
 | **D60** | **deferred** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only fi… |
-| **E05** | **accepted** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | #210 |
+| **E05** | **done** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | 66ec860b |
 | **E07** | **accepted** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
 
 ## Still open
@@ -139,7 +139,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **A02** | closed | `restore-ray-traced-point-light` — Claim's structural assertions all check out: commits 1-2 never touch StarCellularLightArray.hpp, and e847309b's own TODO.md diff records the Dial/flood-fill being writte… | cannot-determine | not-applicable-to-us | CLOSE |
 | **A03** | closed | `beam-direction-uninit` — Their fix is present at PR head (StarCellularLightArray.hpp:432 computes `direction` before the beam test), but the broken state it fixes never existed in any commit of … | cannot-determine | not-applicable-to-us | CLOSE |
 | **A04** | closed | `soa-channel-aliasing` — The claimed SoA channel-aliasing bug (point phase writing dst[0][1]/dst[0][2] into the red channel's next two cells) exists nowhere in the PR snapshot — base, any of the… | cannot-determine | not-applicable-to-us | CLOSE |
-| **A05** | accepted · #210 | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | real | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
+| **A05** | done · 66ec860b | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | real | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
 | **A06** | closed | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | overstated | not-applicable-to-us | CLOSE |
 | **A07** | accepted · #211 | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | overstated | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
 | **A08** | closed | `point-layer-spread-feedback` — The described feedback loop is a real hazard of THEIR new persistent/scrolled lightmap design, but it was never a live defect: the point-channel split and the lightAtInd… | overstated | not-applicable-to-us | CLOSE |
@@ -273,7 +273,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **E02** | open | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
 | **E03** | open | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
 | **E04** | open | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
-| **E05** | accepted · #210 | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
+| **E05** | done · 66ec860b | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
 | **E06** | open | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
 | **E07** | accepted · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |
 | **E08** | open | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |

@@ -11,9 +11,9 @@
     "declined/deferred missing its reason/trigger. Run scripts/pr570-ledger.py after editing."
   ],
   "A05": {
-    "status": "accepted",
-    "task": "#210",
-    "note": "sector-unload use-after-free. Serious, live on integration, found independently twice."
+    "status": "done",
+    "commit": "66ec860b",
+    "note": "sector-unload use-after-free. The unload loop now takes m_lightMapPrepMutex, which the gather already holds -- no new lock, 93-276us of main-thread stall. Root cause of the reachability is #127's grid-size bucket widening the calc region on the max side only while neededSectors stayed on the unbucketed window; the false containment comment is replaced by the arithmetic plus counter lighting.gather.calc_outside_loaded. Correct by construction and 346 tests green, but the race was never observed firing -- no TSan preset, jemalloc conflicts with TSan. That verification is deferred on #210, NOT claimed."
   },
   "A07": {
     "status": "accepted",
@@ -21,9 +21,9 @@
     "note": "unguarded GL 4.0 sample-shading. Our fix is a guard, NOT their deletion -- #151 measured the quality at 22.3% of pixels and kept it."
   },
   "E05": {
-    "status": "accepted",
-    "task": "#210",
-    "note": "same finding as A05, reached from the other direction."
+    "status": "done",
+    "commit": "66ec860b",
+    "note": "same finding as A05, reached from the other direction. Closed by the same commit."
   },
   "D55": {
     "status": "accepted",
