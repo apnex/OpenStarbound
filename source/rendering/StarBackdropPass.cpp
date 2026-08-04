@@ -492,7 +492,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
 
   // CONTENT KEY -- everything OTHER than camera/zoom/size that changes the drawn image, and none of which was
   // in the old refresh key. renderParallaxLayers tints every non-unlit/non-lightMapped layer with
-  // sky.environmentLight and fades it by floor(255*layer.alpha) (StarEnvironmentPainter.cpp:251-255) -- and
+  // sky.environmentLight and fades it by floor(255*layer.alpha) (its drawColor computation) -- and
   // layer.alpha is exactly what the biome CROSSFADE and timeOfDayCorrelation animate. So a cached parallax
   // froze its day/night tint and stalled biome crossfades for up to N frames. Hash the same QUANTIZED values
   // the draw itself consumes, so the key moves iff the rendered image would.
@@ -513,7 +513,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
   m_parallaxPrevPixelRatio = parallaxPixelRatio;
   m_parallaxStillFrames = parallaxCameraMoving ? 0 : (m_parallaxStillFrames + 1);
 
-  // MOVING-CAMERA BYPASS. Each layer scrolls by cameraDelta / parallaxValue_i (StarEnvironmentPainter.cpp:282),
+  // MOVING-CAMERA BYPASS. Each layer scrolls by cameraDelta / parallaxValue_i (EnvironmentPainter's per-layer
+  // parallaxValue divide),
   // so every layer shifts by a DIFFERENT amount: a flattened composite is not a rigid translation and cannot be
   // scroll-shifted. The cache therefore can never win on a moving frame -- it force-refreshes, redrawing the
   // full stack exactly as the direct path would, and then pays a full-screen composite ON TOP. That is a strict

@@ -11,15 +11,16 @@ struct MetricNode; // defined in the .cpp
 // WHAT A METRIC IS, declared once at registration and never inferred at sample time.
 //
 // Inference is not merely inconvenient here, it is WRONG: GPU query results are read back and recorded by the
-// MAIN thread roughly three frames after the GPU did the work (StarRenderer_opengl.cpp:1050-1067), so stamping
-// the recording thread -- the obvious design -- would label every GPU sample as CPU/main. Declaration is both
-// correct and cheaper, costing nothing on the sampling path.
+// MAIN thread several frames after the GPU did the work -- see OpenGlRenderer::GlGpuTimer, which polls a
+// rotating query ring via glGetQueryObjectuiv(GL_QUERY_RESULT_AVAILABLE). Stamping the recording thread, the
+// obvious design, would therefore label every GPU sample as CPU/main. Declaration is both correct and
+// cheaper, costing nothing on the sampling path.
 enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
 
 // The LOGICAL budget a sample belongs to -- deliberately not an OS thread. WorldClient::lightingCalc() runs on
-// its own thread or inline on the main thread depending on m_asyncLighting (StarWorldClient.cpp:61,574); it
-// belongs to the `Lighting` budget either way. "Which budget does this cost land in" was always the question;
-// "which thread ran it" never was.
+// its own thread or inline on the main thread depending on WorldClient::m_asyncLighting (set by
+// setAsyncLighting); it belongs to the `Lighting` budget either way. "Which budget does this cost land in"
+// was always the question; "which thread ran it" never was.
 // Count is a SENTINEL, not an owner. It exists so ownerName() can be a table with a static_assert on its
 // size, which makes "added an owner, forgot to name it" a COMPILE ERROR rather than a silent one. The
 // switch it replaced compiled clean with a case missing: -Wswitch warns, but this build has no -Werror and

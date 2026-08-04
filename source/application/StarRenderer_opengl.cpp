@@ -169,7 +169,7 @@ void OpenGlRenderer::loadConfig(Json const& config) {
   // rebuilt, and the generation counter tells the RETAINED SURFACES -- and nobody told the PASS.
   //
   // LATENT, not live, and it is worth being exact about why: ClientApplication polls the AA and HDR options
-  // (StarClientApplication.cpp:503-504) immediately after the previous frame ended with
+  // (its setMultiSampling / setMainHDR pair) immediately after the previous frame ended with
   // switchEffectConfig("interface"), and "interface" declares no frameBuffer -- so the pass is on the screen
   // holding nothing at the one moment this runs. Correctness by frame ordering. Nothing states that ordering,
   // nothing enforces it, and it is invisible to whoever next moves the poll or gives "interface" a target.
@@ -689,9 +689,9 @@ void OpenGlRenderer::setEffectTextureR8(String const& textureName, Vec2U size, u
   // per recompute (the spread and point effects each own an "obstacle" sampler), so both duplicate
   // uploads become SubImages into persistent storage instead of fresh-BO re-specs.
   // The format test was ABSENT here once -- this setter's own guard trusted the SIZE alone. The "obstacle"
-  // sampler is fed by BOTH this setter and setEffectTexture (StarGpuLightmapPass.cpp:42/44 -- a runtime fallback
-  // on the same sampler), so one RGB24 frame re-specified the storage and every R8 upload after it wrote GL_RED
-  // bytes into whatever that left behind, forever, because the size never changed. There is no per-setter guard
+  // sampler is fed by BOTH this setter and setEffectTexture (GpuLightmapPass's uploadObstacle lambda picks
+  // between them at runtime), so one RGB24 frame re-specified the storage and every R8 upload after it wrote
+  // GL_RED bytes into whatever that left behind, forever, because the size never changed. There is no per-setter guard
   // to get wrong now: uploadLoneStorage owns the one guard, and it tests size AND format.
   uploadLoneStorage(*ptr->texture(), size, GL_R8, GL_RED, GL_UNSIGNED_BYTE, data, fresh);
 

@@ -231,8 +231,8 @@ void WorldServerThread::run() {
       // perfectly correct data. That is not hypothetical: harness/profiles/branchless.json and
       // harnesstest.json both carry violations of exactly this shape in their committed `violations`
       // arrays ("count 2702 > expected 2701"). Marking here makes every Tick-cadence sim part count at
-      // most seq, by construction. The count itself is unchanged: update() is called unconditionally
-      // below and StarWorldServerThread.cpp:230 is its only caller in the tree.
+      // most seq, by construction. The count itself is unchanged: update() is PRIVATE and this loop is
+      // its only call site, so the compiler -- not this sentence -- is what keeps one mark per update.
       Telemetry::markTick("server");
 
       // Hoisted purely so the phase scopes below can exist. `fidelity` is established inside loophead

@@ -429,8 +429,11 @@ private:
   // a world hop can land that store while lightingCalc is mid-flight. A lost store is not benign -- it
   // would leave the cache claiming valid while initWorld has already set the parameters WITHOUT the
   // "pointAdditive" override lightingCalc composes in, silently dropping pointAdditive until newLighting
-  // or monochrome next changes. The other two are only ever touched under a valid==false guard on the
-  // lighting thread. (Relaxed is sufficient: the flag guards a recompute decision, not a data handoff.)
+  // or monochrome next changes. The other two need no synchronisation because they are LIGHTING-THREAD-
+  // PRIVATE -- written and read only inside lightingCalc. The rule is thread ownership, not the guard:
+  // this used to say they were "only ever touched under a valid==false guard", which blesses a
+  // main-thread write that would be a real race (#218). Any other-thread access makes them atomic too.
+  // (Relaxed is sufficient for the flag: it guards a recompute decision, not a data handoff.)
   atomic<bool> m_lightingParamsValid = false;
   bool m_lightingParamsNewLighting = false;
   bool m_lightingParamsMonochrome = false;

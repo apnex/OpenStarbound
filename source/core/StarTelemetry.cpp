@@ -218,8 +218,8 @@ static void atomicMax(std::atomic<int64_t>& a, int64_t v) {
 }
 
 // __builtin_clzll is GNU/Clang-only; MSVC (real MSVC, not clang-cl -- clang-cl already defines __clang__ and
-// takes the builtin path above) has no equivalent, so it gets the intrinsic bit-scan instead. Same split as
-// source/extern/fast_float.h:424-435 and source/extern/fmt/format.h:232-247.
+// takes the builtin path above) has no equivalent, so it gets the intrinsic bit-scan instead. Same split the
+// vendored fast_float.h and fmt/format.h make for their own leading-zero counts.
 #if defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 static inline int msbIndex(uint64_t v) { unsigned long i; _BitScanReverse64(&i, v); return (int)i; }

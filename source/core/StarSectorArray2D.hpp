@@ -93,11 +93,25 @@ public:
   // columnSize is guaranteed never to be greater than SectorSize.  Given
   // function should return true to continue, false to stop.  Returns false if
   // any evaled columns return false.
+  //
+  // THAT EARLY-TERMINATION CONTRACT BELONGS TO THE SERIAL PAIR ONLY. It used to sit above all four
+  // declarations, which reads as though the parallel pair honours it too. It does not, and the
+  // difference is silent (#218).
   template <typename Function>
   bool evalColumns(
       size_t minX, size_t minY, size_t width, size_t height, Function&& function, bool evalEmpty = false) const;
   template <typename Function>
   bool evalColumns(size_t minX, size_t minY, size_t width, size_t height, Function&& function, bool evalEmpty = false);
+
+  // NO EARLY TERMINATION, AND ALWAYS RETURNS TRUE. A false return from `function` abandons the rest of
+  // the strip owned by the worker that saw it, but siblings already dispatched run to completion, and
+  // evalColumnsPrivPar discards every future's value (`f.finish()`) before returning a literal true. A
+  // predicate written against the contract above will therefore over-scan AND report success. Use the
+  // serial evalColumns if you need to stop early.
+  //
+  // `function` is called from N worker threads at once, so it must be safe to invoke concurrently on
+  // disjoint columns; and the `Element*` it receives points into sector storage the caller must keep
+  // alive for the whole call -- see the unload lock in WorldClient::update (#210).
   template <typename Function>
   bool evalColumnsParallel(size_t minX, size_t minY, size_t width, size_t height, Function&& function, bool evalEmpty = false) const;
   template <typename Function>

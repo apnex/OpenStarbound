@@ -386,7 +386,7 @@ TEST(SpatialHashBench, ForEachDispatch) {
   // value payload; `4096` is the BlockAllocator block size, NOT the grid
   // granularity. The real granularity is the sector size, set below.
   typedef SpatialHash2D<int, float, int, int, 4096> BenchHash;
-  float const SectorSize = 16.0f;  // EntityMapSpatialHashSectorSize (StarEntityMap.cpp:8)
+  float const SectorSize = 16.0f;  // mirrors EntityMapSpatialHashSectorSize in StarEntityMap.cpp
   BenchHash hash(SectorSize);
 
   // Fixed LCG (same constants as RandomizedOracle above) -> reproducible
