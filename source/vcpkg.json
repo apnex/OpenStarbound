@@ -11,11 +11,16 @@
     "libpng",
     "opus",
     "zstd",
-    "mimalloc",
     { "name": "jemalloc", "platform": "linux" },
     "re2",
     "abseil",
     { "name": "imgui", "features": ["sdl3-binding", "opengl3-binding", "freetype"] },
     { "name": "cpr", "version>=": "1.10.5", "features": ["ssl"] }
-  ]
+  ],
+  "features": {
+    "mimalloc": {
+      "description": "Build the mimalloc allocator. Selected by STAR_USE_MIMALLOC, never on its own.",
+      "dependencies": [ "mimalloc" ]
+    }
+  }
 }

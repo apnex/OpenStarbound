@@ -26,6 +26,14 @@ else()
   message(STATUS "Not using CCache")
 endif()
 
+# mimalloc is a manifest FEATURE, so it is built only where it is linked. vcpkg reads
+# VCPKG_MANIFEST_FEATURES when the toolchain runs, which happens inside project() below -- before
+# option() has declared STAR_USE_MIMALLOC. The cache variable is therefore the only readable source
+# here, and an unset one correctly selects nothing, matching that option's OFF default.
+if(STAR_USE_MIMALLOC)
+  list(APPEND VCPKG_MANIFEST_FEATURES "mimalloc")
+endif()
+
 project(starbound)
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../cmake)
 
