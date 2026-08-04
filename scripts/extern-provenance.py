@@ -11,6 +11,8 @@ declared in docs/architecture/extern-provenance.json. Everything derivable IS de
   * the path set must exactly equal the source/extern listing -- no orphan file, no phantom entry
   * `reach` must match how CMakeLists.txt and the include graph actually reach the artefact
   * where `version_from` names macros, the derived version must equal the declared one
+  * the generated doc must match what --inject would write, so a register edit that skipped --inject
+    fails here instead of leaving a stale table behind a green gate
 
 THE REACH TAXONOMY IS THE POINT, and it was learned the hard way while writing this. Three files looked
 dead on a narrow grep and only one was:
@@ -141,9 +143,8 @@ def table(reg):
     return "\n".join(rows)
 
 
-def inject():
-    reg = load_register()
-    body = "\n".join([
+def generated_body(reg):
+    return "\n".join([
         BEGIN,
         "<!-- Regenerate with: python3 scripts/extern-provenance.py --inject -->",
         "",
@@ -155,6 +156,30 @@ def inject():
         "",
         END,
     ])
+
+
+def doc_problems(reg, doc_text):
+    """The doc is DERIVED, so it needs its own freshness arm -- check() only compares register to TREE.
+
+    Without this the gate had a hole its own doc denied: editing the register and forgetting --inject
+    left the .md silently stale while run-gates stayed green, contradicting the doc's own line 4. The
+    sibling gates (render_docs_fresh, boundary_fresh, arch_graph_fresh) all diff their generated doc;
+    this one did not, which is the same class of blindness `gate-vocabulary-outlives-document` names.
+    """
+    rel = os.path.relpath(DOC, ROOT)
+    if doc_text is None:
+        return ["%s does not exist -- run: python3 scripts/extern-provenance.py --inject" % rel]
+    if BEGIN not in doc_text or END not in doc_text:
+        return ["%s has no generated block" % rel]
+    got = doc_text[doc_text.index(BEGIN):doc_text.index(END) + len(END)]
+    if got != generated_body(reg):
+        return ["%s is stale -- re-run: python3 scripts/extern-provenance.py --inject" % rel]
+    return []
+
+
+def inject():
+    reg = load_register()
+    body = generated_body(reg)
     head = ("# Vendored provenance: source/extern\n\n"
             "Generated from `docs/architecture/extern-provenance.json` by `scripts/extern-provenance.py`.\n"
             "Do not edit the block below; edit the register and re-inject. `run-gates.sh` fails on drift.\n\n")
@@ -210,6 +235,26 @@ def selftest():
     # mislabels a column; confusing either with `unreachable` gets live code deleted, and that IS caught.
     run("header vs direct -- NOT distinguishable, and not claimed to be", False,
         lambda r: r["fast_float"].__setitem__("reach", "direct"))
+
+    # The doc-freshness arm, exercised on synthetic text so it needs no filesystem and cannot be
+    # fooled by the committed doc happening to be in sync. This hole was live from the day E10
+    # landed and was found by an audit, not by the gate.
+    def run_doc(desc, expect_problem, doc_text):
+        nonlocal fails
+        probs = doc_problems(base, doc_text)
+        got = bool(probs)
+        if got != expect_problem:
+            print("  SELFTEST FAIL: %s -- expected problem=%s, got %s" % (desc, expect_problem, probs[:1]))
+            fails += 1
+        else:
+            print("  ok   (%s)  %s" % ("caught" if got else "clean", desc))
+
+    fresh = generated_body(base)
+    run_doc("a doc regenerated from the register", False, "# head\n\n" + fresh + "\ntail\n")
+    run_doc("a register edit with no --inject (the hole this arm closes)", True,
+            "# head\n\n" + fresh.replace("| `lua` |", "| `lua-EDITED` |") + "\ntail\n")
+    run_doc("the generated block deleted from the doc", True, "# head\n\nprose only\n")
+    run_doc("the doc missing entirely", True, None)
     print()
     if fails:
         print("SELFTEST: %d FAILED" % fails)
@@ -229,6 +274,8 @@ def main(argv):
     if args.inject:
         return inject()
     problems = check()
+    problems += doc_problems(load_register(),
+                             open(DOC).read() if os.path.exists(DOC) else None)
     if problems:
         print("extern provenance is out of date with the tree (%d):" % len(problems))
         for p in problems:
