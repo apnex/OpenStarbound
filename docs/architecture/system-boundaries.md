@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       989 files
-      238911 lines
+      238961 lines
       6 tiers
     Content
       assets/
@@ -224,7 +224,7 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,390 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,459 lines
+├── game/            T3   500 files   115,509 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -285,7 +285,7 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,459 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,509 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -586,7 +586,7 @@ treemap-beta
         "application": 7390
         "platform": 142
     "T3 simulation"
-        "game": 115459
+        "game": 115509
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -605,11 +605,11 @@ treemap-beta
 | T2 services | `base` | 30 | 7,464 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,390 | 3.1% |
-| T3 simulation | `game` | 500 | 115,459 | 48.3% |
+| T3 simulation | `game` | 500 | 115,509 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,414 | 1.8% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,861 | 7.1% |
-| T5 shells | `client` | 4 | 2,509 | 1.1% |
+| T5 shells | `client` | 4 | 2,509 | 1.0% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.

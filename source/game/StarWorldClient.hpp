@@ -289,6 +289,9 @@ private:
   // real world. Observe-only -- the cached grid is what ships -- and inert unless lightingGatherOracle.
   // `path` names the branch that produced the grid, so a mismatch says which one is wrong.
   void gatherOracleCompare(char const* path);
+  // #225 MEASUREMENT: is this tile position outside the lighting thread's last published calculation
+  // region? A statistic only -- the snapshot may be stale, so it must never gate a real invalidation.
+  bool epochBumpOffRegion(Vec2I const& pos) const;
   // A1: write the calculator cells from the stable grid, re-applying the current-frame
   // environmentLight to sky-exposed cells. Cheap (no material DB lookups / tile traversal).
   void applyStableToCells();
@@ -408,6 +411,11 @@ private:
   // change-detector for the temporal lighting gate (StarTemporalLightingGate). Atomic: written on the
   // packet/update thread, read on the lighting thread.
   atomic<uint64_t> m_lightingTileEpoch{0};
+  // #225 MEASUREMENT: the lighting thread's last calculation region, published for the packet thread so an
+  // epoch bump can be classified as inside or outside the region the gather actually reads. Packed Vec2I
+  // per word; relaxed. Not load-bearing -- remove with the counters if the epoch stays global.
+  atomic<int64_t> m_lightingCalcMinPacked{0};
+  atomic<int64_t> m_lightingCalcMaxPacked{0};
   // Temporal lighting decoupling (flag lightingTemporalDecouple, default on): the last computed frame's
   // activity baseline. lightingCalc skips the recompute (render reuses the prior lightmap) on calm
   // frames between the floor cadence. Lighting-thread private.

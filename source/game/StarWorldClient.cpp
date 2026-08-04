@@ -1,5 +1,16 @@
 #include "StarWorldClient.hpp"
 #include "StarGridScroll.hpp"
+// #225 MEASUREMENT. Vec2I through one relaxed atomic word, so the packet thread can test a tile position
+// against the lighting thread's calculation region without a lock. Measurement scaffolding: if the epoch
+// ever really becomes regional, the region needs publishing with an ordering that a verdict can rely on.
+namespace {
+int64_t packVec2I(Star::Vec2I const& v) {
+  return ((int64_t)(uint32_t)v[0] << 32) | (int64_t)(uint32_t)v[1];
+}
+Star::Vec2I unpackVec2I(int64_t p) {
+  return Star::Vec2I((int32_t)(uint32_t)(p >> 32), (int32_t)(uint32_t)(p & 0xffffffffu));
+}
+}
 #include "StarIterator.hpp"
 #include "StarLogging.hpp"
 #include "StarTelemetry.hpp"
@@ -1076,6 +1087,8 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
           MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
         static auto bumpLiquidDark = Telemetry::counter("lighting.epoch.bump.liquid.dark",
           MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+        static auto bumpLiquidOffRegion = Telemetry::counter("lighting.epoch.bump.liquid.offregion",
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
         LiquidLevel wasLiquid = tile->liquid;
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
         bumpLiquid.inc();
@@ -1084,6 +1097,8 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
         auto liquidsDatabase = Root::singleton().liquidsDatabase();
         if (liquidsDatabase->radiantLight(wasLiquid) == liquidsDatabase->radiantLight(tile->liquid))
           bumpLiquidDark.inc();
+        if (epochBumpOffRegion(liquidUpdate->position))
+          bumpLiquidOffRegion.inc();
         m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: liquid radiance changed
       }
 
@@ -1958,6 +1973,22 @@ void WorldClient::lightingStableGather() {
 // It is also the only instrument that can see the known residual: the cache key is (epoch, dims, anchor) and
 // does NOT track sector load/unload -- unloadSector bumps no epoch -- so a cell retained through a scroll
 // whose sector has since unloaded keeps its last-gathered value while a fresh gather reads it as absent.
+// #225 MEASUREMENT: was this epoch bump for a tile the lighting even reads? The region is published by the
+// lighting thread (relaxed), so this is a snapshot that may be a frame or two old -- fine for a statistic,
+// and NOT a basis for skipping a bump, because a stale region would silently drop a real invalidation.
+//
+// Before the first gather the published region is degenerate (both words zero); that reads as "off region"
+// for every position except the origin, so the early samples are counted rather than silently dropped, and
+// the counts are read over a settled window where they are a rounding error.
+bool WorldClient::epochBumpOffRegion(Vec2I const& pos) const {
+  Vec2I mn = unpackVec2I(m_lightingCalcMinPacked.load(std::memory_order_relaxed));
+  Vec2I mx = unpackVec2I(m_lightingCalcMaxPacked.load(std::memory_order_relaxed));
+  // The world wraps in x, and the calc region is expressed in the calculator's UNWRAPPED coordinates while
+  // a packet position is wrapped. Comparing them directly would misfile every sample near the seam, so ask
+  // the geometry rather than the raw ints.
+  return !m_geometry.rectContains(RectF(Vec2F(mn[0], mn[1]), Vec2F(mx[0], mx[1])), Vec2F(pos[0], pos[1]));
+}
+
 void WorldClient::gatherOracleCompare(char const* path) {
   auto configuration = Root::singleton().configuration();
   if (!configuration->getOrDefault("lightingGatherOracle").optBool().value(false))
@@ -2310,6 +2341,13 @@ void WorldClient::lightingCalc() {
       RectI calcRegion = m_lightingCalculator.calculationRegion();
       Vec2I calcMin = calcRegion.min();
       Vec2I calcDims = Vec2I(calcRegion.width(), calcRegion.height());
+      // #225 MEASUREMENT: publish the region so the packet thread can ask whether an epoch bump was for a
+      // tile the lighting even reads. lightingCalc runs on the LIGHTING thread (m_lightingCond) while
+      // packets are handled on the client thread, so the calculator cannot be read directly from there.
+      // Relaxed, and deliberately two independent words: a torn read gives a region that never quite
+      // existed, which for a statistic costs at most a misfiled sample and is not worth a lock on this path.
+      m_lightingCalcMinPacked.store(packVec2I(calcMin), std::memory_order_relaxed);
+      m_lightingCalcMaxPacked.store(packVec2I(calcRegion.max()), std::memory_order_relaxed);
       // The cache key is (tile epoch, anchor, dims) and deliberately does NOT track sector
       // load/unload. That is safe only while the calc region stays inside the loaded-sector region,
       // which this comment used to assert as a fact. It is not one (#210):
@@ -2928,7 +2966,11 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
   static auto bumpNetTileNoop = Telemetry::counter("lighting.epoch.bump.nettile.noop",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+  static auto bumpNetTileOffRegion = Telemetry::counter("lighting.epoch.bump.nettile.offregion",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
   bumpNetTile.inc();
+  if (epochBumpOffRegion(pos))
+    bumpNetTileOffRegion.inc();
   if (wasForeground == tile->foreground && wasForegroundMod == tile->foregroundMod
       && wasBackground == tile->background && wasBackgroundMod == tile->backgroundMod
       && wasLiquid.liquid == tile->liquid.liquid && wasLiquid.level == tile->liquid.level
