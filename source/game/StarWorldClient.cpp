@@ -1414,10 +1414,20 @@ void WorldClient::update(float dt) {
   for (auto monitoredRegion : monitoredRegions)
     neededSectors.addAll(m_tileArray->validSectorsFor(monitoredRegion.padded(WorldSectorSize)));
 
+  // m_lightMapPrepMutex IS A LIFETIME LOCK HERE, NOT A LIGHTING LOCK (#210). The lighting thread's
+  // gather holds raw `Array*` into sector storage (SectorArray2D::evalColumnsPrivPar) and
+  // SectorArray2D has no internal synchronisation, so unloading without it is a use-after-free.
+  // Any future cross-thread reader of m_tileArray must take it too; nothing enforces that, because
+  // the real fix is for SectorArray2D to own its lifetime contract. Costs one gather of main-thread
+  // stall, 93-276 us (#168). Do NOT add a `loadedSectors.size() > neededSectors.size()` guard: the
+  // sets can differ with equal or smaller loaded size, and stale sectors would never unload.
   auto loadedSectors = m_tileArray->loadedSectors();
-  for (auto sector : loadedSectors) {
-    if (!neededSectors.contains(sector))
-      m_tileArray->unloadSector(sector);
+  {
+    MutexLocker prepLocker(m_lightMapPrepMutex);
+    for (auto sector : loadedSectors) {
+      if (!neededSectors.contains(sector))
+        m_tileArray->unloadSector(sector);
+    }
   }
 
   if (m_collisionDebug)
@@ -2187,10 +2197,31 @@ void WorldClient::lightingCalc() {
       RectI calcRegion = m_lightingCalculator.calculationRegion();
       Vec2I calcMin = calcRegion.min();
       Vec2I calcDims = Vec2I(calcRegion.width(), calcRegion.height());
-      // The cache key is (tile epoch, anchor, dims). It deliberately does NOT track sector load/unload,
-      // which is safe ONLY because the calc region (the query window padded by the light-spread border)
-      // is strictly inside the loaded-sector region (sectors load for the monitored window padded by a
-      // full sector), so no unloaded sector is ever gathered. Preserve that padding invariant.
+      // The cache key is (tile epoch, anchor, dims) and deliberately does NOT track sector
+      // load/unload. That is safe only while the calc region stays inside the loaded-sector region,
+      // which this comment used to assert as a fact. It is not one (#210):
+      //
+      //     loaded    validSectorsFor(window.padded(32).padded(WorldSectorSize=32))  => +64 .. +95
+      //     calc min  window -1 -border(<=48)                                        => -49   SAFE
+      //     calc max  window +1 +bucketSlack(<=31) +border(<=48)                     => +80   NOT
+      //
+      // The +31 is #127's grid-size bucket, which rounds the light-window SIZE up to a multiple of
+      // 32 anchored at the min corner -- so it grows the region on the MAX SIDE ONLY, while
+      // neededSectors stays derived from the UNBUCKETED window.
+      //
+      // The unload loop now holds m_lightMapPrepMutex, so a breach reads as an absent sector rather
+      // than a freed one. This counter says whether it happens at all: zero in play means alignment
+      // has been covering us, non-zero means the padding must be derived from the calc region.
+      static auto calcOutsideLoaded = Telemetry::counter("lighting.gather.calc_outside_loaded",
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+      if (Telemetry::enabled()) {
+        for (auto const& s : m_tileArray->validSectorsFor(calcRegion)) {
+          if (!m_tileArray->sectorLoaded(s)) {
+            calcOutsideLoaded.inc(1);
+            break;
+          }
+        }
+      }
       uint64_t tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
       // Same grid layout (size + tile epoch) as last frame? Then we can reuse it: a HIT (same anchor)
       // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the
