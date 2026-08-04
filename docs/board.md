@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -3465,6 +3465,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `466c19cc` ledger: surface the challenge corrections, and file the three adoptable items [#204]
 - `82170188` ledger: status per row, in a decisions file the generator reads -- and the generator now exists [#204]
 - `32b6373d` board: export -- #213, and the beam epsilon that makes it not-mechanical [#204]
 - `2e9d964d` board: export -- three follow-ups filed off the PR 570 analysis, plus #161 and #196 rewritten [#204]
@@ -3875,49 +3876,61 @@ exactly one commit: 106dc47b, the original upstream feature. We have never touch
 status: **pending**
 
 ```
-FOUND 2026-08-04 comparing against OpenStarbound PR 570. This is a defect in our own verification,
-not a decision: we built the tests and then locked them in a target that never executes.
+FOUND 2026-08-04 comparing against OpenStarbound PR 570. A defect in our own verification, not a
+decision: we built the tests and locked them in a target that never executes.
+
+MEASURED 2026-08-04, so this is no longer an argument. Run from dist/, E-core pinned, headless, no
+display, no interaction:
+
+    ./game_tests --gtest_filter='LightingTelemetry.*:LightingSpread.*:LightingPoint.*:
+                                 TemporalLightingGate.*:CellularLightingTonemap.*'
+    => 20 tests from 5 suites ran. 3 ms total. 20 PASSED. exit 0.
+
+  per-filter wall clock, same binary:
+    LightingPoint.*   5 tests   0.00 s     <-- asset-free
+    RootTest.*        1 test    2.82 s     <-- actually loads assets
+    ItemTest.*        3 tests   1.51 s     <-- actually loads assets
+
+  Root construction is LAZY. Sitting in game_tests costs the lighting tests NOTHING; the seconds
+  belong to the tests that genuinely boot a universe. So the exclusion is by TARGET MEMBERSHIP, not
+  by cost and not by dependency. That is the whole finding, now with a number on it.
 
 THE STATE
   source/test/CMakeLists.txt:78-82 puts all five lighting test files in game_tests:
-      lighting_telemetry_test.cpp
-      lighting_spread_test.cpp
-      lighting_point_test.cpp
-      temporal_light_gate_test.cpp
-      cellular_lighting_test.cpp
+      lighting_telemetry_test.cpp   lighting_spread_test.cpp   lighting_point_test.cpp
+      temporal_light_gate_test.cpp  cellular_lighting_test.cpp
   source/test/CMakeLists.txt:495:
       SET (star_tests_needing_assets game_tests)  # game_tests boots a universe from assets/ -- cannot run in CI
 
-  => every lighting test we own runs on zero platforms, on every push, forever.
+  => 20 lighting assertions run on zero platforms, on every push, forever.
 
-THEY DO NOT NEED ASSETS. Verified per file: zero `Root::singleton`, zero `assets()`, and the ones
-that need config build it from inline Json::parseJson. The only thing tying them to game_tests is
-game_tests_main.cpp:41, which does AddGlobalTestEnvironment(new TestEnvironment(...)) constructing a
-Root for the WHOLE binary -- so an asset-free test in that target still pays for a universe boot.
+THEY DO NOT NEED ASSETS. Verified per file: zero Root::singleton, zero assets(), config built from
+inline Json::parseJson. The only thing tying them to game_tests is game_tests_main.cpp:41, which
+AddGlobalTestEnvironment's a Root for the WHOLE binary.
 
-THE CONTRAST THAT FOUND IT. PR 570 labels core_tests "NoAssets" (their source/test/CMakeLists.txt:94),
-their base testPreset filters on that label, and build.yml drives ctest through it on Linux,
-Linux-ARM, macOS, macOS-ARM and Windows. Their 9 lighting tests run on five platforms every push.
-They also demonstrated the remedy: compile ../base/StarCellularLighting.cpp directly into core_tests
-so a base-layer test lands in the CI-gated target.
+THE CONTRAST THAT FOUND IT. PR 570 labels core_tests "NoAssets" (their CMakeLists:94), filters on
+that label in their base test preset, and build.yml drives ctest through it on Linux, Linux-ARM,
+macOS, macOS-ARM and Windows. Their 9 lighting tests run on five platforms every push. Their remedy
+is also demonstrated: compile ../base/StarCellularLighting.cpp directly into core_tests.
 
-WHY THIS MATTERS MORE THAN IT LOOKS. Our campaign's whole standard is that a claim needs an
-instrument. These tests ARE the instrument for the lighting kernel, and the instrument has never run
-in CI. Worse, the shape hides itself: `ctest` locally passes, the files exist, the assertions are
-real -- nothing anywhere reports "these executed zero times".
+FOR SCALE: core_tests, which CI DOES run, is 257 tests in 7.01 s. Adding 20 lighting tests that cost
+0.00 s is free.
 
 WORK
   1. move the asset-free lighting tests into core_tests (or a new asset-free target), compiling the
-     base-layer sources they need directly, as PR 570 does
-  2. confirm they actually execute -- assert the count, do not assume; a test that silently does not
-     run is the exact failure this task exists about
-  3. check whether OTHER tests in game_tests are equally asset-free hostages (drawable_cache_test and
+     base-layer sources they need
+  2. ASSERT THEY EXECUTE -- a count, not an assumption. A test that silently does not run is the
+     exact failure this task exists about, and it would be absurd to fix it by hope.
+  3. check whether other game_tests members are equally asset-free hostages (drawable_cache_test and
      animated_part_set_test are candidates) and move what qualifies
-  4. leave genuinely asset-dependent tests where they are; the star_tests_needing_assets guard at :495
-     is correct and should keep working
+  4. leave genuinely asset-dependent tests where they are; the star_tests_needing_assets guard at
+     :495 is correct and must keep working
 
-RELATED: #194 (CI-3), #195 (CI-4) built the gate-running machinery; this is the same class one level
-down -- machinery that exists and is not pointed at the thing it was built for.
+BLOCKS: #213, #214, #215, #216 all land in lighting code. Until this is done their only defence is
+"Claude ran them by hand", which is the shape of claim this project exists to delete.
+
+RELATED: #194, #195 built the gate-running machinery; this is the same class one level down --
+machinery that exists and is not pointed at the thing it was built for.
 ```
 
 <a id="c29c1332-213"></a>
