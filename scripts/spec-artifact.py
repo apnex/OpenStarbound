@@ -218,10 +218,23 @@ def render(md):
     return "\n".join(out), nav, parts, states
 
 
+# WHAT THE PAGE IS A SNAPSHOT OF -- and it is not HEAD. HEAD moves for reasons that have nothing to do
+# with this document, so stamping it makes the page look stale whenever anything else in the repo is
+# committed. A reader checking freshness diffs the stamped SHA against HEAD, sees unrelated commits,
+# and either republishes for nothing or learns to ignore the stamp. Stamp the last commit that touched
+# an INPUT to this page, so the SHA answers the question the reader is actually asking.
+INPUTS = [
+    "docs/superpowers/specs/2026-08-01-target-state-system-architecture.md",
+    "scripts/spec-model.py",
+    "scripts/spec-artifact.py",
+    "scripts/spec-artifact.css",
+]
+
+
 def head_facts():
     """Facts for the hero, taken from the tree rather than typed."""
-    sha = subprocess.run(["git", "rev-parse", "--short=8", "HEAD"], capture_output=True, text=True,
-                         cwd=str(REPO)).stdout.strip()
+    sha = subprocess.run(["git", "log", "-1", "--format=%h", "--abbrev=8", "--"] + INPUTS,
+                         capture_output=True, text=True, cwd=str(REPO)).stdout.strip()
     branch = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True,
                             text=True, cwd=str(REPO)).stdout.strip()
     spec = importlib_model()
