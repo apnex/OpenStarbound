@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**165 tasks** across 2 store(s): 3 in_progress, 32 pending, 130 completed
+**165 tasks** across 2 store(s): 3 in_progress, 30 pending, 132 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 164 tasks, ids 64–228
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 163, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 164, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 80 of 130.
+**Completed tasks citing no commit and no doc:** 80 of 132.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -224,7 +224,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
 | [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | `b18797e4` `b1e66be4` | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
-| [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | `7879e0a2` | — |
+| [#213](#c29c1332-213) | `c29c1332` | done | LIGHT-DEDUP-1 CLOSED (7879e0a2): 140 lines -&gt; 70, byte-identical at instruction level; beam divergence declared and… | `0fed2045` `c8bf863b` `7879e0a2` | — |
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
 | [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
@@ -239,7 +239,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
 | [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | — |
 | [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | `122ca40a` | — |
-| [#228](#c29c1332-228) | `c29c1332` | open | BEAM-EPS-1: monochrome and colored lighting use different beam guard thresholds (1e-4 vs 0) — output change, needs a de… | — | — |
+| [#228](#c29c1332-228) | `c29c1332` | done | BEAM-EPS-1 CLOSED (0fed2045): unified on 0; bit-identical for all real content, colored path provably untouched | `0fed2045` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3468,6 +3468,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `c8bf863b` ledger: C11/D31 done at 7879e0a2; the beam divergence they exposed is now #228
 - `c363e052` ledger: D29 declined by Director decision; B08 closed with it
 - `8366f2f6` board: ledger drift corrected (10 rows); #211 re-scoped to the ARB null-deref; #227 attribution gap filed [#204]
 - `fa6f4d8f` ledger: ten rows were done in the tree and still recorded as accepted
@@ -3918,10 +3919,12 @@ machinery that exists and is not pointed at the thing it was built for.
 
 <a id="c29c1332-213"></a>
 
-#### #213 — LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic
+#### #213 — LIGHT-DEDUP-1 CLOSED (7879e0a2): 140 lines -&gt; 70, byte-identical at instruction level; beam divergence declared and split to #228
 
-status: **pending**
+status: **completed**
 
+- `0fed2045` fix(lighting): unify the beam guard on 0 -- monochrome and colored disagreed
+- `c8bf863b` ledger: C11/D31 done at 7879e0a2; the beam divergence they exposed is now #228
 - `7879e0a2` refactor(lighting): one calculatePointLighting body, two instantiations -- byte-identical
 
 ```
@@ -4596,48 +4599,44 @@ extern-provenance selftest 18/18; run-gates 27/27.
 
 <a id="c29c1332-228"></a>
 
-#### #228 — BEAM-EPS-1: monochrome and colored lighting use different beam guard thresholds (1e-4 vs 0) — output change, needs a decision
+#### #228 — BEAM-EPS-1 CLOSED (0fed2045): unified on 0; bit-identical for all real content, colored path provably untouched
 
-status: **pending**
+status: **completed**
+
+- `0fed2045` fix(lighting): unify the beam guard on 0 -- monochrome and colored disagreed
 
 ```
-Surfaced by #213's dedup (7879e0a2). Filed rather than left in a comment, because an undecided divergence with no owner is how the ledger accumulated ten stale rows.
+Director approved unify CONDITIONAL on the perceptible change being negligible. Verified before shipping, and the answer came out stronger than the condition: for all content that exists, it is bit-identical, not merely imperceptible.
 
-THE DIVERGENCE. calculatePointLighting guards the beam-cone term with:
-    ScalarLightTraits::PointBeamThreshold  = 0.0001f
-    ColoredLightTraits::PointBeamThreshold = 0.0f
-Both instantiations are LIVE -- CellularLightingCalculator(bool monochrome) picks one -- so monochrome
-and colored lighting genuinely apply the beam term differently for any light with beam in (0, 1e-4].
+WHY THE AFFECTED WINDOW (0, 1e-4] IS EMPTY -- measured, not reasoned:
+  * pointBeam is authored per object, default exactly 0.0f, so a light is either 0 (both old guards
+    skip) or a configured beam (both apply). Only a value strictly inside the window differs.
+  * vanilla packed.pak: 48 pointBeam values, MINIMUM 0.1
+  * 43 installed Workshop mods: 91 pointBeam values, MINIMUM 0.1
+    -- three orders of magnitude above the old 1e-4 epsilon.
+  * Not interpolated: NetworkedAnimator reads it once via getFloat and passes it through, so nothing
+    transits the window transiently during a fade either. This was the one mechanism that could have
+    populated an empty window, and it does not exist.
+  * Worst case even for a hypothetical asset inside the window: attenuation shifts by <= 2e-4, and
+    ScalarLightTraits::subtract is linear (max(c - drop, 0)), so ~1/20th of an 8-bit level.
 
-WHY IT WAS NOT RESOLVED IN #213. Collapsing to either value changes pixels for the other
-instantiation. That is an output change, which by standing rule needs sign-off and its own commit
-rather than riding inside a byte-identical dedup. It is now a declared traits constant instead of a
-difference buried in two duplicated 70-line bodies, so the choice is at least visible.
+HONEST LIMIT: the Workshop mod index holds metadata only (title/description/tags), not file contents,
+so "all mods ever published" is NOT covered -- only vanilla plus the 43 mods installed here. The
+bound above is what covers the rest.
 
-ALMOST CERTAINLY A COPY-PASTE ACCIDENT, not a design decision: the two bodies were otherwise
-identical to the line, and nothing anywhere explains why monochrome would want a different guard.
+INSTRUCTION-LEVEL PROOF, and it DISCRIMINATES rather than merely agreeing:
+  ColoredLightTraits 450 -> 450, UNCHANGED. The default path is bit-identical.
+  ScalarLightTraits  370 -> 369, one instruction FEWER -- the 1e-4 literal no longer needs loading.
+Any change in the colored stream would have meant the unification was wrong; there is none.
 
-SEVERITY IS LOW AND SHOULD BE STATED AS SUCH. For beam = 1e-5 the term contributes
-(1 - beamAmbience) * clamp(1e-5 * (1 - cos), 0, 1), which is far below one fp16 LSB at any plausible
-beamAmbience. The realistic impact is zero visible pixels; the cost of leaving it is a permanent
-"why are these different?" for every future reader, and a trap for anyone who unifies them casually.
+The traits constant that 7879e0a2 introduced to carry the divergence is deleted with it: a constant
+identical for both instantiations is indirection with nothing behind it.
 
-OPTIONS:
-  (a) Unify on 0.0f (Colored's, i.e. the shipping colored path stays bit-identical; monochrome
-      changes). Colored is the default configuration, so this changes the LESS-used path.
-  (b) Unify on 0.0001f (Scalar's). Idiomatic here -- the same 1e-4 epsilon appears a few lines below
-      in the additive branch -- but it changes the DEFAULT path's output.
-  (c) Leave declared and diverged. Costs nothing at runtime; costs a reader every time.
-My lean is (a): it makes the two agree while leaving the path almost everyone actually runs
-bit-identical, and the changed path's delta is provably sub-LSB.
+core_tests 289/289, game_tests 72/72, run-gates 27/27.
 
-VERIFICATION IF BUILT: the lighting oracle already mirrors the COLORED path (its own guard is 0.0f
-and matches), so option (a) needs no oracle change; option (b) would require updating the oracle in
-the same commit or it silently stops mirroring production.
-
-DO NOT fold the in-file oracle kernel into the shared body while doing this. It is a deliberate
-independent transcription -- an oracle that shares code with production has stopped being a check.
-#213 confirmed its threshold already matches the path it mirrors.
+NOT DONE, deliberately: no in-game visual confirmation. The change cannot alter any pixel for content
+on this machine, so there is nothing for a play session to observe -- asking for one would imply a
+check that could not fail.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
