@@ -996,8 +996,22 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
       // at no other time, and this is sort of a big assumption that
       // tileArrayUpdate happens for all valid client side sectors first before
       // any other tile updates.
-      for (auto const& sector : m_tileArray->validSectorsFor(tileRegion))
+      // LOADING A SECTOR CHANGES WHAT THE GATHER COVERS, NOT JUST WHAT IT READS (#226 H2), and until now
+      // nothing here bumped. tileEvalColumnsParallel does not visit absent sectors at all -- it passes
+      // evalEmpty=false, so the callback never runs and the stable grid keeps whatever those cells already
+      // held. A newly loaded sector therefore moves cells from "skipped, stale value retained" to
+      // "gathered", which is a real change even when every tile in it matches what was there.
+      //
+      // Unconditional and once per batch. The readNetTile loop below happens to bump for every tile today
+      // and so incidentally covered this, but that is an accident of it never gating -- this must not
+      // depend on that, and it is the hazard that has to be closed before any bump becomes conditional.
+      bool loadedAnySector = false;
+      for (auto const& sector : m_tileArray->validSectorsFor(tileRegion)) {
         m_tileArray->loadDefaultSector(sector);
+        loadedAnySector = true;
+      }
+      if (loadedAnySector)
+        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
 
       for (int x = tileRegion.xMin(); x < tileRegion.xMax(); ++x) {
         for (int y = tileRegion.yMin(); y < tileRegion.yMax(); ++y)
@@ -1094,12 +1108,27 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
         bumpLiquid.inc();
         if (wasLiquid.liquid == tile->liquid.liquid && wasLiquid.level == tile->liquid.level)
           bumpLiquidNoop.inc();
+        if (epochBumpOffRegion(liquidUpdate->position))
+          bumpLiquidOffRegion.inc();
+
+        // BUMP ONLY WHEN THE RADIANCE ACTUALLY CHANGES, which is what the line here always claimed to do
+        // and never did. The old comment read "temporal gate: liquid radiance changed" while the bump was
+        // unconditional -- and measurement made that a provably false claim: 8522 of 8522 liquid updates
+        // left radiantLight bit-identical, only 116 of them because the level was unchanged.
+        //
+        // The predicate is the gather's own arithmetic, not a proxy for it. radiantLight is
+        // settings->radiantLightLevel * level, so a liquid with zero radiance contributes nothing at ANY
+        // level: comparing raw {liquid, level} would fire on all 8406 level changes that cannot alter a
+        // single lighting output, while comparing the radiance is exact.
+        //
+        // Safe only because sector load now bumps on its own (#226 H2, above). These suppressed bumps were
+        // incidentally covering that gap, and removing accidental cover without closing the gap first is
+        // how a value gate ships stale lighting.
         auto liquidsDatabase = Root::singleton().liquidsDatabase();
         if (liquidsDatabase->radiantLight(wasLiquid) == liquidsDatabase->radiantLight(tile->liquid))
           bumpLiquidDark.inc();
-        if (epochBumpOffRegion(liquidUpdate->position))
-          bumpLiquidOffRegion.inc();
-        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: liquid radiance changed
+        else
+          m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
       }
 
     } else if (auto giveItem = as<GiveItemPacket>(packet)) {
@@ -1254,6 +1283,15 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
 
     } else if (auto worldParametersUpdate = as<WorldParametersUpdatePacket>(packet)) {
       m_worldTemplate->setWorldParameters(netLoadVisitableWorldParameters(worldParametersUpdate->parametersData));
+      // undergroundLevel IS A LIGHTING INPUT AND NOTHING USED TO INVALIDATE ON IT (#226 H1). gatherColumns
+      // reads m_worldTemplate->undergroundLevel() once per gather and it is the sole non-tile term of
+      // skyExposed -- `backgroundLightTransparent && pos[1] + y > undergroundLevel`. World parameters
+      // resolve that value, so changing them can stale the skyExposed bit of the ENTIRE cached grid, and no
+      // per-tile invalidation could ever catch it because the input is not a tile.
+      //
+      // The epoch, not m_gatherValid: this runs on the client thread while the cache state belongs to the
+      // lighting thread, and the epoch is the atomic already built to carry exactly this signal across it.
+      m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
 
     } else if (auto pongPacket = as<PongPacket>(packet)) {
       if (pongPacket->time)
