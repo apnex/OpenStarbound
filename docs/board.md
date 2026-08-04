@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 147, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 146, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -181,7 +181,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive calculation border shipped — 4.375x -&gt; 3.000x, -23.6% lighting CPU (03cec1c0) | `03cec1c0` `a9854185` | `board.md` |
+| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | `board.md` |
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -2373,7 +2373,7 @@ Evidence: docs/superpowers/specs/2026-07-25-lighting-cpu-budget-closure-design.m
 
 <a id="c29c1332-170"></a>
 
-#### #170 — L4 DONE: adaptive calculation border shipped — 4.375x -&gt; 3.000x, -23.6% lighting CPU (03cec1c0)
+#### #170 — L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11%
 
 status: **completed**
 
@@ -2382,21 +2382,29 @@ status: **completed**
 - cited in `docs/board.md`
 
 ```
-SHIPPED 2026-07-25, commits a9854185 (probe) + 03cec1c0 (lever). Default ON via
-`lightingAdaptiveBorder` kill-switch (StarWorldClient.cpp:2154-2156).
+SHIPPED 03cec1c0 (2026-07-25). Calculation region = query region padded by borderCells()=48 (128x64 -> 224x160). Now computed per recompute from the lights present and clamped into [spreadBorderCells()=32, borderCells()=48]. Kill-switch lightingAdaptiveBorder, default ON. RETAINED ON -- Director's standing rationale 2026-08-04: correct + beats vanilla = stays on.
 
-Direction 1 landed: the border is now computed per-recompute and clamped to
-[spreadBorderCells(), borderCells()], so it can only ever SHRINK from the old fixed 48. Measured
-4.375x -> 3.000x calc/visible cells, -23.6% lighting CPU, and PIXEL-IDENTICAL -- the feared quality
-change did not materialise because the trimmed border carried no in-travelling light at the measured
-locations.
+ORIGINAL (from the commit): interleaved OFF/ON/OFF/ON at 00-Ocean-Lab, 45s each, lights.sources identical across arms.
+  calc cells         35840 -> 24576   -31.4%
+  lighting.cpu.total 508.2 -> 388.3 us/rec   -23.6%
+  breakdown: gather 303.5->236.9, export 78.1->52.1, convert 66.3->46.0, begin 43.2->35.9
 
-RESIDUAL, not a blocker: 3.000x is still 3x the visible region. Direction 2 from the original scoping --
-export only the sub-region the GPU world shader actually samples, rather than the full calc region -- is
-untouched and is the remaining structural cut. It needs the quality comparison, not byte-identity.
+RE-MEASURED 2026-08-04 (live-profile harness, after #217 corrected the estimator):
+  explore           35840 -> 24576  -31.4% region;  153.5 -> 136.3 us/rec  -11.2%
+  04-Ocean Factory  35840 -> 25872  -27.8% region;   86.5 ->  77.8 us/rec  -10.1%
+  04-Ocean Factory, CPU SOLVE FORCED ON (lightingGpu=false):  953.8 -> 879.9  -7.7%
 
-#161 (Jacobi lightmap-spread) WAS GATED ON THIS AND IS NOW UNGATED: the region has stopped moving, so a
-Jacobi lever is no longer choosing against a moving target.
+THE REGION REDUCTION REPRODUCES EXACTLY. -31.4% at explore, identical cells 35840 -> 24576. The lever does what it says.
+
+THE CPU PERCENTAGE DOES NOT, AND THE CAUSE IS NOT ESTABLISHED. A first explanation -- "the O(cells) CPU work moved to the GPU since July, so the same cells now carry less cost" -- was WRITTEN INTO THIS TASK AND IS REFUTED. Two independent disproofs:
+  1. The commit's own breakdown lists gather/export/convert/begin and NO `calculate` line, so the CPU solve was ALREADY skipped in July under the GPU latch. Nothing moved; it had already moved.
+  2. Forcing the CPU solve back ON today (lightingGpu=false, verified by lighting.cpu.calc.ran = 1121 vs 1127 and calc.skipped = 0) made the saving SMALLER, 7.7%, not larger. calculate.us is 2245.6 vs 2394.4 -- only -6.2% against a -27.8% region, because calculatePointLighting is LIGHT-proportional (per light, a bounded box around it) rather than AREA-proportional. Adding it dilutes the percentage.
+
+WHAT IS ACTUALLY KNOWN. The absolute static-border cost at explore today is 153.5 us/rec against 508.2 at Ocean Lab in July -- but those are DIFFERENT SCENES and not comparable. Ocean Lab today reads 282.9 us/rec (adaptive, the shipped default); its static-border figure was never taken today, so the one apples-to-apples comparison available has not been run.
+
+A LIKELY BUT UNMEASURED EXPLANATION: if a -31.4% cell reduction yielded -23.6% in July and yields -11.2% now, a larger share of lighting CPU is now NON-area-proportional. #168's four levers targeted the gather specifically (B1/B2 column work, A1/A2 caching), which is the largest area-proportional term -- cutting it would leave proportionally more fixed cost and shrink the lever's percentage without weakening the lever. PLAUSIBLE, NOT VERIFIED. Settling it needs one A/B at 00-Ocean-Lab, adaptive on/off, which is ~4 minutes of harness time.
+
+DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-border lighting CPU there was 508 us/rec". The live figure is 10-11% at explore and Ocean Factory. See #217 for the bookmark-representativeness table (explore has border.needed 4 and cannot exercise this lever at all).
 ```
 
 <a id="c29c1332-171"></a>
@@ -3469,6 +3477,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `73277aaf` board: #217 measured at 04-Ocean Factory -- lever -27.8% region/-10.1% CPU; fix costs +5.3% region [#204]
 - `2d094c06` board: #211 closed at b1e66be4; #217 re-measured -- lever holds at -31.4% region, -11.2% lighting CPU [#204]
 - `02de4584` fix(spec-artifact): stamp the page's provenance, not HEAD
 - `471ec6c9` board: #218 closed at 9e56c204; comment standard + gate live [#204]
