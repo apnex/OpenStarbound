@@ -51,8 +51,10 @@
     "note": "the CI half is closed -- the lighting tests now run in core_tests on every push, asserted at 257->277 and guarded at configure time. The production-additions-for-testability half remains under #215."
   },
   "D31": {
-    "status": "accepted",
+    "status": "done",
     "task": "#213",
+    "commit": "7879e0a2",
+    "verified": "Audited at HEAD after 7879e0a2: the two specializations are now ONE template body with two explicit instantiations. Normalising the traits name had shown them differing in exactly two lines -- a stray indent and the beam guard -- so 138 of 140 lines were duplicate. BYTE-IDENTICAL AT THE INSTRUCTION LEVEL, not merely asserted: both symbols disassembled before and after and compared address-independently, Scalar 370 -> 370 and Colored 450 -> 450, zero differences; the only object change is COMDAT section placement. The beam guard is a REAL divergence (Scalar 1e-4, Colored 0, both instantiations live via the monochrome flag) and is PRESERVED as a declared traits constant rather than resolved, because collapsing it changes pixels -- that is an output change and now carries its own task. The row's 8 -> 7 is exactly right and the remaining six are confirmed NOT duplication: the third transcription in this file is the ORACLE, it mirrors the colored path deliberately, and its threshold already matches -- merging it would stop it being a check.",
     "note": "the two calculatePointLighting specializations are 2 lines apart, one of them a real beam-epsilon divergence. 8 transcriptions -> 7, not -> 2."
   },
   "C07": {
@@ -93,8 +95,10 @@
     "note": "The fork was the SINK, not the region -- C05's own framing understated it. gatherColumns(region, sink) holds the per-tile arithmetic once; gatherStableColumns 45 lines -> 12. Byte-identical, proven by the render-gate A/B (both legs hash 471488eed310861f) and by a line-for-line textual diff of the arithmetic."
   },
   "C11": {
-    "status": "accepted",
+    "status": "done",
     "task": "#213",
+    "commit": "7879e0a2",
+    "verified": "Audited at HEAD after 7879e0a2: the two specializations are now ONE template body with two explicit instantiations. Normalising the traits name had shown them differing in exactly two lines -- a stray indent and the beam guard -- so 138 of 140 lines were duplicate. BYTE-IDENTICAL AT THE INSTRUCTION LEVEL, not merely asserted: both symbols disassembled before and after and compared address-independently, Scalar 370 -> 370 and Colored 450 -> 450, zero differences; the only object change is COMDAT section placement. The beam guard is a REAL divergence (Scalar 1e-4, Colored 0, both instantiations live via the monochrome flag) and is PRESERVED as a declared traits constant rather than resolved, because collapsing it changes pixels -- that is an output change and now carries its own task. The row's 8 -> 7 is exactly right and the remaining six are confirmed NOT duplication: the third transcription in this file is the ORACLE, it mirrors the colored path deliberately, and its threshold already matches -- merging it would stop it being a check.",
     "note": "8 transcriptions -> 7. The challenge UNDERSTATED the gap: 8 vs 2, not 4 vs 1. The other six are not duplication."
   },
   "C14": {

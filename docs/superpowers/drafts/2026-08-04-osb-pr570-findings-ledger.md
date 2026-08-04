@@ -17,10 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 4 | work is committed to; `task` names where it is tracked |
+| **accepted** | 2 | work is committed to; `task` names where it is tracked |
 | **deferred** | 1 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 45 | we will not do this; `reason` is mandatory |
-| **done** | 21 | finished; `task` or `commit` says where |
+| **done** | 23 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -77,7 +77,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **C07** | **declined** | Cutting the CPU cost of the cellular light computation — quality | Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… |
 | **C08** | **accepted** | Cutting the CPU cost of the cellular light computation — simplicity | #215 |
 | **C09** | **declined** | Cutting the CPU cost of the cellular light computation — performance | Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per… |
-| **C11** | **accepted** | point lights: cost versus fidelity — simplicity | #213 |
+| **C11** | **done** | point lights: cost versus fidelity — simplicity | #213 |
 | **C14** | **declined** | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … |
 | **C16** | **accepted** | Proving the cellular lighting correct and fast — quality | #216 |
 | **C17** | **done** | Proving the cellular lighting correct and fast — simplicity | f5088933 |
@@ -86,7 +86,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D22** | **declined** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises … |
 | **D29** | **declined** | CellularLightArray rewrite and point-li… — Point-light count cap | DIRECTOR DECISION 2026-08-05, on the evidence the deferral was waiting for. Both counters… |
 | **D30** | **done** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | 66ec860b |
-| **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
+| **D31** | **done** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
 | **D34** | **done** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
 | **D45** | **declined** | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | A runtime VSync toggle is a player-facing settings feature, not a defect and not a perfor… |
 | **D55** | **done** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
@@ -196,7 +196,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **C08** | accepted · #215 | Cutting the CPU cost of the cellular light computation — simplicity | theirs | Production-surface cleanliness, counted: our two lighting-array files are 675 + 532 = 1207 lines, of which ~455 (38%) is GPU-oracle scaffolding shipped inside the production translation unit — spread… | CLOSE THE GAP · DECLINE · DEFER |
 | **C09** | declined · Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per… | Cutting the CPU cost of the cellular light computation — performance | theirs | Theirs is the only side with any before/after on CellularLightArray::calculate(), because ours provably never enters it. Verified arithmetic: calculateLightSpread self-enlarges the query rect by ceil… | CLOSE THE GAP · DECLINE · DEFER |
 | **C10** | closed | point lights: cost versus fidelity — quality | ours | Fidelity: we ray-trace strictly MORE lights and drop none (StarWorldClient.cpp:2308-2311, promote 0.5 default-on); they cap point lights at 128 and drop the rest sorted by `a.color.max()` (tree StarW… | NO ACTION |
-| **C11** | accepted · #213 | point lights: cost versus fidelity — simplicity | theirs | Counting places that must change together to change the point-light model: theirs is ONE — tree/source/base/StarCellularLightArray.hpp:401-475, a single template covering scalar+colored, serial+paral… | CLOSE THE GAP · DECLINE · DEFER |
+| **C11** | done · #213 | point lights: cost versus fidelity — simplicity | theirs | Counting places that must change together to change the point-light model: theirs is ONE — tree/source/base/StarCellularLightArray.hpp:401-475, a single template covering scalar+colored, serial+paral… | CLOSE THE GAP · DECLINE · DEFER |
 | **C12** | closed | point lights: cost versus fidelity — performance | cannot-determine | Both sides measured; neither ran the other's workload or hardware, so no head-to-head exists. Theirs (reproducible, committed: tree/source/test/cellular_lighting_bench.cpp, mt19937 seed 42, CLI grid/… | MEASURE · ACCEPT unknown |
 | **C13** | closed | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — quality | ours | Same root defect, but theirs stops at one third of it and proves none of it. PROOF: ours measured on an Intel Arc/Mesa headless A/B with AA on in both legs and one line different -- GL_INVALID_OPERAT… | NO ACTION |
 | **C14** | declined · The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | theirs | For the one defect BOTH actually fixed, theirs is the smaller correct shape: one line in one file, one place to change, and the policy cannot be mis-declared because there is no declaration. Ours spl… | CLOSE THE GAP · DECLINE · DEFER |
@@ -237,7 +237,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D28** | closed | CellularLightArray rewrite and point-li… — Out-of-view light-source culling | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D29** | declined · DIRECTOR DECISION 2026-08-05, on the evidence the deferral was waiting for. Both counters… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D30** | done · 66ec860b | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
-| **D31** | accepted · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D31** | done · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D32** | closed | CellularLightArray rewrite and point-li… — MSAA per-sample shading | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D33** | closed | CellularLightArray rewrite and point-li… — Automated evidence for the change | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D34** | done · #220 | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
