@@ -26,14 +26,16 @@
     "note": "same finding as A05, reached from the other direction. Closed by the same commit."
   },
   "D55": {
-    "status": "accepted",
+    "status": "done",
     "task": "#196",
-    "note": "vcpkg overlay ports registered nowhere -- the root cause of the build blocker, not the jemalloc patch."
+    "commit": "18a8e5c0",
+    "note": "vcpkg overlay ports registered nowhere -- the root cause of the build blocker, not the jemalloc patch. Confirmed exactly as filed before fixing: a repo-wide grep for VCPKG_OVERLAY_PORTS matched only prose, and the working build got its overlay solely from a hand-passed flag recorded in one CMakeCache."
   },
   "E07": {
-    "status": "accepted",
+    "status": "done",
     "task": "#196",
-    "note": "register the overlay declaratively; folded into #196's four-step sequence."
+    "commit": "18a8e5c0",
+    "note": "Registered via overlay-ports in source/vcpkg-configuration.json, matching the shape the presets already used for overlay TRIPLETS -- ports were the omission, not the pattern. VERIFIED FROM A PRISTINE CLONE, not from the working tree: vcpkg resolved jemalloc@5.3.1#1 and libsystemd@260.2 out of source/vcpkg-overlay/ports with nothing on the command line (the registry carries #0 and 260.1, so the versions identify the source unambiguously). The first pristine run restored jemalloc from the binary cache in 4.7ms, which proves resolution but NOT a from-scratch bootstrap, so the cache entry was held out and the configure re-run: 'Building jemalloc@5.3.1#1' from source, zero errors, under the libstdc++ 16 that motivated the patch. Then cut over -- the working build's stale flag cleared and /root/vcpkg-overlay-ports deleted from the machine, with the build re-configuring green afterwards."
   },
   "C16": {
     "status": "accepted",
@@ -307,14 +309,16 @@
     "note": "ACCEPTED BUT RE-SCOPED, and the re-scope is the finding. As written it cross-checks 'multisampled: true' against effects' frameBufferTextures -- a set that is EMPTY in our tree, so the guard as specified would catch nothing. The real in-tree path is the C++ source argument to setEffectTextureFromTarget / composite. There is exactly one live candidate, StarBackdropPass composing \"main\" into parallaxRef, and it is closed only by a two-file coupling nothing asserts: 'main is multisample iff antiAliasing' lives in the renderer + opengl.config, 'the parallax cache path runs iff !antiAliasing' lives in BackdropPass. If the parallax AA gate is ever relaxed -- #151 considered it, #138/P-3 may revisit it -- that composite binds a multisample texture to a sampler2D and reproduces #150 verbatim."
   },
   "E08": {
-    "status": "accepted",
+    "status": "done",
     "task": "#196",
-    "note": "Record a retirement condition per vcpkg overlay port, naming the upstream event that lets it be deleted. Folds into #196, which is already going to touch the overlay to register it declaratively."
+    "commit": "18a8e5c0",
+    "note": "Both conditions recorded in source/vcpkg-overlay/README.md, each stating separately whether anything DETECTS it -- the distinction is the substance, not a caveat on it. jemalloc SELF-RETIRES, enforced: its whole delta is one vcpkg_replace_string of std::__throw_bad_alloc(), and that helper compares the file hash either side of the substitution and raises Z_VCPKG_BACKCOMPAT_MESSAGE_LEVEL when nothing changed -- which scripts/ports.cmake sets to FATAL_ERROR. Upstream fixing the call therefore STOPS the build and names the port. libsystemd has NO such mechanism, and the README says so rather than implying parity: its delta is a version pin plus -Dwerror=false, and a redundant pin and a redundant werror both build silently and look identical to necessary ones, so its check is manual and its trigger is a baseline bump."
   },
   "E09": {
-    "status": "accepted",
+    "status": "done",
     "task": "#196",
-    "note": "Allocator as a vcpkg manifest FEATURE driven by the CMake option. B17 confirmed this is the right shape rather than deletion: mimalloc is LIVE here (source/CMakeLists.txt + StarMemory.cpp under STAR_USE_MIMALLOC), and removing it from the manifest reproduces in our tree the exact configure break their own PR scored against itself."
+    "commit": "1830ef31",
+    "note": "mimalloc is now a manifest feature selected from STAR_USE_MIMALLOC. B17's warning was the reason this took the feature shape rather than deletion, and it was right: plain removal breaks configure, because find_package(mimalloc CONFIG REQUIRED) sits in its own if() outside the allocator elseif chain. The waste was worse than 'off by default' -- NO preset sets STAR_USE_MIMALLOC at all (Windows takes rpmalloc, the Linux presets jemalloc, macOS turns jemalloc off), so it was built on every platform for every developer and linked by no shipped configuration. VCPKG_MANIFEST_FEATURES is appended before project(), since the toolchain reads it there, which is before option() declares the variable -- the cache value is the only readable source at that point, and an unset one selects nothing, matching the OFF default. Proven in BOTH directions in a pristine clone: default configures green with mimalloc absent from the installed tree; -DSTAR_USE_MIMALLOC=ON installs 3.3.2 and the REQUIRED find_package resolves, which is the arm that would have caught B17's break."
   },
   "E10": {
     "status": "accepted",

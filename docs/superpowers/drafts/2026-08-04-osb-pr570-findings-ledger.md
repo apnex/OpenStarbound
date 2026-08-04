@@ -17,10 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 19 | work is committed to; `task` names where it is tracked |
+| **accepted** | 15 | work is committed to; `task` names where it is tracked |
 | **deferred** | 2 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 43 | we will not do this; `reason` is mandatory |
-| **done** | 7 | finished; `task` or `commit` says where |
+| **done** | 11 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -89,7 +89,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
 | **D34** | **accepted** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
 | **D45** | **declined** | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | A runtime VSync toggle is a player-facing settings feature, not a defect and not a perfor… |
-| **D55** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
+| **D55** | **done** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
 | **D59** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | #220 |
 | **D60** | **accepted** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | #220 |
 | **D64** | **declined** | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… |
@@ -99,9 +99,9 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **E04** | **accepted** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #221 |
 | **E05** | **done** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | 66ec860b |
 | **E06** | **accepted** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | #220 |
-| **E07** | **accepted** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
-| **E08** | **accepted** | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | #196 |
-| **E09** | **accepted** | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | #196 |
+| **E07** | **done** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
+| **E08** | **done** | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | #196 |
+| **E09** | **done** | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | #196 |
 | **E10** | **accepted** | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | #220 |
 
 ## Still open
@@ -261,7 +261,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D52** | closed | GL renderer: MSAA/SSAA confinement, AA/… — Reviewability of the change | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D53** | closed | Dependency cleanup, vcpkg manifest, and… — jemalloc vs libstdc++ 16 — the fix itself | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D54** | closed | Dependency cleanup, vcpkg manifest, and… — Fragility of the fix under a jemalloc bump | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D55** | accepted · #196 | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D55** | done · #196 | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D56** | closed | Dependency cleanup, vcpkg manifest, and… — Documenting WHY the overlay exists | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D57** | closed | Dependency cleanup, vcpkg manifest, and… — Overlay pins a hardcoded SHA and bypasses registry versioning | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D58** | closed | Dependency cleanup, vcpkg manifest, and… — Sibling Fedora-44 toolchain breakage (libsystemd / glibc C23 _Generic) | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -279,9 +279,9 @@ withdrawn outright and one finding was reversed in our favour.
 | **E04** | accepted · #221 | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
 | **E05** | done · 66ec860b | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
 | **E06** | accepted · #220 | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
-| **E07** | accepted · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |
-| **E08** | accepted · #196 | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |
-| **E09** | accepted · #196 | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | — | ADOPT · DEFER · DECLINE |
+| **E07** | done · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |
+| **E08** | done · #196 | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |
+| **E09** | done · #196 | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | — | ADOPT · DEFER · DECLINE |
 | **E10** | accepted · #220 | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | — | ADOPT · DEFER · DECLINE |
 | **E11** | closed | Bump m_lightingTileEpoch only when a lighting-relevant tile field actually changes — compare foreground/background material+mod, liquid presence/level, and the… | refuted | KILLED BY #3 (THE BENEFIT IS UNEVIDENCED — and the specific mechanism is refuted by our own code). Kill #1 does NOT apply: we genuinely lack the filter (/root/frackin/OpenStarbound/source/g… | CLOSE · CHALLENGE the refutation |
 | **E12** | closed | Quantise/hysteresis the adaptive calculation border (#170) — round borderNeeded up to a multiple of 8 and only shrink after N consecutive frames below bucket —… | refuted | DIES. Killed by mode 3 (benefit unevidenced — in fact contradicted by our own shipped measurement), with mode 1 assisting (the bucketing idea is already shipped at the level that actually b… | CLOSE · CHALLENGE the refutation |
