@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**146 tasks** across 2 store(s): 3 in_progress, 27 pending, 116 completed
+**149 tasks** across 2 store(s): 3 in_progress, 30 pending, 116 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 145 tasks, ids 64–209
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 148 tasks, ids 64–212
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 139, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 143, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -143,7 +143,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
 | [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
 | [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
-| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
+| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` `2026-08-04-osb-pr570-findings-ledger.md` |
 | [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
@@ -214,12 +214,15 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
+| [#210](#c29c1332-210) | `c29c1332` | open | RACE-1: use-after-free — sector unload races the lighting thread's gather (SERIOUS, live on integration) | — | — |
+| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | — | — |
+| [#212](#c29c1332-212) | `c29c1332` | open | TEST-CI-1: five lighting test files run in ZERO CI jobs — and none of them needs assets | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1103,6 +1106,7 @@ Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship)
 status: **completed**
 
 - cited in `docs/board.md`
+- cited in `docs/superpowers/drafts/2026-08-04-osb-pr570-findings-ledger.md`
 
 ```
 DATA COLLECTED (2026-07-12) — 4-location idle per-pass GPU matrix (µs/frame), Intel Arc Pro 130T/140T, vsync60, GPU held 1300-1400MHz idle. UNDERGROUND: env2307(OCCLUDED=waste) parallax1076 world1959 lightPoint1750 spread812 recompute77% TOTAL~7950(48%). OCEAN: env1599 parallax4062 world1723 lightPoint1152 recompute56% TOTAL~8960(54%). TERRESTRIAL(weather): env1937 parallax3949 world1472 lightPoint2090 recompute100%(weather defeats temporal) TOTAL~10014(60%). SHIP(orbit): env7635(!! 84% of floor — orbital starfield+planetHorizon+orbiters) parallax0 world553 lightPoint569 recompute49% TOTAL~9095(55%). KEY FINDINGS: (1) ENVIRONMENT pass is #1 cost + most variable (1.6-7.6ms); occluded-waste underground, near-static surface, expensive-but-slow-deterministic-motion in orbit — needs ADAPTIVE handling (skip-occluded / low-rate-refresh / split-twinkle). renderStars twinkle + moving orbital path = cheap-dynamic over expensive-static. (2) PARALLAX #2 (0-4ms), huge on surfaces, static when camera still. (3) lighting recompute rate tracks scene dynamism (calm56%->machines77%->weather100%) — temporal-decouple defeated by FU machine flicker + weather. (4) static-redundant core (env+parallax+world) = 67-90% of idle floor across locations — the addressable opportunity = retained/cached background layers, adaptive refresh. NEXT: merge with render-arch-understanding workflow (wf_5427cf77, running) → understand-the-space doc → design cycle (approach NOT pre-judged: targeted per-pass levers vs structural retained-layer compositor). Design principle emerging: separate cheap-dynamic from expensive-static per layer, cache the static.
@@ -2092,34 +2096,65 @@ status: **pending**
 - cited in `docs/superpowers/specs/2026-07-19-compose-merge-and-rs0-finish-design.md`
 
 ```
-CONFIRMED NOT_STARTED 2026-07-25 by content audit, and RE-GATED on the basis of #168's measurements.
+Jacobi improvements NOT STARTED. NOW UNGATED (#170 shipped, the calc region stopped moving).
 
-NOTHING LANDED. None of the four candidates is in the tree: no temporal warm-start (iteration 0 is still
-seeded from raw emission, not from the previous frame's converged lightmap), no red-black Gauss-Seidel
-(the spread is still Jacobi ping-pong), no residual-based early-exit or adaptive N, no multigrid.
-spreadIterations default is still 32 (source/game/StarRootLoader.cpp).
+RE-RANKED 2026-08-04 on evidence from the OpenStarbound PR 570 analysis. The task's own instruction
+was "if it is revived, the ranking should be re-derived from a GPU capture, not from the original
+task text." This is the first new evidence since that was written.
 
-=== WHY THE PREMISE NEEDS RE-EXAMINING BEFORE ANY WORK ===
-#168 closed the lighting CPU budget and measured it at 00-Ocean-Lab. Post-lever, per recompute:
-   gather ~276 (57%) · export ~77 · convert ~66 · begin ~31 · everything else ~15
-**None of that is the Jacobi spread.** The Jacobi work is GPU-side (lighting.gpu.spread.gpu_us), and the
-CPU cost that feeds it is dominated by the gather and the export/convert path, not by iteration count.
-So "optimise Jacobi" is not automatically a win against anything currently measured as expensive.
+WHAT SHIPPED, TO BE CLEAR: the GPU spread pass IS Jacobi ping-pong, running today at
+spreadIterations resolved by GpuLightmapPass::spreadIterationsFor() = min(cap, max(8, ceil(
+maxEmission * spreadMaxAir))). #168 found no Jacobi in the CPU budget because it is not on the CPU.
+This task is about IMPROVING the shipped Jacobi, not introducing it.
 
-=== GATE THIS ON #170 (border multiplier) ===
-Every O(cells) lighting phase — and the GPU lightmap texture the spread iterates over — scales with the
-CALCULATION region, which is the query region padded by borderCells()=48 per side: measured
-lighting.calc.cells 35840 vs lighting.cells 8192, exactly 4.375x. #170 proposes shrinking that. Choosing
-a Jacobi lever now means aiming at a target whose size is about to change by up to ~2-4x. Do #170 first,
-re-measure, then pick.
+THE NEW EVIDENCE. PR 570's author ran an out-of-tree GPU spike (their deleted TODO.md, commit
+a6ff9509, patch 0008 lines 200-210, in Russian) and abandoned the GPU path:
+    "relax ~1 ms/pass x 48 = ~51 ms/iteration against 9-13 ms CPU-parallel Dial (4.1x slower)
+     -- bottleneck is UMA bandwidth (~13 GB/s): 48 x 13 MB = 625 MB per iteration, CPU Dial
+     lives in L3 cache. GPU path is closed for this hardware; a win is only possible on a
+     discrete GPU with fast VRAM and/or with a small number of passes."
+Their configuration: per-light 2D compute dispatches, atomicMax accumulation, fixed K=48, full
+resolution, Intel ADL-N (Atom-class, ~13 GB/s).
 
-IF IT IS REVIVED, the ranking should be re-derived from a GPU capture, not from the original task text.
-The original candidate order (temporal warm-start > red-black GS > residual early-exit > multigrid) was
-written before the telemetry model existed and before the lighting budget was closed; lighting.gpu.
-spread.gpu_us is now directly readable per recompute from any profile, so the choice can be evidence-led.
+DOES NOT TRANSFER TO US, and the reasons are our design: we solve ONCE over the whole field (not per
+light), at TILE resolution with a separate upscale pass, in RGBA16F with the obstacle packed into
+alpha (J-2), with adaptive K floored at 8. Measured on the Director's Arc Pro 130T/140T:
+lighting.gpu.spread.gpu_us = 744, lighting.gpu.point.gpu_us = 987.
 
-VALIDATION NOTE that still holds: these change output toward the SAME steady state, so they are validated
-by a convergence/quality comparison, NOT byte-identity. Reuse the spreadoracle harness pattern.
+WHAT IT DOES CHANGE -- THE GOVERNING PRODUCT IS passes x working-set x (1/bandwidth). That re-ranks
+the four original candidates, and independently confirms the original top two:
+
+  1. TEMPORAL WARM-START   attacks PASSES directly. Seed iteration 0 from the previous frame's
+                           converged lightmap instead of raw emission. Biggest win on the static
+                           scenes #132 is about.
+  2. RESIDUAL EARLY-EXIT / ADAPTIVE N   attacks PASSES directly. Stop at convergence instead of
+                           running the resolved K.
+  3. red-black Gauss-Seidel   changes convergence RATE, not traffic per pass. Demoted.
+  4. multigrid             large change, traffic win unclear. Demoted.
+
+THE MEASUREMENT TO DO FIRST, and it is cheap because both counters already exist:
+    lighting.gpu.spread.passes   (K actually run)   StarGpuLightmapPass.cpp:43
+    lighting.gpu.spread.gpu_us   (what it cost)     StarGpuLightmapPass.cpp:96/:183
+Sweep K on the headless harness, record the pair, derive us-per-pass and thus our effective
+bytes/second. That converts a single-machine measurement into a MODEL, and the model answers the
+question we currently cannot: at what K does our GPU path cross our own CPU calculate() (measured
+3,817 us/recompute by #168) on a given bandwidth? K is scene-driven and FU ships very bright lights,
+so the crossover is a real question rather than an imported one.
+
+DO NOT BUILD an automatic CPU/GPU fallback policy off this. That would be a policy for hardware we
+have never run, on a threshold nobody has measured -- see #129, a lever measured null and removed.
+Measure first; the policy is trivial once the number exists and may prove unnecessary.
+
+SCALE CHECK so this is not overweighted: #132 measured env ~1614 + parallax ~1939 + world ~1839 per
+FRAME against lighting's ~1731 per RECOMPUTE (gated by the temporal gate's 33 ms floor). Lighting is
+not what saturates the GPU; the scene passes are.
+
+VALIDATION NOTE that still holds: these change output toward the SAME steady state, so they are
+validated by a convergence/quality comparison, NOT byte-identity. Reuse the spreadoracle harness.
+
+STILL TRUE FROM THE 2026-07-25 AUDIT: none of the four candidates is in the tree. No temporal
+warm-start (iteration 0 is still seeded from raw emission), no red-black GS, no residual early-exit
+or adaptive N, no multigrid.
 ```
 
 <a id="c29c1332-162"></a>
@@ -3152,13 +3187,42 @@ status: **completed**
 status: **pending**
 
 ```
-Found by the G1 pristine-checkout proof (#190), 2026-07-26. Cloning HEAD to a scratch dir and configuring fails during vcpkg install: jemalloc 5.3.1's src/jemalloc_cpp.cpp calls std::__throw_bad_alloc(), which libstdc++ 16 (/usr/lib/gcc/x86_64-redhat-linux/16) no longer declares -- "error: no member named '__throw_bad_alloc' in namespace 'std'". The existing build/linux-release-clang/vcpkg_installed predates that toolchain and still works, so the failure is invisible until someone builds from scratch. CI's ubuntu-22.04 jobs are on an older libstdc++ and are unaffected.
+BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16.
 
-Two separable issues:
-(1) TOOLCHAIN: jemalloc 5.3.1 does not compile against libstdc++ 16. Needs a newer jemalloc port, a vcpkg overlay patch, or a pinned older toolchain for that port.
-(2) REPO, and the more interesting one: source/vcpkg.json lists { "name": "jemalloc", "platform": "linux" } UNCONDITIONALLY, while source/CMakeLists.txt:142 declares option(STAR_USE_JEMALLOC ... OFF). So every Linux build compiles and installs a dependency the default configuration does not link, and when that dependency stops building the whole project stops -- for a library it was not going to use. The fix is to gate the vcpkg dependency behind a manifest feature driven by the CMake option (VCPKG_MANIFEST_FEATURES set before project()).
+ROOT CAUSE OF THE TOOLCHAIN HALF FOUND 2026-08-04, by comparison against OpenStarbound PR 570.
 
-Risk if left: the working build directory is the only thing keeping this machine able to build. Lose it and the fork cannot be rebuilt here.
+NOTHING IN THE REPO REGISTERS OUR VCPKG OVERLAY PORTS. We set only VCPKG_OVERLAY_TRIPLETS
+(source/CMakePresets.json:18). The build that works on this machine got its overlay from a
+HAND-PASSED flag pointing at a stray OUT-OF-TREE directory:
+
+    build/linux-release-clang/CMakeCache.txt:431
+        -DVCPKG_OVERLAY_PORTS=/root/vcpkg-overlay-ports
+
+That directory is not in the repository. So a pristine clone has no overlay at all, falls back to
+upstream jemalloc 5.3.1, and hits the libstdc++ 16 failure. The jemalloc patch is not the missing
+piece -- the REGISTRATION is.
+
+THE FIX SHAPE, which PR 570 demonstrates (idea, not their code):
+    source/vcpkg-configuration.json  ->  "overlay-ports": ["./vcpkg-overlay/ports"]
+Declarative, in-repo, beside the pinned default-registry. Honoured by vcpkg-tool directly and by
+lukka/run-vcpkg via vcpkgConfigurationJsonGlob, so it works for a local clone and in CI with no
+per-invocation flags. Alternatively VCPKG_OVERLAY_PORTS in the `base` preset -- but the
+configuration.json form is the one that survives someone configuring without our presets.
+
+REMAINING WORK, in order:
+  1. move /root/vcpkg-overlay-ports INTO the repo (source/vcpkg-overlay/ports/), so the thing the
+     build depends on is version-controlled at all
+  2. register it declaratively per above
+  3. verify from a genuinely pristine clone, not from this working tree
+  4. record a RETIREMENT CONDITION per overlay port -- what upstream event lets us delete it. An
+     overlay with no exit criterion is permanent by accident (this is a separate confirmed
+     recommendation from the same analysis)
+
+SEPARATE, RELATED, ALSO CONFIRMED: source/vcpkg.json:14 lists "mimalloc" unconditionally while
+source/CMakeLists.txt:143 has option(STAR_USE_MIMALLOC ... OFF) -- we pay to build an allocator we
+do not link. The clean form is a vcpkg manifest FEATURE driven by the CMake option
+(VCPKG_MANIFEST_FEATURES), which also lets jemalloc be selected the same way rather than being
+unconditional.
 ```
 
 <a id="c29c1332-197"></a>
@@ -3396,6 +3460,8 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `0481bb82` docs: PR 570 findings ledger -- 155 rows, 33 open decisions, generated not transcribed [#204]
+- `566fce3d` docs: a durable handover for #204, and the board export that makes its ids resolve [#204]
 - `21ba119a` spec: `statistics` is not a platform service -- stage 2 of dissolving `platform` [#204]
 - `5d276333` spec: the numerator nobody read -- four stale figures, two of them whole tables [#204]
 - `42b60f5d` spec: F4 was overclaimed, and the document warned about exactly this
@@ -3675,6 +3741,175 @@ diagram titles had drifted apart on 3 of 4). STALE_ZONE no longer reads HTML com
 
 Stages 2-5 of the `platform` decomposition no longer require hand-editing any closure figure —
 the gate names the exact number.
+```
+
+<a id="c29c1332-210"></a>
+
+#### #210 — RACE-1: use-after-free — sector unload races the lighting thread's gather (SERIOUS, live on integration)
+
+status: **pending**
+
+```
+FOUND 2026-08-04 by comparative analysis of OpenStarbound PR 570. Real defect, live in our tree, never
+previously addressed. Their fix is one line; ours should not be a copy of it (see CAVEAT).
+
+THE RACE
+  free side  StarWorldClient.cpp:1417-1421 -- WorldClient::update() unload loop, NO lock of any kind:
+                 auto loadedSectors = m_tileArray->loadedSectors();
+                 for (auto sector : loadedSectors)
+                   if (!neededSectors.contains(sector)) m_tileArray->unloadSector(sector);
+             -> StarTileSectorArray.hpp:234-239 unloadSector -> StarSectorArray2D.hpp:243-249 takeSector
+                (`std::swap`, returns ArrayPtr, DISCARDED at the call site => delete fires immediately)
+  read side  lighting thread StarWorldClient.cpp:2438-2450 lightingMain -> lightingCalc, which holds
+             m_lightMapPrepMutex :2077 through :2228 and gathers at :2178-2226 via
+             lightingTileGather:1852 / lightingStableGather:1917 -> tileEvalColumnsParallel
+             -> StarSectorArray2D.hpp:438-468 evalColumnsPrivPar:
+                 workerPool.addWork([=, &function]{ Array* array = m_sectors(xs,ys).get(); ... })
+             RAW pointers into unique_ptr-owned sector storage, read from N worker threads.
+  no internal locking anywhere in StarTileSectorArray.hpp or StarSectorArray2D.hpp.
+
+ASYNC LIGHTING IS ON. The ctor default StarWorldClient.cpp:94 is false, but
+StarUniverseClient.cpp:161 does setAsyncLighting(true) unconditionally on ConnectSuccess -- single
+player included. Only /asyncLighting (StarClientCommandProcessor.cpp:188-191) turns it off.
+
+THE WINDOW IS REAL, NOT THEORETICAL
+  loaded coverage = validSectorsFor(monitoredRegion.padded(WorldSectorSize)), WorldSectorSize=32
+                    => window + [32..63] tiles
+  calc region     = window.padded(1), bucket-rounded (up to +31), then borderCells() up to 48
+                    => up to ~80 tiles
+  So the calc region can EXCEED the guaranteed-loaded band. A trailing sector can be simultaneously
+  in-flight in the gather and outside neededSectors. Player walking / flying / warping produces it.
+  Symptom: nondeterministic segfault or garbage lighting while moving; unreproducible; reads as
+  "crashed while exploring".
+
+AND OUR OWN COMMENT ASSERTS THE OPPOSITE. StarWorldClient.cpp:2190-2194 (the A1 gather cache) says
+the calc region "is strictly inside the loaded-sector region ... so no unloaded sector is ever
+gathered. Preserve that padding invariant." That invariant is the ONLY thing standing between us and
+the UAF, it is defended by no assert and no test, and the arithmetic above says it does not hold in
+general. This is a claim-with-no-instrument in our own code.
+
+FIX: take m_lightMapPrepMutex around the unload loop. The consumer already holds exactly that mutex
+across the whole gather, which is why the fix applies to our tree unchanged.
+
+CAVEAT -- DO NOT COPY THEIRS VERBATIM. Their guard reads
+    if (loadedSectors.size() > neededSectors.size()) { MutexLocker ...; for (...) unload }
+The size comparison is not a sound predicate for "something needs unloading": the sets can differ
+with equal or smaller loaded size (after a teleport, e.g. 40 stale loaded vs 100 newly needed), and
+then the loop is skipped entirely and stale sectors are never unloaded. Take the lock, drop the size
+guard.
+
+VERIFICATION: a byte-identity oracle will not show this -- it is a lifetime race, not an output
+change. Wants either a TSan run over a warp/scroll sequence in the headless harness, or an assert
+that the gather's sector set is a subset of loadedSectors at gather time (which would also give the
+:2190 invariant the instrument it never had).
+```
+
+<a id="c29c1332-211"></a>
+
+#### #211 — GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard
+
+status: **pending**
+
+```
+FOUND 2026-08-04 comparing against OpenStarbound PR 570. Live in our tree; their remedy is WRONG for
+us and must not be ported.
+
+THE HOLE
+  StarRenderer_opengl.cpp:918-933 setMultiSampling():
+    923   if (m_multiSampling) {
+    924     glEnable(GL_MULTISAMPLE);
+    925     glEnable(GL_SAMPLE_SHADING);     <-- GL 4.0
+    926     glMinSampleShading(1.f);         <-- GL 4.0, GLEW fn-pointer macro
+    927   } else {
+    928     glMinSampleShading(0.f);         <-- GL 4.0
+    929     glDisable(GL_SAMPLE_SHADING);    <-- GL 4.0
+  No capability guard on any of the four. glMinSampleShading is GLEW_GET_FUN(__glewMinSampleShading)
+  inside glew.h's `#ifndef GL_VERSION_4_0` block.
+
+  INCONSISTENT WITH OUR OWN SIBLING CODE: StarGlRenderSurface.cpp:276 guards the framebuffer
+  multisample read -- `GLEW_VERSION_4_0 ? fbConfig.getUInt("multisample", 0) : 0`. Our whole tree has
+  exactly three GLEW guards (StarRenderer_opengl.cpp:82 the 3.2 floor, :102 debug output,
+  StarGlRenderSurface.cpp:276) and zero uses of GLEW_ARB_sample_shading or glewIsSupported. The F1/F2a
+  extraction (#152) moved the guarded sibling into a different file, so the inconsistency is now
+  cross-file and harder to notice.
+
+  Bonus inconsistency: on a sub-4.0 context that guard forces multisample=0, so nothing is
+  multisampled -- yet setMultiSampling still issues the sample-shading calls. Pure cost, zero effect.
+
+EXPOSURE IS NARROW, AND THE ORIGINAL CLAIM OVERSTATED IT (corrected during verification):
+  - NOT reachable at startup. setMultiSampling opens with `if (m_multiSampling == multiSampling) return;`
+    (:919-920); m_multiSampling inits 0 and antiAliasing defaults false (StarRootLoader.cpp:118), so
+    the steady state early-returns. The disable branch needs a prior enable.
+  - NOT a guaranteed segfault. Null fn-pointer only where the loader returns NULL for unresolvable
+    names (wglGetProcAddress on Windows). On Mesa/glX the stub resolves and you get
+    GL_INVALID_OPERATION. glEnable(GL_SAMPLE_SHADING) without 4.0 is GL_INVALID_ENUM, not a crash.
+  => real exposure: Windows + a pre-GL4 ICD (Sandy Bridge / GT200 / HD 2000-4000 class, all of which
+     clear our 3.2 floor at :82) + the user actively ticking the AA checkbox.
+
+DO NOT PORT THEIR FIX. PR 570 DELETES per-sample shading outright (patch 0005, commit e847309b) for
+perf. We have already litigated this and deliberately KEPT it -- StarBackdropPass.cpp:525-540 records
+the in-process A/B: "AA off: byte-identical / AA on: 781760 px differ (22.3%), maxAbs 0.000977 ... it
+is precisely the quality the player asked for when they ticked the box, and silently withholding it
+to buy back frame time is not our call to make." (task #151, commit 8ac0264f). Their deletion is a
+silent quality regression by our own recorded standard.
+
+CORRECT SHAPE FOR US: wrap all four calls in `if (GLEW_VERSION_4_0 || GLEW_ARB_sample_shading)`,
+keeping the feature wherever the hardware has it. One guard, no behaviour change on capable hardware.
+
+git log -S "glMinSampleShading" -- source/application/StarRenderer_opengl.cpp on integration returns
+exactly one commit: 106dc47b, the original upstream feature. We have never touched these lines.
+```
+
+<a id="c29c1332-212"></a>
+
+#### #212 — TEST-CI-1: five lighting test files run in ZERO CI jobs — and none of them needs assets
+
+status: **pending**
+
+```
+FOUND 2026-08-04 comparing against OpenStarbound PR 570. This is a defect in our own verification,
+not a decision: we built the tests and then locked them in a target that never executes.
+
+THE STATE
+  source/test/CMakeLists.txt:78-82 puts all five lighting test files in game_tests:
+      lighting_telemetry_test.cpp
+      lighting_spread_test.cpp
+      lighting_point_test.cpp
+      temporal_light_gate_test.cpp
+      cellular_lighting_test.cpp
+  source/test/CMakeLists.txt:495:
+      SET (star_tests_needing_assets game_tests)  # game_tests boots a universe from assets/ -- cannot run in CI
+
+  => every lighting test we own runs on zero platforms, on every push, forever.
+
+THEY DO NOT NEED ASSETS. Verified per file: zero `Root::singleton`, zero `assets()`, and the ones
+that need config build it from inline Json::parseJson. The only thing tying them to game_tests is
+game_tests_main.cpp:41, which does AddGlobalTestEnvironment(new TestEnvironment(...)) constructing a
+Root for the WHOLE binary -- so an asset-free test in that target still pays for a universe boot.
+
+THE CONTRAST THAT FOUND IT. PR 570 labels core_tests "NoAssets" (their source/test/CMakeLists.txt:94),
+their base testPreset filters on that label, and build.yml drives ctest through it on Linux,
+Linux-ARM, macOS, macOS-ARM and Windows. Their 9 lighting tests run on five platforms every push.
+They also demonstrated the remedy: compile ../base/StarCellularLighting.cpp directly into core_tests
+so a base-layer test lands in the CI-gated target.
+
+WHY THIS MATTERS MORE THAN IT LOOKS. Our campaign's whole standard is that a claim needs an
+instrument. These tests ARE the instrument for the lighting kernel, and the instrument has never run
+in CI. Worse, the shape hides itself: `ctest` locally passes, the files exist, the assertions are
+real -- nothing anywhere reports "these executed zero times".
+
+WORK
+  1. move the asset-free lighting tests into core_tests (or a new asset-free target), compiling the
+     base-layer sources they need directly, as PR 570 does
+  2. confirm they actually execute -- assert the count, do not assume; a test that silently does not
+     run is the exact failure this task exists about
+  3. check whether OTHER tests in game_tests are equally asset-free hostages (drawable_cache_test and
+     animated_part_set_test are candidates) and move what qualifies
+  4. leave genuinely asset-dependent tests where they are; the star_tests_needing_assets guard at :495
+     is correct and should keep working
+
+RELATED: #194 (CI-3), #195 (CI-4) built the gate-running machinery; this is the same class one level
+down -- machinery that exists and is not pointed at the thing it was built for.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
