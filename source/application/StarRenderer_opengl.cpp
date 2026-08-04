@@ -959,16 +959,23 @@ void OpenGlRenderer::setMultiSampling(unsigned multiSampling) {
   // PR 570 removed per-sample shading outright to solve this. We do NOT: #151 measured it at 22.3% of
   // pixels on the parallax path and kept it deliberately, which is why the parallax AA gate still
   // exists. The capability, not the feature, is what was missing.
-  bool sampleShading = GLEW_VERSION_4_0 || GLEW_ARB_sample_shading;
+  // The two capabilities share the ENUM but not the ENTRY POINT, and conflating them re-created the
+  // very crash this guard exists to prevent. GLEW loads glMinSampleShading only from its GL 4.0
+  // initialiser and glMinSampleShadingARB only from its ARB one, so admitting the ARB capability and
+  // then calling the core name is a null dispatch on a 3.x+ARB driver. Select the pointer once; a
+  // null result then means "no capability" and needs no second test.
+  auto minSampleShading = GLEW_VERSION_4_0        ? glMinSampleShading
+                        : GLEW_ARB_sample_shading ? glMinSampleShadingARB
+                                                  : nullptr;
   if (m_multiSampling) {
     glEnable(GL_MULTISAMPLE);
-    if (sampleShading) {
+    if (minSampleShading) {
       glEnable(GL_SAMPLE_SHADING);
-      glMinSampleShading(1.f);
+      minSampleShading(1.f);
     }
   } else {
-    if (sampleShading) {
-      glMinSampleShading(0.f);
+    if (minSampleShading) {
+      minSampleShading(0.f);
       glDisable(GL_SAMPLE_SHADING);
     }
     glDisable(GL_MULTISAMPLE);
