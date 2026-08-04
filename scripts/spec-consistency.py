@@ -193,6 +193,10 @@ ELEMENT_FREE = {
     "platform_null": "answers vendor queries with nothing and schedules none of it -- a component "
                      "whose whole duty is to do nothing has no cadence to declare",
     "platform_pc": "vendor services answer when called",
+    "statistics_steam": "a stat is recorded when the game reports one. Steam's callback pump is the "
+                        "vendor's cadence, not a clock this design schedules -- the same reasoning "
+                        "as `transport_p2p`, over the same session",
+    "statistics_null": "accepts every stat and keeps none; there is nothing to schedule",
     "starmap_authority": "answers a lookup when asked and generates on demand; the star map has "
                          "no cadence -- a system exists whether or not anyone is looking at it",
     "starmap_participant": "same, from the other side: it caches what it was sent and asks when "

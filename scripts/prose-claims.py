@@ -1038,9 +1038,14 @@ def selftest(text):
     # quiet. That is the failure LOCAL_COUNT's dead entries had, and it is the one worth proving.
     grants_now = MODEL.grants(text)
     drives = (
+        # DERIVED, NOT PASTED. This drive read `text.replace("15 of 49 ...")` and went SILENT the
+        # moment the register grew to 52: the literal no longer existed, the replace was a no-op, and
+        # the verdict was handed an unmodified document. A self-test keyed on the numbers it is
+        # meant to mutate stops testing exactly when the numbers move, which is the only time it
+        # matters. The phrase is stable; the digits in front of it are not, so match them.
         ("MODAL_ZONE", "a wrong deviation count",
-         lambda: check_modal_zone(text.replace("15 of 49 %s" % MODAL_ZONE_PHRASE,
-                                               "12 of 49 %s" % MODAL_ZONE_PHRASE), comp)),
+         lambda: check_modal_zone(
+             re.sub(r'\d+( of \d+ %s)' % re.escape(MODAL_ZONE_PHRASE), r'999\1', text), comp)),
         ("MODAL_ZONE", "the claim reworded out of reach",
          lambda: check_modal_zone(text.replace(MODAL_ZONE_PHRASE, "components sit oddly"), comp)),
         ("SUBTRACTION", "a wrong grant count",

@@ -8,7 +8,7 @@
 
 **Goal.** Describe the **perfect target state of the Starbound client**: every duty owned by exactly
 one component, every dependency declared and enforceable, every composition a choice rather than an
-inheritance. 49 components in four zone directories, with the boundaries drawn where they *belong* —
+inheritance. 52 components in four zone directories, with the boundaries drawn where they *belong* —
 not where the current tree makes them cheap. This is a refactor of the shape of the whole program,
 not a change to one seam.
 
@@ -954,7 +954,7 @@ Section 7 resolves this by splitting the word rather than stretching it. Two mea
 **First: `rendering` is granted `game` today.** `source/rendering/CMakeLists.txt` lists
 `${STAR_GAME_INCLUDES}` in its `INCLUDE_DIRECTORIES`. Deleting that one line states **this seam** as a
 build rule, and the rest of Section 8 is the work that makes the deletion possible. It is not the
-whole design — the target state deletes an equivalent line for every one of the 49 components, and
+whole design — the target state deletes an equivalent line for every one of the 52 components, and
 `tree-map.py` exists to make that the same kind of statement everywhere rather than a special
 argument about presentation.
 
@@ -1061,7 +1061,7 @@ last grouping axis, and the one the clusters in the diagram draw:
 Zone is not a synonym for kind, but it is close enough that the closeness had to be measured:
 `platform` is an INTERFACE in `machine/`, `celestial` is an INTERFACE in `domain/` and `gpu` is an
 INTERFACE in `device/` — one KIND across three ZONEs. `host_sdl` is a BACKEND in `machine/` while
-`rendering` is a BACKEND in `device/`. **15 of 49 components deviate from their KIND's modal ZONE**,
+`rendering` is a BACKEND in `device/`. **15 of 52 components deviate from their KIND's modal ZONE**,
 and BACKEND has no modal zone at all: it splits exactly six MACHINE to six DEVICE. See the zone section below.
 
 <!-- HISTORICAL -->
@@ -1302,9 +1302,12 @@ flowchart TD
     subgraph hostsdl ["<b>host_sdl</b> · BACKEND"]
       frameloop(["<b>frameLoop</b> · LOOP<br/><i>the PC driver: pump · step · swap · idle</i>"])
     end
-    platform["<b>platform</b><br/>INTERFACE<br/><i>platform-service contracts</i>"]
-    platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>Steam, Discord and P2P services</i>"]
-    platformnull["<b>platform_null</b><br/>BACKEND<br/><i>platform services that do nothing</i>"]
+    platform["<b>platform</b><br/>INTERFACE<br/><i>the vendor-service contracts not yet named</i>"]
+    platformpc["<b>platform_pc</b><br/>BACKEND<br/><i>the vendor session, and the services still filed under it</i>"]
+    platformnull["<b>platform_null</b><br/>BACKEND<br/><i>the remaining platform services, doing nothing</i>"]
+    statistics["<b>statistics</b><br/>INTERFACE<br/><i>what the player has achieved</i>"]
+    statisticssteam["<b>statistics_steam</b><br/>BACKEND<br/><i>achievements as Steam keeps them</i>"]
+    statisticsnull["<b>statistics_null</b><br/>BACKEND<br/><i>achievements recorded nowhere</i>"]
     transport["<b>transport</b><br/>INTERFACE<br/><i>how packets cross</i>"]
     transportlocal["<b>transport_local</b><br/>BACKEND<br/><i>the co-located packet pair</i>"]
     transporttcp["<b>transport_tcp</b><br/>BACKEND<br/><i>the wire</i>"]
@@ -1324,12 +1327,23 @@ flowchart TD
   platformpc --> host
   platformnull ==> platform
   platformnull --> core
+  statistics --> core
+  host --> statistics
+  hostsdl --> statistics
+  hostsdl --> statisticssteam
+  hostnull --> statistics
+  hostnull --> statisticsnull
+  statisticssteam ==> statistics
+  statisticssteam --> platformpc
+  statisticsnull ==> statistics
+  statisticsnull --> core
   transportlocal ==> transport
   transportlocal --> core
   transporttcp ==> transport
   transporttcp --> core
   transportp2p ==> transport
   transportp2p --> core
+  transportp2p --> platformpc
   transport --> core
   shell --> transport
   auth --> starmap
@@ -1487,9 +1501,9 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement    fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class core,base kFoundation
-  class platform,host,transport,contract,gpu,audiodev,celest,content kContract
+  class platform,statistics,host,transport,contract,gpu,audiodev,celest,content kContract
     class scene,sound,net kVocabulary
-  class hostsdl,hostnull,platformpc,platformnull,transportlocal,transporttcp,rend,tr,glb,sdlb,mixing,audiosdl kBackend
+  class hostsdl,hostnull,platformpc,platformnull,statisticssteam,statisticsnull,transportlocal,transporttcp,rend,tr,glb,sdlb,mixing,audiosdl kBackend
   class game,auth,world,wgen,uview,wview,win,front,inter,coloc,script,storage,shell kLibrary
   class cgl,chl,csg,cagent,wsim,wgn,srv kEntrypoint
   class frameloop,headlessloop,clientloop,superviseloop,universeloop,clienttick,fixedtick,audiotick,presenttick kElement
@@ -1540,11 +1554,11 @@ The four that replace them each answer the same question — **what does this co
 <!-- BEGIN GENERATED: scripts/tree-map.py#zones -->
 | zone | faces | n |
 |---|---|---:|
-| **`machine/`** | the OS, the vendor, the asset store, the disk | 15 |
+| **`machine/`** | the OS, the vendor, the asset store, the disk | 18 |
 | **`domain/`** | nothing outside; the game's own state and rules | 17 |
 | **`device/`** | a display, a speaker, a file, a recorder | 9 |
 | **`composition/`** | the other three; it wires them | 8 |
-| | **total** | **49** |
+| | **total** | **52** |
 <!-- END GENERATED: tree-map#zones -->
 
 **SEAM is gone, and no `boundary/` directory replaces it.** An INTERFACE or VOCABULARY already
@@ -1559,7 +1573,7 @@ also keeps each interface beside its implementations — `gpu` next to `gpu_open
 entire point of a swappable backend, and a `boundary/` directory would have put them in different
 trees.
 
-**Every grant edge points down that order, at zero exceptions across 49 components**, checked by
+**Every grant edge points down that order, at zero exceptions across 52 components**, checked by
 `spec_consistency`'s `ZONE_ORDER` verdict. That is what makes zones directories rather than labels:
 `domain/ must not include device/` becomes a statement about paths, checkable without parsing C++.
 
@@ -1912,6 +1926,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_steam["<b>statistics_steam</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
     transport["<b>transport</b><br/>INTERFACE"]
     transport_local["<b>transport_local</b><br/>BACKEND"]
@@ -2010,16 +2026,20 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   gpu --> core
   gpu_opengl --> core
   gpu_opengl --> gpu
   host --> core
   host --> platform
+  host --> statistics
   host_sdl --> core
   host_sdl --> host
   host_sdl --> platform
   host_sdl --> platform_pc
+  host_sdl --> statistics
+  host_sdl --> statistics_steam
   interaction --> base
   interaction --> core
   interaction --> game
@@ -2076,6 +2096,10 @@ flowchart TD
   starmap_participant --> celestial
   starmap_participant --> core
   starmap_participant --> starmap
+  statistics --> core
+  statistics_steam --> core
+  statistics_steam --> platform_pc
+  statistics_steam --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2084,6 +2108,7 @@ flowchart TD
   transport_local --> core
   transport_local --> transport
   transport_p2p --> core
+  transport_p2p --> platform_pc
   transport_p2p --> transport
   transport_tcp --> core
   transport_tcp --> transport
@@ -2132,15 +2157,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class audio,content,gpu,host,platform,presentation,starmap,transport kContract
+  class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
-  class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,transport_local,transport_p2p,transport_tcp kBackend
+  class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
   class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_opengl links 39 of 49 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `platform_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_opengl links 41 of 52 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -2159,6 +2184,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_steam["<b>statistics_steam</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
     transport["<b>transport</b><br/>INTERFACE"]
     transport_local["<b>transport_local</b><br/>BACKEND"]
@@ -2257,16 +2284,20 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   gpu --> core
   gpu_sdl --> core
   gpu_sdl --> gpu
   host --> core
   host --> platform
+  host --> statistics
   host_sdl --> core
   host_sdl --> host
   host_sdl --> platform
   host_sdl --> platform_pc
+  host_sdl --> statistics
+  host_sdl --> statistics_steam
   interaction --> base
   interaction --> core
   interaction --> game
@@ -2323,6 +2354,10 @@ flowchart TD
   starmap_participant --> celestial
   starmap_participant --> core
   starmap_participant --> starmap
+  statistics --> core
+  statistics_steam --> core
+  statistics_steam --> platform_pc
+  statistics_steam --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2331,6 +2366,7 @@ flowchart TD
   transport_local --> core
   transport_local --> transport
   transport_p2p --> core
+  transport_p2p --> platform_pc
   transport_p2p --> transport
   transport_tcp --> core
   transport_tcp --> transport
@@ -2379,15 +2415,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class audio,content,gpu,host,platform,presentation,starmap,transport kContract
+  class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
-  class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,transport_local,transport_p2p,transport_tcp kBackend
+  class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
   class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_sdl_gpu links 39 of 49 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `platform_null`, `server`, `transcript`, `world_gen`, `world_sim`
+**client_sdl_gpu links 41 of 52 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
@@ -2401,6 +2437,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_null["<b>statistics_null</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
   subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
@@ -2423,6 +2461,7 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   net --> core
   platform --> core
@@ -2431,6 +2470,9 @@ flowchart TD
   script --> base
   script --> content
   script --> core
+  statistics --> core
+  statistics_null --> core
+  statistics_null --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2440,6 +2482,7 @@ flowchart TD
   world_gen --> core
   world_gen --> game
   world_gen --> platform_null
+  world_gen --> statistics_null
   world_gen --> storage
   world_gen --> worldgen
   worldgen --> base
@@ -2455,14 +2498,14 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class content,platform kContract
+  class content,platform,statistics kContract
   class celestial,net kVocabulary
-  class platform_null kBackend
+  class platform_null,statistics_null kBackend
   class game,script,storage,worldgen kLibrary
   class world_gen kEntrypoint
 ```
 
-**world_gen links 12 of 49 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `starmap`, `starmap_authority`, `starmap_participant`, `transcript`, `transport`, `transport_local`, `transport_p2p`, `transport_tcp`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
+**world_gen links 14 of 52 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `starmap`, `starmap_authority`, `starmap_participant`, `statistics_steam`, `transcript`, `transport`, `transport_local`, `transport_p2p`, `transport_tcp`, `universe`, `universe_view`, `windowing`, `world`, `world_sim`, `world_view`
 <!-- END GENERATED: world_gen -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_sim -->
@@ -2476,6 +2519,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_null["<b>statistics_null</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
   subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
@@ -2502,6 +2547,7 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   net --> core
   platform --> core
@@ -2510,6 +2556,9 @@ flowchart TD
   script --> base
   script --> content
   script --> core
+  statistics --> core
+  statistics_null --> core
+  statistics_null --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2523,6 +2572,7 @@ flowchart TD
   world_sim --> core
   world_sim --> game
   world_sim --> platform_null
+  world_sim --> statistics_null
   world_sim --> storage
   world_sim --> world
   world_sim --> worldgen
@@ -2539,15 +2589,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class content,platform kContract
+  class content,platform,statistics kContract
   class celestial,net kVocabulary
-  class platform_null kBackend
+  class platform_null,statistics_null kBackend
   class game,script,storage,world,worldgen kLibrary
   class world_sim kEntrypoint
   class world_worldLoop,world_worldTick kElement
 ```
 
-**world_sim links 13 of 49 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `starmap`, `starmap_authority`, `starmap_participant`, `transcript`, `transport`, `transport_local`, `transport_p2p`, `transport_tcp`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
+**world_sim links 15 of 52 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `server`, `sound`, `starmap`, `starmap_authority`, `starmap_participant`, `statistics_steam`, `transcript`, `transport`, `transport_local`, `transport_p2p`, `transport_tcp`, `universe`, `universe_view`, `windowing`, `world_gen`, `world_view`
 <!-- END GENERATED: world_sim -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#server -->
@@ -2561,6 +2611,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_null["<b>statistics_null</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
     transport["<b>transport</b><br/>INTERFACE"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
@@ -2597,6 +2649,7 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   net --> core
   platform --> core
@@ -2610,6 +2663,7 @@ flowchart TD
   server --> game
   server --> platform_null
   server --> starmap_authority
+  server --> statistics_null
   server --> transport_tcp
   server --> universe
   server --> world
@@ -2620,6 +2674,9 @@ flowchart TD
   starmap_authority --> celestial
   starmap_authority --> core
   starmap_authority --> starmap
+  statistics --> core
+  statistics_null --> core
+  statistics_null --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2655,15 +2712,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class content,platform,starmap,transport kContract
+  class content,platform,starmap,statistics,transport kContract
   class celestial,net kVocabulary
-  class platform_null,starmap_authority,transport_tcp kBackend
+  class platform_null,starmap_authority,statistics_null,transport_tcp kBackend
   class game,script,storage,universe,world,worldgen kLibrary
   class server kEntrypoint
   class server_superviseLoop,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**server links 18 of 49 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `starmap_participant`, `transcript`, `transport_local`, `transport_p2p`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
+**server links 20 of 52 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `starmap_participant`, `statistics_steam`, `transcript`, `transport_local`, `transport_p2p`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_agent -->
@@ -2681,6 +2738,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_null["<b>statistics_null</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
     transport["<b>transport</b><br/>INTERFACE"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
@@ -2724,13 +2783,17 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   host --> core
   host --> platform
+  host --> statistics
   host_null --> core
   host_null --> host
   host_null --> platform
   host_null --> platform_null
+  host_null --> statistics
+  host_null --> statistics_null
   interaction --> base
   interaction --> core
   interaction --> game
@@ -2771,6 +2834,9 @@ flowchart TD
   starmap_participant --> celestial
   starmap_participant --> core
   starmap_participant --> starmap
+  statistics --> core
+  statistics_null --> core
+  statistics_null --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -2797,15 +2863,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class content,host,platform,presentation,starmap,transport kContract
+  class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
-  class host_null,platform_null,starmap_participant,transport_tcp kBackend
+  class host_null,platform_null,starmap_participant,statistics_null,transport_tcp kBackend
   class game,interaction,participant,script,storage,universe_view,world_view kLibrary
   class client_agent kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick kElement
 ```
 
-**client_agent links 24 of 49 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `starmap_authority`, `transcript`, `transport_local`, `transport_p2p`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
+**client_agent links 26 of 52 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `starmap_authority`, `statistics_steam`, `transcript`, `transport_local`, `transport_p2p`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
 <!-- END GENERATED: client_agent -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
@@ -2823,6 +2889,8 @@ flowchart TD
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
+    statistics["<b>statistics</b><br/>INTERFACE"]
+    statistics_null["<b>statistics_null</b><br/>BACKEND"]
     storage["<b>storage</b><br/>LIBRARY"]
     transport["<b>transport</b><br/>INTERFACE"]
     transport_local["<b>transport_local</b><br/>BACKEND"]
@@ -2904,13 +2972,17 @@ flowchart TD
   game --> net
   game --> platform
   game --> script
+  game --> statistics
   game --> storage
   host --> core
   host --> platform
+  host --> statistics
   host_null --> core
   host_null --> host
   host_null --> platform
   host_null --> platform_null
+  host_null --> statistics
+  host_null --> statistics_null
   interaction --> base
   interaction --> core
   interaction --> game
@@ -2955,6 +3027,9 @@ flowchart TD
   starmap_participant --> celestial
   starmap_participant --> core
   starmap_participant --> starmap
+  statistics --> core
+  statistics_null --> core
+  statistics_null --> statistics
   storage --> base
   storage --> content
   storage --> core
@@ -3015,15 +3090,15 @@ flowchart TD
   classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
   classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
   class base,core kFoundation
-  class content,host,platform,presentation,starmap,transport kContract
+  class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
-  class host_null,platform_null,starmap_authority,starmap_participant,transcript,transport_local,transport_tcp kBackend
+  class host_null,platform_null,starmap_authority,starmap_participant,statistics_null,transcript,transport_local,transport_tcp kBackend
   class colocation,frontend,game,interaction,participant,script,storage,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick,transcript_recordTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_headless links 33 of 49 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `transport_p2p`, `world_gen`, `world_sim`
+**client_headless links 35 of 52 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `statistics_steam`, `transport_p2p`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 ### The register — one row per box
@@ -3035,12 +3110,15 @@ Every component in the diagram, in the same reading order.
 |---|---|---|---|---|---|
 | **`core`** | FOUNDATION | MACHINE | language and containers | — | the language, containers and algorithms everything rests on |
 | **`base`** | FOUNDATION | MACHINE | shared services | — | services shared by the simulation and the shells |
-| **`platform`** | INTERFACE | MACHINE | platform-service contracts | **N3.b** — vendor services behind a contract, so a build without them still links | `DesktopService`, `StatisticsService`, `UserGeneratedContentService` |
+| **`platform`** | INTERFACE | MACHINE | the vendor-service contracts not yet named | **N3.b** — vendor services behind a contract, so a build without them still links | `DesktopService` and `UserGeneratedContentService` — what is left after `transport_p2p` and `statistics` took theirs |
+| **`statistics`** | INTERFACE | MACHINE | what the player has achieved | **N3.b** — a build with no store still links, and the game still counts | `StatisticsService` — `setStat`, `getStat`, `reportEvent`, `unlockAchievement`, `achievementsUnlocked` |
+| **`statistics_steam`** | BACKEND | MACHINE | achievements as Steam keeps them | **N3.b** — the vendor half, separable so a composition may omit it | `SteamStatisticsService`, over the vendor session held by `platform_pc` |
+| **`statistics_null`** | BACKEND | MACHINE | achievements recorded nowhere | **N3.a** — the second implementation, so no consumer discovers a store by its absence | a `StatisticsService` that accepts every stat and keeps none |
 | **`host`** | INTERFACE | MACHINE | the host contract | **N3.a** — a composition picks its host; SDL and null are peers | `Application` and `Presenter` — the two roles a host drives — and `ApplicationController` — what a host provides |
 | **`host_sdl`** | BACKEND | MACHINE | the SDL host implementation | **N3.a** — one of two host implementations; two are what prove a contract | an SDL window, the `frameLoop` driver, cursor, clipboard |
 | **`host_null`** | BACKEND | MACHINE | a host that shows nothing | **F1** — devices are optional, so a host that drives no device is legal | the `headlessLoop` driver and a controller that shows nothing |
-| **`platform_pc`** | BACKEND | MACHINE | Steam, Discord and P2P services | **N3.b** — the vendor half, separable so a composition may omit it | the Steam, Discord and P2P implementations of `platform` |
-| **`platform_null`** | BACKEND | MACHINE | platform services that do nothing | **N3.a** — the second implementation, so no consumer discovers a vendor by its absence | do-nothing `DesktopService`, `P2PNetworkingService`, `StatisticsService` and `UserGeneratedContentService` |
+| **`platform_pc`** | BACKEND | MACHINE | the vendor session, and the services still filed under it | **N3.b** — the vendor half, separable so a composition may omit it | `PcPlatformServicesState` — Steam availability, the Discord core and its event pump, `overlayActive` — plus `SteamDesktopService` and `SteamUserGeneratedContentService`, which have no contract of their own yet |
+| **`platform_null`** | BACKEND | MACHINE | the remaining platform services, doing nothing | **N3.a** — the second implementation, so no consumer discovers a vendor by its absence | a `DesktopService` that shares no link and a `UserGeneratedContentService` with an empty catalogue |
 | **`transport`** | INTERFACE | MACHINE | how packets cross | **N1.b** — a participant and its authority may be on different machines, so what carries a packet is a substitution point rather than an assumption | `push(List<PacketPtr>)` and `pull()`. **Nothing about what crosses** — that is `net`'s vocabulary and this contract never names it |
 | **`transport_local`** | BACKEND | MACHINE | the co-located packet pair | **N1.c** — the co-located path is an optimisation of the split path, so it is a *backend*, never a shortcut around the seam | the socket pair `colocation` wires when both ends of the seam were composed together |
 | **`transport_tcp`** | BACKEND | MACHINE | the wire | **N3.a** — two implementations are what prove a contract, and these two are the whole distributed claim | `TcpPacketSocket` — the same push and pull, over a network |
@@ -3097,7 +3175,7 @@ architecture into something an `#include` can violate and a lint can catch.
 <!-- BEGIN GENERATED: scripts/tree-map.py -->
 ```
 source/
-  machine/       # 15 components
+  machine/       # 18 components
     ├── base/            FOUNDATION
     ├── content/         INTERFACE
     ├── core/            FOUNDATION
@@ -3108,6 +3186,9 @@ source/
     ├── platform_null/   BACKEND
     ├── platform_pc/     BACKEND
     ├── script/          LIBRARY
+    ├── statistics/      INTERFACE
+    ├── statistics_null/ BACKEND
+    ├── statistics_steam/ BACKEND
     ├── storage/         LIBRARY
     ├── transport/       INTERFACE
     ├── transport_local/ BACKEND
@@ -3157,11 +3238,11 @@ scripts/           # the instruments -- every gate in Section 6 lives here
 assets/            # content, which `content` abstracts and no C++ component owns
 ```
 
-**49 components in 4 zone directories.** Reading top to bottom is reading the dependency order: every grant points down this list, checked by `spec_consistency`'s ZONE_ORDER verdict at zero exceptions.
+**52 components in 4 zone directories.** Reading top to bottom is reading the dependency order: every grant points down this list, checked by `spec_consistency`'s ZONE_ORDER verdict at zero exceptions.
 <!-- END GENERATED: tree-map -->
 
 
-Forty-nine components: eight INTERFACEs, four VOCABULARYs, fifteen BACKENDs, thirteen LIBRARYs,
+Fifty-two components: nine INTERFACEs, four VOCABULARYs, seventeen BACKENDs, thirteen LIBRARYs,
 two FOUNDATIONs, seven ENTRYPOINTs. **Each entrypoint owns exactly one element, and it is a `WIRING`** — not zero, which is
 the tempting rule and the wrong one. Composition is the single most important runtime fact in this
 design, because it is the *only* thing that differs between `client_opengl` and `client_headless`; a
@@ -3222,15 +3303,18 @@ is actually established today.
 | directory | granted | the statement it makes |
 |---|---|---|
 | `platform` | core | vendor services declared, never implemented here |
-| `host` | core, platform | the host contract; it returns `platform` types, so it consumes them |
-| `host_sdl` | core, host, platform, platform_pc | the SDL host. It owns the window **as an OS object** and nothing about how that window is drawn to. **NOT the only place SDL is named** — a backend that draws through SDL names it too |
-| `host_null` | core, host, platform, platform_null | names no device at all. It returns `platform_null`'s four services rather than `nullptr`, so a consumer is handed something in every composition and never tests for one |
-| `platform_pc` | core, platform, host | the vendor backend; the only place Steam and Discord are named |
+| `statistics` | core | what the player has achieved, declared; a contract that named `game` would have to know what a statistic MEANS |
+| `statistics_steam` | core, statistics, platform_pc, extern | the vendor half. It names `platform_pc` for the **session** — Steam is initialised once per process and the Discord event thread is one thread, so a backend that initialised its own would race the other two |
+| `statistics_null` | core, statistics | the second implementation. Names no session, because there is nothing to be connected to |
+| `host` | core, platform, statistics | the host contract; it returns vendor-service types from `ApplicationController`, so it consumes them |
+| `host_sdl` | core, host, platform, platform_pc, statistics, statistics_steam | the SDL host. It owns the window **as an OS object** and nothing about how that window is drawn to. **NOT the only place SDL is named** — a backend that draws through SDL names it too |
+| `host_null` | core, host, platform, platform_null, statistics, statistics_null | names no device at all. It returns a do-nothing service rather than `nullptr`, so a consumer is handed something in every composition and never tests for one |
+| `platform_pc` | core, platform, host, extern | the vendor session and the services still filed under it; the only place Steam and Discord are initialised |
 | `platform_null` | core, platform | the second implementation. Names no `host` — it answers, and answering needs nothing but the shape of the asking |
 | `transport` | core | a socket contract names nothing but the substrate; it carries packets and never inspects one |
 | `transport_local` | core, transport | the co-located pair; names no `universe` and no `participant` — a transport that knew its endpoints could not be swapped for the other one |
 | `transport_tcp` | core, transport | the wire; same exclusion, same reason |
-| `transport_p2p` | core, transport, extern | it needs the vendor SDK and nothing else above it. **This is the grant that used to belong to `platform_pc`**, and moving it is the whole point: a component needs Steam because it makes peer sockets, not because it is a "platform service" |
+| `transport_p2p` | core, transport, platform_pc, extern | **This is the grant that used to belong to `platform_pc`**, and moving it is the whole point: a component needs Steam because it makes peer sockets, not because it is a "platform service". It still names `platform_pc` for the **session**, the same as `statistics_steam` — `PcP2PNetworkingService` is constructed from that state, and refiling a component by duty does not stop it needing a live vendor connection |
 | `presentation` | core, base, scene, sound | the interfaces are stated in scene and sound terms — D6, enforced |
 | `gpu` | core | the GPU contract cannot name a game type either |
 | `audio` | core | nor can the audio-device contract — a sample format is not a domain type |
@@ -3245,7 +3329,7 @@ is actually established today.
 | `net` | core | replication vocabulary; **names no domain type** — 10 of its 11 headers already name none |
 | `content` | core, base | the data seam; names `Assets` and `Configuration`, both already in `base` and both domain-free |
 | `storage` | core, base, content, script | **names no domain type** — `BTreeDatabase` and `VersioningDatabase` both score zero for World/Entity/Player. It names `script` because **migrations are Lua**, which is independent evidence that `script` belongs below the domain |
-| `game` | core, base, platform, celestial, net, script, content, storage | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it. **It is the only component that may name `Root`** — the 38 content databases are its private table, and it publishes them by *implementing* `content` |
+| `game` | core, base, platform, statistics, celestial, net, script, content, storage | **no `scene`** — tier 2 moved appearance out. It names `net` because entities replicate and `script` because they run Lua; both are below it. **It is the only component that may name `Root`** — the 38 content databases are its private table, and it publishes them by *implementing* `content` |
 | `celestial` | core, base | a VOCABULARY names only FOUNDATION, INTERFACE and VOCABULARY components; measured — the four headers name `StarRect`, `StarJson`, `StarVector`, `StarOrderedMap`, `StarEither`, `StarWeightedPool`, `StarThread`, `StarBTreeDatabase`, `StarTtlCache`, `StarPerlin`, all `core` |
 | `starmap` | core, base, celestial | the lookup is stated entirely in `celestial` terms — coordinates in, parameters out — which is what lets either side answer it |
 | `starmap_authority` | core, base, celestial, starmap | it generates and owns the map. `StarBTreeDatabase` and `StarPerlin` are `core`, so **it names no `storage`**: the file it keeps is its own, not the game's save |
@@ -3265,9 +3349,9 @@ is actually established today.
 | `client_headless` | core, participant, colocation, host_null, windowing, frontend, transcript, transport_tcp, starmap_participant, starmap_authority | the only place the recorder is named; it keeps the UI **because it records what the UI produces**, and `colocation` so it can record a single-player session |
 | `client_agent` | core, participant, host_null, transport_tcp, starmap_participant | the smallest participant that can still play: no UI, no recorder, no sound — and **no authority**, so it must connect to one over the wire |
 | `client_sdl_gpu` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_sdl, mixing, audio_sdl, transport_tcp, transport_p2p, starmap_participant, starmap_authority | identical to `client_opengl` except for the backend — which is the entire point |
-| `server` | core, base, game, world, universe, platform_null, transport_tcp, starmap_authority | **no presentation slot, no view, and after tier 2 no `scene` either.** It names the null vendor backend because it links `game`, and `game` names `platform`: a composition that reaches a contract supplies an implementation of it |
-| `world_sim` | core, base, game, world, worldgen, storage, platform_null | **no `universe` either** — residency comes from configuration, not from participants. Names the null vendor backend for the same reason `server` does |
-| `world_gen` | core, base, game, worldgen, celestial, storage, platform_null | **no `world`** — it cannot tick anything, and that is enforced rather than promised. Names the null vendor backend for the same reason `server` does |
+| `server` | core, base, game, world, universe, platform_null, statistics_null, transport_tcp, starmap_authority | **no presentation slot, no view, and after tier 2 no `scene` either.** It names the null vendor backend because it links `game`, and `game` names `platform`: a composition that reaches a contract supplies an implementation of it |
+| `world_sim` | core, base, game, world, worldgen, storage, platform_null, statistics_null | **no `universe` either** — residency comes from configuration, not from participants. Names the null vendor backend for the same reason `server` does |
+| `world_gen` | core, base, game, worldgen, celestial, storage, platform_null, statistics_null | **no `world`** — it cannot tick anything, and that is enforced rather than promised. Names the null vendor backend for the same reason `server` does |
 <!-- END TABLE: grants -->
 
 **Every row is a complete list**, and the elision that would shorten it is banned. Writing `+ …` to
@@ -3314,7 +3398,7 @@ claim. **Ratification requires every cell to read yes.**
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#ledger -->
 
-**49 of 49 components fully derived · 294 of 294 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
+**52 of 52 components fully derived · 312 of 312 facets answered.** A component is derived when all six are answered; the five register facets (kind, zone, duty, warrant, contents) are counted in Section 9 and deliberately not repeated here.
 
 | component | kind | boundary | rejected | excludes | falsified | history | owes |
 |---|---|---|---|---|---|---|---|
@@ -3329,6 +3413,8 @@ claim. **Ratification requires every cell to read yes.**
 | `rendering` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `starmap_authority` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `starmap_participant` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `statistics_null` | BACKEND | yes | yes | yes | yes | yes | yes |
+| `statistics_steam` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `transcript` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `transport_local` | BACKEND | yes | yes | yes | yes | yes | yes |
 | `transport_p2p` | BACKEND | yes | yes | yes | yes | yes | yes |
@@ -3349,6 +3435,7 @@ claim. **Ratification requires every cell to read yes.**
 | `platform` | INTERFACE | yes | yes | yes | yes | yes | yes |
 | `presentation` | INTERFACE | yes | yes | yes | yes | yes | yes |
 | `starmap` | INTERFACE | yes | yes | yes | yes | yes | yes |
+| `statistics` | INTERFACE | yes | yes | yes | yes | yes | yes |
 | `transport` | INTERFACE | yes | yes | yes | yes | yes | yes |
 | `colocation` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `frontend` | LIBRARY | yes | yes | yes | yes | yes | yes |
@@ -3392,15 +3479,48 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | `base/StarMixer.hpp` holds `AudioInstance` beside `Mixer` — a contract's vocabulary sharing a file with an unrelated implementation. Second instance of the pattern that also blocks `celestial`. |
 | **owes** | "Shared services" is the vaguest duty in the register: it names a *property* rather than a *duty*, so it cannot fail the Law of One by containing "and" — it fails by containing nothing. The falsifier above is the concrete form of that question and is owed a count. |
 
-### `platform` — vendor services, so a build without them still links
+### `platform` — the vendor-service contracts not yet named
 
 | facet | |
 |---|---|
-| **boundary** | At the vendor's edge. Each service is something a store or platform offers — desktop integration, peer networking, statistics, user-generated content — and the contract is the shape of the *asking*, never of the answering. |
+| **boundary** | At the vendor's edge, around **what has not yet been named**. Desktop integration and user-generated content are still here; peer networking went to `transport`, statistics to `statistics`. The contract is the shape of the *asking*, never of the answering. |
 | **rejected** | Linking vendor SDKs at the point of use. Rejected because a build configured without Steam would then fail to **link** rather than merely lack a feature, which makes an optional dependency mandatory by accident. |
-| **excludes** | Names only `core`. May not name `game`, `host` or any composition — a statistics service that knows what a statistic *means* has joined the domain. |
+| **excludes** | Names only `core`. May not name `game`, `host` or any composition — a service that knows what its payload *means* has joined the domain. |
 | **falsified** | If a build with no platform services fails to link, or if any component must test for a service's presence rather than be handed a null one. **Both clauses hold**: `platform_null` is the second implementation, and every composition that reaches this contract is granted one of the two — `platform_pc` through `host_sdl`, `platform_null` through `host_null` or directly. A consumer that could tell which it was given would falsify `platform_null` rather than this contract, which is where that falsifier lives. |
-| **history** | Its vendor backend, `platform_pc`, bundles **Steam, Discord and P2P** — three duties behind one name, and one of the duty strings that still trips the Law of One. The contract is clean; that implementation is not, and the asymmetry is exactly what a contract is for. The tree also hands out `nullptr` and lets every consumer check, which is the arrangement `platform_null` exists to end — **evidence, not warrant**: the second implementation is required by N3.a and by this component's own falsifier, and would be here had the tree never done it that way. |
+| **history** | It was one contract over four services because they arrive from one **supplier**, and that is the whole defect: `P2PNetworkingService` is a way packets cross, `StatisticsService` is what the player has achieved, and neither has anything to do with the other. Filed together, a composition that wanted achievements also linked a socket. The tree also hands out `nullptr` and lets every consumer check, which is the arrangement `platform_null` exists to end — **evidence, not warrant**: the second implementation is required by N3.a and by this component's own falsifier, and would be here had the tree never done it that way. |
+| **owes** | **Whether it should exist at all.** Two services remain and each is as separable as the two that left. A duty reading "the contracts not yet named" is honest and is not good: a component whose duty is *the remainder* is a queue, not a boundary, and it is scheduled to empty. |
+
+### `statistics` — what the player has achieved, and nothing about what it means
+
+| facet | |
+|---|---|
+| **boundary** | Around **recording that something happened**, and no further. `setStat`, `getStat`, `reportEvent`, `unlockAchievement`, `achievementsUnlocked` — a name, a type and a `Json`. The contract deliberately cannot tell an achievement from a counter, which is what lets a store add a stat without the game being rebuilt: the comment on `setStat` in the tree already says so, and it is the clearest statement in `source/platform` of why this is a contract and not a domain type. |
+| **rejected** | **Leaving it inside `platform`, which is where the register had it.** Rejected for the same reason `transport_p2p` left: that filing is by SUPPLIER. Steam happens to sell achievements and peer sockets in one SDK; the game asks two unrelated questions. A composition that wants to count what a player did should not thereby link a socket, and under one contract it did. Also rejected: folding it into `game`'s own `Statistics`. That class is the domain object — it decides what a statistic *means*, reads and writes the player's file, and holds a `LuaRoot`; this is the outward report, and the two have different reasons to change. |
+| **excludes** | Names only `core`. May not name `game` — the moment this contract knows that `"blocksMined"` is a block count rather than a string key, it has joined the domain and a store can no longer add a stat without a rebuild. |
+| **falsified** | If a build with no store fails to link, or if any consumer branches on which backend it holds. The second clause is **falsified in the tree today**: `Statistics` reads `m_initialized = !m_service`, which makes absence a lifecycle state, and the accessor above it returns `{}` when there are no platform services. That is the arrangement `statistics_null` exists to end. |
+| **history** | `StarStatisticsService.hpp` is already its own file in `source/platform`, beside three siblings, and `SteamStatisticsService` is already its own translation unit. **The split was in the tree before it was in the register** — the same finding the `celestial` split produced. What the register had was not four services in one contract; it was four contracts filed under one name. |
+| **owes** | **Whether a report that cannot fail is honest.** `setStat` returns `false` for an unknown stat "without reporting an error", and `statistics_null` returns `false` for everything. A caller distinguishing "this store does not track that" from "there is no store" would falsify `statistics_null`; a caller that cannot may be silently dropping what it meant to record. |
+
+### `statistics_steam` — achievements as Steam keeps them
+
+| facet | |
+|---|---|
+| **boundary** | Around `SteamStatisticsService` — the Steam achievement and stat API, and the callback plumbing that makes it asynchronous. Separable: a composition may omit it entirely, and the null backend answers instead. |
+| **rejected** | Initialising its own vendor session. Rejected on the facts — `SteamAPI_Init` is process-global and there is exactly one Discord event thread, so three vendor backends each initialising would either race or silently share a hidden global. It names `platform_pc` for the session instead, which is why that component survives the decomposition rather than being deleted by it. |
+| **excludes** | Names `core`, `statistics`, `platform_pc` and `extern`. Names no `game` — it is handed a name, a type and a `Json`, and it may not learn what any of them mean. |
+| **falsified** | If a composition without Steam fails to build, or if this backend is reachable from a composition that never named it. |
+| **history** | It was one third of `platform_pc`'s duty string, "Steam, Discord and P2P services" — the register's plainest Law-of-One violation, recorded as such in Section 16 for as long as that row existed. |
+| **owes** | nothing. |
+
+### `statistics_null` — the answer when there is no store
+
+| facet | |
+|---|---|
+| **boundary** | Around **accepting every stat and keeping none**. It is not a stub for testing and not a degraded mode — it is the correct answer for every build with no store behind it, which is most of them. |
+| **rejected** | **A null-check at each call site**, which is what a `nullptr` service forces. Rejected because absence would then be discovered rather than composed: a build's capabilities would be a property of what happened to be non-null at runtime rather than of what was wired. Also rejected: a do-nothing default written beside the interface. A contract that answers has stopped being the shape of the asking, and a default beside the declaration is not an independent second implementation — it cannot do the job two implementations exist to do. |
+| **excludes** | Names `core` and `statistics`. **Names no session**, unlike `statistics_steam` — there is nothing to be connected to, and that asymmetry is the clearest statement of what this component is. |
+| **falsified** | **If any consumer can tell it was given this backend rather than the Steam one without asking a capability.** See this component's sibling clause under `statistics`: `setStat` returning `false` is how that would happen, and it is not yet settled whether that return is a capability answer or a failure. |
+| **history** | The tree has no null statistics service at all. `Statistics` makes absence a lifecycle state and the accessor returns `{}` — **evidence rather than warrant**: the boundary is placed by N3.a and by `statistics`' own falsifier, and would sit here if the tree had never been written. |
 | **owes** | nothing. |
 
 ### `host` — who owns `main`, and the split that named a defect
@@ -3409,7 +3529,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Between the program and the operating system's idea of a program: who owns `main`, who owns the window, who pumps events, who decides when the process ends. Above it, roles that do work; below it, an OS. |
 | **rejected** | A shell that owns everything — main *and* the window *and* the render loop *and* the vendor services. That is the arrangement this design started from, and rejecting it is what produced both this contract and `platform`. |
-| **excludes** | Names `core` and `platform` only. It drives two roles — `Application` and `Presenter` — and provides an `ApplicationController`; it may not name what runs inside either. A host that names `game` has become the program rather than its shell. |
+| **excludes** | Names `core`, `platform` and `statistics` only. It drives two roles — `Application` and `Presenter` — and provides an `ApplicationController`; it may not name what runs inside either. A host that names `game` has become the program rather than its shell. |
 | **falsified** | If a composition needs a host that is neither SDL nor null, and the contract must grow to express what that third host needs. |
 | **history** | **`application` implemented a platform *and* a host, and its duty string hid that behind one noun.** The first Law-of-One violation this design found, and the one that demonstrated a duty string can conceal a defect rather than reveal it. |
 | **owes** | nothing. |
@@ -3475,7 +3595,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around **state, not appearance**: entities, items, tiles, stats, damage. What a thing *is* and what happens to it — never what it looks or sounds like. That single cut is what lets one entity vocabulary serve both an authority and a view, because ownership differs between them and the vocabulary does not. |
 | **rejected** | **Splitting the domain by owner** — a `game_server` and a `game_client` with parallel entity types. Rejected because it duplicates every type across a seam, and two definitions of "what an item is" drift silently: the authority and the view would then agree by convention rather than by construction. Also rejected: keeping appearance here, which is the arrangement `world_view` exists to end. |
-| **excludes** | Names `base`, `celestial`, `content`, `core`, `net`, `platform`, `script`, `storage`. May name **no view, no authority and no device** — not `world`, not `world_view`, not `rendering`. Thirteen components name `game` and it names none of them: the most-depended-upon library in the register must be the least dependent. |
+| **excludes** | Names `base`, `celestial`, `content`, `core`, `net`, `platform`, `script`, `statistics`, `storage`. May name **no view, no authority and no device** — not `world`, not `world_view`, not `rendering`. Thirteen components name `game` and it names none of them: the most-depended-upon library in the register must be the least dependent. |
 | **falsified** | If a type here needs to know whether it is mastered locally. The moment an entity's definition branches on ownership, D10 and D11 have leaked into the vocabulary and the cut has failed. |
 | **history** | This is the component the whole decomposition circles — named by thirteen others, and the one nobody could previously derive. The `Root` god object, reachable from everywhere, is what made its boundary invisible: when anything can reach anything, no boundary is anywhere. Its warrant cites D10 *and* D11 because those two decisions together are what let one vocabulary serve both roles. |
 | **owes** | nothing. |
@@ -3651,7 +3771,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around the SDL implementation of `host`: an SDL window, the `frameLoop` driver, cursor, clipboard. The concrete answers to who owns `main` and who pumps events. **Not the swap interval.** Vsync blocks in `swapTick`, which Section 12 gives to `gpu`; a host that owned it would own a cadence belonging to the device below it. |
 | **rejected** | A host that also owns rendering and vendor services — the shell this design started from. |
-| **excludes** | Names `core`, `host`, `platform`, `platform_pc`. May not name `gpu`, `rendering` or `game`: a host provides a surface and a loop, and does not know what is drawn into it. |
+| **excludes** | Names `core`, `host`, `platform`, `platform_pc`, `statistics` and `statistics_steam`. May not name `gpu`, `rendering` or `game`: a host provides a surface and a loop, and does not know what is drawn into it. |
 | **falsified** | If a composition using this host cannot choose its GPU backend. Both `client_opengl` and `client_sdl_gpu` name `host_sdl`, so the host is proven backend-neutral by having two consumers that differ only below it. |
 | **history** | none beyond `application`'s split, recorded under `host`. |
 | **owes** | nothing. |
@@ -3662,7 +3782,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around a host that provides a loop and no surface: the `headlessLoop` driver and a controller that shows nothing. |
 | **rejected** | Running the graphical host with an invisible window. Rejected because it keeps a real device in the composition — the window still exists, the driver still blocks on it, and any dependency on a display remains satisfied by accident rather than removed. |
-| **excludes** | Names `core`, `host`, `platform` and `platform_null`. May not name `gpu`, `rendering` or `windowing`. It names the null vendor backend for the same reason `host_sdl` names the real one: **a host is what hands a composition its platform services**, and handing over nothing is still handing over. |
+| **excludes** | Names `core`, `host`, `platform`, `platform_null`, `statistics` and `statistics_null`. May not name `gpu`, `rendering` or `windowing`. It names the null vendor backend for the same reason `host_sdl` names the real one: **a host is what hands a composition its platform services**, and handing over nothing is still handing over. |
 | **falsified** | **If anything above it behaves differently because no surface exists.** A composition on this host should differ from a graphical one only in what it composed, never in how the pieces behave. |
 | **history** | F1 is what makes it legal, and F1 was *verified* rather than assumed: the simulation libraries link and tick with no rendering, windowing or application objects present at all. |
 | **owes** | nothing. |
@@ -3678,24 +3798,24 @@ claim. **Ratification requires every cell to read yes.**
 | **history** | none. |
 | **owes** | nothing. |
 
-### `platform_pc` — the vendor half, and three duties behind one name
+### `platform_pc` — the vendor session, and what is still filed under it
 
 | facet | |
 |---|---|
-| **boundary** | Around the Steam, Discord and P2P implementations of `platform` — the vendor half, separable so a composition may omit it entirely. |
+| **boundary** | Around the **vendor session** — `PcPlatformServicesState`, holding Steam availability, the Discord core and its event pump, and the `overlayActive` flag the host reads for cursor visibility — plus the two Steam services that have no contract of their own yet. Separable: a composition may omit it entirely. |
 | **rejected** | Vendor code inside the host or beside its callers. Rejected because a build without Steam would then fail to link, and because the shell would grow a second duty — which is precisely what `application` did. |
-| **excludes** | Names `core`, `host`, `platform`. Named only by `host_sdl`, which is what makes it omissible: one consumer, one line to cut. |
+| **excludes** | Names `core`, `host`, `platform`, `extern`. **No longer named only by `host_sdl`** — `statistics_steam` and `transport_p2p` name it for the session, which is the cost of splitting the services out and the reason this component is not deleted with them. |
 | **falsified** | If a composition without vendor services fails to build. |
-| **history** | Its predecessor arrangement is the origin of the `host`/`platform` split. |
-| **owes** | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
+| **history** | Its predecessor arrangement is the origin of the `host`/`platform` split. Its duty string was **"Steam, Discord and P2P services"** — three things behind one name, and the register's plainest Law-of-One violation for as long as it stood. |
+| **owes** | **Its name.** The question — three backends, or three contracts — is answered: three contracts, each with its own vendor backend, over ONE session component. Two of the three are named (`transport`, `statistics`); `desktop` and `ugc` are not. When the last service leaves, what remains is the session alone, and this row is called `vendor`. Until then the name says `_pc` while the duty is no longer about the PC. |
 
 ### `platform_null` — the answer when there is no vendor
 
 | facet | |
 |---|---|
-| **boundary** | Around **doing nothing, four times**: a `DesktopService` that shares no link, a `P2PNetworkingService` that finds no peers, a `StatisticsService` that records to nowhere, a `UserGeneratedContentService` with an empty catalogue. It is not a stub for testing and not a degraded mode — it is the correct answer for every build that has no store behind it, which is most of them. |
+| **boundary** | Around **doing nothing, twice**: a `DesktopService` that shares no link and a `UserGeneratedContentService` with an empty catalogue. The other two moved out with their contracts — peer networking is answered by not naming `transport_p2p` at all, and statistics by `statistics_null`. It is not a stub for testing and not a degraded mode — it is the correct answer for every build that has no store behind it, which is most of them. |
 | **rejected** | **A null-check at each call site**, which is what a `nullptr` service forces and what the contract's falsifier forbids. Rejected because absence would then be discovered rather than composed: every consumer would carry a branch, every new service would add one to each consumer, and a build's capabilities would be a property of what happened to be non-null at runtime rather than of what was wired. Also rejected: do-nothing defaults inside `platform` itself. A contract that answers has stopped being the shape of the asking, and a default written beside the interface is not an independent second implementation — it cannot do the job two implementations exist to do. |
-| **excludes** | Names `core` and `platform`. **Names no `host`**, unlike `platform_pc` — the vendor backend needs the host because Steam's overlay and callbacks are bound to a window, and answering nothing needs nothing. That asymmetry is the clearest statement of what this component is: the contract minus every reason the real one is complicated. |
+| **excludes** | Names `core` and `platform`. **Names no `host`** and no session, unlike `platform_pc` — the vendor backend needs the host because Steam's overlay and callbacks are bound to a window, and answering nothing needs nothing. That asymmetry is the clearest statement of what this component is: the contract minus every reason the real one is complicated. |
 | **falsified** | **If any consumer can tell which backend it was given without asking a capability.** A do-nothing service that reports failure, or throws, or leaves an out-parameter untouched, has made absence detectable by accident — and a caller that can detect it will branch on it, which puts the null-check back one level down. |
 | **history** | The tree hands out `nullptr` and every consumer checks: `Statistics` makes absence a lifecycle state (`m_initialized = !m_service`), and the mods menu makes it a UI branch. Both are the shape this component removes, and both are **evidence rather than warrant** — the boundary is placed by N3.a and by `platform`'s own falsifier, and it would sit here if the tree had never been written. |
 | **owes** | nothing. |
@@ -3739,7 +3859,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around carrying packets between peers the vendor has introduced. Same push and pull as the other two, over a socket the vendor brokered rather than one this design opened. |
 | **rejected** | **Leaving it inside `platform` as a "platform service", which is where the register had it.** Rejected because that filing is by VENDOR, not by duty: `P2PNetworkingService` returns a `P2PSocket` and has `connectToPeer` — it is a way packets cross, and `transport` is the component whose duty is exactly that. A component grouped by who supplies it rather than by what it does is the defect this document exists to catch, and it had one. |
-| **excludes** | Names `core`, `transport` and the vendor SDK. **May not name `net`, `universe` or any participant** — what crosses is not its business, exactly as for the other two backends. |
+| **excludes** | Names `core`, `transport`, `platform_pc` and the vendor SDK — the session, for the same reason the Steam statistics backend names it. **May not name `net`, `universe` or any participant** — what crosses is not its business, exactly as for the other two backends. |
 | **falsified** | If it needs `transport` to grow. A peer socket that cannot be pushed and pulled like the other two is not a third backend, it is a different contract wearing the name. |
 | **history** | `P2PNetworkingService` and `StarP2PNetworkingService_pc`. The join brokering — `setJoinLocal`, `setJoinRemote`, `pullPendingJoin` — is the part that looks like a platform service and is not: it is how a peer is *found*, which is the connection half of carrying, and TCP has the same problem solved by an address. |
 | **owes** | **Whether join brokering is one duty with carrying.** Finding a peer and moving bytes to it are arguably two things, and `transport_tcp` finds its peer by being handed an address. If they separate, this is two components and the vendor half is a discovery service. |
@@ -3752,7 +3872,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | An entry point that constructs and coordinates. Rejected by P2: placement and composition are wiring decisions, and the moment an entry point contains behaviour, that behaviour cannot be reused by any other composition. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_opengl`, `host_sdl`, `mixing`, `participant`, `rendering`, `starmap_authority`, `starmap_participant`, `transport_p2p`, `transport_tcp` and `windowing`. It names the peer transport DIRECTLY, where the register used to reach it through `host_sdl` and a "platform service" — a transport is named by the composition that wants it, like the other two. Both star-map backends, because `colocation` means it may host as well as join. May not contain a duty of its own. |
 | **falsified** | **If it contains a line that is not a construction or a connection.** |
-| **history** | It links 39 of 49 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
+| **history** | It links 41 of 52 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
 | **owes** | nothing. |
 
 ### `client_sdl_gpu` — the same participant, a different BACKEND
@@ -3763,7 +3883,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3.a actually makes. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_sdl`, `host_sdl`, `mixing`, `participant`, `rendering`, `starmap_authority`, `starmap_participant`, `transport_p2p`, `transport_tcp` and `windowing`. The two lists differ in exactly one entry, `gpu_sdl` for `gpu_opengl`, and that is the machine-checkable form of "the backend is swappable". |
 | **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
-| **history** | Also 39 of 49 components — same count, as it must be. |
+| **history** | Also 41 of 52 components — same count, as it must be. |
 | **owes** | nothing. |
 
 ### `client_headless` — a participant that records instead of drawing
@@ -3774,7 +3894,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A graphical client with rendering disabled at runtime. Rejected because the device stays linked and the dependency stays satisfied — the composition would prove nothing about whether a display is optional. |
 | **excludes** | Names `colocation`, `core`, `frontend`, `host_null`, `participant`, `starmap_authority`, `starmap_participant`, `transcript`, `transport_tcp` and `windowing`. It names BOTH star-map backends because `colocation` lets it embed an authority: the same binary answers as the authority when it hosts and as the participant when it joins. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
 | **falsified** | If it links a GPU. Checkable by construction from the grant closure. |
-| **history** | 33 of 49 components — the gap to `client_opengl`'s 39 is the measured size of "what a display costs". |
+| **history** | 35 of 52 components — the gap to `client_opengl`'s 39 is the measured size of "what a display costs". |
 | **owes** | nothing. |
 
 ### `participant` — the view's clock, and the thing every composition is built around
@@ -3794,9 +3914,9 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around the wiring `worldgen` and nothing else: turn a seed into terrain, write it, exit. A composition with **no tick at all** — the only one in the register. |
 | **rejected** | Generation as a subcommand of the server binary. Rejected because it makes offline generation depend on a simulation being linkable, and it hides the fact that `worldgen` is severable behind an entry point that is not. |
-| **excludes** | Names `base`, `celestial`, `core`, `game`, `platform_null`, `storage` and `worldgen`. **May not name `world`, `universe` or `participant`** — if generating terrain required any of them, `worldgen`'s severability would be a claim rather than a demonstration. |
+| **excludes** | Names `base`, `celestial`, `core`, `game`, `platform_null`, `statistics_null`, `storage` and `worldgen`. **May not name `world`, `universe` or `participant`** — if generating terrain required any of them, `worldgen`'s severability would be a claim rather than a demonstration. |
 | **falsified** | **If it needs to tick anything.** This composition exists to prove that generation is a function rather than a process, and a single tick would refute that. |
-| **history** | It links 12 of 49 components — **the smallest composition in the register**, below `world_sim`'s 13 and `server`'s 18 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
+| **history** | It links 14 of 52 components — **the smallest composition in the register**, below `world_sim`'s 13 and `server`'s 18 — and it **replaces two dead utilities** that previously did this job outside the component model, where nothing could check what they depended on. |
 | **owes** | nothing. |
 
 ### `client_agent` — a participant with no devices at all
@@ -3807,7 +3927,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still *produced* — the file is written, the deltas are assembled, and the composition would demonstrate only that output can be thrown away, not that a device is composed in. |
 | **excludes** | Names `core`, `host_null`, `participant`, `starmap_participant` and `transport_tcp`. **The shortest grant list of any entry point, and that is its entire argument.** It names only the participant side of the star map because it has no `colocation`: it cannot host, so it can only ask. |
 | **falsified** | **If it needs a device to run**, or if `participant` has to test whether it has one. The first would falsify F1; the second would mean the discard is at the seam rather than at the emit sink, which is the arrangement Section 10's tier-2 subsection shows to be wrong. |
-| **history** | 24 of 49 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 12, `world_sim` 13 and `server` 18, none of which carry a participant. The 15 between 24 and `client_opengl`'s 39 are what **devices** cost. |
+| **history** | 26 of 52 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 12, `world_sim` 13 and `server` 18, none of which carry a participant. The 15 between 24 and `client_opengl`'s 39 are what **devices** cost. |
 | **owes** | nothing. |
 
 ### The T2 vocabulary
@@ -3920,7 +4040,7 @@ thing would be naming it after the smallest part inside it.
 |---|---|
 | **boundary** | Around the wiring `world` + a configured residency, and nothing else: one world, ticked, with no participant anywhere. It is **N1.b made into a binary** — the unit of placement, proven placeable by being placed alone. |
 | **rejected** | Testing world simulation inside a client with rendering disabled. Rejected because it never demonstrates that a world can run *alone*: the participant is still there, still holding a view, still supplying the region of interest the simulation quietly depends on. |
-| **excludes** | Names `base`, `core`, `game`, `platform_null`, `storage`, `world` and `worldgen`. May not name `universe` — a single world placed alone must not need the universe above it, or the placeable unit is the universe. |
+| **excludes** | Names `base`, `core`, `game`, `platform_null`, `statistics_null`, `storage`, `world` and `worldgen`. May not name `universe` — a single world placed alone must not need the universe above it, or the placeable unit is the universe. |
 | **falsified** | **If it needs a participant to advance.** That is D9's falsifier at binary scale, and this composition is the instrument that would detect it: a world that will not tick here has an observation dependency somewhere above. |
 | **history** | This composition is what forced D9 out into the open. Building it required asking what makes a world tick when nothing is watching, and the answer in the superseded implementation was *nothing does* — worlds are torn down when the last client leaves. |
 | **owes** | nothing. |
@@ -3962,7 +4082,7 @@ from *what is simulated*, and D9 separates *what is simulated* from *who is watc
 
 And it is why `world_sim` is a composition rather than a special case — **the same `world` component,
 with residency supplied by configuration instead of by players.** The generated diagram above shows it
-linking **13 of 49 components**: `core`, `base`, `platform`, `platform_null`, `game`, `world`, `worldgen`,
+linking **15 of 52 components**: `core`, `base`, `platform`, `platform_null`, `game`, `world`, `worldgen`,
 `celestial`, `net`, `script`, `storage`, `content`, and itself. No `universe`,
 no view, no presentation, no `scene`.
 
@@ -4063,7 +4183,7 @@ and `m_boundBox`, so those become the appearance input. The entity emits **state
 into drawables. That is the same shape as the scene delta itself, one altitude down.
 
 **What it buys, and it is the headline of this section.** `game` drops `scene`, so the dedicated server
-links **18 of 49 components, reaches only the MACHINE and DOMAIN zones, and does not name `scene` at
+links **20 of 52 components, reaches only the MACHINE and DOMAIN zones, and does not name `scene` at
 all** — the generated `server` diagram above lists `scene` under *not linked*. An authority that cannot name the presentation
 vocabulary is not a claim about discipline; it is a compile error waiting for anyone who tries.
 
@@ -4142,9 +4262,9 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 
 | entrypoint | links | what it is |
 |---|---|---|
-| `client_opengl` | **39 of 49** | plays, draws, sounds |
-| `client_headless` | **33 of 49** | plays and **records** — keeps the UI because it records what the UI produces |
-| `client_agent` | **24 of 49** | plays. No UI, no recorder, no sound |
+| `client_opengl` | **41 of 52** | plays, draws, sounds |
+| `client_headless` | **35 of 52** | plays and **records** — keeps the UI because it records what the UI produces |
+| `client_agent` | **26 of 52** | plays. No UI, no recorder, no sound |
 | *(`participant` itself)* | — | grants none of `windowing`, `frontend`, `rendering`, `mixing` |
 
 `client_agent` is exactly `client_headless` minus five grants — `windowing`, `frontend`, `transcript`,
@@ -4194,12 +4314,12 @@ and a view — which is precisely why it is the one that owes the proof.
 
 | entrypoint | links | authority? |
 |---|---|---|
-| `client_opengl` / `client_sdl_gpu` | 39 of 49 | **yes** — the desktop game hosts single-player |
-| `client_headless` | 33 of 49 | **yes** — so it can record a single-player session |
-| `client_agent` | **24 of 49** | **no** — it must connect to one over the wire |
+| `client_opengl` / `client_sdl_gpu` | 41 of 52 | **yes** — the desktop game hosts single-player |
+| `client_headless` | 35 of 52 | **yes** — so it can record a single-player session |
+| `client_agent` | **26 of 52** | **no** — it must connect to one over the wire |
 
 `client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
-cannot name an authority cannot accidentally embed one, and the composition is 24 of 49 components against
+cannot name an authority cannot accidentally embed one, and the composition is 26 of 52 components against
 the graphical client's 39.
 
 **Why `colocation` and not `hosting`.** `host`, `host_sdl` and `host_null` already mean the *driver
@@ -4599,9 +4719,9 @@ by two components at different times is a component, not loose vocabulary.
 |---|---|
 | **boundary** | Around a composition that is **an authority and nothing else** — `main`, `superviseLoop`, and the rcon and query threads. Not a client with its display removed: a different shape entirely, holding no view. |
 | **rejected** | Building it as a headless client with the participant left in. Rejected because a server that holds a participant has confused watching with owning, and will eventually ask an authority to correct itself. Its players are **entities in its worlds**, not peers of it. |
-| **excludes** | Names `base`, `core`, `game`, `platform_null`, `starmap_authority`, `transport_tcp`, `universe` and `world`. It names only the authority side, which is the star-map half of the same claim its exclusion list makes: a server answers, it never asks. **May not name `participant`, `universe_view`, `world_view`, `presentation` or any device** — and that exclusion list is the whole argument of the section's title. |
+| **excludes** | Names `base`, `core`, `game`, `platform_null`, `starmap_authority`, `statistics_null`, `transport_tcp`, `universe` and `world`. It names only the authority side, which is the star-map half of the same claim its exclusion list makes: a server answers, it never asks. **May not name `participant`, `universe_view`, `world_view`, `presentation` or any device** — and that exclusion list is the whole argument of the section's title. |
 | **falsified** | If it ever needs a view of its own worlds. Diagnostics that require one are a telemetry duty, not an authority duty. |
-| **history** | It links 18 of 49 components against `client_opengl`'s 39, and the two lists are not nested — a server is not a subset of a client, which is what "not a headless client" means arithmetically. |
+| **history** | It links 20 of 52 components against `client_opengl`'s 39, and the two lists are not nested — a server is not a subset of a client, which is what "not a headless client" means arithmetically. |
 | **owes** | nothing. |
 
 The unifying frame — *a headless client is presentation-backend = null* — describes participants. **It
@@ -5614,12 +5734,12 @@ than it is:
 <!-- BEGIN GENERATED: spec-measures coverage -->
 | | what it establishes | coverage |
 |---|---|---|
-| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 49 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
-| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 47 grant rows.** Gated as `grant_sweep` |
+| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 52 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
+| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 50 grant rows.** Gated as `grant_sweep` |
 | **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 7 ENTRYPOINTs** — the ones that exist. **Measured by `link_sweep`, and deliberately not gated**: it reads a build tree, and a gate that reads a build tree passes or fails on what someone last compiled rather than on what the repository says. This is the one row here whose coverage cannot ratchet in CI, and saying so is the difference between a limit and a hole |
 | **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
 
-**35 of the 49 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
+**38 of the 52 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
 <!-- END GENERATED: spec-measures coverage -->
 
 <!-- HISTORICAL -->
@@ -5707,7 +5827,7 @@ the line comes out is Section 17's business; that it must is this section's.
 
 Two grants in that table are deliberately absent rather than forgotten. `rendering` currently holds
 `${STAR_PLATFORM_INCLUDES}` and `${STAR_APPLICATION_INCLUDES}`; in the target state it needs neither —
-platform services are Steam and P2P, and its only `application` include was `StarRenderer.hpp`, which
+the vendor services it would pull in are Steam's and the peer sockets', and its only `application` include was `StarRenderer.hpp`, which
 becomes `gpu`. Dropping both leaves the drawing code depending on nothing but the foundation and two
 contracts.
 
@@ -6079,7 +6199,7 @@ Two pieces of C++ work follow from `platform_null` and are named here rather tha
 
 **Where the two modality tiers stand**, because Section 10 describes both as target-state properties
 and says nothing about progress: **tier 2 has landed** — the 17 `render()` bodies are out of `game`,
-which is why `game` names no `scene` and the server links 18 of 49 components. **Tier 3 has not
+which is why `game` names no `scene` and the server links 20 of 52 components. **Tier 3 has not
 started**,
 and it is blocked rather than merely unscheduled: `AudioBatch` needs a value encoding designed before
 anything can move, because `AudioInstance` carries no `DataStream` operators where `Drawable` already
@@ -6138,7 +6258,7 @@ contract-and-backend. It does it three times. Only one of the three has a direct
 
 | contract | pure virtuals | where it lives today | its backend |
 |---|---:|---|---|
-| `platform`'s four services | 27 | `source/platform` — **its own directory** | `application` (`PcP2PNetworkingService : public P2PNetworkingService`) |
+| the four services in `source/platform` | 27 | `source/platform` — **its own directory** | `application` (`PcP2PNetworkingService : public P2PNetworkingService`) |
 | `ApplicationController` | 35 | **inside** `application` | an anonymous `struct Controller` inside `StarMainApplication_sdl.cpp` |
 | `Renderer` | 42 | **inside** `application` | `OpenGlRenderer` |
 
@@ -6280,7 +6400,7 @@ rule that "owed" is an authoring state rather than a document feature.
 
 <!-- BEGIN GENERATED: scripts/spec-derivations.py#owed -->
 
-**12 of 49 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
+**14 of 52 components record something unresolved.** Generated from the owes facet of each derivation, so this list cannot drift from the entries that own the items. Ratification requires it to be empty.
 
 | component | what it owes |
 |---|---|
@@ -6289,9 +6409,11 @@ rule that "owed" is an authoring state rather than a document feature.
 | `colocation` | The parity oracle itself. D8 requires either identical encode/decode or a proof the two agree, and neither exists yet. |
 | `content` | The cost of D13. Content *instances* are opaque; content *kinds* are a closed compiled vocabulary — item types with a class each, object types, dungeon brushes, a metamaterial band. This contract describes the boundary D13 chooses; the work of making kind behaviour declarative is scoped nowhere. |
 | `gpu` | Whether the texture atlas is vendor-neutral or per-backend is unsettled. It is declared here as contract content; if an atlas turns out to need API-specific residency rules it belongs below this line, and the contract shrinks. |
-| `platform_pc` | **Its duty is "Steam, Discord and P2P services" — three things behind one name, and the plainest Law-of-One violation in the register.** The contract it satisfies is clean; this component is not. It should be three backends, or `platform` should be three contracts, and neither has been decided. |
+| `platform` | **Whether it should exist at all.** Two services remain and each is as separable as the two that left. A duty reading "the contracts not yet named" is honest and is not good: a component whose duty is *the remainder* is a queue, not a boundary, and it is scheduled to empty. |
+| `platform_pc` | **Its name.** The question — three backends, or three contracts — is answered: three contracts, each with its own vendor backend, over ONE session component. Two of the three are named (`transport`, `statistics`); `desktop` and `ugc` are not. When the last service leaves, what remains is the session alone, and this row is called `vendor`. Until then the name says `_pc` while the duty is no longer about the PC. |
 | `sound` | **The batch encoding.** This contract is declared wire-ready and is not, because its payload type cannot serialise itself. Until `AudioInstance` gains what `Drawable` already has, `sound` satisfies N1.a on paper only. |
 | `starmap_participant` | **Whether a miss is an answer.** The tree returns `Maybe` and lets the caller decide, which means "not loaded yet" and "no such world" are the same value at the seam. Under N1 those are different facts and a participant may need to tell them apart. |
+| `statistics` | **Whether a report that cannot fail is honest.** `setStat` returns `false` for an unknown stat "without reporting an error", and `statistics_null` returns `false` for everything. A caller distinguishing "this store does not track that" from "there is no store" would falsify `statistics_null`; a caller that cannot may be silently dropping what it meant to record. |
 | `storage` | Its duty string reads "durable state, and migrating it forward" — one of the eight that trip the Law of One. The boundary paragraph above argues the two are one duty, and **needing that argument is itself the finding**: a duty string should not require a defence. Either it is rewritten to name the single duty, or the component splits. Unresolved. |
 | `transcript` | **The assertable account, which record mode promises and cannot deliver.** Its own mode table offers assertions of the form *"the player was at (x,y), facing left"*, and what it records is `scene` — appearance. `EntityDrawables` is a map of layers to drawables and, by Section 16's own R1 verdict, *names no entity*; no scene group carries an identity, a position or a facing. So a recording is **faithful and not assertable**, and the two are being sold as one. What is owed is a second payload — what *happened*, not what it *looked like* — and it is owed rather than designed because nothing consumes it yet: this document's standard is that a contract is proven by two implementations, and inventing a vocabulary with no reader would be a contract with none. |
 | `transport_p2p` | **Whether join brokering is one duty with carrying.** Finding a peer and moving bytes to it are arguably two things, and `transport_tcp` finds its peer by being handed an address. If they separate, this is two components and the vendor half is a discovery service. |
