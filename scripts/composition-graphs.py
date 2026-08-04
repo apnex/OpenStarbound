@@ -48,10 +48,10 @@ MARK_END = "<!-- END GENERATED: %s -->"
 
 KINDS = ("FOUNDATION", "INTERFACE", "VOCABULARY", "BACKEND", "LIBRARY", "ENTRYPOINT")
 ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
-ZONE_TITLE = {"MACHINE": "MACHINE — the OS, the vendor, the asset store",
-              "DOMAIN": "DOMAIN — the game's own state and rules",
-              "DEVICE": "DEVICE — meets a display, a speaker, a file",
-              "COMPOSITION": "COMPOSITION — wires the rest"}
+# DERIVED, not restated. These titles were a hand-written paraphrase of Section 7's zone table, and
+# the two had drifted apart on three of the four zones -- the same defect as the palette below, which
+# was pasted here under a comment asserting it matched Section 4 when it shared not one colour.
+ZONE_TITLE = {z: "%s — %s" % (z, MODEL.ZONE_FACES[z]) for z in ZONES}
 CLASS_OF = {"FOUNDATION": "kFoundation", "INTERFACE": "kContract", "VOCABULARY": "kVocabulary",
             "BACKEND": "kBackend",
             "LIBRARY": "kLibrary", "ENTRYPOINT": "kEntrypoint"}

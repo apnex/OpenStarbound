@@ -17,7 +17,15 @@ WHAT IT CHECKS, and each verdict exists because that class was found by hand at 
   UNKNOWN_NAME a backticked lowercase_snake token that is neither a component, an element, nor
                declared below. This is how a renamed component leaves a corpse in the prose.
   DANGLING_D   a decision referenced but never defined. D7/D8/D9 were all in this state.
-  COUNT_DRIFT  a prose count of something the model knows, disagreeing with the model.
+  COUNT_DRIFT  a prose count of something the model knows, disagreeing with the model. It reads the
+               DENOMINATOR of an `N of M` and deliberately not the numerator, which is why the three
+               verdicts below exist.
+  CLOSURE_DRIFT a composition size -- the `39` in "39 of 49 components" -- that is no ENTRYPOINT's
+               transitive closure, or is not the closure of the entrypoint whose heading or table row
+               it sits in. Twelve sentences and two whole tables carried one, unread by everything.
+  MODAL_ZONE   the one `N of M components` that is not a closure: how far ZONE is determined by KIND.
+  SUBTRACTION  "`X` is exactly `Y` minus N grants -- ..." checked against the grant table AND against
+               what the two closures actually differ by, which is not the same number.
   SCOPE_CLAIM  prose deferring something to a later spec, or declaring it out of scope. D2 says the
                scope IS the whole target state and that what defers is sequencing, so every such
                sentence is either wrong or is the rule stating itself. See below.
@@ -36,7 +44,7 @@ later spec -- and every occurrence must be listed in SCOPE_EXEMPT with a reason.
 construction, because under D2 there are only a few legitimate places to discuss scope at all.
 
 WHAT IT DELIBERATELY DOES NOT CHECK. Numbers measured from the tree -- "111 game files hold
-Drawable", "15 SDL_GL_ references" -- are not re-measured here. They are claims about a moving
+Drawable", "29 SDL_GL references" -- are not re-measured here. They are claims about a moving
 codebase, and a gate that re-ran every one of them would be slow, flaky, and would silently change
 what the document says. Those belong to the ratchets that own them. **This gate checks the document
 against ITSELF, not against the world**, and saying so is the difference between a limit and a hole.
@@ -224,6 +232,11 @@ LOCAL_COUNT = (
     ("Two components have been carved out", "the two acyclic carve-outs, not the register"),
     ("it is the reason two components with no grant between them",
      "any two co-resident components, not a count"),
+    # NOT AN EXEMPTION. This is the only entry here whose number is checked by another verdict:
+    # `check_subtraction` derives both figures from the grant table and the two closures. The entry
+    # exists so COUNT_DRIFT does not read a closure DELTA as a register total -- it is a pointer to
+    # the owner, not a permission to be wrong.
+    ("Five grants, nine components", "a closure delta, owned by SUBTRACTION"),
 )
 
 
@@ -509,6 +522,249 @@ def check_law_of_one(comp):
     return []
 
 
+# THE NUMERATOR NOBODY READ.
+#
+# COUNT_DRIFT has a subset rule: on seeing `N of M components` it verifies M against the register and
+# then SKIPS, because N is a subset and not the total. That is correct as far as it goes, and it
+# leaves N read by nothing. `39` is never followed by the word "components", so no verdict in this
+# file has ever looked at it -- and twelve hand-written sentences state one.
+#
+# Those numbers are composition CLOSURE sizes: an ENTRYPOINT plus the transitive closure of its
+# grants, which `composition-graphs` already computes to draw the per-composition diagrams. Every
+# stage of a decomposition changes them. The register went 41 -> 45 -> 48 -> 49 in four steps and the
+# twelve sentences were re-typed by hand each time, four times, with the gate reporting OK on all of
+# it -- so the ONLY thing standing between this document and a wrong closure count was whether the
+# author had miscounted that day. That is not a mechanism.
+#
+# ATTRIBUTION IS TWO-TIER, and the weaker tier is deliberate rather than lazy:
+#
+#   STRICT   under a `### <entrypoint>` heading, or in a table row whose first cell names one, N must
+#            equal THAT entrypoint's closure.
+#   LOOSE    everywhere else, N must equal the closure of SOME entrypoint. Sentences legitimately
+#            quote another composition's number as a COMPARISON -- "24 of 49 against the graphical
+#            client's 39" sits under a `colocation` heading -- so a strict rule everywhere would cry
+#            wolf, and a verdict that cries wolf gets suppressed. The loose tier still catches what
+#            actually happens: a stage changes the closure sizes and a stale number matches none.
+#
+# ATTRIBUTE FROM THE BACKTICKED SUBJECT, NEVER FROM THE HEADING'S ENGLISH. The first version searched
+# the whole heading for any entrypoint name, so `### \`colocation\` -- the client stops containing a
+# server` attributed its section to `server`, on the strength of the last word of a sentence about
+# something else. Two of this verdict's first four findings were that bug. A heading's subject is the
+# component it backticks first; the rest is prose and must not be read as a name.
+#
+# THE ROW FORM EXISTS BECAUSE THE WORST DRIFT HAD NO NOUN. Section 12 carried a three-row table
+# reading `32 of 41`, `26 of 41`, `19 of 41` -- the 41-component era, two register generations stale,
+# with the correct figures in the prose directly beneath it. COUNT_DRIFT could not see it, because
+# nothing in those cells is the word "components", and a bare `N of M` in running prose is far too
+# common to match on. In a row whose first cell backticks an ENTRYPOINT it is not ambiguous at all.
+#
+# Not every `N of M components` is a closure. The one that is not -- Section 7's KIND-modal-ZONE
+# deviation -- is CHECKED by `check_modal_zone` below rather than excused here, because an exemption
+# is a hole and a second verdict is not.
+_CLOSURE_CLAIM = re.compile(r'(\d+)\s+of\s+(\d+)\s+components')
+_CLOSURE_ROW = re.compile(r'^\|([^|]*)\|[^|]*?\b(\d+)\s+of\s+(\d+)\b')
+_SUBJECT = re.compile(r'`([a-z_][a-z0-9_]*)`')
+
+# Section 7's one non-closure `N of M components`: how many components sit in a zone other than the
+# modal zone for their KIND. It is the measurement that decided ZONE was worth keeping as an axis at
+# all -- when it was 8 of 45, the axis was 80% redundant with KIND and nearly did not survive review.
+# A number carrying that much argument should not be a number somebody typed.
+MODAL_ZONE_PHRASE = "components deviate from their KIND's modal ZONE"
+
+
+def _closures(text):
+    """-> {entrypoint: closure size}, computed by the module that owns the computation."""
+    spec = importlib.util.spec_from_file_location("composition_graphs",
+                                                  str(REPO / "scripts" / "composition-graphs.py"))
+    cg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cg)
+    comp, grants = cg.parse(text)
+    return {n: len(cg.closure(n, comp, grants))
+            for n, v in comp.items() if v["kind"] == "ENTRYPOINT"}
+
+
+def _derivations():
+    spec = importlib.util.spec_from_file_location("spec_derivations",
+                                                  str(REPO / "scripts" / "spec-derivations.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def check_closures(text):
+    """Every prose closure count must be a closure some ENTRYPOINT actually has."""
+    sizes = _closures(text)
+    if not sizes:
+        return [("CLOSURE_DRIFT", "no ENTRYPOINT closures could be computed -- the register parse "
+                                  "has regressed and this verdict is checking nothing")]
+    deriv = _derivations()
+    lines = text.splitlines()
+    total = len(MODEL.components(text))
+
+    # Spans this verdict must not read: a generator writes its own numbers, and a HISTORICAL block
+    # states a SUPERSEDED one on purpose -- "only 8 of 45 components deviated" is the argument for
+    # why the zones were replaced, and it is in the past tense precisely so it can say 45.
+    skip, start, hstart = [], None, None
+    for i, ln in enumerate(lines, 1):
+        if "BEGIN GENERATED" in ln:
+            start = i
+        elif "END GENERATED" in ln and start is not None:
+            skip.append((start, i))
+            start = None
+        if "<!-- HISTORICAL -->" in ln:
+            hstart = i
+        elif "END HISTORICAL" in ln and hstart is not None:
+            skip.append((hstart, i))
+            hstart = None
+
+    def subject_above(line):
+        """The entrypoint a `###` heading is ABOUT: the first component it backticks, never a name
+        that merely appears in its English."""
+        for j in range(line - 1, 0, -1):
+            h = deriv._H3.match(lines[j - 1])
+            if h:
+                m = _SUBJECT.search(h.group(1))
+                return m.group(1) if m and m.group(1) in sizes else None
+        return None
+
+    findings = []
+    for i, ln in enumerate(lines, 1):
+        if any(a <= i <= b for a, b in skip):
+            continue
+        flat = " ".join(ln.split())
+
+        # THE ROW FORM: `| \`client_agent\` | **19 of 41** | ... |`
+        row = _CLOSURE_ROW.match(ln)
+        if row:
+            named = [e for e in _SUBJECT.findall(row.group(1)) if e in sizes]
+            n, m = int(row.group(2)), int(row.group(3))
+            for e in named:
+                if (n, m) != (sizes[e], total):
+                    findings.append(("CLOSURE_DRIFT",
+                                     "line %d is `%s`'s row and reads %d of %d; its closure is %d of "
+                                     "%d" % (i, e, n, m, sizes[e], total)))
+            if named:
+                continue
+
+        for mt in _CLOSURE_CLAIM.finditer(ln):
+            if MODAL_ZONE_PHRASE in flat:
+                continue                   # owned by check_modal_zone
+            n = int(mt.group(1))
+            owner = subject_above(i)
+            if owner and n != sizes[owner]:
+                findings.append(("CLOSURE_DRIFT",
+                                 "line %d sits under `%s`'s heading and says it links %d components; "
+                                 "its closure is %d" % (i, owner, n, sizes[owner])))
+            elif not owner and n not in set(sizes.values()):
+                findings.append(("CLOSURE_DRIFT",
+                                 "line %d claims a composition of %d components, which is no "
+                                 "ENTRYPOINT's closure (%s) -- if it is not a closure count, it "
+                                 "needs a verdict that owns it, not an exemption: ...%s..."
+                                 % (i, n, ", ".join("%s=%d" % kv for kv in sorted(sizes.items())),
+                                    flat[:90])))
+    return findings
+
+
+# A SUBTRACTION CLAIM: "`client_agent` is exactly `client_headless` minus five grants -- ...".
+#
+# This is the densest sentence shape in the document. It does not describe a component, it asserts a
+# RELATIONSHIP between two compositions, and one sentence of it encodes what would otherwise be two
+# closure listings. That is why it was worth writing and why it must be checked: it said "minus
+# `windowing`, `frontend` and `transcript` ... three grants on an entrypoint" while the real grant
+# difference was FIVE -- it omitted `colocation` and `starmap_authority`, which are the two that
+# carry the design's actual point. Undercounting there is not a typo; it deletes the argument.
+#
+# THE SECOND NUMBER IS THE INTERESTING ONE. Five grants remove NINE components, because `universe`,
+# `world`, `worldgen` and `transport_local` were reachable only through the authority. A reader who
+# checks the grant count and stops never sees that, so both are checked and both are derived.
+#
+# EXPECTED_SUBTRACTIONS exists because absence is the failure mode a keyed check cannot see on its
+# own: reword the sentence and this verdict goes quiet while reporting OK, which is exactly how
+# LOCAL_COUNT entries outlived their sentences. If the count of matched claims falls, say so.
+EXPECTED_SUBTRACTIONS = 1
+_SUBTRACTION = re.compile(
+    r'`(\w+)` is exactly `(\w+)` minus ([a-z]+|\d+) grants? — ((?:[^.]*?`\w+`)+[^.]*?)\.', re.S)
+_PAIRED = re.compile(r'\*\*([A-Za-z]+|\d+) grants?, ([a-z]+|\d+) components?\.\*\*')
+
+
+def check_subtraction(text, comp, grants):
+    """`X` is exactly `Y` minus N grants -- verified against the grant table and the closures."""
+    flat = " ".join(text.split())
+    sizes = _closures(text)
+    findings, seen = [], 0
+    for m in _SUBTRACTION.finditer(flat):
+        seen += 1
+        x, y, n, listed = m.group(1), m.group(2), _as_int(m.group(3)), set(_SUBJECT.findall(m.group(4)))
+        if x not in grants or y not in grants:
+            findings.append(("SUBTRACTION",
+                             "`%s` minus `%s`: one of them has no grant row" % (x, y)))
+            continue
+        real = grants[y] - grants[x]
+        if listed != real:
+            findings.append(("SUBTRACTION",
+                             "prose says `%s` is `%s` minus %s; the grant table says %s"
+                             % (x, y, ", ".join("`%s`" % g for g in sorted(listed)) or "nothing",
+                                ", ".join("`%s`" % g for g in sorted(real)) or "nothing")))
+        if n != len(real):
+            findings.append(("SUBTRACTION",
+                             "prose counts %d grants between `%s` and `%s`; the grant table has %d"
+                             % (n, x, y, len(real))))
+        # The paired "N grants, M components" restatement, when the sentence carries one.
+        p = _PAIRED.search(flat[m.end():m.end() + 400])
+        if p and x in sizes and y in sizes:
+            drop = {c for c in set(_closure_members(text, y)) - set(_closure_members(text, x))
+                    if comp[c]["kind"] != "ENTRYPOINT"}
+            want_g, want_c = len(real), len(drop)
+            got_g, got_c = _as_int(p.group(1)), _as_int(p.group(2))
+            if (got_g, got_c) != (want_g, want_c):
+                findings.append(("SUBTRACTION",
+                                 "prose says %d grants, %d components between `%s` and `%s`; the "
+                                 "register says %d grants, %d components"
+                                 % (got_g, got_c, x, y, want_g, want_c)))
+    if seen < EXPECTED_SUBTRACTIONS:
+        findings.append(("SUBTRACTION",
+                         "matched %d subtraction claim(s), expected %d -- a reworded claim leaves "
+                         "this verdict quiet while reporting OK, which is the failure it exists for"
+                         % (seen, EXPECTED_SUBTRACTIONS)))
+    return findings
+
+
+def _closure_members(text, entry):
+    spec = importlib.util.spec_from_file_location("composition_graphs",
+                                                  str(REPO / "scripts" / "composition-graphs.py"))
+    cg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cg)
+    comp, grants = cg.parse(text)
+    return cg.closure(entry, comp, grants)
+
+
+def _modal_deviation(comp):
+    by_kind = {}
+    for v in comp.values():
+        by_kind.setdefault(v["kind"], []).append(v["zone"])
+    total = 0
+    for zones in by_kind.values():
+        modal = max(set(zones), key=zones.count)
+        total += sum(1 for z in zones if z != modal)
+    return total
+
+
+def check_modal_zone(text, comp):
+    """The KIND-modal-ZONE deviation, measured rather than asserted."""
+    want = _modal_deviation(comp)
+    flat = " ".join(text.split())
+    hits = re.findall(r'(\d+) of (\d+) %s' % re.escape(MODAL_ZONE_PHRASE), flat)
+    if not hits:
+        return [("MODAL_ZONE",
+                 "no sentence states the KIND-modal-ZONE deviation, but this verdict exists to check "
+                 "one -- either the claim was deleted and this check should go with it, or it was "
+                 "reworded out of the gate's reach, which is the failure mode it was written for")]
+    return [("MODAL_ZONE",
+             "prose says %s of %s components deviate from their KIND's modal ZONE; the register "
+             "measures %d of %d" % (n, m, want, len(comp)))
+            for n, m in hits if (int(n), int(m)) != (want, len(comp))]
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -599,7 +855,11 @@ def scan(text):
     # running prose never left the current line -- and the defect this verdict was extended to catch
     # was a markdown TABLE whose `| ZONE |` header sat two rows above its stale `| **SEAM** |` row.
     # Case-insensitivity alone did not find it; the window was the other half of the same blind spot.
-    flat = " ".join(live.split())
+    # HTML COMMENTS ARE MACHINERY, NOT PROSE. Naming a generated block `tree-map#zones` put the word
+    # "zones" within the ±60 window of the sentence "SEAM is gone, and no `boundary/` directory
+    # replaces it" -- and STALE_ZONE fired on a marker. A gate reading its own scaffolding as a claim
+    # is noise of the kind that gets a verdict suppressed, and suppression is how these go blind.
+    flat = " ".join(re.sub(r'<!--.*?-->', " ", live, flags=re.S).split())
     for z in DEAD_ZONES:
         for m in re.finditer(r'.{0,60}\b%s\b.{0,60}' % z, flat):
             ctx = m.group(0)
@@ -688,6 +948,9 @@ def scan(text):
     findings.extend(check_clause_vocabulary(text))
     findings.extend(check_shared_words(text, comp))
     findings.extend(check_kind_rules(text))
+    findings.extend(check_closures(text))
+    findings.extend(check_modal_zone(text, comp))
+    findings.extend(check_subtraction(text, comp, grants))
     findings.extend(check_dead_kinds(text))
     findings.extend(check_no_dates(text))
     findings.extend(check_contract_grants(comp, grants))
@@ -719,6 +982,11 @@ SELFTEST = [
     ("MISSING_SCRIPT", "The figures come from `scripts/nonexistent-measure.py`."),
     ("BARE_GOAL", "| **serves** | **N3** — it composes, which is all anyone needs to know. |"),
     ("DANGLING_CLAUSE", "| **serves** | **N1.e** — a fifth clause N1 does not have. |"),
+    # All three tiers of CLOSURE_DRIFT, because they are three different code paths and the row form
+    # exists precisely because the prose form could not see the defect it was written for.
+    ("CLOSURE_DRIFT", "The composition links 77 of 49 components."),
+    ("CLOSURE_DRIFT", "| `client_agent` | **99 of 49** | an injected row |"),
+    ("CLOSURE_DRIFT", "### `server` — injected\n\nIt links 3 of 49 components."),
 ]
 # A gate that fires on everything is as useless as one that fires on nothing.
 SELFTEST_CONTROL = "The `world` component owns a fixed clock and `participant` predicts against it."
@@ -762,6 +1030,36 @@ def selftest(text):
             print("  SHARED_WORD  SILENT -- %s was not reported" % label)
         else:
             print("  %-12s %-6s %s" % ("SHARED_WORD", "FIRES", label))
+
+    # MODAL_ZONE and SUBTRACTION read ONE sentence each, so appending prose cannot exercise them:
+    # the sentence they check is already in the document and already correct. Both are driven by
+    # mutating that sentence, and both are driven in the ABSENCE direction too -- because the way a
+    # keyed check dies is not by reporting the wrong answer, it is by matching nothing and staying
+    # quiet. That is the failure LOCAL_COUNT's dead entries had, and it is the one worth proving.
+    grants_now = MODEL.grants(text)
+    drives = (
+        ("MODAL_ZONE", "a wrong deviation count",
+         lambda: check_modal_zone(text.replace("15 of 49 %s" % MODAL_ZONE_PHRASE,
+                                               "12 of 49 %s" % MODAL_ZONE_PHRASE), comp)),
+        ("MODAL_ZONE", "the claim reworded out of reach",
+         lambda: check_modal_zone(text.replace(MODAL_ZONE_PHRASE, "components sit oddly"), comp)),
+        ("SUBTRACTION", "a wrong grant count",
+         lambda: check_subtraction(text.replace("minus five grants", "minus three grants"),
+                                   comp, grants_now)),
+        ("SUBTRACTION", "a grant omitted from the list",
+         lambda: check_subtraction(text.replace("`colocation` and `starmap_authority`",
+                                                "and `starmap_authority`"), comp, grants_now)),
+        ("SUBTRACTION", "the claim reworded out of reach",
+         lambda: check_subtraction(text.replace("is exactly `client_headless` minus",
+                                                "is roughly `client_headless` less"),
+                                   comp, grants_now)),
+    )
+    for label, what, drive in drives:
+        if not drive():
+            bad += 1
+            print("  %-12s SILENT -- %s was not reported" % (label, what))
+        else:
+            print("  %-12s %-6s %s" % (label, "FIRES", what))
 
     # KIND_RULE compares a declared set against spec-model's KINDS, so appended prose cannot reach
     # it either. Both directions driven directly: a live kind whose rule is gone, and a rule for a

@@ -49,6 +49,20 @@ ZONES = ("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION")
 # Ordered: every grant edge points DOWN this list, verified at zero exceptions. That is what makes
 # zones directories rather than labels -- a path lint can enforce the layering.
 ZONE_ORDER = {z: i for i, z in enumerate(("MACHINE", "DOMAIN", "DEVICE", "COMPOSITION"))}
+
+# WHAT EACH ZONE FACES, declared once. A zone answers one question -- *what does this component
+# face?* -- and the answer was written down twice: Section 7's zone table said "the OS, the vendor,
+# the asset store, the disk" while `composition-graphs`' ZONE_TITLE said "the OS, the vendor, the
+# asset store", and the two had drifted apart on three of the four zones. Neither was wrong; they
+# were two declarations of one fact, which is the defect #185 exists to delete, and the same shape as
+# the palette this project already found pasted into a generator under a comment claiming it matched.
+# The longer form is the document's own, so it wins and the diagram titles are derived from it.
+ZONE_FACES = {
+    "MACHINE": "the OS, the vendor, the asset store, the disk",
+    "DOMAIN": "nothing outside; the game's own state and rules",
+    "DEVICE": "a display, a speaker, a file, a recorder",
+    "COMPOSITION": "the other three; it wires them",
+}
 EKINDS = ("LOOP", "TICK", "WIRING", "SIGNAL")
 CADENCES = ("DISPLAY", "FIXED", "FREE", "EXTERNAL", "DERIVED", "ONCE", "EVENT")
 CARDINALITIES = ("PROCESS", "PARTICIPANT", "UNIVERSE", "WORLD", "DEVICE")

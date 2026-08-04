@@ -13,11 +13,19 @@ WHAT MAKES THE LAYOUT ENFORCEABLE, and it is two facts stacked:
      Every Star library links ALL of its objects into every consumer, so containment is decided by
      which directories an ENTRYPOINT names. A component that is not a directory cannot be excluded
      from anything.
-  2. Every grant edge points DOWN the zone order, verified at zero exceptions across 41 components.
+  2. Every grant edge points DOWN the zone order, verified at zero exceptions across every component.
      So `domain/ must not include device/` is a statement about PATHS, checkable without parsing C++.
 
 Together those turn the architecture into something `#include` can violate and a lint can catch,
 rather than something a reviewer has to hold in their head.
+
+TWO BLOCKS, AND THE SECOND ONE IS WHY THIS DOCSTRING NO LONGER SAYS "41". Section 7 introduces the
+zones with a table carrying a per-zone COUNT, and that table was hand-written. It said machine 14 and
+domain 14 -- a total of 45 -- against a 49-row register: stale since the `celestial` split added
+three and `transport_p2p` added one. It went green through every gate, because no instrument read it;
+the table census classes it UNREAD, which is exactly the category that looks authoritative and is
+checked by nobody. The tree here was already derived from the same grouping, so the tally is the same
+computation printed a second way, and it is now generated rather than typed.
 """
 import argparse
 import importlib.util
@@ -36,8 +44,14 @@ def _spec_model():
 
 MODEL = _spec_model()
 
-BEGIN = "<!-- BEGIN GENERATED: scripts/tree-map.py -->"
-END = "<!-- END GENERATED: tree-map -->"
+# Two blocks now, so the markers are per-name. The tree keeps the original unsuffixed pair -- renaming
+# it would have been a pure churn edit across a 6,000-line document for no gain.
+MARKERS = {
+    "tree": ("<!-- BEGIN GENERATED: scripts/tree-map.py -->",
+             "<!-- END GENERATED: tree-map -->"),
+    "zones": ("<!-- BEGIN GENERATED: scripts/tree-map.py#zones -->",
+              "<!-- END GENERATED: tree-map#zones -->"),
+}
 
 # Directories that are NOT components and never will be. Declared so the tree is the whole truth
 # rather than the part the register happens to cover.
@@ -47,6 +61,24 @@ NON_COMPONENT = [
     ("scripts/",       "the instruments -- every gate in Section 6 lives here"),
     ("assets/",        "content, which `content` abstracts and no C++ component owns"),
 ]
+
+
+def build_zones(text):
+    """Section 7's zone tally: what each zone faces, and how many components face it.
+
+    The `faces` column is prose and still has to come from somewhere; it comes from ZONE_FACES in
+    `spec-model`, which is the ONE declaration of it and is also what the composition diagrams title
+    their subgraphs with. The count is the only thing that moves, and it moves on its own now."""
+    comp = MODEL.components(text)
+    rows = ["| zone | faces | n |", "|---|---|---:|"]
+    for z in MODEL.ZONES:
+        n = sum(1 for v in comp.values() if v["zone"] == z)
+        rows.append("| **`%s/`** | %s | %d |" % (z.lower(), MODEL.ZONE_FACES[z], n))
+    # The total is stated rather than left to the reader's addition, because the defect this block
+    # replaces was a column that summed to 45 beside a register of 49 -- visible only to someone who
+    # added it up, which for four numbers across four months nobody did.
+    rows.append("| | **total** | **%d** |" % len(comp))
+    return "\n".join(rows)
 
 
 def build(text):
@@ -78,21 +110,33 @@ def main(argv):
 
     path = MODEL.SPEC
     text = path.read_text(encoding="utf-8")
-    if BEGIN not in text or END not in text:
-        print("tree-map: no marker pair in %s" % path.name)
-        return 1
-    head, rest = text.split(BEGIN, 1)
-    old, tail = rest.split(END, 1)
-    want = "\n%s\n" % build(text)
+    bodies = {"tree": build(text), "zones": build_zones(text)}
+
+    stale = []
+    for name, body in bodies.items():
+        begin, end = MARKERS[name]
+        # A missing marker pair is a hard failure, never a skip. The block this check exists to keep
+        # honest is one that was UNREAD for months; "no marker, so nothing to compare" would put it
+        # straight back into that state while printing OK.
+        if text.count(begin) != 1 or text.count(end) != 1:
+            print("tree-map: expected exactly one %r marker pair in %s" % (name, path.name))
+            return 1
+        head, rest = text.split(begin, 1)
+        old, tail = rest.split(end, 1)
+        want = "\n%s\n" % body
+        if old != want:
+            stale.append(name)
+        if args.inject:
+            text = head + begin + want + end + tail
 
     if args.inject:
-        path.write_text(head + BEGIN + want + END + tail, encoding="utf-8")
-        print("tree-map: written")
+        path.write_text(text, encoding="utf-8")
+        print("tree-map: written -- %s" % ", ".join(sorted(bodies)))
         return 0
-    if old != want:
-        print("tree-map: STALE -- rerun `scripts/tree-map.py --inject`")
+    if stale:
+        print("tree-map: STALE (%s) -- rerun `scripts/tree-map.py --inject`" % ", ".join(sorted(stale)))
         return 1 if args.check else 0
-    print("tree-map: OK -- the tree matches the register")
+    print("tree-map: OK -- the tree and the zone tally match the register")
     return 0
 
 

@@ -1537,12 +1537,15 @@ their kind's default, so the axis was mostly restating something already stated.
 
 The four that replace them each answer the same question — **what does this component face?**
 
+<!-- BEGIN GENERATED: scripts/tree-map.py#zones -->
 | zone | faces | n |
-|---|---|---|
-| **`machine/`** | the OS, the vendor, the asset store, the disk | 14 |
-| **`domain/`** | nothing outside; the game's own state and rules | 14 |
+|---|---|---:|
+| **`machine/`** | the OS, the vendor, the asset store, the disk | 15 |
+| **`domain/`** | nothing outside; the game's own state and rules | 17 |
 | **`device/`** | a display, a speaker, a file, a recorder | 9 |
 | **`composition/`** | the other three; it wires them | 8 |
+| | **total** | **49** |
+<!-- END GENERATED: tree-map#zones -->
 
 **SEAM is gone, and no `boundary/` directory replaces it.** An INTERFACE or VOCABULARY already
 declares that it is a boundary, so a directory saying it again would be the second-declaration defect this document has
@@ -1757,7 +1760,7 @@ and `host_sdl → gpu_opengl` at 1, both already on the removal ratchet. Meanwhi
 | `SDL_WINDOW_OPENGL` in the window flags | 2 |
 | `SDL_GL_CreateContext` / `DestroyContext` / `SDL_GLContext` | 3 |
 
-**15 references, counted as 1.** The coupling is real but it is routed through *SDL's GL sub-API* — a
+**29 references across 18 lines, counted as 1.** The coupling is real but it is routed through *SDL's GL sub-API* — a
 third party — and no include sweep can see through that. Delete `make_shared<OpenGlRenderer>()` and
 the ratchet reads zero while the host still creates a GL context and swaps GL buffers. Compose
 `gpu_sdl` instead and nothing changes: same window flags, same context, same present. **The second
@@ -1897,7 +1900,7 @@ one-component discrepancy between two true statements is indistinguishable from 
 ```mermaid
 %% composition: client_opengl
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -1915,7 +1918,7 @@ flowchart TD
     transport_p2p["<b>transport_p2p</b><br/>BACKEND"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
@@ -1940,7 +1943,7 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+  subgraph Z_DEVICE ["DEVICE — a display, a speaker, a file, a recorder"]
     audio["<b>audio</b><br/>INTERFACE"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     subgraph gpu ["<b>gpu</b> · INTERFACE"]
@@ -1955,7 +1958,7 @@ flowchart TD
       rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     client_opengl["<b>client_opengl</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -2144,7 +2147,7 @@ flowchart TD
 ```mermaid
 %% composition: client_sdl_gpu
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2162,7 +2165,7 @@ flowchart TD
     transport_p2p["<b>transport_p2p</b><br/>BACKEND"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
@@ -2187,7 +2190,7 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+  subgraph Z_DEVICE ["DEVICE — a display, a speaker, a file, a recorder"]
     audio["<b>audio</b><br/>INTERFACE"]
     audio_sdl["<b>audio_sdl</b><br/>BACKEND"]
     subgraph gpu ["<b>gpu</b> · INTERFACE"]
@@ -2202,7 +2205,7 @@ flowchart TD
       rendering_presentTick(["<b>presentTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     client_sdl_gpu["<b>client_sdl_gpu</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -2391,7 +2394,7 @@ flowchart TD
 ```mermaid
 %% composition: world_gen
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2400,13 +2403,13 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     game["<b>game</b><br/>LIBRARY"]
     net["<b>net</b><br/>VOCABULARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     world_gen["<b>world_gen</b><br/>ENTRYPOINT"]
   end
   celestial --> base
@@ -2466,7 +2469,7 @@ flowchart TD
 ```mermaid
 %% composition: world_sim
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2475,7 +2478,7 @@ flowchart TD
     script["<b>script</b><br/>LIBRARY"]
     storage["<b>storage</b><br/>LIBRARY"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     game["<b>game</b><br/>LIBRARY"]
     net["<b>net</b><br/>VOCABULARY"]
@@ -2485,7 +2488,7 @@ flowchart TD
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     world_sim["<b>world_sim</b><br/>ENTRYPOINT"]
   end
   celestial --> base
@@ -2551,7 +2554,7 @@ flowchart TD
 ```mermaid
 %% composition: server
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2562,7 +2565,7 @@ flowchart TD
     transport["<b>transport</b><br/>INTERFACE"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     game["<b>game</b><br/>LIBRARY"]
     net["<b>net</b><br/>VOCABULARY"]
@@ -2578,7 +2581,7 @@ flowchart TD
     end
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     subgraph server ["<b>server</b> · ENTRYPOINT"]
       server_superviseLoop(["<b>superviseLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
@@ -2667,7 +2670,7 @@ flowchart TD
 ```mermaid
 %% composition: client_agent
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2682,7 +2685,7 @@ flowchart TD
     transport["<b>transport</b><br/>INTERFACE"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     game["<b>game</b><br/>LIBRARY"]
     interaction["<b>interaction</b><br/>LIBRARY"]
@@ -2694,10 +2697,10 @@ flowchart TD
     universe_view["<b>universe_view</b><br/>LIBRARY"]
     world_view["<b>world_view</b><br/>LIBRARY"]
   end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+  subgraph Z_DEVICE ["DEVICE — a display, a speaker, a file, a recorder"]
     presentation["<b>presentation</b><br/>INTERFACE"]
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     client_agent["<b>client_agent</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -2809,7 +2812,7 @@ flowchart TD
 ```mermaid
 %% composition: client_headless
 flowchart TD
-  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store"]
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
     base["<b>base</b><br/>FOUNDATION"]
     content["<b>content</b><br/>INTERFACE"]
     core["<b>core</b><br/>FOUNDATION"]
@@ -2825,7 +2828,7 @@ flowchart TD
     transport_local["<b>transport_local</b><br/>BACKEND"]
     transport_tcp["<b>transport_tcp</b><br/>BACKEND"]
   end
-  subgraph Z_DOMAIN ["DOMAIN — the game's own state and rules"]
+  subgraph Z_DOMAIN ["DOMAIN — nothing outside; the game's own state and rules"]
     celestial["<b>celestial</b><br/>VOCABULARY"]
     colocation["<b>colocation</b><br/>LIBRARY"]
     frontend["<b>frontend</b><br/>LIBRARY"]
@@ -2850,13 +2853,13 @@ flowchart TD
     world_view["<b>world_view</b><br/>LIBRARY"]
     worldgen["<b>worldgen</b><br/>LIBRARY"]
   end
-  subgraph Z_DEVICE ["DEVICE — meets a display, a speaker, a file"]
+  subgraph Z_DEVICE ["DEVICE — a display, a speaker, a file, a recorder"]
     presentation["<b>presentation</b><br/>INTERFACE"]
     subgraph transcript ["<b>transcript</b> · BACKEND"]
       transcript_recordTick(["<b>recordTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
   end
-  subgraph Z_COMPOSITION ["COMPOSITION — wires the rest"]
+  subgraph Z_COMPOSITION ["COMPOSITION — the other three; it wires them"]
     client_headless["<b>client_headless</b><br/>ENTRYPOINT"]
     subgraph participant ["<b>participant</b> · LIBRARY"]
       participant_clientLoop(["<b>clientLoop</b> · LOOP<br/><i>FIXED · one per participant</i>"])
@@ -3959,8 +3962,8 @@ from *what is simulated*, and D9 separates *what is simulated* from *who is watc
 
 And it is why `world_sim` is a composition rather than a special case — **the same `world` component,
 with residency supplied by configuration instead of by players.** The generated diagram above shows it
-linking **12 of 49 components**: `core`, `base`, `platform_null`, `game`, `world`, `worldgen`, `celestial`,
-`net`, `script`, `storage`, `content`, and itself. No `universe`,
+linking **13 of 49 components**: `core`, `base`, `platform`, `platform_null`, `game`, `world`, `worldgen`,
+`celestial`, `net`, `script`, `storage`, `content`, and itself. No `universe`,
 no view, no presentation, no `scene`.
 
 **Acceptance test, and it is falsifiable today:** load a world containing FU automation, attach no
@@ -4139,14 +4142,19 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 
 | entrypoint | links | what it is |
 |---|---|---|
-| `client_opengl` | **32 of 41** | plays, draws, sounds |
-| `client_headless` | **26 of 41** | plays and **records** — keeps the UI because it records what the UI produces |
-| `client_agent` | **19 of 41** | plays. No UI, no recorder, no sound |
+| `client_opengl` | **39 of 49** | plays, draws, sounds |
+| `client_headless` | **33 of 49** | plays and **records** — keeps the UI because it records what the UI produces |
+| `client_agent` | **24 of 49** | plays. No UI, no recorder, no sound |
 | *(`participant` itself)* | — | grants none of `windowing`, `frontend`, `rendering`, `mixing` |
 
-`client_agent` links exactly `client_headless` minus `windowing`, `frontend` and `transcript`. That
-subtraction is the whole point: the difference between a recorder and an agent is now three grants on
-an entrypoint, not a fork of the client.
+`client_agent` is exactly `client_headless` minus five grants — `windowing`, `frontend`, `transcript`,
+`colocation` and `starmap_authority`. That subtraction is the whole point: the difference between a
+recorder and an agent is five grants on an entrypoint, not a fork of the client.
+
+**Five grants, nine components.** The closures differ by more than the grants do, and the gap is the
+design stating itself: dropping `colocation` and `starmap_authority` also drops `universe`, `world`,
+`worldgen` and `transport_local`, because those were reachable ONLY through the authority. An agent
+that cannot name an authority does not merely decline to run one — it cannot link one.
 
 **It also settles *recorder or non-visual participant?* by refusing the question.** Those are two
 products, not two readings of one: `client_headless` is the recorder and `client_agent` is the
@@ -4186,9 +4194,9 @@ and a view — which is precisely why it is the one that owes the proof.
 
 | entrypoint | links | authority? |
 |---|---|---|
-| `client_opengl` / `client_sdl_gpu` | 32 of 41 | **yes** — the desktop game hosts single-player |
-| `client_headless` | 26 of 41 | **yes** — so it can record a single-player session |
-| `client_agent` | **19 of 41** | **no** — it must connect to one over the wire |
+| `client_opengl` / `client_sdl_gpu` | 39 of 49 | **yes** — the desktop game hosts single-player |
+| `client_headless` | 33 of 49 | **yes** — so it can record a single-player session |
+| `client_agent` | **24 of 49** | **no** — it must connect to one over the wire |
 
 `client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
 cannot name an authority cannot accidentally embed one, and the composition is 24 of 49 components against
