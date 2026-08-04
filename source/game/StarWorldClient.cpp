@@ -1,4 +1,5 @@
 #include "StarWorldClient.hpp"
+#include "StarGridScroll.hpp"
 #include "StarIterator.hpp"
 #include "StarLogging.hpp"
 #include "StarTelemetry.hpp"
@@ -1949,25 +1950,29 @@ void WorldClient::shiftAndGatherMargin(int dx, int dy) {
   int width = calcRegion.width();
   int height = calcRegion.height();
   Vec2I calcMin = calcRegion.min();
-  int adx = dx < 0 ? -dx : dx;
-  int ady = dy < 0 ? -dy : dy;
+  // WHAT SURVIVES THE SHIFT AND WHAT IS NEWLY EXPOSED comes from gridScroll (StarGridScroll.hpp) -- pure
+  // integer geometry, unit-tested in core_tests over both signs, zero, one-cell, mid-grid and beyond-extent
+  // deltas, against a from-scratch rebuild. It was inline here and untested, on a path E02 then measured at
+  // 5.5% of recomputes while walking and none while standing still: rare enough that a sign error would have
+  // reached the Director long before it reached a test.
+  GridScroll scroll = gridScroll(dx, dy, width, height);
+
   // Double-buffer shift: copy the overlap (cells present in BOTH the old and new grid) from
   // m_gatherGrid into the zeroed scratch at the shifted position, then swap. Disjoint buffers, so
   // any column order is safe (no in-place memmove ordering hazard, and the dy intra-column move is a
   // plain slice copy). World tile at new index (nx, ny) was at old index (nx + dx, ny + dy).
   m_gatherScratch.assign((size_t)width * (size_t)height, GatherCell{});
-  int nxStart = dx > 0 ? 0 : adx;
-  int nxEnd = dx > 0 ? width - dx : width;
-  int nyStart = dy > 0 ? 0 : ady;
-  int nyEnd = dy > 0 ? height - dy : height;
-  int copyLen = nyEnd - nyStart;
-  GatherCell const* gridPtr = m_gatherGrid.ptr();
-  GatherCell* scratchPtr = m_gatherScratch.ptr();
-  for (int nx = nxStart; nx < nxEnd; ++nx) {
-    GatherCell const* src = gridPtr + (size_t)(nx + dx) * (size_t)height + (size_t)(nyStart + dy);
-    GatherCell* dst = scratchPtr + (size_t)nx * (size_t)height + (size_t)nyStart;
-    for (int k = 0; k < copyLen; ++k)
-      dst[k] = src[k]; // trivially-copyable GatherCell -> the compiler lowers this to a memcpy
+  if (!scroll.overlap.isEmpty()) {
+    int nyStart = scroll.overlap.min()[1];
+    int copyLen = scroll.overlap.height();
+    GatherCell const* gridPtr = m_gatherGrid.ptr();
+    GatherCell* scratchPtr = m_gatherScratch.ptr();
+    for (int nx = scroll.overlap.min()[0]; nx < scroll.overlap.max()[0]; ++nx) {
+      GatherCell const* src = gridPtr + (size_t)(nx + dx) * (size_t)height + (size_t)(nyStart + dy);
+      GatherCell* dst = scratchPtr + (size_t)nx * (size_t)height + (size_t)nyStart;
+      for (int k = 0; k < copyLen; ++k)
+        dst[k] = src[k]; // trivially-copyable GatherCell -> the compiler lowers this to a memcpy
+    }
   }
   std::swap(m_gatherGrid, m_gatherScratch); // O(1) buffer-pointer swap (List::swap is element-swap)
 
@@ -1977,22 +1982,23 @@ void WorldClient::shiftAndGatherMargin(int dx, int dy) {
   // Neither rect touches the shifted overlap, so no retained cell is clobbered.
   //
   // HOW MUCH of the grid a scroll re-gathers. lighting.gather.scroll says this path RAN; against
-  // lighting.calc.cells this says whether it was a thin strip or nearly a full re-gather, which is what
-  // decides whether the margin rects are worth optimising at all. Counted as WORK DONE, so the shared
-  // corner counts twice -- exactly as gatherStableColumns processes it. Derived here, beside the rects
-  // it measures, so there is one source for the arithmetic rather than a copy in the caller.
+  // lighting.calc.cells this says whether it was a thin strip or nearly a full re-gather. Counted as WORK
+  // DONE, so the shared corner counts twice -- exactly as the two gathers below process it. Measured from
+  // the rects themselves rather than recomputed from the deltas, so there is one source for the geometry.
   static auto marginCells = Telemetry::counter("lighting.gather.margin_cells",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
-  marginCells.inc((uint64_t)adx * (uint64_t)height + (uint64_t)width * (uint64_t)ady);
+  auto area = [](RectI const& r) -> uint64_t {
+    return r.isEmpty() ? 0 : (uint64_t)r.width() * (uint64_t)r.height();
+  };
+  marginCells.inc(area(scroll.marginX) + area(scroll.marginY));
 
-  if (dx != 0) {
-    int ax = dx > 0 ? calcMin[0] + width - dx : calcMin[0];
-    gatherStableColumns(RectI::withSize(Vec2I(ax, calcMin[1]), Vec2I(adx, height)));
-  }
-  if (dy != 0) {
-    int by = dy > 0 ? calcMin[1] + height - dy : calcMin[1];
-    gatherStableColumns(RectI::withSize(Vec2I(calcMin[0], by), Vec2I(width, ady)));
-  }
+  // Grid indices to world tiles. The two rects meet only at the corner, which is gathered twice with an
+  // identical result, and neither touches the retained overlap -- both properties are asserted in
+  // grid_scroll_test rather than argued here.
+  if (!scroll.marginX.isEmpty())
+    gatherStableColumns(RectI(scroll.marginX.min() + calcMin, scroll.marginX.max() + calcMin));
+  if (!scroll.marginY.isEmpty())
+    gatherStableColumns(RectI(scroll.marginY.min() + calcMin, scroll.marginY.max() + calcMin));
 }
 
 void WorldClient::applyStableToCells() {

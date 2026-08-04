@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      988 files
-      238695 lines
+      989 files
+      238754 lines
       6 tiers
     Content
       assets/
@@ -219,12 +219,12 @@ source/
 │   └── lua/             vendored — excluded from every count here
 ├── core/            T1   216 files    56,164 lines
 │   └── scripting/          2 files       258 lines
-├── base/            T2    29 files     7,411 lines
+├── base/            T2    30 files     7,464 lines
 │   └── scripting/          2 files        55 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,390 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,296 lines
+├── game/            T3   500 files   115,302 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -237,14 +237,14 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     70 files    13,371 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     71 files    13,551 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
 
 **Every directory that holds code of ours, at every depth — and no files.** Counts are recursive and exclude vendored subtrees, matching every other number in this document. Vendored trees are named but not descended into, since the whole subtree is out of scope and listing its internals would be noise about code that is not ours. Set those aside and the tree is only 2 levels deep: the engine's structure is flatter than its size suggests, which is itself the finding — `source/game` carries 500 files with exactly five subdirectories and no boundary between them.
 
-Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (97 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
+Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (98 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
 <!-- END GENERATED: tree -->
 
 Three things are worth noticing before the edges.
@@ -279,13 +279,13 @@ flowchart TD
   end
   subgraph T2["T2 services"]
     direction LR
-    base["base<br/><small>29 files · 7,411 lines · Root×0</small>"]
+    base["base<br/><small>30 files · 7,464 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,390 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,296 lines · Root×638</small>"]
+    game["game<br/><small>500 files · 115,302 lines · Root×638</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -393,11 +393,11 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 <!-- BEGIN GENERATED: scripts/arch-graph.py#grantuse -->
 ```mermaid
 flowchart LR
-  base ==>|92 in 26| core
+  base ==>|93 in 27| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
-  game ==>|157 in 136| base
+  game ==>|158 in 137| base
   game ==>|840 in 382| core
   game -->|3 in 3| platform
   rendering -->|9 in 9| application
@@ -466,12 +466,12 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `rendering → core` | 45 | 18 | load-bearing |
 | `windowing → core` | 38 | 24 | load-bearing |
 | `windowing → game` | 41 | 25 | load-bearing |
-| `base → core` | 92 | 26 | load-bearing |
+| `base → core` | 93 | 27 | load-bearing |
 | `frontend → base` | 54 | 45 | load-bearing |
 | `frontend → core` | 96 | 54 | load-bearing |
 | `frontend → windowing` | 217 | 67 | load-bearing |
 | `frontend → game` | 271 | 79 | load-bearing |
-| `game → base` | 157 | 136 | load-bearing |
+| `game → base` | 158 | 137 | load-bearing |
 | `game → core` | 840 | 382 | load-bearing |
 <!-- END GENERATED: grantuse -->
 
@@ -534,9 +534,9 @@ sankey-beta
 game,core,840
 frontend,game,271
 frontend,windowing,217
-game,base,157
+game,base,158
 frontend,core,96
-base,core,92
+base,core,93
 frontend,base,54
 application,core,49
 rendering,core,45
@@ -566,7 +566,7 @@ client,rendering,1
 client,windowing,1
 ```
 
-**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 840 and `base → core` at 92 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
+**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 840 and `base → core` at 93 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
 <!-- END GENERATED: sankey -->
 
 ---
@@ -582,11 +582,11 @@ treemap-beta
     "T1 language"
         "core": 56164
     "T2 services"
-        "base": 7411
+        "base": 7464
         "application": 7390
         "platform": 142
     "T3 simulation"
-        "game": 115296
+        "game": 115302
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -602,10 +602,10 @@ treemap-beta
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 17 | 18,079 | 7.6% |
 | T1 language | `core` | 216 | 56,164 | 23.5% |
-| T2 services | `base` | 29 | 7,411 | 3.1% |
+| T2 services | `base` | 30 | 7,464 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,390 | 3.1% |
-| T3 simulation | `game` | 500 | 115,296 | 48.3% |
+| T3 simulation | `game` | 500 | 115,302 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,414 | 1.8% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,861 | 7.1% |
@@ -649,14 +649,14 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [25, 3, 19, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [25, 3, 18, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
 | `extern` | 12 | 12 | 3 | 25% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
-| `base` | 16 | 11 | 3 | 19% | 1 | partly, as it stands |
+| `base` | 17 | 11 | 3 | 18% | 1 | partly, as it stands |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |

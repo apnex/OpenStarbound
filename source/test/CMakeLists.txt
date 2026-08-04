@@ -78,6 +78,7 @@ SET (star_core_tests_SOURCES
       lighting_border_test.cpp
       temporal_light_gate_test.cpp
       cellular_lighting_test.cpp
+      grid_scroll_test.cpp
 
       # StarTemporalLightingGate.hpp is header-only but includes StarLightSource.hpp, which is not.
       # Compiled directly instead of linking star_game: its own includes are core-only (StarVector,
@@ -553,7 +554,8 @@ SET (star_ci_gated_test_files
       lighting_point_test.cpp
       lighting_border_test.cpp
       temporal_light_gate_test.cpp
-      cellular_lighting_test.cpp)
+      cellular_lighting_test.cpp
+      grid_scroll_test.cpp)
 SET (star_ungated_lighting_tests "")
 SET (star_missing_lighting_tests "")
 FOREACH (star_f IN LISTS star_ci_gated_test_files)
