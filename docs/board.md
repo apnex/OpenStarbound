@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**157 tasks** across 2 store(s): 3 in_progress, 34 pending, 120 completed
+**157 tasks** across 2 store(s): 3 in_progress, 33 pending, 121 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 156 tasks, ids 64–220
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 146, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 149, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -49,20 +49,21 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **2** — NOT YET INVESTIGATED
+- **3** — NOT YET INVESTIGATED
 
-**Unexplained ids: 2.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 3.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
 | [#199](#c29c1332-199) | `555c692b` |
 | [#207](#c29c1332-207) | `66b9715a` |
+| [#214](#c29c1332-214) | `471488eed310861f` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 120.
+**Completed tasks citing no commit and no doc:** 79 of 121.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -214,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -224,7 +225,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | `b1e66be4` | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
-| [#214](#c29c1332-214) | `c29c1332` | open | GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns | — | — |
+| [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
 | [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
@@ -3477,6 +3478,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `d7cdce50` board: #170's -23.6% re-scoped; my 'work moved to GPU' explanation REFUTED by the CPU-solve A/B [#204]
 - `73277aaf` board: #217 measured at 04-Ocean Factory -- lever -27.8% region/-10.1% CPU; fix costs +5.3% region [#204]
 - `2d094c06` board: #211 closed at b1e66be4; #217 re-measured -- lever holds at -31.4% region, -11.2% lighting CPU [#204]
 - `02de4584` fix(spec-artifact): stamp the page's provenance, not HEAD
@@ -3988,42 +3990,35 @@ execute. Prefer landing #212 first, or run the lighting tests by hand and say so
 
 <a id="c29c1332-214"></a>
 
-#### #214 — GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns
+#### #214 — GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d323)
 
-status: **pending**
+status: **completed**
+
+- `cb17d323` fix(render-gate): the in-process A/B was invisible and ungated
 
 ```
-ADOPTED from OpenStarbound PR 570 (ledger row C05, simplicity). Idea only; none of their code.
+From PR-570 ledger row C05 -- one of the few axes where their design beat ours on simplicity.
 
-THE METRIC THAT DECIDED IT. They parameterised the existing gather by region --
-`lightingTileGather(RectI const&)` at their StarWorldClient.cpp:1765 -- so there is exactly ONE copy
-of the per-tile material/liquid/background/radiantLight math. We FORKED it:
+THE FORK WAS THE SINK, NOT THE REGION. C05 called it region-parameterisation; the region was the least of it. lightingTileGather and gatherStableColumns were near-duplicate 45-line bodies whose per-tile emission arithmetic, B1 column staging and B2 material-run memo were identical text in two places. The only real difference: one folds environmentLight in and calls setCellColumn per column; the other records skyExposed and writes GatherCell per tile.
 
-    source/game/StarWorldClient.cpp:1843-1895   lightingTileGather      (the pre-A1 direct path)
-    source/game/StarWorldClient.cpp:1906-1955   gatherStableColumns     (the A1 stable-grid path)
+gatherColumns(region, sink) now holds the computation once. gatherStableColumns: 45 lines -> 12.
 
-~30 lines of the same per-tile computation live in both and must be edited together. Nothing checks
-they agree. Their lightingCalc is ~200 lines; ours is ~410 (:2023-2436).
+BYTE-IDENTICAL, by add ORDER. The direct path folded environmentLight LAST (after fg + liquid + bg); the sink folds it in the same position, and applyStableToCells already reconstructed it identically as stableLight + environmentLight. Float addition is not associative, so the header carries the one rule that matters: do not move the env fold into gatherColumns.
 
-WHY IT IS WORTH DOING BEYOND TIDINESS. This duplicate is a silent-divergence surface in the exact
-code A1/A2 depend on: if the two gathers ever disagree, the stable-grid cache returns something a
-fresh gather would not, and the only thing that would notice is a player looking at wrong lighting.
-It is also the precondition for two other confirmed recommendations -- E01 (extract the scroll math
-into a testable helper) and E04 (a full-recalc oracle for the gather cache) -- both of which are
-harder while the emission rule exists twice.
+VERIFIED THREE WAYS:
+  textual  the per-tile arithmetic diffs line-for-line against HEAD; the single change is
+           `light += environmentLight` -> `skyExposed = true`, add relocated to the sink
+  runtime  render-gate in-process A/B, lightingGatherCache true|false: both legs hash
+           471488eed310861f. Oracles 112/26/202, 0 DIFF, 0 GL errors, 0 state desyncs
+  tests    282 core_tests + 69 game_tests; 24/24 gates green
 
-SHAPE. One region-parameterised gather; the stable-grid path and the direct path both call it. Keep
-the stable/overlay split (A1's sky-exposed bit and env-light re-application) -- that is ours and is
-not what is duplicated. What must collapse is the per-tile emission/obstacle computation.
+NOT PROVEN: the A/B is a MUTUAL check between the two sinks. Break both identically and it passes. Old-vs-new rests on the textual diff.
 
-VERIFICATION. Byte-identity: with lightingGatherCache OFF the direct path must produce exactly what
-it produces today, and with it ON the stable grid must produce exactly what it produces today. The
-`/lighting gathercache on|off` toggle (StarClientCommandProcessor.cpp:855-861) gives a clean in-
-process A/B. NOTE our lighting tests currently run in ZERO CI jobs (#212) -- run them by hand and
-say so, or land #212 first.
+NO PERFORMANCE CHANGE claimed or intended. Value is: ~33 lines deleted; ledger rows E01 and E04 unblocked (both were deferred specifically on this landing); E02/E03 now land here; and one divergence hazard closed -- two copies of identical float arithmetic kept in lockstep by discipline alone, which is exactly the still-open #213 (two calculatePointLighting specializations two lines apart, one of them semantic).
 
-RISK. This is the shipped hot path, not a fallback. Do it as a pure refactor with no behaviour
-change, and do not fold in the emission-rule cleanup or the scroll extraction at the same time.
+FOUND WHILE VERIFYING, fixed in cb17d323: the render gate's in-process A/B was invisible AND ungated. The guard grepped "RENDERTEST_AB" (never written to the log) and the body grepped "renderTest" while the log writes "rendertest" -- both scored zero, so the section vanished; and it was an echo that never touched `pass`, so a DIFFering A/B certified as GATE: PASS. Third instance of the vocabulary trap in a file already carrying two warnings about it. Every A/B ever run through that gate was unjudged. Now asserts both legs exist, fails on DIFFER, fails on a missing leg -- all three proven by injection.
+
+PROCESS NOTE: the first render-gate commit claimed "24/24 gates green" before I read the exit status. The suite was red (arch_graph_fresh, from this task's own uncommitted line-count changes). Amended to state the truth rather than leaving a false claim in the history.
 ```
 
 <a id="c29c1332-215"></a>
