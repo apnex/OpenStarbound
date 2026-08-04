@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**163 tasks** across 2 store(s): 3 in_progress, 33 pending, 127 completed
+**163 tasks** across 2 store(s): 3 in_progress, 32 pending, 128 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 162 tasks, ids 64–226
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 159, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 162, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 127.
+**Completed tasks citing no commit and no doc:** 79 of 128.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -207,7 +207,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
-| [#196](#c29c1332-196) | `c29c1332` | open | BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16 | — | — |
+| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -231,7 +231,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
-| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `a69c8888` `4960f7e5` `4e4ced84` | — |
+| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | — |
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
@@ -3206,47 +3206,30 @@ status: **completed**
 
 <a id="c29c1332-196"></a>
 
-#### #196 — BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16
+#### #196 — BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31)
 
-status: **pending**
+status: **completed**
+
+- `f0b9fb1f` ledger: D55/E07/E08/E09 done -- the overlay is in-tree, registered, and verified from a clone
+- `1830ef31` build: make mimalloc a vcpkg manifest feature instead of an unconditional dependency
+- `18a8e5c0` build: vendor the vcpkg overlay ports and register them declaratively
 
 ```
-BUILD-1: a pristine Linux build cannot bootstrap on this workstation -- jemalloc 5.3.1 vs libstdc++ 16.
+All four ledger rows closed: D55 (root cause), E07 (declarative registration), E08 (retirement conditions), E09 (mimalloc as manifest feature).
 
-ROOT CAUSE OF THE TOOLCHAIN HALF FOUND 2026-08-04, by comparison against OpenStarbound PR 570.
+ROOT CAUSE CONFIRMED BEFORE FIXING, exactly as filed: the jemalloc + libsystemd overlay ports lived at /root/vcpkg-overlay-ports, outside the repo, reachable only via a hand-passed -DVCPKG_OVERLAY_PORTS recorded in one CMakeCache. Repo-wide grep matched only prose. The patches were not MISSING from a pristine clone, they were UNREACHABLE from one.
 
-NOTHING IN THE REPO REGISTERS OUR VCPKG OVERLAY PORTS. We set only VCPKG_OVERLAY_TRIPLETS
-(source/CMakePresets.json:18). The build that works on this machine got its overlay from a
-HAND-PASSED flag pointing at a stray OUT-OF-TREE directory:
+E07 (18a8e5c0): 12 files vendored to source/vcpkg-overlay/ports/ + "overlay-ports" in source/vcpkg-configuration.json. This matches the shape the presets ALREADY used for overlay TRIPLETS (VCPKG_OVERLAY_TRIPLETS) -- ports were the omission, not the pattern.
 
-    build/linux-release-clang/CMakeCache.txt:431
-        -DVCPKG_OVERLAY_PORTS=/root/vcpkg-overlay-ports
+VERIFIED FROM A PRISTINE CLONE, NOT THE WORKING TREE. vcpkg resolved jemalloc@5.3.1#1 and libsystemd@260.2 out of source/vcpkg-overlay/ports with nothing on the command line; the registry carries #0 and 260.1, so the versions identify the source unambiguously. The first pristine configure restored jemalloc from the binary cache in 4.7ms -- that proves RESOLUTION but NOT a from-scratch bootstrap, which is the claim the ticket made. Held the cache entry out, re-ran: "Building jemalloc@5.3.1#1" from source, 0 errors, under the libstdc++ 16 that motivated the patch. Then CUT OVER: cleared the stale cache flag in the working build and deleted /root/vcpkg-overlay-ports from the machine; the working build re-configures green with the directory gone.
 
-That directory is not in the repository. So a pristine clone has no overlay at all, falls back to
-upstream jemalloc 5.3.1, and hits the libstdc++ 16 failure. The jemalloc patch is not the missing
-piece -- the REGISTRATION is.
+E08 (18a8e5c0, source/vcpkg-overlay/README.md): each port names its retirement condition AND, separately, whether anything DETECTS it -- the asymmetry is the substance. jemalloc SELF-RETIRES, ENFORCED: its entire delta is one vcpkg_replace_string of std::__throw_bad_alloc(), and that helper hashes the file either side of the substitution and raises Z_VCPKG_BACKCOMPAT_MESSAGE_LEVEL when nothing changed -- which scripts/ports.cmake sets to FATAL_ERROR. Upstream fixing the call STOPS the build and names the port. libsystemd has NO such mechanism (version pin + -Dwerror=false both build silently when redundant); recorded as manual, trigger = baseline bump, rather than implying parity.
 
-THE FIX SHAPE, which PR 570 demonstrates (idea, not their code):
-    source/vcpkg-configuration.json  ->  "overlay-ports": ["./vcpkg-overlay/ports"]
-Declarative, in-repo, beside the pinned default-registry. Honoured by vcpkg-tool directly and by
-lukka/run-vcpkg via vcpkgConfigurationJsonGlob, so it works for a local clone and in CI with no
-per-invocation flags. Alternatively VCPKG_OVERLAY_PORTS in the `base` preset -- but the
-configuration.json form is the one that survives someone configuring without our presets.
+E09 (1830ef31): mimalloc is now a manifest feature selected from STAR_USE_MIMALLOC. Worse than "off by default" -- NO preset sets it (Windows rpmalloc, Linux presets jemalloc, macOS jemalloc off), so it was built on every platform for every developer and linked by no shipped configuration. VCPKG_MANIFEST_FEATURES must be appended before project() (the toolchain reads it there), which is before option() declares the variable, so the cache value is the only readable source and an unset one correctly selects nothing. Proven BOTH directions in the clone: default green with mimalloc absent; -DSTAR_USE_MIMALLOC=ON installs 3.3.2 and the REQUIRED find_package resolves -- the arm that catches B17's configure break.
 
-REMAINING WORK, in order:
-  1. move /root/vcpkg-overlay-ports INTO the repo (source/vcpkg-overlay/ports/), so the thing the
-     build depends on is version-controlled at all
-  2. register it declaratively per above
-  3. verify from a genuinely pristine clone, not from this working tree
-  4. record a RETIREMENT CONDITION per overlay port -- what upstream event lets us delete it. An
-     overlay with no exit criterion is permanent by accident (this is a separate confirmed
-     recommendation from the same analysis)
+libsystemd confirmed LIVE, not dead weight: sdl3[dbus] -> dbus -> libsystemd, all three in the installed tree.
 
-SEPARATE, RELATED, ALSO CONFIRMED: source/vcpkg.json:14 lists "mimalloc" unconditionally while
-source/CMakeLists.txt:143 has option(STAR_USE_MIMALLOC ... OFF) -- we pay to build an allocator we
-do not link. The clean form is a vcpkg manifest FEATURE driven by the CMake option
-(VCPKG_MANIFEST_FEATURES), which also lets jemalloc be selected the same way rather than being
-unconditional.
+run-gates 27/27 green. Bookkeeping f0b9fb1f.
 ```
 
 <a id="c29c1332-197"></a>
@@ -3484,6 +3467,8 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `a0bbb0c1` ledger: D11 done at a9ca6e26; D29's measurement trigger has fired and it now needs a decision [#204]
+- `87e92674` board: #220 CLOSED -- all 5 ledger rows (D34/D59/D60/E10/E06); 2 findings left for Director decision [#204]
 - `f53212d9` board: #225 FIXED at 8f322517 (hit 17.9%-&gt;80.7%, my not-viable close corrected); #226 H1+H2 done, H3 open [#204]
 - `a58a3499` board: #225 CLOSED measured-not-viable; #226 opened -- three untracked gather inputs [#204]
 - `cf59f083` board: #221 CLOSED -- E02/E01/E03/E04 all done as hardening, each injection-proven [#204]
@@ -4247,6 +4232,7 @@ ALL 35 decisions recorded in docs/superpowers/drafts/osb-pr570-decisions.json wi
 
 status: **completed**
 
+- `6e0f6117` extern: delete the two dead xxHash dispatch files the provenance table found [#220]
 - `a69c8888` E06: guard the multisample-to-sampler bind on the C++ path, where the exposure actually is [#220]
 - `4960f7e5` E10: derived, cross-checked provenance for source/extern, and it found two dead files [#220]
 - `4e4ced84` ledger: decide the last 15 rows; delete two dead vendored artefacts
