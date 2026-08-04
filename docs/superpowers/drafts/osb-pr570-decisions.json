@@ -1,0 +1,78 @@
+{
+  "_README": [
+    "Decisions taken on the PR 570 findings ledger. HAND-EDITED; the ledger itself is generated.",
+    "Key = row id from the ledger (A05, D55, E01, ...). Absent = still open.",
+    "status: accepted | declined | deferred | done",
+    "  accepted -> commits us to the work; give `task`",
+    "  declined -> we will not do it; `reason` is MANDATORY",
+    "  deferred -> not now; `until` names the TRIGGER and is MANDATORY, not a date",
+    "  done     -> finished; give `task` or `commit`",
+    "The generator hard-fails on a key that matches no row, on an unknown status, and on a",
+    "declined/deferred missing its reason/trigger. Run scripts/pr570-ledger.py after editing."
+  ],
+
+  "A05": {
+    "status": "accepted",
+    "task": "#210",
+    "note": "sector-unload use-after-free. Serious, live on integration, found independently twice."
+  },
+  "A07": {
+    "status": "accepted",
+    "task": "#211",
+    "note": "unguarded GL 4.0 sample-shading. Our fix is a guard, NOT their deletion -- #151 measured the quality at 22.3% of pixels and kept it."
+  },
+  "E05": {
+    "status": "accepted",
+    "task": "#210",
+    "note": "same finding as A05, reached from the other direction."
+  },
+  "D55": {
+    "status": "accepted",
+    "task": "#196",
+    "note": "vcpkg overlay ports registered nowhere -- the root cause of the build blocker, not the jemalloc patch."
+  },
+  "E07": {
+    "status": "accepted",
+    "task": "#196",
+    "note": "register the overlay declaratively; folded into #196's four-step sequence."
+  },
+  "C16": {
+    "status": "accepted",
+    "task": "#212",
+    "note": "the quality gap on proving the lighting correct: our five lighting test files run in zero CI jobs and none of them needs assets."
+  },
+  "C17": {
+    "status": "accepted",
+    "task": "#212",
+    "note": "same row from the simplicity side; one task closes both."
+  },
+  "D31": {
+    "status": "accepted",
+    "task": "#213",
+    "note": "the two calculatePointLighting specializations are 2 lines apart, one of them a real beam-epsilon divergence. 8 transcriptions -> 7, not -> 2."
+  },
+  "C07": {
+    "status": "declined",
+    "reason": "Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calculate(); our default skips it entirely when GPU lighting is latched (StarWorldClient.cpp:2401). Their patch optimises a stage we do not execute."
+  },
+  "C08": {
+    "status": "declined",
+    "reason": "Same non-convergence as C07."
+  },
+  "C09": {
+    "status": "declined",
+    "reason": "Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per-light dispatches, atomicMax, fixed K=48 and full resolution; ours is one raster solve at tile resolution with adaptive K, measured 744us. The finding it DOES carry is recorded on #161."
+  },
+  "D13": {
+    "status": "deferred",
+    "until": "#161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is about, and #161 now carries the re-ranked candidate list and the K-sweep measurement that should precede any of it."
+  },
+  "D59": {
+    "status": "deferred",
+    "until": "someone is already touching source/extern for another reason. tinyformat.h is verified dead (49 KB, zero tfm:: uses, headers-list only, zero compile cost) so the deletion is safe but buys only tidiness -- the 'silent wrong library' hazard that would have made it urgent was checked against our CMakeCache and disproved."
+  },
+  "D60": {
+    "status": "deferred",
+    "until": "same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only find_library consumers are FindSteamApi and FindDiscordApi."
+  }
+}

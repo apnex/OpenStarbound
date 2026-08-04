@@ -150,6 +150,18 @@ jobs:
       # because the coupling has three spellings -- SDL_GL_*, SDL_GLContext, SDL_WINDOW_OPENGL -- and
       # the first version of this ratchet saw only the first and reported 15. The host is supposed to
       # own a window, not a GL context.
+      # The PR-570 findings ledger is generated from three workflow outputs and a hand-written
+      # decisions file. This asserts the two cannot drift, and hard-fails on a decision naming a row
+      # that no longer exists -- the gate-vocabulary-outlives-document defect, fifth occurrence.
+      # NOTE: the raw outputs live outside the repo, so this is a no-op where they are absent.
+      - name: pr570_ledger -- the findings ledger matches its inputs and its decisions
+        run: |
+          if [ -d /root/analysis/osb-pr570/raw ]; then
+            python3 scripts/pr570-ledger.py --check
+          else
+            echo "pr570-ledger: SKIPPED -- raw outputs not present on this machine"
+          fi
+
       - name: host_api_neutral -- the SDL host must not know a graphics API
         run: |
           python3 scripts/layering-lint.py --needle "re:SDL_GL|SDL_WINDOW_OPENGL" \
