@@ -273,11 +273,13 @@
   },
   "D29": {
     "status": "deferred",
-    "until": "lighting.lights.point and lighting.gpu.point.lights have been read from a real play session. We carry no cap and no cull; the exposure is per-light draw calls and uniform sets, NOT wrong pixels, because both executors already skip off-grid lights. A cap built without those numbers is a guess. If it is ever built, take only the idea: rank by contribution to the visible region via CellularLightingCalculator::pointBorderFor, never their raw-brightness sort, and wrap through m_geometry.nearestTo before any distance test -- their cull tests an unwrapped position, which is the exact failure class #217 fixed."
+    "until": "DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on data. The original condition was 'lighting.lights.point and lighting.gpu.point.lights have been read from a real play session'; both were read on 2026-08-04 at 04-Ocean Factory and both report 50.00 per recompute, identical whether the calculation border is 34 or 48. So the counts are in and they are modest: a cap that sheds work would shed nothing at 50 lights, and the exposure was always per-light draw calls and uniform sets rather than wrong pixels, because both executors already skip off-grid lights. My lean is DECLINE on that evidence. #219's B08 is folded into this row and waits on the same answer. IF IT IS EVER BUILT, take only the idea and neither of their two flaws: rank by contribution to the visible region via CellularLightingCalculator::pointBorderFor, never their raw-brightness sort, and wrap through m_geometry.nearestTo before any distance test -- their cull tests an unwrapped position, which is the exact failure class #217 fixed in our border estimator."
   },
   "D11": {
-    "status": "deferred",
-    "until": "#214 lands. A differential oracle for the scroll path cannot be written against the current fork between lightingTileGather and gatherStableColumns; #214 region-parameterises the gather and is what makes one oracle cover both."
+    "status": "done",
+    "task": "#221",
+    "commit": "a9ca6e26",
+    "note": "TRIGGER FIRED AND WAS DISCHARGED. The deferral read 'until #214 lands', because a differential oracle for the scroll path could not be written while the gather was forked between lightingTileGather and gatherStableColumns. #214 landed at 9429b14d and E04 then built exactly that oracle: gatherOracleCompare rebuilds the stable grid from scratch every recompute and compares, tagged with the branch that produced it, so ONE oracle covers hit, scroll and full. Verified on the scroll path a frozen gate structurally cannot reach -- a walking live profile gave 125 scroll comparisons, 0 diffs -- and proven to fire by injection (skip the marginY gather: diff=145 maxAbs=0.450980 first=(2048,116) path=scroll). Closed as done rather than left deferred: the trigger had fired and nobody had noticed, which is the orphaning this ledger already hit once with E02/E03."
   },
   "E01": {
     "status": "accepted",

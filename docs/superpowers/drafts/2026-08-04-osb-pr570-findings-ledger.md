@@ -18,9 +18,9 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 |---|---:|---|
 | **open** | 0 | needs a call |
 | **accepted** | 19 | work is committed to; `task` names where it is tracked |
-| **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
+| **deferred** | 2 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 43 | we will not do this; `reason` is mandatory |
-| **done** | 6 | finished; `task` or `commit` says where |
+| **done** | 7 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -81,10 +81,10 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **C14** | **declined** | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … |
 | **C16** | **accepted** | Proving the cellular lighting correct and fast — quality | #216 |
 | **C17** | **done** | Proving the cellular lighting correct and fast — simplicity | f5088933 |
-| **D11** | **deferred** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | #214 lands. A differential oracle for the scroll path cannot be written against the curre… |
+| **D11** | **done** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | #221 |
 | **D13** | **deferred** | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… |
 | **D22** | **declined** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises … |
-| **D29** | **deferred** | CellularLightArray rewrite and point-li… — Point-light count cap | lighting.lights.point and lighting.gpu.point.lights have been read from a real play sessi… |
+| **D29** | **deferred** | CellularLightArray rewrite and point-li… — Point-light count cap | DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on d… |
 | **D30** | **done** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | 66ec860b |
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
 | **D34** | **accepted** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
@@ -217,7 +217,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D08** | closed | Scrollable lightmap atlas + dirty-strip… — Window-size stability (the thing that decides whether a retained grid survives) | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D09** | closed | Scrollable lightmap atlas + dirty-strip… — Calculation border sizing | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D10** | closed | Scrollable lightmap atlas + dirty-strip… — Point-vs-spread layer separation (so a re-spread strip cannot absorb point light) | equivalent | — | NO ACTION |
-| **D11** | deferred · #214 lands. A differential oracle for the scroll path cannot be written against the curre… | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D11** | done · #221 | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D12** | closed | Scrollable lightmap atlas + dirty-strip… — Measured performance evidence | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D13** | deferred · #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D14** | closed | Scrollable lightmap atlas + dirty-strip… — Output/upload side | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -235,7 +235,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D26** | closed | CellularLightArray rewrite and point-li… — Output-buffer reuse across frames | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D27** | closed | CellularLightArray rewrite and point-li… — Per-frame config/JSON work on the locked lighting path | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D28** | closed | CellularLightArray rewrite and point-li… — Out-of-view light-source culling | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D29** | deferred · lighting.lights.point and lighting.gpu.point.lights have been read from a real play sessi… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D29** | deferred · DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on d… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D30** | done · 66ec860b | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D31** | accepted · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D32** | closed | CellularLightArray rewrite and point-li… — MSAA per-sample shading | we-are-ahead | — | NO ACTION · DOCUMENT |
