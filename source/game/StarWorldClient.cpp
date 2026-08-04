@@ -1957,11 +1957,39 @@ void WorldClient::shiftAndGatherMargin(int dx, int dy) {
   // reached the Director long before it reached a test.
   GridScroll scroll = gridScroll(dx, dy, width, height);
 
+  // ONLY THE VACATED L IS CLEARED, and the asymmetry is the point. The copy below writes every cell of the
+  // overlap unconditionally, so clearing that part first is dead work -- E02 measured the scale: 163 margin
+  // cells of a 35,840-cell grid, meaning the assign() this replaces was clearing ~200x the region that
+  // needed it.
+  //
+  // The MARGIN clear is not dead and must stay. tileEvalColumnsParallel clamps away cells in unloaded
+  // sectors, so a margin cell whose sector is not resident is never written by the gather below and has to
+  // read as {0 light, not-obstacle, not-sky} -- the value begin() leaves it in the direct gather, and the
+  // reason lightingStableGather zeroes before gathering too.
+  //
+  // resize, not assign: the scratch holds the previous grid and only the covered cells are rewritten. That
+  // is safe because overlap plus the two margins cover the grid, which is asserted in grid_scroll_test
+  // rather than argued here -- and it is what lets a dims change (which resizes) still leave no stale cell.
+  //
+  // Not a performance change. The scroll path runs 5.5% of recomputes while walking and none standing
+  // still; expect no measurable frame effect.
+  m_gatherScratch.resize((size_t)width * (size_t)height);
+  auto clear = [&](RectI const& r) {
+    if (r.isEmpty())
+      return;
+    for (int nx = r.min()[0]; nx < r.max()[0]; ++nx) {
+      GatherCell* col = m_gatherScratch.ptr() + (size_t)nx * (size_t)height;
+      for (int ny = r.min()[1]; ny < r.max()[1]; ++ny)
+        col[ny] = GatherCell{};
+    }
+  };
+  clear(scroll.marginX);
+  clear(scroll.marginY);
+
   // Double-buffer shift: copy the overlap (cells present in BOTH the old and new grid) from
-  // m_gatherGrid into the zeroed scratch at the shifted position, then swap. Disjoint buffers, so
+  // m_gatherGrid into the scratch at the shifted position, then swap. Disjoint buffers, so
   // any column order is safe (no in-place memmove ordering hazard, and the dy intra-column move is a
   // plain slice copy). World tile at new index (nx, ny) was at old index (nx + dx, ny + dy).
-  m_gatherScratch.assign((size_t)width * (size_t)height, GatherCell{});
   if (!scroll.overlap.isEmpty()) {
     int nyStart = scroll.overlap.min()[1];
     int copyLen = scroll.overlap.height();

@@ -131,6 +131,60 @@ TEST(GridScrollTest, OverlapSourceStaysInsideTheOldGrid) {
   }
 }
 
+// WHY shiftAndGatherMargin MAY CLEAR ONLY THE VACATED L (E03), including the case that makes it subtle.
+//
+// The gather does NOT write every cell it is handed: tileEvalColumnsParallel clamps away cells in unloaded
+// sectors, which is why lightingStableGather zeroes before gathering at all. So the margin pre-clear is
+// load-bearing -- a margin cell whose sector is absent must read as {0 light, not-obstacle, not-sky} -- while
+// the overlap pre-clear is dead, because the copy writes every overlap cell unconditionally.
+//
+// This models both strategies rather than calling production, so it certifies the ARGUMENT, not the code.
+// It earns its place because the render gate cannot certify either: the gate freezes the world and a frozen
+// camera never scrolls. The scratch starts holding a previous grid's contents, which is the actual risk --
+// skip the clear in the wrong place and stale values from another world position survive.
+TEST(GridScrollTest, ClearingOnlyTheMarginMatchesClearingEverything) {
+  Vec2I const oldAnchor(1000, -500);
+  auto before = fullRebuild(oldAnchor);
+  auto resident = [](int wx, int wy) { return ((wx / 7) + (wy / 5)) % 3 != 0; };
+
+  for (int dx : Deltas) {
+    for (int dy : Deltas) {
+      int adx = dx < 0 ? -dx : dx, ady = dy < 0 ? -dy : dy;
+      if (adx >= Width || ady >= Height)
+        continue;   // no overlap: the caller takes a full gather, which clears everything regardless
+      Vec2I newAnchor = oldAnchor + Vec2I(dx, dy);
+      auto s = gridScroll(dx, dy, Width, Height);
+
+      std::vector<int> clearAll((size_t)Width * (size_t)Height, 0);
+      std::vector<int> clearL((size_t)Width * (size_t)Height, 0);
+      for (size_t i = 0; i < clearL.size(); ++i)
+        clearL[i] = -999 - (int)i;   // a previous grid's contents, still resident in the scratch buffer
+      for (RectI const& m : {s.marginX, s.marginY}) {
+        if (m.isEmpty())
+          continue;
+        for (int nx = m.min()[0]; nx < m.max()[0]; ++nx)
+          for (int ny = m.min()[1]; ny < m.max()[1]; ++ny)
+            put(clearL, nx, ny, 0);
+      }
+
+      for (std::vector<int>* g : {&clearAll, &clearL}) {
+        for (int nx = s.overlap.min()[0]; nx < s.overlap.max()[0]; ++nx)
+          for (int ny = s.overlap.min()[1]; ny < s.overlap.max()[1]; ++ny)
+            put(*g, nx, ny, at(before, nx + dx, ny + dy));
+        for (RectI const& m : {s.marginX, s.marginY}) {
+          if (m.isEmpty())
+            continue;
+          for (int nx = m.min()[0]; nx < m.max()[0]; ++nx)
+            for (int ny = m.min()[1]; ny < m.max()[1]; ++ny)
+              if (resident(newAnchor[0] + nx, newAnchor[1] + ny))
+                put(*g, nx, ny, worldValue(newAnchor[0] + nx, newAnchor[1] + ny));
+        }
+      }
+      EXPECT_EQ(clearAll, clearL) << "dx=" << dx << " dy=" << dy;
+    }
+  }
+}
+
 // EXTRACTION FIDELITY, and the only thing that checks it. These are the expressions that stood inline in
 // shiftAndGatherMargin before the helper existed, restated independently, so the extraction is measured
 // against what it replaced rather than against itself. The render gate structurally cannot do this job: it
