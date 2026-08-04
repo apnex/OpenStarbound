@@ -76,6 +76,7 @@ SET (star_core_tests_SOURCES
       lighting_spread_test.cpp
       lighting_point_test.cpp
       lighting_border_test.cpp
+      lighting_closedform_test.cpp
       temporal_light_gate_test.cpp
       cellular_lighting_test.cpp
       grid_scroll_test.cpp
@@ -553,6 +554,7 @@ SET (star_ci_gated_test_files
       lighting_spread_test.cpp
       lighting_point_test.cpp
       lighting_border_test.cpp
+      lighting_closedform_test.cpp
       temporal_light_gate_test.cpp
       cellular_lighting_test.cpp
       grid_scroll_test.cpp)
