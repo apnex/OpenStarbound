@@ -189,12 +189,12 @@ public:
   void setupImage(Image& image, PixelFormat format = PixelFormat::RGB24) const;
 
   // Test/tooling hooks for the Jacobi spread reference (see
-  // spreadJacobiReference in StarCellularLightArray.hpp). spreadParameters()
+  // spreadJacobiReference in StarCellularLightingOracle.hpp). spreadParameters()
   // returns the spread dropoff + brightnessLimit pulled from the active config.
   SpreadParameters spreadParameters() const;
   // pointParameters() returns the point/spread dropoffs + brightnessLimit pulled
   // from the active config, consumed by the point-lighting reference (see
-  // pointLightingReference in StarCellularLightArray.hpp).
+  // pointLightingReference in StarCellularLightingOracle.hpp).
   PointParameters pointParameters() const;
   // Runs ONLY the spread-light seeding step and copies the resulting per-cell
   // emission (light) and obstacle grids over the full calculation region, in

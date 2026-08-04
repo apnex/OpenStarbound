@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      987 files
-      238099 lines
+      989 files
+      238131 lines
       6 tiers
     Content
       assets/
@@ -219,7 +219,7 @@ source/
 │   └── lua/             vendored — excluded from every count here
 ├── core/            T1   216 files    56,164 lines
 │   └── scripting/          2 files       258 lines
-├── base/            T2    30 files     7,417 lines
+├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,423 lines
@@ -237,7 +237,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     71 files    13,605 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     71 files    13,607 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -279,7 +279,7 @@ flowchart TD
   end
   subgraph T2["T2 services"]
     direction LR
-    base["base<br/><small>30 files · 7,417 lines · Root×0</small>"]
+    base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,423 lines · Root×0</small>"]
   end
@@ -393,7 +393,7 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 <!-- BEGIN GENERATED: scripts/arch-graph.py#grantuse -->
 ```mermaid
 flowchart LR
-  base ==>|93 in 27| core
+  base ==>|94 in 28| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
@@ -466,7 +466,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `rendering → core` | 45 | 18 | load-bearing |
 | `windowing → core` | 38 | 24 | load-bearing |
 | `windowing → game` | 41 | 25 | load-bearing |
-| `base → core` | 93 | 27 | load-bearing |
+| `base → core` | 94 | 28 | load-bearing |
 | `frontend → base` | 54 | 45 | load-bearing |
 | `frontend → core` | 96 | 54 | load-bearing |
 | `frontend → windowing` | 217 | 67 | load-bearing |
@@ -536,7 +536,7 @@ frontend,game,271
 frontend,windowing,217
 game,base,158
 frontend,core,96
-base,core,93
+base,core,94
 frontend,base,54
 application,core,49
 rendering,core,45
@@ -566,7 +566,7 @@ client,rendering,1
 client,windowing,1
 ```
 
-**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 840 and `base → core` at 93 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
+**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 840 and `base → core` at 94 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
 <!-- END GENERATED: sankey -->
 
 ---
@@ -582,8 +582,8 @@ treemap-beta
     "T1 language"
         "core": 56164
     "T2 services"
+        "base": 7449
         "application": 7423
-        "base": 7417
         "platform": 142
     "T3 simulation"
         "game": 115547
@@ -602,7 +602,7 @@ treemap-beta
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
 | T1 language | `core` | 216 | 56,164 | 23.6% |
-| T2 services | `base` | 30 | 7,417 | 3.1% |
+| T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,423 | 3.1% |
 | T3 simulation | `game` | 500 | 115,547 | 48.5% |
@@ -649,14 +649,14 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [27, 3, 18, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [27, 3, 17, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
-| `base` | 17 | 11 | 3 | 18% | 1 | partly, as it stands |
+| `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |

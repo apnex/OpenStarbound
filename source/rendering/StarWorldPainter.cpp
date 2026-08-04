@@ -6,7 +6,7 @@
 #include "StarJsonExtra.hpp"
 #include "StarTelemetry.hpp"
 #include "StarLogging.hpp"  // LogMap (/debug HUD per-pass GPU timings, Rung 0)
-#include "StarCellularLightArray.hpp"  // spreadJacobiReference (CPU spread oracle for parity)
+#include "StarCellularLightingOracle.hpp"  // spreadJacobiReference + pointLightingReference (parity localizer)
 
 namespace Star {
 

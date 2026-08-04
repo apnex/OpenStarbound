@@ -1,5 +1,6 @@
 #include "StarCellularLighting.hpp"
 #include "StarCellularLightArray.hpp"
+#include "StarCellularLightingOracle.hpp"
 #include "StarImage.hpp"
 #include "StarJson.hpp"
 #include "gtest/gtest.h"

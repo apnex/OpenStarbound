@@ -11,6 +11,7 @@ SET (star_base_HEADERS
     StarBlocksAlongLine.hpp
     StarCellularLightArray.hpp
     StarCellularLighting.hpp
+    StarCellularLightingOracle.hpp
     StarCellularLiquid.hpp
     StarConfiguration.hpp
     StarDirectoryAssetSource.hpp
@@ -28,6 +29,7 @@ SET (star_base_SOURCES
     StarAssets.cpp
     StarCellularLightArray.cpp
     StarCellularLighting.cpp
+    StarCellularLightingOracle.cpp
     StarConfiguration.cpp
     StarDirectoryAssetSource.cpp
     StarMemoryAssetSource.cpp
