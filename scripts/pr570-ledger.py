@@ -353,7 +353,10 @@ PAGE = """<title>PR 570 — findings ledger</title>
 body { margin:0; background:var(--bg); color:var(--ink); line-height:1.6;
   font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   font-size:15px; }
-main { max-width:1180px; margin:0 auto; padding:3.5rem 1.5rem 6rem; display:flex;
+/* Wide on purpose: this page is scanned as a table, not read as prose. The container is doubled so
+   more verdict/evidence columns land on screen at once; running text keeps its own max-width below,
+   so widening the frame does not stretch paragraphs past a readable measure. */
+main { max-width:2360px; margin:0 auto; padding:3.5rem 1.5rem 6rem; display:flex;
   flex-direction:column; gap:1.15rem; }
 h1 { font-size:2.4rem; line-height:1.15; letter-spacing:-.02em; margin:0; text-wrap:balance;
   font-weight:660; }
