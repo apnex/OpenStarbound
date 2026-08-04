@@ -15,7 +15,6 @@ Do not edit the block below; edit the register and re-inject. `run-gates.sh` fai
 | `lua` | 5.3.6 | direct | MIT | https://www.lua.org/ | doc/OPENSOURCE.md |
 | `rpmalloc` | unversioned-vendor-drop | conditional (STAR_USE_RPMALLOC) | Public Domain | https://github.com/mjansson/rpmalloc | **none** |
 | `xxhash` | 0.8.1 | direct | BSD-2-Clause | https://github.com/Cyan4973/xxHash | doc/OPENSOURCE.md |
-| `xxhash-x86dispatch` | 0.8.1 | unreachable | BSD-2-Clause | https://github.com/Cyan4973/xxHash | doc/OPENSOURCE.md |
 
 ### Why each is vendored
 
@@ -26,6 +25,5 @@ Do not edit the block below; edit the register and re-inject. `run-gates.sh` fai
 - **lua** — The scripting language the entire mod surface is written against. Vendored by upstream Starbound; the interpreter is not swappable for a packaged one without changing script semantics.
 - **rpmalloc** — Optional allocator, one of three (jemalloc / mimalloc / rpmalloc). malloc.c is the operator-new shim and is NOT in any CMake list -- rpmalloc.c #includes it, so it compiles only through that.
 - **xxhash** — Content hashing for the render caches and the harness frame hash. xxh3.h is reached from source/core/StarXXHash.hpp via the include path, NOT through CMakeLists -- it is live despite being named in no build list.
-- **xxhash-x86dispatch** — DEAD. xxHash's runtime SIMD dispatcher, shipped alongside the amalgamation and never wired up: named in no CMake list and #included by nothing repo-wide. xxhash.h mentions it only in a doc comment. Retained pending the Director's decision to delete -- see #220.
 
 <!-- END GENERATED: extern-provenance.py -->

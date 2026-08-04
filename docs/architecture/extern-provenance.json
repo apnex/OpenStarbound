@@ -55,16 +55,6 @@
     "attributed": "doc/OPENSOURCE.md"
   },
 
-  "xxhash-x86dispatch": {
-    "paths": ["xxh_x86dispatch.c", "xxh_x86dispatch.h"],
-    "upstream": "https://github.com/Cyan4973/xxHash",
-    "licence": "BSD-2-Clause",
-    "version": "0.8.1",
-    "reach": "unreachable",
-    "why": "DEAD. xxHash's runtime SIMD dispatcher, shipped alongside the amalgamation and never wired up: named in no CMake list and #included by nothing repo-wide. xxhash.h mentions it only in a doc comment. Retained pending the Director's decision to delete -- see #220.",
-    "attributed": "doc/OPENSOURCE.md"
-  },
-
   "curve25519": {
     "paths": ["curve25519"],
     "upstream": "https://github.com/msotoodeh/curve25519",

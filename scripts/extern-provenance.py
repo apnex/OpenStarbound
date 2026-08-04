@@ -200,8 +200,16 @@ def selftest():
     run("a mandatory field goes blank", True, lambda r: r["lua"].__setitem__("upstream", ""))
     run("an unknown reach value", True, lambda r: r["lua"].__setitem__("reach", "somehow"))
     run("conditional without a condition", True, lambda r: r["rpmalloc"].pop("condition"))
-    run("a dead artefact is relabelled as compiled", True,
-        lambda r: r["xxhash-x86dispatch"].__setitem__("reach", "direct"))
+    # Both directions of the reach cross-check. The 'unreachable claimed for a compiled artefact' arm used
+    # to relabel the one dead entry we carried; deleting it (#220) removed that fixture, which the gate on
+    # this selftest caught rather than letting the arm rot into a silent skip.
+    run("a compiled artefact relabelled as dead", True,
+        lambda r: r["lua"].__setitem__("reach", "unreachable"))
+    # A DELIBERATE MUST-NOT-FIRE, recording a real limit rather than implying coverage: `header` and
+    # `direct` both mean "named in a CMake list", so nothing here can tell them apart. Confusing those two
+    # mislabels a column; confusing either with `unreachable` gets live code deleted, and that IS caught.
+    run("header vs direct -- NOT distinguishable, and not claimed to be", False,
+        lambda r: r["fast_float"].__setitem__("reach", "direct"))
     print()
     if fails:
         print("SELFTEST: %d FAILED" % fails)
