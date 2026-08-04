@@ -17,9 +17,9 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 5 | work is committed to; `task` names where it is tracked |
-| **deferred** | 2 | not now; `until` names the trigger, and is mandatory |
-| **declined** | 43 | we will not do this; `reason` is mandatory |
+| **accepted** | 4 | work is committed to; `task` names where it is tracked |
+| **deferred** | 1 | not now; `until` names the trigger, and is mandatory |
+| **declined** | 45 | we will not do this; `reason` is mandatory |
 | **done** | 21 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
@@ -45,7 +45,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **B05** | **declined** | `hdr-layout-claim-unsupported` | NOT_REAL. Their HDR layout claim is unsupported by their own tree. |
 | **B06** | **declined** | `lightmap-upload-version-gate` | NOT_REAL. Their lightmap upload version gate repairs a defect introduced earlier in the s… |
 | **B07** | **declined** | `fullbright-version-gate-regression` | NOT_REAL. The fullbright regression they fix is one they introduced with the version gate… |
-| **B08** | **accepted** | `point-light-cap-and-cull` | #219 |
+| **B08** | **declined** | `point-light-cap-and-cull` | #219 |
 | **B09** | **declined** | `lightmap-buffer-reuse` | NOT_REAL for us. Lightmap buffer reuse is already served by our existing allocation path;… |
 | **B10** | **declined** | `unset-sentinel-in-clip-rect` | REAL_BUT_NOT_OURS. Checked our clip-rect handling directly; the unset-sentinel shape they… |
 | **B11** | **declined** | `ci-vcpkg-binary-cache` | COVERED by D65 (closed different-tradeoff). True that build_windows has no persisted vcpk… |
@@ -84,7 +84,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D11** | **done** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | #221 |
 | **D13** | **deferred** | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… |
 | **D22** | **declined** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises … |
-| **D29** | **deferred** | CellularLightArray rewrite and point-li… — Point-light count cap | DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on d… |
+| **D29** | **declined** | CellularLightArray rewrite and point-li… — Point-light count cap | DIRECTOR DECISION 2026-08-05, on the evidence the deferral was waiting for. Both counters… |
 | **D30** | **done** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | 66ec860b |
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
 | **D34** | **done** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
@@ -158,7 +158,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **B05** | declined · NOT_REAL. Their HDR layout claim is unsupported by their own tree. | `hdr-layout-claim-unsupported` | not examined | unknown | CHECK · DROP |
 | **B06** | declined · NOT_REAL. Their lightmap upload version gate repairs a defect introduced earlier in the s… | `lightmap-upload-version-gate` | not examined | unknown | CHECK · DROP |
 | **B07** | declined · NOT_REAL. The fullbright regression they fix is one they introduced with the version gate… | `fullbright-version-gate-regression` | not examined | unknown | CHECK · DROP |
-| **B08** | accepted · #219 | `point-light-cap-and-cull` | not examined | unknown | CHECK · DROP |
+| **B08** | declined · #219 | `point-light-cap-and-cull` | not examined | unknown | CHECK · DROP |
 | **B09** | declined · NOT_REAL for us. Lightmap buffer reuse is already served by our existing allocation path;… | `lightmap-buffer-reuse` | not examined | unknown | CHECK · DROP |
 | **B10** | declined · REAL_BUT_NOT_OURS. Checked our clip-rect handling directly; the unset-sentinel shape they… | `unset-sentinel-in-clip-rect` | not examined | unknown | CHECK · DROP |
 | **B11** | declined · COVERED by D65 (closed different-tradeoff). True that build_windows has no persisted vcpk… | `ci-vcpkg-binary-cache` | not examined | unknown | CHECK · DROP |
@@ -235,7 +235,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D26** | closed | CellularLightArray rewrite and point-li… — Output-buffer reuse across frames | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D27** | closed | CellularLightArray rewrite and point-li… — Per-frame config/JSON work on the locked lighting path | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D28** | closed | CellularLightArray rewrite and point-li… — Out-of-view light-source culling | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D29** | deferred · DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on d… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D29** | declined · DIRECTOR DECISION 2026-08-05, on the evidence the deferral was waiting for. Both counters… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D30** | done · 66ec860b | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D31** | accepted · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D32** | closed | CellularLightArray rewrite and point-li… — MSAA per-sample shading | we-are-ahead | — | NO ACTION · DOCUMENT |

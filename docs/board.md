@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**164 tasks** across 2 store(s): 3 in_progress, 33 pending, 128 completed
+**164 tasks** across 2 store(s): 3 in_progress, 31 pending, 130 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 163 tasks, ids 64–227
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 160, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 162, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 128.
+**Completed tasks citing no commit and no doc:** 80 of 130.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -163,7 +163,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#148](#c29c1332-148) | `c29c1332` | done | RI-1: Renderer contract — delete the dead, exile the instrumentation | — | — |
 | [#149](#c29c1332-149) | `c29c1332` | done | ENV-1: RETRACTED — env oracle was run outside its contract (N=4); at N=1 it is 380 MATCH / 0 DIFF | — | — |
 | [#150](#c29c1332-150) | `c29c1332` | done | RT-0: PROVEN on hardware — D7 confirmed (60,267 × GL_INVALID_OPERATION; world goes black). Explains #204/#285/#510; NOT… | — | — |
-| [#151](#c29c1332-151) | `c29c1332` | done | RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading) | — | `board.md` |
+| [#151](#c29c1332-151) | `c29c1332` | done | RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading) | — | — |
 | [#152](#c29c1332-152) | `c29c1332` | done | F1+F2a+F3a DONE: GlFrameBuffer, GlPass, GlTargets extracted and certified | — | — |
 | [#153](#c29c1332-153) | `c29c1332` | done | GATE-1: SOLVED, but not the way I planned — in-process A/B of two code paths, not a golden hash | — | — |
 | [#154](#c29c1332-154) | `c29c1332` | done | F3b DONE: GlEffects extracted; load no longer binds by accident (c1d4d0533, c6ffbdc3d) | — | — |
@@ -215,14 +215,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
-| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1 RE-SCOPED: guard landed (b1e66be4) but its ARB arm calls the CORE 4.0 pointer -- null deref on 3.x+ARB | `b1e66be4` | — |
+| [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | `b18797e4` `b1e66be4` | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
@@ -238,7 +238,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the… | — | — |
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
 | [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | — |
-| [#227](#c29c1332-227) | `c29c1332` | open | ATTRIB-1: five of seven vendored artefacts have no OPENSOURCE.md entry, and the register field is displayed but never c… | — | — |
+| [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | `122ca40a` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1846,8 +1846,6 @@ FBOs are multisampled=false and safe to sample under AA).
 #### #151 — RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading)
 
 status: **completed**
-
-- cited in `docs/board.md`
 
 ```
 DONE 2026-07-14 @ ffd176e2a. Half the hypothesis was right, and the control caught the other half.
@@ -3469,6 +3467,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `8366f2f6` board: ledger drift corrected (10 rows); #211 re-scoped to the ARB null-deref; #227 attribution gap filed [#204]
 - `fa6f4d8f` ledger: ten rows were done in the tree and still recorded as accepted
 - `a0bbb0c1` ledger: D11 done at a9ca6e26; D29's measurement trigger has fired and it now needs a decision [#204]
 - `87e92674` board: #220 CLOSED -- all 5 ledger rows (D34/D59/D60/E10/E06); 2 findings left for Director decision [#204]
@@ -3808,10 +3807,11 @@ OPEN FOLLOW-UPS:
 
 <a id="c29c1332-211"></a>
 
-#### #211 — GL-GUARD-1 RE-SCOPED: guard landed (b1e66be4) but its ARB arm calls the CORE 4.0 pointer -- null deref on 3.x+ARB
+#### #211 — GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4)
 
-status: **pending**
+status: **completed**
 
+- `b18797e4` fix(gl): the sample-shading guard admitted ARB but called the core 4.0 entry point
 - `b1e66be4` fix(gl): guard the GL 4.0 sample-shading calls; enforce the A/B config rule
 
 ```
@@ -4565,52 +4565,28 @@ suppresses temporal recomputes as well as gather rebuilds.
 
 <a id="c29c1332-227"></a>
 
-#### #227 — ATTRIB-1: five of seven vendored artefacts have no OPENSOURCE.md entry, and the register field is displayed but never checked
+#### #227 — ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspondence
 
-status: **pending**
+status: **completed**
+
+- `122ca40a` attrib: attribute all seven vendored artefacts, and gate the field that was never checked
 
 ```
-Found 2026-08-04 while auditing the ledger. Two separable halves: a CONTENT gap and a MECHANISM gap. The mechanism half is the one that lets the content half grow.
+Both halves closed.
 
-CONTENT GAP -- licence attribution missing for five of seven vendored artefacts. From
-docs/architecture/extern-provenance.json, `attributed` is null for:
-    curve25519          MIT
-    fast_float          Apache-2.0 OR MIT OR BSL-1.0
-    fmt                 MIT
-    rpmalloc            Public Domain
-    imgui_lua_bindings  UNSTATED-IN-VENDORED-COPY
-Only `lua` and `xxhash` point at doc/OPENSOURCE.md.
+CONTENT: five entries added to doc/OPENSOURCE.md (curve25519, fast_float, fmt, rpmalloc, imgui_lua_bindings); register `attributed` now set for all seven. Licence text taken from the VENDORED copies -- what we actually redistribute -- not from upstream repos.
 
-This matters more than internal hygiene: origin is a PUBLIC fork, and MIT and Apache-2.0 both
-require the licence and copyright notice to travel with redistribution. We ship these in the binary
-and in the tree. rpmalloc (public domain) carries no legal obligation but should be listed for
-consistency; fast_float is multi-licensed, so the entry must say which licence we take it under.
+imgui_lua_bindings was the filed worst case and checking upstream CHANGED the answer rather than confirming it. There is no LICENCE file and no header, but the upstream README carries an express permission grant in informal terms, explicitly covering inclusion in an open source project. Quoted verbatim in the entry, because a paraphrase of a grant is not the grant. We are squarely inside it: open-source fork, not sold, authorship not claimed. Register licence corrected from "UNSTATED-IN-VENDORED-COPY" -- true of the file, false of the project. Not a removal decision after all.
 
-imgui_lua_bindings IS THE WORST CASE AND IS NOT JUST A MISSING ENTRY: the vendored copy has NO
-licence header at all, so there is nothing to attribute FROM. Its upstream
-(github.com/patrickriordan/imgui_lua_bindings) must be checked for a LICENCE file; if there is none,
-the honest options are to record it as unlicensed-and-therefore-all-rights-reserved (which is a real
-redistribution problem), or to replace/remove the binding. Do not invent a licence for it.
+Its terms impose exactly one obligation that silence would have breached: "don't ... claim that the source code was made by you". A vendored copy with no header and no attribution entry is the closest thing to an implicit authorship claim, so the entry is the fix. The README also says "(let me know please!)" -- a request, not a condition; contacting the author is outward-facing and is the Director's call, NOT actioned.
 
-MECHANISM GAP -- `attributed` is rendered but never enforced. scripts/extern-provenance.py builds
-the column in table() and reads it in the doc, but check()'s required-field list is
-("upstream", "licence", "version", "reach", "why") -- `attributed` is absent. So the doc honestly
-prints "**none**" five times and no gate cares whether that count ever grows, and a NEW vendored
-artefact can land unattributed and pass clean. Deliberately nullable is right (it records the gap
-instead of hiding it); ungated is not.
+fast_float is tri-licensed (Apache-2.0 OR MIT OR BSL-1.0); we take MIT and the entry says which, rather than leaving a reader to guess.
 
-SUGGESTED SHAPE, Director's call on the ratchet:
-  1. Add the five entries to doc/OPENSOURCE.md and set `attributed` for each.
-  2. Resolve imgui_lua_bindings' licence upstream first -- it may not be a documentation fix.
-  3. Add a RATCHET rather than a hard requirement: assert the count of unattributed artefacts never
-     INCREASES (same pattern as boundary_ratchet's --max-sink), so the remaining known gaps stay
-     visible while new ones fail. A hard "every artefact must be attributed" rule would be red on
-     the day it lands, which is how gates get disabled.
+MECHANISM: `attributed` was rendered in the generated table and required by nothing -- that is how five went missing behind a green gate. It now checks CORRESPONDENCE rather than declaration: the named file must exist AND actually mention the artefact's upstream URL. Matched on upstream, not our register name, because the name is ours and can drift while the URL is what a reader follows. Four selftest arms including the load-bearing one -- a register naming an attribution file that never mentions the artefact.
 
-Precedent worth reusing: B13/B34 established that our attribution sweep must include doc/OPENSOURCE.md,
-because PR-570's own grep was scoped to source/ and left their attribution behind. Same trap, and the
-one already-correct half (tinyformat's entry was removed WITH the file at 4e4ced84) shows the
-deletion direction is handled -- it is the ADD direction that has no instrument.
+A ratchet turned out to be the wrong instrument: with all seven attributed we are at the floor, so a hard requirement is satisfiable today and strictly stronger.
+
+extern-provenance selftest 18/18; run-gates 27/27.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
