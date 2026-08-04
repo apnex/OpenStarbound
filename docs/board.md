@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 148, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 147, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -227,7 +227,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#214](#c29c1332-214) | `c29c1332` | open | GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns | — | — |
 | [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
-| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + lever RE-MEASURED: 31.4% region, 11.2% lighting CPU. Give-back still unmeasured (wrong scene) | `817e54e8` | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
@@ -3469,6 +3469,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `2d094c06` board: #211 closed at b1e66be4; #217 re-measured -- lever holds at -31.4% region, -11.2% lighting CPU [#204]
 - `02de4584` fix(spec-artifact): stamp the page's provenance, not HEAD
 - `471ec6c9` board: #218 closed at 9e56c204; comment standard + gate live [#204]
 - `a74351e4` board: #217 closed at 817e54e8; re-profile outstanding [#204]
@@ -4116,38 +4117,43 @@ so in the commit.
 
 <a id="c29c1332-217"></a>
 
-#### #217 — BORDER-1 DONE (817e54e8) + lever RE-MEASURED: 31.4% region, 11.2% lighting CPU. Give-back still unmeasured (wrong scene)
+#### #217 — BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix costs +5.3% region
 
 status: **completed**
 
 - `817e54e8` fix(lighting): adaptive border under-sized coloured lights, dropping them
 
 ```
-FIX: 817e54e8. The #170 adaptive border estimator measured point-light reach from the channel MEAN while the engine uses the channel MAX, so saturated coloured lights 32-48 cells outside the query rect were DROPPED, not dimmed. Fixed with three changes: color.max(), a half-open +1, and a geometry wrap. Five tests in core_tests, each proven to fire by injection.
+FIX: 817e54e8. #170's border estimator measured point-light reach from the channel MEAN while the engine uses the channel MAX, so saturated coloured lights 32-48 cells outside the query rect were DROPPED, not dimmed. Fixed with color.max(), a half-open +1, and a geometry wrap. Five tests in core_tests, each proven to fire by injection.
 
-RE-MEASURED 2026-08-04 on the headless live-profile harness (scripts/render-profile.sh, real Intel Arc GPU via offscreen EGL, sim running, unattended). Two adjacent 60s legs at bookmark 'explore', both confirmed warping to CelestialWorld:703932736:-540577746:42942814:9:1, config pin echoed True then False.
+MEASURED 2026-08-04 on the headless live-profile harness (real Intel Arc GPU, offscreen EGL, sim running, unattended). All legs adjacent, same bookmark, config pin echoed per leg, acceptance test = calc.cells must differ.
 
-  lighting.calc.cells        24576 vs 35840   -31.4%  (lever engaged -- this is the acceptance test)
-  lighting.cpu.total.us      136.3 vs 153.5   -11.2%
-  lighting.cpu.gather.us      51.3 vs  79.9   -35.9%
-  lighting.cpu.begin.us       18.1 vs  28.8   -37.1%
-  lighting.gpu.spread.gpu_us 483.3 vs 573.9   -15.8%
-  lighting.gpu.cpu_cost.us   343.9 vs 420.9   -18.3%
+THE SCENE MATTERS, AND `explore` IS THE WRONG ONE. A 30s probe per location reading lighting.border.needed (computed unconditionally, so it is a valid search key regardless of the lever):
+  explore              border  4   maxInt 0.96   12,660 point of 35,865 sources
+  00-Ocean-Lab         border 31   maxInt 1.00   19,392 point of 19,392
+  01-Lava Refinery     border 31   maxInt 1.00   41,520 point of 58,062
+  03-Surface Outpost   border 28   maxInt 1.00   21,411 point of 21,909
+  04-Ocean Factory     border 34   maxInt 1.00   16,950 point of 16,950   <- clears the 32 floor
+Director's intuition, correct: the machine bases run 7-8x explore's border requirement.
 
-THE LEVER SURVIVES THE FIX. The 31.4% region reduction matches #170's original 4.375x -> 3.000x exactly, so the correctness fix did not cost the region win at this location.
+A/B AT 04-OCEAN FACTORY (border 34, the only location where the border is genuinely adaptive):
+  lighting.calc.cells        25872 vs 35840   -27.8%
+  lighting.cpu.total.us       77.8 vs  86.5   -10.1%
+  lighting.gpu.spread.gpu_us 574.3 vs 655.5   -12.4%
+  lighting.cpu.export.us      50.9 vs  60.9   -16.6%
+A/B at explore (border pinned at the 32 floor): -31.4% region, -11.2% lighting CPU.
+The lever saves LESS in harder scenes because they need a wider border. Degrades gracefully.
 
-WHAT THIS DOES NOT MEASURE, AND WHY. lighting.border.needed is 4 in BOTH legs -- far below the 32-cell spread floor, so the clamp pins the border at the floor and the mean-vs-max correction changes nothing at 'explore'. This establishes the lever's CURRENT VALUE, not the give-back from #217. The give-back appears only where saturated lights sit 32-48 cells outside the query rect.
+THE GIVE-BACK, DERIVED. The cell counts resolve exactly to a 128x64 light window: b=48 -> 224x160 = 35840; b=32 -> 192x128 = 24576; b=34 -> 196x132 = 25872, no residue. With maxIntensity 1.00 present, the old mean-based estimator under-credited saturated lights ~3x and would have fallen below the 32 floor, clamping to 24576. The corrected estimator returns 34 -> 25872. So the correctness fix costs +5.3% lighting region (1296 cells) at this scene, against a lever still worth 27.8% region and 10.1% CPU. ASSUMPTION STATED: that the old estimator landed below 32 here. Not executed on a pre-#217 binary; derived from the saturation ratio and the observed floor behaviour.
 
-HOW TO FIND THAT SCENE: lighting.border.needed between 32 and 48 is the search key. Any location where it pins at 4 is silent on the question. Sweep the bookmarks reading that gauge, then A/B there.
-
-THREE INVALID ATTEMPTS PRECEDED THIS, both causes now fixed in b1e66be4:
-1. Stale --warp preflight cache: it listed a bookmark the live save no longer has, so the preflight passed and the engine rejected it after a full world load. Message widened to cover deletions, not just additions.
-2. Config pin inheritance: --set persists to storage-perf/starbound.config, so a leg that relies on the CODE DEFAULT silently inherits the previous leg's value. Both legs ran with the lever off and produced a full table of plausible deltas that were pure recompute-count artefact. The config is now snapshot/restored via trap.
+STRUCTURAL FINDINGS BEYOND THE BORDER (both recorded in the render-harness memory):
+- The machine bases are almost ENTIRELY point lights (Ocean Lab, Ocean Factory: sources == point lights exactly). explore is the opposite, mostly spread. A point-light lever is a BASE lever, not an exploring one.
+- LIGHT COUNT DOES NOT PREDICT LIGHTING CPU. Lava Refinery: 41,520 lights at 240.7us. Ocean Factory: 16,950 at 73.8us. Ocean Lab: 19,392 at 282.9us. Region size and recompute rate dominate. Direct warning for ledger row D29 -- do not size a point-light cap from a count.
 
 STILL OUTSTANDING:
-- The give-back measurement above (needs a border.needed 32-48 scene).
-- Defect 3 (unwrapped positions) is fixed but has no test -- world geometry is not reachable from a core_tests unit test. Needs a seam scene in game_tests or an x-wrapping world in the harness.
-- No visual/pixel confirmation that previously-dropped edge lights are back. The GATE (scripts/render-gate.sh) can do this as a byte-identical A/B and does not need the Director; it was not run.
+- Defect 3 (unwrapped positions) is fixed but untested; world geometry is unreachable from a core_tests unit test. Needs a seam scene.
+- No pixel confirmation that previously-dropped lights are back. scripts/render-gate.sh can do this as a byte-identical A/B, unattended. Not run.
+- The give-back is derived, not executed. A pre-#217 binary at 04-Ocean Factory would measure it directly.
 ```
 
 <a id="c29c1332-218"></a>
