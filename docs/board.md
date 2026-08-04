@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**145 tasks** across 2 store(s): 3 in_progress, 27 pending, 115 completed
+**146 tasks** across 2 store(s): 3 in_progress, 27 pending, 116 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 144 tasks, ids 64–208
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 145 tasks, ids 64–209
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 138, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 139, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -62,7 +62,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 115.
+**Completed tasks citing no commit and no doc:** 80 of 116.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -214,11 +214,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
-| [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
+| [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
+| [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3395,6 +3396,8 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `21ba119a` spec: `statistics` is not a platform service -- stage 2 of dissolving `platform` [#204]
+- `5d276333` spec: the numerator nobody read -- four stale figures, two of them whole tables [#204]
 - `42b60f5d` spec: F4 was overclaimed, and the document warned about exactly this
 - `298bdd16` spec: eight wrong numbers, every one re-measured before changing
 - `1b5f6f00` gates: the excludes facet must agree with the register — and it did not
@@ -3552,6 +3555,8 @@ Director ratified 2026-08-02. Derived from four constraints rather than chosen: 
 
 status: **in_progress** · blocked by: #206, #205 · blocks: #208
 
+- `60a66f02` spec: P2P networking is a TRANSPORT -- stage 1 of dissolving `platform`
+- `bfe38c92` board: export -- celestial split, 48 components [#207]
 - `706c7f4a` spec: split `celestial` -- 45 -&gt; 48 components, and the split was already in the tree
 - `890218ab` spec: symmetry decides the kind -- the rule three pairs already followed
 - `2920def1` gates: A3's Law of One, finally read -- and I nearly cheated it
@@ -3641,6 +3646,35 @@ AGGREGATE REVIEW. Approval is aggregate only.
 GATE RE-HOMING. grant_sweep, link_sweep, spec_measures, dedup_measure, host_api_neutral, boundary_ratchet currently anchor on current-state measurements inside a target-state document; they belong to section 17's delta.
 
 NOT IN SCOPE: the design-conformance instrument (survey flag F4). Director scoped it out 2026-08-02 — "we don't have a design spec yet, that tooling is currently out of scope." The obligation is still stated in the document; what must be said out loud is that nothing enforces it yet.
+```
+
+<a id="c29c1332-209"></a>
+
+#### #209 — TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated
+
+status: **completed**
+
+```
+DONE at 5d276333, pushed to origin/integration, 21/21 gates green.
+
+FOUR stale figures found, not the two originally filed — all green through 21/21 gates because
+COUNT_DRIFT reads the DENOMINATOR of an `N of M` and never the numerator:
+  1. §7 ZONE tally: machine 14, domain 14 — column summing to 45 beside a 49-row register
+  2. §12 TWICE: two independent tables at `32 of 41` / `26 of 41` / `19 of 41` — the 41-component
+     era, two register generations stale, one with the correct figures in the prose beneath it
+  3. `world_sim` "linking 12 of 49", contradicting the generated diagram above it saying 13;
+     the missing member is `platform`
+  4. the subtraction claim: "minus `windowing`, `frontend`, `transcript` ... three grants" — the
+     real grant difference is FIVE (omitted `colocation` + `starmap_authority`, the two carrying
+     the argument), and five grants remove NINE components
+  plus "15 references" -> 29 across 18 lines (the figure gates.yml documents as the undercount)
+
+FOUR instruments so they cannot go stale again: tree-map#zones (generated), CLOSURE_DRIFT (3 tiers),
+MODAL_ZONE, SUBTRACTION. ZONE_FACES declared once in spec-model (§7's table and composition-graphs'
+diagram titles had drifted apart on 3 of 4). STALE_ZONE no longer reads HTML comments.
+
+Stages 2-5 of the `platform` decomposition no longer require hand-editing any closure figure —
+the gate names the exact number.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
