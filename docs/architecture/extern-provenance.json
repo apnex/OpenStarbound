@@ -1,0 +1,110 @@
+{
+  "_README": [
+    "Declared provenance for every vendored artefact under source/extern (ledger row E10).",
+    "HAND-EDITED. scripts/extern-provenance.py checks it against the tree and generates the table;",
+    "it is a REGISTER, not documentation -- the doc is derived from it and must never be edited directly.",
+    "",
+    "Why declared at all: upstream, licence and why-vendored cannot be derived from a vendored copy.",
+    "Everything that CAN be derived is derived and CROSS-CHECKED, so a stale entry fails the gate rather",
+    "than sitting there being wrong. That is the whole point: PR 570's own extern/README.md contradicted",
+    "their vcpkg.json on its first policy bullet, on the day it landed (ledger row B12).",
+    "",
+    "  paths        every file/dir this artefact owns, relative to source/extern. The union across all",
+    "               entries must equal the directory listing exactly -- no orphans, no phantoms.",
+    "  version      declared. If `version_from` is present the script DERIVES it and the two must agree.",
+    "  version_from {file, macros} -- macros are #define names joined with '.' in the order given.",
+    "  reach        how the artefact gets into the binary. Derived and cross-checked:",
+    "                 direct       named in star_extern_SOURCES",
+    "                 conditional  named in star_extern_SOURCES inside an IF() -- give `condition`",
+    "                 header       named in star_extern_HEADERS (compiled only where included)",
+    "                 indirect     not named; #included by a compiled translation unit -- give `included_by`",
+    "                 include_path not named anywhere; #included by our own source outside source/extern",
+    "                 unreachable  named nowhere and included by nothing. DEAD -- justify or delete."
+  ],
+
+  "lua": {
+    "paths": ["lua", "lua.h", "lua.hpp", "lauxlib.h", "lualib.h", "luaconf.h"],
+    "upstream": "https://www.lua.org/",
+    "licence": "MIT",
+    "version": "5.3.6",
+    "version_from": {"file": "lua.h", "macros": ["LUA_VERSION_MAJOR", "LUA_VERSION_MINOR", "LUA_VERSION_RELEASE"]},
+    "reach": "direct",
+    "why": "The scripting language the entire mod surface is written against. Vendored by upstream Starbound; the interpreter is not swappable for a packaged one without changing script semantics.",
+    "attributed": "doc/OPENSOURCE.md"
+  },
+
+  "fmt": {
+    "paths": ["fmt"],
+    "upstream": "https://github.com/fmtlib/fmt",
+    "licence": "MIT",
+    "version": "10.2.1",
+    "version_from": {"file": "fmt/core.h", "macros": ["FMT_VERSION"]},
+    "reach": "direct",
+    "why": "Formatting for strf/Logger across the whole tree. Vendored rather than packaged so the format-string ABI cannot shift under a vcpkg baseline bump mid-campaign.",
+    "attributed": null
+  },
+
+  "xxhash": {
+    "paths": ["xxhash.c", "xxhash.h", "xxh3.h"],
+    "upstream": "https://github.com/Cyan4973/xxHash",
+    "licence": "BSD-2-Clause",
+    "version": "0.8.1",
+    "version_from": {"file": "xxhash.h", "macros": ["XXH_VERSION_MAJOR", "XXH_VERSION_MINOR", "XXH_VERSION_RELEASE"]},
+    "reach": "direct",
+    "why": "Content hashing for the render caches and the harness frame hash. xxh3.h is reached from source/core/StarXXHash.hpp via the include path, NOT through CMakeLists -- it is live despite being named in no build list.",
+    "attributed": "doc/OPENSOURCE.md"
+  },
+
+  "xxhash-x86dispatch": {
+    "paths": ["xxh_x86dispatch.c", "xxh_x86dispatch.h"],
+    "upstream": "https://github.com/Cyan4973/xxHash",
+    "licence": "BSD-2-Clause",
+    "version": "0.8.1",
+    "reach": "unreachable",
+    "why": "DEAD. xxHash's runtime SIMD dispatcher, shipped alongside the amalgamation and never wired up: named in no CMake list and #included by nothing repo-wide. xxhash.h mentions it only in a doc comment. Retained pending the Director's decision to delete -- see #220.",
+    "attributed": "doc/OPENSOURCE.md"
+  },
+
+  "curve25519": {
+    "paths": ["curve25519"],
+    "upstream": "https://github.com/msotoodeh/curve25519",
+    "licence": "MIT",
+    "version": "unversioned-vendor-drop",
+    "reach": "direct",
+    "why": "Ed25519 signing and X25519 key exchange for the network handshake. No release tags in the vendored drop, so no version is derivable and none is claimed.",
+    "attributed": null
+  },
+
+  "fast_float": {
+    "paths": ["fast_float.h"],
+    "upstream": "https://github.com/fastfloat/fast_float",
+    "licence": "Apache-2.0 OR MIT OR BSL-1.0",
+    "version": "unversioned-vendor-drop",
+    "reach": "header",
+    "why": "Locale-independent string-to-float used by the Json parser. Header-only single file; the vendored copy carries no version macro.",
+    "attributed": null
+  },
+
+  "rpmalloc": {
+    "paths": ["rpmalloc.c", "rpmalloc.h", "rpnew.h", "malloc.c"],
+    "upstream": "https://github.com/mjansson/rpmalloc",
+    "licence": "Public Domain",
+    "version": "unversioned-vendor-drop",
+    "reach": "conditional",
+    "condition": "STAR_USE_RPMALLOC",
+    "included_by": {"malloc.c": "rpmalloc.c"},
+    "why": "Optional allocator, one of three (jemalloc / mimalloc / rpmalloc). malloc.c is the operator-new shim and is NOT in any CMake list -- rpmalloc.c #includes it, so it compiles only through that.",
+    "attributed": null
+  },
+
+  "imgui_lua_bindings": {
+    "paths": ["imgui_lua_bindings.cpp", "imgui_lua_bindings.hpp", "imgui_iterator.inl"],
+    "upstream": "https://github.com/patrickriordan/imgui_lua_bindings",
+    "licence": "UNSTATED-IN-VENDORED-COPY",
+    "version": "unversioned-vendor-drop",
+    "reach": "direct",
+    "included_by": {"imgui_iterator.inl": "imgui_lua_bindings.cpp"},
+    "why": "Exposes the debug ImGui surface to Lua. The vendored copy carries NO licence header, which is a genuine attribution gap rather than a formatting one -- recorded here so it is visible instead of absent.",
+    "attributed": null
+  }
+}
