@@ -12,6 +12,75 @@ cd /root/frackin/OpenStarbound
 BIN=dist/starbound
 LOG=harness/logs/starbound.log
 
+# Which oracles are allowed a nonzero difference, and how much. envoracle and spreadoracle are exact by
+# construction. paralloracle is not: see the long note at its call site in BackdropPass, and the block
+# below that reads it.
+oracle_tolerance() {
+  case "$1" in
+    paralloracle) echo 0.00392157 ;;   # 1/255: the 8-bit LSB
+    *)            echo 0 ;;
+  esac
+}
+
+# Factored out of the loop ONLY so --selftest can drive it with synthetic logs. A tolerance that has never
+# been watched to fire is not known to fire, and this file already carries three warnings about checks that
+# report without gating; a fourth arm added on trust would be the same mistake wearing a number.
+oracle_verdict() {
+  local o="$1" log="$2" tol total ok bad skip worst
+  tol=$(oracle_tolerance "$o")
+  total=$(grep -c "\[$o\]" "$log")
+  ok=$(grep -cE "\[$o\] (MATCH|EXACT)" "$log")
+  bad=$(grep -cE "\[$o\] (DIFF|diff=)" "$log")
+  skip=$(grep -cE "\[$o\] SKIPPED" "$log")
+  worst=$(grep -oE "\[$o\] .*maxAbs=[0-9.]+" "$log" | sed 's/.*maxAbs=//' | sort -g | tail -1)
+  printf "  %-14s ran=%-5s pass=%-5s DIFF=%-5s SKIPPED=%-5s worst=%-9s" \
+    "$o" "$total" "$ok" "$bad" "$skip" "${worst:-none}"
+  # Spelled out arm by arm rather than folded into one condition: every way of NOT being clean has to land
+  # on an explicit failure, or the next tolerance someone adds acquires a silent-pass hole.
+  if [ "$total" -eq 0 ]; then
+    echo "   <-- FAIL: never ran"; return 1
+  elif [ $((ok + bad)) -eq 0 ]; then
+    echo "   <-- FAIL: nothing but SKIPPED -- the oracle was never armed"; return 1
+  elif [ "$bad" -eq 0 ]; then
+    echo "   ok"; return 0
+  elif [ "$tol" = "0" ]; then
+    echo "   <-- FAIL: zero-diff oracle reported a difference"; return 1
+  elif [ -z "$worst" ]; then
+    echo "   <-- FAIL: reported a difference with no maxAbs to judge it by"; return 1
+  elif [ "$(awk -v w="$worst" -v t="$tol" 'BEGIN{print (w>t)?1:0}')" -eq 1 ]; then
+    echo "   <-- FAIL: maxAbs $worst exceeds the $tol tolerance -- blend/compose bug, not rounding"; return 1
+  else
+    echo "   ok (within $tol)"; return 0
+  fi
+}
+
+if [ "${1:-}" = "--selftest" ]; then
+  tmp=$(mktemp) || exit 1
+  trap 'rm -f "$tmp"' EXIT
+  fails=0
+  check() {   # $1=description  $2=expected verdict (ok|fail)  $3=oracle  $4=synthetic log body
+    printf '%s\n' "$4" > "$tmp"
+    if oracle_verdict "$3" "$tmp" >/dev/null; then got=ok; else got=fail; fi
+    if [ "$got" != "$2" ]; then
+      echo "  SELFTEST FAIL: $1 -- expected $2, got $got"; fails=$((fails + 1))
+    else
+      echo "  ok   ($got, as expected)  $1"
+    fi
+  }
+  echo "=== render-gate --selftest: every verdict arm, both directions ==="
+  check "clean paralloracle"                 ok   paralloracle "[paralloracle] EXACT (0 diff) N=4"
+  check "paralloracle diff INSIDE tolerance" ok   paralloracle "[paralloracle] diff=738507 maxAbs=0.00073 first=(1,2) N=4"
+  check "paralloracle diff OVER tolerance"   fail paralloracle "[paralloracle] diff=12 maxAbs=0.05000 first=(1,2) N=4"
+  check "paralloracle diff with no maxAbs"   fail paralloracle "[paralloracle] diff=12 first=(1,2) N=4"
+  check "paralloracle never ran"             fail paralloracle "[somethingelse] EXACT"
+  check "paralloracle only SKIPPED"          fail paralloracle "[paralloracle] SKIPPED (absent fbo) N=4"
+  check "clean spreadoracle"                 ok   spreadoracle "[spreadoracle] MATCH"
+  check "zero-tolerance oracle, any diff"    fail spreadoracle "[spreadoracle] MATCH
+[spreadoracle] DIFF=1 maxAbs=0.00001"
+  echo
+  [ "$fails" -eq 0 ] && { echo "SELFTEST: PASS"; exit 0; } || { echo "SELFTEST: $fails FAILED"; exit 1; }
+fi
+
 # THE STALENESS GUARD, AND IT WAS ALREADY WRONG ONCE. It used to assert one thing only -- that the log
 # is newer than the binary -- which a FAILED BUILD satisfies trivially: the compile errors out, the
 # binary never moves, this script deletes the log and writes a fresh one, and the gate certifies code
@@ -61,14 +130,22 @@ echo "=== oracles ==="
 # EXACT. A grep for "MATCH" scores paralloracle 0/0/0 and prints DIFF=0 -- a screaming oracle read as
 # a clean one. Match on what each one ACTUALLY writes, and require a nonzero pass count: an oracle that
 # said nothing at all is not a pass, it is an oracle that never ran.
+#
+# NOT EVERY ORACLE IS A ZERO-DIFF ORACLE, AND READING THEM AS IF THEY WERE MADE THIS GATE CRY WOLF.
+# paralloracle is a BOUNDED-diff gate by construction -- BackdropPass says so at the call site and in the
+# line it emits ("<=~1 LSB expected: premult double-rounding"), because the premultiplied parallax cache
+# double-rounds every partial-alpha texel. This loop scored any `diff=` as red, so the oracle's declared
+# tolerance existed only as prose and the gate asserted something stricter than the code it watches.
+#
+# It went unnoticed because the harness runs at one location by default, and that scene has almost no
+# parallax: 26/26 EXACT there, but 0/25 at a daylit surface base, all at maxAbs 0.00073 -- under a fifth
+# of the 8-bit LSB the oracle names as its own noise. Warping to the Director's real bases is what exposed
+# it. maxAbs is the discriminator the code nominates ("A large maxAbs would flag a real blend/compose bug
+# rather than the rounding"), so judge on maxAbs, and keep zero tolerance for the two oracles that really
+# are exact.
 pass=1
 for o in envoracle paralloracle spreadoracle; do
-  total=$(grep -c "\[$o\]" "$LOG")
-  ok=$(grep -cE "\[$o\] (MATCH|EXACT)" "$LOG")
-  bad=$(grep -cE "\[$o\] (DIFF|diff=)" "$LOG")
-  skip=$(grep -cE "\[$o\] SKIPPED" "$LOG")
-  printf "  %-14s ran=%-5s pass=%-5s DIFF=%-5s SKIPPED=%-5s" "$o" "$total" "$ok" "$bad" "$skip"
-  if [ "$bad" -ne 0 ] || [ "$ok" -eq 0 ]; then echo "   <-- FAIL"; pass=0; else echo "   ok"; fi
+  oracle_verdict "$o" "$LOG" || pass=0
 done
 grep -hoE "\[(envoracle|paralloracle|spreadoracle)\] (diff|DIFF)=[^ ]* [^ ]*" "$LOG" | sort -u | head -3 | sed 's/^/    ! /'
 
