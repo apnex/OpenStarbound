@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       988 files
-      238658 lines
+      238695 lines
       6 tiers
     Content
       assets/
@@ -224,7 +224,7 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,390 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,259 lines
+├── game/            T3   500 files   115,296 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -285,7 +285,7 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,259 lines · Root×638</small>"]
+    game["game<br/><small>500 files · 115,296 lines · Root×638</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -586,7 +586,7 @@ treemap-beta
         "application": 7390
         "platform": 142
     "T3 simulation"
-        "game": 115259
+        "game": 115296
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -605,7 +605,7 @@ treemap-beta
 | T2 services | `base` | 29 | 7,411 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,390 | 3.1% |
-| T3 simulation | `game` | 500 | 115,259 | 48.3% |
+| T3 simulation | `game` | 500 | 115,296 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,414 | 1.8% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,861 | 7.1% |

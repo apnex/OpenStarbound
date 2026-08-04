@@ -1975,6 +1975,16 @@ void WorldClient::shiftAndGatherMargin(int dx, int dy) {
   // newly-exposed columns (full height); Rect B = the |dy| newly-exposed rows (full width). Their
   // union is exactly the margin; they overlap only in the corner (gathered twice, identical value).
   // Neither rect touches the shifted overlap, so no retained cell is clobbered.
+  //
+  // HOW MUCH of the grid a scroll re-gathers. lighting.gather.scroll says this path RAN; against
+  // lighting.calc.cells this says whether it was a thin strip or nearly a full re-gather, which is what
+  // decides whether the margin rects are worth optimising at all. Counted as WORK DONE, so the shared
+  // corner counts twice -- exactly as gatherStableColumns processes it. Derived here, beside the rects
+  // it measures, so there is one source for the arithmetic rather than a copy in the caller.
+  static auto marginCells = Telemetry::counter("lighting.gather.margin_cells",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  marginCells.inc((uint64_t)adx * (uint64_t)height + (uint64_t)width * (uint64_t)ady);
+
   if (dx != 0) {
     int ax = dx > 0 ? calcMin[0] + width - dx : calcMin[0];
     gatherStableColumns(RectI::withSize(Vec2I(ax, calcMin[1]), Vec2I(adx, height)));
@@ -2207,23 +2217,50 @@ void WorldClient::lightingCalc() {
         }
       }
       uint64_t tileEpoch = m_lightingTileEpoch.load(std::memory_order_relaxed);
+      // WHICH PATH THE CACHE TOOK, AND WHY. A1/A2 were built on the premise that scrolling dominates and that
+      // premise has never been measured. The six partition the cached path by construction -- every arm of the
+      // chain below increments exactly one and the chain has no other exit -- so the split is verifiable by
+      // reading it. Split by reason: "fell back" is not actionable, "fell back because the tile epoch moved" is.
+      auto outcome = [](char const* key) {
+        return Telemetry::counter(key,
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+      };
+      static auto gatherHit       = outcome("lighting.gather.hit");
+      static auto gatherScroll    = outcome("lighting.gather.scroll");
+      static auto gatherFullFirst = outcome("lighting.gather.full.first");
+      static auto gatherFullDims  = outcome("lighting.gather.full.dims");
+      static auto gatherFullEpoch = outcome("lighting.gather.full.epoch");
+      static auto gatherFullJump  = outcome("lighting.gather.full.jump");
+
       // Same grid layout (size + tile epoch) as last frame? Then we can reuse it: a HIT (same anchor)
       // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the
       // newly-exposed margin. Anything else (first frame, zoom/resize/size-breathe, tile edit, or a
       // jump >= the grid size) falls back to a full stable gather.
       bool sameGrid = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch;
       if (sameGrid && m_gatherAnchor == calcMin) {
+        gatherHit.inc();
         // cache hit: nothing to gather; applyStableToCells re-applies the current env-light below.
       } else if (sameGrid) {
         int dx = calcMin[0] - m_gatherAnchor[0];
         int dy = calcMin[1] - m_gatherAnchor[1];
         int adx = dx < 0 ? -dx : dx;
         int ady = dy < 0 ? -dy : dy;
-        if (adx < calcDims[0] && ady < calcDims[1])
+        if (adx < calcDims[0] && ady < calcDims[1]) {
+          gatherScroll.inc();
           shiftAndGatherMargin(dx, dy); // A2: scroll -- shift the overlap + gather only the margin
-        else
+        } else {
+          gatherFullJump.inc();
           lightingStableGather();       // jump >= grid size: no overlap, full gather
+        }
       } else {
+        // Ordered, so the six stay mutually exclusive: an invalid grid makes the dims and epoch
+        // comparisons meaningless, and a resize makes the epoch one uninteresting.
+        if (!m_gatherValid)
+          gatherFullFirst.inc();
+        else if (m_gatherDims != calcDims)
+          gatherFullDims.inc();
+        else
+          gatherFullEpoch.inc();
         lightingStableGather();         // first frame / zoom / resize / size-breathe / tile edit
       }
       m_gatherAnchor = calcMin;
