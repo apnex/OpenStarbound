@@ -134,9 +134,30 @@ else
   echo "  ok"
 fi
 
-if grep -q "RENDERTEST_AB" "$LOG"; then
+# THE A/B RAN, PRINTED NOTHING, AND WAS NEVER JUDGED -- two vocabulary misses in four lines. The guard
+# looked for "RENDERTEST_AB", which the log never writes; the body grepped "renderTest" while the log
+# writes "rendertest". Both scored zero, so the section vanished. And even had it printed it was an
+# echo: it never touched `pass`, so a DIFFering A/B certified as GATE: PASS. Third instance of the
+# vocabulary trap this file already carries two warnings about, and it silently un-gated every A/B
+# ever run through here.
+#
+# Assert the legs EXIST before believing agreement -- an A/B that did not run emits nothing, and
+# "nothing" must not read as "identical".
+if [ -n "${STAR_RENDERTEST_AB:-}" ] || grep -q "A/B leg A:" "$LOG"; then
   echo "=== in-process A/B ==="
-  grep -E "renderTest.*(A/B|hashA|hashB|IDENTICAL|DIFFER)" "$LOG" | sed 's/^/  /'
+  grep -E "A/B leg [AB]:|leg[AB] .*hash=|A/B (MATCH|DIFFER)" "$LOG" | sed 's/^.*\] //; s/^/  /'
+  ablegs=$(grep -cE "leg[AB] .*hash=" "$LOG")
+  abmatch=$(grep -c "A/B MATCH" "$LOG")
+  abdiff=$(grep -c "A/B DIFFER" "$LOG")
+  if [ "$ablegs" -ne 2 ]; then
+    echo "  <-- FAIL: expected 2 hashed legs, saw $ablegs -- the A/B did not run to completion"
+    pass=0
+  elif [ "$abdiff" -ne 0 ] || [ "$abmatch" -eq 0 ]; then
+    echo "  <-- FAIL: the legs are not byte-identical"
+    pass=0
+  else
+    echo "  ok"
+  fi
 fi
 
 echo
