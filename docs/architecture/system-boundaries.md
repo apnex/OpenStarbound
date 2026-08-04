@@ -345,7 +345,6 @@ Test 2. Each shell is a distinct set of object libraries linked by at least one 
 flowchart TD
   subgraph S0["shell 0 — core + extern"]
     direction LR
-    core_tests(["core_tests"])
     json_tool(["json_tool"])
   end
   subgraph S1["shell 1 — base + core + extern"]
@@ -353,6 +352,7 @@ flowchart TD
     asset_packer(["asset_packer"])
     asset_unpacker(["asset_unpacker"])
     btree_repacker(["btree_repacker"])
+    core_tests(["core_tests"])
     mod_uploader(["mod_uploader"])
     render_surface_tests(["render_surface_tests"])
   end

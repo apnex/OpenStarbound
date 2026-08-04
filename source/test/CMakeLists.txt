@@ -59,9 +59,35 @@ SET (star_core_tests_SOURCES
       worker_pool_test.cpp
       variant_test.cpp
       vlq_test.cpp
+
+      # THE LIGHTING TESTS LIVE HERE BECAUSE game_tests IS NOT RUN IN CI (#212).
+      #
+      # They sat in game_tests and therefore executed on ZERO platforms, on every push, forever --
+      # 20 assertions guarding the lighting kernel, run by nothing but a human remembering to. They
+      # were never asset-dependent: no Root::singleton, no assets(), every config built from inline
+      # Json::parseJson. They were HOSTAGES of game_tests_main.cpp, which AddGlobalTestEnvironment's
+      # a Root for the whole binary and drags every test in it out of CI.
+      #
+      # MEASURED BEFORE MOVING, so the cost claim is not a guess: inside game_tests these filters
+      # cost 0.00 s wall clock, while RootTest took 2.82 s and ItemTest 1.51 s from the same binary.
+      # Root construction is lazy; those seconds belong to the tests that genuinely boot a universe.
+      # The exclusion was by TARGET MEMBERSHIP alone -- not by cost, not by dependency.
+      lighting_telemetry_test.cpp
+      lighting_spread_test.cpp
+      lighting_point_test.cpp
+      temporal_light_gate_test.cpp
+      cellular_lighting_test.cpp
+
+      # StarTemporalLightingGate.hpp is header-only but includes StarLightSource.hpp, which is not.
+      # Compiled directly instead of linking star_game: its own includes are core-only (StarVector,
+      # StarDataStream, StarBiMap), so this costs one translation unit rather than the game layer.
+      ../game/StarLightSource.cpp
     )
+# star_base carries StarCellularLighting and StarCellularLightArray, which the lighting tests
+# exercise. It is an OBJECT library over core with no further link dependencies of its own, so
+# core_tests gains the lighting kernel without gaining the game.
 ADD_EXECUTABLE (core_tests
-  $<TARGET_OBJECTS:star_extern> $<TARGET_OBJECTS:star_core>
+  $<TARGET_OBJECTS:star_extern> $<TARGET_OBJECTS:star_core> $<TARGET_OBJECTS:star_base>
   ${star_core_tests_SOURCES})
 TARGET_LINK_LIBRARIES (core_tests ${STAR_EXT_LIBS})
 ADD_TEST (NAME core_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/core_tests)
@@ -75,11 +101,8 @@ SET (star_game_tests_SOURCES
       assets_test.cpp
       animated_part_set_test.cpp
       drawable_cache_test.cpp
-      lighting_telemetry_test.cpp
-      lighting_spread_test.cpp
-      lighting_point_test.cpp
-      temporal_light_gate_test.cpp
-      cellular_lighting_test.cpp
+      # The five lighting test files moved to core_tests (#212) -- they need no assets and were
+      # excluded from CI only by living here. Do not add lighting tests to this target.
       function_test.cpp
       item_test.cpp
       root_test.cpp
@@ -511,6 +534,43 @@ IF (star_tests_missing_label)
     "by ALL SIX CI jobs. It exists, it passes under a bare local `ctest`, and it guards nothing.\n"
     "Either add it to star_noassets_tests above, or -- if it genuinely needs assets/ and therefore "
     "cannot run in CI -- add it to star_tests_needing_assets and accept that CI will never execute it.")
+ENDIF ()
+
+# THE LIGHTING TESTS MUST STAY IN A CI-GATED TARGET (#212).
+#
+# They spent their whole life in game_tests and therefore ran on ZERO platforms, on every push --
+# 20 assertions guarding the lighting kernel, executed only by a human who remembered to. Nothing
+# reported that; a bare local `ctest` was green, the files existed, the assertions were real.
+#
+# The rule above catches an unlabelled TEST. It cannot catch a test FILE moved into a target that is
+# already on the allowlist, which is exactly how these were lost -- so that case is asserted here.
+# Membership, not labels: a lighting test compiled into game_tests is invisible to CI no matter how
+# game_tests is labelled.
+SET (star_ci_gated_test_files
+      lighting_telemetry_test.cpp
+      lighting_spread_test.cpp
+      lighting_point_test.cpp
+      temporal_light_gate_test.cpp
+      cellular_lighting_test.cpp)
+SET (star_ungated_lighting_tests "")
+SET (star_missing_lighting_tests "")
+FOREACH (star_f IN LISTS star_ci_gated_test_files)
+  IF (star_f IN_LIST star_game_tests_SOURCES)
+    LIST (APPEND star_ungated_lighting_tests ${star_f})
+  ENDIF ()
+  IF (NOT star_f IN_LIST star_core_tests_SOURCES)
+    LIST (APPEND star_missing_lighting_tests ${star_f})
+  ENDIF ()
+ENDFOREACH ()
+IF (star_ungated_lighting_tests OR star_missing_lighting_tests)
+  MESSAGE (FATAL_ERROR
+    "Lighting tests are not in a CI-gated target (#212).\n"
+    "  in game_tests (never runs in CI): ${star_ungated_lighting_tests}\n"
+    "  absent from core_tests:           ${star_missing_lighting_tests}\n"
+    "These files need no assets -- no Root::singleton, no assets(), config from inline "
+    "Json::parseJson -- and cost 0.00s to run. They belong in core_tests, which every CI job "
+    "executes. If a NEW lighting test genuinely needs a universe, remove it from "
+    "star_ci_gated_test_files above and say in the commit why it cannot be written asset-free.")
 ENDIF ()
 
 FILE (READ ${CMAKE_CURRENT_SOURCE_DIR}/../CMakePresets.json star_presets_json)
