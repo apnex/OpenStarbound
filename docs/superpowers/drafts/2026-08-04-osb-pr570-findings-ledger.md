@@ -19,9 +19,9 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | **open** | 15 | needs a call |
 | **accepted** | 9 | work is committed to; `task` names where it is tracked |
 | **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
-| **declined** | 36 | we will not do this; `reason` is mandatory |
+| **declined** | 40 | we will not do this; `reason` is mandatory |
 | **done** | 4 | finished; `task` or `commit` says where |
-| closed | 88 | no action, by verdict |
+| closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
 one, and hard-fails on a decision naming a row that no longer exists.
@@ -33,7 +33,11 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | row | status | item | where |
 |---|---|---|---|
 | **A05** | **done** | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | 66ec860b |
+| **A06** | **declined** | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | Closure STANDS -- their flip/revert is net-zero and we carry no defect -- but the recorde… |
 | **A07** | **accepted** | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | #211 |
+| **A09** | **declined** | `scrolled-strip-point-zeroing` — The zeroing loop is real and load-bearing inside their new scrolled path, but it fixes no pre-existing defect — it lands in the same commit (cd206aca) that introduces m_… | Closure stands, reason NARROWED (reversal upheld by a second pass). We carry no accumulat… |
+| **A10** | **declined** | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | Closure stands, reason NARROWED and its stated premise REFUTED (reversal upheld). What ac… |
+| **A12** | **declined** | `pending-lights-lifetime` — Both "lifetime fixes" are original code in the commits that introduced the fields they guard, not fixes of any defective state — and the begin() clear is attributed to t… | Closure stands, reason NARROWED (reversal upheld). No defect: CellularLightArray::begin c… |
 | **B01** | **declined** | `tile-version-counter` | REAL_BUT_NOT_OURS. We already carry the equivalent as m_lightingTileEpoch with all four o… |
 | **B02** | **declined** | `jemalloc-gcc16` | COVERED by #196. Same wall: jemalloc versus libstdc++ 16 blocks a pristine Linux bootstra… |
 | **B03** | **declined** | `test-dump-path-windows` | NOT_REAL for us. A Windows-only test dump path issue in their harness; our test binaries … |
@@ -140,13 +144,13 @@ withdrawn outright and one finding was reversed in our favour.
 | **A03** | closed | `beam-direction-uninit` — Their fix is present at PR head (StarCellularLightArray.hpp:432 computes `direction` before the beam test), but the broken state it fixes never existed in any commit of … | cannot-determine | not-applicable-to-us | CLOSE |
 | **A04** | closed | `soa-channel-aliasing` — The claimed SoA channel-aliasing bug (point phase writing dst[0][1]/dst[0][2] into the red channel's next two cells) exists nowhere in the PR snapshot — base, any of the… | cannot-determine | not-applicable-to-us | CLOSE |
 | **A05** | done · 66ec860b | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | real | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
-| **A06** | closed | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | overstated | not-applicable-to-us | CLOSE |
+| **A06** | declined · Closure STANDS -- their flip/revert is net-zero and we carry no defect -- but the recorde… | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | overstated | not-applicable-to-us | CLOSE |
 | **A07** | accepted · #211 | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | overstated | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
 | **A08** | closed | `point-layer-spread-feedback` — The described feedback loop is a real hazard of THEIR new persistent/scrolled lightmap design, but it was never a live defect: the point-channel split and the lightAtInd… | overstated | not-applicable-to-us | CLOSE |
-| **A09** | closed | `scrolled-strip-point-zeroing` — The zeroing loop is real and load-bearing inside their new scrolled path, but it fixes no pre-existing defect — it lands in the same commit (cd206aca) that introduces m_… | overstated | not-applicable-to-us | CLOSE |
-| **A10** | closed | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | overstated | not-applicable-to-us | CLOSE |
+| **A09** | declined · Closure stands, reason NARROWED (reversal upheld by a second pass). We carry no accumulat… | `scrolled-strip-point-zeroing` — The zeroing loop is real and load-bearing inside their new scrolled path, but it fixes no pre-existing defect — it lands in the same commit (cd206aca) that introduces m_… | overstated | not-applicable-to-us | CLOSE |
+| **A10** | declined · Closure stands, reason NARROWED and its stated premise REFUTED (reversal upheld). What ac… | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | overstated | not-applicable-to-us | CLOSE |
 | **A11** | closed | `lastpointlights-coordinate-shift` — The shift line is a genuine, load-bearing invariant of THEIR new scrolling atlas — but it never fixed a defect: `m_lastPointLights`, `calculateIncremental` and `scroll()… | overstated | not-applicable-to-us | CLOSE |
-| **A12** | closed | `pending-lights-lifetime` — Both "lifetime fixes" are original code in the commits that introduced the fields they guard, not fixes of any defective state — and the begin() clear is attributed to t… | overstated | not-applicable-to-us | CLOSE |
+| **A12** | declined · Closure stands, reason NARROWED (reversal upheld). No defect: CellularLightArray::begin c… | `pending-lights-lifetime` — Both "lifetime fixes" are original code in the commits that introduced the fields they guard, not fixes of any defective state — and the begin() clear is attributed to t… | overstated | not-applicable-to-us | CLOSE |
 | **B01** | declined · REAL_BUT_NOT_OURS. We already carry the equivalent as m_lightingTileEpoch with all four o… | `tile-version-counter` | not examined | unknown | CHECK · DROP |
 | **B02** | declined · COVERED by #196. Same wall: jemalloc versus libstdc++ 16 blocks a pristine Linux bootstra… | `jemalloc-gcc16` | not examined | unknown | CHECK · DROP |
 | **B03** | declined · NOT_REAL for us. A Windows-only test dump path issue in their harness; our test binaries … | `test-dump-path-windows` | not examined | unknown | CHECK · DROP |

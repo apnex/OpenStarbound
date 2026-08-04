@@ -230,5 +230,21 @@
   "B28": {
     "status": "declined",
     "reason": "NOT_REAL. Removal of their own Russian-language dev notes, added by patch 0002 and deleted by patch 0008. Pure intra-PR housekeeping -- though the notes were the single most useful artefact in the snapshot for establishing their intent."
+  },
+  "A06": {
+    "status": "declined",
+    "reason": "Closure STANDS -- their flip/revert is net-zero and we carry no defect -- but the recorded reason is WRONG and the correction matters. It said we 'sit at the upstream default'. We do not: UniverseClient::connect calls setAsyncLighting(true) UNCONDITIONALLY at the sole WorldClient construction site, on both the singleplayer and multiplayer paths, so ASYNC LIGHTING IS ON IN EVERY SESSION and the ctor default (m_asyncLighting = false) is dead code. /asyncLighting is the opt-OUT, not the opt-in. A reversal was filed on this and REFUTED: its claimed payoff, that '#210 was triaged as sitting behind a dormant opt-in path', is false -- A05 was rated real|we-still-have-it|FIX and fixed the same day at 66ec860b. So: no defect, no task, but never again reason about lighting-thread concurrency from that ctor default."
+  },
+  "A09": {
+    "status": "declined",
+    "reason": "Closure stands, reason NARROWED (reversal upheld by a second pass). We carry no accumulation surface: the A1/A2 gather grid holds INPUT, is written by assignment, and applyStableToCells rewrites 100% of the calc region into a freshly-cleared array every recompute -- so a seam cannot compound. TWO CORRECTIONS to the recorded reason: (1) it calls the A2 cache 'the gathered tile material / env-light grid'; env-light is deliberately EXCLUDED (stableLight omits environmentLight, the skyExposed bit re-applies it per frame) -- that exclusion is the whole point of A1. (2) 'no scroll' should read 'no scroll in the light ARRAY'; we do scroll one level up in shiftAndGatherMargin. The row never examined the INPUT-side staleness of that scroll -- the cache key is (epoch, dims, anchor) and does not track sector load/unload, and unloadSector bumps no epoch. That residual is already instrumented by lighting.gather.calc_outside_loaded (#210) and is E01/E04 territory, not a new defect."
+  },
+  "A10": {
+    "status": "declined",
+    "reason": "Closure stands, reason NARROWED and its stated premise REFUTED (reversal upheld). What actually closes it: CellularLightArray::begin unconditionally zero-fills the ENTIRE array every recompute and there is no scroll or incremental path, so no cell state survives a window move. What is FALSE: the claim that our point phase 'runs over the whole padded array rather than being window-scoped'. It does not -- our point pass is clipped to the query rect and skips the 32-48 cell border on every side, structurally the SAME geometry as theirs. Also strike 'fully re-solved every lighting update': the point pass is query-scoped, and under the shipping GPU config the CPU calculate() is skipped outright by skipCpuCalc. Kill the window-scope sentence before it propagates -- it would make a future reviewer conclude we differ structurally when we do not."
+  },
+  "A12": {
+    "status": "declined",
+    "reason": "Closure stands, reason NARROWED (reversal upheld). No defect: CellularLightArray::begin clears m_spreadLights and m_pointLights with no early return, and lightingCalc's only two early returns both sit ABOVE that begin() and above the add loops, so no list is ever appended across frames. But a load-bearing clause of the recorded reason was FALSE WHEN WRITTEN, not merely stale: 'no per-frame point-light bookkeeping to leak' and 'our public API stops at begin/addSpreadLight/addPointLight/setLight/setObstacle/calculate'. We DO have the structural analogue -- exportPointLights feeding m_pendingLightingPointLights, swapped at publish -- shipped since 2026-07-19, before the analysis. THE METHOD FAILURE IS THE FINDING: the row was dismissed by grepping for THEIR identifiers and finding zero hits. A name-grep cannot see an analogue we named differently. Dismissal-by-name-grep is unsound; dismiss on MECHANISM."
   }
 }
