@@ -9,14 +9,38 @@ GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
 // Moved here from WorldPainter by #137. Byte-identical to the loop it replaces: same scan over the same
 // buffer, same clamp, same order of operations.
+//
+// THE CLAMP IS A REACH TRUNCATION, AND IT WAS UNOBSERVABLE (#224). The spread shader is max-plus BFS,
+// not a linear relaxation: iteration i can only inform cells i steps away, so the requested count is
+// not a convergence guess -- it is exactly the propagation distance the scene needs. Whenever the
+// request exceeds the cap, light is denied reach the pass itself asked for, and with the shipped
+// spreadMaxAir and cap both 32 that begins the moment any emission CHANNEL exceeds 1.0. The gather
+// sums four independent addends with no clamp and brightnessLimit is a downstream compose, so nothing
+// upstream bounds it.
+//
+// lighting.gpu.spread.passes records the GRANTED count, so it saturates at the cap and is structurally
+// blind to the shortfall. These two gauges record what it hides: the peak emission that drove the
+// request, and the request itself. Truncation is exactly `passes_requested > passes`. Recording both
+// rather than a boolean keeps the MAGNITUDE, which is what decides whether the cap should be raised,
+// derived from brightnessLimit, or documented as a deliberate cost ceiling.
 unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, LightmapParams const& lp) {
+  static auto maxEmissionGauge = Telemetry::gauge("lighting.gpu.spread.max_emission_x1000",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  static auto passesRequestedGauge = Telemetry::gauge("lighting.gpu.spread.passes_requested",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+
   float maxEmission = 0.0f;
   float const* ed = (float const*)emission.data;
   size_t n = (size_t)emission.size[0] * emission.size[1] * 3;
   for (size_t i = 0; i < n; ++i)
     maxEmission = std::max(maxEmission, ed[i]);
-  return std::min(lp.spreadIterationCap,
-      std::max(8u, (unsigned)std::ceil(maxEmission * lp.point.spreadMaxAir)));
+
+  unsigned const requested = std::max(8u, (unsigned)std::ceil(maxEmission * lp.point.spreadMaxAir));
+  // x1000 to keep the gauge integral, matching lighting.lights.max_intensity_x1000.
+  maxEmissionGauge.set((int64_t)std::lround(maxEmission * 1000.0f));
+  passesRequestedGauge.set((int64_t)requested);
+
+  return std::min(lp.spreadIterationCap, requested);
 }
 
 LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint16_t> const& emissionHalf,
