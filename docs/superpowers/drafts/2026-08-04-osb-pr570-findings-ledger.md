@@ -17,10 +17,9 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 2 | work is committed to; `task` names where it is tracked |
 | **deferred** | 1 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 45 | we will not do this; `reason` is mandatory |
-| **done** | 23 | finished; `task` or `commit` says where |
+| **done** | 25 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -75,11 +74,11 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **B35** | **declined** | `noise-clangformat-inflates-deletions` | REAL_BUT_NOT_OURS. A measurement claim about their own diff, not a code change: clang-for… |
 | **C05** | **done** | Recomputing only the changed part of the lightmap: their cd… — simplicity | 9429b14d |
 | **C07** | **declined** | Cutting the CPU cost of the cellular light computation — quality | Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… |
-| **C08** | **accepted** | Cutting the CPU cost of the cellular light computation — simplicity | #215 |
+| **C08** | **done** | Cutting the CPU cost of the cellular light computation — simplicity | #215 |
 | **C09** | **declined** | Cutting the CPU cost of the cellular light computation — performance | Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per… |
 | **C11** | **done** | point lights: cost versus fidelity — simplicity | #213 |
 | **C14** | **declined** | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … |
-| **C16** | **accepted** | Proving the cellular lighting correct and fast — quality | #216 |
+| **C16** | **done** | Proving the cellular lighting correct and fast — quality | #216 |
 | **C17** | **done** | Proving the cellular lighting correct and fast — simplicity | f5088933 |
 | **D11** | **done** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | #221 |
 | **D13** | **deferred** | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… |
@@ -193,7 +192,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **C05** | done · 9429b14d | Recomputing only the changed part of the lightmap: their cd… — simplicity | theirs | Their patch is +428/-36 across 4 production files (~324 production lines + 104 test) and their lightingCalc is ~200 lines. Critically they PARAMETERISED the existing gather by region — `lightingTileG… | CLOSE THE GAP · DECLINE · DEFER |
 | **C06** | closed | Recomputing only the changed part of the lightmap: their cd… — performance | ours | Ours is measured, theirs is not. Our A2 scroll-shift: lighting.cpu.gather.us ~237us -> ~93us (-60%) on active-scroll windows (210-289 recompute-frames/5s), telemetry-windowed in-game A/B with the bas… | NO ACTION |
 | **C07** | declined · Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… | Cutting the CPU cost of the cellular light computation — quality | theirs | They attacked the phase that actually dominates and pinned the risky paths with equivalence oracles. `cellular_lighting_test.cpp:162 incrementalMovingLightMatchesFullRecalc` and `:215 scrolledStripsM… | CLOSE THE GAP · DECLINE · DEFER |
-| **C08** | accepted · #215 | Cutting the CPU cost of the cellular light computation — simplicity | theirs | Production-surface cleanliness, counted: our two lighting-array files are 675 + 532 = 1207 lines, of which ~455 (38%) is GPU-oracle scaffolding shipped inside the production translation unit — spread… | CLOSE THE GAP · DECLINE · DEFER |
+| **C08** | done · #215 | Cutting the CPU cost of the cellular light computation — simplicity | theirs | Production-surface cleanliness, counted: our two lighting-array files are 675 + 532 = 1207 lines, of which ~455 (38%) is GPU-oracle scaffolding shipped inside the production translation unit — spread… | CLOSE THE GAP · DECLINE · DEFER |
 | **C09** | declined · Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per… | Cutting the CPU cost of the cellular light computation — performance | theirs | Theirs is the only side with any before/after on CellularLightArray::calculate(), because ours provably never enters it. Verified arithmetic: calculateLightSpread self-enlarges the query rect by ceil… | CLOSE THE GAP · DECLINE · DEFER |
 | **C10** | closed | point lights: cost versus fidelity — quality | ours | Fidelity: we ray-trace strictly MORE lights and drop none (StarWorldClient.cpp:2308-2311, promote 0.5 default-on); they cap point lights at 128 and drop the rest sorted by `a.color.max()` (tree StarW… | NO ACTION |
 | **C11** | done · #213 | point lights: cost versus fidelity — simplicity | theirs | Counting places that must change together to change the point-light model: theirs is ONE — tree/source/base/StarCellularLightArray.hpp:401-475, a single template covering scalar+colored, serial+paral… | CLOSE THE GAP · DECLINE · DEFER |
@@ -201,7 +200,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **C13** | closed | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — quality | ours | Same root defect, but theirs stops at one third of it and proves none of it. PROOF: ours measured on an Intel Arc/Mesa headless A/B with AA on in both legs and one line different -- GL_INVALID_OPERAT… | NO ACTION |
 | **C14** | declined · The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | theirs | For the one defect BOTH actually fixed, theirs is the smaller correct shape: one line in one file, one place to change, and the policy cannot be mis-declared because there is no declaration. Ours spl… | CLOSE THE GAP · DECLINE · DEFER |
 | **C15** | closed | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — performance | tie | Neither side measured a performance delta for this change, and there is essentially nothing to measure: both fixes run once per settings toggle inside loadConfig, which already destroys and reallocat… | NO ACTION |
-| **C16** | accepted · #216 | Proving the cellular lighting correct and fast — quality | theirs | Three concrete gaps in ours that theirs closes. (1) GROUND TRUTH: every assertion in lighting_point_test.cpp/lighting_spread_test.cpp compares a reference against production `calculate()` — productio… | CLOSE THE GAP · DECLINE · DEFER |
+| **C16** | done · #216 | Proving the cellular lighting correct and fast — quality | theirs | Three concrete gaps in ours that theirs closes. (1) GROUND TRUTH: every assertion in lighting_point_test.cpp/lighting_spread_test.cpp compares a reference against production `calculate()` — productio… | CLOSE THE GAP · DECLINE · DEFER |
 | **C17** | done · f5088933 | Proving the cellular lighting correct and fast — simplicity | theirs | 436 lines total (364 test + 72 bench), one file, four local helpers, zero additions to production classes for testability — they call setObstacle/addPointLight/calculate/getLight/scroll/applyPointLig… | CLOSE THE GAP · DECLINE · DEFER |
 | **C18** | closed | Proving the cellular lighting correct and fast — performance | ours | Both measured; ours measured better, theirs measured more reproducibly. Ours: A-B-A interleaved 90s runs at a fixed warp point with an untouched control phase and a stated noise floor — export 123.9/… | NO ACTION |
 | **C19** | closed | Lightmap computed relative to the frame: sync-by-default + … — quality | ours | Their gate is defeated by an input that changes every frame by ~1e-5. `tilesOrEnvChanged` compares `m_sky->environmentLight().toRgbF()` by exact float equality (tree StarWorldClient.cpp:1844); Color … | NO ACTION |

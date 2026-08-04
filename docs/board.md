@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**165 tasks** across 2 store(s): 3 in_progress, 30 pending, 132 completed
+**165 tasks** across 2 store(s): 3 in_progress, 28 pending, 134 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 164 tasks, ids 64–228
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 164, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 166, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 80 of 132.
+**Completed tasks citing no commit and no doc:** 80 of 134.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -226,8 +226,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | done | LIGHT-DEDUP-1 CLOSED (7879e0a2): 140 lines -&gt; 70, byte-identical at instruction level; beam divergence declared and… | `0fed2045` `c8bf863b` `7879e0a2` | — |
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
-| [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
-| [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
+| [#215](#c29c1332-215) | `c29c1332` | done | ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected | `c1a4433d` | — |
+| [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | `7dbf8c98` | — |
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
@@ -3468,6 +3468,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `2bcc88e1` board: #228 closed at 0fed2045 -- beam guard unified, bit-identical for all real content [#204]
 - `c8bf863b` ledger: C11/D31 done at 7879e0a2; the beam divergence they exposed is now #228
 - `c363e052` ledger: D29 declined by Director decision; B08 closed with it
 - `8366f2f6` board: ledger drift corrected (10 rows); #211 re-scoped to the ARB null-deref; #227 attribution gap filed [#204]
@@ -4019,100 +4020,70 @@ PROCESS NOTE: the first render-gate commit claimed "24/24 gates green" before I 
 
 <a id="c29c1332-215"></a>
 
-#### #215 — ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only
+#### #215 — ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected
 
-status: **pending**
+status: **completed**
+
+- `c1a4433d` refactor(lighting): split the differential oracles out of the kernel TU
 
 ```
-ADOPTED from OpenStarbound PR 570 (ledger rows C08, C17). Idea only.
+Oracles moved to source/base/StarCellularLightingOracle.{hpp,cpp}. Kernel keeps only the kernel.
 
-PRECONDITION RESOLVED 2026-08-04, AND IT CHANGES THE SHAPE. The task as first written assumed the
-references were test-only and could move to source/test/. THEY CANNOT. Production links them:
+THE TASK'S PROPOSED SPLIT WAS WRONG IN ONE RESPECT AND IS CORRECTED. It listed SpreadParameters and PointParameters as things to move. They must NOT move: CellularLightingCalculator DECLARES both as its accessor return types, and PointParameters is a member of LightmapParams on the shipping GPU path (StarGpuLightmapPass). Moving them would have made production depend on an oracle header -- the exact inversion this refactor exists to remove. They stay in the kernel; the dependency now runs oracle -> kernel and never the other way.
 
-    source/rendering/StarWorldPainter.cpp:9    #include "StarCellularLightArray.hpp"
-                                                 // spreadJacobiReference (CPU spread oracle for parity)
-    source/rendering/StarWorldPainter.cpp:53-70  3-WAY LOCALIZER: on a GPU/CPU parity mismatch it
-                                                 computes spreadJacobiReference + pointLightingReference
-                                                 to localise WHICH side is wrong
-    source/rendering/StarGpuLightmapPass.hpp:51  names spreadJacobiReference as the oracle in its contract
+WHAT MOVED: ObstacleRaycast, spreadJacobiReference + pointLightingReference declarations and bodies, and the anonymous-namespace obstacle helpers. 55 header lines + 379 cpp lines.
 
-Only `ObstacleRaycast` is genuinely test-only. `obstacleRaycastDDA` and `obstacleLineAttenuation` are
-internal to StarCellularLightArray.
+PURE RELOCATION, PROVEN NOT ASSERTED: kernel object disassembled before and after and compared address-independently -- ScalarLightTraits 369 -> 369, ColoredLightTraits 450 -> 450, zero instruction differences. Symbol partition is clean: the kernel object now exports only lineAttenuation + calculatePointLighting; the oracle object exports exactly the two references.
 
-SO THE COMPLAINT STANDS BUT THE REMEDY CHANGES. The measured problem was never "this code should not
-ship" -- it was that 455 of 1207 lines (38%) of the lighting-array files are apparatus, so a reader
-cannot see what CellularLightArray IS, and every consumer of StarCellularLightArray.hpp parses the
-oracle declarations whether or not it uses them.
+CONSUMERS: StarWorldPainter.cpp now includes the oracle header explicitly, so the parity-localizer dependency is DECLARED rather than arriving incidentally through the kernel header. Two test files updated. Two comments in StarCellularLighting.hpp that named the old home were fixed -- a reference outliving its referent is the drift class this project has hit repeatedly.
 
-REVISED SHAPE: SPLIT, DO NOT REMOVE.
-    source/base/StarCellularLightingOracle.hpp / .cpp   <- new TU
-        SpreadParameters, PointParameters, ObstacleRaycast,
-        spreadJacobiReference, pointLightingReference,
-        obstacleLineAttenuation, obstacleRaycastDDA
-    StarCellularLightArray.hpp/.cpp  keeps ONLY the production kernel
+A STALE PRECONDITION IN THIS TASK, corrected: it said the lighting tests "run in ZERO CI jobs (#212)". #212 is DONE -- core_tests is ctest-registered with the NoAssets label and the preset filters to exactly that, so they DO run in CI. Verified before relying on it.
 
-The parity localizer keeps working; StarWorldPainter includes the oracle header explicitly, which
-also makes the dependency visible instead of arriving by accident through the kernel header.
+HONEST ACCOUNTING, as the task demanded: buys no runtime performance, does not shrink the binary. The code still ships; it just stops being in the way of reading the kernel.
 
-WHAT IT BUYS, honestly: a production header that describes production, a smaller parse for every
-consumer that does not want the oracle, and a dependency that is declared rather than incidental. It
-buys NO runtime performance and must not be sold as if it did. The binary does not shrink either --
-the code still ships, it just stops being in the way.
-
-WORTH NOTING WHILE HERE: the parity path these references serve is default-OFF
-(lightingGpuShadowCompare, StarRootLoader.cpp:148) and our own comment at StarGpuLightmapPass.cpp:151-152
-calls it "permanently red for a known unrelated reason -- it can detect a change but cannot certify
-identity". So the oracle they feed is itself weaker than its presence suggests. That is a separate
-finding and should not be folded into this refactor.
-
-VERIFICATION. Pure relocation: no behaviour change by construction. Lighting tests pass unchanged
-before and after -- and they run in ZERO CI jobs (#212), so run them by hand and record it.
+core_tests 289/289 at the time, game_tests 72/72, run-gates 27/27.
 ```
 
 <a id="c29c1332-216"></a>
 
-#### #216 — ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions
+#### #216 — ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a shared error
 
-status: **pending**
+status: **completed**
+
+- `7dbf8c98` test(lighting): closed-form assertions, and an experiment showing what they catch
 
 ```
-ADOPTED from OpenStarbound PR 570 (ledger row C16, quality). Idea only.
+Added source/test/lighting_closedform_test.cpp -- five assertions whose expected values are derived IN THE TEST from the attenuation rule and never from any implementation:
 
-THE GAP, IN ITS CORRECTED FORM. The judge's first statement was wrong and the challenge phase
-reversed it in our favour, so state the surviving version precisely:
+  AirAttenuationIsLinearInDistance      d=3,6,9 -> 1 - d/12 (three points, so a slope change fails too)
+  DiagonalDistanceIsEuclidean           d=sqrt(18); Manhattan says 6 and Chebyshev says 3, so the
+                                        diagonal is the only case that discriminates the three metrics
+  LightOnACellCentreIsUndimmed          production's distance==0 branch, which skips attenuation
+  NoLightBeyondPointMaxAir              d=12 and d=15 dark, PLUS d=11 lit as a control so it cannot
+                                        pass by everything being dark
+  BrightnessLimitScalesTheSumToTheLimit proportional scale to 1.4, not a per-channel clamp
 
-  WRONG (as originally filed):  "production IS the oracle -- an attenuation-math regression moves
-                                 both and the tests still pass."
-  ACTUAL:                        pointLightingReference and spreadJacobiReference are INDEPENDENT
-                                 reimplementations. A production math regression DOES turn them red.
-                                 Ours is a differential two-implementation oracle.
-  WHAT SURVIVES:                 a differential oracle written FROM production pins DRIFT, not TRUTH.
-                                 It cannot detect a bug that was already present when it was
-                                 authored, because both sides were written to the same
-                                 misunderstanding.
+THE ROW'S CENTRAL CLAIM IS NOW DEMONSTRATED, NOT ARGUED. Two injections of the same 2%
+air-attenuation error:
+  * PRODUCTION ONLY          -> 3 closed-form tests RED. They bind to production output.
+  * PRODUCTION + THE ORACLE  -> DIFFERENTIAL suite 8/8 GREEN, closed-form still 3 RED.
+The second run is the row's surviving claim made concrete: a differential oracle written from
+production pins DRIFT, not TRUTH, and with the same misunderstanding on both sides it is blind. Only
+an assertion about the MODEL survives. Both injections reverted via git checkout and verified
+byte-identical to committed.
 
-THE COUNT. Our only ABSOLUTE checks on production output are two lines --
-source/test/lighting_point_test.cpp:296-297. Everything else compares one implementation to another.
-Theirs pins production to the MODEL directly, e.g.
+THE TWO THAT DID NOT FIRE ARE CORRECT, and recorded so nobody reads it as weak coverage:
+LightOnACellCentre takes the zero-distance branch (attenuation never computed) and BrightnessLimit
+reads a cell whose sum still exceeds the limit after a 2% shift. They fire on what they are about.
 
-    EXPECT_NEAR(array.getLight(13, 10), 1.0f - sqrt(12.5f) / 20.0f, tol)
+COMPLEMENT, NOT REPLACEMENT: the differential tests catch drift across the CPU/GPU/reference
+triangle, which closed-form cannot; these catch a shared misunderstanding, which differential cannot.
+Two failure modes, two instruments -- exactly as the row framed it.
 
--- a closed-form expected value derived from the attenuation rule, not from any implementation. A
-reader verifies it in about ten seconds, and it fails if BOTH implementations are wrong together.
+The row's own caveat is preserved: "zero absolute assertions" would have overstated the gap. Two
+loose bounds already existed in lighting_point_test; what was missing was a MODEL-derived value.
 
-WHAT TO ADD. A small set of hand-derived expectations covering the cases whose arithmetic is
-checkable by hand: unobstructed point attenuation at a known distance, the sqrt2 diagonal factor, an
-obstacle-attenuated ray, spread dropoff over open air, and the brightnessLimit clamp. Derive each
-from the rule and show the derivation in the test, so the assertion is readable as a statement about
-the MODEL rather than about the code.
-
-WHY THIS IS THE COMPLEMENT AND NOT A REPLACEMENT. Keep the differential tests -- they catch drift
-across the CPU/GPU/reference triangle, which closed-form assertions cannot. These catch a shared
-misunderstanding, which the differential tests cannot. Two different failure modes, two instruments.
-
-RELATED: the tests being added here run in ZERO CI jobs today (#212). Adding assertions to a suite
-nobody executes is worth little -- prefer landing #212 first, or at minimum run them by hand and say
-so in the commit.
+core_tests 289 -> 294 all green, game_tests 72/72, run-gates 27/27. They run in CI (#212).
 ```
 
 <a id="c29c1332-217"></a>
