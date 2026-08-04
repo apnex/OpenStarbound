@@ -17,10 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 18 | work is committed to; `task` names where it is tracked |
-| **deferred** | 5 | not now; `until` names the trigger, and is mandatory |
+| **accepted** | 19 | work is committed to; `task` names where it is tracked |
+| **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 43 | we will not do this; `reason` is mandatory |
-| **done** | 5 | finished; `task` or `commit` says where |
+| **done** | 6 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -73,7 +73,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **B33** | **declined** | `rm-lightmap-realloc` | NOT_REAL. Intra-PR realloc repair. |
 | **B34** | **declined** | `rm-tinyformat-attribution-left-behind` | REAL_BUT_NOT_OURS as a defect, but it is the evidence for B13's companion edit: their att… |
 | **B35** | **declined** | `noise-clangformat-inflates-deletions` | REAL_BUT_NOT_OURS. A measurement claim about their own diff, not a code change: clang-for… |
-| **C05** | **accepted** | Recomputing only the changed part of the lightmap: their cd… — simplicity | #214 |
+| **C05** | **done** | Recomputing only the changed part of the lightmap: their cd… — simplicity | 9429b14d |
 | **C07** | **declined** | Cutting the CPU cost of the cellular light computation — quality | Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… |
 | **C08** | **accepted** | Cutting the CPU cost of the cellular light computation — simplicity | #215 |
 | **C09** | **declined** | Cutting the CPU cost of the cellular light computation — performance | Same non-convergence as C07. Their 4.1x-slower GPU result is on Atom-class ADL-N with per… |
@@ -93,10 +93,10 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D59** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | #220 |
 | **D60** | **accepted** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | #220 |
 | **D64** | **declined** | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… |
-| **E01** | **deferred** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | #214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 sc… |
-| **E02** | **accepted** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | #214 |
-| **E03** | **accepted** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | #214 |
-| **E04** | **deferred** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two … |
+| **E01** | **accepted** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | #221 |
+| **E02** | **accepted** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | #221 |
+| **E03** | **accepted** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | #221 |
+| **E04** | **accepted** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #221 |
 | **E05** | **done** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | 66ec860b |
 | **E06** | **accepted** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | #220 |
 | **E07** | **accepted** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
@@ -190,7 +190,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **C02** | closed | Keeping the lightmap stable while the view scrolls — simplicity | ours | Theirs is +428/-36 over 7 files and introduces a second storage layer (m_pointChannels, StarCellularLightArray.hpp:247) that changes getLight's meaning for every existing caller and forces setSpreadL… | NO ACTION |
 | **C03** | closed | Keeping the lightmap stable while the view scrolls — performance | ours | We measured; they did not. Ours: lighting.cpu.gather.us ~93us with the cache on vs ~237us baseline (-60%) taken during ACTIVE scroll (210-289 recompute-frames/5s), with the baseline windows independe… | NO ACTION |
 | **C04** | closed | Recomputing only the changed part of the lightmap: their cd… — quality | ours | Their lever very probably never runs, and nothing in their build could tell them. `tilesOrEnvChanged` (StarWorldClient.cpp:1844) compares `environmentLight` by float equality, and Sky::environmentLig… | NO ACTION |
-| **C05** | accepted · #214 | Recomputing only the changed part of the lightmap: their cd… — simplicity | theirs | Their patch is +428/-36 across 4 production files (~324 production lines + 104 test) and their lightingCalc is ~200 lines. Critically they PARAMETERISED the existing gather by region — `lightingTileG… | CLOSE THE GAP · DECLINE · DEFER |
+| **C05** | done · 9429b14d | Recomputing only the changed part of the lightmap: their cd… — simplicity | theirs | Their patch is +428/-36 across 4 production files (~324 production lines + 104 test) and their lightingCalc is ~200 lines. Critically they PARAMETERISED the existing gather by region — `lightingTileG… | CLOSE THE GAP · DECLINE · DEFER |
 | **C06** | closed | Recomputing only the changed part of the lightmap: their cd… — performance | ours | Ours is measured, theirs is not. Our A2 scroll-shift: lighting.cpu.gather.us ~237us -> ~93us (-60%) on active-scroll windows (210-289 recompute-frames/5s), telemetry-windowed in-game A/B with the bas… | NO ACTION |
 | **C07** | declined · Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… | Cutting the CPU cost of the cellular light computation — quality | theirs | They attacked the phase that actually dominates and pinned the risky paths with equivalence oracles. `cellular_lighting_test.cpp:162 incrementalMovingLightMatchesFullRecalc` and `:215 scrolledStripsM… | CLOSE THE GAP · DECLINE · DEFER |
 | **C08** | accepted · #215 | Cutting the CPU cost of the cellular light computation — simplicity | theirs | Production-surface cleanliness, counted: our two lighting-array files are 675 + 532 = 1207 lines, of which ~455 (38%) is GPU-oracle scaffolding shipped inside the production translation unit — spread… | CLOSE THE GAP · DECLINE · DEFER |
@@ -273,10 +273,10 @@ withdrawn outright and one finding was reversed in our favour.
 | **D64** | declined · DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D65** | closed | Dependency cleanup, vcpkg manifest, and… — Windows CI vcpkg binary cache | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D66** | closed | Dependency cleanup, vcpkg manifest, and… — Regression coverage for the GCC-16 case | equivalent | — | NO ACTION |
-| **E01** | deferred · #214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 sc… | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
-| **E02** | accepted · #214 | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
-| **E03** | accepted · #214 | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
-| **E04** | deferred · #214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two … | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E01** | accepted · #221 | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
+| **E02** | accepted · #221 | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E03** | accepted · #221 | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
+| **E04** | accepted · #221 | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
 | **E05** | done · 66ec860b | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
 | **E06** | accepted · #220 | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
 | **E07** | accepted · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |

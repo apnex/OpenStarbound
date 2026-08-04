@@ -78,9 +78,9 @@
     "note": "Trigger met by E10 and executed in #220. lib/linux/libcrypto.a deleted; no build-system edit needed and the lib/ search path deliberately left alone (see D34)."
   },
   "C05": {
-    "status": "accepted",
-    "task": "#214",
-    "note": "region-parameterise the gather; deletes the ~30-line fork between lightingTileGather and gatherStableColumns and unblocks E01/E04."
+    "status": "done",
+    "commit": "9429b14d",
+    "note": "The fork was the SINK, not the region -- C05's own framing understated it. gatherColumns(region, sink) holds the per-tile arithmetic once; gatherStableColumns 45 lines -> 12. Byte-identical, proven by the render-gate A/B (both legs hash 471488eed310861f) and by a line-for-line textual diff of the arithmetic."
   },
   "C11": {
     "status": "accepted",
@@ -280,22 +280,24 @@
     "until": "#214 lands. A differential oracle for the scroll path cannot be written against the current fork between lightingTileGather and gatherStableColumns; #214 region-parameterises the gather and is what makes one oracle cover both."
   },
   "E01": {
-    "status": "deferred",
-    "until": "#214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 scroll math into a pure helper is the natural first step of that work, not a separate one."
+    "status": "accepted",
+    "task": "#221",
+    "note": "Trigger fired: #214 landed at 9429b14d, so there is now one gather to extract the scroll math from rather than two forked ones."
   },
   "E04": {
-    "status": "deferred",
-    "until": "#214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two forked ones."
+    "status": "accepted",
+    "task": "#221",
+    "note": "Trigger fired with #214. The oracle must drive the scroll path, not just the full gather -- which is why E02's counters land first."
   },
   "E02": {
     "status": "accepted",
-    "task": "#214",
-    "note": "Gather-cache counters (hit / scroll / full, plus a reason tag for the full path). Cheap, and the seam is already open -- #210 added lighting.gather.calc_outside_loaded in the same branch. It is also the instrument E01/E04 will need to know the oracle is exercising the paths it claims to."
+    "task": "#221",
+    "note": "Meter the gather-cache outcome (hit/scroll/full + reason). REPOINTED from #214 to #221: it was accepted against #214 and not implemented there, so closing #214 orphaned it. It is the instrument E01/E04 are judged by and goes first."
   },
   "E03": {
     "status": "accepted",
-    "task": "#214",
-    "note": "Zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. Small, output-identical, and lands naturally inside the #214 rework rather than as its own commit."
+    "task": "#221",
+    "note": "Zero only the vacated L-region. REPOINTED from #214 to #221 for the same reason -- accepted against #214, not implemented there."
   },
   "E06": {
     "status": "accepted",
