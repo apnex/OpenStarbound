@@ -230,6 +230,11 @@ private:
 
   void renderTestCapture();
   uint64_t renderTestHash(Image const& frame, double* meanLuminance) const;
+  // A differing hash says two legs disagree; it cannot say WHERE, and where is what separates a boundary
+  // artefact from a whole-scene regression. Reports the spatial distribution and, with STAR_RENDERTEST_OUT
+  // set, writes legA/legB/diff PNGs.
+  void renderTestDiffMap(Image const& a, Image const& b) const;
+  void renderTestWritePng(Image const& frame, String const& path) const;
   // -----------------------------------------------------------------------------------------------
 
   float m_cameraXOffset = 0.0f;

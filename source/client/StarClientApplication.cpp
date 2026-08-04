@@ -1161,6 +1161,122 @@ uint64_t ClientApplication::renderTestHash(Image const& frame, double* meanLumin
   return hasher.digest();
 }
 
+void ClientApplication::renderTestWritePng(Image const& frame, String const& path) const {
+  try {
+    // NO Y FLIP, AND THE FLIP THAT USED TO BE HERE MADE EVERY DUMPED FRAME UPSIDE DOWN. Both sides of this
+    // copy are already bottom-up -- glReadPixels fills that way, and Image::set counts rows from the bottom
+    // too -- so writing row y to row y is the identity, while the h-1-y that stood here inverted it. It went
+    // unnoticed because nobody had cause to check which way up a diagnostic frame was until a diff had to be
+    // located against the scene. Clamping float to 8-bit is lossy and fine: every verdict is taken on the
+    // raw float data, never on a PNG.
+    Image out(frame.size(), PixelFormat::RGB24);
+    unsigned w = frame.width(), h = frame.height();
+    auto const* px = (float const*)frame.data();
+    for (unsigned y = 0; y < h; ++y) {
+      for (unsigned x = 0; x < w; ++x) {
+        float const* p = px + ((size_t)y * w + x) * 3;
+        auto enc = [](float v) -> uint8_t {
+          v = v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : v);
+          return (uint8_t)(v * 255.0f + 0.5f);
+        };
+        out.set(x, y, Vec3B(enc(p[0]), enc(p[1]), enc(p[2])));
+      }
+    }
+    out.writePng(File::open(path, IOMode::Write));
+  } catch (std::exception const& e) {
+    Logger::warn("[rendertest] could not write '{}': {}", path, outputException(e, false));
+  }
+}
+
+void ClientApplication::renderTestDiffMap(Image const& a, Image const& b) const {
+  unsigned w = a.width(), h = a.height();
+  if (!w || !h || b.width() != w || b.height() != h)
+    return;
+  auto const* pa = (float const*)a.data();
+  auto const* pb = (float const*)b.data();
+
+  // WHERE, not how much. A lighting region is the visible window grown by a border, so an artefact from
+  // the region BOUNDARY can only enter the frame from its perimeter -- it is dense at the edges and absent
+  // in the middle. A scene-wide difference is flat across both of these breakdowns. The count-and-maxAbs
+  // line cannot tell those two apart, and they call for opposite responses.
+  static constexpr unsigned GX = 16, GY = 9;
+  size_t gridDiff[GY][GX] = {};
+  size_t gridTotal[GY][GX] = {};
+
+  // Bands measure DENSITY, never raw count: the outer bands contain far fewer pixels than the inner ones,
+  // so counts alone make a perfect edge band look like a minor contributor.
+  static constexpr unsigned BAND_EDGE[] = {8, 16, 32, 64, 128, 256};
+  static constexpr size_t NBANDS = sizeof(BAND_EDGE) / sizeof(BAND_EDGE[0]) + 1;
+  size_t bandDiff[NBANDS] = {};
+  size_t bandTotal[NBANDS] = {};
+
+  for (unsigned y = 0; y < h; ++y) {
+    unsigned sy = h - 1 - y;   // bottom-up buffer reported in screen order
+    for (unsigned x = 0; x < w; ++x) {
+      size_t i = ((size_t)y * w + x) * 3;
+      bool diff = pa[i] != pb[i] || pa[i + 1] != pb[i + 1] || pa[i + 2] != pb[i + 2];
+
+      unsigned gx = x * GX / w, gy = sy * GY / h;
+      ++gridTotal[gy][gx];
+      unsigned dx = x < w - 1 - x ? x : w - 1 - x;
+      unsigned dy = sy < h - 1 - sy ? sy : h - 1 - sy;
+      unsigned edge = dx < dy ? dx : dy;
+      size_t band = NBANDS - 1;
+      for (size_t k = 0; k + 1 < NBANDS; ++k) {
+        if (edge < BAND_EDGE[k]) {
+          band = k;
+          break;
+        }
+      }
+      ++bandTotal[band];
+      if (diff) {
+        ++gridDiff[gy][gx];
+        ++bandDiff[band];
+      }
+    }
+  }
+
+  Logger::info("[rendertest] A/B diff by distance from nearest frame edge (density within each band):");
+  for (size_t k = 0; k < NBANDS; ++k) {
+    unsigned lo = k ? BAND_EDGE[k - 1] : 0;
+    String range = k + 1 < NBANDS ? strf("{}-{}", lo, BAND_EDGE[k]) : strf("{}+", lo);
+    Logger::info("[rendertest]   edge {:>9}px  {:7.3f}%  ({} / {})",
+      range, bandTotal[k] ? 100.0 * (double)bandDiff[k] / (double)bandTotal[k] : 0.0, bandDiff[k], bandTotal[k]);
+  }
+
+  Logger::info("[rendertest] A/B diff map {}x{} (% of each cell differing, screen order, top row first):", GX, GY);
+  for (unsigned gy = 0; gy < GY; ++gy) {
+    String row;
+    for (unsigned gx = 0; gx < GX; ++gx)
+      row += strf("{:6.1f}", gridTotal[gy][gx] ? 100.0 * (double)gridDiff[gy][gx] / (double)gridTotal[gy][gx] : 0.0);
+    Logger::info("[rendertest]  |{}", row);
+  }
+
+  if (m_renderTestOut.empty())
+    return;
+  renderTestWritePng(a, strf("{}/ab_legA.png", m_renderTestOut));
+  renderTestWritePng(b, strf("{}/ab_legB.png", m_renderTestOut));
+  try {
+    // Amplified 20x: the differences this is built to inspect peak around 0.05, which is invisible at 1:1.
+    Image d(a.size(), PixelFormat::RGB24);
+    auto amp = [](float v) -> uint8_t {
+      float m = (v < 0.0f ? -v : v) * 20.0f;
+      return (uint8_t)((m >= 1.0f ? 1.0f : m) * 255.0f + 0.5f);
+    };
+    for (unsigned y = 0; y < h; ++y) {
+      for (unsigned x = 0; x < w; ++x) {
+        size_t i = ((size_t)y * w + x) * 3;
+        d.set(x, y, Vec3B(amp(pa[i] - pb[i]), amp(pa[i + 1] - pb[i + 1]), amp(pa[i + 2] - pb[i + 2])));
+      }
+    }
+    String path = strf("{}/ab_diff.png", m_renderTestOut);
+    d.writePng(File::open(path, IOMode::Write));
+    Logger::info("[rendertest] wrote {}/ab_{{legA,legB,diff}}.png (diff amplified 20x)", m_renderTestOut);
+  } catch (std::exception const& e) {
+    Logger::warn("[rendertest] could not write the diff PNG: {}", outputException(e, false));
+  }
+}
+
 void ClientApplication::renderTestCapture() {
   auto& renderer = Application::renderer();
 
@@ -1315,6 +1431,27 @@ void ClientApplication::renderTestCapture() {
       Logger::info("[rendertest] legA {} = {} -> hash={:016x} meanLuminance={:.6f}",
         m_renderTestAbKey, m_renderTestAbA.repr(), hash, lum);
       m_renderTestAbPhase = 1;
+      Logger::info("[rendertest] A/B null control: re-rendering leg A, config untouched");
+      return;
+    }
+
+    // THE NULL CONTROL, AND THIS INSTRUMENT SHIPPED WITHOUT ONE FOR WEEKS. An A/B reports that two legs
+    // differ; it cannot, alone, tell you whether the LEVER did that or whether the harness would have
+    // differed from itself anyway. Re-rendering leg A unchanged measures exactly that floor. Run against
+    // a daylit surface scene it came back at 7.4% of pixels -- so the 13.2% once attributed to the
+    // adaptive lighting border was the harness reading its own sun-ray animation. Any A/B verdict taken
+    // below this floor is not evidence, and the gate must refuse it rather than report it.
+    if (m_renderTestAbPhase == 1) {
+      m_renderTestAbPhase = 2;
+      if (hash == m_renderTestAbHashA) {
+        Logger::info("[rendertest] ===== A/B NULL OK: leg A reproduced byte-identically =====");
+      } else {
+        Logger::error("[rendertest] ===== A/B NULL FAILED: leg A did not reproduce ({:016x} then {:016x}) =====",
+          m_renderTestAbHashA, hash);
+        Logger::error("[rendertest] the frozen scene is not deterministic across legs -- no A/B verdict from"
+                      " this run means anything. The map below is the harness's own noise, not a lever.");
+        renderTestDiffMap(m_renderTestAbFrameA, frame);
+      }
       m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbB);
       Logger::info("[rendertest] A/B leg B: {} = {}", m_renderTestAbKey, m_renderTestAbB.repr());
       return;
@@ -1351,6 +1488,7 @@ void ClientApplication::renderTestCapture() {
       Logger::error("[rendertest] ===== A/B DIFF: {} px ({:.4f}%) maxAbs={:.6f} ({} : {} vs {}) =====",
         differing, 100.0 * (double)differing / (double)px, maxAbs,
         m_renderTestAbKey, m_renderTestAbA.repr(), m_renderTestAbB.repr());
+      renderTestDiffMap(m_renderTestAbFrameA, frame);
     }
     m_root->configuration()->set(m_renderTestAbKey, m_renderTestAbOriginal);   // never leave the pin behind
     renderTestMotionVerdict();
@@ -1374,7 +1512,6 @@ void ClientApplication::renderTestCapture() {
 
   double lum = 0.0;
   uint64_t hash = renderTestHash(frame, &lum);
-  auto const* px = (float const*)frame.data();
 
   // State fingerprint alongside the pixel hash. If two runs disagree on the HASH, this says WHICH input
   // drifted -- pixels alone cannot tell you whether the renderer changed or the world did.
@@ -1386,30 +1523,8 @@ void ClientApplication::renderTestCapture() {
     m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
     m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
 
-  if (!m_renderTestOut.empty()) {
-    String path = strf("{}/frame_{:04d}.png", m_renderTestOut, index);
-    try {
-      // Convert the HDR float frame to 8-bit for human inspection. Read the float buffer DIRECTLY -- Image::get
-      // returns Vec4B and would misread an RGB_F image. glReadPixels fills bottom-up, so flip Y.
-      // The HASH above is taken on the raw float data; this PNG is a viewing aid and is NOT what the gate
-      // compares, so a lossy conversion here is harmless.
-      Image out(frame.size(), PixelFormat::RGB24);
-      unsigned w = frame.width(), h = frame.height();
-      for (unsigned y = 0; y < h; ++y) {
-        for (unsigned x = 0; x < w; ++x) {
-          float const* p = px + ((size_t)y * w + x) * 3;
-          auto enc = [](float v) -> uint8_t {
-            v = v <= 0.0f ? 0.0f : (v >= 1.0f ? 1.0f : v);
-            return (uint8_t)(v * 255.0f + 0.5f);
-          };
-          out.set(x, h - 1 - y, Vec3B(enc(p[0]), enc(p[1]), enc(p[2])));
-        }
-      }
-      out.writePng(File::open(path, IOMode::Write));
-    } catch (std::exception const& e) {
-      Logger::warn("[rendertest] could not write '{}': {}", path, outputException(e, false));
-    }
-  }
+  if (!m_renderTestOut.empty())
+    renderTestWritePng(frame, strf("{}/frame_{:04d}.png", m_renderTestOut, index));
 
   if (index + 1 >= m_renderTestFrames) {
     Logger::info("[rendertest] DONE captured={} frames", m_renderTestFrames);
@@ -1867,7 +1982,13 @@ void ClientApplication::updateRunning(float dt) {
       return;
 
     if (worldClient) {
-      m_worldPainter->update(dt);
+      // THE HARNESS FREEZES THE SIM, NOT THE CLOCK, AND THAT INVALIDATED EVERY A/B RUN IN DAYLIGHT.
+      // m_universeServer->setPause stops the world; this call is on the RENDER side and kept running, so
+      // EnvironmentPainter::update went on advancing the sun-ray timer that feeds its per-ray alpha. The
+      // A/B renders its legs seconds apart, so the rays had moved between them: an A/B holding IDENTICAL
+      // config measured 7.4% of pixels differing at maxAbs 0.055 -- larger than the "cost" it was being
+      // used to attribute to a lighting lever. A frozen scene has to be frozen to the renderer too.
+      m_worldPainter->update(m_renderTestFrozen ? 0.0f : dt);
       auto& broadcastCallback = worldClient->broadcastCallback();
       if (!broadcastCallback) {
         broadcastCallback = [&](PlayerPtr player, StringView broadcast) -> bool {

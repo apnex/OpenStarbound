@@ -143,17 +143,53 @@ fi
 #
 # Assert the legs EXIST before believing agreement -- an A/B that did not run emits nothing, and
 # "nothing" must not read as "identical".
+#
+# FOURTH MISS OF THE SAME KIND, and it survived the fix above: this block matched "A/B DIFFER" while the
+# code writes "A/B DIFF:", so the one line that QUANTIFIES a divergence -- count, percentage, maxAbs --
+# never reached the summary. The run still went red, but only by accident through the abmatch==0 arm, and
+# the number that made the divergence diagnosable had to be read out of the raw log by hand. Match the
+# literals renderTestCapture actually emits, and re-check this block whenever either side is reworded.
+#
+# AB_EXPECT declares what the A/B is FOR, because "the legs differ" is not universally a failure. Most A/Bs
+# here certify that a refactor changed nothing, so byte-identity is the default. But an A/B of a lever with
+# an INTENTIONAL visual effect inverts the verdict: MATCH then means the lever did nothing, which is the
+# real failure and the one that silently certifies a dead switch. Hardcoding DIFFER=FAIL cannot express
+# that, and doing so was an over-correction of the un-gating bug above.
+AB_EXPECT="${AB_EXPECT:-match}"
+if [ "$AB_EXPECT" != match ] && [ "$AB_EXPECT" != differ ]; then
+  # An unrecognised expectation must never fall through to a pass. A typo here would otherwise certify
+  # BOTH outcomes -- the same "unasserted check" defect this file carries three warnings about.
+  echo "REFUSING TO CERTIFY: AB_EXPECT must be 'match' or 'differ' -- got '$AB_EXPECT'."
+  exit 1
+fi
 if [ -n "${STAR_RENDERTEST_AB:-}" ] || grep -q "A/B leg A:" "$LOG"; then
-  echo "=== in-process A/B ==="
-  grep -E "A/B leg [AB]:|leg[AB] .*hash=|A/B (MATCH|DIFFER)" "$LOG" | sed 's/^.*\] //; s/^/  /'
+  echo "=== in-process A/B (expect: $AB_EXPECT) ==="
+  grep -E "A/B leg [AB]:|leg[AB] .*hash=|A/B NULL|A/B MATCH|A/B DIFF|A/B diff|\[rendertest\]   edge |\[rendertest\]  \|" \
+    "$LOG" | sed 's/^.*\[rendertest\] //; s/^/  /'
   ablegs=$(grep -cE "leg[AB] .*hash=" "$LOG")
+  abnull=$(grep -c "A/B NULL OK" "$LOG")
   abmatch=$(grep -c "A/B MATCH" "$LOG")
-  abdiff=$(grep -c "A/B DIFFER" "$LOG")
+  abdiff=$(grep -c "A/B DIFF:" "$LOG")
+  # THE NULL CONTROL GATES EVERYTHING BELOW IT. Leg A is rendered twice with nothing changed; if those two
+  # renders disagree, the harness differs from itself and no comparison in this run can be attributed to the
+  # lever. Asserted as "exactly one OK" so an ABSENT null -- an old binary, a skipped phase -- fails too,
+  # rather than passing for want of a line saying otherwise.
   if [ "$ablegs" -ne 2 ]; then
     echo "  <-- FAIL: expected 2 hashed legs, saw $ablegs -- the A/B did not run to completion"
     pass=0
-  elif [ "$abdiff" -ne 0 ] || [ "$abmatch" -eq 0 ]; then
+  elif [ "$abnull" -ne 1 ]; then
+    echo "  <-- FAIL: no passing null control. Leg A did not reproduce itself, so nothing this run measured"
+    echo "  <-- can be attributed to '${STAR_RENDERTEST_AB:-the lever}'. Fix the harness, then re-measure."
+    pass=0
+  elif [ $((abmatch + abdiff)) -ne 1 ]; then
+    echo "  <-- FAIL: expected exactly one verdict line, saw MATCH=$abmatch DIFF=$abdiff"
+    pass=0
+  elif [ "$AB_EXPECT" = match ] && [ "$abmatch" -ne 1 ]; then
     echo "  <-- FAIL: the legs are not byte-identical"
+    pass=0
+  elif [ "$AB_EXPECT" = differ ] && [ "$abdiff" -ne 1 ]; then
+    echo "  <-- FAIL: the legs are byte-identical, but this A/B was declared to change the image."
+    echo "  <-- The lever did nothing: check the key is declared and that the code path reads it."
     pass=0
   else
     echo "  ok"
