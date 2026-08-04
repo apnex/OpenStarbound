@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**149 tasks** across 2 store(s): 3 in_progress, 30 pending, 116 completed
+**150 tasks** across 2 store(s): 3 in_progress, 31 pending, 116 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 148 tasks, ids 64–212
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 149 tasks, ids 64–213
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -62,7 +62,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 80 of 116.
+**Completed tasks citing no commit and no doc:** 79 of 116.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -162,7 +162,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#148](#c29c1332-148) | `c29c1332` | done | RI-1: Renderer contract — delete the dead, exile the instrumentation | — | — |
 | [#149](#c29c1332-149) | `c29c1332` | done | ENV-1: RETRACTED — env oracle was run outside its contract (N=4); at N=1 it is 380 MATCH / 0 DIFF | — | — |
 | [#150](#c29c1332-150) | `c29c1332` | done | RT-0: PROVEN on hardware — D7 confirmed (60,267 × GL_INVALID_OPERATION; world goes black). Explains #204/#285/#510; NOT… | — | — |
-| [#151](#c29c1332-151) | `c29c1332` | done | RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading) | — | — |
+| [#151](#c29c1332-151) | `c29c1332` | done | RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading) | — | `board.md` |
 | [#152](#c29c1332-152) | `c29c1332` | done | F1+F2a+F3a DONE: GlFrameBuffer, GlPass, GlTargets extracted and certified | — | — |
 | [#153](#c29c1332-153) | `c29c1332` | done | GATE-1: SOLVED, but not the way I planned — in-process A/B of two code paths, not a golden hash | — | — |
 | [#154](#c29c1332-154) | `c29c1332` | done | F3b DONE: GlEffects extracted; load no longer binds by accident (c1d4d0533, c6ffbdc3d) | — | — |
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -223,6 +223,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#210](#c29c1332-210) | `c29c1332` | open | RACE-1: use-after-free — sector unload races the lighting thread's gather (SERIOUS, live on integration) | — | — |
 | [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | — | — |
 | [#212](#c29c1332-212) | `c29c1332` | open | TEST-CI-1: five lighting test files run in ZERO CI jobs — and none of them needs assets | — | — |
+| [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1831,6 +1832,8 @@ FBOs are multisampled=false and safe to sample under AA).
 #### #151 — RT-1: env-cache AA gate DELETED (byte-identical under AA); parallax AA gate KEPT (loses per-sample shading)
 
 status: **completed**
+
+- cited in `docs/board.md`
 
 ```
 DONE 2026-07-14 @ ffd176e2a. Half the hypothesis was right, and the control caught the other half.
@@ -3460,6 +3463,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `2e9d964d` board: export -- three follow-ups filed off the PR 570 analysis, plus #161 and #196 rewritten [#204]
 - `0481bb82` docs: PR 570 findings ledger -- 155 rows, 33 open decisions, generated not transcribed [#204]
 - `566fce3d` docs: a durable handover for #204, and the board export that makes its ids resolve [#204]
 - `21ba119a` spec: `statistics` is not a platform service -- stage 2 of dissolving `platform` [#204]
@@ -3910,6 +3914,69 @@ WORK
 
 RELATED: #194 (CI-3), #195 (CI-4) built the gate-running machinery; this is the same class one level
 down -- machinery that exists and is not pointed at the thing it was built for.
+```
+
+<a id="c29c1332-213"></a>
+
+#### #213 — LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic
+
+status: **pending**
+
+```
+FOUND 2026-08-04 via the OpenStarbound PR 570 comparison. Small, real, and NOT purely mechanical --
+one of the two differences is a behavioural divergence that needs a decision.
+
+THE DUPLICATION
+  source/base/StarCellularLightArray.cpp:12-78   ScalarLightTraits specialization
+  source/base/StarCellularLightArray.cpp:85-151  ColoredLightTraits specialization
+
+VERIFIED BY NORMALISED DIFF (substitute Scalar/ColoredLightTraits -> LightTraits, strip trailing
+whitespace, then diff). The two bodies differ in exactly TWO lines:
+
+  1. SEMANTIC -- the beam epsilon:
+         scalar :   if (light.beam > 0.0001f) {
+         colored:   if (light.beam > 0.0f) {
+     These diverge for beam values in (0, 0.0001]. Unifying means CHOOSING one, or keeping the
+     epsilon as a traits constant. Do not silently pick; whichever way it goes it is an output
+     change for some inputs, and the scalar path is player-visible (see RISK below).
+
+  2. COSMETIC -- one line differs by a single leading space.
+
+Everything else is already generic over the traits: maxIntensity, subtract, max, operator+ and
+operator* are all traits operations. So the merge is a plain LightTraits:: substitution with ZERO
+new hooks and no `if constexpr`.
+
+DO NOT IMPORT PR 570'S MECHANISM. Their unification carries traits hooks -- spreadDrops,
+subtractChannels writing into float contrib[ComponentCount], channels() handing out a float const*
+-- and every one of those exists ONLY to service their channel-major SoA storage (their
+StarCellularLightArray.hpp:453-457, sink is float* dst[ComponentCount] into m_pointChannels). We are
+not taking the SoA, which removes the entire reason the hooks exist. Taking the abstraction while
+rejecting its justification is the trade to avoid.
+
+RISK IS HIGHER THAN "IT IS ONLY THE CPU FALLBACK" -- that framing is FALSE and it is the reason this
+task carries more care than its size suggests:
+  CellularLightIntensityCalculator holds a ScalarCellularLightArray (StarCellularLighting.hpp:237)
+  and its calculate() (StarCellularLighting.cpp:395) runs the scalar calculatePointLighting
+  UNCONDITIONALLY. That path is:
+    - WorldServer::lightLevel()        StarWorldServer.cpp:2645
+    - WorldClient::lightLevel()        StarWorldClient.cpp:2789
+    - the Lua callback world.lightLevel  StarWorldLuaBindings.cpp:636   <-- MOD-FACING
+    - read by StarMainInterface.cpp:574
+  lightingGpu / skipCpuCalc (StarWorldClient.cpp:2401) does NOT bypass it. So this is live on the
+  dedicated server and in every mod that queries light.
+
+WHAT THIS DOES AND DOES NOT BUY. It takes the point-light model from 8 transcriptions to 7. The
+other six are NOT duplication and must not be merged:
+    .hpp:541            lineAttenuation -- the shared Wu primitive the kernel calls
+    .cpp:170            verbatim mirror, deliberately INDEPENDENT so it can falsify production
+    .cpp:310            obstacleRaycastDDA -- the GLSL-portable form; merging defeats the de-risk
+    .cpp:379            pointLightingReference -- the oracle; shared math cannot detect a regression
+    lightingPoint.frag:34, :86   the GPU shader -- a language boundary, not duplication
+
+VERIFICATION: byte-identity for every beam value outside (0, 0.0001], by construction. For the
+epsilon decision itself, state the chosen behaviour explicitly in the commit. NOTE that our lighting
+tests currently run in ZERO CI jobs (#212) -- so the oracles that would defend this change do not
+execute. Prefer landing #212 first, or run the lighting tests by hand and say so.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
