@@ -265,6 +265,15 @@ private:
 
   typedef function<ClientTile const& (Vec2I)> ClientTileGetter;
 
+  // The one tile gather (#214). Walks `region` column-parallel, computing the per-frame-INVARIANT
+  // inputs, and hands each finished column to
+  //   sink(Vec2I const& pos, Vec3F* light, bool* obstacle, bool const* skyExposed, size_t ySize)
+  // `light` is mutable so a sink can fold environmentLight in place.
+  //
+  // Do NOT fold environmentLight in here. Float addition is not associative, and both sinks add it
+  // LAST; moving it earlier changes pixels.
+  template <typename ColumnSink>
+  void gatherColumns(RectI const& region, ColumnSink&& sink);
   void lightingTileGather();
   // A1: gather the per-frame-INVARIANT tile lighting (block+liquid+background emission + obstacle +
   // sky-exposed bit, EXCLUDING the per-frame environmentLight) into the reusable stable grid (full

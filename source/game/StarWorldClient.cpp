@@ -1850,85 +1850,21 @@ RpcPromise<InteractAction> WorldClient::interact(InteractRequest const& request)
   return pair.first;
 }
 
-void WorldClient::lightingTileGather() {
-  int64_t start = Time::monotonicMicroseconds();
-  Vec3F environmentLight = m_sky->environmentLight().toRgbF();
+template <typename ColumnSink>
+void WorldClient::gatherColumns(RectI const& region, ColumnSink&& sink) {
   float undergroundLevel = m_worldTemplate->undergroundLevel();
   auto liquidsDatabase = Root::singleton().liquidsDatabase();
   auto materialDatabase = Root::singleton().materialDatabase();
 
-  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size.
-
-  m_tileArray->tileEvalColumnsParallel(m_lightingCalculator.calculationRegion(), [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
-    size_t baseIndex = m_lightingCalculator.baseIndexFor(pos);
-    // Stage the column, then write it with a single setCellColumn so the monochrome/Either
-    // branch is resolved once per column instead of once per tile. Byte-identical to the
-    // per-tile setCellIndex. ySize is guaranteed <= the sector size (comment above).
+  // Each column is guaranteed no larger than the sector size, which is what lets the staging arrays
+  // be fixed-size stack storage.
+  m_tileArray->tileEvalColumnsParallel(region, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
     Vec3F colLight[WorldSectorSize];
     bool colObstacle[WorldSectorSize];
-    // Memoize radiantLight across vertical runs of identical material/mod (stone columns, open
-    // sky). radiantLight is a pure function of (id, mod) -> reusing the cached value is byte-
-    // identical. Sentinel = the "no material" state (EmptyMaterialId, NoModId), which never passes
-    // the emission guard, so the first emitting tile always recomputes.
-    MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
-    MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
-    for (size_t y = 0; y < ySize; ++y) {
-      auto& tile = column[y];
-      Vec3F light;
-      if (tile.foreground != EmptyMaterialId || tile.foregroundMod != NoModId) {
-        if (tile.foreground != fgMat || tile.foregroundMod != fgMod) {
-          fgMat = tile.foreground; fgMod = tile.foregroundMod;
-          fgLight = materialDatabase->radiantLight(fgMat, fgMod);
-        }
-        light += fgLight;
-      }
-
-      if (tile.liquid.liquid != EmptyLiquidId && tile.liquid.level != 0.0f)
-        light += liquidsDatabase->radiantLight(tile.liquid);
-      if (tile.foregroundLightTransparent) {
-        if (tile.background != EmptyMaterialId || tile.backgroundMod != NoModId) {
-          if (tile.background != bgMat || tile.backgroundMod != bgMod) {
-            bgMat = tile.background; bgMod = tile.backgroundMod;
-            bgLight = materialDatabase->radiantLight(bgMat, bgMod);
-          }
-          light += bgLight;
-        }
-        if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
-          light += environmentLight;
-      }
-      colLight[y] = light;
-      colObstacle[y] = !tile.foregroundLightTransparent;
-    }
-    m_lightingCalculator.setCellColumn(baseIndex, colLight, colObstacle, ySize);
-  });
-  LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
-}
-
-void WorldClient::lightingStableGather() {
-  RectI calcRegion = m_lightingCalculator.calculationRegion();
-  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
-  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
-  // the direct gather. Then gather the full calc region over the top.
-  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)calcRegion.height(), GatherCell{});
-  gatherStableColumns(calcRegion);
-}
-
-void WorldClient::gatherStableColumns(RectI const& region) {
-  float undergroundLevel = m_worldTemplate->undergroundLevel();
-  auto liquidsDatabase = Root::singleton().liquidsDatabase();
-  auto materialDatabase = Root::singleton().materialDatabase();
-
-  RectI calcRegion = m_lightingCalculator.calculationRegion();
-  int height = calcRegion.height();
-  Vec2I calcMin = calcRegion.min();
-  // Each column in tileEvalColumns is guaranteed to be no larger than the sector size. Indexing is
-  // relative to the current calc region (calcMin/height), matching baseIndexFor, so the same routine
-  // serves both the full gather and the A2 margin (the grid is always aligned to calcMin).
-  m_tileArray->tileEvalColumnsParallel(region, [&](Vec2I const& pos, ClientTile const* column, size_t ySize) {
-    size_t baseIndex = (size_t)(pos[0] - calcMin[0]) * (size_t)height + (size_t)(pos[1] - calcMin[1]);
-    // Same per-tile compute + material-run memo as lightingTileGather, but the per-frame
-    // environmentLight is EXCLUDED from stableLight and recorded as the skyExposed bit instead, so
-    // the grid is reusable across frames (env-light re-applied each frame in applyStableToCells).
+    bool colSkyExposed[WorldSectorSize];
+    // Memoize radiantLight across vertical runs of identical material/mod (stone columns, open sky).
+    // It is a pure function of (id, mod), so reuse is byte-identical. The sentinel is the "no
+    // material" state, which never passes the emission guard, so the first emitting tile recomputes.
     MaterialId fgMat = EmptyMaterialId; ModId fgMod = NoModId; Vec3F fgLight;
     MaterialId bgMat = EmptyMaterialId; ModId bgMod = NoModId; Vec3F bgLight;
     for (size_t y = 0; y < ySize; ++y) {
@@ -1956,12 +1892,56 @@ void WorldClient::gatherStableColumns(RectI const& region) {
         if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel)
           skyExposed = true;
       }
-      GatherCell& gc = m_gatherGrid[baseIndex + y];
-      gc.stableLight = light;
-      gc.obstacle = tile.foregroundLightTransparent ? 0 : 1;
-      gc.skyExposed = skyExposed ? 1 : 0;
+      colLight[y] = light;
+      colObstacle[y] = !tile.foregroundLightTransparent;
+      colSkyExposed[y] = skyExposed;
     }
+    sink(pos, colLight, colObstacle, colSkyExposed, ySize);
   });
+}
+
+void WorldClient::lightingTileGather() {
+  int64_t start = Time::monotonicMicroseconds();
+  Vec3F environmentLight = m_sky->environmentLight().toRgbF();
+  // One setCellColumn per column resolves the monochrome/Either branch once per column, not per tile.
+  gatherColumns(m_lightingCalculator.calculationRegion(),
+    [&](Vec2I const& pos, Vec3F* light, bool* obstacle, bool const* skyExposed, size_t ySize) {
+      for (size_t y = 0; y < ySize; ++y) {
+        if (skyExposed[y])
+          light[y] += environmentLight;
+      }
+      m_lightingCalculator.setCellColumn(m_lightingCalculator.baseIndexFor(pos), light, obstacle, ySize);
+    });
+  LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - start));
+}
+
+void WorldClient::lightingStableGather() {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  // Zero the whole grid first so cells outside the loaded sectors (which tileEvalColumnsParallel
+  // clamps away) read as {0 light, not-obstacle, not-sky} -- exactly what begin() leaves them as in
+  // the direct gather. Then gather the full calc region over the top.
+  m_gatherGrid.assign((size_t)calcRegion.width() * (size_t)calcRegion.height(), GatherCell{});
+  gatherStableColumns(calcRegion);
+}
+
+void WorldClient::gatherStableColumns(RectI const& region) {
+  RectI calcRegion = m_lightingCalculator.calculationRegion();
+  int height = calcRegion.height();
+  Vec2I calcMin = calcRegion.min();
+  // Indexing is relative to the calc region, matching baseIndexFor, so this serves both the full
+  // gather and the A2 margin -- the grid is always aligned to calcMin. environmentLight is EXCLUDED
+  // here and carried as the skyExposed bit, which is what makes the grid reusable across frames;
+  // applyStableToCells re-applies it per frame.
+  gatherColumns(region,
+    [&](Vec2I const& pos, Vec3F const* light, bool const* obstacle, bool const* skyExposed, size_t ySize) {
+      size_t baseIndex = (size_t)(pos[0] - calcMin[0]) * (size_t)height + (size_t)(pos[1] - calcMin[1]);
+      for (size_t y = 0; y < ySize; ++y) {
+        GatherCell& gc = m_gatherGrid[baseIndex + y];
+        gc.stableLight = light[y];
+        gc.obstacle = obstacle[y] ? 1 : 0;
+        gc.skyExposed = skyExposed[y] ? 1 : 0;
+      }
+    });
 }
 
 void WorldClient::shiftAndGatherMargin(int dx, int dy) {
