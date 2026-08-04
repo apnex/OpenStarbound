@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**162 tasks** across 2 store(s): 3 in_progress, 35 pending, 124 completed
+**163 tasks** across 2 store(s): 3 in_progress, 35 pending, 125 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 161 tasks, ids 64–225
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 162 tasks, ids 64–226
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 154, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 156, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 124.
+**Completed tasks citing no commit and no doc:** 79 of 125.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -236,7 +236,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
 | [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the… | — | — |
-| [#225](#c29c1332-225) | `c29c1332` | open | EPOCH-1: the lighting tile epoch is global and unconditional, and it costs the stable-grid cache 76-86% of its hits | — | — |
+| [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 CLOSED: both coarsenesses are real, both are exactly fixable, and fixing both changes nothing | `5af987a2` `e572e1ab` | — |
+| [#226](#c29c1332-226) | `c29c1332` | open | EPOCH-2: three gather inputs that NO epoch bump tracks -- undergroundLevel, sector load, and the cached transparency fl… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3483,6 +3484,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `cf59f083` board: #221 CLOSED -- E02/E01/E03/E04 all done as hardening, each injection-proven [#204]
 - `76d6cf2d` board: E02 done at fc81ae17; #225 opened -- the gather cache loses 76-86% of its hits to tile-epoch churn [#204]
 - `64ac2ab6` board: #221 reframed as hardening and reordered E02-&gt;E01-&gt;E03-&gt;E04; perf case measured near-null and set aside [#204]
 - `9224f07b` board: #223 closed -- paralloracle was never failing; the gate misread a bounded-diff oracle [#204]
@@ -4462,55 +4464,110 @@ Do NOT re-derive the spread border floor on the strength of #222 -- that ticket'
 
 <a id="c29c1332-225"></a>
 
-#### #225 — EPOCH-1: the lighting tile epoch is global and unconditional, and it costs the stable-grid cache 76-86% of its hits
+#### #225 — EPOCH-1 CLOSED: both coarsenesses are real, both are exactly fixable, and fixing both changes nothing
+
+status: **completed**
+
+- `5af987a2` #225 step 2: classify epoch bumps by location, and close the question -- no invalidation policy fixes this [#225]
+- `e572e1ab` #225 step 1: split the epoch bumps, and find that value-gating cannot fix the churn [#225]
+
+```
+MEASURED AND CLOSED 2026-08-04. The finding stands -- the stable-grid cache loses 76-86% of its hits to tile-epoch churn -- but the fix this ticket proposed does not work, and that is now measured rather than argued. Nothing was gated; nothing should be.
+
+STEP 1 (e572e1ab) -- split the bumps by site and by whether they changed anything.
+    total epoch bumps      73034      (~1217 per second)
+      netTile              64512  88.3%   of which NO-OP:     0   (0.0%)
+      liquid                8522  11.7%   of which NO LIGHT: 8522  (100.0%)
+BOTH HALVES OF THE PREMISE WERE WRONG. The netTile site has a ZERO no-op rate: every one of those packets
+genuinely changes a light-relevant field, so a compare-before-and-after gate saves nothing at the site
+producing 88% of the churn. The liquid site is 100% light-irrelevant, and not for the reason a level
+compare would catch -- only 116 had an unchanged level, so 8406 DID change level and still could not alter
+an output, because radiantLight is settings->radiantLightLevel * level and that liquid has zero radiance.
+
+STEP 2 (5af987a2) -- classify by location, which was the only remaining candidate.
+    netTile   64512   outside calc region  17088  (26.5%)
+    liquid     8558   outside calc region      0  ( 0.0%)
+    TOTAL     73070   outside              17088  (23.4%)
+The liquid updates are entirely ON SCREEN -- the lava is in the visible window -- so a regional epoch drops
+none of them.
+
+COMBINING EVERY LEVER: the sets are disjoint, so 17088 regional + 8558 radiance-no-op = 25646 of 73070 =
+35.1%. That leaves 21.1 bumps per recompute against 32.5 today. A hit needs ZERO bumps in the interval. It
+still misses. Both coarsenesses are real, both are exactly and safely addressable, and fixing both changes
+nothing.
+
+CAVEAT AGAINST MY OWN NUMBER, not resolved: 21.1-per-recompute assumes even arrival, and arrivals are
+bursty -- the hit rate is 402/2248 = 17.9%, so some intervals are already bump-free. What governs hit rate
+is the fraction of intervals with ZERO qualifying bumps, not the total; removing bumps from already-dirty
+intervals buys nothing. NOT MEASURED. The 35.1% could convert to anywhere from zero upward. Left unmeasured
+deliberately: the whole gather is 3.20% of active frame CPU at this base, in a frame that idles 63-77%, so
+the prize does not justify another instrument.
+
+WHY THE LIQUID GATE WAS NOT SHIPPED despite being exact, safe and worth 8558 provably useless invalidations
+a minute: it buys no measurable hit rate while putting a value comparison into the invalidation path with
+#226's loadDefaultSector hazard still open, where a missed bump means stale lighting. A change whose only
+measurable effect is risk is not hygiene.
+
+WHAT SURVIVES: five counters plus the published calculation region, kept as the evidence. Remove them
+together if anyone revisits the epoch and gets the same answer. lighting.epoch.bump.nettile.noop is a
+known-zero counter, deliberately kept as the regression detector for a future change that starts sending
+redundant tile data.
+
+THE REAL YIELD OF THIS TICKET IS #226 -- three gather inputs that no epoch bump tracks at all, found by the
+read-only trace run to establish the field set. One of them (undergroundLevel) I verified myself and can
+stale the skyExposed bit of the ENTIRE grid on a world-parameter change, with a cheap fix. That is worth
+more than anything #225 could have delivered.
+```
+
+<a id="c29c1332-226"></a>
+
+#### #226 — EPOCH-2: three gather inputs that NO epoch bump tracks -- undergroundLevel, sector load, and the cached transparency flags
 
 status: **pending**
 
 ```
-FOUND 2026-08-04 by E02's counters, on their first run. This is the finding that E02 existed to produce, and it falsifies the premise A1/A2 were built on.
+FOUND 2026-08-04 by the read-only trace run for #225, which asked the adversarial question: is any input the lighting gather reads written by a path that does not bump m_lightingTileEpoch at all? Three answers, all PRE-EXISTING and independent of #225's churn work. Agent-reported with file:line; I have verified the load-bearing ones by reading the code, and each is marked.
 
-MEASURED at 01-Lava Refinery, 60s live profiles (harness/profiles/e02-still.json, e02-walk.json):
+--- H1. undergroundLevel is a live gather input and nothing invalidates on it. VERIFIED BY ME.
+    StarWorldClient.cpp gatherColumns reads m_worldTemplate->undergroundLevel() once per gather, and it is
+    the sole non-tile term of skyExposed:
+        if (tile.backgroundLightTransparent && pos[1] + y > undergroundLevel) skyExposed = true;
+    A WorldParametersUpdatePacket calls m_worldTemplate->setWorldParameters with NO epoch bump and NO
+    m_gatherValid reset. So a world-parameter change can leave the skyExposed bit of the ENTIRE cached grid
+    stale, and no per-tile field gate can ever fix it -- the input is not a tile field.
+    FIX SHAPE: reset m_gatherValid (or bump the epoch) at the setWorldParameters call site.
 
-                        standing still        walking
-  lighting.gather.hit        273  13.9%       409  18.3%
-  lighting.gather.scroll       0   0.0%       123   5.5%
-  lighting.gather.full.epoch 1695  86.1%     1699  76.2%
-  full.first / full.dims / full.jump   0 in every run
-  SUM                       1968             2231     == lighting.temporal.recomputed in both -> the partition holds
+--- H2. loadDefaultSector bumps no epoch, and the gather SKIPS unloaded sectors rather than substituting a
+    default. AGENT-REPORTED, premise verified by me at the gather's own comment in lightingStableGather.
+    tileEvalColumnsParallel passes evalEmpty=false, so the callback is NOT INVOKED for absent sectors and
+    the grid cell keeps whatever it already held. Today the readNetTile loop that follows bumps
+    unconditionally and incidentally masks this.
+    THIS IS THE HAZARD THAT BLOCKS #225's GATE: under a value-compare bump, a newly loaded sector whose
+    NetTiles happen to equal the tiles already present produces ZERO bumps -- while the gather's COVERAGE
+    changed, cells going from "skipped, stale value retained" to "gathered". That is the most likely way
+    gating ships stale lighting.
+    MITIGATION, cheap and required BEFORE any gate lands: bump unconditionally once per loadDefaultSector
+    (per sector, not per tile).
 
-So the stable-grid cache falls back to a FULL gather on 76-86% of recomputes, and the reason is ALWAYS the tile epoch. Never a resize, never an anchor jump. A1's cache-hit path -- the whole point of the stable grid -- gets 14-18%.
+--- H3. The two transparency flags are CACHED DERIVED STATE, recomputed only in readNetTile.
+    backgroundLightTransparent and foregroundLightTransparent are derived from the material database at the
+    netTile write site. If render profiles change under a running client (asset reload), both the flags and
+    the radiantLight results go stale with NO tile write anywhere -- even a full re-gather reads the stale
+    cached flags. A reload tracker exists near the lighting-parameter cache but the agent did NOT verify it
+    invalidates m_gatherEpoch / m_gatherValid, and neither have I.
+    STATUS: unverified severity. Asset reload mid-session may not be a real scenario for the Director.
 
-THE CAUSE, and it is two separate coarsenesses in one key. Both bump sites are unconditional:
+ALSO RECORDED, not a new hazard: unloadSector bumps no epoch either. Already documented in the code and
+already tracked as the E04 residual (#221). Gating removes the churn that was incidentally papering over it,
+so #225 makes this one MORE likely to surface, not less.
 
-  StarWorldClient.cpp, TileLiquidUpdatePacket handler:
-      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
-        tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
-        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
-      }
-  StarWorldClient.cpp, the netTile apply path: assigns foreground/background/liquid/transparency, then
-      m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
+AND A SAFETY MULTIPLIER FOR #225: m_lightingTileEpoch is also the change detector for the TEMPORAL lighting
+gate (StarTemporalLightingGate compares tileEpoch != prev.tileEpoch -- equality, not monotonic motion, so
+gating is compatible with it). But it means a wrongly-narrow gate suppresses temporal recomputes as well as
+gather rebuilds, doubling the blast radius of any mistake in #225.
 
-  1. UNCONDITIONAL ON CHANGE. Neither site compares old against new. A liquid packet that re-sends the
-     same level, or a netTile that changes only dungeonId or biome index, invalidates the whole grid.
-  2. GLOBAL, NOT REGIONAL. The epoch is one whole-world counter. A tile updating far outside the
-     calculation region -- off-screen, in another room -- invalidates the cache for the visible window.
-
-At a LAVA base, liquid packets stream continuously: ~28 epoch bumps per second standing still, with the player not moving and nothing on screen changing.
-
-WHY IT IS NOT SIMPLY A BUG: bumping conservatively is SAFE. A cache that invalidates too often is correct; one that invalidates too rarely renders stale light. The finding is that the key is far coarser than it needs to be, and until E02 nobody knew the cost.
-
-WHAT THIS MAKES OF E03 (#221): near-worthless, and now measured rather than estimated. E03 only helps the scroll path, which runs 5.5% of recomputes while WALKING and 0% standing still. And when it does run the margin is 163 cells of a 35,840-cell grid -- 0.5%, so the current full-scratch zero is ~200x larger than the region that needs it. A large relative saving on a path that almost never runs. Keep E03 as the dedupe it is (after E01), do not expect a number.
-
-BOUND ON THE PRIZE, so nobody oversells this either: the whole gather is 3.20% of active frame CPU at this base (251 us/recompute standing still). Making every recompute a cache hit cannot win more than that, and the client already idles 60-77% of each frame. This is worth doing for cache-behaviour correctness and for the cost of the CPU-lighting path when GPU lighting is off (20-52%), not for the shipped frame.
-
-CANDIDATE DIRECTIONS, none designed yet:
-  - gate each bump on the light-relevant fields ACTUALLY changing (foreground, background, liquid level,
-    the two transparency flags) rather than on the write happening
-  - make the epoch regional: per-sector epochs, or compare the updated position against the current
-    calculation region before bumping
-  - measure first WHICH of the two sites dominates -- split the counter before choosing
-
-FIRST STEP: split lighting.gather.full.epoch by bump site, and count bumps that changed nothing. Both are cheap counters at the two call sites above.
+SEQUENCING: H2 must land BEFORE #225's gate. H1 is independent and cheap. H3 needs its severity established
+before anyone spends effort on it.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
