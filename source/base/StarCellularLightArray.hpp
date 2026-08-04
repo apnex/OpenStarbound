@@ -17,10 +17,6 @@ struct ScalarLightTraits {
   static float minIntensity(float value);
 
   static float max(float v1, float v2);
-
-  // Guard threshold for the point-beam term. This DIFFERS from ColoredLightTraits and always has;
-  // the divergence is explained where it is consumed, in calculatePointLighting.
-  static constexpr float PointBeamThreshold = 0.0001f;
 };
 
 // Operations for 3 component (colored) lighting.  Spread and subtract are
@@ -36,9 +32,6 @@ struct ColoredLightTraits {
   static float minIntensity(Vec3F const& value);
 
   static Vec3F max(Vec3F const& v1, Vec3F const& v2);
-
-  // Differs from ScalarLightTraits -- see calculatePointLighting.
-  static constexpr float PointBeamThreshold = 0.0f;
 };
 
 template <typename LightTraits>

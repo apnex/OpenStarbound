@@ -51,13 +51,18 @@ void CellularLightArray<LightTraits>::calculatePointLighting(size_t xmin, size_t
           continue;
 
         Vec2F direction = relativeLightPosition / distance;
-        // THE ONE SEMANTIC DIFFERENCE between the two instantiations, PRESERVED rather than resolved.
-        // Scalar has guarded this with 1e-4 and Colored with 0 since they were separate copies. Both
-        // are live -- CellularLightingCalculator's monochrome flag picks one -- so collapsing to
-        // either value changes pixels for the other, which makes it an output change and not part of
-        // a byte-identical merge. Carried as a traits constant so the divergence is declared in one
-        // place instead of hiding in a duplicated body.
-        if (light.beam > LightTraits::PointBeamThreshold) {
+        // Was the two copies' ONLY semantic difference: Scalar guarded with 1e-4, Colored with 0.
+        // Unified on 0 -- "a beam was configured at all" -- because the 1e-4 form was a copy-paste
+        // accident, not a design choice, and it made monochrome and colored lighting disagree.
+        //
+        // Unifying is bit-identical for real content, not merely close: pointBeam is authored per
+        // object and defaults to exactly 0, so a light is either 0 (both guards skip) or a real beam
+        // (both apply). Every pointBeam in the vanilla pak and in all installed Workshop mods is
+        // >= 0.1, three orders of magnitude above the old epsilon, and the value is read straight
+        // from config with no interpolation, so nothing transits the (0, 1e-4] window either. Even a
+        // hypothetical asset inside it would shift attenuation by at most 2e-4 -- a twentieth of an
+        // 8-bit level, since subtract() is linear.
+        if (light.beam > 0.0f) {
           attenuation += (1.0f - light.beamAmbience) * clamp(light.beam * (1.0f - direction * beamDirection), 0.0f, 1.0f);
           if (attenuation >= 1.0f)
             continue;
