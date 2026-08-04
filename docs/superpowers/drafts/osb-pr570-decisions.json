@@ -16,8 +16,10 @@
     "note": "sector-unload use-after-free. The unload loop now takes m_lightMapPrepMutex, which the gather already holds -- no new lock, 93-276us of main-thread stall. Root cause of the reachability is #127's grid-size bucket widening the calc region on the max side only while neededSectors stayed on the unbucketed window; the false containment comment is replaced by the arithmetic plus counter lighting.gather.calc_outside_loaded. Correct by construction and 346 tests green, but the race was never observed firing -- no TSan preset, jemalloc conflicts with TSan. That verification is deferred on #210, NOT claimed."
   },
   "A07": {
-    "status": "accepted",
+    "status": "done",
     "task": "#211",
+    "commit": "b1e66be4",
+    "verified": "Audited at HEAD: a capability guard exists and the sample-shading feature is PRESERVED, so the row as filed -- a guard, explicitly not PR-570's deletion -- is met, and the primary case it named (a 3.x driver with no sample-shading capability at all) is correctly guarded. BUT THE AUDIT FOUND A REAL DEFECT IN THE GUARD ITSELF, confirmed against GLEW's source and not merely its headers: StarRenderer_opengl.cpp accepts `GLEW_VERSION_4_0 || GLEW_ARB_sample_shading`, then calls glMinSampleShading -- which GLEW maps to __glewMinSampleShading, loaded ONLY by _glewInit_GL_VERSION_4_0, while _glewInit_GL_ARB_sample_shading loads the SEPARATE pointer __glewMinSampleShadingARB. On a GL 3.x driver exposing ARB_sample_shading but not 4.0, that pointer is NULL and the call is a null function-pointer dereference. The guard converts a GL error into a CRASH on precisely the driver class it was written to protect. The ARB arm must dispatch to glMinSampleShadingARB or be dropped. Row stays done; the defect is #211's remaining scope.",
     "note": "unguarded GL 4.0 sample-shading. Our fix is a guard, NOT their deletion -- #151 measured the quality at 22.3% of pixels and kept it."
   },
   "E05": {
@@ -40,6 +42,7 @@
   "C16": {
     "status": "accepted",
     "task": "#216",
+    "remeasured": "STILL OPEN, re-confirmed by audit: no hand-derived closed-form assertions have been added, so the tests still pin drift rather than truth. ONE PRECISION so the row is not overstated when it is picked up -- 'zero absolute assertions' would be wrong. Two absolute checks already exist in lighting_point_test.cpp and predate this row; what is missing is a MODEL-derived expected value asserted against production output, not any absolute value at all.",
     "note": "closed-form assertions. The judge's 'production IS the oracle' was REVERSED by the challenge; what survives is that a differential oracle pins drift, not truth."
   },
   "C17": {
@@ -59,6 +62,7 @@
   "C08": {
     "status": "accepted",
     "task": "#215",
+    "remeasured": "STILL OPEN, re-confirmed by audit: the oracle scaffolding has NOT been relocated and still sits inside the lighting-array TU. The row's own figure has drifted slightly with intervening edits -- the TU now measures 1197 lines, not the 1207 the row was written against (the 675+532 framing counts the template-carrying header plus the .cpp). Recorded so the number is re-derived when the split is done rather than quoted stale.",
     "note": "455 of 1207 lines (38%) of the lighting-array TU is oracle scaffolding. Relocate, do not delete."
   },
   "C09": {
@@ -70,13 +74,17 @@
     "until": "#161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is about, and #161 now carries the re-ranked candidate list and the K-sweep measurement that should precede any of it."
   },
   "D59": {
-    "status": "accepted",
+    "status": "done",
     "task": "#220",
+    "commit": "4e4ced84",
+    "verified": "Audited at HEAD: the file is absent from index and disk, and BOTH companion edits are confirmed LIVE in the current tree rather than merely present in the diff -- tinyformat.h is gone from star_extern_HEADERS (which ADD_LIBRARY consumes, so a dangling entry would be a configure hard error) and its Boost attribution block is gone from doc/OPENSOURCE.md. No later commit re-added the path. The remaining entries in star_extern_HEADERS were spot-checked to exist on disk, so the list is not left dangling elsewhere.",
     "note": "Trigger met by E10 and executed in #220. tinyformat.h deleted with both companion edits."
   },
   "D60": {
-    "status": "accepted",
+    "status": "done",
     "task": "#220",
+    "commit": "4e4ced84",
+    "verified": "Audited at HEAD: the 4 MB artefact is absent from index and disk, no build file references crypto, and the third clause was checked in the direction that matters -- the lib/ search path is DELIBERATELY INTACT. cmake/FindPkgMacros.cmake still searches ${dir}/lib and lib/linux/ still carries libdiscord_game_sdk.so and libsteam_api.so, so B16's proposed removal of that path would have broken FindSteamApi/FindDiscordApi. Verified per-file rather than from the commit stat, since 4e4ced84 is a bundle that also deletes tinyformat.h.",
     "note": "Trigger met by E10 and executed in #220. lib/linux/libcrypto.a deleted; no build-system edit needed and the lib/ search path deliberately left alone (see D34)."
   },
   "C05": {
@@ -257,8 +265,10 @@
     "note": "Both halves settled. The sector-unload race IS the defect and it is fixed at 66ec860b (#210). The asyncLighting half was closed by the A06 sweep: async lighting is unconditionally ON in every session (UniverseClient::connect calls setAsyncLighting(true) at the sole WorldClient construction site, on both paths), the ctor default is dead code, and /asyncLighting is the opt-OUT. No defect in the default; the row stayed open only because nobody folded the two answers together."
   },
   "D34": {
-    "status": "accepted",
+    "status": "done",
     "task": "#220",
+    "commit": "4e4ced84",
+    "verified": "Audited at HEAD 903f4ce0 rather than trusted from the commit message: both artefacts are absent from disk AND from git ls-files, there are zero tfm:: uses, and zero crypto references in any CMakeLists or .cmake. The surviving name hits are ledger prose ABOUT the deletion, not references to it. The libcrypto.a copies under build/*/vcpkg_installed are vcpkg's own OpenSSL and gitignored -- a different artefact from the vendored lib/linux one, and they do not undercut the row.",
     "note": "ACCEPTED, not declined -- the first pass mislabelled this. tinyformat.h (49 KB, zero tfm:: uses, zero includes) and lib/linux/libcrypto.a (4.0 MB, zero references in any CMakeLists/cmake) are both verified dead and are DELETED in #220. D59/D60 had deferred this on the trigger 'someone is already touching source/extern for another reason' -- accepting E10 (a provenance table FOR source/extern) fires that trigger, so the deletions ride with it. Two companion edits were mandatory and are included: source/extern/CMakeLists.txt (tinyformat.h was in star_extern_HEADERS, which ADD_LIBRARY consumes -- a header listed but absent is a configure hard-error, which their own PR proved by shipping patch 0001 without it) and doc/OPENSOURCE.md (licence attribution). The lib/ search path is UNTOUCHED: B16 filed removing it and that is NOT_REAL -- it is load-bearing for cmake/FindSteamApi.cmake and cmake/FindDiscordApi.cmake."
   },
   "D64": {
@@ -284,28 +294,38 @@
     "note": "TRIGGER FIRED AND WAS DISCHARGED. The deferral read 'until #214 lands', because a differential oracle for the scroll path could not be written while the gather was forked between lightingTileGather and gatherStableColumns. #214 landed at 9429b14d and E04 then built exactly that oracle: gatherOracleCompare rebuilds the stable grid from scratch every recompute and compares, tagged with the branch that produced it, so ONE oracle covers hit, scroll and full. Verified on the scroll path a frozen gate structurally cannot reach -- a walking live profile gave 125 scroll comparisons, 0 diffs -- and proven to fire by injection (skip the marginY gather: diff=145 maxAbs=0.450980 first=(2048,116) path=scroll). Closed as done rather than left deferred: the trigger had fired and nobody had noticed, which is the orphaning this ledger already hit once with E02/E03."
   },
   "E01": {
-    "status": "accepted",
+    "status": "done",
     "task": "#221",
+    "commit": "13cd3784",
+    "verified": "Audited at HEAD: the scroll geometry lives in its own pure unit, WorldClient calls it, and a registered test file covers it. CAVEAT KEPT rather than dropped -- one of the seven tests restates the very formula it replaced and its own comment says to retire it, so the suite is six independent tests plus one tautology. That does not unmake the extraction, but it overstates the test count.",
     "note": "Trigger fired: #214 landed at 9429b14d, so there is now one gather to extract the scroll math from rather than two forked ones."
   },
   "E04": {
-    "status": "accepted",
+    "status": "done",
     "task": "#221",
+    "commit": "a9ca6e26",
+    "verified": "Audited at HEAD: the oracle rebuilds the stable grid from scratch, is tagged by the branch that produced it, and does cover scroll. CAVEAT that bounds what this row buys: scroll coverage is a CAPABILITY of the oracle, not something any gate enforces -- render-gate.sh states outright that a frozen camera cannot scroll, so the standing gate only ever exercises the cache-HIT path. Scroll was verified once by a walking live profile (125 comparisons, 0 diffs), not continuously.",
     "note": "Trigger fired with #214. The oracle must drive the scroll path, not just the full gather -- which is why E02's counters land first."
   },
   "E02": {
-    "status": "accepted",
+    "status": "done",
     "task": "#221",
+    "commit": "fc81ae17",
+    "verified": "Audited at HEAD: the hit/scroll/full counters exist in StarWorldClient.cpp with a reason on the full path, and are emitted observably. SCOPE LIMIT worth keeping: they sit inside the lightingGatherCache branch, so with the kill-switch off the else path is unmetered -- the counters describe the cached path, not the A/B baseline.",
     "note": "Meter the gather-cache outcome (hit/scroll/full + reason). REPOINTED from #214 to #221: it was accepted against #214 and not implemented there, so closing #214 orphaned it. It is the instrument E01/E04 are judged by and goes first."
   },
   "E03": {
-    "status": "accepted",
+    "status": "done",
     "task": "#221",
+    "commit": "c572e875",
+    "verified": "Audited at HEAD: the L-only clear is implemented and the deliberately-retained full clear is justified in place. CAVEAT that changes what the test is worth: ClearingOnlyTheMarginMatchesClearingEverything does NOT call production code -- it re-implements both clear strategies against std::vector<int> and compares them. It pins the GEOMETRY of the argument, not the production clear, so a regression in the real clear path would not fail it.",
     "note": "Zero only the vacated L-region. REPOINTED from #214 to #221 for the same reason -- accepted against #214, not implemented there."
   },
   "E06": {
-    "status": "accepted",
+    "status": "done",
     "task": "#220",
+    "commit": "a69c8888",
+    "verified": "Audited at HEAD: the guard sits in setEffectTextureFromTarget on the C++ path exactly as this row re-scoped it, tests the real target->multisample, and composite() reaches it. ONE DELIBERATE SHAPE recorded so a later reader does not mistake it for an unmet row: the guard REPORTS and then proceeds to bind, rather than refusing -- the commit argues a hard refusal would black-frame the world where the log merely names the defect.",
     "note": "ACCEPTED BUT RE-SCOPED, and the re-scope is the finding. As written it cross-checks 'multisampled: true' against effects' frameBufferTextures -- a set that is EMPTY in our tree, so the guard as specified would catch nothing. The real in-tree path is the C++ source argument to setEffectTextureFromTarget / composite. There is exactly one live candidate, StarBackdropPass composing \"main\" into parallaxRef, and it is closed only by a two-file coupling nothing asserts: 'main is multisample iff antiAliasing' lives in the renderer + opengl.config, 'the parallax cache path runs iff !antiAliasing' lives in BackdropPass. If the parallax AA gate is ever relaxed -- #151 considered it, #138/P-3 may revisit it -- that composite binds a multisample texture to a sampler2D and reproduces #150 verbatim."
   },
   "E08": {
@@ -321,8 +341,10 @@
     "note": "mimalloc is now a manifest feature selected from STAR_USE_MIMALLOC. B17's warning was the reason this took the feature shape rather than deletion, and it was right: plain removal breaks configure, because find_package(mimalloc CONFIG REQUIRED) sits in its own if() outside the allocator elseif chain. The waste was worse than 'off by default' -- NO preset sets STAR_USE_MIMALLOC at all (Windows takes rpmalloc, the Linux presets jemalloc, macOS turns jemalloc off), so it was built on every platform for every developer and linked by no shipped configuration. VCPKG_MANIFEST_FEATURES is appended before project(), since the toolchain reads it there, which is before option() declares the variable -- the cache value is the only readable source at that point, and an unset one selects nothing, matching the OFF default. Proven in BOTH directions in a pristine clone: default configures green with mimalloc absent from the installed tree; -DSTAR_USE_MIMALLOC=ON installs 3.3.2 and the REQUIRED find_package resolves, which is the arm that would have caught B17's break."
   },
   "E10": {
-    "status": "accepted",
+    "status": "done",
     "task": "#220",
+    "commit": "4960f7e5",
+    "verified": "Audited at HEAD: register, generator, generated doc and gate registration all present, and the gate is in the standing set. THE AUDIT ALSO FOUND A HOLE THIS ROW'S OWN DOC DENIED -- check() compared the register to the TREE but never the doc to the REGISTER, so editing the register without --inject left the .md silently stale while run-gates stayed green, making the doc's own line 4 false. Every sibling gate (render_docs_fresh, boundary_fresh, arch_graph_fresh) diffs its generated doc; this one did not. Closed in the same pass: doc_problems() added, four selftest arms covering it, and proven to fire by a REAL register edit (curve25519 version changed with no --inject -> --check went red, then green again on restore).",
     "note": "Generated-and-gated provenance table for source/extern (version, upstream URL, why vendored, whether compiled). B12 supplied the concrete argument for the generated form over a hand-maintained one: THEIR extern/README.md contradicts their own vcpkg.json on its first policy bullet, asserting a builtin-baseline pin that their manifest does not carry -- false on the day it landed. Accepting this is also what fires D59/D60's trigger."
   }
 }

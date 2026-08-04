@@ -17,10 +17,10 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 | status | rows | meaning |
 |---|---:|---|
 | **open** | 0 | needs a call |
-| **accepted** | 15 | work is committed to; `task` names where it is tracked |
+| **accepted** | 5 | work is committed to; `task` names where it is tracked |
 | **deferred** | 2 | not now; `until` names the trigger, and is mandatory |
 | **declined** | 43 | we will not do this; `reason` is mandatory |
-| **done** | 11 | finished; `task` or `commit` says where |
+| **done** | 21 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -34,7 +34,7 @@ one, and hard-fails on a decision naming a row that no longer exists.
 |---|---|---|---|
 | **A05** | **done** | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | 66ec860b |
 | **A06** | **declined** | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | Closure STANDS -- their flip/revert is net-zero and we carry no defect -- but the recorde… |
-| **A07** | **accepted** | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | #211 |
+| **A07** | **done** | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | #211 |
 | **A09** | **declined** | `scrolled-strip-point-zeroing` — The zeroing loop is real and load-bearing inside their new scrolled path, but it fixes no pre-existing defect — it lands in the same commit (cd206aca) that introduces m_… | Closure stands, reason NARROWED (reversal upheld by a second pass). We carry no accumulat… |
 | **A10** | **declined** | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | Closure stands, reason NARROWED and its stated premise REFUTED (reversal upheld). What ac… |
 | **A12** | **declined** | `pending-lights-lifetime` — Both "lifetime fixes" are original code in the commits that introduced the fields they guard, not fixes of any defective state — and the begin() clear is attributed to t… | Closure stands, reason NARROWED (reversal upheld). No defect: CellularLightArray::begin c… |
@@ -87,22 +87,22 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **D29** | **deferred** | CellularLightArray rewrite and point-li… — Point-light count cap | DIRECTOR DECISION -- the measurement trigger has FIRED, so this is no longer waiting on d… |
 | **D30** | **done** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | 66ec860b |
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
-| **D34** | **accepted** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
+| **D34** | **done** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
 | **D45** | **declined** | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | A runtime VSync toggle is a player-facing settings feature, not a defect and not a perfor… |
 | **D55** | **done** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
-| **D59** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | #220 |
-| **D60** | **accepted** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | #220 |
+| **D59** | **done** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | #220 |
+| **D60** | **done** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | #220 |
 | **D64** | **declined** | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… |
-| **E01** | **accepted** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | #221 |
-| **E02** | **accepted** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | #221 |
-| **E03** | **accepted** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | #221 |
-| **E04** | **accepted** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #221 |
+| **E01** | **done** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | #221 |
+| **E02** | **done** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | #221 |
+| **E03** | **done** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | #221 |
+| **E04** | **done** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #221 |
 | **E05** | **done** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | 66ec860b |
-| **E06** | **accepted** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | #220 |
+| **E06** | **done** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | #220 |
 | **E07** | **done** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
 | **E08** | **done** | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | #196 |
 | **E09** | **done** | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | #196 |
-| **E10** | **accepted** | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | #220 |
+| **E10** | **done** | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | #220 |
 
 ## Still open
 
@@ -145,7 +145,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **A04** | closed | `soa-channel-aliasing` — The claimed SoA channel-aliasing bug (point phase writing dst[0][1]/dst[0][2] into the red channel's next two cells) exists nowhere in the PR snapshot — base, any of the… | cannot-determine | not-applicable-to-us | CLOSE |
 | **A05** | done · 66ec860b | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | real | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
 | **A06** | declined · Closure STANDS -- their flip/revert is net-zero and we carry no defect -- but the recorde… | `async-default-reverted` — Their commit 1 flipped m_asyncLighting to true and commit 5 flipped it back to false, so the "fix" reverts a regression they introduced inside their own PR — base was al… | overstated | not-applicable-to-us | CLOSE |
-| **A07** | accepted · #211 | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | overstated | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
+| **A07** | done · #211 | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | overstated | we-still-have-it | FIX · DEFER · ACCEPT-RISK |
 | **A08** | closed | `point-layer-spread-feedback` — The described feedback loop is a real hazard of THEIR new persistent/scrolled lightmap design, but it was never a live defect: the point-channel split and the lightAtInd… | overstated | not-applicable-to-us | CLOSE |
 | **A09** | declined · Closure stands, reason NARROWED (reversal upheld by a second pass). We carry no accumulat… | `scrolled-strip-point-zeroing` — The zeroing loop is real and load-bearing inside their new scrolled path, but it fixes no pre-existing defect — it lands in the same commit (cd206aca) that introduces m_… | overstated | not-applicable-to-us | CLOSE |
 | **A10** | declined · Closure stands, reason NARROWED and its stated premise REFUTED (reversal upheld). What ac… | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | overstated | not-applicable-to-us | CLOSE |
@@ -240,7 +240,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D31** | accepted · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D32** | closed | CellularLightArray rewrite and point-li… — MSAA per-sample shading | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D33** | closed | CellularLightArray rewrite and point-li… — Automated evidence for the change | we-are-ahead | — | NO ACTION · DOCUMENT |
-| **D34** | accepted · #220 | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D34** | done · #220 | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D35** | closed | CellularLightArray rewrite and point-li… — jemalloc vs libstdc++ 16 (std::__throw_bad_alloc removed) | equivalent | — | NO ACTION |
 | **D36** | closed | CellularLightArray rewrite and point-li… — Reviewability of the change itself | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D37** | closed | GL renderer: MSAA/SSAA confinement, AA/… — Confining MSAA to the one framebuffer that is resolved, not sampled | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -265,24 +265,24 @@ withdrawn outright and one finding was reversed in our favour.
 | **D56** | closed | Dependency cleanup, vcpkg manifest, and… — Documenting WHY the overlay exists | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D57** | closed | Dependency cleanup, vcpkg manifest, and… — Overlay pins a hardcoded SHA and bypasses registry versioning | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D58** | closed | Dependency cleanup, vcpkg manifest, and… — Sibling Fedora-44 toolchain breakage (libsystemd / glibc C23 _Generic) | we-are-ahead | — | NO ACTION · DOCUMENT |
-| **D59** | accepted · #220 | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
-| **D60** | accepted · #220 | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D59** | done · #220 | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D60** | done · #220 | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D61** | closed | Dependency cleanup, vcpkg manifest, and… — mimalloc — paying to build an allocator nobody links | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D62** | closed | Dependency cleanup, vcpkg manifest, and… — The right way to make an unused dependency free | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D63** | closed | Dependency cleanup, vcpkg manifest, and… — builtin-baseline | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D64** | declined · DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D65** | closed | Dependency cleanup, vcpkg manifest, and… — Windows CI vcpkg binary cache | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D66** | closed | Dependency cleanup, vcpkg manifest, and… — Regression coverage for the GCC-16 case | equivalent | — | NO ACTION |
-| **E01** | accepted · #221 | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
-| **E02** | accepted · #221 | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
-| **E03** | accepted · #221 | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
-| **E04** | accepted · #221 | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E01** | done · #221 | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
+| **E02** | done · #221 | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E03** | done · #221 | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
+| **E04** | done · #221 | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
 | **E05** | done · 66ec860b | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
-| **E06** | accepted · #220 | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
+| **E06** | done · #220 | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
 | **E07** | done · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |
 | **E08** | done · #196 | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |
 | **E09** | done · #196 | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | — | ADOPT · DEFER · DECLINE |
-| **E10** | accepted · #220 | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | — | ADOPT · DEFER · DECLINE |
+| **E10** | done · #220 | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | — | ADOPT · DEFER · DECLINE |
 | **E11** | closed | Bump m_lightingTileEpoch only when a lighting-relevant tile field actually changes — compare foreground/background material+mod, liquid presence/level, and the… | refuted | KILLED BY #3 (THE BENEFIT IS UNEVIDENCED — and the specific mechanism is refuted by our own code). Kill #1 does NOT apply: we genuinely lack the filter (/root/frackin/OpenStarbound/source/g… | CLOSE · CHALLENGE the refutation |
 | **E12** | closed | Quantise/hysteresis the adaptive calculation border (#170) — round borderNeeded up to a multiple of 8 and only shrink after N consecutive frames below bucket —… | refuted | DIES. Killed by mode 3 (benefit unevidenced — in fact contradicted by our own shipped measurement), with mode 1 assisting (the bucketing idea is already shipped at the level that actually b… | CLOSE · CHALLENGE the refutation |
 | **E13** | closed | A point-light budget for the GPU point pass, ranked by on-screen contribution (intensity attenuated by distance to the query rect), top-N with stable tie-break… | refuted | KILLED BY (1) WE ALREADY HAVE IT — as a named, deliberately-deferred design decision with an explicit evidence gate — reinforced by (3) THE BENEFIT IS UNEVIDENCED against that same gate. 1.… | CLOSE · CHALLENGE the refutation |
