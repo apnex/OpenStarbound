@@ -81,7 +81,9 @@ if [ -n "$WARP" ] && [ -s "$BOOKMARKS" ]; then
     echo "FAIL: no teleport bookmark contains '$WARP' (matching is case-insensitive substring)."
     echo "  known bookmarks (from the last successful load):"
     sed 's/^/    /' "$BOOKMARKS"
-    echo "  If you have added a bookmark since, delete $BOOKMARKS and re-run to refresh the cache."
+    echo "  This cache is written from a PREVIOUS load and can disagree with the live save in BOTH"
+    echo "  directions -- a bookmark added since will be missing, and one DELETED since will still be"
+    echo "  listed. Delete $BOOKMARKS and re-run to refresh it."
     exit 2
   fi
   if [ "$hits" -gt 1 ]; then
@@ -98,6 +100,26 @@ rm -f "$LOG"
 # Apply --set BEFORE launch. Configuration::set persists to storage/starbound.config on exit, so the previous
 # run's value is sitting in the file -- an A/B that only sets the key on one leg silently inherits it on the
 # other. Every leg writes its own value explicitly; none of them relies on what the last run left behind.
+#
+# THAT RULE USED TO BE A COMMENT AND NOTHING ELSE, AND A COMMENT DOES NOT ENFORCE ANYTHING. On 2026-08-04 an
+# adaptive-border A/B ran `--set lightingAdaptiveBorder=false` on one leg and relied on the CODE DEFAULT for
+# the other. The default is inert: a pinned key in this file overrides it. So both legs ran with the lever
+# OFF and the profile reported a full table of plausible-looking deltas -- every one an artefact of differing
+# recompute counts. The tell was lighting.calc.cells identical across the legs, which is the one quantity the
+# lever exists to move. Nothing in the tooling objected.
+#
+# The config is now SNAPSHOT here and RESTORED on every exit path, so a leg cannot inherit the previous leg's
+# pin no matter what the caller passes. It does not make an under-specified A/B correct -- it makes it start
+# from the shipped baseline instead of from whatever the last experiment left behind.
+CFG="$PWD/harness/storage-perf/starbound.config"
+CFG_SNAPSHOT="$(mktemp)"
+command cp "$CFG" "$CFG_SNAPSHOT" 2>/dev/null || true
+restore_cfg() {
+  [ -s "$CFG_SNAPSHOT" ] && command cp "$CFG_SNAPSHOT" "$CFG" 2>/dev/null || true
+  rm -f "$CFG_SNAPSHOT"
+}
+trap restore_cfg EXIT
+
 if [ ${#SETS[@]} -gt 0 ]; then
   python3 - "$PWD/harness/storage-perf/starbound.config" "${SETS[@]}" <<'PY'
 import json, sys

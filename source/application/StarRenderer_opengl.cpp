@@ -925,13 +925,26 @@ void OpenGlRenderer::setMultiSampling(unsigned multiSampling) {
     return;
 
   m_multiSampling = multiSampling;
+  // GL_SAMPLE_SHADING and glMinSampleShading are GL 4.0 (or ARB_sample_shading); GL_MULTISAMPLE is 1.3.
+  // They were called unguarded while the sibling framebuffer multisample value in GlRenderSurface is
+  // guarded by GLEW_VERSION_4_0 -- so on a 3.x driver the framebuffer correctly declines multisampling
+  // and these three still fire, raising GL_INVALID_ENUM/INVALID_OPERATION every AA toggle (#211).
+  //
+  // PR 570 removed per-sample shading outright to solve this. We do NOT: #151 measured it at 22.3% of
+  // pixels on the parallax path and kept it deliberately, which is why the parallax AA gate still
+  // exists. The capability, not the feature, is what was missing.
+  bool sampleShading = GLEW_VERSION_4_0 || GLEW_ARB_sample_shading;
   if (m_multiSampling) {
     glEnable(GL_MULTISAMPLE);
-    glEnable(GL_SAMPLE_SHADING);
-    glMinSampleShading(1.f);
+    if (sampleShading) {
+      glEnable(GL_SAMPLE_SHADING);
+      glMinSampleShading(1.f);
+    }
   } else {
-    glMinSampleShading(0.f);
-    glDisable(GL_SAMPLE_SHADING);
+    if (sampleShading) {
+      glMinSampleShading(0.f);
+      glDisable(GL_SAMPLE_SHADING);
+    }
     glDisable(GL_MULTISAMPLE);
   }
   loadConfig(m_config);
