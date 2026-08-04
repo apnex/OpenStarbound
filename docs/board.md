@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**161 tasks** across 2 store(s): 3 in_progress, 35 pending, 123 completed
+**162 tasks** across 2 store(s): 3 in_progress, 36 pending, 123 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 160 tasks, ids 64–224
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 161 tasks, ids 64–225
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 150, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 152, of which **41 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -49,15 +49,16 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **3** — NOT YET INVESTIGATED
+- **4** — NOT YET INVESTIGATED
 
-**Unexplained ids: 3.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 4.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
 | [#199](#c29c1332-199) | `555c692b` |
 | [#207](#c29c1332-207) | `66b9715a` |
 | [#214](#c29c1332-214) | `471488eed310861f` |
+| [#221](#c29c1332-221) | `5b16067ff8e43339` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
@@ -215,7 +216,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -232,10 +233,11 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
-| [#221](#c29c1332-221) | `c29c1332` | open | GATHER-2 (hardening-framed, reordered): E02 observability -&gt; E01 testability -&gt; E03 dedupe -&gt; E04 correctness | — | — |
+| [#221](#c29c1332-221) | `c29c1332` | open | GATHER-2: E02 DONE (fc81ae17) -&gt; E01 testability -&gt; E03 dedupe -&gt; E04 correctness | `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
 | [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the… | — | — |
+| [#225](#c29c1332-225) | `c29c1332` | open | EPOCH-1: the lighting tile epoch is global and unconditional, and it costs the stable-grid cache 76-86% of its hits | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3482,6 +3484,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `64ac2ab6` board: #221 reframed as hardening and reordered E02-&gt;E01-&gt;E03-&gt;E04; perf case measured near-null and set aside [#204]
 - `9224f07b` board: #223 closed -- paralloracle was never failing; the gate misread a bounded-diff oracle [#204]
 - `9c4527a1` board: #224 opened -- GPU spread iteration cap truncates its own derived count above maxEmission 1.0 [#204]
 - `62b6cc67` board: #222 closed -- 13.2% was the harness measuring its own sun rays; #223 opened for paralloracle [#204]
@@ -4268,37 +4271,44 @@ The guard must therefore test the C++ path, not the asset key.
 
 <a id="c29c1332-221"></a>
 
-#### #221 — GATHER-2 (hardening-framed, reordered): E02 observability -&gt; E01 testability -&gt; E03 dedupe -&gt; E04 correctness
+#### #221 — GATHER-2: E02 DONE (fc81ae17) -&gt; E01 testability -&gt; E03 dedupe -&gt; E04 correctness
 
 status: **pending**
+
+- `fc81ae17` E02: meter which path the gather cache takes, and find it loses 76-86% of its hits to the tile epoch [#221]
 
 ```
 REFRAMED 2026-08-04 on Director instruction: this cluster is justified as HARDENING, not performance. Improvements here are worth taking for testability, observability and correctness even with no perf number attached -- but the perf case must not be claimed, because it was measured and it is not the reason.
 
-THE PERF CASE, MEASURED AND SET ASIDE. With GPU lighting on (the shipped default), across the harness profiles:
-    lighting CPU     2.3 - 8.2% of active frame CPU
-    the whole gather 0.6 - 3.2%     (01-Lava Refinery 3.20%, 00-Ocean-Lab 3.03%, 04-Ocean Factory 1.17%, Desert Town 0.59%)
-and the client idles 60-77% of every frame (of-true.json: 12,464 us idle of 16,193 us). E03's ceiling -- the zero-fill it deletes -- is 393-573 KB (24,576-35,840 GatherCells x 16 B) on the scroll path only: order 0.3% of active frame CPU, below the live profile's A/B resolution. Expect MEASURED NULL, and do not ship any of these claiming a perf win. (With GPU lighting OFF, lighting CPU is 20-52% -- that is a different problem and not this ticket's.)
-CAVEAT on the denominator: "active CPU" = cpu.frame.total.us - cpu.frame.idle.us. meta.vsync=False yet frames pace at ~16 ms, so something limits them. If that is a frame limiter the idle is genuine headroom and the shares above hold; if it is a hidden stall they understate. Not established.
+--- 1. E02 -- OBSERVABILITY. DONE at fc81ae17, and it paid for the whole cluster on its first run.
+Six counters partitioning the cached path (hit, scroll, full split by reason: first / dims / epoch / jump) plus lighting.gather.margin_cells. Partition holds by construction and was cross-checked against lighting.temporal.recomputed (1968 and 2231, exact) on two 60s live profiles at 01-Lava Refinery.
 
-ORDER CHANGED, and why. It was E02, E03, E01, E04. E03 before E01 is backwards. Standalone, E03 DUPLICATES the rect derivation that currently lives inline in shiftAndGatherMargin: it trades one line with a trivially checkable invariant (everything starts zeroed) for two rect zeros that must stay in step with two gather rects. That is more coupling, not less. It becomes a real dedupe only once E01 has extracted that math into a single helper feeding both.
+    RESULT                    standing still      walking
+      lighting.gather.hit          273  13.9%     409  18.3%
+      lighting.gather.scroll         0   0.0%     123   5.5%
+      lighting.gather.full.epoch  1695  86.1%    1699  76.2%
+      first / dims / jump            0             0
 
---- 1. E02 -- OBSERVABILITY. The instrument the other three are judged by.
-Three counters (hit / scroll / full) plus a reason tag on the full path (epoch, dims, anchor jump, first frame), at the existing A1/A2 cache branch in lightingCalc. The seam is already open: #210 added lighting.gather.calc_outside_loaded in the same block.
-WHY FIRST: we shipped A1/A2 on the premise that scrolling is common and have NEVER measured the hit/scroll/full split. E03 only helps the scroll path; E01 only matters if that path is live; E04's oracle can pass while testing nothing if it only ever drives the full-gather path -- the unarmed-oracle false green this project keeps hitting. Make the counters SEVERITY-bearing, not boolean: calc_outside_loaded reads 0 or 100%-of-recomputes and nothing between, so it cannot say how bad, only whether. Same trap as lighting.gpu.spread.passes saturating at its cap (#224).
+THE PREMISE A1/A2 WERE BUILT ON IS FALSE. Scrolling does not dominate: the scroll path runs 5.5% of recomputes while WALKING and never while standing still. The cache loses 76-86% of its hits to tile-epoch churn -- see #225, which E02 produced.
+Certified: render gate PASS, null control OK, lightingGatherCache true vs false byte-identical at 5b16067ff8e43339. run-gates 25/25.
 
---- 2. E01 -- TESTABILITY. The least-tested code in the lighting path.
-Extract the A2 scroll math (delta -> overlap copy bounds + the two margin rects) from shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test over synthetic deltas. Feasible now because #214 left one gather rather than two forked ones.
-WHY: this is the most off-by-one-prone arithmetic in the cluster -- four sign cases, half-open bounds, an intra-column slice copy -- and it has no unit test at all. It is also the precondition that makes E03 a dedupe instead of a duplication.
+--- 2. E01 -- TESTABILITY. The least-tested code in the lighting path. NEXT.
+Extract the A2 scroll math (delta -> overlap copy bounds + the two margin rects) from shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test over synthetic deltas. Feasible because #214 left one gather rather than two forked ones.
+WHY: four sign cases, half-open bounds and an intra-column slice copy, with no unit test at all. It is also the precondition that makes E03 a dedupe instead of a duplication.
+NOTE FROM E02: the scroll path is rare (5.5% walking, 0% still), so a defect in this math would be correspondingly rare and correspondingly hard to catch in play. That RAISES the value of a unit test, not lowers it -- rare paths are exactly the ones live testing misses.
 
 --- 3. E03 -- DEDUPE (only downstream of E01). Delete provably-dead work, one source of truth for the rects.
 Zero only the vacated L-region instead of assign()-zeroing the whole scratch before the overlap copy.
 THE INVARIANT, verified by hand across every sign case (dx=dy=0 cannot reach here -- that is the cache-hit branch): copy-region UNION RectA UNION RectB == the entire grid. So the pre-zero of the OVERLAP is provably dead: the copy loop overwrites every one of those cells. E03 keeps the zero on the L -- where a cell the gather skipped could actually surface -- and drops it on the overlap. Output-identical.
-Verify with the render gate's lightingGatherCache A/B, which as of cb17d323 actually judges its result, and which as of 6e66f36e carries a null control.
+E02 MEASURED ITS CEILING, so this is no longer an estimate: 163 margin cells of a 35,840-cell grid = 0.5%, on a path that runs 5.5% of the time. The full-scratch zero is ~200x larger than the region that needs it -- a large RELATIVE saving on a path that almost never runs. Expect MEASURED NULL. Take it as the dedupe it is or not at all.
+Verify with the render gate's lightingGatherCache A/B, which judges its result (cb17d323) and carries a null control (6e66f36e).
 
 --- 4. E04 -- CORRECTNESS. Pin the cache against a from-scratch gather.
 Drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is identical to a full gather at each step. This is the one that would catch a scroll-shift defect.
-IT IS ALSO WHERE THE STALE-SECTOR RESIDUAL GETS PINNED. The cache key is (epoch, dims, anchor) and does NOT track sector load/unload; unloadSector bumps no epoch. So a cell retained in the shifted overlap whose sector has since unloaded keeps its last-gathered value. Related and MEASURED 2026-08-04: lighting.gather.calc_outside_loaded is 0 at probe-00-ocean and probe-03-surface, but 100% of recomputes at probe-01-lava (865/865), probe-04-ocean (339/339) and every ab-*/border-*/cpu-*/of-* profile. Its own comment states the decision rule -- "non-zero means the padding must be derived from the calc region" -- so that prescription has fired and is unactioned. That fix is #210's residual and is tracked separately from this ticket; E04 pins the retained-cell half of it.
+IT IS ALSO WHERE THE STALE-SECTOR RESIDUAL GETS PINNED. The cache key is (epoch, dims, anchor) and does NOT track sector load/unload; unloadSector bumps no epoch. So a cell retained in the shifted overlap whose sector has since unloaded keeps its last-gathered value. Related and MEASURED 2026-08-04: lighting.gather.calc_outside_loaded is 0 at probe-00-ocean and probe-03-surface, but 100% of recomputes at probe-01-lava (865/865), probe-04-ocean (339/339) and every ab-*/border-*/cpu-*/of-* profile. Its own comment states the decision rule -- "non-zero means the padding must be derived from the calc region" -- so that prescription has fired and is unactioned. That fix is #210's residual, tracked separately; E04 pins the retained-cell half of it.
+
+THE PERF CASE, MEASURED AND SET ASIDE. With GPU lighting on (the shipped default): lighting CPU is 2.3-8.2% of active frame CPU and the whole gather 0.6-3.2% (01-Lava Refinery 3.20%, 00-Ocean-Lab 3.03%, 04-Ocean Factory 1.17%, Desert Town 0.59%), and the client idles 60-77% of every frame. Do not ship any of these claiming a perf win. (With GPU lighting OFF, lighting CPU is 20-52% -- a different problem, not this ticket's.)
+CAVEAT on the denominator: "active CPU" = cpu.frame.total.us - cpu.frame.idle.us. meta.vsync=False yet frames pace at ~16 ms, so something limits them. If that is a frame limiter the idle is genuine headroom and the shares hold; if it is a hidden stall they understate. Not established.
 
 CONSTRAINT INHERITED FROM #214: the per-tile arithmetic is byte-identity-critical. environmentLight is folded LAST, after fg + liquid + bg, in both sinks. Float addition is not associative. Any change here must clear the render-gate A/B, not just the unit tests.
 ```
@@ -4432,6 +4442,59 @@ closes cheaply. If it does, the cap is silently changing the solve and the two d
 reconciling first.
 
 Do NOT re-derive the spread border floor on the strength of #222 -- that ticket's premise is refuted.
+```
+
+<a id="c29c1332-225"></a>
+
+#### #225 — EPOCH-1: the lighting tile epoch is global and unconditional, and it costs the stable-grid cache 76-86% of its hits
+
+status: **pending**
+
+```
+FOUND 2026-08-04 by E02's counters, on their first run. This is the finding that E02 existed to produce, and it falsifies the premise A1/A2 were built on.
+
+MEASURED at 01-Lava Refinery, 60s live profiles (harness/profiles/e02-still.json, e02-walk.json):
+
+                        standing still        walking
+  lighting.gather.hit        273  13.9%       409  18.3%
+  lighting.gather.scroll       0   0.0%       123   5.5%
+  lighting.gather.full.epoch 1695  86.1%     1699  76.2%
+  full.first / full.dims / full.jump   0 in every run
+  SUM                       1968             2231     == lighting.temporal.recomputed in both -> the partition holds
+
+So the stable-grid cache falls back to a FULL gather on 76-86% of recomputes, and the reason is ALWAYS the tile epoch. Never a resize, never an anchor jump. A1's cache-hit path -- the whole point of the stable grid -- gets 14-18%.
+
+THE CAUSE, and it is two separate coarsenesses in one key. Both bump sites are unconditional:
+
+  StarWorldClient.cpp, TileLiquidUpdatePacket handler:
+      if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
+        tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
+        m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
+      }
+  StarWorldClient.cpp, the netTile apply path: assigns foreground/background/liquid/transparency, then
+      m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed);
+
+  1. UNCONDITIONAL ON CHANGE. Neither site compares old against new. A liquid packet that re-sends the
+     same level, or a netTile that changes only dungeonId or biome index, invalidates the whole grid.
+  2. GLOBAL, NOT REGIONAL. The epoch is one whole-world counter. A tile updating far outside the
+     calculation region -- off-screen, in another room -- invalidates the cache for the visible window.
+
+At a LAVA base, liquid packets stream continuously: ~28 epoch bumps per second standing still, with the player not moving and nothing on screen changing.
+
+WHY IT IS NOT SIMPLY A BUG: bumping conservatively is SAFE. A cache that invalidates too often is correct; one that invalidates too rarely renders stale light. The finding is that the key is far coarser than it needs to be, and until E02 nobody knew the cost.
+
+WHAT THIS MAKES OF E03 (#221): near-worthless, and now measured rather than estimated. E03 only helps the scroll path, which runs 5.5% of recomputes while WALKING and 0% standing still. And when it does run the margin is 163 cells of a 35,840-cell grid -- 0.5%, so the current full-scratch zero is ~200x larger than the region that needs it. A large relative saving on a path that almost never runs. Keep E03 as the dedupe it is (after E01), do not expect a number.
+
+BOUND ON THE PRIZE, so nobody oversells this either: the whole gather is 3.20% of active frame CPU at this base (251 us/recompute standing still). Making every recompute a cache hit cannot win more than that, and the client already idles 60-77% of each frame. This is worth doing for cache-behaviour correctness and for the cost of the CPU-lighting path when GPU lighting is off (20-52%), not for the shipped frame.
+
+CANDIDATE DIRECTIONS, none designed yet:
+  - gate each bump on the light-relevant fields ACTUALLY changing (foreground, background, liquid level,
+    the two transparency flags) rather than on the write happening
+  - make the epoch regional: per-sector epochs, or compare the updated position against the current
+    calculation region before bumping
+  - measure first WHICH of the two sites dominates -- split the counter before choosing
+
+FIRST STEP: split lighting.gather.full.epoch by bump site, and count bumps that changed nothing. Both are cheap counters at the two call sites above.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
