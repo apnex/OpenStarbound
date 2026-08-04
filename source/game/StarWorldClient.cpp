@@ -1063,7 +1063,27 @@ void WorldClient::handleIncomingPackets(List<PacketPtr> const& packets) {
     } else if (auto liquidUpdate = as<TileLiquidUpdatePacket>(packet)) {
       m_predictedTiles.remove(liquidUpdate->position);
       if (ClientTile* tile = m_tileArray->modifyTile(liquidUpdate->position)) {
+        // #225 MEASUREMENT ONLY -- the bump stays unconditional and nothing here changes behaviour.
+        //
+        // TWO predicates, because they are not the same and the difference decides the design. `noop` is
+        // the naive one: did the LiquidLevel change at all. `dark` is the exact one: the gather adds
+        // liquidsDatabase->radiantLight(level), which is settings->radiantLightLevel * level -- so for any
+        // liquid whose radiance is zero, EVERY level change leaves the gather's output bit-identical.
+        // Flowing water invalidating the lighting grid would be entirely wasted; flowing lava would not.
+        static auto bumpLiquid = Telemetry::counter("lighting.epoch.bump.liquid",
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+        static auto bumpLiquidNoop = Telemetry::counter("lighting.epoch.bump.liquid.noop",
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+        static auto bumpLiquidDark = Telemetry::counter("lighting.epoch.bump.liquid.dark",
+          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+        LiquidLevel wasLiquid = tile->liquid;
         tile->liquid = liquidUpdate->liquidUpdate.liquidLevel();
+        bumpLiquid.inc();
+        if (wasLiquid.liquid == tile->liquid.liquid && wasLiquid.level == tile->liquid.level)
+          bumpLiquidNoop.inc();
+        auto liquidsDatabase = Root::singleton().liquidsDatabase();
+        if (liquidsDatabase->radiantLight(wasLiquid) == liquidsDatabase->radiantLight(tile->liquid))
+          bumpLiquidDark.inc();
         m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: liquid radiance changed
       }
 
@@ -2869,6 +2889,21 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
     }
   }
 
+  // #225 MEASUREMENT ONLY -- the bump below stays unconditional and nothing here changes behaviour.
+  //
+  // Snapshot exactly the members a read-only trace proved can alter what gatherColumns produces:
+  // foreground/foregroundMod and background/backgroundMod feed stableLight through radiantLight, liquid
+  // feeds it through the liquids database, collision is a term of foregroundLightTransparent, and the two
+  // transparency flags carry ALL of obstacle and skyExposed. Everything else this function assigns --
+  // both hue shifts, both mod hue shifts, both colour variants, the two biome indices, dungeonId -- was
+  // proven unreachable from the gather, so a packet that changes only those is a pure no-op invalidation.
+  MaterialId wasForeground = tile->foreground, wasBackground = tile->background;
+  ModId wasForegroundMod = tile->foregroundMod, wasBackgroundMod = tile->backgroundMod;
+  LiquidLevel wasLiquid = tile->liquid;
+  CollisionKind wasCollision = tile->collision;
+  bool wasBgTransparent = tile->backgroundLightTransparent;
+  bool wasFgTransparent = tile->foregroundLightTransparent;
+
   tile->background = netTile.background;
   tile->backgroundHueShift = netTile.backgroundHueShift;
   tile->backgroundColorVariant = netTile.backgroundColorVariant;
@@ -2889,6 +2924,19 @@ bool WorldClient::readNetTile(Vec2I const& pos, NetTile const& netTile, bool upd
   tile->backgroundLightTransparent = materialDatabase->backgroundLightTransparent(tile->background);
   tile->foregroundLightTransparent =
       materialDatabase->foregroundLightTransparent(tile->foreground) && tile->collision != CollisionKind::Dynamic;
+  static auto bumpNetTile = Telemetry::counter("lighting.epoch.bump.nettile",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+  static auto bumpNetTileNoop = Telemetry::counter("lighting.epoch.bump.nettile.noop",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+  bumpNetTile.inc();
+  if (wasForeground == tile->foreground && wasForegroundMod == tile->foregroundMod
+      && wasBackground == tile->background && wasBackgroundMod == tile->backgroundMod
+      && wasLiquid.liquid == tile->liquid.liquid && wasLiquid.level == tile->liquid.level
+      && wasCollision == tile->collision
+      && wasBgTransparent == tile->backgroundLightTransparent
+      && wasFgTransparent == tile->foregroundLightTransparent)
+    bumpNetTileNoop.inc();
+
   m_lightingTileEpoch.fetch_add(1, std::memory_order_relaxed); // temporal gate: tile light input changed
 
   if (updateCollision)
