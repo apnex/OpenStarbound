@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**153 tasks** across 2 store(s): 3 in_progress, 33 pending, 117 completed
+**153 tasks** across 2 store(s): 3 in_progress, 32 pending, 118 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 152 tasks, ids 64–216
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 144, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 145, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -62,7 +62,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 117.
+**Completed tasks citing no commit and no doc:** 79 of 118.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -214,13 +214,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
-| [#210](#c29c1332-210) | `c29c1332` | open | RACE-1: use-after-free — sector unload races the lighting thread's gather (SERIOUS, live on integration) | — | — |
+| [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
 | [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | — | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
@@ -3465,6 +3465,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `46894dae` board: #212 closed at f5088933; ledger row C17 -&gt; done [#204]
 - `31b534bf` board: #212 measured -- the lighting tests cost 0.00s and are excluded by target membership alone [#204]
 - `466c19cc` ledger: surface the challenge corrections, and file the three adoptable items [#204]
 - `82170188` ledger: status per row, in a decisions file the generator reads -- and the generator now exists [#204]
@@ -3755,63 +3756,28 @@ the gate names the exact number.
 
 <a id="c29c1332-210"></a>
 
-#### #210 — RACE-1: use-after-free — sector unload races the lighting thread's gather (SERIOUS, live on integration)
+#### #210 — RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED
 
-status: **pending**
+status: **completed**
+
+- `66ec860b` fix(lighting): hold m_lightMapPrepMutex across sector unload
 
 ```
-FOUND 2026-08-04 by comparative analysis of OpenStarbound PR 570. Real defect, live in our tree, never
-previously addressed. Their fix is one line; ours should not be a copy of it (see CAVEAT).
+Use-after-free: WorldClient::update unloaded sectors with no lock while the lighting thread gathered through them. SectorArray2D::evalColumnsPrivPar hands workers a raw Array* into sector storage; unloadSector -> takeSector frees it immediately; SectorArray2D has no internal synchronisation.
 
-THE RACE
-  free side  StarWorldClient.cpp:1417-1421 -- WorldClient::update() unload loop, NO lock of any kind:
-                 auto loadedSectors = m_tileArray->loadedSectors();
-                 for (auto sector : loadedSectors)
-                   if (!neededSectors.contains(sector)) m_tileArray->unloadSector(sector);
-             -> StarTileSectorArray.hpp:234-239 unloadSector -> StarSectorArray2D.hpp:243-249 takeSector
-                (`std::swap`, returns ArrayPtr, DISCARDED at the call site => delete fires immediately)
-  read side  lighting thread StarWorldClient.cpp:2438-2450 lightingMain -> lightingCalc, which holds
-             m_lightMapPrepMutex :2077 through :2228 and gathers at :2178-2226 via
-             lightingTileGather:1852 / lightingStableGather:1917 -> tileEvalColumnsParallel
-             -> StarSectorArray2D.hpp:438-468 evalColumnsPrivPar:
-                 workerPool.addWork([=, &function]{ Array* array = m_sectors(xs,ys).get(); ... })
-             RAW pointers into unique_ptr-owned sector storage, read from N worker threads.
-  no internal locking anywhere in StarTileSectorArray.hpp or StarSectorArray2D.hpp.
+FIX (66ec860b): the unload loop takes m_lightMapPrepMutex, which lightingCalc already holds across the whole gather -- no new lock. Cost is one gather of main-thread stall, 93-276us (#168), against a 16.6ms frame.
 
-ASYNC LIGHTING IS ON. The ctor default StarWorldClient.cpp:94 is false, but
-StarUniverseClient.cpp:161 does setAsyncLighting(true) unconditionally on ConnectSuccess -- single
-player included. Only /asyncLighting (StarClientCommandProcessor.cpp:188-191) turns it off.
+ROOT CAUSE of reachability: the gather's comment claimed the calc region is "strictly inside the loaded-sector region". False. With windowMonitoringBorder=32: loaded = window +64..+95; calc min = -49 (safe by 15); calc max = window +1 +bucketSlack(<=31) +border(<=48) = +80, exceeding +64 by up to 16. The +31 is #127's grid-size bucket -- it rounds the light-window SIZE up to a multiple of 32 anchored at the min corner, growing the region on the MAX SIDE ONLY, while neededSectors stays derived from the UNBUCKETED window. #127 was measured and right for its purpose (texture-upload churn 7.09% -> 2.37%); the widening went unnoticed because nothing measured it. The rare conjunction required (size just past a bucket boundary, border near 48, unfavourable alignment) explains why the crash never reproduced on demand.
 
-THE WINDOW IS REAL, NOT THEORETICAL
-  loaded coverage = validSectorsFor(monitoredRegion.padded(WorldSectorSize)), WorldSectorSize=32
-                    => window + [32..63] tiles
-  calc region     = window.padded(1), bucket-rounded (up to +31), then borderCells() up to 48
-                    => up to ~80 tiles
-  So the calc region can EXCEED the guaranteed-loaded band. A trailing sector can be simultaneously
-  in-flight in the gather and outside neededSectors. Player walking / flying / warping produces it.
-  Symptom: nondeterministic segfault or garbage lighting while moving; unreproducible; reads as
-  "crashed while exploring".
+INSTRUMENT: the false comment is replaced by the arithmetic plus counter lighting.gather.calc_outside_loaded, gated on Telemetry::enabled() so the per-gather sector scan is one branch when telemetry is off.
 
-AND OUR OWN COMMENT ASSERTS THE OPPOSITE. StarWorldClient.cpp:2190-2194 (the A1 gather cache) says
-the calc region "is strictly inside the loaded-sector region ... so no unloaded sector is ever
-gathered. Preserve that padding invariant." That invariant is the ONLY thing standing between us and
-the UAF, it is defended by no assert and no test, and the arithmetic above says it does not hold in
-general. This is a claim-with-no-instrument in our own code.
+PROVEN: correct by construction (reader holds the mutex across the entire gather); 346 tests pass (277 core_tests + 69 game_tests); 22/22 gates green.
+NOT PROVEN: the race was never observed firing and the fix was never observed eliminating it. No TSan preset exists and jemalloc conflicts with TSan.
 
-FIX: take m_lightMapPrepMutex around the unload loop. The consumer already holds exactly that mutex
-across the whole gather, which is why the fix applies to our tree unchanged.
-
-CAVEAT -- DO NOT COPY THEIRS VERBATIM. Their guard reads
-    if (loadedSectors.size() > neededSectors.size()) { MutexLocker ...; for (...) unload }
-The size comparison is not a sound predicate for "something needs unloading": the sets can differ
-with equal or smaller loaded size (after a teleport, e.g. 40 stale loaded vs 100 newly needed), and
-then the loop is skipped entirely and stale sectors are never unloaded. Take the lock, drop the size
-guard.
-
-VERIFICATION: a byte-identity oracle will not show this -- it is a lifetime race, not an output
-change. Wants either a TSan run over a warp/scroll sequence in the headless harness, or an assert
-that the gather's sector set is a subset of loadedSectors at gather time (which would also give the
-:2190 invariant the instrument it never had).
+OPEN FOLLOW-UPS:
+1. TSan verification -- needs a TSan preset with jemalloc disabled. Not built.
+2. Read lighting.gather.calc_outside_loaded from a real play session. Zero => alignment has been covering us, and widening neededSectors is unnecessary. Non-zero => derive the sector padding from the calc region rather than letting it coincide.
+3. The mutex name now under-describes its duty. Any future cross-thread reader of m_tileArray must take it and nothing enforces that; the real fix is for SectorArray2D to own its lifetime contract (core container, shared with the server) -- candidate for the sim-side sovereignty refactor.
 ```
 
 <a id="c29c1332-211"></a>
