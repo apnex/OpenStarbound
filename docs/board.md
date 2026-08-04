@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**155 tasks** across 2 store(s): 3 in_progress, 32 pending, 120 completed
+**156 tasks** across 2 store(s): 3 in_progress, 33 pending, 120 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 154 tasks, ids 64–218
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 155 tasks, ids 64–219
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -229,6 +229,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
+| [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `0a8fff9d` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3467,6 +3468,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `471ec6c9` board: #218 closed at 9e56c204; comment standard + gate live [#204]
 - `a74351e4` board: #217 closed at 817e54e8; re-profile outstanding [#204]
 - `e386d983` ledger: A05/E05 done at 66ec860b -- the sector-unload UAF is closed [#204]
 - `32d3f76c` board: #210 closed at 66ec860b; ledger rows A05/E05 -&gt; done [#204]
@@ -4166,6 +4168,36 @@ FOLLOW-UPS NOT DONE:
 2. Non-C++ comments unscanned: assets/**/*.lua, *.frag/*.vert shaders, CMakeLists.txt, scripts/*.py. Shaders are cited BY C++ comments and may cite back.
 3. The measurement-claim writing rule (carry the task id) is stated in the doc but 102 existing claims on 76 lines remain undated and unsourced. No sweep done.
 4. Symbol checking in the survey was whole-word presence, NOT scope-aware -- "0 dangling qualified symbols" means "0 names absent from the tree", not "0 names in the wrong class". A scope-aware pass would likely find more.
+```
+
+<a id="c29c1332-219"></a>
+
+#### #219 — LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29
+
+status: **pending**
+
+- `0a8fff9d` refactor(lighting): delete the dead LightTraits::multiply members
+
+```
+The PR-570 ledger's B section (B01-B35) was the tail of the claim list an earlier run CAPPED: it enumerated 47 claims, checked 12, and logged the 35 it dropped. Those 35 carried the verdict "not examined". All 35 are now settled.
+
+OUTCOME: 13 NOT_REAL, 7 REAL_BUT_NOT_OURS, 7 COVERED by decisions already taken, 8 flagged as things we carry -- of which SIX were REFUTED on adversarial verification. Two survived.
+
+SURVIVOR 1 -- rm-lighttraits-spread-multiply. DONE. `ScalarLightTraits::multiply` and `ColoredLightTraits::multiply` were dead in our tree: 2 declarations + 2 inline definitions in source/base/StarCellularLightArray.hpp, zero call sites repo-wide (verified independently by Claude -- every other `multiply` hit is Color::multiply, ItemDescriptor::multiply, BlendMode::PremultiplyInto, or a Lua/directive string). Deleted. The `spread` half of their removal is REJECTED: `spread` is live here with 12 call sites in calculateLightSpread plus the Jacobi oracle mirror, and they could only delete it because the same patch rewrote the spread sweep to raw channel floats.
+
+SURVIVOR 2 -- point-light-cap-and-cull. NOT filed separately: it is a duplicate of open row D29, and B08/B24/B25 are ONE change enumerated three times. Folded into D29 for the Director's decision. Two flaws recorded so we do not imitate them if D29 is ever built: their cull tests the RAW world position with no geometry wrap (the same failure class #217 fixed in our border estimator), and their cap ranks by raw brightness so a bright off-screen light outranks a dim one at the player's feet, while the partition reorders the light list and changes the lightmap bitwise even below the cap. Our exposure is per-light draw calls, not wrong pixels -- both executors already skip off-grid lights.
+
+THE SIX REFUTATIONS ARE THE VALUE HERE. Each was flagged as a live defect and killed by reading our own source:
+- rm-aos-cell-storage: filed as a removal but concedes it is a layout rewrite; our AoS Cell store is the live backing store of the whole lighting system. Its cost model also counts snapshotSpreadInput as a production reader -- it is TEST-ONLY (four callers, all in source/test), overstating the cost 2x. One production reader exists: exportSpreadInputs, under `if (lightingGpu)`.
+- rm-lightingtilegather-noarg: lightingTileGather() is not dead, it is the live OFF branch of the lightingGatherCache kill-switch, reachable via `/lighting gathercache off` and deliberately retained as the A/B baseline. Deleting it removes the lever that de-risks A1/A2. The duplication is real and is #214's job.
+- dead-dependency-cleanup: covered by D59/D60/D61/D64; and mimalloc is NOT dead here -- deleting it reproduces the configure break their own PR scored against itself.
+- rm-offscreen-light-sources: their 49-tile cull radius exceeds the 32-tile windowMonitoringBorder band bounding our client entity map, so it would drop nothing; the far-off-screen light scenario is unreachable because the server destroys client slaves outside window.padded(32).
+- ci-vcpkg-binary-cache: covered by D65, already closed different-tradeoff.
+- rm-commented-vcpkg-cache-ci: their patch is a REPLACEMENT not a removal, and the same hunk as B11; our commented lines are a dated decision record, not dead code.
+
+ENUMERATION QUALITY, worth carrying forward: their 47-claim list contains at least four duplicate pairs counted twice (B11/B27 one hunk; B08/B24/B25 one change), and a large share of the "fix" claims repair defects introduced earlier in the same PR. Treat their headline claim counts as inflated.
+
+ALL 35 decisions recorded in docs/superpowers/drafts/osb-pr570-decisions.json with per-row reasons.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

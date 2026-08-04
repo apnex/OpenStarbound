@@ -88,5 +88,147 @@
   "C14": {
     "status": "declined",
     "reason": "The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== \"main\" cannot be re-broken from asset data') is false, and theirs is provably a no-op for every asset they ship while ours fixes a path live in stock play."
+  },
+  "B21": {
+    "status": "done",
+    "commit": "0a8fff9d",
+    "note": "rm-lighttraits-spread-multiply. SPLIT THE SLUG. `multiply` is verified dead in our tree -- 2 decls + 2 inline defs in StarCellularLightArray.hpp, ZERO call sites repo-wide (every other `multiply` hit is Color::multiply, ItemDescriptor::multiply, PremultiplyInto, or a Lua/directive string). Deleted at 0a8fff9d. REJECT the `spread` half of their removal: `spread` is LIVE here with 12 call sites in calculateLightSpread plus the Jacobi oracle mirror; they could only delete it because the same patch rewrote the spread sweep to raw channel floats, and rewriting ours is a separate decision that must clear the byte-identity oracle."
+  },
+  "B08": {
+    "status": "accepted",
+    "task": "#219",
+    "note": "point-light-cap-and-cull. Their cap+cull is real and survives to their head; we carry NEITHER. DUPLICATE of open row D29 (cap) and B25 (cull) -- one change enumerated three times. Folded into D29, not filed separately. Two flaws named so we do not imitate them: their cull tests the RAW world position with no geometry wrap (the same failure class #217 just fixed in our border estimator), and their cap ranks by raw brightness, so a bright off-screen light outranks a dim one at the player's feet, while the partition reorders the light list and changes the lightmap bitwise even below the cap. Our exposure is per-light draw calls, not wrong pixels: both executors already skip off-grid lights. Size it from lighting.lights.point and lighting.gpu.point.lights before building anything."
+  },
+  "B13": {
+    "status": "declined",
+    "reason": "COVERED by D59, and confirmed rather than restated: tinyformat.h is dead here (49 KB, zero tfm:: uses). NEW: the deletion needs two companion edits in the SAME commit or configure hard-fails -- source/extern/CMakeLists.txt (star_extern_HEADERS feeds ADD_LIBRARY) and doc/OPENSOURCE.md (licence attribution). Their own PR proved this: patch 0001 deletes the header without the CMake entry and does not configure; patch 0002 repairs it."
+  },
+  "B14": {
+    "status": "declined",
+    "reason": "COVERED by D59. Same hunk as B13 counted twice -- the CMakeLists entry IS the companion edit B13 requires, not an independent claim."
+  },
+  "B15": {
+    "status": "declined",
+    "reason": "COVERED by D60, confirmed: lib/linux/libcrypto.a is 4 MB and unreferenced here."
+  },
+  "B16": {
+    "status": "declined",
+    "reason": "NOT_REAL as applied to us, and actively harmful if taken literally. The lib/linux search path is NOT an implicit link path to be removed -- it is load-bearing for cmake/FindSteamApi.cmake and cmake/FindDiscordApi.cmake. D60's deletion needs no build-system edit at all."
+  },
+  "B17": {
+    "status": "declined",
+    "reason": "COVERED by D61/E09/#196. mimalloc is NOT dead in our tree: source/vcpkg.json is consumed by source/CMakeLists.txt and source/core/StarMemory.cpp under STAR_USE_MIMALLOC. Deleting it reproduces here the exact configure break their PR scored against itself. The real item is manifest SHAPE -- make the allocator a vcpkg manifest feature (E09), not a deletion."
+  },
+  "B18": {
+    "status": "declined",
+    "reason": "NOT_REAL. Follows B17: there is no residual build path to remove because the dependency is live."
+  },
+  "B22": {
+    "status": "declined",
+    "reason": "COVERED by A07/#211. We refuse the deletion outright -- #151 measured per-sample shading at 22.3% of pixels and kept it deliberately. Our fix is a GL 4.0 capability guard."
+  },
+  "B04": {
+    "status": "declined",
+    "reason": "COVERED by open row D45 (runtime VSync toggle, we-lack-entirely). Not a defect; a feature we do not have. Decide it at D45, not here."
+  },
+  "B02": {
+    "status": "declined",
+    "reason": "COVERED by #196. Same wall: jemalloc versus libstdc++ 16 blocks a pristine Linux bootstrap on this workstation. Their approach addresses their toolchain, not ours."
+  },
+  "B11": {
+    "status": "declined",
+    "reason": "COVERED by D65 (closed different-tradeoff). True that build_windows has no persisted vcpkg binary cache, but this was already enumerated and closed. NOTE: B11 and B27 are ONE hunk (+5/-7, patch 0003) counted twice by the enumerator."
+  },
+  "B12": {
+    "status": "declined",
+    "reason": "COVERED by D59 + D60 + D61/E09 + D64/E10 -- no new finding survives. Their own provenance doc is false on the day it lands (README claims vcpkg.json is pinned by builtin-baseline; their vcpkg.json has no builtin-baseline, removed by their own hand). That contradiction is a concrete argument FOR E10's generated-and-gated form, and is the one element folded forward."
+  },
+  "B25": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS on verification (initially filed as ours, then refuted). Their 49-tile cull radius exceeds the 32-tile windowMonitoringBorder band that bounds our client entity map, so it would drop nothing here -- the server destroys client slaves outside window.padded(32). The 'lantern 80 tiles off-screen' scenario is unreachable in our tree."
+  },
+  "B24": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. Same single change as B08/D29, third enumeration. Decide the cap at D29."
+  },
+  "B01": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. We already carry the equivalent as m_lightingTileEpoch with all four of its sites live; their tile-version counter is the same idea reached independently."
+  },
+  "B19": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. Their file removal follows their own rewrite; our StarCellularLightArray.cpp is live production plus the differential oracle (see #215 for the oracle's relocation, which is the real item here)."
+  },
+  "B23": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. Our AA confinement was settled at C13/C14/C15 and RT-1/#151 -- our undeclared-is-single-sample default already fails safe, which their rule does not."
+  },
+  "B10": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. Checked our clip-rect handling directly; the unset-sentinel shape they fix is not present here."
+  },
+  "B34": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS as a defect, but it is the evidence for B13's companion edit: their attribution was left behind because their grep was scoped to source/. Ours must include doc/OPENSOURCE.md. Recorded on B13's note rather than actioned separately."
+  },
+  "B35": {
+    "status": "declined",
+    "reason": "REAL_BUT_NOT_OURS. A measurement claim about their own diff, not a code change: clang-format churn inflates their reported deletion counts. Affects how we read their headline numbers, nothing in our tree."
+  },
+  "B20": {
+    "status": "declined",
+    "reason": "NOT_REAL as filed, and the perf pivot rests on two errors about our tree. It is an `rm-` claim but concedes it is a layout rewrite, and our AoS Cell store is the live backing store of the whole lighting system -- the opposite of dead. The cost model also counts snapshotSpreadInput as a production reader; it is TEST-ONLY (four callers, all in source/test), so the 'walked twice' figure overstates the real cost 2x. There is exactly one production reader, exportSpreadInputs, under `if (lightingGpu)`. If AoS->SoA is ever revisited it is a measured lever, not a cleanup."
+  },
+  "B31": {
+    "status": "declined",
+    "reason": "NOT_REAL for us, and COVERED by C05/#214. lightingTileGather() is NOT dead code here: it is the live OFF branch of the lightingGatherCache kill-switch, declared default-true in StarRootLoader, reported in the /lighting status line, and toggled in-process by `/lighting gathercache off`. It is the A/B baseline that de-risks A1/A2. The duplication is real and is #214's job; deleting the lever is not."
+  },
+  "B27": {
+    "status": "declined",
+    "reason": "NOT_REAL. Their patch 0003 is a REPLACEMENT (+5/-7), not a removal -- the commented block is swapped for a live actions/cache step. Same hunk as B11. And our commented lines are not dead code but a DATED DECISION RECORD: git blame attributes them to a commit whose own subject says the cache was temporarily disabled."
+  },
+  "B29": {
+    "status": "declined",
+    "reason": "NOT_REAL. The Dial flood fill never appears in the PR: zero hits for bucketHeads/dial in full.diff outside their Russian TODO prose, and zero in their head tree. Settled by absence, which is what the slug itself claims ('invisible'); their patch-0005 message describes why they reverted it. Nothing to learn beyond what C09 already recorded about Xiaolin-Wu."
+  },
+  "B32": {
+    "status": "declined",
+    "reason": "NOT_REAL. Intra-PR: an API they added earlier in this same PR and then deleted. Worth nothing to us."
+  },
+  "B30": {
+    "status": "declined",
+    "reason": "NOT_REAL. Within-PR revert with net zero effect -- patch 0002 flips asyncLighting false->true, patch 0005 flips it back true->false; the line is CONTEXT in full.diff. Separately, the sector-unload race this sits beside is CLOSED in our tree at #210/66ec860b."
+  },
+  "B06": {
+    "status": "declined",
+    "reason": "NOT_REAL. Their lightmap upload version gate repairs a defect introduced earlier in the same PR."
+  },
+  "B26": {
+    "status": "declined",
+    "reason": "NOT_REAL. Same intra-PR shape; and our #127 stable grid plus #125 VBO orphaning already cut upload churn on this path."
+  },
+  "B07": {
+    "status": "declined",
+    "reason": "NOT_REAL. The fullbright regression they fix is one they introduced with the version gate itself."
+  },
+  "B09": {
+    "status": "declined",
+    "reason": "NOT_REAL for us. Lightmap buffer reuse is already served by our existing allocation path; their gain is against their own pre-PR state."
+  },
+  "B33": {
+    "status": "declined",
+    "reason": "NOT_REAL. Intra-PR realloc repair."
+  },
+  "B05": {
+    "status": "declined",
+    "reason": "NOT_REAL. Their HDR layout claim is unsupported by their own tree."
+  },
+  "B03": {
+    "status": "declined",
+    "reason": "NOT_REAL for us. A Windows-only test dump path issue in their harness; our test binaries run from dist/ and do not take that path."
+  },
+  "B28": {
+    "status": "declined",
+    "reason": "NOT_REAL. Removal of their own Russian-language dev notes, added by patch 0002 and deleted by patch 0008. Pure intra-PR housekeeping -- though the notes were the single most useful artefact in the snapshot for establishing their intent."
   }
 }

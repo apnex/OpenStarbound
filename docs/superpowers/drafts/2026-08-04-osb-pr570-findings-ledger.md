@@ -16,11 +16,11 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 50 | needs a call |
-| **accepted** | 8 | work is committed to; `task` names where it is tracked |
+| **open** | 15 | needs a call |
+| **accepted** | 9 | work is committed to; `task` names where it is tracked |
 | **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
-| **declined** | 3 | we will not do this; `reason` is mandatory |
-| **done** | 3 | finished; `task` or `commit` says where |
+| **declined** | 36 | we will not do this; `reason` is mandatory |
+| **done** | 4 | finished; `task` or `commit` says where |
 | closed | 88 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -34,6 +34,41 @@ one, and hard-fails on a decision naming a row that no longer exists.
 |---|---|---|---|
 | **A05** | **done** | `sector-unload-uaf` — Real defect, and we still carry it verbatim. The lighting thread gathers tiles via a worker-pool fan-out that dereferences raw `Array*` pointers into sector storage, whi… | 66ec860b |
 | **A07** | **accepted** | `per-sample-shading-removed` — The unadvertised half is real in substance — glEnable(GL_SAMPLE_SHADING)/glMinSampleShading are GL 4.0 entry points called with no capability guard, while the sibling fr… | #211 |
+| **B01** | **declined** | `tile-version-counter` | REAL_BUT_NOT_OURS. We already carry the equivalent as m_lightingTileEpoch with all four o… |
+| **B02** | **declined** | `jemalloc-gcc16` | COVERED by #196. Same wall: jemalloc versus libstdc++ 16 blocks a pristine Linux bootstra… |
+| **B03** | **declined** | `test-dump-path-windows` | NOT_REAL for us. A Windows-only test dump path issue in their harness; our test binaries … |
+| **B04** | **declined** | `vsync-ui` | COVERED by open row D45 (runtime VSync toggle, we-lack-entirely). Not a defect; a feature… |
+| **B05** | **declined** | `hdr-layout-claim-unsupported` | NOT_REAL. Their HDR layout claim is unsupported by their own tree. |
+| **B06** | **declined** | `lightmap-upload-version-gate` | NOT_REAL. Their lightmap upload version gate repairs a defect introduced earlier in the s… |
+| **B07** | **declined** | `fullbright-version-gate-regression` | NOT_REAL. The fullbright regression they fix is one they introduced with the version gate… |
+| **B08** | **accepted** | `point-light-cap-and-cull` | #219 |
+| **B09** | **declined** | `lightmap-buffer-reuse` | NOT_REAL for us. Lightmap buffer reuse is already served by our existing allocation path;… |
+| **B10** | **declined** | `unset-sentinel-in-clip-rect` | REAL_BUT_NOT_OURS. Checked our clip-rect handling directly; the unset-sentinel shape they… |
+| **B11** | **declined** | `ci-vcpkg-binary-cache` | COVERED by D65 (closed different-tradeoff). True that build_windows has no persisted vcpk… |
+| **B12** | **declined** | `dead-dependency-cleanup` | COVERED by D59 + D60 + D61/E09 + D64/E10 -- no new finding survives. Their own provenance… |
+| **B13** | **declined** | `rm-tinyformat-header` | COVERED by D59, and confirmed rather than restated: tinyformat.h is dead here (49 KB, zer… |
+| **B14** | **declined** | `rm-tinyformat-cmake-entry` | COVERED by D59. Same hunk as B13 counted twice -- the CMakeLists entry IS the companion e… |
+| **B15** | **declined** | `rm-libcrypto-binary` | COVERED by D60, confirmed: lib/linux/libcrypto.a is 4 MB and unreferenced here. |
+| **B16** | **declined** | `rm-libcrypto-implicit-linkpath` | NOT_REAL as applied to us, and actively harmful if taken literally. The lib/linux search … |
+| **B17** | **declined** | `rm-mimalloc-vcpkg-dep` | COVERED by D61/E09/#196. mimalloc is NOT dead in our tree: source/vcpkg.json is consumed … |
+| **B18** | **declined** | `rm-mimalloc-residual-buildpath` | NOT_REAL. Follows B17: there is no residual build path to remove because the dependency i… |
+| **B19** | **declined** | `rm-cellularlightarray-cpp` | REAL_BUT_NOT_OURS. Their file removal follows their own rewrite; our StarCellularLightArr… |
+| **B20** | **declined** | `rm-aos-cell-storage` | NOT_REAL as filed, and the perf pivot rests on two errors about our tree. It is an `rm-` … |
+| **B21** | **done** | `rm-lighttraits-spread-multiply` | 0a8fff9d |
+| **B22** | **declined** | `rm-per-sample-shading` | COVERED by A07/#211. We refuse the deletion outright -- #151 measured per-sample shading … |
+| **B23** | **declined** | `rm-msaa-from-nonmain-framebuffers` | REAL_BUT_NOT_OURS. Our AA confinement was settled at C13/C14/C15 and RT-1/#151 -- our und… |
+| **B24** | **declined** | `rm-point-lights-over-cap` | REAL_BUT_NOT_OURS. Same single change as B08/D29, third enumeration. Decide the cap at D2… |
+| **B25** | **declined** | `rm-offscreen-light-sources` | REAL_BUT_NOT_OURS on verification (initially filed as ours, then refuted). Their 49-tile … |
+| **B26** | **declined** | `rm-redundant-lightmap-upload` | NOT_REAL. Same intra-PR shape; and our #127 stable grid plus #125 VBO orphaning already c… |
+| **B27** | **declined** | `rm-commented-vcpkg-cache-ci` | NOT_REAL. Their patch 0003 is a REPLACEMENT (+5/-7), not a removal -- the commented block… |
+| **B28** | **declined** | `rm-todo-md-dev-notes` | NOT_REAL. Removal of their own Russian-language dev notes, added by patch 0002 and delete… |
+| **B29** | **declined** | `rm-dial-floodfill-invisible` | NOT_REAL. The Dial flood fill never appears in the PR: zero hits for bucketHeads/dial in … |
+| **B30** | **declined** | `rm-async-lighting-default` | NOT_REAL. Within-PR revert with net zero effect -- patch 0002 flips asyncLighting false->… |
+| **B31** | **declined** | `rm-lightingtilegather-noarg` | NOT_REAL for us, and COVERED by C05/#214. lightingTileGather() is NOT dead code here: it … |
+| **B32** | **declined** | `rm-intra-pr-lighting-api` | NOT_REAL. Intra-PR: an API they added earlier in this same PR and then deleted. Worth not… |
+| **B33** | **declined** | `rm-lightmap-realloc` | NOT_REAL. Intra-PR realloc repair. |
+| **B34** | **declined** | `rm-tinyformat-attribution-left-behind` | REAL_BUT_NOT_OURS as a defect, but it is the evidence for B13's companion edit: their att… |
+| **B35** | **declined** | `noise-clangformat-inflates-deletions` | REAL_BUT_NOT_OURS. A measurement claim about their own diff, not a code change: clang-for… |
 | **C05** | **accepted** | Recomputing only the changed part of the lightmap: their cd… — simplicity | #214 |
 | **C07** | **declined** | Cutting the CPU cost of the cellular light computation — quality | Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calc… |
 | **C08** | **accepted** | Cutting the CPU cost of the cellular light computation — simplicity | #215 |
@@ -54,41 +89,6 @@ one, and hard-fails on a decision naming a row that no longer exists.
 
 | row | item | verdict | next steps |
 |---|---|---|---|
-| **B01** | `tile-version-counter` | not examined | CHECK · DROP |
-| **B02** | `jemalloc-gcc16` | not examined | CHECK · DROP |
-| **B03** | `test-dump-path-windows` | not examined | CHECK · DROP |
-| **B04** | `vsync-ui` | not examined | CHECK · DROP |
-| **B05** | `hdr-layout-claim-unsupported` | not examined | CHECK · DROP |
-| **B06** | `lightmap-upload-version-gate` | not examined | CHECK · DROP |
-| **B07** | `fullbright-version-gate-regression` | not examined | CHECK · DROP |
-| **B08** | `point-light-cap-and-cull` | not examined | CHECK · DROP |
-| **B09** | `lightmap-buffer-reuse` | not examined | CHECK · DROP |
-| **B10** | `unset-sentinel-in-clip-rect` | not examined | CHECK · DROP |
-| **B11** | `ci-vcpkg-binary-cache` | not examined | CHECK · DROP |
-| **B12** | `dead-dependency-cleanup` | not examined | CHECK · DROP |
-| **B13** | `rm-tinyformat-header` | not examined | CHECK · DROP |
-| **B14** | `rm-tinyformat-cmake-entry` | not examined | CHECK · DROP |
-| **B15** | `rm-libcrypto-binary` | not examined | CHECK · DROP |
-| **B16** | `rm-libcrypto-implicit-linkpath` | not examined | CHECK · DROP |
-| **B17** | `rm-mimalloc-vcpkg-dep` | not examined | CHECK · DROP |
-| **B18** | `rm-mimalloc-residual-buildpath` | not examined | CHECK · DROP |
-| **B19** | `rm-cellularlightarray-cpp` | not examined | CHECK · DROP |
-| **B20** | `rm-aos-cell-storage` | not examined | CHECK · DROP |
-| **B21** | `rm-lighttraits-spread-multiply` | not examined | CHECK · DROP |
-| **B22** | `rm-per-sample-shading` | not examined | CHECK · DROP |
-| **B23** | `rm-msaa-from-nonmain-framebuffers` | not examined | CHECK · DROP |
-| **B24** | `rm-point-lights-over-cap` | not examined | CHECK · DROP |
-| **B25** | `rm-offscreen-light-sources` | not examined | CHECK · DROP |
-| **B26** | `rm-redundant-lightmap-upload` | not examined | CHECK · DROP |
-| **B27** | `rm-commented-vcpkg-cache-ci` | not examined | CHECK · DROP |
-| **B28** | `rm-todo-md-dev-notes` | not examined | CHECK · DROP |
-| **B29** | `rm-dial-floodfill-invisible` | not examined | CHECK · DROP |
-| **B30** | `rm-async-lighting-default` | not examined | CHECK · DROP |
-| **B31** | `rm-lightingtilegather-noarg` | not examined | CHECK · DROP |
-| **B32** | `rm-intra-pr-lighting-api` | not examined | CHECK · DROP |
-| **B33** | `rm-lightmap-realloc` | not examined | CHECK · DROP |
-| **B34** | `rm-tinyformat-attribution-left-behind` | not examined | CHECK · DROP |
-| **B35** | `noise-clangformat-inflates-deletions` | not examined | CHECK · DROP |
 | **D11** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | ADOPT the idea · DECLINE · DEFER |
 | **D22** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | we-lack-entirely | BUILD it · DECLINE · DEFER |
 | **D29** | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | BUILD it · DECLINE · DEFER |
@@ -147,41 +147,41 @@ withdrawn outright and one finding was reversed in our favour.
 | **A10** | closed | `border-entry-bands` — The hazard they guard against is real and correctly identified — their point phase is window-scoped while the cell array is the query region padded by borderCells(), so … | overstated | not-applicable-to-us | CLOSE |
 | **A11** | closed | `lastpointlights-coordinate-shift` — The shift line is a genuine, load-bearing invariant of THEIR new scrolling atlas — but it never fixed a defect: `m_lastPointLights`, `calculateIncremental` and `scroll()… | overstated | not-applicable-to-us | CLOSE |
 | **A12** | closed | `pending-lights-lifetime` — Both "lifetime fixes" are original code in the commits that introduced the fields they guard, not fixes of any defective state — and the begin() clear is attributed to t… | overstated | not-applicable-to-us | CLOSE |
-| **B01** | open | `tile-version-counter` | not examined | unknown | CHECK · DROP |
-| **B02** | open | `jemalloc-gcc16` | not examined | unknown | CHECK · DROP |
-| **B03** | open | `test-dump-path-windows` | not examined | unknown | CHECK · DROP |
-| **B04** | open | `vsync-ui` | not examined | unknown | CHECK · DROP |
-| **B05** | open | `hdr-layout-claim-unsupported` | not examined | unknown | CHECK · DROP |
-| **B06** | open | `lightmap-upload-version-gate` | not examined | unknown | CHECK · DROP |
-| **B07** | open | `fullbright-version-gate-regression` | not examined | unknown | CHECK · DROP |
-| **B08** | open | `point-light-cap-and-cull` | not examined | unknown | CHECK · DROP |
-| **B09** | open | `lightmap-buffer-reuse` | not examined | unknown | CHECK · DROP |
-| **B10** | open | `unset-sentinel-in-clip-rect` | not examined | unknown | CHECK · DROP |
-| **B11** | open | `ci-vcpkg-binary-cache` | not examined | unknown | CHECK · DROP |
-| **B12** | open | `dead-dependency-cleanup` | not examined | unknown | CHECK · DROP |
-| **B13** | open | `rm-tinyformat-header` | not examined | unknown | CHECK · DROP |
-| **B14** | open | `rm-tinyformat-cmake-entry` | not examined | unknown | CHECK · DROP |
-| **B15** | open | `rm-libcrypto-binary` | not examined | unknown | CHECK · DROP |
-| **B16** | open | `rm-libcrypto-implicit-linkpath` | not examined | unknown | CHECK · DROP |
-| **B17** | open | `rm-mimalloc-vcpkg-dep` | not examined | unknown | CHECK · DROP |
-| **B18** | open | `rm-mimalloc-residual-buildpath` | not examined | unknown | CHECK · DROP |
-| **B19** | open | `rm-cellularlightarray-cpp` | not examined | unknown | CHECK · DROP |
-| **B20** | open | `rm-aos-cell-storage` | not examined | unknown | CHECK · DROP |
-| **B21** | open | `rm-lighttraits-spread-multiply` | not examined | unknown | CHECK · DROP |
-| **B22** | open | `rm-per-sample-shading` | not examined | unknown | CHECK · DROP |
-| **B23** | open | `rm-msaa-from-nonmain-framebuffers` | not examined | unknown | CHECK · DROP |
-| **B24** | open | `rm-point-lights-over-cap` | not examined | unknown | CHECK · DROP |
-| **B25** | open | `rm-offscreen-light-sources` | not examined | unknown | CHECK · DROP |
-| **B26** | open | `rm-redundant-lightmap-upload` | not examined | unknown | CHECK · DROP |
-| **B27** | open | `rm-commented-vcpkg-cache-ci` | not examined | unknown | CHECK · DROP |
-| **B28** | open | `rm-todo-md-dev-notes` | not examined | unknown | CHECK · DROP |
-| **B29** | open | `rm-dial-floodfill-invisible` | not examined | unknown | CHECK · DROP |
-| **B30** | open | `rm-async-lighting-default` | not examined | unknown | CHECK · DROP |
-| **B31** | open | `rm-lightingtilegather-noarg` | not examined | unknown | CHECK · DROP |
-| **B32** | open | `rm-intra-pr-lighting-api` | not examined | unknown | CHECK · DROP |
-| **B33** | open | `rm-lightmap-realloc` | not examined | unknown | CHECK · DROP |
-| **B34** | open | `rm-tinyformat-attribution-left-behind` | not examined | unknown | CHECK · DROP |
-| **B35** | open | `noise-clangformat-inflates-deletions` | not examined | unknown | CHECK · DROP |
+| **B01** | declined · REAL_BUT_NOT_OURS. We already carry the equivalent as m_lightingTileEpoch with all four o… | `tile-version-counter` | not examined | unknown | CHECK · DROP |
+| **B02** | declined · COVERED by #196. Same wall: jemalloc versus libstdc++ 16 blocks a pristine Linux bootstra… | `jemalloc-gcc16` | not examined | unknown | CHECK · DROP |
+| **B03** | declined · NOT_REAL for us. A Windows-only test dump path issue in their harness; our test binaries … | `test-dump-path-windows` | not examined | unknown | CHECK · DROP |
+| **B04** | declined · COVERED by open row D45 (runtime VSync toggle, we-lack-entirely). Not a defect; a feature… | `vsync-ui` | not examined | unknown | CHECK · DROP |
+| **B05** | declined · NOT_REAL. Their HDR layout claim is unsupported by their own tree. | `hdr-layout-claim-unsupported` | not examined | unknown | CHECK · DROP |
+| **B06** | declined · NOT_REAL. Their lightmap upload version gate repairs a defect introduced earlier in the s… | `lightmap-upload-version-gate` | not examined | unknown | CHECK · DROP |
+| **B07** | declined · NOT_REAL. The fullbright regression they fix is one they introduced with the version gate… | `fullbright-version-gate-regression` | not examined | unknown | CHECK · DROP |
+| **B08** | accepted · #219 | `point-light-cap-and-cull` | not examined | unknown | CHECK · DROP |
+| **B09** | declined · NOT_REAL for us. Lightmap buffer reuse is already served by our existing allocation path;… | `lightmap-buffer-reuse` | not examined | unknown | CHECK · DROP |
+| **B10** | declined · REAL_BUT_NOT_OURS. Checked our clip-rect handling directly; the unset-sentinel shape they… | `unset-sentinel-in-clip-rect` | not examined | unknown | CHECK · DROP |
+| **B11** | declined · COVERED by D65 (closed different-tradeoff). True that build_windows has no persisted vcpk… | `ci-vcpkg-binary-cache` | not examined | unknown | CHECK · DROP |
+| **B12** | declined · COVERED by D59 + D60 + D61/E09 + D64/E10 -- no new finding survives. Their own provenance… | `dead-dependency-cleanup` | not examined | unknown | CHECK · DROP |
+| **B13** | declined · COVERED by D59, and confirmed rather than restated: tinyformat.h is dead here (49 KB, zer… | `rm-tinyformat-header` | not examined | unknown | CHECK · DROP |
+| **B14** | declined · COVERED by D59. Same hunk as B13 counted twice -- the CMakeLists entry IS the companion e… | `rm-tinyformat-cmake-entry` | not examined | unknown | CHECK · DROP |
+| **B15** | declined · COVERED by D60, confirmed: lib/linux/libcrypto.a is 4 MB and unreferenced here. | `rm-libcrypto-binary` | not examined | unknown | CHECK · DROP |
+| **B16** | declined · NOT_REAL as applied to us, and actively harmful if taken literally. The lib/linux search … | `rm-libcrypto-implicit-linkpath` | not examined | unknown | CHECK · DROP |
+| **B17** | declined · COVERED by D61/E09/#196. mimalloc is NOT dead in our tree: source/vcpkg.json is consumed … | `rm-mimalloc-vcpkg-dep` | not examined | unknown | CHECK · DROP |
+| **B18** | declined · NOT_REAL. Follows B17: there is no residual build path to remove because the dependency i… | `rm-mimalloc-residual-buildpath` | not examined | unknown | CHECK · DROP |
+| **B19** | declined · REAL_BUT_NOT_OURS. Their file removal follows their own rewrite; our StarCellularLightArr… | `rm-cellularlightarray-cpp` | not examined | unknown | CHECK · DROP |
+| **B20** | declined · NOT_REAL as filed, and the perf pivot rests on two errors about our tree. It is an `rm-` … | `rm-aos-cell-storage` | not examined | unknown | CHECK · DROP |
+| **B21** | done · 0a8fff9d | `rm-lighttraits-spread-multiply` | not examined | unknown | CHECK · DROP |
+| **B22** | declined · COVERED by A07/#211. We refuse the deletion outright -- #151 measured per-sample shading … | `rm-per-sample-shading` | not examined | unknown | CHECK · DROP |
+| **B23** | declined · REAL_BUT_NOT_OURS. Our AA confinement was settled at C13/C14/C15 and RT-1/#151 -- our und… | `rm-msaa-from-nonmain-framebuffers` | not examined | unknown | CHECK · DROP |
+| **B24** | declined · REAL_BUT_NOT_OURS. Same single change as B08/D29, third enumeration. Decide the cap at D2… | `rm-point-lights-over-cap` | not examined | unknown | CHECK · DROP |
+| **B25** | declined · REAL_BUT_NOT_OURS on verification (initially filed as ours, then refuted). Their 49-tile … | `rm-offscreen-light-sources` | not examined | unknown | CHECK · DROP |
+| **B26** | declined · NOT_REAL. Same intra-PR shape; and our #127 stable grid plus #125 VBO orphaning already c… | `rm-redundant-lightmap-upload` | not examined | unknown | CHECK · DROP |
+| **B27** | declined · NOT_REAL. Their patch 0003 is a REPLACEMENT (+5/-7), not a removal -- the commented block… | `rm-commented-vcpkg-cache-ci` | not examined | unknown | CHECK · DROP |
+| **B28** | declined · NOT_REAL. Removal of their own Russian-language dev notes, added by patch 0002 and delete… | `rm-todo-md-dev-notes` | not examined | unknown | CHECK · DROP |
+| **B29** | declined · NOT_REAL. The Dial flood fill never appears in the PR: zero hits for bucketHeads/dial in … | `rm-dial-floodfill-invisible` | not examined | unknown | CHECK · DROP |
+| **B30** | declined · NOT_REAL. Within-PR revert with net zero effect -- patch 0002 flips asyncLighting false->… | `rm-async-lighting-default` | not examined | unknown | CHECK · DROP |
+| **B31** | declined · NOT_REAL for us, and COVERED by C05/#214. lightingTileGather() is NOT dead code here: it … | `rm-lightingtilegather-noarg` | not examined | unknown | CHECK · DROP |
+| **B32** | declined · NOT_REAL. Intra-PR: an API they added earlier in this same PR and then deleted. Worth not… | `rm-intra-pr-lighting-api` | not examined | unknown | CHECK · DROP |
+| **B33** | declined · NOT_REAL. Intra-PR realloc repair. | `rm-lightmap-realloc` | not examined | unknown | CHECK · DROP |
+| **B34** | declined · REAL_BUT_NOT_OURS as a defect, but it is the evidence for B13's companion edit: their att… | `rm-tinyformat-attribution-left-behind` | not examined | unknown | CHECK · DROP |
+| **B35** | declined · REAL_BUT_NOT_OURS. A measurement claim about their own diff, not a code change: clang-for… | `noise-clangformat-inflates-deletions` | not examined | unknown | CHECK · DROP |
 | **C01** | closed | Keeping the lightmap stable while the view scrolls — quality | tie | Theirs wins the proof half outright: cellular_lighting_test.cpp:215 asserts scrolled == full-recalc per cell over 5 scroll steps with obstacles, and their gather is ONE region-parameterised function.… | NO ACTION |
 | **C02** | closed | Keeping the lightmap stable while the view scrolls — simplicity | ours | Theirs is +428/-36 over 7 files and introduces a second storage layer (m_pointChannels, StarCellularLightArray.hpp:247) that changes getLight's meaning for every existing caller and forces setSpreadL… | NO ACTION |
 | **C03** | closed | Keeping the lightmap stable while the view scrolls — performance | ours | We measured; they did not. Ours: lighting.cpu.gather.us ~93us with the cache on vs ~237us baseline (-60%) taken during ACTIVE scroll (210-289 recompute-frames/5s), with the baseline windows independe… | NO ACTION |
