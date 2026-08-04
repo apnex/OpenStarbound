@@ -41,7 +41,7 @@
     "version_from": {"file": "fmt/core.h", "macros": ["FMT_VERSION"]},
     "reach": "direct",
     "why": "Formatting for strf/Logger across the whole tree. Vendored rather than packaged so the format-string ABI cannot shift under a vcpkg baseline bump mid-campaign.",
-    "attributed": null
+    "attributed": "doc/OPENSOURCE.md"
   },
 
   "xxhash": {
@@ -62,7 +62,7 @@
     "version": "unversioned-vendor-drop",
     "reach": "direct",
     "why": "Ed25519 signing and X25519 key exchange for the network handshake. No release tags in the vendored drop, so no version is derivable and none is claimed.",
-    "attributed": null
+    "attributed": "doc/OPENSOURCE.md"
   },
 
   "fast_float": {
@@ -71,8 +71,8 @@
     "licence": "Apache-2.0 OR MIT OR BSL-1.0",
     "version": "unversioned-vendor-drop",
     "reach": "header",
-    "why": "Locale-independent string-to-float used by the Json parser. Header-only single file; the vendored copy carries no version macro.",
-    "attributed": null
+    "why": "Locale-independent string-to-float used by the Json parser. Header-only single file; the vendored copy carries no version macro. Tri-licensed upstream; we take the MIT option and say so in the attribution.",
+    "attributed": "doc/OPENSOURCE.md"
   },
 
   "rpmalloc": {
@@ -84,17 +84,17 @@
     "condition": "STAR_USE_RPMALLOC",
     "included_by": {"malloc.c": "rpmalloc.c"},
     "why": "Optional allocator, one of three (jemalloc / mimalloc / rpmalloc). malloc.c is the operator-new shim and is NOT in any CMake list -- rpmalloc.c #includes it, so it compiles only through that.",
-    "attributed": null
+    "attributed": "doc/OPENSOURCE.md"
   },
 
   "imgui_lua_bindings": {
     "paths": ["imgui_lua_bindings.cpp", "imgui_lua_bindings.hpp", "imgui_iterator.inl"],
     "upstream": "https://github.com/patrickriordan/imgui_lua_bindings",
-    "licence": "UNSTATED-IN-VENDORED-COPY",
+    "licence": "No formal licence; permissive grant in upstream README",
     "version": "unversioned-vendor-drop",
     "reach": "direct",
     "included_by": {"imgui_iterator.inl": "imgui_lua_bindings.cpp"},
-    "why": "Exposes the debug ImGui surface to Lua. The vendored copy carries NO licence header, which is a genuine attribution gap rather than a formatting one -- recorded here so it is visible instead of absent.",
-    "attributed": null
+    "why": "Exposes the debug ImGui surface to Lua. The vendored copy carries no licence header and upstream publishes no LICENCE file, but the upstream README DOES grant permission in informal terms -- explicitly including use in an open source project. That grant is quoted verbatim in the attribution rather than paraphrased, and it imposes one obligation silence would breach: not claiming the code as ours.",
+    "attributed": "doc/OPENSOURCE.md"
   }
 }

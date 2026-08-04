@@ -13,6 +13,8 @@ declared in docs/architecture/extern-provenance.json. Everything derivable IS de
   * where `version_from` names macros, the derived version must equal the declared one
   * the generated doc must match what --inject would write, so a register edit that skipped --inject
     fails here instead of leaving a stale table behind a green gate
+  * `attributed` must name a file that EXISTS and that actually mentions the artefact's upstream --
+    declaring an attribution file is not the same as being attributed in it
 
 THE REACH TAXONOMY IS THE POINT, and it was learned the hard way while writing this. Three files looked
 dead on a narrow grep and only one was:
@@ -177,6 +179,48 @@ def doc_problems(reg, doc_text):
     return []
 
 
+def attribution_problems(reg, texts):
+    """`attributed` names a file; this checks that the file actually ATTRIBUTES the artefact.
+
+    The field existed from the day E10 landed, was rendered in the generated table, and was checked by
+    NOTHING -- so five of seven artefacts sat unattributed behind a green gate, and a new one could
+    land the same way. MIT and Apache-2.0 both require the notice to travel with redistribution and
+    origin is a public fork, so this is a redistribution obligation rather than tidiness.
+
+    It matches on the UPSTREAM URL rather than the artefact's register name: the name is ours and can
+    drift, the URL is the thing a reader follows. Declaring a file is not attribution -- being named
+    in it is.
+    """
+    problems = []
+    for name, e in sorted(reg.items()):
+        att = e.get("attributed")
+        if not att:
+            problems.append("%s names no attribution file -- add an entry and set `attributed`" % name)
+            continue
+        text = texts.get(att)
+        if text is None:
+            problems.append("%s is attributed to %s, which does not exist" % (name, att))
+            continue
+        needle = re.sub(r"^https?://", "", e.get("upstream") or "").rstrip("/")
+        if not needle:
+            problems.append("%s has no upstream to match an attribution against" % name)
+        elif needle not in text:
+            problems.append("%s claims attribution in %s, which never mentions %s" % (name, att, needle))
+    return problems
+
+
+def attribution_texts(reg, root=ROOT):
+    """Read every file the register names, once each."""
+    texts = {}
+    for e in reg.values():
+        att = e.get("attributed")
+        if att and att not in texts:
+            path = os.path.join(root, att)
+            if os.path.exists(path):
+                texts[att] = open(path, errors="replace").read()
+    return texts
+
+
 def inject():
     reg = load_register()
     body = generated_body(reg)
@@ -255,6 +299,30 @@ def selftest():
             "# head\n\n" + fresh.replace("| `lua` |", "| `lua-EDITED` |") + "\ntail\n")
     run_doc("the generated block deleted from the doc", True, "# head\n\nprose only\n")
     run_doc("the doc missing entirely", True, None)
+
+    # Attribution. All seven artefacts are attributed now, so these arms are the only thing standing
+    # between that and a silent regression -- the field was live and unchecked while five sat empty.
+    def run_att(desc, expect_problem, mutate, texts):
+        nonlocal fails
+        reg = copy.deepcopy(base)
+        mutate(reg)
+        probs = attribution_problems(reg, texts)
+        got = bool(probs)
+        if got != expect_problem:
+            print("  SELFTEST FAIL: %s -- expected problem=%s, got %s" % (desc, expect_problem, probs[:1]))
+            fails += 1
+        else:
+            print("  ok   (%s)  %s" % ("caught" if got else "clean", desc))
+
+    real = attribution_texts(base)
+    run_att("every artefact attributed, and named in the file", False, lambda r: None, real)
+    run_att("an artefact loses its attribution", True,
+            lambda r: r["fmt"].__setitem__("attributed", None), real)
+    run_att("attributed names a file that does not exist", True,
+            lambda r: r["fmt"].__setitem__("attributed", "doc/NOT-A-FILE.md"), real)
+    # THE ARM THAT MATTERS: declaring a file is not being named in it.
+    run_att("the attribution file never mentions the artefact", True, lambda r: None,
+            {k: v.replace("github.com/fmtlib/fmt", "github.com/somebody/else") for k, v in real.items()})
     print()
     if fails:
         print("SELFTEST: %d FAILED" % fails)
@@ -273,9 +341,10 @@ def main(argv):
         return selftest()
     if args.inject:
         return inject()
+    reg = load_register()
     problems = check()
-    problems += doc_problems(load_register(),
-                             open(DOC).read() if os.path.exists(DOC) else None)
+    problems += doc_problems(reg, open(DOC).read() if os.path.exists(DOC) else None)
+    problems += attribution_problems(reg, attribution_texts(reg))
     if problems:
         print("extern provenance is out of date with the tree (%d):" % len(problems))
         for p in problems:
@@ -283,8 +352,8 @@ def main(argv):
         print("Fix docs/architecture/extern-provenance.json, then: "
               "python3 scripts/extern-provenance.py --inject")
         return 1
-    reg = load_register()
-    print("extern provenance OK -- %d artefacts, all declared, all reachable as declared" % len(reg))
+    print("extern provenance OK -- %d artefacts: all declared, all reachable as declared, "
+          "all attributed in a file that names them, doc in sync with the register" % len(reg))
     return 0
 
 

@@ -738,3 +738,99 @@ Open Source Software used by the Mod Upoading Tool
 > FAILURE OF THE LIBRARY TO OPERATE WITH ANY OTHER SOFTWARE), EVEN IF
 > SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
 > DAMAGES.
+
+[fmt formatting library](github.com/fmtlib/fmt)
+------------------------------------------------
+> Copyright (c) 2012 - present, Victor Zverovich
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in
+> the Software without restriction, including without limitation the rights to
+> use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+> of the Software, and to permit persons to whom the Software is furnished to do
+> so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
+
+[curve25519 by mehdi sotoodeh](github.com/msotoodeh/curve25519)
+----------------------------------------------------------------
+> The MIT License (MIT)
+> Copyright (c) 2015 mehdi sotoodeh
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in
+> the Software without restriction, including without limitation the rights to
+> use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+> of the Software, and to permit persons to whom the Software is furnished to do
+> so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
+
+[fast_float number parsing library](github.com/fastfloat/fast_float)
+----------------------------------------------------------------------
+The vendored copy is offered under Apache-2.0 OR MIT OR BSL-1.0. We take it under
+the MIT option, reproduced here; the other two remain available to anyone taking
+it from upstream.
+
+> MIT License
+> Copyright (c) 2021 The fast_float authors
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy of
+> this software and associated documentation files (the "Software"), to deal in
+> the Software without restriction, including without limitation the rights to
+> use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+> of the Software, and to permit persons to whom the Software is furnished to do
+> so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
+
+[rpmalloc by Mattias Jansson](github.com/mjansson/rpmalloc)
+-------------------------------------------------------------
+> rpmalloc.h  -  Memory allocator  -  Public Domain  -  2016 Mattias Jansson
+>
+> This library is put in the public domain; you can redistribute it and/or modify
+> it without any restrictions.
+
+[imgui_lua_bindings by Patrick Riordan](github.com/patrickriordan/imgui_lua_bindings)
+--------------------------------------------------------------------------------------
+No formal licence file is published upstream and the vendored sources carry no
+header. The author's terms are stated in the upstream README and are reproduced
+here verbatim, because an informal grant is still the grant we rely on:
+
+> I don't feel like writing a license so here's it in laymans terms... You can use
+> this code for whatever just don't redistribute the exact same source code and try
+> to sell it, or claim that the source code was made by you. You can compile this
+> source code and sell it. You can change this source code and sell the modified
+> version. You can include this source code in whatever open source project (let me
+> know please!). You can include it in whatever closed source project. Just be chill
+> and if you make a billion dollars send me an email or something.
+
+This entry exists to satisfy the one obligation those terms impose that silence
+would breach: we do not claim this code was written by us.
