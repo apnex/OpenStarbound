@@ -152,6 +152,12 @@ jobs:
       - name: comment_claims_fires -- the citation detector fires, and does not over-fire
         run: python3 scripts/comment-claims.py --selftest
 
+      # The render gate itself needs a gate. Its oracle verdicts carry a per-oracle tolerance now, and a
+      # tolerance nobody has watched fire is not known to fire -- the same reason comment_claims has a
+      # companion above. Pure shell against synthetic logs: no GPU, no binary, safe to run anywhere.
+      - name: render_gate_verdicts -- every oracle verdict arm fires, and does not over-fire
+        run: scripts/render-gate.sh --selftest
+
       # Zones are directories now, so the register is a filesystem layout. Derived, never written.
       - name: tree_map -- the target directory tree matches the register
         run: python3 scripts/tree-map.py --check
