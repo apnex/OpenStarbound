@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**153 tasks** across 2 store(s): 3 in_progress, 32 pending, 118 completed
+**154 tasks** across 2 store(s): 3 in_progress, 32 pending, 119 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 152 tasks, ids 64–216
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 153 tasks, ids 64–217
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 145, of which **39 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 146, of which **39 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -62,7 +62,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 118.
+**Completed tasks citing no commit and no doc:** 79 of 119.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -227,6 +227,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#214](#c29c1332-214) | `c29c1332` | open | GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns | — | — |
 | [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING | `817e54e8` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3465,6 +3466,8 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `e386d983` ledger: A05/E05 done at 66ec860b -- the sector-unload UAF is closed [#204]
+- `32d3f76c` board: #210 closed at 66ec860b; ledger rows A05/E05 -&gt; done [#204]
 - `46894dae` board: #212 closed at f5088933; ledger row C17 -&gt; done [#204]
 - `31b534bf` board: #212 measured -- the lighting tests cost 0.00s and are excluded by target membership alone [#204]
 - `466c19cc` ledger: surface the challenge corrections, and file the three adoptable items [#204]
@@ -4101,6 +4104,36 @@ misunderstanding, which the differential tests cannot. Two different failure mod
 RELATED: the tests being added here run in ZERO CI jobs today (#212). Adding assertions to a suite
 nobody executes is worth little -- prefer landing #212 first, or at minimum run them by hand and say
 so in the commit.
+```
+
+<a id="c29c1332-217"></a>
+
+#### #217 — BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING
+
+status: **completed**
+
+- `817e54e8` fix(lighting): adaptive border under-sized coloured lights, dropping them
+
+```
+FIXED at 817e54e8. #170's border estimator measured reach from the channel MEAN while the engine uses the channel MAX, under-crediting saturated lights up to 3x and causing them to be DROPPED (not dimmed) when 32-48 cells outside the query rect. Live and default-on: lightingAdaptiveBorder + lightingGpu both default true, neither pinned, and GpuLightmapPass replicates the off-grid drop.
+
+THREE FIXES, now in CellularLightingCalculator::pointBorderFor (source/base/StarCellularLighting.cpp) rather than hand-written at the call sites:
+1. reach = color.max() * pointMaxAir, matching ColoredLightTraits::maxIntensity.
+2. +1 on the returned border -- the array spans [min-b, max+b), so a max-side light at distance d needs b >= d+1; ceil(d) put the farthest constraining light one index past the array end.
+3. wrap via m_geometry.nearestTo before measuring, as the add loop already did.
+
+DE-DUPLICATION: the arithmetic existed twice, live and in the lighting.border.needed telemetry probe. The probe carried the SAME wrong metric, so the instrument that existed to watch this quantity could never have revealed the defect. Both call the one function now.
+
+COMMENTS: all three false copies corrected in place (StarWorldClient.cpp, StarCellularLighting.hpp, StarCellularLighting.cpp). The containment half is true and KEPT -- the clamp caps the region at the historic 48-padding, so #210's loaded-sector hazard is not reintroduced. What was false is inferring correctness from containment.
+
+VERIFICATION: source/test/lighting_border_test.cpp, in core_tests so CI runs it (#212). Five cases, EACH PROVEN TO FIRE by injection -- reverting max->mean fails two, dropping the +1 fails the max-side case. 282 core_tests + 69 game_tests pass; 22/22 gates green.
+
+NOTE ON THE INSTRUMENT'S OWN HOLE: the first draft was min-side only and the injection run showed the +1 could be deleted with every test still green. MaxSideBindingLightLandsInsideTheArray was added for that reason -- the half-open correction was derived, not observed, until it existed.
+
+OUTSTANDING (the reason this is not fully closed in substance):
+1. RE-PROFILE. The fixes RAISE the border for saturated scenes, giving back some of #170's -23.6% lighting CPU. Magnitude unmeasured. Read lighting.border.needed / lighting.calc.cells from a play session and compare against #170's baseline. If the give-back is large, the lever's value needs re-deciding.
+2. Defect 3 (wrap) is fixed but NOT covered by a test -- world geometry is not reachable from a core_tests unit test. Needs either a seam scene in game_tests or an in-game check on an x-wrapping world.
+3. No in-game visual confirmation that the previously-missing edge light is now present. Dim and screen-edge, so easy to miss; worth a deliberate look at a saturated light source near the screen boundary.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
