@@ -12,7 +12,6 @@ struct ScalarLightTraits {
 
   static float spread(float source, float dest, float drop);
   static float subtract(float value, float drop);
-  static float multiply(float v1, float v2);
 
   static float maxIntensity(float value);
   static float minIntensity(float value);
@@ -28,7 +27,6 @@ struct ColoredLightTraits {
 
   static Vec3F spread(Vec3F const& source, Vec3F const& dest, float drop);
   static Vec3F subtract(Vec3F value, float drop);
-  static Vec3F multiply(Vec3F value, float drop);
 
   static float maxIntensity(Vec3F const& value);
   static float minIntensity(Vec3F const& value);
@@ -234,10 +232,6 @@ inline float ScalarLightTraits::subtract(float c, float drop) {
   return std::max(c - drop, 0.0f);
 }
 
-inline float ScalarLightTraits::multiply(float v1, float v2) {
-  return v1 * v2;
-}
-
 inline float ScalarLightTraits::maxIntensity(float value) {
   return value;
 }
@@ -276,10 +270,6 @@ inline Vec3F ColoredLightTraits::subtract(Vec3F c, float drop) {
       c[i] = 0;
   }
   return c;
-}
-
-inline Vec3F ColoredLightTraits::multiply(Vec3F c, float drop) {
-  return c * drop;
 }
 
 inline float ColoredLightTraits::maxIntensity(Vec3F const& value) {

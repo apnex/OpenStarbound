@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       989 files
-      239699 lines
+      239689 lines
       6 tiers
     Content
       assets/
@@ -219,7 +219,7 @@ source/
 │   └── lua/             vendored — excluded from every count here
 ├── core/            T1   216 files    56,164 lines
 │   └── scripting/          2 files       258 lines
-├── base/            T2    29 files     7,421 lines
+├── base/            T2    29 files     7,411 lines
 │   └── scripting/          2 files        55 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,372 lines
@@ -279,7 +279,7 @@ flowchart TD
   end
   subgraph T2["T2 services"]
     direction LR
-    base["base<br/><small>29 files · 7,421 lines · Root×0</small>"]
+    base["base<br/><small>29 files · 7,411 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,372 lines · Root×0</small>"]
   end
@@ -582,7 +582,7 @@ treemap-beta
     "T1 language"
         "core": 56164
     "T2 services"
-        "base": 7421
+        "base": 7411
         "application": 7372
         "platform": 142
     "T3 simulation"
@@ -602,7 +602,7 @@ treemap-beta
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 18 | 19,243 | 8.0% |
 | T1 language | `core` | 216 | 56,164 | 23.4% |
-| T2 services | `base` | 29 | 7,421 | 3.1% |
+| T2 services | `base` | 29 | 7,411 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,372 | 3.1% |
 | T3 simulation | `game` | 500 | 115,270 | 48.1% |
