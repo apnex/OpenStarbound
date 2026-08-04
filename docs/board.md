@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**163 tasks** across 2 store(s): 3 in_progress, 32 pending, 128 completed
+**164 tasks** across 2 store(s): 3 in_progress, 33 pending, 128 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 162 tasks, ids 64–226
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 163 tasks, ids 64–227
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 162, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 160, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -207,7 +207,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
-| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
+| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `903f4ce0` `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
@@ -215,14 +215,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
-| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | `b1e66be4` | — |
+| [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1 RE-SCOPED: guard landed (b1e66be4) but its ARB arm calls the CORE 4.0 pointer -- null deref on 3.x+ARB | `b1e66be4` | — |
 | [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
@@ -231,13 +231,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
-| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | — |
+| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | — |
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
 | [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: the GPU spread's own formula asks for more than 32 iterations whenever peak emission exceeds 1.0, and the… | — | — |
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
 | [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | — |
+| [#227](#c29c1332-227) | `c29c1332` | open | ATTRIB-1: five of seven vendored artefacts have no OPENSOURCE.md entry, and the register field is displayed but never c… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3210,6 +3211,7 @@ status: **completed**
 
 status: **completed**
 
+- `903f4ce0` board: #196 closed -- overlay vendored, registered, pristine-clone verified [#196]
 - `f0b9fb1f` ledger: D55/E07/E08/E09 done -- the overlay is in-tree, registered, and verified from a clone
 - `1830ef31` build: make mimalloc a vcpkg manifest feature instead of an unconditional dependency
 - `18a8e5c0` build: vendor the vcpkg overlay ports and register them declaratively
@@ -3467,6 +3469,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `fa6f4d8f` ledger: ten rows were done in the tree and still recorded as accepted
 - `a0bbb0c1` ledger: D11 done at a9ca6e26; D29's measurement trigger has fired and it now needs a decision [#204]
 - `87e92674` board: #220 CLOSED -- all 5 ledger rows (D34/D59/D60/E10/E06); 2 findings left for Director decision [#204]
 - `f53212d9` board: #225 FIXED at 8f322517 (hit 17.9%-&gt;80.7%, my not-viable close corrected); #226 H1+H2 done, H3 open [#204]
@@ -3805,60 +3808,44 @@ OPEN FOLLOW-UPS:
 
 <a id="c29c1332-211"></a>
 
-#### #211 — GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard
+#### #211 — GL-GUARD-1 RE-SCOPED: guard landed (b1e66be4) but its ARB arm calls the CORE 4.0 pointer -- null deref on 3.x+ARB
 
 status: **pending**
 
 - `b1e66be4` fix(gl): guard the GL 4.0 sample-shading calls; enforce the A/B config rule
 
 ```
-FOUND 2026-08-04 comparing against OpenStarbound PR 570. Live in our tree; their remedy is WRONG for
-us and must not be ported.
+ORIGINAL SCOPE IS DONE. b1e66be4 added the GL 4.0 capability guard and kept the feature (ledger row A07 now done); #151 measured per-sample shading at 22.3% of pixels, so we deliberately guard rather than take PR-570's deletion.
 
-THE HOLE
-  StarRenderer_opengl.cpp:918-933 setMultiSampling():
-    923   if (m_multiSampling) {
-    924     glEnable(GL_MULTISAMPLE);
-    925     glEnable(GL_SAMPLE_SHADING);     <-- GL 4.0
-    926     glMinSampleShading(1.f);         <-- GL 4.0, GLEW fn-pointer macro
-    927   } else {
-    928     glMinSampleShading(0.f);         <-- GL 4.0
-    929     glDisable(GL_SAMPLE_SHADING);    <-- GL 4.0
-  No capability guard on any of the four. glMinSampleShading is GLEW_GET_FUN(__glewMinSampleShading)
-  inside glew.h's `#ifndef GL_VERSION_4_0` block.
+REMAINING SCOPE -- A REAL DEFECT INSIDE THE GUARD, found by the 2026-08-04 ledger audit, not by any gate.
 
-  INCONSISTENT WITH OUR OWN SIBLING CODE: StarGlRenderSurface.cpp:276 guards the framebuffer
-  multisample read -- `GLEW_VERSION_4_0 ? fbConfig.getUInt("multisample", 0) : 0`. Our whole tree has
-  exactly three GLEW guards (StarRenderer_opengl.cpp:82 the 3.2 floor, :102 debug output,
-  StarGlRenderSurface.cpp:276) and zero uses of GLEW_ARB_sample_shading or glewIsSupported. The F1/F2a
-  extraction (#152) moved the guarded sibling into a different file, so the inconsistency is now
-  cross-file and harder to notice.
+source/application/StarRenderer_opengl.cpp:962 admits either capability:
+    bool sampleShading = GLEW_VERSION_4_0 || GLEW_ARB_sample_shading;
+then lines 967 and 971 unconditionally call glMinSampleShading(...).
 
-  Bonus inconsistency: on a sub-4.0 context that guard forces multisample=0, so nothing is
-  multisampled -- yet setMultiSampling still issues the sample-shading calls. Pure cost, zero effect.
+GLEW maps that name to __glewMinSampleShading, which is the CORE 4.0 entry point. Confirmed in
+GLEW's own source, not merely its headers:
+    _glewInit_GL_VERSION_4_0        loads glMinSampleShading    (__glewMinSampleShading)
+    _glewInit_GL_ARB_sample_shading loads glMinSampleShadingARB (__glewMinSampleShadingARB)
+They are SEPARATE pointers loaded by SEPARATE initialisers (glew.h also carries a third, ...OES).
 
-EXPOSURE IS NARROW, AND THE ORIGINAL CLAIM OVERSTATED IT (corrected during verification):
-  - NOT reachable at startup. setMultiSampling opens with `if (m_multiSampling == multiSampling) return;`
-    (:919-920); m_multiSampling inits 0 and antiAliasing defaults false (StarRootLoader.cpp:118), so
-    the steady state early-returns. The disable branch needs a prior enable.
-  - NOT a guaranteed segfault. Null fn-pointer only where the loader returns NULL for unresolvable
-    names (wglGetProcAddress on Windows). On Mesa/glX the stub resolves and you get
-    GL_INVALID_OPERATION. glEnable(GL_SAMPLE_SHADING) without 4.0 is GL_INVALID_ENUM, not a crash.
-  => real exposure: Windows + a pre-GL4 ICD (Sandy Bridge / GT200 / HD 2000-4000 class, all of which
-     clear our 3.2 floor at :82) + the user actively ticking the AA checkbox.
+So on a driver exposing ARB_sample_shading WITHOUT GL 4.0, sampleShading is true and
+__glewMinSampleShading is NULL -> null function-pointer call. The guard converts a benign GL error
+into a crash on exactly the driver class it was written to protect. The primary case the row named
+(3.x with no sample-shading capability at all) IS correctly guarded; only the ARB arm is wrong.
 
-DO NOT PORT THEIR FIX. PR 570 DELETES per-sample shading outright (patch 0005, commit e847309b) for
-perf. We have already litigated this and deliberately KEPT it -- StarBackdropPass.cpp:525-540 records
-the in-process A/B: "AA off: byte-identical / AA on: 781760 px differ (22.3%), maxAbs 0.000977 ... it
-is precisely the quality the player asked for when they ticked the box, and silently withholding it
-to buy back frame time is not our call to make." (task #151, commit 8ac0264f). Their deletion is a
-silent quality regression by our own recorded standard.
+FIX, either is defensible -- Director's call:
+  (a) dispatch the ARB arm to glMinSampleShadingARB, keeping ARB-only drivers working; or
+  (b) drop `|| GLEW_ARB_sample_shading` and require core 4.0, which is simpler and matches what the
+      code actually calls today.
+(b) is the smaller change and loses per-sample shading on ARB-only hardware; (a) preserves it.
+GL_SAMPLE_SHADING as an enum is fine either way -- the enum value is shared; it is only the function
+pointer that is split.
 
-CORRECT SHAPE FOR US: wrap all four calls in `if (GLEW_VERSION_4_0 || GLEW_ARB_sample_shading)`,
-keeping the feature wherever the hardware has it. One guard, no behaviour change on capable hardware.
-
-git log -S "glMinSampleShading" -- source/application/StarRenderer_opengl.cpp on integration returns
-exactly one commit: 106dc47b, the original upstream feature. We have never touched these lines.
+NOT REPRODUCIBLE ON THIS WORKSTATION: the Arc Pro reports GL 4.6, so this hardware always takes the
+VERSION_4_0 arm and cannot exercise the bug. Verification must be by construction (read the
+dispatch), or by forcing the ARB arm behind a debug override -- do not claim it fixed off a local
+run that never entered the branch.
 ```
 
 <a id="c29c1332-212"></a>
@@ -4232,6 +4219,7 @@ ALL 35 decisions recorded in docs/superpowers/drafts/osb-pr570-decisions.json wi
 
 status: **completed**
 
+- `8862dca7` gate: the extern provenance doc had no freshness arm, and its own doc denied it
 - `6e0f6117` extern: delete the two dead xxHash dispatch files the provenance table found [#220]
 - `a69c8888` E06: guard the multisample-to-sampler bind on the C++ path, where the exposure actually is [#220]
 - `4960f7e5` E10: derived, cross-checked provenance for source/extern, and it found two dead files [#220]
@@ -4573,6 +4561,56 @@ SAFETY MULTIPLIER, still true and worth carrying: m_lightingTileEpoch is ALSO th
 temporal lighting gate (StarTemporalLightingGate compares tileEpoch != prev.tileEpoch -- equality, not
 monotonic motion, so a conditional bump is compatible). But any future narrowing of a bump condition
 suppresses temporal recomputes as well as gather rebuilds.
+```
+
+<a id="c29c1332-227"></a>
+
+#### #227 — ATTRIB-1: five of seven vendored artefacts have no OPENSOURCE.md entry, and the register field is displayed but never checked
+
+status: **pending**
+
+```
+Found 2026-08-04 while auditing the ledger. Two separable halves: a CONTENT gap and a MECHANISM gap. The mechanism half is the one that lets the content half grow.
+
+CONTENT GAP -- licence attribution missing for five of seven vendored artefacts. From
+docs/architecture/extern-provenance.json, `attributed` is null for:
+    curve25519          MIT
+    fast_float          Apache-2.0 OR MIT OR BSL-1.0
+    fmt                 MIT
+    rpmalloc            Public Domain
+    imgui_lua_bindings  UNSTATED-IN-VENDORED-COPY
+Only `lua` and `xxhash` point at doc/OPENSOURCE.md.
+
+This matters more than internal hygiene: origin is a PUBLIC fork, and MIT and Apache-2.0 both
+require the licence and copyright notice to travel with redistribution. We ship these in the binary
+and in the tree. rpmalloc (public domain) carries no legal obligation but should be listed for
+consistency; fast_float is multi-licensed, so the entry must say which licence we take it under.
+
+imgui_lua_bindings IS THE WORST CASE AND IS NOT JUST A MISSING ENTRY: the vendored copy has NO
+licence header at all, so there is nothing to attribute FROM. Its upstream
+(github.com/patrickriordan/imgui_lua_bindings) must be checked for a LICENCE file; if there is none,
+the honest options are to record it as unlicensed-and-therefore-all-rights-reserved (which is a real
+redistribution problem), or to replace/remove the binding. Do not invent a licence for it.
+
+MECHANISM GAP -- `attributed` is rendered but never enforced. scripts/extern-provenance.py builds
+the column in table() and reads it in the doc, but check()'s required-field list is
+("upstream", "licence", "version", "reach", "why") -- `attributed` is absent. So the doc honestly
+prints "**none**" five times and no gate cares whether that count ever grows, and a NEW vendored
+artefact can land unattributed and pass clean. Deliberately nullable is right (it records the gap
+instead of hiding it); ungated is not.
+
+SUGGESTED SHAPE, Director's call on the ratchet:
+  1. Add the five entries to doc/OPENSOURCE.md and set `attributed` for each.
+  2. Resolve imgui_lua_bindings' licence upstream first -- it may not be a documentation fix.
+  3. Add a RATCHET rather than a hard requirement: assert the count of unattributed artefacts never
+     INCREASES (same pattern as boundary_ratchet's --max-sink), so the remaining known gaps stay
+     visible while new ones fail. A hard "every artefact must be attributed" rule would be red on
+     the day it lands, which is how gates get disabled.
+
+Precedent worth reusing: B13/B34 established that our attribution sweep must include doc/OPENSOURCE.md,
+because PR-570's own grep was scoped to source/ and left their attribution behind. Same trap, and the
+one already-correct half (tinyformat's entry was removed WITH the file at 4e4ced84) shows the
+deletion direction is handled -- it is the ADD direction that has no instrument.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
