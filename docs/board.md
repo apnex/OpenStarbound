@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**156 tasks** across 2 store(s): 3 in_progress, 33 pending, 120 completed
+**157 tasks** across 2 store(s): 3 in_progress, 34 pending, 120 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 155 tasks, ids 64–219
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 156 tasks, ids 64–220
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -229,7 +229,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8): mean→max + half-open +1 + wrap; 5 tests, all proven to fire. Re-profile OUTSTANDING | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
-| [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `0a8fff9d` | — |
+| [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
+| [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3468,6 +3469,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `02de4584` fix(spec-artifact): stamp the page's provenance, not HEAD
 - `471ec6c9` board: #218 closed at 9e56c204; comment standard + gate live [#204]
 - `a74351e4` board: #217 closed at 817e54e8; re-profile outstanding [#204]
 - `e386d983` ledger: A05/E05 done at 66ec860b -- the sector-unload UAF is closed [#204]
@@ -4176,6 +4178,10 @@ FOLLOW-UPS NOT DONE:
 
 status: **pending**
 
+- `9ccb57a8` ledger: sweep the 10 A-rows closed on one unchallenged verdict
+- `e93cefd5` ledger(html): double the content width -- the page is scanned as a table, not read as prose [#219]
+- `3b0214db` feat(ledger): render the artifact from the generator, not by hand
+- `e3682234` ledger: all 35 B-rows settled -- 50 open -&gt; 15; B21 done at 0a8fff9d [#219]
 - `0a8fff9d` refactor(lighting): delete the dead LightTraits::multiply members
 
 ```
@@ -4198,6 +4204,36 @@ THE SIX REFUTATIONS ARE THE VALUE HERE. Each was flagged as a live defect and ki
 ENUMERATION QUALITY, worth carrying forward: their 47-claim list contains at least four duplicate pairs counted twice (B11/B27 one hunk; B08/B24/B25 one change), and a large share of the "fix" claims repair defects introduced earlier in the same PR. Treat their headline claim counts as inflated.
 
 ALL 35 decisions recorded in docs/superpowers/drafts/osb-pr570-decisions.json with per-row reasons.
+```
+
+<a id="c29c1332-220"></a>
+
+#### #220 — EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisample-sampler guard (E…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisample-sampler guard (E06)
+```
+
+status: **pending**
+
+```
+Three PR-570 ledger items that land in the same area, accepted 2026-08-04.
+
+PART 1 -- DELETION (D34 / D59 / D60), DONE in this change.
+tinyformat.h (49 KB, zero tfm:: uses, zero includes) and lib/linux/libcrypto.a (4.0 MB, zero references in any CMakeLists or .cmake) are verified dead and deleted. D59/D60 had deferred this on the trigger "someone is already touching source/extern for another reason"; accepting E10 -- a provenance table FOR source/extern -- fires that trigger, so the deletions ride with it rather than waiting for a third occasion.
+
+TWO COMPANION EDITS WERE MANDATORY, both included:
+  - source/extern/CMakeLists.txt: tinyformat.h was listed in star_extern_HEADERS, which ADD_LIBRARY (star_extern OBJECT ...) consumes. A header named in that list but absent from disk is a CONFIGURE HARD ERROR. Their own PR proved it: patch 0001 deletes the header without this edit and does not configure; patch 0002 repairs it.
+  - doc/OPENSOURCE.md: the Boost-licence attribution block for Tinyformat.
+The lib/ search path is DELIBERATELY UNTOUCHED. Ledger row B16 proposed removing it and that is NOT_REAL -- it is load-bearing for cmake/FindSteamApi.cmake and cmake/FindDiscordApi.cmake, both of which call find_library. Deleting the file is safe; deleting the path would break Steam and Discord discovery.
+
+PART 2 -- E10, NOT STARTED. A per-artefact provenance table for source/extern: version, upstream URL, why vendored, whether compiled. GENERATED AND GATED, not hand-maintained, as another scripts/ entry in gates.yml alongside comment_claims / prose_claims / tree_map. The argument for the generated form is concrete rather than stylistic: B12 found THEIR extern/README.md contradicts their own vcpkg.json on its first policy bullet -- it asserts vcpkg.json is pinned by builtin-baseline, and their manifest carries no builtin-baseline, removed by their own hand. A hand-written provenance doc was false on the day it landed. Ours must be derived.
+
+PART 3 -- E06 RE-SCOPED, NOT STARTED, and the re-scope IS the finding. The recommendation as written warns at loadConfig when a framebuffer declaring "multisampled": true is also named by an effect's frameBufferTextures. That set is EMPTY in our tree, so the guard as specified would catch nothing. The real in-tree path is the C++ source argument to setEffectTextureFromTarget / composite.
+Exactly one live candidate exists: StarBackdropPass composes "main" into parallaxRef for the parallax oracle. It is closed today only by a coupling that spans two files and is asserted nowhere -- "main is multisample iff antiAliasing" lives in the renderer plus opengl.config, and "the parallax cache path runs iff !antiAliasing" lives in BackdropPass. If the parallax AA gate is ever relaxed (#151 explicitly considered it; #138/P-3 may revisit it) that composite binds a GL_TEXTURE_2D_MULTISAMPLE to a sampler2D and reproduces #150 verbatim -- though only with the dev-only parallax oracle armed. Latent, gated, real.
+The guard must therefore test the C++ path, not the asset key.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

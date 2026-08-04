@@ -68,12 +68,14 @@
     "until": "#161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is about, and #161 now carries the re-ranked candidate list and the K-sweep measurement that should precede any of it."
   },
   "D59": {
-    "status": "deferred",
-    "until": "someone is already touching source/extern for another reason. tinyformat.h is verified dead (49 KB, zero tfm:: uses, headers-list only, zero compile cost) so the deletion is safe but buys only tidiness -- the 'silent wrong library' hazard that would have made it urgent was checked against our CMakeCache and disproved."
+    "status": "accepted",
+    "task": "#220",
+    "note": "Trigger met by E10 and executed in #220. tinyformat.h deleted with both companion edits."
   },
   "D60": {
-    "status": "deferred",
-    "until": "same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only find_library consumers are FindSteamApi and FindDiscordApi."
+    "status": "accepted",
+    "task": "#220",
+    "note": "Trigger met by E10 and executed in #220. lib/linux/libcrypto.a deleted; no build-system edit needed and the lib/ search path deliberately left alone (see D34)."
   },
   "C05": {
     "status": "accepted",
@@ -246,5 +248,73 @@
   "A12": {
     "status": "declined",
     "reason": "Closure stands, reason NARROWED (reversal upheld). No defect: CellularLightArray::begin clears m_spreadLights and m_pointLights with no early return, and lightingCalc's only two early returns both sit ABOVE that begin() and above the add loops, so no list is ever appended across frames. But a load-bearing clause of the recorded reason was FALSE WHEN WRITTEN, not merely stale: 'no per-frame point-light bookkeeping to leak' and 'our public API stops at begin/addSpreadLight/addPointLight/setLight/setObstacle/calculate'. We DO have the structural analogue -- exportPointLights feeding m_pendingLightingPointLights, swapped at publish -- shipped since 2026-07-19, before the analysis. THE METHOD FAILURE IS THE FINDING: the row was dismissed by grepping for THEIR identifiers and finding zero hits. A name-grep cannot see an analogue we named differently. Dismissal-by-name-grep is unsound; dismiss on MECHANISM."
+  },
+  "D30": {
+    "status": "done",
+    "commit": "66ec860b",
+    "note": "Both halves settled. The sector-unload race IS the defect and it is fixed at 66ec860b (#210). The asyncLighting half was closed by the A06 sweep: async lighting is unconditionally ON in every session (UniverseClient::connect calls setAsyncLighting(true) at the sole WorldClient construction site, on both paths), the ctor default is dead code, and /asyncLighting is the opt-OUT. No defect in the default; the row stayed open only because nobody folded the two answers together."
+  },
+  "D34": {
+    "status": "accepted",
+    "task": "#220",
+    "note": "ACCEPTED, not declined -- the first pass mislabelled this. tinyformat.h (49 KB, zero tfm:: uses, zero includes) and lib/linux/libcrypto.a (4.0 MB, zero references in any CMakeLists/cmake) are both verified dead and are DELETED in #220. D59/D60 had deferred this on the trigger 'someone is already touching source/extern for another reason' -- accepting E10 (a provenance table FOR source/extern) fires that trigger, so the deletions ride with it. Two companion edits were mandatory and are included: source/extern/CMakeLists.txt (tinyformat.h was in star_extern_HEADERS, which ADD_LIBRARY consumes -- a header listed but absent is a configure hard-error, which their own PR proved by shipping patch 0001 without it) and doc/OPENSOURCE.md (licence attribution). The lib/ search path is UNTOUCHED: B16 filed removing it and that is NOT_REAL -- it is load-bearing for cmake/FindSteamApi.cmake and cmake/FindDiscordApi.cmake."
+  },
+  "D64": {
+    "status": "declined",
+    "reason": "DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided there, accepted, not lost."
+  },
+  "D22": {
+    "status": "declined",
+    "reason": "Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises the CPU CellularLightArray propagation -- a stage our default configuration does not execute, because skipCpuCalc takes the GPU latch. Not a convergence, so there is no gap to close."
+  },
+  "D45": {
+    "status": "declined",
+    "reason": "A runtime VSync toggle is a player-facing settings feature, not a defect and not a performance item. Unrelated to the render/perf campaign, and it adds a settings surface we would then own. Director's call, taken 2026-08-04. Reopen if VSync ever needs to be changed without a restart for a measurement reason."
+  },
+  "D29": {
+    "status": "deferred",
+    "until": "lighting.lights.point and lighting.gpu.point.lights have been read from a real play session. We carry no cap and no cull; the exposure is per-light draw calls and uniform sets, NOT wrong pixels, because both executors already skip off-grid lights. A cap built without those numbers is a guess. If it is ever built, take only the idea: rank by contribution to the visible region via CellularLightingCalculator::pointBorderFor, never their raw-brightness sort, and wrap through m_geometry.nearestTo before any distance test -- their cull tests an unwrapped position, which is the exact failure class #217 fixed."
+  },
+  "D11": {
+    "status": "deferred",
+    "until": "#214 lands. A differential oracle for the scroll path cannot be written against the current fork between lightingTileGather and gatherStableColumns; #214 region-parameterises the gather and is what makes one oracle cover both."
+  },
+  "E01": {
+    "status": "deferred",
+    "until": "#214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 scroll math into a pure helper is the natural first step of that work, not a separate one."
+  },
+  "E04": {
+    "status": "deferred",
+    "until": "#214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two forked ones."
+  },
+  "E02": {
+    "status": "accepted",
+    "task": "#214",
+    "note": "Gather-cache counters (hit / scroll / full, plus a reason tag for the full path). Cheap, and the seam is already open -- #210 added lighting.gather.calc_outside_loaded in the same branch. It is also the instrument E01/E04 will need to know the oracle is exercising the paths it claims to."
+  },
+  "E03": {
+    "status": "accepted",
+    "task": "#214",
+    "note": "Zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. Small, output-identical, and lands naturally inside the #214 rework rather than as its own commit."
+  },
+  "E06": {
+    "status": "accepted",
+    "task": "#220",
+    "note": "ACCEPTED BUT RE-SCOPED, and the re-scope is the finding. As written it cross-checks 'multisampled: true' against effects' frameBufferTextures -- a set that is EMPTY in our tree, so the guard as specified would catch nothing. The real in-tree path is the C++ source argument to setEffectTextureFromTarget / composite. There is exactly one live candidate, StarBackdropPass composing \"main\" into parallaxRef, and it is closed only by a two-file coupling nothing asserts: 'main is multisample iff antiAliasing' lives in the renderer + opengl.config, 'the parallax cache path runs iff !antiAliasing' lives in BackdropPass. If the parallax AA gate is ever relaxed -- #151 considered it, #138/P-3 may revisit it -- that composite binds a multisample texture to a sampler2D and reproduces #150 verbatim."
+  },
+  "E08": {
+    "status": "accepted",
+    "task": "#196",
+    "note": "Record a retirement condition per vcpkg overlay port, naming the upstream event that lets it be deleted. Folds into #196, which is already going to touch the overlay to register it declaratively."
+  },
+  "E09": {
+    "status": "accepted",
+    "task": "#196",
+    "note": "Allocator as a vcpkg manifest FEATURE driven by the CMake option. B17 confirmed this is the right shape rather than deletion: mimalloc is LIVE here (source/CMakeLists.txt + StarMemory.cpp under STAR_USE_MIMALLOC), and removing it from the manifest reproduces in our tree the exact configure break their own PR scored against itself."
+  },
+  "E10": {
+    "status": "accepted",
+    "task": "#220",
+    "note": "Generated-and-gated provenance table for source/extern (version, upstream URL, why vendored, whether compiled). B12 supplied the concrete argument for the generated form over a hand-maintained one: THEIR extern/README.md contradicts their own vcpkg.json on its first policy bullet, asserting a builtin-baseline pin that their manifest does not carry -- false on the day it landed. Accepting this is also what fires D59/D60's trigger."
   }
 }

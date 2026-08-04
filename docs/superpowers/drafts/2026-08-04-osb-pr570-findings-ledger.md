@@ -16,11 +16,11 @@ Ideas only, never their code — see `/root/analysis/osb-pr570/PROVENANCE.txt`.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 15 | needs a call |
-| **accepted** | 9 | work is committed to; `task` names where it is tracked |
-| **deferred** | 3 | not now; `until` names the trigger, and is mandatory |
-| **declined** | 40 | we will not do this; `reason` is mandatory |
-| **done** | 4 | finished; `task` or `commit` says where |
+| **open** | 0 | needs a call |
+| **accepted** | 18 | work is committed to; `task` names where it is tracked |
+| **deferred** | 5 | not now; `until` names the trigger, and is mandatory |
+| **declined** | 43 | we will not do this; `reason` is mandatory |
+| **done** | 5 | finished; `task` or `commit` says where |
 | closed | 84 | no action, by verdict |
 
 `declined` must carry a reason and `deferred` a trigger; the generator rejects either without
@@ -81,33 +81,33 @@ one, and hard-fails on a decision naming a row that no longer exists.
 | **C14** | **declined** | AA-mode change at runtime: PR570 a86cc0f8 "Fix MSAA crash o… — simplicity | The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== … |
 | **C16** | **accepted** | Proving the cellular lighting correct and fast — quality | #216 |
 | **C17** | **done** | Proving the cellular lighting correct and fast — simplicity | f5088933 |
+| **D11** | **deferred** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | #214 lands. A differential oracle for the scroll path cannot be written against the curre… |
 | **D13** | **deferred** | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… |
+| **D22** | **declined** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises … |
+| **D29** | **deferred** | CellularLightArray rewrite and point-li… — Point-light count cap | lighting.lights.point and lighting.gpu.point.lights have been read from a real play sessi… |
+| **D30** | **done** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | 66ec860b |
 | **D31** | **accepted** | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | #213 |
+| **D34** | **accepted** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | #220 |
+| **D45** | **declined** | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | A runtime VSync toggle is a player-facing settings feature, not a defect and not a perfor… |
 | **D55** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Registering the overlay so a pristine clone finds it | #196 |
-| **D59** | **deferred** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | someone is already touching source/extern for another reason. tinyformat.h is verified de… |
-| **D60** | **deferred** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only fi… |
+| **D59** | **accepted** | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | #220 |
+| **D60** | **accepted** | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | #220 |
+| **D64** | **declined** | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… |
+| **E01** | **deferred** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | #214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 sc… |
+| **E02** | **accepted** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | #214 |
+| **E03** | **accepted** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | #214 |
+| **E04** | **deferred** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | #214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two … |
 | **E05** | **done** | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | 66ec860b |
+| **E06** | **accepted** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | #220 |
 | **E07** | **accepted** | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | #196 |
+| **E08** | **accepted** | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | #196 |
+| **E09** | **accepted** | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | #196 |
+| **E10** | **accepted** | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | #220 |
 
 ## Still open
 
 | row | item | verdict | next steps |
 |---|---|---|---|
-| **D11** | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | ADOPT the idea · DECLINE · DEFER |
-| **D22** | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | we-lack-entirely | BUILD it · DECLINE · DEFER |
-| **D29** | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | BUILD it · DECLINE · DEFER |
-| **D30** | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | ADOPT the idea · DECLINE · DEFER |
-| **D34** | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | ADOPT the idea · DECLINE · DEFER |
-| **D45** | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | we-lack-entirely | BUILD it · DECLINE · DEFER |
-| **D64** | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | we-lack-entirely | BUILD it · DECLINE · DEFER |
-| **E01** | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | ADOPT · DEFER · DECLINE |
-| **E02** | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | ADOPT · DEFER · DECLINE |
-| **E03** | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | ADOPT · DEFER · DECLINE |
-| **E04** | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | ADOPT · DEFER · DECLINE |
-| **E06** | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | ADOPT · DEFER · DECLINE |
-| **E08** | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | ADOPT · DEFER · DECLINE |
-| **E09** | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | ADOPT · DEFER · DECLINE |
-| **E10** | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | ADOPT · DEFER · DECLINE |
 
 ---
 
@@ -217,7 +217,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D08** | closed | Scrollable lightmap atlas + dirty-strip… — Window-size stability (the thing that decides whether a retained grid survives) | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D09** | closed | Scrollable lightmap atlas + dirty-strip… — Calculation border sizing | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D10** | closed | Scrollable lightmap atlas + dirty-strip… — Point-vs-spread layer separation (so a re-spread strip cannot absorb point light) | equivalent | — | NO ACTION |
-| **D11** | open | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D11** | deferred · #214 lands. A differential oracle for the scroll path cannot be written against the curre… | Scrollable lightmap atlas + dirty-strip… — Automated differential oracle for the scroll path | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D12** | closed | Scrollable lightmap atlas + dirty-strip… — Measured performance evidence | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D13** | deferred · #161 is picked up -- the CPU spread+point cost is the thing their bandwidth analysis is a… | Scrollable lightmap atlas + dirty-strip… — CPU spread+point cost itself | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D14** | closed | Scrollable lightmap atlas + dirty-strip… — Output/upload side | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -228,19 +228,19 @@ withdrawn outright and one finding was reversed in our favour.
 | **D19** | closed | CellularLightArray rewrite and point-li… — AoS -> SoA storage conversion with a write-through CellRef proxy | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D20** | closed | CellularLightArray rewrite and point-li… — Producer-side skip gate | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D21** | closed | CellularLightArray rewrite and point-li… — Scrolled/dirty-region incremental recompute | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D22** | open | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D22** | declined · Same ground as C07/C09. Their incremental point-light diff (signed +/-1 flood) optimises … | CellularLightArray rewrite and point-li… — Incremental point-light add/remove diff (signed +/-1 flood) | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D23** | closed | CellularLightArray rewrite and point-li… — Two-layer light (base+spread vs point in separate channels) | equivalent | — | NO ACTION |
 | **D24** | closed | CellularLightArray rewrite and point-li… — Calculation-region size / border padding | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D25** | closed | CellularLightArray rewrite and point-li… — Lightmap texture upload gating | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D26** | closed | CellularLightArray rewrite and point-li… — Output-buffer reuse across frames | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D27** | closed | CellularLightArray rewrite and point-li… — Per-frame config/JSON work on the locked lighting path | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D28** | closed | CellularLightArray rewrite and point-li… — Out-of-view light-source culling | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D29** | open | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
-| **D30** | open | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D29** | deferred · lighting.lights.point and lighting.gpu.point.lights have been read from a real play sessi… | CellularLightArray rewrite and point-li… — Point-light count cap | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D30** | done · 66ec860b | CellularLightArray rewrite and point-li… — asyncLighting default and the sector-unload race | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D31** | accepted · #213 | CellularLightArray rewrite and point-li… — Template duplication between the Scalar and Colored point specializations | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D32** | closed | CellularLightArray rewrite and point-li… — MSAA per-sample shading | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D33** | closed | CellularLightArray rewrite and point-li… — Automated evidence for the change | we-are-ahead | — | NO ACTION · DOCUMENT |
-| **D34** | open | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D34** | accepted · #220 | CellularLightArray rewrite and point-li… — Dead vendored dependencies | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D35** | closed | CellularLightArray rewrite and point-li… — jemalloc vs libstdc++ 16 (std::__throw_bad_alloc removed) | equivalent | — | NO ACTION |
 | **D36** | closed | CellularLightArray rewrite and point-li… — Reviewability of the change itself | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D37** | closed | GL renderer: MSAA/SSAA confinement, AA/… — Confining MSAA to the one framebuffer that is resolved, not sampled | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -251,7 +251,7 @@ withdrawn outright and one finding was reversed in our favour.
 | **D42** | closed | GL renderer: MSAA/SSAA confinement, AA/… — The bound-target cache surviving a target rebuild | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D43** | closed | GL renderer: MSAA/SSAA confinement, AA/… — A sampler's size uniform after a realloc | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D44** | closed | GL renderer: MSAA/SSAA confinement, AA/… — Removing per-sample shading (glEnable(GL_SAMPLE_SHADING) / glMinSampleShading(1.f)) | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
-| **D45** | open | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D45** | declined · A runtime VSync toggle is a player-facing settings feature, not a defect and not a perfor… | GL renderer: MSAA/SSAA confinement, AA/… — Runtime VSync toggle in the graphics menu | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D46** | closed | GL renderer: MSAA/SSAA confinement, AA/… — How a graphics option reaches the renderer | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D47** | closed | GL renderer: MSAA/SSAA confinement, AA/… — HDR checkbox position in the graphics menu | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D48** | closed | GL renderer: MSAA/SSAA confinement, AA/… — Guarding against a multisampled framebuffer ever being sampled | we-are-ahead | — | NO ACTION · DOCUMENT |
@@ -265,24 +265,24 @@ withdrawn outright and one finding was reversed in our favour.
 | **D56** | closed | Dependency cleanup, vcpkg manifest, and… — Documenting WHY the overlay exists | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D57** | closed | Dependency cleanup, vcpkg manifest, and… — Overlay pins a hardcoded SHA and bypasses registry versioning | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D58** | closed | Dependency cleanup, vcpkg manifest, and… — Sibling Fedora-44 toolchain breakage (libsystemd / glibc C23 _Generic) | we-are-ahead | — | NO ACTION · DOCUMENT |
-| **D59** | deferred · someone is already touching source/extern for another reason. tinyformat.h is verified de… | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
-| **D60** | deferred · same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only fi… | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D59** | accepted · #220 | Dependency cleanup, vcpkg manifest, and… — Vendored tinyformat.h | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
+| **D60** | accepted · #220 | Dependency cleanup, vcpkg manifest, and… — lib/linux/libcrypto.a | they-are-ahead | — | ADOPT the idea · DECLINE · DEFER |
 | **D61** | closed | Dependency cleanup, vcpkg manifest, and… — mimalloc — paying to build an allocator nobody links | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D62** | closed | Dependency cleanup, vcpkg manifest, and… — The right way to make an unused dependency free | we-are-ahead | — | NO ACTION · DOCUMENT |
 | **D63** | closed | Dependency cleanup, vcpkg manifest, and… — builtin-baseline | we-are-ahead | — | NO ACTION · DOCUMENT |
-| **D64** | open | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
+| **D64** | declined · DUPLICATE of E10, which is the same item stated as a concrete recommendation. Decided the… | Dependency cleanup, vcpkg manifest, and… — Dependency-provenance document | we-lack-entirely | — | BUILD it · DECLINE · DEFER |
 | **D65** | closed | Dependency cleanup, vcpkg manifest, and… — Windows CI vcpkg binary cache | different-tradeoff | — | NO ACTION · REVISIT if assumptions change |
 | **D66** | closed | Dependency cleanup, vcpkg manifest, and… — Regression coverage for the GCC-16 case | equivalent | — | NO ACTION |
-| **E01** | open | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
-| **E02** | open | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
-| **E03** | open | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
-| **E04** | open | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E01** | deferred · #214 lands -- C05's note already records that #214 unblocks E01/E04. Extracting the A2 sc… | Extract the A2 scroll math (delta -> overlap copy + the two margin rects) from WorldClient::shiftAndGatherMargin into a pure, header-only helper, and pin it with a differential unit test: synthetic t… | survived | — | ADOPT · DEFER · DECLINE |
+| **E02** | accepted · #214 | Meter the gather-cache outcome: three Telemetry counters (hit / scroll / full) plus a reason tag for the full path (epoch, dims, anchor jump, first frame), placed at the existing A1/A2 cache branch i… | survived | — | ADOPT · DEFER · DECLINE |
+| **E03** | accepted · #214 | In WorldClient::shiftAndGatherMargin, zero only the vacated L-region of the scratch buffer instead of assign()-zeroing the whole scratch before copying the overlap. | survived | — | ADOPT · DEFER · DECLINE |
+| **E04** | deferred · #214 lands. Same blocker as E01: the full-recalc oracle has to drive one gather, not two … | A full-recalc oracle for the WorldClient gather cache: drive lightingStableGather and the shiftAndGatherMargin scroll path through a sequence of camera moves and assert the resulting stable grid is i… | survived | — | ADOPT · DEFER · DECLINE |
 | **E05** | done · 66ec860b | Close the sector-unload / lighting-thread race: hold m_lightMapPrepMutex across the unloadSector loop in WorldClient::update (or make async mode invalidate the gather cache and refuse to read m_tileA… | survived | — | ADOPT · DEFER · DECLINE |
-| **E06** | open | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
+| **E06** | accepted · #220 | Warn (or hard-fail in the harness) at loadConfig when a framebuffer that declares "multisampled": true is also named by any effect's frameBufferTextures. | survived | — | ADOPT · DEFER · DECLINE |
 | **E07** | accepted · #196 | Register the vcpkg overlay ports declaratively in-repo (either "overlay-ports" in source/vcpkg-configuration.json or VCPKG_OVERLAY_PORTS in the `base` preset of source/CMakePresets.json) so a pristin… | survived | — | ADOPT · DEFER · DECLINE |
-| **E08** | open | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |
-| **E09** | open | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | — | ADOPT · DEFER · DECLINE |
-| **E10** | open | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | — | ADOPT · DEFER · DECLINE |
+| **E08** | accepted · #196 | Record an explicit retirement condition for each vcpkg overlay port (in the portfile or a vcpkg-overlay-ports/README) stating what upstream event lets it be deleted: jemalloc "drop when the registry … | survived | — | ADOPT · DEFER · DECLINE |
+| **E09** | accepted · #196 | Make the allocator dependency a vcpkg manifest FEATURE driven by the CMake option (gate jemalloc and mimalloc behind features, set VCPKG_MANIFEST_FEATURES from STAR_USE_JEMALLOC / STAR_USE_MIMALLOC b… | survived | — | ADOPT · DEFER · DECLINE |
+| **E10** | accepted · #220 | Write a per-artefact provenance table for source/extern (version, upstream URL, why-vendored, whether compiled), generated/gated rather than hand-maintained — as another entry in the gates.yml script… | survived | — | ADOPT · DEFER · DECLINE |
 | **E11** | closed | Bump m_lightingTileEpoch only when a lighting-relevant tile field actually changes — compare foreground/background material+mod, liquid presence/level, and the… | refuted | KILLED BY #3 (THE BENEFIT IS UNEVIDENCED — and the specific mechanism is refuted by our own code). Kill #1 does NOT apply: we genuinely lack the filter (/root/frackin/OpenStarbound/source/g… | CLOSE · CHALLENGE the refutation |
 | **E12** | closed | Quantise/hysteresis the adaptive calculation border (#170) — round borderNeeded up to a multiple of 8 and only shrink after N consecutive frames below bucket —… | refuted | DIES. Killed by mode 3 (benefit unevidenced — in fact contradicted by our own shipped measurement), with mode 1 assisting (the bucketing idea is already shipped at the level that actually b… | CLOSE · CHALLENGE the refutation |
 | **E13** | closed | A point-light budget for the GPU point pass, ranked by on-screen contribution (intensity attenuated by distance to the query rect), top-N with stable tie-break… | refuted | KILLED BY (1) WE ALREADY HAVE IT — as a named, deliberately-deferred design decision with an explicit evidence gate — reinforced by (3) THE BENEFIT IS UNEVIDENCED against that same gate. 1.… | CLOSE · CHALLENGE the refutation |

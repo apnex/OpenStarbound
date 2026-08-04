@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      989 files
-      239694 lines
+      988 files
+      238530 lines
       6 tiers
     Content
       assets/
@@ -213,7 +213,7 @@ without knowing what the directories actually are.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#tree -->
 ```
 source/
-├── extern/          T0    18 files    19,243 lines
+├── extern/          T0    17 files    18,079 lines
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
@@ -271,7 +271,7 @@ This is test 1, drawn. Arrows are granted visibility, transitively reduced.
 flowchart TD
   subgraph T0["T0 vendored"]
     direction LR
-    extern["extern<br/><small>18 files · 19,243 lines · Root×0</small>"]
+    extern["extern<br/><small>17 files · 18,079 lines · Root×0</small>"]
   end
   subgraph T1["T1 language"]
     direction LR
@@ -578,7 +578,7 @@ client,windowing,1
 treemap-beta
 "source/"
     "T0 vendored"
-        "extern": 19243
+        "extern": 18079
     "T1 language"
         "core": 56164
     "T2 services"
@@ -600,15 +600,15 @@ treemap-beta
 
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
-| T0 vendored | `extern` | 18 | 19,243 | 8.0% |
-| T1 language | `core` | 216 | 56,164 | 23.4% |
+| T0 vendored | `extern` | 17 | 18,079 | 7.6% |
+| T1 language | `core` | 216 | 56,164 | 23.5% |
 | T2 services | `base` | 29 | 7,411 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,377 | 3.1% |
-| T3 simulation | `game` | 500 | 115,270 | 48.1% |
-| T4 presentation | `rendering` | 23 | 4,414 | 1.8% |
+| T3 simulation | `game` | 500 | 115,270 | 48.3% |
+| T4 presentation | `rendering` | 23 | 4,414 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
-| T4 presentation | `frontend` | 102 | 16,861 | 7.0% |
+| T4 presentation | `frontend` | 102 | 16,861 | 7.1% |
 | T5 shells | `client` | 4 | 2,383 | 1.0% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
@@ -649,12 +649,12 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [23, 3, 19, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [25, 3, 19, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
-| `extern` | 13 | 12 | 3 | 23% | 3 | **type-level entanglement** |
+| `extern` | 12 | 12 | 3 | 25% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
 | `base` | 16 | 11 | 3 | 19% | 1 | partly, as it stands |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
