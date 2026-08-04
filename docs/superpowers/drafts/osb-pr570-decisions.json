@@ -10,7 +10,6 @@
     "The generator hard-fails on a key that matches no row, on an unknown status, and on a",
     "declined/deferred missing its reason/trigger. Run scripts/pr570-ledger.py after editing."
   ],
-
   "A05": {
     "status": "accepted",
     "task": "#210",
@@ -38,13 +37,13 @@
   },
   "C16": {
     "status": "accepted",
-    "task": "#212",
-    "note": "the quality gap on proving the lighting correct: our five lighting test files run in zero CI jobs and none of them needs assets."
+    "task": "#216",
+    "note": "closed-form assertions. The judge's 'production IS the oracle' was REVERSED by the challenge; what survives is that a differential oracle pins drift, not truth."
   },
   "C17": {
     "status": "accepted",
-    "task": "#212",
-    "note": "same row from the simplicity side; one task closes both."
+    "task": "#215",
+    "note": "same complaint from the test side. Closed by the relocation."
   },
   "D31": {
     "status": "accepted",
@@ -56,8 +55,9 @@
     "reason": "Not a real convergence -- verified converged=false. They rewrote CellularLightArray::calculate(); our default skips it entirely when GPU lighting is latched (StarWorldClient.cpp:2401). Their patch optimises a stage we do not execute."
   },
   "C08": {
-    "status": "declined",
-    "reason": "Same non-convergence as C07."
+    "status": "accepted",
+    "task": "#215",
+    "note": "455 of 1207 lines (38%) of the lighting-array TU is oracle scaffolding. Relocate, do not delete."
   },
   "C09": {
     "status": "declined",
@@ -74,5 +74,19 @@
   "D60": {
     "status": "deferred",
     "until": "same trigger as D59. lib/linux/libcrypto.a is 4 MB and verified unreferenced; the only find_library consumers are FindSteamApi and FindDiscordApi."
+  },
+  "C05": {
+    "status": "accepted",
+    "task": "#214",
+    "note": "region-parameterise the gather; deletes the ~30-line fork between lightingTileGather and gatherStableColumns and unblocks E01/E04."
+  },
+  "C11": {
+    "status": "accepted",
+    "task": "#213",
+    "note": "8 transcriptions -> 7. The challenge UNDERSTATED the gap: 8 vs 2, not 4 vs 1. The other six are not duplication."
+  },
+  "C14": {
+    "status": "declined",
+    "reason": "The challenge phase WITHDREW this concession: simplicity theirs -> TIE. Its premise ('== \"main\" cannot be re-broken from asset data') is false, and theirs is provably a no-op for every asset they ship while ours fixes a path live in stock play."
   }
 }

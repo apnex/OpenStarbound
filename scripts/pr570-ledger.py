@@ -92,6 +92,7 @@ def build():
     dec = {k: v for k, v in dec.items() if not k.startswith("_")}
 
     rows = []      # (sec, id, open?, item, verdict1, verdict2, steps)
+    pair_of = {}
     for i, c in enumerate(RF["checks"], 1):
         rows.append(("A", "A%02d" % i, c["our_status"] == "we-still-have-it",
                      "`%s` — %s" % (c["id"], cell(c["summary"], 170)),
@@ -108,6 +109,7 @@ def build():
             rows.append(("C", "C%02d" % n, a["winner"] == "theirs",
                          "%s — %s" % (lab, a["axis"]), a["winner"], cell(a["why"], 200),
                          STEPS_AXIS.get(a["winner"], "DECIDE")))
+            pair_of["C%02d" % n] = lab
     n = 0
     for t in OV["themes"]:
         th = cell(t["theme"].split("—")[0], 40)
@@ -122,6 +124,15 @@ def build():
     for i, c in enumerate(OV["refuted"], len(OV["confirmed"]) + 1):
         rows.append(("E", "E%02d" % i, False, cell(c["idea"], 160), "refuted",
                      cell(c.get("reasoning"), 190), "CLOSE · CHALLENGE the refutation"))
+
+    # THE CHALLENGE PHASE AMENDED FOUR VERDICTS AND THE FIRST CUT OF THIS LEDGER DROPPED ALL OF IT.
+    # An adversarial pass that produces corrections nobody reads is a pass that did not happen: C14's
+    # simplicity concession was WITHDRAWN, C16's lead finding was REVERSED in our favour, and C11 was
+    # understated. Emitting the pair verdicts alone published the pre-challenge answer as final.
+    challenged = {}
+    for c in H2.get("their_wins_upheld", []) + H2.get("their_wins_overturned", []):
+        if c.get("correction"):
+            challenged[cell(c["pair"].split("\u2014")[0], 60)] = c["correction"]
 
     ids = {r[1] for r in rows}
     dangling = sorted(set(dec) - ids)
@@ -207,6 +218,20 @@ def build():
             continue
         W("| **%s** | %s | %s | %s |" % (r[1], r[3], r[4], r[6]))
     W("")
+    W("---")
+    W("")
+    W("## Challenge-phase corrections")
+    W("")
+    W("The verdicts above are the JUDGES' output. Every `theirs` verdict was then given to a skeptic,")
+    W("and four came back amended. **Read these before acting on any C-row** — one concession was")
+    W("withdrawn outright and one finding was reversed in our favour.")
+    W("")
+    for lab, corr in sorted(challenged.items()):
+        affected = sorted(k for k, v in pair_of.items() if v == lab)
+        W("**%s** — affects %s" % (lab, ", ".join(affected) or "—"))
+        W("")
+        W("> %s" % cell(corr, 1400))
+        W("")
     W("---")
     W("")
     W("## Full table")

@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**150 tasks** across 2 store(s): 3 in_progress, 31 pending, 116 completed
+**153 tasks** across 2 store(s): 3 in_progress, 34 pending, 116 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 149 tasks, ids 64–213
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 152 tasks, ids 64–216
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -143,7 +143,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
 | [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
 | [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
-| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` `2026-08-04-osb-pr570-findings-ledger.md` |
+| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
 | [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
@@ -214,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -224,6 +224,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#211](#c29c1332-211) | `c29c1332` | open | GL-GUARD-1: glMinSampleShading / GL_SAMPLE_SHADING called with no GL 4.0 capability guard | — | — |
 | [#212](#c29c1332-212) | `c29c1332` | open | TEST-CI-1: five lighting test files run in ZERO CI jobs — and none of them needs assets | — | — |
 | [#213](#c29c1332-213) | `c29c1332` | open | LIGHT-DEDUP-1: unify the two calculatePointLighting specializations — 2 lines apart, one of them semantic | — | — |
+| [#214](#c29c1332-214) | `c29c1332` | open | GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns | — | — |
+| [#215](#c29c1332-215) | `c29c1332` | open | ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only | — | — |
+| [#216](#c29c1332-216) | `c29c1332` | open | ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1107,7 +1110,6 @@ Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship)
 status: **completed**
 
 - cited in `docs/board.md`
-- cited in `docs/superpowers/drafts/2026-08-04-osb-pr570-findings-ledger.md`
 
 ```
 DATA COLLECTED (2026-07-12) — 4-location idle per-pass GPU matrix (µs/frame), Intel Arc Pro 130T/140T, vsync60, GPU held 1300-1400MHz idle. UNDERGROUND: env2307(OCCLUDED=waste) parallax1076 world1959 lightPoint1750 spread812 recompute77% TOTAL~7950(48%). OCEAN: env1599 parallax4062 world1723 lightPoint1152 recompute56% TOTAL~8960(54%). TERRESTRIAL(weather): env1937 parallax3949 world1472 lightPoint2090 recompute100%(weather defeats temporal) TOTAL~10014(60%). SHIP(orbit): env7635(!! 84% of floor — orbital starfield+planetHorizon+orbiters) parallax0 world553 lightPoint569 recompute49% TOTAL~9095(55%). KEY FINDINGS: (1) ENVIRONMENT pass is #1 cost + most variable (1.6-7.6ms); occluded-waste underground, near-static surface, expensive-but-slow-deterministic-motion in orbit — needs ADAPTIVE handling (skip-occluded / low-rate-refresh / split-twinkle). renderStars twinkle + moving orbital path = cheap-dynamic over expensive-static. (2) PARALLAX #2 (0-4ms), huge on surfaces, static when camera still. (3) lighting recompute rate tracks scene dynamism (calm56%->machines77%->weather100%) — temporal-decouple defeated by FU machine flicker + weather. (4) static-redundant core (env+parallax+world) = 67-90% of idle floor across locations — the addressable opportunity = retained/cached background layers, adaptive refresh. NEXT: merge with render-arch-understanding workflow (wf_5427cf77, running) → understand-the-space doc → design cycle (approach NOT pre-judged: targeted per-pass levers vs structural retained-layer compositor). Design principle emerging: separate cheap-dynamic from expensive-static per layer, cache the static.
@@ -3463,6 +3465,8 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `82170188` ledger: status per row, in a decisions file the generator reads -- and the generator now exists [#204]
+- `32b6373d` board: export -- #213, and the beam epsilon that makes it not-mechanical [#204]
 - `2e9d964d` board: export -- three follow-ups filed off the PR 570 analysis, plus #161 and #196 rewritten [#204]
 - `0481bb82` docs: PR 570 findings ledger -- 155 rows, 33 open decisions, generated not transcribed [#204]
 - `566fce3d` docs: a durable handover for #204, and the board export that makes its ids resolve [#204]
@@ -3977,6 +3981,144 @@ VERIFICATION: byte-identity for every beam value outside (0, 0.0001], by constru
 epsilon decision itself, state the chosen behaviour explicitly in the commit. NOTE that our lighting
 tests currently run in ZERO CI jobs (#212) -- so the oracles that would defend this change do not
 execute. Prefer landing #212 first, or run the lighting tests by hand and say so.
+```
+
+<a id="c29c1332-214"></a>
+
+#### #214 — GATHER-1: region-parameterise the tile gather — delete the fork between lightingTileGather and gatherStableColumns
+
+status: **pending**
+
+```
+ADOPTED from OpenStarbound PR 570 (ledger row C05, simplicity). Idea only; none of their code.
+
+THE METRIC THAT DECIDED IT. They parameterised the existing gather by region --
+`lightingTileGather(RectI const&)` at their StarWorldClient.cpp:1765 -- so there is exactly ONE copy
+of the per-tile material/liquid/background/radiantLight math. We FORKED it:
+
+    source/game/StarWorldClient.cpp:1843-1895   lightingTileGather      (the pre-A1 direct path)
+    source/game/StarWorldClient.cpp:1906-1955   gatherStableColumns     (the A1 stable-grid path)
+
+~30 lines of the same per-tile computation live in both and must be edited together. Nothing checks
+they agree. Their lightingCalc is ~200 lines; ours is ~410 (:2023-2436).
+
+WHY IT IS WORTH DOING BEYOND TIDINESS. This duplicate is a silent-divergence surface in the exact
+code A1/A2 depend on: if the two gathers ever disagree, the stable-grid cache returns something a
+fresh gather would not, and the only thing that would notice is a player looking at wrong lighting.
+It is also the precondition for two other confirmed recommendations -- E01 (extract the scroll math
+into a testable helper) and E04 (a full-recalc oracle for the gather cache) -- both of which are
+harder while the emission rule exists twice.
+
+SHAPE. One region-parameterised gather; the stable-grid path and the direct path both call it. Keep
+the stable/overlay split (A1's sky-exposed bit and env-light re-application) -- that is ours and is
+not what is duplicated. What must collapse is the per-tile emission/obstacle computation.
+
+VERIFICATION. Byte-identity: with lightingGatherCache OFF the direct path must produce exactly what
+it produces today, and with it ON the stable grid must produce exactly what it produces today. The
+`/lighting gathercache on|off` toggle (StarClientCommandProcessor.cpp:855-861) gives a clean in-
+process A/B. NOTE our lighting tests currently run in ZERO CI jobs (#212) -- run them by hand and
+say so, or land #212 first.
+
+RISK. This is the shipped hot path, not a fallback. Do it as a pure refactor with no behaviour
+change, and do not fold in the emission-rule cleanup or the scroll extraction at the same time.
+```
+
+<a id="c29c1332-215"></a>
+
+#### #215 — ORACLE-MOVE-1: split the lighting-array oracle into its own TU — it is production, not test-only
+
+status: **pending**
+
+```
+ADOPTED from OpenStarbound PR 570 (ledger rows C08, C17). Idea only.
+
+PRECONDITION RESOLVED 2026-08-04, AND IT CHANGES THE SHAPE. The task as first written assumed the
+references were test-only and could move to source/test/. THEY CANNOT. Production links them:
+
+    source/rendering/StarWorldPainter.cpp:9    #include "StarCellularLightArray.hpp"
+                                                 // spreadJacobiReference (CPU spread oracle for parity)
+    source/rendering/StarWorldPainter.cpp:53-70  3-WAY LOCALIZER: on a GPU/CPU parity mismatch it
+                                                 computes spreadJacobiReference + pointLightingReference
+                                                 to localise WHICH side is wrong
+    source/rendering/StarGpuLightmapPass.hpp:51  names spreadJacobiReference as the oracle in its contract
+
+Only `ObstacleRaycast` is genuinely test-only. `obstacleRaycastDDA` and `obstacleLineAttenuation` are
+internal to StarCellularLightArray.
+
+SO THE COMPLAINT STANDS BUT THE REMEDY CHANGES. The measured problem was never "this code should not
+ship" -- it was that 455 of 1207 lines (38%) of the lighting-array files are apparatus, so a reader
+cannot see what CellularLightArray IS, and every consumer of StarCellularLightArray.hpp parses the
+oracle declarations whether or not it uses them.
+
+REVISED SHAPE: SPLIT, DO NOT REMOVE.
+    source/base/StarCellularLightingOracle.hpp / .cpp   <- new TU
+        SpreadParameters, PointParameters, ObstacleRaycast,
+        spreadJacobiReference, pointLightingReference,
+        obstacleLineAttenuation, obstacleRaycastDDA
+    StarCellularLightArray.hpp/.cpp  keeps ONLY the production kernel
+
+The parity localizer keeps working; StarWorldPainter includes the oracle header explicitly, which
+also makes the dependency visible instead of arriving by accident through the kernel header.
+
+WHAT IT BUYS, honestly: a production header that describes production, a smaller parse for every
+consumer that does not want the oracle, and a dependency that is declared rather than incidental. It
+buys NO runtime performance and must not be sold as if it did. The binary does not shrink either --
+the code still ships, it just stops being in the way.
+
+WORTH NOTING WHILE HERE: the parity path these references serve is default-OFF
+(lightingGpuShadowCompare, StarRootLoader.cpp:148) and our own comment at StarGpuLightmapPass.cpp:151-152
+calls it "permanently red for a known unrelated reason -- it can detect a change but cannot certify
+identity". So the oracle they feed is itself weaker than its presence suggests. That is a separate
+finding and should not be folded into this refactor.
+
+VERIFICATION. Pure relocation: no behaviour change by construction. Lighting tests pass unchanged
+before and after -- and they run in ZERO CI jobs (#212), so run them by hand and record it.
+```
+
+<a id="c29c1332-216"></a>
+
+#### #216 — ORACLE-TRUTH-1: our lighting tests pin drift, not truth — add closed-form assertions
+
+status: **pending**
+
+```
+ADOPTED from OpenStarbound PR 570 (ledger row C16, quality). Idea only.
+
+THE GAP, IN ITS CORRECTED FORM. The judge's first statement was wrong and the challenge phase
+reversed it in our favour, so state the surviving version precisely:
+
+  WRONG (as originally filed):  "production IS the oracle -- an attenuation-math regression moves
+                                 both and the tests still pass."
+  ACTUAL:                        pointLightingReference and spreadJacobiReference are INDEPENDENT
+                                 reimplementations. A production math regression DOES turn them red.
+                                 Ours is a differential two-implementation oracle.
+  WHAT SURVIVES:                 a differential oracle written FROM production pins DRIFT, not TRUTH.
+                                 It cannot detect a bug that was already present when it was
+                                 authored, because both sides were written to the same
+                                 misunderstanding.
+
+THE COUNT. Our only ABSOLUTE checks on production output are two lines --
+source/test/lighting_point_test.cpp:296-297. Everything else compares one implementation to another.
+Theirs pins production to the MODEL directly, e.g.
+
+    EXPECT_NEAR(array.getLight(13, 10), 1.0f - sqrt(12.5f) / 20.0f, tol)
+
+-- a closed-form expected value derived from the attenuation rule, not from any implementation. A
+reader verifies it in about ten seconds, and it fails if BOTH implementations are wrong together.
+
+WHAT TO ADD. A small set of hand-derived expectations covering the cases whose arithmetic is
+checkable by hand: unobstructed point attenuation at a known distance, the sqrt2 diagonal factor, an
+obstacle-attenuated ray, spread dropoff over open air, and the brightnessLimit clamp. Derive each
+from the rule and show the derivation in the test, so the assertion is readable as a statement about
+the MODEL rather than about the code.
+
+WHY THIS IS THE COMPLEMENT AND NOT A REPLACEMENT. Keep the differential tests -- they catch drift
+across the CPU/GPU/reference triangle, which closed-form assertions cannot. These catch a shared
+misunderstanding, which the differential tests cannot. Two different failure modes, two instruments.
+
+RELATED: the tests being added here run in ZERO CI jobs today (#212). Adding assertions to a suite
+nobody executes is worth little -- prefer landing #212 first, or at minimum run them by hand and say
+so in the commit.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
