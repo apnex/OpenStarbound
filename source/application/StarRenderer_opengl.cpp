@@ -610,9 +610,35 @@ void OpenGlRenderer::setEffectTextureFromTarget(String const& textureName, Strin
 
   flushImmediatePrimitives();
 
+  auto target = m_targets.get(frameBufferId);
+
+  // THE MULTISAMPLE-TO-SAMPLER GUARD (#220 E06). A multisample colour attachment is a
+  // GL_TEXTURE_2D_MULTISAMPLE; binding one where the shader declares sampler2D is GL_INVALID_OPERATION and
+  // the world renders black. Not hypothetical -- that is #150, reproduced on hardware at 60,267 errors in
+  // a single run.
+  //
+  // THE RECOMMENDED FORM OF THIS CHECK WOULD HAVE CAUGHT NOTHING. It was to warn at loadConfig when a
+  // framebuffer declaring "multisampled": true is also named by an effect's frameBufferTextures -- and that
+  // set is EMPTY in this tree. The exposure is here instead, on the C++ argument, because that is where a
+  // target name is chosen at runtime.
+  //
+  // Exactly one live candidate today: BackdropPass composes "main" into parallaxRef for the parallax
+  // oracle. It is safe only through a coupling spanning two files that is asserted nowhere -- "main is
+  // multisample iff antiAliasing" lives in the renderer plus opengl.config, while "the parallax cache path
+  // runs iff !antiAliasing" lives in BackdropPass. Relax the parallax AA gate (#151 considered it, #138 may
+  // revisit) and this binds a multisample texture to a sampler2D whenever the dev-only oracle is armed.
+  //
+  // REPORTS, DOES NOT CORRECT. Refusing the bind would leave the sampler pointing at whatever it held and
+  // trade a loud failure for a quiet wrong image. The render gate reads this line and goes red instead.
+  if (target->multisample) {
+    Logger::error("[glguard] setEffectTextureFromTarget('{}', '{}'): target is {}x multisample, and binding it "
+                  "to a sampler2D is GL_INVALID_OPERATION (#150). Whatever coupling kept this path "
+                  "single-sample no longer holds.", textureName, frameBufferId, target->multisample);
+  }
+
   // Bind the framebuffer's color texture (a GlLoneTexture, same type setEffectTexture produces)
   // directly to the sampler -- no CPU upload. share() records whose it is: no writing, and re-point on rebuild.
-  ptr->share(m_targets.get(frameBufferId)->writeFace().texture, frameBufferId);
+  ptr->share(target->writeFace().texture, frameBufferId);
   if (ptr->textureSizeUniform != -1) {
     auto textureSize = ptr->texture()->glTextureSize();
     glUniform2f(ptr->textureSizeUniform, (float)textureSize[0], (float)textureSize[1]);

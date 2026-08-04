@@ -193,6 +193,24 @@ else
   echo "  ok"
 fi
 
+echo "=== multisample-to-sampler binds ==="
+# #220 E06. setEffectTextureFromTarget binding a multisample colour attachment to a sampler2D is
+# GL_INVALID_OPERATION and a black world -- #150, 60,267 errors on hardware. The guard REPORTS rather than
+# refuses, deliberately, so the failure stays loud instead of becoming a quiet wrong image; that only means
+# anything if something reads it, which is this block.
+#
+# Expected zero today: the one live candidate (BackdropPass composing "main" into parallaxRef) is
+# single-sample only through a two-file coupling nothing asserts. Non-zero here means that coupling broke.
+glguard=$(grep -c "\[glguard\]" "$LOG" || true)
+printf "  multisample-to-sampler binds: %-6s" "$glguard"
+if [ "$glguard" -ne 0 ]; then
+  echo "  <-- FAIL"
+  pass=0
+  grep -m2 "\[glguard\]" "$LOG" | sed 's/^.*\[glguard\] /    ! /'
+else
+  echo "  ok"
+fi
+
 echo "=== gl state ==="
 # THE CHECK THE ORACLES STRUCTURALLY CANNOT BE (#139 phase 1b). The three above are DIFFERENTIAL: reference
 # and cache-under-test share one draw lambda, at one frame position, under one ambient GL state -- so anything
