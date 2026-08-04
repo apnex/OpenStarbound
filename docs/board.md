@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**163 tasks** across 2 store(s): 3 in_progress, 34 pending, 126 completed
+**163 tasks** across 2 store(s): 3 in_progress, 33 pending, 127 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 162 tasks, ids 64–226
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 156, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 159, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 79 of 126.
+**Completed tasks citing no commit and no doc:** 79 of 127.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -231,7 +231,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
-| [#220](#c29c1332-220) | `c29c1332` | open | EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisam… | `4e4ced84` | — |
+| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `a69c8888` `4960f7e5` `4e4ced84` | — |
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
@@ -3484,6 +3484,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `f53212d9` board: #225 FIXED at 8f322517 (hit 17.9%-&gt;80.7%, my not-viable close corrected); #226 H1+H2 done, H3 open [#204]
 - `a58a3499` board: #225 CLOSED measured-not-viable; #226 opened -- three untracked gather inputs [#204]
 - `cf59f083` board: #221 CLOSED -- E02/E01/E03/E04 all done as hardening, each injection-proven [#204]
 - `76d6cf2d` board: E02 done at fc81ae17; #225 opened -- the gather cache loses 76-86% of its hits to tile-epoch churn [#204]
@@ -4242,34 +4243,56 @@ ALL 35 decisions recorded in docs/superpowers/drafts/osb-pr570-decisions.json wi
 
 <a id="c29c1332-220"></a>
 
-#### #220 — EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisample-sampler guard (E…
+#### #220 — EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888
 
-_Stored subject exceeds the heading; reproduced verbatim:_
+status: **completed**
 
-```
-EXTERN-1: source/extern provenance table (E10) + delete tinyformat.h and libcrypto.a (D34/D59/D60) + re-scoped multisample-sampler guard (E06)
-```
-
-status: **pending**
-
+- `a69c8888` E06: guard the multisample-to-sampler bind on the C++ path, where the exposure actually is [#220]
+- `4960f7e5` E10: derived, cross-checked provenance for source/extern, and it found two dead files [#220]
 - `4e4ced84` ledger: decide the last 15 rows; delete two dead vendored artefacts
 
 ```
-Three PR-570 ledger items that land in the same area, accepted 2026-08-04.
+Five PR-570 ledger rows (D34, D59, D60, E10, E06), all discharged.
 
-PART 1 -- DELETION (D34 / D59 / D60), DONE in this change.
-tinyformat.h (49 KB, zero tfm:: uses, zero includes) and lib/linux/libcrypto.a (4.0 MB, zero references in any CMakeLists or .cmake) are verified dead and deleted. D59/D60 had deferred this on the trigger "someone is already touching source/extern for another reason"; accepting E10 -- a provenance table FOR source/extern -- fires that trigger, so the deletions ride with it rather than waiting for a third occasion.
+PART 1 -- DELETIONS (D34/D59/D60), done at 4e4ced84 and VERIFIED at close rather than taken on trust:
+tinyformat.h and lib/linux/libcrypto.a are absent, zero tfm:: uses remain, and no dangling reference
+survives in source/extern/CMakeLists.txt or doc/OPENSOURCE.md. Both companion edits were mandatory and
+present -- a header named in star_extern_HEADERS but absent from disk is a CONFIGURE HARD ERROR, which
+their own PR proved (patch 0001 breaks configure, 0002 repairs it). The lib/ SEARCH PATH is deliberately
+untouched: B16 proposed removing it and that is NOT_REAL, it is load-bearing for FindSteamApi/FindDiscordApi.
 
-TWO COMPANION EDITS WERE MANDATORY, both included:
-  - source/extern/CMakeLists.txt: tinyformat.h was listed in star_extern_HEADERS, which ADD_LIBRARY (star_extern OBJECT ...) consumes. A header named in that list but absent from disk is a CONFIGURE HARD ERROR. Their own PR proved it: patch 0001 deletes the header without this edit and does not configure; patch 0002 repairs it.
-  - doc/OPENSOURCE.md: the Boost-licence attribution block for Tinyformat.
-The lib/ search path is DELIBERATELY UNTOUCHED. Ledger row B16 proposed removing it and that is NOT_REAL -- it is load-bearing for cmake/FindSteamApi.cmake and cmake/FindDiscordApi.cmake, both of which call find_library. Deleting the file is safe; deleting the path would break Steam and Discord discovery.
+PART 2 -- E10 PROVENANCE, done at 4960f7e5. A declared register (docs/architecture/extern-provenance.json)
+plus scripts/extern-provenance.py with --check / --inject / --selftest, registered as extern_provenance and
+extern_provenance_fires. Generated rather than written because PR 570's hand-written extern/README.md
+contradicted their own vcpkg.json on the day it landed (B12): upstream/licence/why are declared, everything
+derivable is derived AND cross-checked, so drift goes red. --selftest drives nine arms both directions.
 
-PART 2 -- E10, NOT STARTED. A per-artefact provenance table for source/extern: version, upstream URL, why vendored, whether compiled. GENERATED AND GATED, not hand-maintained, as another scripts/ entry in gates.yml alongside comment_claims / prose_claims / tree_map. The argument for the generated form is concrete rather than stylistic: B12 found THEIR extern/README.md contradicts their own vcpkg.json on its first policy bullet -- it asserts vcpkg.json is pinned by builtin-baseline, and their manifest carries no builtin-baseline, removed by their own hand. A hand-written provenance doc was false on the day it landed. Ours must be derived.
+  THE REACH TAXONOMY IS THE REAL OUTPUT, learned by nearly getting it wrong three times:
+    malloc.c            in no CMake list, #included by rpmalloc.c        -> indirect
+    xxh3.h              in no CMake list, #included by StarXXHash.hpp    -> include_path, LIVE
+    xxh_x86dispatch.*   in no list, included by nothing repo-wide        -> unreachable, DEAD
+  "not in CMakeLists" is not "not compiled", and "not compiled" is not "dead". My first pass read all three
+  as dead on a grep scoped to source/extern; the repo-wide check is what saved xxh3.h from deletion.
 
-PART 3 -- E06 RE-SCOPED, NOT STARTED, and the re-scope IS the finding. The recommendation as written warns at loadConfig when a framebuffer declaring "multisampled": true is also named by an effect's frameBufferTextures. That set is EMPTY in our tree, so the guard as specified would catch nothing. The real in-tree path is the C++ source argument to setEffectTextureFromTarget / composite.
-Exactly one live candidate exists: StarBackdropPass composes "main" into parallaxRef for the parallax oracle. It is closed today only by a coupling that spans two files and is asserted nowhere -- "main is multisample iff antiAliasing" lives in the renderer plus opengl.config, and "the parallax cache path runs iff !antiAliasing" lives in BackdropPass. If the parallax AA gate is ever relaxed (#151 explicitly considered it; #138/P-3 may revisit it) that composite binds a GL_TEXTURE_2D_MULTISAMPLE to a sampler2D and reproduces #150 verbatim -- though only with the dev-only parallax oracle armed. Latent, gated, real.
-The guard must therefore test the C++ path, not the asset key.
+  TWO FINDINGS RECORDED, NOT ACTED ON -- both need a Director decision:
+    (a) xxh_x86dispatch.c/.h, 35.8 KB, genuinely dead, same class as tinyformat.h. In NO CMake list, so
+        deletion needs no companion edit. The register says "unreachable" and the gate keeps saying so.
+    (b) SIX of eight vendored artefacts have NO attribution in doc/OPENSOURCE.md -- fmt, fast_float,
+        curve25519, rpmalloc, imgui_lua_bindings, xxhash-x86dispatch. imgui_lua_bindings carries no licence
+        header at all in the vendored copy. A licensing gap, not a documentation one. The generated table
+        prints **none** in the `attributed` column wherever it is missing.
+
+PART 3 -- E06 GUARD, done at a69c8888. The recommendation as written (warn at loadConfig when a
+"multisampled" framebuffer is named by an effect's frameBufferTextures) would have caught NOTHING -- that
+set is empty here. Guarded the C++ path instead: setEffectTextureFromTarget, which composite() delegates to,
+so one guard covers both call shapes. VERIFIED that delegation rather than assuming it.
+Reports rather than refuses, deliberately -- refusing would leave the sampler on whatever it held and trade
+a loud failure for a quiet wrong image. render-gate.sh reads it.
+PROVEN TO FIRE: forcing every target to 4x multisample produced 11494 detections and a red gate, naming
+setEffectTextureFromTarget('inputTexture', 'envCache'). Reverted: 0 detections, green.
+
+Certified across the three commits: render gate PASS, core_tests 289/289, run-gates 27/27 (25 before, plus
+extern_provenance and extern_provenance_fires).
 ```
 
 <a id="c29c1332-221"></a>
