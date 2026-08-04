@@ -154,6 +154,9 @@ R"JSON(
       "lightingWorldSampleBilinear" : false,
       "lightingWorldUpscale" : 2.0,
       "lightingGatherCache" : true,
+      // Diagnostic, default OFF: rebuilds the stable grid every recompute to check the cache against it,
+      // which roughly doubles gather cost. Armed in the render harness, never in a shipping run.
+      "lightingGatherOracle" : false,
       "lightingGridSizeBucket" : 32,
 
       "safe" : {

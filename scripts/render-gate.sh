@@ -144,7 +144,10 @@ echo "=== oracles ==="
 # rather than the rounding"), so judge on maxAbs, and keep zero tolerance for the two oracles that really
 # are exact.
 pass=1
-for o in envoracle paralloracle spreadoracle; do
+# gatheroracle is armed in harness/storage, so it always runs here and the never-ran arm stays meaningful.
+# It only ever exercises the cache-HIT path under this gate -- a frozen camera does not scroll -- and that
+# is still the claim most worth checking, because a hit ships a grid gathered on some earlier frame.
+for o in envoracle gatheroracle paralloracle spreadoracle; do
   oracle_verdict "$o" "$LOG" || pass=0
 done
 grep -hoE "\[(envoracle|paralloracle|spreadoracle)\] (diff|DIFF)=[^ ]* [^ ]*" "$LOG" | sort -u | head -3 | sed 's/^/    ! /'

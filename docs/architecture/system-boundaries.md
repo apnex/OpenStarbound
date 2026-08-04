@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       989 files
-      238782 lines
+      238863 lines
       6 tiers
     Content
       assets/
@@ -224,7 +224,7 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,390 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,330 lines
+├── game/            T3   500 files   115,411 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -285,7 +285,7 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,330 lines · Root×638</small>"]
+    game["game<br/><small>500 files · 115,411 lines · Root×639</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -586,7 +586,7 @@ treemap-beta
         "application": 7390
         "platform": 142
     "T3 simulation"
-        "game": 115330
+        "game": 115411
     "T4 presentation"
         "frontend": 16861
         "windowing": 9646
@@ -605,7 +605,7 @@ treemap-beta
 | T2 services | `base` | 30 | 7,464 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,390 | 3.1% |
-| T3 simulation | `game` | 500 | 115,330 | 48.3% |
+| T3 simulation | `game` | 500 | 115,411 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,414 | 1.8% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,861 | 7.1% |
@@ -719,14 +719,14 @@ xychart-beta
     title "Root::singleton() reads per directory"
     x-axis [core, base, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "references" 0 --> 700
-    bar [0, 0, 0, 0, 638, 17, 41, 200, 2, 4]
+    bar [0, 0, 0, 0, 639, 17, 41, 200, 2, 4]
 ```
 
 **Read the zeros carefully.** `Root` lives in `source/game`. `core`, `base`, `platform`, `application` read zero because they are not granted `game` and therefore *cannot see it* -- that is a consequence of the grant list, not a property anyone earned. The render campaign's L1 sovereignty is a different and narrower claim: an *internal* split of `source/application` that no compiler checks and `layering-lint.py` does.
 
 | directory | files reading Root | references |
 |:----------|-------------------:|-----------:|
-| `game` | 136 | 638 |
+| `game` | 136 | 639 |
 | `frontend` | 42 | 200 |
 | `windowing` | 17 | 41 |
 | `rendering` | 4 | 17 |

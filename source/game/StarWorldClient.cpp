@@ -1925,6 +1925,71 @@ void WorldClient::lightingStableGather() {
   gatherStableColumns(calcRegion);
 }
 
+// THE GATHER ORACLE (E04). The stable-grid cache claims that a grid retained across frames and patched at
+// its edges equals one gathered from scratch. Nothing checked that claim. The render gate cannot: it freezes
+// the world, so a frozen camera only ever exercises the cache-HIT path, and no unit test can model sector
+// residency faithfully enough to be worth believing. This rebuilds the grid in full against the real world
+// and compares, on whichever path just ran.
+//
+// OBSERVE-ONLY: the cached grid is what ships. Arming this changes cost and nothing else, so a run with it on
+// renders exactly what a run with it off renders -- which is the only way its verdict means anything about
+// the shipping path.
+//
+// It is also the only instrument that can see the known residual: the cache key is (epoch, dims, anchor) and
+// does NOT track sector load/unload -- unloadSector bumps no epoch -- so a cell retained through a scroll
+// whose sector has since unloaded keeps its last-gathered value while a fresh gather reads it as absent.
+void WorldClient::gatherOracleCompare(char const* path) {
+  auto configuration = Root::singleton().configuration();
+  if (!configuration->getOrDefault("lightingGatherOracle").optBool().value(false))
+    return;
+
+  List<GatherCell> cached = m_gatherGrid;
+  lightingStableGather();   // m_gatherGrid := the reference, gathered from scratch over the same region
+
+  if (cached.size() != m_gatherGrid.size()) {
+    Logger::error("[gatheroracle] diff={} maxAbs=99.0 size {} vs {} path={}",
+      cached.size(), cached.size(), m_gatherGrid.size(), path);
+    m_gatherGrid = std::move(cached);
+    return;
+  }
+
+  size_t differing = 0;
+  size_t firstIndex = NPos;
+  float maxAbs = 0.0f;
+  for (size_t i = 0; i < cached.size(); ++i) {
+    GatherCell const& a = cached[i];
+    GatherCell const& b = m_gatherGrid[i];
+    float worst = 0.0f;
+    for (int c = 0; c < 3; ++c) {
+      float d = a.stableLight[c] - b.stableLight[c];
+      d = d < 0.0f ? -d : d;
+      if (d > worst)
+        worst = d;
+    }
+    // The flags are compared too, and separately: a cell can carry identical light while disagreeing about
+    // obstacle or sky exposure, and both feed the solve. A light-only comparison would miss that entirely.
+    if (worst != 0.0f || a.obstacle != b.obstacle || a.skyExposed != b.skyExposed) {
+      if (firstIndex == NPos)
+        firstIndex = i;
+      ++differing;
+      if (worst > maxAbs)
+        maxAbs = worst;
+    }
+  }
+
+  if (differing == 0) {
+    Logger::info("[gatheroracle] EXACT (0 diff) path={} cells={}", path, cached.size());
+  } else {
+    RectI calcRegion = m_lightingCalculator.calculationRegion();
+    int height = calcRegion.height();
+    Logger::error("[gatheroracle] diff={} maxAbs={:.6f} first=({},{}) path={} cells={}",
+      differing, maxAbs,
+      calcRegion.min()[0] + (int)(firstIndex / (size_t)height),
+      calcRegion.min()[1] + (int)(firstIndex % (size_t)height), path, cached.size());
+  }
+  m_gatherGrid = std::move(cached);   // ship the cached grid: observe, never correct
+}
+
 void WorldClient::gatherStableColumns(RectI const& region) {
   RectI calcRegion = m_lightingCalculator.calculationRegion();
   int height = calcRegion.height();
@@ -2270,9 +2335,11 @@ void WorldClient::lightingCalc() {
       // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the
       // newly-exposed margin. Anything else (first frame, zoom/resize/size-breathe, tile edit, or a
       // jump >= the grid size) falls back to a full stable gather.
+      char const* gatherPath = "?";   // named for the oracle below, so a mismatch says which path produced it
       bool sameGrid = m_gatherValid && m_gatherDims == calcDims && m_gatherEpoch == tileEpoch;
       if (sameGrid && m_gatherAnchor == calcMin) {
         gatherHit.inc();
+        gatherPath = "hit";
         // cache hit: nothing to gather; applyStableToCells re-applies the current env-light below.
       } else if (sameGrid) {
         int dx = calcMin[0] - m_gatherAnchor[0];
@@ -2281,26 +2348,33 @@ void WorldClient::lightingCalc() {
         int ady = dy < 0 ? -dy : dy;
         if (adx < calcDims[0] && ady < calcDims[1]) {
           gatherScroll.inc();
+          gatherPath = "scroll";
           shiftAndGatherMargin(dx, dy); // A2: scroll -- shift the overlap + gather only the margin
         } else {
           gatherFullJump.inc();
+          gatherPath = "full.jump";
           lightingStableGather();       // jump >= grid size: no overlap, full gather
         }
       } else {
         // Ordered, so the six stay mutually exclusive: an invalid grid makes the dims and epoch
         // comparisons meaningless, and a resize makes the epoch one uninteresting.
-        if (!m_gatherValid)
+        if (!m_gatherValid) {
           gatherFullFirst.inc();
-        else if (m_gatherDims != calcDims)
+          gatherPath = "full.first";
+        } else if (m_gatherDims != calcDims) {
           gatherFullDims.inc();
-        else
+          gatherPath = "full.dims";
+        } else {
           gatherFullEpoch.inc();
+          gatherPath = "full.epoch";
+        }
         lightingStableGather();         // first frame / zoom / resize / size-breathe / tile edit
       }
       m_gatherAnchor = calcMin;
       m_gatherDims = calcDims;
       m_gatherEpoch = tileEpoch;
       m_gatherValid = true;
+      gatherOracleCompare(gatherPath);
       applyStableToCells();
       // Mirror lightingTileGather's HUD timer so the gather cost shows in /debug whether the cache is on or off.
       LogMap::set("client_render_world_async_light_gather", strf(u8"{:05d}µs", Time::monotonicMicroseconds() - gatherStart));

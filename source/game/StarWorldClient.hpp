@@ -285,6 +285,10 @@ private:
   // A2: shift the stable grid by the integer-tile camera delta (dx, dy) via the scratch buffer, then
   // gather only the newly-exposed L-shaped margin. Caller guarantees same dims+epoch and |d| < dims.
   void shiftAndGatherMargin(int dx, int dy);
+  // E04: rebuild the stable grid from scratch and compare it against what the cache just produced, on the
+  // real world. Observe-only -- the cached grid is what ships -- and inert unless lightingGatherOracle.
+  // `path` names the branch that produced the grid, so a mismatch says which one is wrong.
+  void gatherOracleCompare(char const* path);
   // A1: write the calculator cells from the stable grid, re-applying the current-frame
   // environmentLight to sky-exposed cells. Cheap (no material DB lookups / tile traversal).
   void applyStableToCells();
