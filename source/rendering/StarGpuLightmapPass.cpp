@@ -50,6 +50,26 @@ unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, Lightma
   maxEmissionGauge.set((int64_t)std::lround(s_maxEmissionSeen * 1000.0f));
   passesRequestedGauge.set((int64_t)s_requestedSeen);
 
+  // NO FINITE CAP IS PROVABLY SUFFICIENT, so the breach is DETECTED instead of assumed away. Emission
+  // is a sum of four unclamped terms and MaterialDatabase::radiantLight itself adds material + mod, so
+  // one tile can contribute 2.0 before liquid, background and environment are added -- the structural
+  // maximum in currently installed content is around 4-5, which would ask for ~160 iterations. The
+  // shipped 48 was measured against the brightest scene we could find (1.475 at two bases), not
+  // derived from a bound that exists.
+  //
+  // So when the request exceeds the cap, say so once rather than silently truncating reach. This
+  // cannot fire on any content measured so far; if it ever does, it names the number needed and the
+  // shortfall is a known quantity instead of an invisible one.
+  if (requested > lp.spreadIterationCap) {
+    static bool s_warned = false;
+    if (!s_warned) {
+      s_warned = true;
+      Logger::warn("[lighting] GPU spread truncated: emission {:.3f} needs {} iterations, cap is {}. "
+          "Light is denied {} steps of reach; raise lightingGpuSpreadIterations to {} to solve it fully.",
+          maxEmission, requested, lp.spreadIterationCap, requested - lp.spreadIterationCap, requested);
+    }
+  }
+
   return std::min(lp.spreadIterationCap, requested);
 }
 
