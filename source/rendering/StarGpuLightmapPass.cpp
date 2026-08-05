@@ -36,9 +36,19 @@ unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, Lightma
     maxEmission = std::max(maxEmission, ed[i]);
 
   unsigned const requested = std::max(8u, (unsigned)std::ceil(maxEmission * lp.point.spreadMaxAir));
-  // x1000 to keep the gauge integral, matching lighting.lights.max_intensity_x1000.
-  maxEmissionGauge.set((int64_t)std::lround(maxEmission * 1000.0f));
-  passesRequestedGauge.set((int64_t)requested);
+
+  // RUNNING MAXIMA, not last-value -- the same correction lighting.lights.max_intensity_x1000 already
+  // carries, and for the same reason. A gauge holds whatever was written last, and telemetry-window
+  // carries a gauge's LATEST reading, so a windowed read would report the final recompute's emission
+  // rather than the peak. The question here is "does maxEmission EVER exceed 1.0", which a last-value
+  // sample structurally cannot answer: it is a bound, not a sample. Single-threaded on the render
+  // path, so plain statics suffice. x1000 keeps the gauge integral, matching the sibling probe.
+  static float s_maxEmissionSeen = 0.0f;
+  static unsigned s_requestedSeen = 0;
+  s_maxEmissionSeen = std::max(s_maxEmissionSeen, maxEmission);
+  s_requestedSeen = std::max(s_requestedSeen, requested);
+  maxEmissionGauge.set((int64_t)std::lround(s_maxEmissionSeen * 1000.0f));
+  passesRequestedGauge.set((int64_t)s_requestedSeen);
 
   return std::min(lp.spreadIterationCap, requested);
 }
