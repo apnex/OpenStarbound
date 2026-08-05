@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      989 files
-      238237 lines
+      990 files
+      238276 lines
       6 tiers
     Content
       assets/
@@ -183,7 +183,7 @@ mindmap
       no directory of its own
     Toolchain
       cmake/vcpkg
-      36 build files
+      37 build files
       12 declared binaries
     Instruments
       scripts/ + tests
@@ -221,6 +221,7 @@ source/
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
+├── metrics/         T2     1 files        39 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,444 lines
 │   └── discord/         vendored — excluded from every count here
@@ -237,14 +238,14 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     72 files    13,745 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    13,767 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
 
 **Every directory that holds code of ours, at every depth — and no files.** Counts are recursive and exclude vendored subtrees, matching every other number in this document. Vendored trees are named but not descended into, since the whole subtree is out of scope and listing its internals would be noise about code that is not ours. Set those aside and the tree is only 2 levels deep: the engine's structure is flatter than its size suggests, which is itself the finding — `source/game` carries 500 files with exactly five subdirectories and no boundary between them.
 
-Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (99 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
+Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (100 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
 <!-- END GENERATED: tree -->
 
 Three things are worth noticing before the edges.
@@ -280,6 +281,7 @@ flowchart TD
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
+    metrics["metrics<br/><small>1 files · 39 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,444 lines · Root×0</small>"]
   end
@@ -300,6 +302,7 @@ flowchart TD
   end
   core --> extern
   base --> core
+  metrics --> core
   platform --> core
   application --> platform
   game --> base
@@ -314,7 +317,7 @@ flowchart TD
   classDef warm  fill:#5c4d1e,stroke:#8a7420,color:#fff3bf
   classDef hot   fill:#7f3e12,stroke:#b5561b,color:#ffe8d6
   classDef blaze fill:#7a1420,stroke:#c1121f,color:#ffe5e5
-  class extern,core,base,platform,application clean
+  class extern,core,base,metrics,platform,application clean
   class rendering,windowing,client,server warm
   class frontend hot
   class game blaze
@@ -394,6 +397,7 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 ```mermaid
 flowchart LR
   base ==>|94 in 28| core
+  metrics -->|2 in 1| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
@@ -432,7 +436,7 @@ flowchart LR
   server -.->|0| platform
 ```
 
-Edge labels are `includes in files`. **Dotted** is a granted permission spent zero times -- 5 of them, free to revoke. **Solid** is thin: used in 9 files or fewer, a bounded cut. **Thick** is load-bearing. Counts: 5 unused, 19 thin, 13 load-bearing. Grants of `extern` are omitted -- all are unused, because `extern` is reached through `core`.
+Edge labels are `includes in files`. **Dotted** is a granted permission spent zero times -- 5 of them, free to revoke. **Solid** is thin: used in 9 files or fewer, a bounded cut. **Thick** is load-bearing. Counts: 5 unused, 20 thin, 13 load-bearing. Grants of `extern` are omitted -- all are unused, because `extern` is reached through `core`.
 
 | edge | includes | files | state |
 |:-----|---------:|------:|:------|
@@ -444,6 +448,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → rendering` | 1 | 1 | thin |
 | `client → windowing` | 1 | 1 | thin |
 | `client → base` | 2 | 1 | thin |
+| `metrics → core` | 2 | 1 | thin |
 | `windowing → application` | 2 | 1 | thin |
 | `windowing → rendering` | 3 | 1 | thin |
 | `client → application` | 2 | 2 | thin |
@@ -559,6 +564,7 @@ frontend,application,4
 server,base,4
 game,platform,3
 windowing,rendering,3
+metrics,core,2
 windowing,application,2
 client,base,2
 client,application,2
@@ -585,6 +591,7 @@ treemap-beta
         "base": 7449
         "application": 7444
         "platform": 142
+        "metrics": 39
     "T3 simulation"
         "game": 115553
     "T4 presentation"
@@ -603,6 +610,7 @@ treemap-beta
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
 | T1 language | `core` | 216 | 56,164 | 23.6% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
+| T2 services | `metrics` | 1 | 39 | 0.0% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,444 | 3.1% |
 | T3 simulation | `game` | 500 | 115,553 | 48.5% |
@@ -612,7 +620,7 @@ treemap-beta
 | T5 shells | `client` | 4 | 2,509 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
-`game` is **49% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
+`game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
 <!-- END GENERATED: mass -->
 
 **Read these as directories, not layers — they are not the same partition.** The load-bearing example
@@ -647,9 +655,9 @@ something stronger than its evidence supported.
 ```mermaid
 xychart-beta
     title "Largest strongly-connected component, as % of the directory"
-    x-axis [extern, core, base, platform, application, game, rendering, windowing, frontend, client, server]
+    x-axis [extern, core, base, metrics, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [27, 3, 17, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [27, 3, 17, 100, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
@@ -657,6 +665,7 @@ xychart-beta
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
+| `metrics` | 1 | 0 | 1 | 100% | 1 | n/a — too small |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |
@@ -717,12 +726,12 @@ takes `game` from 86% to 66% — the translation-unit entanglement is broad rath
 ```mermaid
 xychart-beta
     title "Root::singleton() reads per directory"
-    x-axis [core, base, platform, application, game, rendering, windowing, frontend, client, server]
+    x-axis [core, base, metrics, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "references" 0 --> 700
-    bar [0, 0, 0, 0, 640, 17, 41, 200, 2, 4]
+    bar [0, 0, 0, 0, 0, 640, 17, 41, 200, 2, 4]
 ```
 
-**Read the zeros carefully.** `Root` lives in `source/game`. `core`, `base`, `platform`, `application` read zero because they are not granted `game` and therefore *cannot see it* -- that is a consequence of the grant list, not a property anyone earned. The render campaign's L1 sovereignty is a different and narrower claim: an *internal* split of `source/application` that no compiler checks and `layering-lint.py` does.
+**Read the zeros carefully.** `Root` lives in `source/game`. `core`, `base`, `metrics`, `platform`, `application` read zero because they are not granted `game` and therefore *cannot see it* -- that is a consequence of the grant list, not a property anyone earned. The render campaign's L1 sovereignty is a different and narrower claim: an *internal* split of `source/application` that no compiler checks and `layering-lint.py` does.
 
 | directory | files reading Root | references |
 |:----------|-------------------:|-----------:|
@@ -734,6 +743,7 @@ xychart-beta
 | `client` | 1 | 2 |
 | `core` | 0 | 0 |
 | `base` | 0 | 0 |
+| `metrics` | 0 | 0 |
 | `platform` | 0 | 0 |
 | `application` | 0 | 0 |
 <!-- END GENERATED: reach -->
@@ -760,6 +770,7 @@ flowchart TB
   subgraph T2["T2 services"]
     direction LR
     base
+    metrics
     platform
     application
   end

@@ -85,7 +85,12 @@ RENDER_LAYERS = _inventory.LAYERS
 TIERS = [
     ("T0 vendored", ["extern"]),
     ("T1 language", ["core"]),
-    ("T2 services", ["base", "platform", "application"]),
+    # `metrics` is a T2 sibling of `base`, not a member of any stack above it: it is granted `core`
+    # and nothing else, deliberately, because a measurement that named what it measures would be a
+    # peer of its subject. Left out of TIERS it would have been generated as "outside the tier
+    # lattice; measured by nothing here" -- filed beside `json_tool` as scaffolding, which is the
+    # opposite of what registering it as a sovereign component was for.
+    ("T2 services", ["base", "metrics", "platform", "application"]),
     ("T3 simulation", ["game"]),
     ("T4 presentation", ["rendering", "windowing", "frontend"]),
     ("T5 shells", ["client", "server"]),

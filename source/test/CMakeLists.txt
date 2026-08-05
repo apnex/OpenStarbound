@@ -1,6 +1,7 @@
 INCLUDE_DIRECTORIES (
     ${STAR_EXTERN_INCLUDES}
     ${STAR_CORE_INCLUDES}
+    ${STAR_METRICS_INCLUDES}
     ${STAR_BASE_INCLUDES}
     ${STAR_PLATFORM_INCLUDES}
     ${STAR_GAME_INCLUDES}
@@ -37,6 +38,7 @@ SET (star_core_tests_SOURCES
       lua_test.cpp
       lua_json_test.cpp
       math_test.cpp
+      metrics_test.cpp
       multi_table_test.cpp
       net_states_test.cpp
       ordered_map_test.cpp

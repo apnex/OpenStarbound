@@ -624,6 +624,10 @@ set(STAR_CORE_INCLUDES
 )
 add_subdirectory(core)
 
+# Measurement vocabulary: a reading carries what it measures and when that is true.
+set(STAR_METRICS_INCLUDES ${PROJECT_SOURCE_DIR}/metrics)
+add_subdirectory(metrics)
+
 # Less general purpose code than core that is available to both the game and
 # application modules.
 set(STAR_BASE_INCLUDES
