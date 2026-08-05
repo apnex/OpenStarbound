@@ -218,12 +218,12 @@ Measured this session, on this hardware (Intel Arc Pro 130T/140T, Arrow Lake-P, 
 | Surface Outpost | 23.83% | 3861 | ±5.0% |
 | Ocean-Lab | 16.52% | 2676 | ±1.3% |
 | Lava Refinery | 15.11% | 2448 | ±0.7% |
-| Ship | 14.83% | 2402 | N=2, PROVISIONAL |
+| Ship | 14.83% | 2403 | ±0.7% |
 | Ocean Factory | 12.56% | 2034 | ±1.0% |
 
-Ship is marked provisional because its third repeat had not completed when this was written. It is
-recorded rather than omitted, and marked rather than rounded into the others -- an N=2 cell reported
-as though it were N=3 is how the "+47% instrument cost" claim happened.
+All five cells are N=3. Ship was provisional at N=2 when this was first written and is now complete;
+the mean did not move (14.83% either way). It was marked rather than rounded in, because an N=2 cell
+reported as though it were N=3 is exactly how the "+47% instrument cost" claim happened.
 
 Instrument cost (timers ON minus OFF), four locations: -0.83, +0.28, +0.21, -0.30pp. Mean -0.16pp.
 
