@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 167, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 168, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -215,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -235,7 +235,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
-| [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: claim VERIFIED + survived refutation; instrumented at 5f77683b; awaiting an in-game maxEmission read, the… | `5f77683b` | — |
+| [#224](#c29c1332-224) | `c29c1332` | open | SPREAD-CAP-1: MEASURED on hardware — the cap binds at your bases, costs 8.8% of pixels, and 48 is the proven-sufficient… | `bf6fa6bf` `5f77683b` | — |
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
 | [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | — |
 | [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | `122ca40a` | — |
@@ -3468,6 +3468,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `bd9e4f4d` board: #224 verified, narrowed and instrumented at 5f77683b; awaiting an in-game maxEmission read [#204]
 - `84fe2324` ledger: C08 and C16 done -- the PR-570 backlog is now fully settled
 - `2bcc88e1` board: #228 closed at 0fed2045 -- beam guard unified, bit-identical for all real content [#204]
 - `c8bf863b` ledger: C11/D31 done at 7879e0a2; the beam divergence they exposed is now #228
@@ -4387,73 +4388,82 @@ NOT CLOSED BY THIS, and worth someone's attention later: the call-site comment a
 
 <a id="c29c1332-224"></a>
 
-#### #224 — SPREAD-CAP-1: claim VERIFIED + survived refutation; instrumented at 5f77683b; awaiting an in-game maxEmission read, then a Director fork
+#### #224 — SPREAD-CAP-1: MEASURED on hardware — the cap binds at your bases, costs 8.8% of pixels, and 48 is the proven-sufficient fix. Awaiting a dec…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+SPREAD-CAP-1: MEASURED on hardware — the cap binds at your bases, costs 8.8% of pixels, and 48 is the proven-sufficient fix. Awaiting a decision.
+```
 
 status: **pending**
 
+- `bf6fa6bf` telemetry: the spread gauges must be RUNNING MAXIMA, not last-value
 - `5f77683b` telemetry: record the spread iteration REQUEST, not only the granted count
 
 ```
-STATE: instrumented, awaiting data. The headline is verified and survived an adversarial refutation attempt; every previously-unverified lead has now been checked and several were narrowed.
+NO LONGER A DERIVATION QUESTION. Measured unattended on the real GPU via the live PROFILE and the frozen GATE. The filed severity was far too low and my own "bounded and invisible" framing was wrong.
 
-THE HEADLINE, CONFIRMED. spreadIterationsFor computes requested = max(8, ceil(maxEmission * spreadMaxAir)) then returns min(cap, requested). With shipped spreadMaxAir 32 and cap 32 the clamp binds strictly when maxEmission > 1.0 (boundary is strict; float precision does not blur it -- 32 has ulp 2^-18, so the smallest float above 1.0 gives ceil == 33).
+MEASUREMENT 1 -- does the cap bind? Live profile, running maxima, five locations:
+    03-Surface Outpost   max_emission 0.894  requested 29  granted 29.0   no truncation
+    precursor-surface    max_emission 0.850  requested 28  granted 28.0   no truncation
+    00-Ocean-Lab         max_emission 0.850  requested 28  granted 27.9   no truncation
+    01-Lava Refinery     max_emission 1.475  requested 48  granted 31.98  TRUNCATED, pinned at cap
+    04-Ocean Factory     max_emission 1.475  requested 48  granted 28.0   TRUNCATED at peak
+It is NOT the sky-exposed daylight case I predicted -- surfaces sit at 0.85-0.89 and never bind. It is
+the INTERIORS with bright emitters. 1.475 is identical at two unrelated bases, which points at a
+specific emitter rather than an accumulation; identifying it is a loose end.
 
-THE DECISIVE FACT, and it kills the obvious dismissal: the spread shader is MAX-PLUS BFS with subtractive attenuation (max(source - source*drop, dest)), NOT a linear relaxation. Iteration i can only inform cells i steps away. So the requested count is not a convergence guess -- it IS the propagation distance the scene needs, and clamping truncates reach directly. An adversarial pass tried four kills and all failed: (1) "converges early" false, per above; (2) "pass is off by default" false, lightingGpu is true and the pass demonstrably runs; (3) "downstream erases it" false in DIRECTION -- brightnessLimit and tonemap act on the bright end while under-propagation removes light from DIM cells far from source; (4) "the formula is already generous" false.
+MEASUREMENT 2 -- what does the truncation cost? Frozen GATE at Lava Refinery, in-process A/B, with the
+null control passing first (leg A byte-identical, so the diff is attributable to the lever and not to
+harness noise -- the #222 lesson applied):
+    32 vs 48:  A/B DIFF 309,413 px (8.8158%)  maxAbs 0.005558
+    48 vs 64:  A/B MATCH, byte-identical
+The second line is the important one: 48 is EXACTLY sufficient. The formula is not over-asking, and 64
+buys nothing. The cap alone is the defect.
+maxAbs 0.005558 is ~1.42 of a 255 level and ~11x one fp16 LSB -- NOT sub-LSB. The filed "0.168% at one
+fp16 LSB" was #222's border measurement at a different location and a different question; quoting it
+as this row's severity was wrong.
 
-REACHABILITY CONFIRMED, with a concrete case. Four independent unclamped addends reach emission (foreground material+mod radiantLight, liquid radiantLight, background radiantLight, environmentLight), the scan takes the max over individual CHANNELS (a lower bar than intensity), and the GPU spread runs applyCap=false on every iteration with brightnessLimit as a separate downstream compose -- so nothing upstream bounds it. Worked example: a sky-exposed tile with FU's fuaetherglass (lightTransparent, radiantLight [120,20,180] -> blue 0.706) under a common dayLightColor [200,200,200] (0.784) sums to ~1.49.
+THE DIFF IS STRUCTURED, NOT DIFFUSE, which also refutes the "only dim cells far from source" story:
+a coherent vertical column at x~11-13 running the frame height (37/48/50/57/25/60/82/83/84/86%) plus
+the entire bottom-left row (94/97/82/73/66/63/46%). Roughly uniform across distance-from-edge bands
+(13-21% near, 4.7% at 256+px), so not an edge artefact.
 
-THREE NARROWINGS -- the filed concern was wider than the truth:
-  * The 1.0 threshold is COINCIDENTAL, not intrinsic: it lands there only because shipped spreadMaxAir
-    (32) equals the shipped cap (32). General condition is ceil(maxEmission * spreadMaxAir) > cap.
-  * The 32-vs-64 default disagreement CANNOT currently change rendering. Three sites, not two: 32 is
-    the single DECLARED default (StarRootLoader BaseDefaultConfiguration); the two 64s are a status-
-    readout literal (ClientCommandProcessor) and a struct default-member-initializer
-    (LightmapParams::spreadIterationCap) that WorldPainter's fully-braced init always overwrites. The
-    render path reads getOrDefault and resolves 32 every time. LATENT hazard, not a live defect -- one
-    getOrDefault -> get slip away from biting silently.
-  * The CPU/GPU spread EXTENT mismatch is conditional and weaker than filed. The CPU sweep self-clips
-    to query +/- ceil(spreadMaxAir) and is exactly border-invariant for border >= 32; the GPU sweeps
-    the full calculation region. But the extents COINCIDE at border 32, which is what the shipped
-    adaptive border yields in practice (measured point requirement 20-28, clamped up to the 32 floor).
-    They differ only above 32, by a ring of <= 16 cells, and as cost rather than output.
+MEASUREMENT 3 -- what does the fix cost? Live profile at Lava Refinery, cap 32 vs 48:
+    lighting.gpu.spread.gpu_us   748.8 -> 1104.6 us/recompute   (+47.5%, ~= the +50% iteration count)
+    cpu.frame.total.us         16190.5 -> 16199.4 us            (+0.1%, i.e. nothing)
+The frame is vsync-paced with 63% idle at this location, so the extra 356us/recompute is absorbed.
+CAVEAT, and it is the honest limit of this result: that headroom is THIS machine's Arc at THIS
+location. A weaker GPU or a heavier scene could turn +47.5% of the spread pass into frame cost.
 
-DAMAGE IS BOUNDED: lost light <= (maxEmission - 1.0), and only in cells whose shortest ALL-AIR path
-from the peak-emission cell exceeds 32 steps and which receive no nearer illumination. Obstacle steps
-cost 1/spreadMaxObstacle = 0.5 each, so walls extinguish it almost immediately.
+A FINDING THAT BREAKS THE OBVIOUS FIX: maxEmission 1.475 EXCEEDS brightnessLimit 1.4. So
+brightnessLimit is not an upper bound on emission, and deriving cap = ceil(brightnessLimit *
+spreadMaxAir) = 45 would STILL truncate (45 < 48). Option (A) as I framed it does not work unless
+emission is genuinely clamped at gather -- which is itself an output change.
 
-DONE (5f77683b): two gauges, lighting.gpu.spread.max_emission_x1000 and .passes_requested.
-Instrumentation only -- `requested` is the existing subexpression hoisted with no reordering, so the
-returned value is unchanged by construction. Truncation is now readable as passes_requested > passes,
-with magnitude rather than a boolean.
+DONE SO FAR:
+  5f77683b  the two gauges (max_emission_x1000, passes_requested)
+  bf6fa6bf  corrected them to RUNNING MAXIMA -- the first version recorded last-value, which cannot
+            answer "does it EVER exceed", and is the same mistake lighting.lights.max_intensity_x1000
+            already documents having made once. Second occurrence.
 
-WHY THE OLD COUNTER COULD NEVER HAVE SHOWN THIS: lighting.gpu.spread.passes records the GRANTED value,
-saturates at 32, and (per verification) is already pinned from maxEmission >= 0.96875 -- so it goes
-flat slightly BEFORE the truncation regime even starts, and carries information only for maxEmission
-in (0.21875, 0.96875]. It is also an accumulating counter that double-counts when the spread oracle is
-armed (/lighting spreadoracle, default off).
+THE DECISION, now fully informed:
+  (1) RAISE THE CAP to 48. One number, proven sufficient by the 48-vs-64 match, costs +47.5% of the
+      spread pass and +0.1% of frame here. Simplest, and defensible.
+  (2) DERIVE THE CAP from a real emission ceiling. Cannot use brightnessLimit as-is (1.475 > 1.4).
+      Would need emission clamped at gather -- an output change with its own justification.
+  (3) KEEP 32 as a deliberate cost ceiling and document it. Now much weaker: it means knowingly
+      shipping an 8.8%-of-pixels error at the Director's own base to save 356us on a frame with 63%
+      idle.
+My recommendation is (1) now, with (2) as the eventual correct end-state once emission has a real
+declared bound. I previously leaned (3); the measurement reversed that and I was wrong to lean on an
+unmeasured "bounded and invisible".
 
-NEXT, AND IT NEEDS THE DIRECTOR IN GAME: read max_emission_x1000 and passes_requested at the machine
-bases and somewhere bright/outdoor at midday. If max_emission never exceeds 1000 the cap never binds
-and this closes cheaply as a documented latent inconsistency. If it does, the magnitude decides the
-fork below.
-
-THE FORK, once data exists. The real defect is an AMBIGUITY: the code is WRITTEN as though the cap is
-a correctness bound (it computes a requirement) but BEHAVES as though it is a cost ceiling (it
-discards that requirement silently). Both are defensible; being both at once is not.
-  (A) CAP AS CORRECTNESS BOUND -- derive it so it can never bind: cap = ceil(brightnessLimit *
-      spreadMaxAir) = 45, one derived number instead of two knobs that can disagree. Airtight only if
-      emission is also clamped to brightnessLimit at gather, which IS an output change (brightnessLimit
-      is currently a post-solve proportional rescale) and needs its own justification.
-  (B) CAP AS COST CEILING -- keep it, but stop pretending the formula governs: name the result a
-      REQUEST, meter the shortfall (done), and state the bound in the code.
-My lean is (B): the damage is bounded and invisible, and (A) drags in a pre-solve clamp that changes
-pixels for no observable gain. (B) is only honest with the shortfall measured, which is why the
-instrumentation lands first either way.
-
-Either way, delete the two dormant 64s -- not because they bite today, but because nothing prevents
-them biting tomorrow.
-
-DO NOT re-derive the spread border floor on the strength of #222; that ticket's premise is refuted.
+STILL OPEN: delete the two dormant 64s (LightmapParams::spreadIterationCap, ClientCommandProcessor's
+get(..., 64) literal) whichever way this goes -- if the cap becomes 48 they are wrong in a NEW way.
+Identify the 1.475 emitter. Re-measure at a heavier scene before treating the +0.1% frame cost as
+general.
 ```
 
 <a id="c29c1332-225"></a>
