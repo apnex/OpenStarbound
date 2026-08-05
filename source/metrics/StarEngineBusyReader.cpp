@@ -63,15 +63,24 @@ namespace {
   }
 
   // The trailing token names the counter KIND, not the engine: rcs0-busy, rcs0-sema and rcs0-wait
-  // are three quantities of one engine. Stripping it is what leaves an engine name behind, and only
-  // the per-engine events have one -- actual-frequency-gt0 and rc6-residency-gt0 describe the whole
-  // GT, so they keep the event name and are labelled with it.
+  // are three quantities of one engine. Stripping it is what leaves an engine name behind.
   String engineNameFor(String const& event) {
     for (String const& kind : {String("-busy"), String("-sema"), String("-wait")}) {
       if (event.endsWith(kind))
         return event.substr(0, event.size() - kind.size());
     }
     return event;
+  }
+
+  // The result field is `engineNs`, so only events measured in nanoseconds may reach it.
+  //
+  // The i915 PMU also exposes actual-frequency-gt0 (unit `M`, megahertz) and interrupts (a bare
+  // count). Admitting those would put a frequency into a field whose NAME asserts nanoseconds --
+  // which is precisely the defect this whole component exists to end, reproduced inside it. The
+  // header carried the caveat in prose and prose is not an instrument: a rule no machine reads is
+  // one that is eventually broken. -busy, -sema and -wait are the three per-engine time counters.
+  bool isNanosecondEvent(String const& event) {
+    return event.endsWith("-busy") || event.endsWith("-sema") || event.endsWith("-wait");
   }
 
 }
@@ -88,6 +97,13 @@ BusyReading EngineBusyReader::open(String const& event) {
   // label, which is precisely the outcome this component exists to make impossible.
   if (event.contains("/"))
     return BusyReading::unavailable(strf("i915 PMU event name '{}' is not a single path component", event));
+
+  if (!isNanosecondEvent(event))
+    return BusyReading::unavailable(
+      strf("i915 PMU event '{}' is not measured in nanoseconds, and the result field is engineNs. "
+           "actual-frequency-gt0 is megahertz and interrupts is a bare count; admitting either would "
+           "put a number under a name asserting a unit it does not have. Only -busy, -sema and -wait "
+           "carry engine time", event));
 
   String typePath = strf("{}/type", PmuDir);
   auto typeText = slurp(typePath);
