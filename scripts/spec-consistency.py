@@ -182,6 +182,10 @@ ELEMENT_FREE = {
     "script": "the Lua host runs inside whatever tick calls into it -- deliberately no clock",
     "storage": "reads and writes when asked; a store that ticked on its own would be deciding "
                "WHEN to save, which is the caller's business",
+    "metrics": "samples when asked. A measurement holding a clock of its own would be choosing WHEN "
+               "the truth is taken, and a sampler that picks its own moments is exactly how a "
+               "magnitude-correlated bias got in -- the defect this component exists to end, not "
+               "one to rebuild into its schedule",
     "windowing": "widgets emit into the frame when asked; the toolkit drives nothing",
     "frontend": "screens are updated by the participant's tick",
     "gpu_opengl": "executes device calls issued by `presentTick`",
