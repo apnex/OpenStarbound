@@ -158,6 +158,17 @@ jobs:
       - name: render_gate_verdicts -- every oracle verdict arm fires, and does not over-fire
         run: scripts/render-gate.sh --selftest
 
+      # A GPU timer that brackets a gate it does not enter records a ~0us sample on every skip, so its
+      # `count` counts frames rather than draws and its mean is a blend of real work with zeros. Three
+      # sites did this; the parallax one reported a 4.04x cost step while the GPU did identical work, and
+      # every oracle stayed green throughout -- because a zero is a plausible number (GPUTIMER-1).
+      # Static: no GPU, no binary, and it fails at authoring time rather than after a 45-minute run.
+      - name: gputimer_brackets -- no GPU timer brackets a gate it does not enter
+        run: python3 scripts/gputimer-brackets.py --check
+
+      - name: gputimer_brackets_fires -- the straddle detector fires, and does not over-fire
+        run: python3 scripts/gputimer-brackets.py --selftest
+
       # Vendored provenance. Their hand-written extern/README.md contradicted their own vcpkg.json on the
       # day it landed (ledger B12); ours is derived from the tree and fails when it drifts from it.
       - name: extern_provenance -- every vendored artefact is declared and reachable as declared
