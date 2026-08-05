@@ -93,6 +93,7 @@ SET (star_core_tests_SOURCES
 # core_tests gains the lighting kernel without gaining the game.
 ADD_EXECUTABLE (core_tests
   $<TARGET_OBJECTS:star_extern> $<TARGET_OBJECTS:star_core> $<TARGET_OBJECTS:star_base>
+  $<TARGET_OBJECTS:star_metrics>
   ${star_core_tests_SOURCES})
 TARGET_LINK_LIBRARIES (core_tests ${STAR_EXT_LIBS})
 ADD_TEST (NAME core_tests WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/core_tests)

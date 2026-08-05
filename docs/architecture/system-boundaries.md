@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      990 files
-      238276 lines
+      993 files
+      238446 lines
       6 tiers
     Content
       assets/
@@ -221,7 +221,7 @@ source/
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2     1 files        39 lines
+├── metrics/         T2     4 files       209 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,444 lines
 │   └── discord/         vendored — excluded from every count here
@@ -238,7 +238,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    13,767 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    13,823 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -281,7 +281,7 @@ flowchart TD
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
-    metrics["metrics<br/><small>1 files · 39 lines · Root×0</small>"]
+    metrics["metrics<br/><small>4 files · 209 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,444 lines · Root×0</small>"]
   end
@@ -355,7 +355,6 @@ flowchart TD
     asset_packer(["asset_packer"])
     asset_unpacker(["asset_unpacker"])
     btree_repacker(["btree_repacker"])
-    core_tests(["core_tests"])
     mod_uploader(["mod_uploader"])
     render_surface_tests(["render_surface_tests"])
   end
@@ -368,14 +367,19 @@ flowchart TD
     starbound_server(["starbound_server"])
   end
   S1 -.->|adds game| S2
-  subgraph S3["shell 3 — application + base + core + extern + frontend + game + rendering + windowing"]
+  subgraph S3["shell 3 — base + core + extern + metrics"]
+    direction LR
+    core_tests(["core_tests"])
+  end
+  S2 -.->|adds metrics| S3
+  subgraph S4["shell 4 — application + base + core + extern + frontend + game + rendering + windowing"]
     direction LR
     starbound(["starbound"])
   end
-  S2 -.->|adds application, frontend, rendering, windowing| S3
+  S3 -.->|adds application, frontend, game, rendering, windowing| S4
 ```
 
-12 declared executables fall into **4 distinct link sets**, and they are **strictly nested**. Each shell is what ships without everything below it: the existence of `starbound_server` is the proof that game↔presentation is a primary boundary, and nothing in this tree proves any boundary *within* presentation, because those four libraries appear together in exactly one binary.
+12 declared executables fall into **5 distinct link sets**, and they are **not strictly nested** -- see the exceptions above. Each shell is what ships without everything below it: the existence of `starbound_server` is the proof that game↔presentation is a primary boundary, and nothing in this tree proves any boundary *within* presentation, because those four libraries appear together in exactly one binary.
 <!-- END GENERATED: shells -->
 
 `starbound_server` is the whole argument for game↔presentation being a primary boundary: the simulation
@@ -397,7 +401,7 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 ```mermaid
 flowchart LR
   base ==>|94 in 28| core
-  metrics -->|2 in 1| core
+  metrics -->|6 in 3| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
@@ -448,7 +452,6 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → rendering` | 1 | 1 | thin |
 | `client → windowing` | 1 | 1 | thin |
 | `client → base` | 2 | 1 | thin |
-| `metrics → core` | 2 | 1 | thin |
 | `windowing → application` | 2 | 1 | thin |
 | `windowing → rendering` | 3 | 1 | thin |
 | `client → application` | 2 | 2 | thin |
@@ -457,6 +460,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → frontend` | 11 | 2 | thin |
 | `client → game` | 18 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
+| `metrics → core` | 6 | 3 | thin |
 | `client → core` | 14 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
 | `server → base` | 4 | 4 | thin |
@@ -559,12 +563,12 @@ application,platform,8
 server,game,8
 rendering,base,7
 core,extern,6
+metrics,core,6
 platform,core,5
 frontend,application,4
 server,base,4
 game,platform,3
 windowing,rendering,3
-metrics,core,2
 windowing,application,2
 client,base,2
 client,application,2
@@ -590,8 +594,8 @@ treemap-beta
     "T2 services"
         "base": 7449
         "application": 7444
+        "metrics": 209
         "platform": 142
-        "metrics": 39
     "T3 simulation"
         "game": 115553
     "T4 presentation"
@@ -610,7 +614,7 @@ treemap-beta
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
 | T1 language | `core` | 216 | 56,164 | 23.6% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
-| T2 services | `metrics` | 1 | 39 | 0.0% |
+| T2 services | `metrics` | 4 | 209 | 0.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,444 | 3.1% |
 | T3 simulation | `game` | 500 | 115,553 | 48.5% |
@@ -657,7 +661,7 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, metrics, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [27, 3, 17, 100, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [27, 3, 17, 33, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
@@ -665,7 +669,7 @@ xychart-beta
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
-| `metrics` | 1 | 0 | 1 | 100% | 1 | n/a — too small |
+| `metrics` | 3 | 1 | 1 | 33% | 1 | n/a — too small |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |

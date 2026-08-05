@@ -5,18 +5,17 @@ INCLUDE_DIRECTORIES (
   )
 
 SET (star_metrics_HEADERS
+    StarBusyReading.hpp
+    StarClientBusyReader.hpp
     StarMetricSample.hpp
   )
 
 SET (star_metrics_SOURCES
+    StarClientBusyReader.cpp
   )
 
-# INTERFACE, not OBJECT, and only until the first .cpp lands. An OBJECT library holding no
-# translation unit is not a legal target -- CMake cannot infer a linker language for it and fails the
-# GENERATE step, not the build ("CMake can not determine linker language for target: star_metrics"),
-# which would take the whole project down rather than this directory. INTERFACE says what is true
-# today: the module compiles nothing and exports a header path. Convert it to
-# ADD_LIBRARY (star_metrics OBJECT ...) at the same commit that adds star_metrics_SOURCES its first
-# entry, and add $<TARGET_OBJECTS:star_metrics> to the consumers then.
-ADD_LIBRARY (star_metrics INTERFACE ${star_metrics_SOURCES} ${star_metrics_HEADERS})
-TARGET_INCLUDE_DIRECTORIES (star_metrics INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+# OBJECT, like star_core and star_base: consumers name $<TARGET_OBJECTS:star_metrics> in their
+# ADD_EXECUTABLE rather than linking a library, so a module with no link dependencies of its own
+# stays that way.
+ADD_LIBRARY (star_metrics OBJECT ${star_metrics_SOURCES} ${star_metrics_HEADERS})
+TARGET_INCLUDE_DIRECTORIES (star_metrics PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
