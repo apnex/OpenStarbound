@@ -202,3 +202,37 @@ jobs:
         run: |
           python3 scripts/layering-lint.py --needle "re:SDL_GL|SDL_WINDOW_OPENGL" \
             source/application/StarMainApplication_sdl.cpp=18
+
+      # THE ONE CHECK THAT CAN CONTRADICT A GPU NUMBER. `metrics` reads render-engine busy time out of
+      # /proc/<pid>/fdinfo; the i915 PMU reads the same quantity through perf_event_open. Different
+      # kernel mechanisms at different scopes -- one client versus the whole device -- so with a single
+      # GPU client they must agree. Every defect in this subsystem's history was caught only when an
+      # instrument that did NOT share the first one's assumptions disagreed with it: a 4x fdinfo sum, a
+      # 4.04x GPU-timer artefact, a cost claim that was really a cold shader cache. None was caught by
+      # an oracle; all the oracles were green throughout, because a wrong number is a plausible number.
+      #
+      # THIS ARM IS THE VERDICT LOGIC, not the comparison. Synthetic ratios: no GPU, no target, no
+      # root, so it runs everywhere and is always armed. It drives all eleven arms in both directions,
+      # including the exact 4x and 2x mis-scalings the bound exists to catch, because a tolerance
+      # nobody has watched fire is not known to fire (#223) -- the same reason render_gate_verdicts
+      # exists above.
+      - name: metrics_mutual_verdicts -- every verdict arm fires, and does not over-fire
+        run: scripts/metrics-mutual-check.sh --selftest
+
+      # AND THIS ARM IS THE LIVE COMPARISON, which needs a GPU client under load and CAP_PERFMON --
+      # neither of which a CI runner has. Guarded rather than unconditional because the script exits 2
+      # when asked to compare a process that is not there, and it must keep doing that: a cross-check
+      # with no subject is a caller error, and turning that into a pass rebuilds the confusion this
+      # component exists to end. Guarded, it still fires on the development host whenever a profile run
+      # is up, which is the only time it can mean anything.
+      #
+      # READ THE STEP, NOT THE TALLY. scripts/ci/run-gates.sh prints OK/FAIL and discards a passing
+      # step's output, so the not-run line below is invisible in its summary and this step counts
+      # toward "N/N green" on every machine where it cannot run.
+      - name: metrics_mutual -- the two kernel readers agree, or say why they could not compare
+        run: |
+          if pgrep -x starbound >/dev/null; then
+            scripts/metrics-mutual-check.sh
+          else
+            echo "metrics_mutual: NOT RUN -- no GPU client on this machine. Nothing was compared."
+          fi
