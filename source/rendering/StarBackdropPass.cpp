@@ -243,8 +243,9 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
   bool envCacheActive = (envRefreshInterval > 1 || envOracle);
   if (!envCacheActive) {
     m_envCache.invalidate();
+    // Cadence::Call, matching the cache arm below -- one name, one declared cadence. See the parallax pair.
     m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
     drawEnv();
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
   } else {
@@ -305,9 +306,12 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     (refreshEnv ? m_envRefreshedCtr : m_envSkippedCtr).inc(1);
     m_envRefreshedThisFrame = refreshEnv;
 
-    m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     if (refreshEnv) {
+      // Bracket INSIDE the gate, Cadence::Call -- the act timed is the env redraw, not the frame. Straddling
+      // recorded every skip frame as a ~0us sample: 80% of this timer's records were zeros, and the mean it
+      // reported (~346us) was ~5x below the true per-redraw cost of ~1700us. See the parallax pair.
+      m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
       // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
       // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
       // size still drives the first-frame / post-resize (re)alloc + the viewport.
@@ -327,8 +331,8 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
       m_envCacheWorldOffset = envSky.worldOffset;
       m_envCacheWorldRotation = envSky.worldRotation;
       m_envCacheContentKey = envContentKey;
+      m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
     }
-    m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
 
     // CM-1: when backdropComposeMerge is enabled, DEFER the env->main compose to renderParallax so env+parallax
     // become one full-screen pass. The env cache is already FILLED (above); only the compose moves. renderParallax
@@ -558,8 +562,12 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
       composeEnvStandalone(parallaxScreenSize);
       m_envComposeDeferred = false;
     }
+    // Cadence::Call, matching the cache arm below. The two arms alternate WITHIN a run (the gate includes
+    // parallaxParked, which follows the camera), so a metric declared Frame here and Call there would be a
+    // descriptor conflict on one name -- and Frame would be wrong regardless, since neither arm covers
+    // every frame once the other can fire.
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
     drawParallax();
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
   } else {
@@ -596,9 +604,16 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     }
     (refreshParallax ? m_parallaxRefreshedCtr : m_parallaxSkippedCtr).inc(1);
 
-    m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
     if (refreshParallax) {
+      // The bracket opens INSIDE the gate, and the cadence is Call, because the act being timed is the
+      // REDRAW -- not the frame that may or may not contain one. Straddling the gate recorded the 2-in-3
+      // skip frames as ~0us samples: `count` counted frames rather than redraws, and the mean was a blend
+      // of ~26 real redraws with ~180 zeros, which is neither a per-frame nor a per-redraw cost. It also
+      // advanced the query ring once per frame against a refresh cadence of 3, phase-locking the one
+      // expensive sample to a single ring slot so its capture went all-or-nothing. Same defect and same
+      // fix as the compose pair (see composeEnvStandalone above), which was corrected on its own evidence.
+      m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
       m_renderer->setRenderTarget(m_parallaxCache.name(), parallaxScreenSize);
       m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
       m_renderer->setBlendMode(BlendMode::PremultiplyInto);
@@ -608,8 +623,8 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
       m_parallaxCache.recordFilled(parallaxScreenSize, parallaxPixelRatio);
       m_parallaxCachePosition = m_parallaxWorldPosition;
       m_parallaxCacheContentKey = parallaxContentKey;
+      m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
     }
-    m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
 
     // Oracle reference (before the cache composite modifies main): parallaxRef = env_bg (a copy of main) +
     // parallax DIRECT. Built here because the composite below overwrites main with the cache result.

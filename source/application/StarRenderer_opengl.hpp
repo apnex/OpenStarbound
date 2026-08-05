@@ -268,9 +268,15 @@ private:
     Maybe<int64_t> lastMicros(String const& name) const override;
 
   private:
+    // A slot is polled when it comes round again, i.e. after RingDepth further begins on the same scope.
+    // At depth 3 a per-frame scope got ~50ms at 60fps, and the GPU is routinely more than three frames
+    // behind: measured drop rates were 33% for the frame-cadence scopes and 74% for parallax. Depth 16
+    // buys ~266ms, which is past any plausible pipeline depth. The drop is NOT random -- see begin() --
+    // so the cost of an undersized ring is a biased metric, not a few missing samples.
+    static constexpr unsigned RingDepth = 16;
     struct Ring {
-      GLuint queries[3] = {0, 0, 0};
-      bool issued[3] = {false, false, false};
+      GLuint queries[RingDepth] = {};
+      bool issued[RingDepth] = {};
       unsigned writeIdx = 0;
     };
 
@@ -315,11 +321,15 @@ private:
   // timestamps around startFrame..finishFrame gives the frame's entire GPU span (every pass, the interface
   // render, the clears, the final blit) WHILE the per-pass timers still run. (span - sum(passes)) is the
   // unattributed remainder -- which may be more than half the frame.
-  static constexpr unsigned GpuTimerRingSize = 3;
+  // Depth 16 for the same reason as GlGpuTimer::RingDepth, and it matters MORE here: this span is the
+  // owner's WHOLE, so under-capturing it makes the sum of parts exceed 100% and reads as a double-count.
+  // At depth 3 it captured 67% of frames while the parts captured 100%, and the accounting oracle reported
+  // 121.6% -- parts correct, whole short. Both ends of a ratio have to be measured the same way.
+  static constexpr unsigned GpuTimerRingSize = 16;
   struct FrameSpanRing {
-    GLuint begins[GpuTimerRingSize] = {0, 0, 0};
-    GLuint ends[GpuTimerRingSize] = {0, 0, 0};
-    bool issued[GpuTimerRingSize] = {false, false, false};
+    GLuint begins[GpuTimerRingSize] = {};
+    GLuint ends[GpuTimerRingSize] = {};
+    bool issued[GpuTimerRingSize] = {};
     unsigned writeIdx = 0;
   };
   FrameSpanRing m_frameSpan;

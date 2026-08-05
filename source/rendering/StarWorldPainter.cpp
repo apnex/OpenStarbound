@@ -313,12 +313,17 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   m_worldPass->renderWorld(m_camera, {renderData.entityDrawables, renderData.backgroundOverlays,
       renderData.foregroundOverlays, renderData.nametags, renderData.particles, renderData.overheadBars});
 
-  m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+  // Bracket INSIDE the gate, Cadence::Call. The dim overlay only draws when the world is dimmed; declared
+  // Frame with the bracket outside, this timer recorded a ~0us sample on every undimmed frame -- 100% of its
+  // records at Surface Outpost, so it read as a measured cost of zero rather than as "did not run". A pass
+  // that did not happen has no cost to report, and saying 0 is a claim, not an absence.
   auto dimLevel = round(renderData.dimLevel * 255);
-  if (dimLevel != 0)
+  if (dimLevel != 0) {
+    m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
-  m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
+    m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
+  }
 
   // Rung 0: surface the per-pass GPU timings (populated only under deep telemetry) on the /debug HUD.
   for (auto const& key : {"render.pass.environment.gpu_us", "render.pass.parallax.gpu_us",

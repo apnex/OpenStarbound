@@ -1069,7 +1069,7 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   if (ring.queries[slot] == 0)
     glGenQueries(1, &ring.queries[slot]);
   else if (ring.issued[slot]) {
-    // This slot last ran 3 frames ago; its result should be ready. Read it without stalling.
+    // This slot last ran RingDepth begins ago; its result should be ready. Read it without stalling.
     GLuint available = 0;
     glGetQueryObjectuiv(ring.queries[slot], GL_QUERY_RESULT_AVAILABLE, &available);
     if (available) {
@@ -1077,8 +1077,19 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
       glGetQueryObjectui64v(ring.queries[slot], GL_QUERY_RESULT, &elapsedNs);
       Telemetry::timer(name, desc).record((int64_t)(elapsedNs / 1000));
       m_lastMicros[name] = (int64_t)(elapsedNs / 1000);
+    } else {
+      // COUNT THE LOSS. A discarded sample is not a missing datum, it is a BIASED one: the results still
+      // in flight are the EXPENSIVE ones, so dropping them silently shifts every consumer toward the cheap
+      // tail -- and coverage_scale (scripts/telemetry-window.py) then scales `total` by count-coverage on
+      // the assumption the loss was missing-at-random, which under-corrects rather than corrects.
+      // Measured, not theorised: at ring depth 3, 74% of parallax redraws were discarded, and the capture
+      // rate then shifted 26% -> 98% mid-run, moving the reported cost 4.04x while the GPU did identical
+      // work. It survived for exactly one reason -- nothing counted it.
+      static auto dropped = Telemetry::counter("render.gputimer.dropped",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      dropped.inc(1);
     }
-    ring.issued[slot] = false; // reuse the query object regardless (drops a rare not-ready sample)
+    ring.issued[slot] = false; // reuse the query object regardless
   }
   glBeginQuery(GL_TIME_ELAPSED, ring.queries[slot]);
   m_active = true;
@@ -1093,7 +1104,7 @@ void OpenGlRenderer::GlGpuTimer::end(String const&) {
   m_flushPending();
   glEndQuery(GL_TIME_ELAPSED);
   m_current->issued[m_slot] = true;
-  m_current->writeIdx = (m_slot + 1) % 3;
+  m_current->writeIdx = (m_slot + 1) % RingDepth;
   m_active = false;
   m_current = nullptr;
 }
@@ -1138,7 +1149,7 @@ void OpenGlRenderer::startFrame() {
       glGenQueries(1, &ring.begins[slot]);
       glGenQueries(1, &ring.ends[slot]);
     } else if (ring.issued[slot]) {
-      // This slot was issued 3 frames ago; read it back without stalling the pipeline.
+      // This slot was issued GpuTimerRingSize frames ago; read it back without stalling the pipeline.
       GLuint availB = 0, availE = 0;
       glGetQueryObjectuiv(ring.begins[slot], GL_QUERY_RESULT_AVAILABLE, &availB);
       glGetQueryObjectuiv(ring.ends[slot], GL_QUERY_RESULT_AVAILABLE, &availE);
