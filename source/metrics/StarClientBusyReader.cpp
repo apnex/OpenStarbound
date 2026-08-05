@@ -113,4 +113,31 @@ BusyReading ClientBusyReader::readFdinfoDir(String const& dir) {
   return reading;
 }
 
+BusyReading busyDelta(BusyReading const& a, BusyReading const& b, int64_t wallNs) {
+  if (!a.available)
+    return BusyReading::unavailable(strf("start sample unavailable: {}", a.unavailableReason));
+  if (!b.available)
+    return BusyReading::unavailable(strf("end sample unavailable: {}", b.unavailableReason));
+  if (wallNs <= 0)
+    return BusyReading::unavailable(strf("non-positive sampling window: {} ns", wallNs));
+
+  BusyReading d;
+  for (auto const& engine : b.engineNs) {
+    // A client that exits and restarts resets its counters. The whole reading is discarded, not just
+    // the one engine: the reset means some unknown amount of busy time happened under an identity
+    // this pair of samples cannot see, so no engine's difference is trustworthy either.
+    int64_t before = a.engineNs.value(engine.first, 0);
+    if (engine.second < before)
+      return BusyReading::unavailable(strf("engine '{}' counter moved backwards ({} -> {}): the "
+                                           "client restarted", engine.first, before, engine.second));
+    d.engineNs[engine.first] = engine.second - before;
+  }
+
+  // b's count, not a's: the delta describes the window's end state, and a client that appeared or
+  // left mid-window is exactly what the caller must be able to see.
+  d.clients = b.clients;
+  d.available = true;
+  return d;
+}
+
 }

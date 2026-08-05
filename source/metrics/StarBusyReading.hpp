@@ -24,4 +24,9 @@ struct BusyReading {
   unsigned clients = 0;
 };
 
+// Difference two readings taken wallNs apart. Either endpoint being unavailable poisons the result,
+// and so does a counter that moved backwards (the client restarted): extrapolating across a reset
+// invents a delta the hardware never did.
+BusyReading busyDelta(BusyReading const& a, BusyReading const& b, int64_t wallNs);
+
 }

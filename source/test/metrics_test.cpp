@@ -42,6 +42,14 @@ public:
                       File::relativeTo(m_path, strf("{}", i)));
   }
 
+  // Verbatim file bodies, for shapes the DRM form cannot express -- an fd that is fdinfo-shaped and
+  // carries no engine line at all is exactly the case that must not read as zero busy time.
+  explicit TempFdinfoDir(List<String> const& bodies)
+    : m_path(File::temporaryDirectory()) {
+    for (size_t i = 0; i < bodies.size(); ++i)
+      File::writeFile(bodies[i], File::relativeTo(m_path, strf("{}", i)));
+  }
+
   ~TempFdinfoDir() { File::removeDirectoryRecursive(m_path); }
 
   TempFdinfoDir(TempFdinfoDir const&) = delete;
@@ -55,6 +63,12 @@ private:
 
 TempFdinfoDir makeFdinfoDir(List<pair<int64_t, int64_t>> const& fds) {
   return TempFdinfoDir(fds);
+}
+
+// Distinctly named rather than overloaded: String is constructible from a braced pair of integers,
+// so an overload set would make every existing makeFdinfoDir({{158, ...}}) call ambiguous.
+TempFdinfoDir makeRawFdinfoDir(List<String> const& bodies) {
+  return TempFdinfoDir(bodies);
 }
 
 }
@@ -75,4 +89,54 @@ TEST(ClientBusyReaderTest, SumsDistinctClients) {
   ASSERT_TRUE(r.available);
   EXPECT_EQ(r.clients, 2u);
   EXPECT_EQ(r.engineNs.get("render"), 1500);
+}
+
+// render.pass.compose.gpu_us reported 0us for its whole existence because it bracketed a conditional
+// that never ran, and an empty bracket is indistinguishable from free work. The two tests below hold
+// "could not measure" apart from "measured zero" at the reader's two failure doors, so a later
+// refactor cannot collapse the distinction by returning a default-constructed count.
+TEST(ClientBusyReaderTest, MissingProcessIsUnavailableNotZero) {
+  auto r = ClientBusyReader::read(0x7FFFFFFF);   // above pid_max on any configuration
+  EXPECT_FALSE(r.available);
+  EXPECT_FALSE(r.unavailableReason.empty());
+  EXPECT_TRUE(r.engineNs.empty());               // NOT {"render": 0}
+}
+
+TEST(ClientBusyReaderTest, NonDrmDirectoryIsUnavailableNotZero) {
+  // A real non-DRM fd: fdinfo-shaped, parses cleanly, carries no engine line.
+  auto dir = makeRawFdinfoDir({String("pos:\t0\nflags:\t0100000\n")});
+  auto r = ClientBusyReader::readFdinfoDir(dir);
+  EXPECT_FALSE(r.available);
+  EXPECT_TRUE(r.unavailableReason.contains("drm-engine")) << r.unavailableReason.utf8Ptr();
+}
+
+TEST(BusyDeltaTest, ForwardDeltaIsTheDifference) {
+  BusyReading a, b;
+  a.available = b.available = true;
+  a.clients = b.clients = 1;
+  a.engineNs["render"] = 1000;
+  b.engineNs["render"] = 3000;
+  auto d = busyDelta(a, b, 4000);
+  ASSERT_TRUE(d.available) << d.unavailableReason.utf8Ptr();
+  EXPECT_EQ(d.engineNs.get("render"), 2000);
+}
+
+// A client that exits and restarts resets its counters to zero. Differencing across that reset
+// reports a delta the hardware never did -- and a NEGATIVE one clamped to zero would read as an
+// idle GPU, which is the same "measured zero" lie as an empty bracket.
+TEST(BusyDeltaTest, BackwardsCounterIsDiscardedNotReported) {
+  BusyReading a, b;
+  a.available = b.available = true;
+  a.clients = b.clients = 1;
+  a.engineNs["render"] = 3000;
+  b.engineNs["render"] = 1000;      // client restarted
+  auto d = busyDelta(a, b, 4000);
+  EXPECT_FALSE(d.available) << "reported delta = " << d.engineNs.value("render", 0) << " ns";
+  EXPECT_TRUE(d.unavailableReason.contains("backwards")) << d.unavailableReason.utf8Ptr();
+}
+
+TEST(BusyDeltaTest, UnavailableEndpointPoisonsTheDelta) {
+  BusyReading a; a.available = true; a.clients = 1; a.engineNs["render"] = 1000;
+  auto d = busyDelta(a, BusyReading::unavailable("process exited"), 4000);
+  EXPECT_FALSE(d.available);
 }

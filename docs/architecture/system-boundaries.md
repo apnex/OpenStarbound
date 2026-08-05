@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       993 files
-      238446 lines
+      238478 lines
       6 tiers
     Content
       assets/
@@ -221,7 +221,7 @@ source/
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2     4 files       209 lines
+├── metrics/         T2     4 files       241 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,444 lines
 │   └── discord/         vendored — excluded from every count here
@@ -238,7 +238,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    13,823 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    13,887 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -281,7 +281,7 @@ flowchart TD
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
-    metrics["metrics<br/><small>4 files · 209 lines · Root×0</small>"]
+    metrics["metrics<br/><small>4 files · 241 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,444 lines · Root×0</small>"]
   end
@@ -594,7 +594,7 @@ treemap-beta
     "T2 services"
         "base": 7449
         "application": 7444
-        "metrics": 209
+        "metrics": 241
         "platform": 142
     "T3 simulation"
         "game": 115553
@@ -614,7 +614,7 @@ treemap-beta
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
 | T1 language | `core` | 216 | 56,164 | 23.6% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
-| T2 services | `metrics` | 4 | 209 | 0.1% |
+| T2 services | `metrics` | 4 | 241 | 0.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,444 | 3.1% |
 | T3 simulation | `game` | 500 | 115,553 | 48.5% |
