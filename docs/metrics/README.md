@@ -184,6 +184,22 @@ samples throughout the window and bounds the endpoint error at roughly one poll 
 discards a warm-up: the first publication after `perf_event_open` delivers everything that
 accumulated while nobody held the counter, which was **2.74 seconds of busy time** in one trace.
 
-`EngineBusyReader::open()` returns its first sample immediately and `sample()` is called only by its
-caller, so the C++ reader carries both exposures. It has no consumer today — the CLI uses the fdinfo
-reader — but anything that adopts it must poll, not bracket.
+`EngineBusyReader` carried both exposures until #234 and now carries neither. The API makes the
+correct use the only use: `open()` returns `EngineOpenResult`, a type with **no field a busy value
+could go in**, so a single read cannot be handed back; `busyOver(seconds)` is the only exit for a
+number, and it always drains the warm-up and polls the window. Every call charges its own warm-up,
+because a window's trustworthiness must not depend on what the reader did before it.
+
+The unit check reads the driver's declaration rather than guessing from the name. `actual-frequency-gt0`
+is refused because `actual-frequency-gt0.unit` contains `M`; `interrupts` is refused because it has no
+`.unit` file at all. The earlier name-suffix rule was wrong in both directions — it admitted nothing it
+should not have, but it *refused* `rc6-residency-gt0` and `software-gt-awake-time-gt0`, which are
+nanoseconds, and which the header's own doc-string had listed as events to open.
+
+**What is proven, and what is not.** The new shape agrees with the independent Python reader over
+twenty concurrent 8-second windows at 24.8–29.0% load: min 0.0039pp, median 0.0625pp, max 0.1939pp,
+0 gross outliers. What was *not* reproduced is the defect itself — neither the 2.74s catch-up nor a
+zero-advance window recurred in forty old-method windows and twelve fresh opens on the day of the fix.
+The change therefore rests on the evidence recorded when the defect was characterised, plus a fresh
+proof that the new shape is sound at the load where the old proof was invalid. It does not rest on a
+re-reproduction. The catch-up plausibly needs a longer counter dormancy than ~1.5s to appear.
