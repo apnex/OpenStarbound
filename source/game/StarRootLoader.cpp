@@ -142,7 +142,13 @@ R"JSON(
       "backdropComposeMerge" : true,
 
       "lightingGpu" : true,
-      "lightingGpuSpreadIterations" : 32,
+      // 48, not 32: the pass computes ceil(maxEmission * spreadMaxAir) iterations and a cap of 32
+      // truncated that at every emission above 1.0. MEASURED at 01-Lava Refinery -- emission peaks
+      // at 1.475, the pass asked for 48 and was granted 32, and the frozen A/B of 32-vs-48 differs on
+      // 8.8% of pixels at 1.4 of a 255 level. 48-vs-64 is byte-identical, so 48 is the converged
+      // requirement rather than a guess. Costs +47.5% of the spread pass and no measurable frame time
+      // on a GPU with headroom -- see #224 for the numbers and the caveat about weaker hardware.
+      "lightingGpuSpreadIterations" : 48,
       "lightingGpuBrightness" : 1.0,
       "lightingGpuShadowCompare" : false,
 

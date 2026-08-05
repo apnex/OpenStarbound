@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       989 files
-      238165 lines
+      238176 lines
       6 tiers
     Content
       assets/
@@ -224,15 +224,15 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,423 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,547 lines
+├── game/            T3   500 files   115,553 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,773 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     4,448 lines
+├── rendering/       T4    23 files     4,451 lines
 ├── windowing/       T4    61 files     9,646 lines
-├── frontend/        T4   102 files    16,861 lines
+├── frontend/        T4   102 files    16,863 lines
 ├── client/          T5     4 files     2,509 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
@@ -285,13 +285,13 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,547 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,553 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 4,448 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 4,451 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
-    frontend["frontend<br/><small>102 files · 16,861 lines · Root×200</small>"]
+    frontend["frontend<br/><small>102 files · 16,863 lines · Root×200</small>"]
   end
   subgraph T5["T5 shells"]
     direction LR
@@ -586,11 +586,11 @@ treemap-beta
         "application": 7423
         "platform": 142
     "T3 simulation"
-        "game": 115547
+        "game": 115553
     "T4 presentation"
-        "frontend": 16861
+        "frontend": 16863
         "windowing": 9646
-        "rendering": 4448
+        "rendering": 4451
     "T5 shells"
         "client": 2509
         "server": 783
@@ -605,10 +605,10 @@ treemap-beta
 | T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,423 | 3.1% |
-| T3 simulation | `game` | 500 | 115,547 | 48.5% |
-| T4 presentation | `rendering` | 23 | 4,448 | 1.9% |
-| T4 presentation | `windowing` | 61 | 9,646 | 4.1% |
-| T4 presentation | `frontend` | 102 | 16,861 | 7.1% |
+| T3 simulation | `game` | 500 | 115,553 | 48.5% |
+| T4 presentation | `rendering` | 23 | 4,451 | 1.9% |
+| T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
+| T4 presentation | `frontend` | 102 | 16,863 | 7.1% |
 | T5 shells | `client` | 4 | 2,509 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
@@ -831,9 +831,9 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 4,448 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 4,451 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
-| `frontend` | 102 | 16,861 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
+| `frontend` | 102 | 16,863 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 
 **Two draw paths, not one.** `windowing/StarGuiContext.hpp` holds its own `RendererPtr` alongside a `TextPainterPtr`, `DrawablePainterPtr` and `AssetTextureGroupPtr`. So the frame reaches the GPU twice over: the world through `WorldPainter` and the L3 passes, and the interface through `GuiContext` and the painters. That single file is the entire `windowing → rendering` edge.
 

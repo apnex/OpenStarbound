@@ -37,7 +37,10 @@ struct LightmapParams {
   PointParameters point;
   // Upper bound on the auto-scaled Jacobi iteration count (`lightingGpuSpreadIterations`). A cap of 0
   // disables the pass via the size/iterations early-out -- preserved deliberately, not incidentally.
-  unsigned spreadIterationCap = 64;
+  // Matches the declared default in StarRootLoader, which is authoritative -- WorldPainter always
+  // supplies this field via getOrDefault, so this initializer governs only a construction that omits
+  // it. It disagreed (64 vs 32) for as long as both existed; keeping them equal costs nothing.
+  unsigned spreadIterationCap = 48;
   bool shadowCompare = false;
   float brightnessScale = 1.0f;
   bool tonemap = false;

@@ -763,7 +763,9 @@ String ClientCommandProcessor::lighting(String const& argumentsString) {
     return strf("lighting gpu: enabled={} shadowCompare={} spreadIterations(cap)={} brightness={} | promoteDynamic={} promoteMinIntensity={} tonemap={}",
       cfg->get("lightingGpu", false).toBool(),
       cfg->get("lightingGpuShadowCompare", false).toBool(),
-      cfg->get("lightingGpuSpreadIterations", 64).toUInt(),
+      // getOrDefault, so the STATUS LINE cannot disagree with what the renderer actually reads. The
+      // literal 64 that was here was a fourth undeclared default for a knob that already has one.
+      cfg->getOrDefault("lightingGpuSpreadIterations").toUInt(),
       cfg->get("lightingGpuBrightness", 1.0f).toFloat(),
       pdf,
       cfg->get("lightingPromoteMinIntensity", 0.1f).toFloat(),
