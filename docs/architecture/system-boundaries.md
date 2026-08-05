@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      995 files
-      238712 lines
+      996 files
+      238902 lines
       6 tiers
     Content
       assets/
@@ -184,7 +184,7 @@ mindmap
     Toolchain
       cmake/vcpkg
       37 build files
-      12 declared binaries
+      13 declared binaries
     Instruments
       scripts/ + tests
       35 scripts
@@ -221,7 +221,7 @@ source/
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2     6 files       475 lines
+├── metrics/         T2     7 files       665 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,444 lines
 │   └── discord/         vendored — excluded from every count here
@@ -281,7 +281,7 @@ flowchart TD
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
-    metrics["metrics<br/><small>6 files · 475 lines · Root×0</small>"]
+    metrics["metrics<br/><small>7 files · 665 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,444 lines · Root×0</small>"]
   end
@@ -350,7 +350,12 @@ flowchart TD
     direction LR
     json_tool(["json_tool"])
   end
-  subgraph S1["shell 1 — base + core + extern"]
+  subgraph S1["shell 1 — core + extern + metrics"]
+    direction LR
+    metrics(["metrics"])
+  end
+  S0 -.->|adds metrics| S1
+  subgraph S2["shell 2 — base + core + extern"]
     direction LR
     asset_packer(["asset_packer"])
     asset_unpacker(["asset_unpacker"])
@@ -358,28 +363,28 @@ flowchart TD
     mod_uploader(["mod_uploader"])
     render_surface_tests(["render_surface_tests"])
   end
-  S0 -.->|adds base| S1
-  subgraph S2["shell 2 — base + core + extern + game"]
+  S1 -.->|adds base| S2
+  subgraph S3["shell 3 — base + core + extern + game"]
     direction LR
     dump_versioned_json(["dump_versioned_json"])
     game_tests(["game_tests"])
     make_versioned_json(["make_versioned_json"])
     starbound_server(["starbound_server"])
   end
-  S1 -.->|adds game| S2
-  subgraph S3["shell 3 — base + core + extern + metrics"]
+  S2 -.->|adds game| S3
+  subgraph S4["shell 4 — base + core + extern + metrics"]
     direction LR
     core_tests(["core_tests"])
   end
-  S2 -.->|adds metrics| S3
-  subgraph S4["shell 4 — application + base + core + extern + frontend + game + rendering + windowing"]
+  S3 -.->|adds metrics| S4
+  subgraph S5["shell 5 — application + base + core + extern + frontend + game + rendering + windowing"]
     direction LR
     starbound(["starbound"])
   end
-  S3 -.->|adds application, frontend, game, rendering, windowing| S4
+  S4 -.->|adds application, frontend, game, rendering, windowing| S5
 ```
 
-12 declared executables fall into **5 distinct link sets**, and they are **not strictly nested** -- see the exceptions above. Each shell is what ships without everything below it: the existence of `starbound_server` is the proof that game↔presentation is a primary boundary, and nothing in this tree proves any boundary *within* presentation, because those four libraries appear together in exactly one binary.
+13 declared executables fall into **6 distinct link sets**, and they are **not strictly nested** -- see the exceptions above. Each shell is what ships without everything below it: the existence of `starbound_server` is the proof that game↔presentation is a primary boundary, and nothing in this tree proves any boundary *within* presentation, because those four libraries appear together in exactly one binary.
 <!-- END GENERATED: shells -->
 
 `starbound_server` is the whole argument for game↔presentation being a primary boundary: the simulation
@@ -401,7 +406,7 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 ```mermaid
 flowchart LR
   base ==>|94 in 28| core
-  metrics -->|8 in 4| core
+  metrics -->|13 in 5| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
@@ -463,9 +468,9 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → core` | 14 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
 | `server → base` | 4 | 4 | thin |
-| `metrics → core` | 8 | 4 | thin |
 | `server → game` | 8 | 4 | thin |
 | `rendering → base` | 7 | 5 | thin |
+| `metrics → core` | 13 | 5 | thin |
 | `server → core` | 25 | 7 | thin |
 | `frontend → rendering` | 9 | 9 | thin |
 | `rendering → application` | 9 | 9 | thin |
@@ -556,10 +561,10 @@ rendering,game,24
 windowing,base,19
 client,game,18
 client,core,14
+metrics,core,13
 client,frontend,11
 rendering,application,9
 frontend,rendering,9
-metrics,core,8
 application,platform,8
 server,game,8
 rendering,base,7
@@ -594,7 +599,7 @@ treemap-beta
     "T2 services"
         "base": 7449
         "application": 7444
-        "metrics": 475
+        "metrics": 665
         "platform": 142
     "T3 simulation"
         "game": 115553
@@ -614,7 +619,7 @@ treemap-beta
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
 | T1 language | `core` | 216 | 56,164 | 23.5% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
-| T2 services | `metrics` | 6 | 475 | 0.2% |
+| T2 services | `metrics` | 7 | 665 | 0.3% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,444 | 3.1% |
 | T3 simulation | `game` | 500 | 115,553 | 48.4% |
@@ -661,7 +666,7 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, metrics, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [27, 3, 17, 25, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [27, 3, 17, 20, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
@@ -669,7 +674,7 @@ xychart-beta
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
 | `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
-| `metrics` | 4 | 2 | 1 | 25% | 1 | n/a — too small |
+| `metrics` | 5 | 5 | 1 | 20% | 1 | n/a — too small |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |
