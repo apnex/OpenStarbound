@@ -1,4 +1,5 @@
 #include "StarClientBusyReader.hpp"
+#include "StarEngineBusyReader.hpp"
 #include "StarMetricSample.hpp"
 
 #include "StarFile.hpp"
@@ -139,4 +140,33 @@ TEST(BusyDeltaTest, UnavailableEndpointPoisonsTheDelta) {
   BusyReading a; a.available = true; a.clients = 1; a.engineNs["render"] = 1000;
   auto d = busyDelta(a, BusyReading::unavailable("process exited"), 4000);
   EXPECT_FALSE(d.available);
+}
+
+// Runs on any machine. Either the PMU opens and reports, or it declines with a reason naming why.
+// What it must NEVER do is report a number it did not obtain.
+TEST(EngineBusyReaderTest, EitherReadsOrExplainsItself) {
+  EngineBusyReader reader;
+  auto r = reader.open("rcs0-busy");
+  if (!r.available) {
+    EXPECT_FALSE(r.unavailableReason.empty());
+    EXPECT_TRUE(r.unavailableReason.contains("perf_event") ||
+                r.unavailableReason.contains("i915"))
+        << r.unavailableReason.utf8Ptr();
+  } else {
+    EXPECT_TRUE(r.engineNs.contains("rcs0"));
+  }
+}
+
+TEST(EngineBusyReaderTest, UnknownEventIsUnavailable) {
+  EngineBusyReader reader;
+  auto r = reader.open("no-such-event");
+  EXPECT_FALSE(r.available);
+  EXPECT_FALSE(r.unavailableReason.empty());
+}
+
+TEST(EngineBusyReaderTest, SampleBeforeOpenIsUnavailable) {
+  EngineBusyReader reader;
+  auto r = reader.sample();
+  EXPECT_FALSE(r.available);
+  EXPECT_FALSE(r.unavailableReason.empty());
 }

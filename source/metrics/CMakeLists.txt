@@ -7,11 +7,13 @@ INCLUDE_DIRECTORIES (
 SET (star_metrics_HEADERS
     StarBusyReading.hpp
     StarClientBusyReader.hpp
+    StarEngineBusyReader.hpp
     StarMetricSample.hpp
   )
 
 SET (star_metrics_SOURCES
     StarClientBusyReader.cpp
+    StarEngineBusyReader.cpp
   )
 
 # OBJECT, like star_core and star_base: consumers name $<TARGET_OBJECTS:star_metrics> in their
