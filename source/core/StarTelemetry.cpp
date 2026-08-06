@@ -365,6 +365,38 @@ namespace {
     }
     return "call";
   }
+  // TABLES WITH A static_assert, following ownerName's precedent rather than domainName's. The switch
+  // form's fallback is silent: add an enumerator, forget the case, and the metric reports "undeclared"
+  // forever while looking declared. For UNIT that is not a safe fallback the way cadence's "call" is --
+  // a nanosecond metric mis-reported as undeclared is read as microseconds by a consumer that hardcodes
+  // them, which is the 1000x defect this field exists to end.
+  char const* unitName(MetricUnit u) {
+    static char const* const names[] = {"undeclared", "ns", "us", "bytes", "kib", "count", "ratio", "hz"};
+    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricUnit::Hertz + 1,
+                  "MetricUnit gained an enumerator and unitName was not updated");
+    return names[(size_t)u];
+  }
+  char const* clockName(MetricClock c) {
+    static char const* const names[] = {"undeclared", "n/a", "wall", "thread_cpu", "process_cpu",
+                                        "gpu_engine", "gpu_timeline"};
+    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricClock::GpuTimeline + 1,
+                  "MetricClock gained an enumerator and clockName was not updated");
+    return names[(size_t)c];
+  }
+  char const* sourceName(MetricSource s) {
+    static char const* const names[] = {"undeclared", "in_process", "procfs", "sysfs", "perf_event",
+                                        "gl_query"};
+    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricSource::GlQuery + 1,
+                  "MetricSource gained an enumerator and sourceName was not updated");
+    return names[(size_t)s];
+  }
+  char const* boundednessName(MetricBoundedness b) {
+    static char const* const names[] = {"undeclared", "monotonic", "level", "high_water_mark"};
+    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricBoundedness::HighWaterMark + 1,
+                  "MetricBoundedness gained an enumerator and boundednessName was not updated");
+    return names[(size_t)b];
+  }
+
   char const* roleName(MetricRole r) {
     switch (r) {
       case MetricRole::Detail: return "detail";
@@ -455,9 +487,19 @@ Json Telemetry::snapshot() {
       {"owner", Json(String(ownerName(n->desc.owner)))},
       {"cadence", Json(String(cadenceName(n->desc.cadence)))},
       {"role", Json(String(roleName(n->desc.role)))},
+      {"unit", Json(String(unitName(n->desc.unit)))},
+      {"clock", Json(String(clockName(n->desc.clock)))},
+      {"source", Json(String(sourceName(n->desc.source)))},
+      {"boundedness", Json(String(boundednessName(n->desc.boundedness)))},
       {"descConflict", Json(n->descConflict)},
       {"typeConflict", Json(n->typeConflict)}
     };
+    // ABSENT, not empty. A key that is missing says "nobody declared this"; a key present as "" says
+    // "somebody declared nothing", and those are different facts. The ratchet that counts undeclared
+    // descriptors has to be able to tell them apart.
+    if (n->desc.measures) m["measures"] = Json(String(n->desc.measures));
+    if (n->desc.validWhen) m["validWhen"] = Json(String(n->desc.validWhen));
+    if (n->desc.whole) m["whole"] = Json(String(n->desc.whole));
     if (n->type == MetricType::Counter) {
       m["value"] = Json((uint64_t)n->counter.load(std::memory_order_relaxed));
     } else if (n->type == MetricType::Gauge) {
@@ -503,7 +545,7 @@ Json Telemetry::snapshot() {
   }
 
   return JsonObject{
-    {"meta", JsonObject{{"schema", Json((uint64_t)3)}}},
+    {"meta", JsonObject{{"schema", Json((uint64_t)4)}}},
     {"owners", std::move(owners)},
     {"metrics", std::move(metrics)}
   };

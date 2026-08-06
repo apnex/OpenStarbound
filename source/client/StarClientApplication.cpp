@@ -637,7 +637,7 @@ void ClientApplication::render() {
     }();
     if (!skipInterface) {
       renderer->gpuTimer().begin("render.pass.interface.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
       if (uiMask & 1) m_mainInterface->renderInWorldElements();
       if (uiMask & 2) m_mainInterface->render();
       if (uiMask & 4) m_cinematicOverlay->render();

@@ -168,8 +168,8 @@ mindmap
   root((OpenStarbound))
     Engine
       source/
-      996 files
-      239172 lines
+      997 files
+      239324 lines
       6 tiers
     Content
       assets/
@@ -217,7 +217,7 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   216 files    56,196 lines
+├── core/            T1   217 files    56,348 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
@@ -238,7 +238,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    13,994 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    14,037 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -276,7 +276,7 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>216 files · 56,196 lines · Root×0</small>"]
+    core["core<br/><small>217 files · 56,348 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
@@ -595,7 +595,7 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56196
+        "core": 56348
     "T2 services"
         "application": 7455
         "base": 7449
@@ -617,7 +617,7 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
-| T1 language | `core` | 216 | 56,196 | 23.5% |
+| T1 language | `core` | 217 | 56,348 | 23.5% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `metrics` | 7 | 847 | 0.4% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
@@ -625,7 +625,7 @@ treemap-beta
 | T3 simulation | `game` | 500 | 115,589 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,500 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
-| T4 presentation | `frontend` | 102 | 16,863 | 7.1% |
+| T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
 | T5 shells | `client` | 4 | 2,509 | 1.0% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
@@ -672,7 +672,7 @@ xychart-beta
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
-| `core` | 154 | 473 | 5 | 3% | 1 | yes, freely |
+| `core` | 155 | 474 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
 | `metrics` | 5 | 5 | 1 | 20% | 1 | n/a — too small |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |

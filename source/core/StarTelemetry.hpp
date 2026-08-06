@@ -2,59 +2,15 @@
 #define STAR_TELEMETRY_HPP
 
 #include "StarString.hpp"
+#include "StarMetricDesc.hpp"
 #include "StarJson.hpp"
 
 namespace Star {
 
 struct MetricNode; // defined in the .cpp
 
-// WHAT A METRIC IS, declared once at registration and never inferred at sample time.
-//
-// Inference is not merely inconvenient here, it is WRONG: GPU query results are read back and recorded by the
-// MAIN thread several frames after the GPU did the work -- see OpenGlRenderer::GlGpuTimer, which polls a
-// rotating query ring via glGetQueryObjectuiv(GL_QUERY_RESULT_AVAILABLE). Stamping the recording thread, the
-// obvious design, would therefore label every GPU sample as CPU/main. Declaration is both correct and
-// cheaper, costing nothing on the sampling path.
-enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
-
-// The LOGICAL budget a sample belongs to -- deliberately not an OS thread. WorldClient::lightingCalc() runs on
-// its own thread or inline on the main thread depending on WorldClient::m_asyncLighting (set by
-// setAsyncLighting); it belongs to the `Lighting` budget either way. "Which budget does this cost land in"
-// was always the question; "which thread ran it" never was.
-// Count is a SENTINEL, not an owner. It exists so ownerName() can be a table with a static_assert on its
-// size, which makes "added an owner, forgot to name it" a COMPILE ERROR rather than a silent one. The
-// switch it replaced compiled clean with a case missing: -Wswitch warns, but this build has no -Werror and
-// the warning drowns in the output. That mattered more here than for the other three descriptor enums,
-// because ownerName's fallback was "unknown" -- which silently drops the metric out of its owner's budget
-// and quietly under-reports the whole. (domain/cadence/role keep their switches on purpose: their
-// fallbacks are deliberately SAFE -- cadence falls back to "call", which is unscaled and cannot inflate,
-// and role to "detail", which is excluded from sums and so under-counts rather than over-counts.)
-// Keep Count last; nothing may be added after it.
-enum class MetricOwner : uint8_t { Unknown, Frame, Gl, Sim, Lighting, Process, Count };
-
-// Which of the owner's tick counters this metric's count is checked against. NOT used to compute per-frame
-// cost -- that is always total / frames. Cadence exists so a gated pass sampling 60% of frames is reported as
-// 60% COVERAGE rather than mistaken for a metric that is 40% broken.
-enum class MetricCadence : uint8_t { Call, Frame, Tick, Recompute };
-
-// Whether this metric is a whole, a part of a whole, or neither.
-//   Total  -- IS the owner's whole; excluded from the sum of parts.
-//   Budget -- a part; sums with its siblings and must close against the owner's Total.
-//   Detail -- nested inside a Budget part; never summed. render.frame.us and render.interface.us both nest
-//             inside cpu.frame.render.us, so summing all three would double-count.
-enum class MetricRole : uint8_t { Detail, Budget, Total };
-
-struct MetricDesc {
-  MetricDomain domain = MetricDomain::Unknown;
-  MetricOwner owner = MetricOwner::Unknown;
-  MetricCadence cadence = MetricCadence::Call;
-  MetricRole role = MetricRole::Detail;
-};
-
-inline bool operator==(MetricDesc const& a, MetricDesc const& b) {
-  return a.domain == b.domain && a.owner == b.owner && a.cadence == b.cadence && a.role == b.role;
-}
-inline bool operator!=(MetricDesc const& a, MetricDesc const& b) { return !(a == b); }
+// The descriptor vocabulary moved to StarMetricDesc.hpp so the sovereign metrics/ component can
+// share it without pulling in this registry. Same types, same meaning, one home.
 
 // Cheap value handles. Hold a stable MetricNode* (see registry storage). Lock-free relaxed ops.
 class TelemetryCounter {

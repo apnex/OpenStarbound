@@ -1183,7 +1183,7 @@ void OpenGlRenderer::startFrame() {
   // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
   m_gpuTimer.begin("render.frame.clear.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
 
   // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for the raw face ids.
   m_targets.clearAll();
@@ -1870,7 +1870,7 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 // it was part of the 1.8-3.5ms/frame the whole-frame span proved was unaccounted for (task #141).
 void OpenGlRenderer::blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt) {
   m_gpuTimer.begin("render.frame.blit.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
 
   auto& size = m_screenSize;
   // useAlt: the caller is a double-buffered effect, so it wants the face it is NOT writing -- the one that

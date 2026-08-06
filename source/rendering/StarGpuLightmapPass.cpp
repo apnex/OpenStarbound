@@ -148,7 +148,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // cadence=Recompute: this fires per lightmap recompute, not per frame, so its COUNT is checked
   // against recomputes, not frames. Same for point/compose/upscale below.
   m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
   if (packedEmission) {
     m_emissionRGBA.resize(texels * 4);
     for (size_t i = 0; i < texels; ++i) {
@@ -240,7 +240,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
     m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
@@ -305,7 +305,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
   m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
      {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
@@ -324,7 +324,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
     m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
     m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));

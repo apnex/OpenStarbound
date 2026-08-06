@@ -43,10 +43,53 @@ TEST(Telemetry, SnapshotEmitsCountersAndGaugesBuckets) {
   Json snap = Telemetry::snapshot();
   EXPECT_EQ(snap.getObject("metrics").get("test.counter.x").getUInt("value"), 7u);
   EXPECT_EQ(snap.getObject("metrics").get("test.gauge.y").getInt("value"), 42);
-  // 3, not 2: the owners block gained per-DOMAIN totals. The bump is the point -- telemetry-window.py
-  // refuses a schema it does not recognise rather than mis-windowing, and a whole keyed by owner alone
-  // would have divided cpu-domain parts by a GPU span.
-  EXPECT_EQ(snap.get("meta").getUInt("schema"), 3u);
+  // 4, not 3: every metric now carries unit/clock/source/boundedness, plus measures/validWhen/whole when
+  // declared. The bump is the point -- telemetry-window.py refuses a schema it does not recognise rather
+  // than mis-windowing. (3 was the per-DOMAIN totals; a whole keyed by owner alone had been dividing
+  // cpu-domain parts by a GPU span.)
+  EXPECT_EQ(snap.get("meta").getUInt("schema"), 4u);
+}
+
+// THE DESCRIPTOR CONVERGENCE, asserted at the wire rather than in the struct. A field that exists in
+// MetricDesc but never reaches a snapshot is invisible to every consumer, which is the same shape as a
+// counter that never registers: present in the source, absent from the evidence.
+TEST(Telemetry, SnapshotCarriesTheFullDescriptor) {
+  Telemetry::reset();
+  Telemetry::counter("test.desc.full", MetricDesc{
+    MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget,
+    MetricUnit::Nanoseconds, MetricClock::ThreadCpu, MetricSource::ProcFs,
+    MetricBoundedness::Monotonic,
+    "CPU time in the tile gather", "always", "lighting.cpu.total.us"}).inc(1);
+
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.full");
+  EXPECT_EQ(m.getString("unit"), "ns");
+  EXPECT_EQ(m.getString("clock"), "thread_cpu");
+  EXPECT_EQ(m.getString("source"), "procfs");
+  EXPECT_EQ(m.getString("boundedness"), "monotonic");
+  // Stated as LITERALS, not built from the same helper as the code under test. A fixture that shares the
+  // construction shape cannot catch a transposition of these two adjacent same-typed fields -- which is
+  // the one hazard the struct still has, every other field being a distinct enum type.
+  EXPECT_EQ(m.getString("measures"), "CPU time in the tile gather");
+  EXPECT_EQ(m.getString("validWhen"), "always");
+  EXPECT_EQ(m.getString("whole"), "lighting.cpu.total.us");
+}
+
+// ABSENT, NOT EMPTY. A key missing from the snapshot says "nobody declared this"; a key present as ""
+// says "somebody declared nothing". The ratchet that counts undeclared descriptors has to tell them
+// apart, so an undeclared prose field must not materialise as an empty string.
+TEST(Telemetry, UndeclaredProseFieldsAreAbsentNotEmpty) {
+  Telemetry::reset();
+  Telemetry::counter("test.desc.bare",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail}).inc(1);
+
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.bare");
+  EXPECT_FALSE(m.contains("measures"));
+  EXPECT_FALSE(m.contains("validWhen"));
+  EXPECT_FALSE(m.contains("whole"));
+  // The enums DO materialise, because Undeclared is a real value meaning "nobody has said yet" and the
+  // ratchet counts it. Silence and an explicit "undeclared" are different facts too.
+  EXPECT_EQ(m.getString("clock"), "undeclared");
+  EXPECT_EQ(m.getString("unit"), "undeclared");
 }
 
 TEST(Telemetry, ResetZeroesAllMetrics) {

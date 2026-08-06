@@ -53,7 +53,7 @@ void WorldPass::renderWorld(WorldCamera const& camera, Input in) {
   // unrepresentable: there is no longer a separate declare statement that a branch or a config flag could
   // route around.
   m_renderer->gpuTimer().begin("render.pass.world.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : in.entityDrawables) {
     for (auto& p : ed.layers)

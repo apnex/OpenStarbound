@@ -320,7 +320,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0) {
     m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Budget});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
     m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
   }

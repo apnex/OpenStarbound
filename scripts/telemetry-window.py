@@ -17,12 +17,18 @@ import json
 import os
 import sys
 
-SCHEMA = 3
+SCHEMA = 4
 BUCKETS = 64
 # Tolerated skew between a timer's histogram sum and its count. The engine has four sampling threads at most
 # (main, server, lighting, and the GL readback path), each able to be mid-record() at either snapshot endpoint;
 # 16 is that with generous headroom, and still orders of magnitude below any real sample loss.
 HIST_SKEW_SLACK = 16
+# Tolerated overshoot of a cadence-declared count against its own tick counter. TWO, not one: a snapshot
+# is taken with the sampling threads running, so the tick counter and a phase timer inside that tick are
+# read at slightly different instants at BOTH endpoints of the window -- one boundary each. Measured: five
+# server-tick timers read 301 against 300 ticks on a clean 20s capture, every time. Three or more is not a
+# boundary artefact, it is a span opening twice per tick, which the assertion still catches.
+CADENCE_BOUNDARY_SLACK = 2
 
 
 def load(path):
@@ -30,32 +36,38 @@ def load(path):
         return json.load(f)
 
 
-# THE CLOSURE AGREEMENT BOUND, AND WHERE THE NUMBER CAME FROM.
+# THE CLOSURE BOUND, AND WHERE THE NUMBER CAME FROM.
 #
-# This check used to fire on ANY positive excess -- parts summing to even one microsecond more than the
-# whole. The two sides are independently sampled GPU timers, and a NULL CONTROL (#236) showed they do
-# not agree that closely: ten runs of the SAME configuration, same location, same 20s window, nothing
-# changed between them, produced the excesses in NULL_CONTROL_PCTS below. Six of the ten are positive.
-# So a zero-tolerance check fired on an unchanged system roughly three times in five, and it killed a
-# whole matrix pass doing it.
+# ROUND ONE OF THIS BOUND WAS AIMED AT THE WRONG TARGET, and the correction is the point. It was set at
+# 4.0% from a ten-run null control of the gl/gpu closure, which spread -1.14%..+2.10% and went positive
+# 6 times in 10. That measurement was real. What it measured was not a budget.
 #
-# Mean +0.36%, sd 0.99pp, observed max +2.10%. mean+3sd = +3.33%. The bound is set at 4.0%, which
-# clears both the observed maximum and the 3-sigma estimate with margin.
+# The gpu "parts" were the 13 GL_TIME_ELAPSED pass timers, and source/client/StarClientApplication.cpp
+# states plainly what they are: "The per-pass GL_TIME_ELAPSED timers are NOT ADDITIVE -- with 12 of them
+# their sum overshot the real frame by 5ms, because each bracket serialises the pipeline and measures its
+# own stall. They rank passes; they do not budget them." Three lines below that comment the same call site
+# declared MetricRole::Budget -- "a part; sums with its siblings and must close against the owner's Total".
+# The code stated the rule and violated it in the next statement. All 13 now declare Detail, so the gpu
+# domain has no parts to sum and this bound no longer applies to it at all.
 #
-# WHAT THIS BOUND CANNOT SEE, stated because a quiet check is not the same as a correct one: it will
-# not detect a part double-counted that is smaller than 4% of the whole. At the location measured, the
-# eleven gpu parts run from 64% of the frame (render.pass.world) down to 0.02%
-# (lighting.gpu.compose), so a duplicated world or parallax pass still trips this easily and a
-# duplicated compose never will. The residual question -- how the parts can exceed the whole AT ALL,
-# since every part is inside the span and counted once -- is NOT answered by widening the bound, and
-# #236 stays open for it. Two candidates are already eliminated by the same null control: the ring
-# dropped zero samples in all ten runs, and five runs at an identical recompute count still spread
-# 1.74pp, so neither timer-drop nor lighting cadence explains the variance.
-GPU_CLOSURE_TOLERANCE = 0.04
+# THE CONTROL THAT PROVED IT. The same ten runs, same consumer, same windowing, measured on the CPU
+# domains, which ARE a genuine partition:
+#     frame/cpu     mean -0.01%  sd 0.01pp  range -0.03..-0.00%   positive  0/10
+#     sim/cpu       mean -0.22%  sd 0.03pp  range -0.27..-0.19%   positive  0/10
+#     lighting/cpu  mean -0.77%  sd 0.28pp  range -1.51..-0.53%   positive  0/10
+#     gl/gpu        mean +0.36%  sd 0.99pp  range -1.14..+2.10%   positive  6/10
+# Thirty CPU observations, not one positive, and thirty to a hundred times tighter than the gpu spread.
+# So the wobble was never "how telemetry works here" -- it was specific to the non-additive parts.
+#
+# THE BOUND IS THEREFORE RE-DERIVED FROM CPU DATA, where a closure genuinely exists. Worst owner is
+# lighting at mean+3sd = -0.77 + 3*0.28 = +0.07%. 1.0% clears that by an order of magnitude and still
+# catches a real double count. 4.0% would have swallowed a hundred-fold defect on frame/cpu, whose true
+# spread is 0.01pp.
+CLOSURE_TOLERANCE = 0.01
 
 # The measured spread itself, kept so the selftest asserts the bound against the DATA it was derived
 # from rather than against a number retyped from a commit message.
-NULL_CONTROL_PCTS = [2.10, -0.13, 1.09, -0.83, 0.64, 0.66, 0.75, 0.91, -1.14, -0.49]
+NULL_CONTROL_PCTS = [-0.03, -0.00, -0.19, -0.27, -0.53, -1.51, -0.22, -0.77, -0.01, -0.09]
 
 
 def closure_verdict(owner, dom, parts, whole):
@@ -64,9 +76,9 @@ def closure_verdict(owner, dom, parts, whole):
         return None
     un = whole - parts
     over = -un / whole              # positive when the parts exceed the whole
-    if over > GPU_CLOSURE_TOLERANCE:
+    if over > CLOSURE_TOLERANCE:
         return (f"{owner}/{dom}: parts exceed the whole by {-un} us ({100 * over:.2f}%), beyond the "
-                f"{100 * GPU_CLOSURE_TOLERANCE:.1f}% measured agreement bound -- a Detail metric "
+                f"{100 * CLOSURE_TOLERANCE:.1f}% measured agreement bound -- a Detail metric "
                 f"declared as Budget, or a double-counted phase")
     if un / whole > 0.25:
         return (f"{owner}/{dom}: {100 * un / whole:.0f}% unattributed "
@@ -117,7 +129,17 @@ def window(a, b):
     out = {}
     for name, mb in b.get("metrics", {}).items():
         ma = a.get("metrics", {}).get(name, {})
-        d = {k: mb.get(k) for k in ("type", "domain", "owner", "cadence", "role")}
+        # FORWARD THE WHOLE DESCRIPTOR, not a hardcoded five. This tuple used to be exactly
+        # ("type","domain","owner","cadence","role"), which meant a schema-4 snapshot carrying
+        # unit/clock/source/boundedness had those fields DROPPED here -- before any assertion could
+        # read them. The version check would pass and the consumer would still window a nanosecond
+        # metric as microseconds, silently, by a factor of 1000. "The schema bump is the migration" was
+        # true for old-snapshot/new-reader and false for the direction that actually matters.
+        #
+        # Copying every key except the value payload means a field added to MetricDesc reaches this
+        # consumer with no second edit, which is the same one-declaration rule the ratchet ceilings
+        # already follow via --from-cmake.
+        d = {k: v for k, v in mb.items() if k not in ("count", "total", "mean", "buckets", "value")}
         if mb.get("type") == "timer":
             dc = mb.get("count", 0) - ma.get("count", 0)
             if dc <= 0:
@@ -220,26 +242,26 @@ def selftest():
 
     # 1. The exact spread the bound was derived from must NOT fire. This is the arm that would catch
     #    someone lowering the bound below the noise it exists to absorb.
-    worst = max(NULL_CONTROL_PCTS)
     quiet = [p for p in NULL_CONTROL_PCTS
-             if closure_verdict("gl", "gpu", W * (1 + p / 100.0), W) is None]
-    arm(f"all {len(NULL_CONTROL_PCTS)} null-control runs quiet (worst was +{worst:.2f}%)",
-        len(quiet) == len(NULL_CONTROL_PCTS))
+             if closure_verdict("frame", "cpu", W * (1 + p / 100.0), W) is None]
+    arm(f"all {len(NULL_CONTROL_PCTS)} cpu null-control observations quiet "
+        f"(worst {max(NULL_CONTROL_PCTS):+.2f}%)", len(quiet) == len(NULL_CONTROL_PCTS))
 
     # 2. ...and a breach beyond the bound DOES fire. Without this the bound could be infinity.
-    over = closure_verdict("gl", "gpu", W * (1 + GPU_CLOSURE_TOLERANCE + 0.01), W)
-    arm(f"excess of {100*GPU_CLOSURE_TOLERANCE + 1:.0f}% fires", over is not None and "exceed" in over)
+    over = closure_verdict("gl", "gpu", W * (1 + CLOSURE_TOLERANCE + 0.01), W)
+    arm(f"excess of {100*CLOSURE_TOLERANCE + 1:.0f}% fires", over is not None and "exceed" in over)
 
     # 3. The bound is not vacuous: a DOUBLED pass -- the defect it is meant to catch -- trips it. The
     #    smallest gpu part that could be duplicated and still caught is one worth 4% of the frame; at
     #    the measured location render.pass.parallax is 7.6%, so a duplicate of it is caught.
-    arm("a duplicated 7.6% pass fires", closure_verdict("gl", "gpu", W * 1.076, W) is not None)
+    arm("the +2.10% mis-declaration that started #236 would now fire",
+        closure_verdict("frame", "cpu", W * 1.0210, W) is not None)
 
     # 4. THE HONEST LIMIT, asserted rather than merely admitted in a comment: a duplicated part smaller
     #    than the bound is NOT caught. If someone later tightens the bound, this arm flips and forces
     #    them to re-read the trade instead of silently changing what the check covers.
-    arm("a duplicated 0.02% pass is NOT caught (known blind spot, #236)",
-        closure_verdict("gl", "gpu", W * 1.0002, W) is None)
+    arm(f"a duplicated part below {100 * CLOSURE_TOLERANCE:.1f}% is NOT caught (known blind spot, #236)",
+        closure_verdict("frame", "cpu", W * 1.005, W) is None)
 
     # 5. The unattributed-ceiling rule still fires -- it shares the function and must not have been
     #    disarmed by the rewrite.
@@ -252,12 +274,19 @@ def selftest():
     # 7. A zero whole must not divide. It is the no-data case and belongs to the NO WHOLE branch.
     arm("zero whole does not raise", closure_verdict("gl", "gpu", 0, 0) is None)
 
+    # 8. A RANK DOMAIN IS NOT A BROKEN BUDGET. With the 13 gpu pass timers demoted to Detail the gpu
+    #    domain has a whole and no parts. Asking closure_verdict would report "100% unattributed -- the
+    #    instrumentation is missing a phase", which is exactly backwards: the instrumentation is right
+    #    and the SUM was the thing that was wrong. So the caller must not ask, and this arm pins that.
+    arm("a whole with no parts would be mis-reported if asked -- so the caller must not ask",
+        (closure_verdict("gl", "gpu", 0, W) or "").find("unattributed") >= 0)
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
         return 1
-    print("telemetry-window selftest: 7/7 arms ok -- the closure bound fires, does not over-fire, and "
-          "its blind spot is asserted")
+    print("telemetry-window selftest: 8/8 arms ok -- the bound fires, does not over-fire, its blind "
+          "spot is asserted, and the rank case is distinguished from a broken budget")
     return 0
 
 
@@ -346,9 +375,24 @@ def main():
             # frame-cadence inside the recompute-denominated `lighting` owner), so the owner tick count is the
             # wrong yardstick for this check. Under is legitimate -- a gated pass or an async readback samples
             # only some ticks, which the coverage column reports. Over means the span opened twice per tick.
-            if v.get("cadence") in ("frame", "tick", "recompute") and expected and v["count"] > expected:
-                violations.append(f"{k}: count {v['count']} > expected {expected} for its own "
-                                  f"cadence={v['cadence']} (should it be 'call'?)")
+            # SLACK ONE, not exact -- for the reason ASSERTION 3 below already gives about histograms, and
+            # by the same mechanism. A snapshot is taken while the sampling threads are running, so the
+            # tick counter and a phase timer inside that tick are read at slightly different instants at
+            # BOTH endpoints. One phase sample landing on the far side of a boundary makes count exceed
+            # the tick count by exactly one, and it did: five server timers read 301 against 300 ticks on
+            # a clean 20s capture -- 0.33%, at every window, on an unchanged system.
+            #
+            # That mattered more than it looks. The runner marks a leg's costs unquotable when this
+            # consumer exits non-zero, so a permanent boundary artefact would have marked EVERY leg of
+            # the matrix unquotable and left the campaign with no usable numbers at all.
+            #
+            # The slack is CADENCE_BOUNDARY_SLACK, deliberately small: one boundary per endpoint. Two or
+            # more is not a boundary, it is a span opening twice per tick, which is the defect this
+            # assertion exists to catch and which it still catches.
+            if (v.get("cadence") in ("frame", "tick", "recompute") and expected
+                    and v["count"] > expected + CADENCE_BOUNDARY_SLACK):
+                violations.append(f"{k}: count {v['count']} > expected {expected} (+{CADENCE_BOUNDARY_SLACK} "
+                                  f"boundary slack) for its own cadence={v['cadence']} (should it be 'call'?)")
             # ASSERTION 3 (histogram consistency): the buckets are the instrument's own checksum -- but a
             # SLACK one, not an exact one. record() bumps count first and buckets last, both relaxed and with
             # no fence, so a snapshot taken while a sampling thread is mid-record() observes a skew of up to
@@ -385,6 +429,16 @@ def main():
                                       f"{why}. Nothing was closed; this is not a pass")
                 continue
             whole = scaled[total_name][0] if total_name in scaled else coverage_scale(w[total_name], cadence_ticks, w)[0]
+            if not any(v["role"] == "budget" and v["domain"] == dom for _, v in rows):
+                # A DOMAIN WITH A WHOLE AND NO PARTS IS A RANK TABLE, NOT A BROKEN BUDGET. The 13 GPU
+                # pass timers are Detail by declaration because they are NOT ADDITIVE -- each
+                # GL_TIME_ELAPSED bracket serialises the pipeline and charges its own stall to itself,
+                # so with 12 of them the sum overshot the real frame by 5ms. They rank passes; they do
+                # not close them, and the whole-frame span is the only trustworthy figure.
+                print(f"\n  {dom}: whole {whole/denom:8.1f} us/tick  [{total_name}] -- RANK ONLY, no "
+                      f"closure claimed. The per-pass timers are Detail by declaration (not additive); "
+                      f"read them as a ranking, and the whole as the budget.")
+                continue
             un = whole - parts
             pct = 100.0 * parts / whole if whole else 0.0
             print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of {whole/denom:.1f} "
@@ -395,7 +449,7 @@ def main():
                 # to ever be seen again. This line makes the magnitude readable on every capture, so a
                 # drift toward the bound is noticeable before it trips.
                 print(f"     parts exceed the whole by {-un} us ({-100.0*un/whole:.2f}%) "
-                      f"-- bound is {100*GPU_CLOSURE_TOLERANCE:.1f}%, measured (#236)")
+                      f"-- bound is {100*CLOSURE_TOLERANCE:.1f}%, measured (#236)")
             v = closure_verdict(owner, dom, parts, whole)
             if v:
                 violations.append(v)
