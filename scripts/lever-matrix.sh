@@ -56,6 +56,9 @@ EXIT_USAGE=64
 TABLE=scripts/lever-table.json
 CFG=harness/storage-perf/starbound.config
 PROFILE=scripts/render-profile.sh
+# The boot config naming the asset sources. render-profile.sh has its own copy of this path; both
+# read the same file, and the fingerprint below is computed from it.
+BOOT=harness/sbinit-perf.config
 REPEATS=3
 SECONDS_PER_LEG=90
 WARP=""
@@ -66,6 +69,51 @@ DRY_RUN=0
 # depends on python3 and none of them depend on jq -- a new tool dependency is a new way for a gate
 # to be skipped on a machine that does not have it, and a skipped gate reads like a passing one.
 # ---------------------------------------------------------------------------------------------
+
+# THE MEASUREMENT'S CONTENT INPUT, FINGERPRINTED. harness/sbinit-perf.config names 42 assetSources --
+# a packed.pak, our asset overlay, THIRTY-NINE Steam Workshop mods, and the working tree of an
+# in-progress task (base-in-a-box-reforged/mod, 282 files). None of it is in this repository, that
+# file sets digestIgnore ".*", and the harness config sets checkAssetsDigest false. So the content
+# the matrix measures can change under it -- a Workshop update, or a save in a mod tree somebody is
+# actively editing -- and every leg after that point would compare against a different world while
+# the manifest recorded nothing about it.
+#
+# Cheap by construction: path + size + mtime, not a content hash. Reading 39 pak files per leg would
+# itself perturb the page cache the harness depends on, and mtime moves for every edit that matters.
+asset_fingerprint() {
+  python3 - "$BOOT" <<'ASSETPY'
+import json, os, sys, hashlib
+cfg = json.load(open(sys.argv[1]))
+h = hashlib.sha256()
+missing = []
+for src in cfg.get("assetSources", []):
+    if not os.path.exists(src):
+        missing.append(src)
+        continue
+    if os.path.isdir(src):
+        # A directory source is a TREE. A mod being edited changes files inside it without touching
+        # the directory's own mtime, so stat'ing the directory would report "unchanged" while the
+        # content under measurement moved.
+        entries = []
+        for root, _, files in os.walk(src):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    st = os.stat(fp)
+                    entries.append("%s:%d:%d" % (fp, st.st_size, int(st.st_mtime)))
+                except OSError:
+                    entries.append("%s:UNREADABLE" % fp)
+        for e in sorted(entries):
+            h.update(e.encode())
+    else:
+        st = os.stat(src)
+        h.update(("%s:%d:%d" % (src, st.st_size, int(st.st_mtime))).encode())
+if missing:
+    print("MISSING:" + ",".join(missing))
+    sys.exit(1)
+print(h.hexdigest()[:16])
+ASSETPY
+}
 
 # Read the lever table and refuse anything under-declared. Prints one "key<TAB>baseline<TAB>off" line
 # per lever on success.
@@ -362,6 +410,13 @@ echo "  $N_LEVERS levers declared in $TABLE"
 assert_baseline "$TABLE" "$CFG" || exit 1
 echo "  harness config matches the declared baseline for all $N_LEVERS keys"
 
+ASSET_FP=$(asset_fingerprint) || {
+  echo "lever-matrix: an asset source named in $BOOT does not exist: $ASSET_FP" >&2
+  echo "  The content under measurement is not what the harness says it is. Refusing to start." >&2
+  exit 1
+}
+echo "  asset chain fingerprint $ASSET_FP -- none of these sources is in this repository"
+
 # Build the full baseline --set list ONCE. Every leg passes all of it, then overrides exactly one
 # key. render-profile.sh already restores the config per leg, so this is belt as well as braces --
 # but it also means the manifest records the COMPLETE state each leg ran under, rather than one key
@@ -435,6 +490,16 @@ run_leg() { # run_leg <label> <extra --set args...>
   # Integrity BEFORE the leg, so a failed restore from the previous leg is caught here rather than
   # discovered as an inexplicable result three hours later.
   assert_baseline "$TABLE" "$CFG" || { echo "lever-matrix: aborting -- the config drifted before leg $label" >&2; return 1; }
+  # Re-asserted PER LEG, not once. The run is an hour and a half long; a Workshop update or a save in
+  # the in-progress mod tree partway through would otherwise land as whichever lever happened to be
+  # under test at that moment.
+  local fp
+  fp=$(asset_fingerprint) || fp="MISSING"
+  if [ "$fp" != "$ASSET_FP" ]; then
+    echo "lever-matrix: THE ASSETS CHANGED MID-RUN ($ASSET_FP -> $fp) before leg $label." >&2
+    echo "  Every leg from here measures different content. Aborting rather than reporting it." >&2
+    return 1
+  fi
   "$PROFILE" "$SECONDS_PER_LEG" "$label" "${BASE_SETS[@]}" "$@" --warp "$WARP"; rc=$?
   if [ $rc -eq 3 ]; then
     LEG_VIOLATED=1
@@ -525,8 +590,8 @@ for lv in json.load(open('$TABLE'))['levers']:
   done
 done
 
-python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
-import json, sys
+ASSET_FP="$ASSET_FP" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
+import json, sys, os
 manifest, run_id, warp, repeats, secs, table, legs = sys.argv[1:8]
 rows = []
 for line in open(legs):
@@ -538,6 +603,9 @@ for line in open(legs):
                  "costsQuotable": (p[5] if len(p) > 5 else None)})
 json.dump({
     "runId": run_id, "warp": warp, "repeats": int(repeats), "secondsPerLeg": int(secs),
+    # The content the numbers describe. A run whose asset chain is unrecorded cannot be compared
+    # to any other run, and would not know it.
+    "assetFingerprint": os.environ.get("ASSET_FP", "unrecorded"),
     "leverTable": json.load(open(table))["levers"],
     "legs": rows,
     "analysis": "NOT PERFORMED -- this runner emits raw legs only. Cost attribution reads the "

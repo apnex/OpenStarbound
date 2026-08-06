@@ -129,6 +129,16 @@ def window(a, b):
     out = {}
     for name, mb in b.get("metrics", {}).items():
         ma = a.get("metrics", {}).get(name, {})
+        # A KEY ABSENT FROM SNAPSHOT A IS NOT A KEY THAT WAS ZERO. Every value here is cumulative
+        # since process start, so differencing against a missing entry treats "not registered yet" as
+        # "was 0" and hands back the metric's ENTIRE life -- world load, shader compilation, atlas
+        # warm-up -- labelled as this window's cost. It is the ABSENT-vs-ZERO defect again, at the
+        # consumer end this time, and it is silent by construction: the number looks like every other
+        # number.
+        #
+        # Registration hoisting has made this rare rather than impossible: a static handle on a path
+        # first reached mid-window still registers mid-window. So it is FLAGGED, not assumed away.
+        first_seen = name not in a.get("metrics", {})
         # FORWARD THE WHOLE DESCRIPTOR, not a hardcoded five. This tuple used to be exactly
         # ("type","domain","owner","cadence","role"), which meant a schema-4 snapshot carrying
         # unit/clock/source/boundedness had those fields DROPPED here -- before any assertion could
@@ -151,10 +161,14 @@ def window(a, b):
                      total=mb.get("total", 0) - ma.get("total", 0),
                      buckets=[y - x for x, y in zip(ba, bb)])
             d["mean"] = d["total"] / dc
+            if first_seen:
+                d["firstSeenInWindow"] = True
         elif mb.get("type") in ("counter", "gauge", "rate"):
             va, vb = ma.get("value", 0), mb.get("value", 0)
             # A gauge is a level, not an accumulation: its delta is meaningless, so carry the latest reading.
             d["value"] = vb if mb.get("type") == "gauge" else vb - va
+            if first_seen and mb.get("type") != "gauge":
+                d["firstSeenInWindow"] = True
         out[name] = d
     return out
 
@@ -512,6 +526,18 @@ def main():
         if p99sat:
             print("         !! p99 is in the unbounded top bucket (>=57ms): the frame is hitching, and the "
                   "histogram cannot say how badly. Capture a per-frame trace if this persists.")
+
+    firsts = sorted(k for k, v in w.items() if v.get("firstSeenInWindow"))
+    if firsts:
+        # LOUD, and it takes the leg's costs with it. A metric whose first appearance is inside the
+        # window carries its whole cumulative history in that number; nothing downstream can tell.
+        print(f"\n  !! {len(firsts)} metric(s) FIRST REGISTERED inside this window -- their values are"
+              f" cumulative since process start, not windowed:")
+        for k in firsts[:8]:
+            print(f"       {k}")
+        violations.append(f"{len(firsts)} metric(s) first registered inside the window "
+                          f"({', '.join(firsts[:4])}{' ...' if len(firsts) > 4 else ''}) -- their "
+                          f"values are lifetime totals, not window deltas")
 
     if violations:
         print("\n  !! ORACLE VIOLATIONS -- do not quote these numbers:")

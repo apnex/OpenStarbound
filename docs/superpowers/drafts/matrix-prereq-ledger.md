@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**14 of 49 rows carry a machine-checkable signature.** `--check` asserts an
+**17 of 49 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 35 | not started |
+| **open** | 32 | not started |
 | **doing** | 0 | in progress |
-| **done** | 14 | closed; `commit` says where |
+| **done** | 17 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -27,11 +27,8 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | sev | finding | closes by |
 |---|---|---|---|
-| `C02` | **BLOCK** | The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress tas | Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the  |
 | `O01` | **BLOCK** | #84 (PENDING) — the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all | Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose |
 | `O02` | **BLOCK** | #136 (PENDING) — the ORACLE GAP is still open, and the golden full-frame hash that was supposed to close it was later proven impossible by #191 | Either close #136(b) with a reproducible world-body oracle (needs #191's animation-phase pinning) or state on the matrix |
-| `O09` | **BLOCK** | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | Run scripts/board-export.py before the measurement run, and add a high-water-mark assertion to the Integrity block so a  |
-| `R12` | **BLOCK** | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | In window(), when `name not in a["metrics"]`, either drop the metric or emit it with a `first_seen_in_window: true` flag |
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
@@ -68,6 +65,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | id | finding | where |
 |---|---|---|
 | `C01` | serverFidelity is left on "automatic" in the pinned harness config — a negative-feedback governor that changes the simulated WORKLOAD between legs, an | pending |
+| `C02` | The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress tas | pending |
 | `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
 | `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
@@ -75,12 +73,14 @@ rather than hidden, because an unchecked row is not a checked one.
 | `H02` | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | pending |
 | `H03` | The load-wait loop can time out silently, after which the measurement window straddles the world load | pending |
 | `H04` | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | pending |
+| `O09` | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | feb8886f |
 | `R01` | render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on | pending |
 | `R02` | render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breakin | pending |
 | `R03` | render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on  | pending |
 | `R04` | lighting.gather.margin_cells registers only inside the SCROLL arm of the lightingGatherCache ON path — doubly unreachable on the off leg and at a pinn | pending |
 | `R05` | lighting.gather.calc_outside_loaded — the safety counter licensing the gather cache's sector assumption — registers only inside the cache-ON branch | pending |
 | `R06` | render.gputimer.dropped registers ONLY when a drop occurs — the loss counter that guards every GPU number cannot report zero loss | pending |
+| `R12` | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | pending |
 
 ## Evidence
 
@@ -96,7 +96,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `scripts/lever-table.json` matching `"pinned"[\s\S]{0,200}?"serverFidelity"` — present while open. (the matrix does not pin/assert serverFidelity (harness config is gitignored, so the enforceable half is the pinned map))
 
-### `C02` — BLOCKS_MATRIX — open
+### `C02` — BLOCKS_MATRIX — done
 
 **The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress task, with digest checking explicitly disabled and no asset identity anywhere in the manifest**
 
@@ -105,6 +105,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* Each leg is a fresh process that re-reads the asset chain at startup, so any edit to any of the 42 sources between leg N and leg N+1 silently changes the world content, the entity set and the material render profiles the next leg measures — and one of those sources is a directory somebody is actively developing in. digestIgnore ".*" plus checkAssetsDigest:false remove the one mechanism that would have noticed. Because nothing records what the assets WERE, a 94-minute matrix produces numbers that cannot be reproduced, cannot be compared to any future run, and cannot be retro-attributed to a content state. This is the #226-H3 hazard ("if the material database's render profiles change under a running client") arriving through the front door, and no sweep touched the assets dimension at all.
 
 *Closes by.* Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the manifest, and re-assert it before every leg so a mid-run content change aborts instead of landing as a delta.
+
+*Signature.* `scripts/lever-matrix.sh` matching `asset_fingerprint\(\) \{` — present while open. (the asset chain is not fingerprinted)
 
 ### `C03` — BLOCKS_MATRIX — done
 
@@ -450,7 +452,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Do #197 option (b) — the debug-only draw-time check that every declared parameter of the bound effect was written this frame — and run one pilot leg of each arm with it armed before trusting the merge lever's changesOutput:false.
 
-### `O09` — BLOCKS_MATRIX — open
+### `O09` — BLOCKS_MATRIX — done
 
 **The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md**
 
@@ -459,6 +461,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* It does not corrupt a number directly — it corrupts the PREREQUISITE SWEEP, which is the failure mode the Director named. docs/board.md is the file this survey was pointed at as "the durable task board", and the two items the Director already holds as blocking (#235 wall-vs-CPU timers, #236 gl/gpu closure tolerance) do not appear in it at all. Anyone re-deriving the prerequisite list from the committed artefact — after this session, from another machine, or from the repo alone — reconstructs a list with the two most load-bearing entries missing and no signal that anything is absent. The board's own Integrity section exists to make exactly this drift visible and does not check its own high-water mark.
 
 *Closes by.* Run scripts/board-export.py before the measurement run, and add a high-water-mark assertion to the Integrity block so a board that trails the live store says so instead of reading as complete.
+
+*Signature.* `docs/board.md` matching `#236` — present while open. (the durable board is missing #236)
 
 ### `O10` — DEGRADES_MATRIX — open
 
@@ -592,7 +596,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register uploadTimer at file scope in StarWorldPainter.cpp so it is always present at zero; the TelemetryScope stays inside the branch.
 
-### `R12` — BLOCKS_MATRIX — open
+### `R12` — BLOCKS_MATRIX — done
 
 **telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the window delta**
 
@@ -601,4 +605,6 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* This is the amplifier that turns every finding above from 'a missing row' into 'a wrong number'. Any block-scope static whose branch is first entered between the two snapshots of a leg — a first cache re-key, a first gather scroll, a first GPU-timer drop, a first CPU-lightmap fallback — reports everything since process start, world load and shader warm-up included, as having happened inside the window. The module docstring (:4-7) states that avoiding exactly this is the reason differencing exists. There is no guard, no warning, and no `first_seen` flag in the output.
 
 *Closes by.* In window(), when `name not in a["metrics"]`, either drop the metric or emit it with a `first_seen_in_window: true` flag, and have lever-matrix.sh refuse to quote costs for a leg carrying any such flag — the same treatment exit-3 closure violations already get.
+
+*Signature.* `scripts/telemetry-window.py` matching `firstSeenInWindow` — present while open. (a key first registering mid-window is not flagged)
 

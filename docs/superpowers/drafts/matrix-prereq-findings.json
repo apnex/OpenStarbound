@@ -80,7 +80,12 @@
    "evidence": "docs/board.md:32 declares \"**165 tasks** across 2 store(s) ... ids 64\u2013228\"; `git log -1 -- docs/board.md` = d65c9488, Wed Aug 5 2026, i.e. before the metrics arc. `grep -c \"c29c1332-229|c29c1332-235|c29c1332-236|GM-1d|GPU-CLOSE-1|GPUTEL\" docs/board.md` returns 0. The live store holds ids through #236 \u2014 GPUTEL-B1..B5 (#229\u2013233), GM-1b (#234), GM-1d (#235, pending), GPU-CLOSE-1 (#236, in_progress).",
    "impact": "It does not corrupt a number directly \u2014 it corrupts the PREREQUISITE SWEEP, which is the failure mode the Director named. docs/board.md is the file this survey was pointed at as \"the durable task board\", and the two items the Director already holds as blocking (#235 wall-vs-CPU timers, #236 gl/gpu closure tolerance) do not appear in it at all. Anyone re-deriving the prerequisite list from the committed artefact \u2014 after this session, from another machine, or from the repo alone \u2014 reconstructs a list with the two most load-bearing entries missing and no signal that anything is absent. The board's own Integrity section exists to make exactly this drift visible and does not check its own high-water mark.",
    "fixShape": "Run scripts/board-export.py before the measurement run, and add a high-water-mark assertion to the Integrity block so a board that trails the live store says so instead of reading as complete.",
-   "signature": null
+   "signature": {
+    "glob": "docs/board.md",
+    "re": "#236",
+    "absent": true,
+    "desc": "the durable board is missing #236"
+   }
   },
   {
    "id": "O10",
@@ -227,7 +232,12 @@
    "evidence": "scripts/telemetry-window.py:113-127: `for name, mb in b.get(\"metrics\", {}).items(): ma = a.get(\"metrics\", {}).get(name, {})` then `dc = mb.get(\"count\", 0) - ma.get(\"count\", 0)` and `d[\"value\"] = vb - va` with `va = ma.get(\"value\", 0)`. A key missing from snapshot A silently contributes its FULL cumulative value.",
    "impact": "This is the amplifier that turns every finding above from 'a missing row' into 'a wrong number'. Any block-scope static whose branch is first entered between the two snapshots of a leg \u2014 a first cache re-key, a first gather scroll, a first GPU-timer drop, a first CPU-lightmap fallback \u2014 reports everything since process start, world load and shader warm-up included, as having happened inside the window. The module docstring (:4-7) states that avoiding exactly this is the reason differencing exists. There is no guard, no warning, and no `first_seen` flag in the output.",
    "fixShape": "In window(), when `name not in a[\"metrics\"]`, either drop the metric or emit it with a `first_seen_in_window: true` flag, and have lever-matrix.sh refuse to quote costs for a leg carrying any such flag \u2014 the same treatment exit-3 closure violations already get.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/telemetry-window.py",
+    "re": "firstSeenInWindow",
+    "absent": true,
+    "desc": "a key first registering mid-window is not flagged"
+   }
   },
   {
    "id": "H01",
@@ -458,7 +468,12 @@
    "evidence": "harness/sbinit-perf.config lists 42 `assetSources`: `/home/apnex/OpenStarbound/assets/packed.pak`, `/root/frackin/OpenStarbound/assets/opensb`, `/home/apnex/base-in-a-box-reforged/mod`, and 39 Steam Workshop `contents.pak` files under `/home/apnex/.local/share/Steam/steamapps/workshop/content/211820/`. The same file sets `\"assetsSettings\": {\"digestIgnore\": [\".*\"]}`, and harness/storage-perf/starbound.config:342 sets `\"checkAssetsDigest\" : false`. `/home/apnex/base-in-a-box-reforged/mod` exists and holds 282 files; it is the working tree of task #130, status in_progress. lever-matrix.sh's manifest writer (scripts/lever-matrix.sh:485-497) emits runId, warp, repeats, secondsPerLeg, leverTable, legs and an analysis note \u2014 no asset list, no digest, no mtime. The env sidecar (render-profile.sh:203-212) records GPU clock and package temperature only.",
    "impact": "Each leg is a fresh process that re-reads the asset chain at startup, so any edit to any of the 42 sources between leg N and leg N+1 silently changes the world content, the entity set and the material render profiles the next leg measures \u2014 and one of those sources is a directory somebody is actively developing in. digestIgnore \".*\" plus checkAssetsDigest:false remove the one mechanism that would have noticed. Because nothing records what the assets WERE, a 94-minute matrix produces numbers that cannot be reproduced, cannot be compared to any future run, and cannot be retro-attributed to a content state. This is the #226-H3 hazard (\"if the material database's render profiles change under a running client\") arriving through the front door, and no sweep touched the assets dimension at all.",
    "fixShape": "Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the manifest, and re-assert it before every leg so a mid-run content change aborts instead of landing as a delta.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/lever-matrix.sh",
+    "re": "asset_fingerprint\\(\\) \\{",
+    "absent": true,
+    "desc": "the asset chain is not fingerprinted"
+   }
   },
   {
    "id": "C03",

@@ -87,5 +87,20 @@
   "status": "done",
   "commit": "pending",
   "note": "harness determinism pass; verified on hardware"
+ },
+ "R12": {
+  "status": "done",
+  "commit": "pending",
+  "note": "flagged + violation; injection proves it fires at rc=3"
+ },
+ "C02": {
+  "status": "done",
+  "commit": "pending",
+  "note": "path+size+mtime over the resolved chain, walked for directory sources; proven to detect a mod-tree touch"
+ },
+ "O09": {
+  "status": "done",
+  "commit": "feb8886f",
+  "note": "docs/board.md re-exported; #229-236 present"
  }
 }
