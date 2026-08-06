@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 22 | not started |
+| **open** | 21 | not started |
 | **doing** | 0 | in progress |
-| **done** | 33 | closed; `commit` says where |
+| **done** | 34 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -27,7 +27,6 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | sev | finding | closes by |
 |---|---|---|---|
-| `R13` | **BLOCK** | tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the  | Hoist the registration out of sync() to namespace scope in StarWorldServerThread.cpp so it is created at static-init reg |
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
@@ -87,6 +86,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `R10` | lighting.cpu.calc.ran / .skipped register after two early returns in lightingCalc | [#238] cluster A -- registration hoisted out of the branch it measures |
 | `R11` | lighting.upload.us registers only on the CPU-lightmap fallback branch and is absent whenever GPU lighting succeeds | [#238] cluster A -- registration hoisted out of the branch it measures |
 | `R12` | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | pending |
+| `R13` | tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the  | [#240] all four lock timers hoisted to namespace scope |
 
 ## Evidence
 
@@ -686,7 +686,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `scripts/telemetry-window.py` matching `firstSeenInWindow` — present while open. (a key first registering mid-window is not flagged)
 
-### `R13` — BLOCKS_MATRIX — open
+### `R13` — BLOCKS_MATRIX — done
 
 **tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the closure oracle stamps that leg's costs not-quotable**
 

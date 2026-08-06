@@ -340,11 +340,34 @@ void WorldServerThread::run() {
 // tick.server.lock.us IS A LATENCY METRIC, NOT A COST METRIC. WorldServerThread::readChunks and
 // unloadAll hold m_mutex across disk work on another thread, so a single acquisition here can run for
 // seconds. Its max and p99 say how long the world stopped ticking, not how much CPU anything used.
+// REGISTERED AT STATIC INIT, NOT AT FIRST ACQUISITION -- and the one that forced this is the LAST of
+// the four to be taken. All six lock timers were function-local statics, so each key came into
+// existence only when its lock was first acquired. Three of them get away with it because they are
+// taken EVERY TICK and so register during world load, before any measurement window opens.
+//
+// sync() is the PERIODIC disk sync. It fires rarely, its first acquisition usually lands INSIDE the
+// window, and scripts/telemetry-window.py then correctly refuses to difference a lifetime total
+// against an absent entry -- so lever-matrix.sh stamps the whole leg's COSTS not-quotable. Measured
+// on matrix-20260807-071454: 28 of 28 legs flagged, one cause, this one. A 48-minute run produced a
+// manifest, witness verdicts and scene fingerprints, and not a single quotable cost.
+//
+// All four are hoisted rather than only the offender. The other three are the same latent defect
+// saved by their cadence, and fixing one leaves the shape in the file for the next rare-path timer
+// to inherit. Ledger row R13; the pattern is cluster A's, in a metric the R-rows did not name.
 namespace {
+  auto g_lockQueueTimer = Telemetry::timer("tick.server.lock.queue.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  auto g_lockTimer = Telemetry::timer("tick.server.lock.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
+  auto g_lockMessageTimer = Telemetry::timer("tick.server.lock.message.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  auto g_lockSyncTimer = Telemetry::timer("tick.server.lock.sync.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+
+  // Kept as an accessor so the call sites below read unchanged; it now hands back an already-
+  // registered handle instead of registering on first call.
   TelemetryTimer blockedQueueTimer() {
-    static auto t = Telemetry::timer("tick.server.lock.queue.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
-    return t;
+    return g_lockQueueTimer;
   }
 }
 
@@ -353,9 +376,7 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
   // inside another phase, so it is a Budget part and carries its share of the tick directly.
   RecursiveMutexLocker locker(m_mutex, false);
   {
-    static auto t = Telemetry::timer("tick.server.lock.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Budget});
-    TelemetryScope s(t);
+    TelemetryScope s(g_lockTimer);
     locker.lock();
   }
 
@@ -428,9 +449,7 @@ void WorldServerThread::update(WorldServerFidelity fidelity) {
     {
       RecursiveMutexLocker messageLocker(m_messageMutex, false);
       {
-        static auto tl = Telemetry::timer("tick.server.lock.message.us",
-          MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
-        TelemetryScope q(tl);
+        TelemetryScope q(g_lockMessageTimer);
         messageLocker.lock();
       }
       messages = std::move(m_messages);
@@ -476,9 +495,7 @@ void WorldServerThread::sync() {
   // this the storage phase would silently contain an unbounded wait.
   RecursiveMutexLocker locker(m_mutex, false);
   {
-    static auto t = Telemetry::timer("tick.server.lock.sync.us",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
-    TelemetryScope s(t);
+    TelemetryScope s(g_lockSyncTimer);
     locker.lock();
   }
   Logger::debug("WorldServer: periodic sync to disk of world {}", m_worldId);
