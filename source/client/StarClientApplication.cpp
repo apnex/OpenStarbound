@@ -1304,9 +1304,11 @@ void ClientApplication::renderTestCapture() {
   // between runs, and why we could only ever certify a refactor against the in-frame oracles (env, parallax,
   // lighting) and never against the world pass, the entities, or the interface.
   //
-  // Waiting for the entity count to HOLD STILL converges to the same world state whatever the machine is
-  // doing. That makes the frozen-world hash a valid CROSS-BINARY golden, which makes every refactor
-  // certifiable -- not just the ones the oracles happen to cover.
+  // Waiting for the entity count to HOLD STILL makes the settle point machine-speed-independent, which is
+  // what the in-process A/B needs. IT DOES NOT CONVERGE THE WORLD, and this comment used to claim it made
+  // the frozen hash a valid cross-binary golden. Measured against that claim: five settled runs at one
+  // location froze at 268/268/271/267/270 entities, and the two that agreed on the COUNT still rendered
+  // frames differing in 18.78% of pixels. A converged count is not a converged world.
   if (m_renderTestLoading) {
     ++m_renderTestFrame;
 
@@ -1317,7 +1319,17 @@ void ClientApplication::renderTestCapture() {
       m_renderTestStable = 0;   // still arriving -- restart the count
     m_renderTestLastEntities = entities;
 
-    bool quiesced = m_renderTestStable >= m_renderTestQuiesce;
+    // A PENDING WARP IS NOT A SETTLED WORLD. The DEPARTURE world is usually the quieter of the two -- the
+    // ship holds a handful of entities and never moves -- so the stability counter fills to 90 while the
+    // transition is still in flight, and quiescence fires on the world we are leaving. Measured: a warp
+    // issued at t+0.1s and a load that "ended" 2.8s later still aboard the ship, with the destination
+    // bookmark present and perfectly valid. Every earlier arrival was a race this happened to win.
+    bool arrived = m_renderTestWarpWorldId.empty()
+        || printWorldId(m_universeClient->playerWorld()) == m_renderTestWarpWorldId;
+    if (!arrived)
+      m_renderTestStable = 0;
+
+    bool quiesced = arrived && m_renderTestStable >= m_renderTestQuiesce;
     bool timedOut = m_renderTestFrame >= m_renderTestLoad;
 
     if (quiesced || timedOut) {
@@ -1333,6 +1345,24 @@ void ClientApplication::renderTestCapture() {
       // player cannot move in it at all. Requiring the caller to remember both would make the failure silent --
       // the run would complete, report zero motion, and look like a renderer that never bypasses.
       bool const noFreeze = noFreezeEnv || m_renderTestWalk > 0;
+
+      // ARRIVAL, NOT DEPARTURE. The warp was issued long ago; this is the first moment the load is over
+      // and the question "are we actually there?" has an answer. A dead bookmark issues a warp that never
+      // completes, and every downstream number then describes a location nobody asked for -- silently,
+      // because the fingerprint's camera and entity count are perfectly self-consistent at the wrong place.
+      if (!m_renderTestWarpWorldId.empty()) {
+        String here = printWorldId(m_universeClient->playerWorld());
+        if (here != m_renderTestWarpWorldId) {
+          Logger::error("[rendertest] FAIL: asked for world {} but the load ended in {}. The warp was issued "
+                        "and never arrived -- a dead teleport bookmark, or a destination that would not load. "
+                        "Refusing to measure a location nobody chose.",
+            m_renderTestWarpWorldId, here);
+          appController()->quit();
+          return;
+        }
+        Logger::info("[rendertest] arrived in {} (the world the bookmark named)", here);
+      }
+
       m_renderTestLoading = false;
       m_renderTestFrozen = !noFreeze;
       if (m_renderTestWalk && !noFreezeEnv)
@@ -1535,10 +1565,14 @@ void ClientApplication::renderTestCapture() {
   // up -- and the sun rays are the backdrop's only animated term, so a determinism result taken at
   // night says nothing about them. A fingerprint that cannot distinguish "the term was pinned" from
   // "the term was never drawn" is not a fingerprint for this question.
+  // WORLD FIRST. Every other field is self-consistent at the WRONG PLACE, so without the world id a run
+  // that warped somewhere it did not intend reads as clean data -- which is how a dead bookmark cost a
+  // whole sweep before anyone noticed, and it took dayLength archaeology to see it.
   Logger::info("[rendertest] frame={} hash={:016x} size={}x{} meanLuminance={:.6f}"
-               " | epochTime={:.4f} dayLength={:.2f} dayLevel={:.4f} skyAlpha={:.4f}"
+               " | world={} epochTime={:.4f} dayLength={:.2f} dayLevel={:.4f} skyAlpha={:.4f}"
                " camera=({:.4f},{:.4f}) parallaxLayers={} entities={}",
     index, hash, frame.width(), frame.height(), lum,
+    printWorldId(m_universeClient->playerWorld()),
     sky.epochTime, sky.dayLength, sky.dayLevel, sky.skyAlpha,
     m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
     m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
@@ -1791,6 +1825,7 @@ void ClientApplication::updateRunning(float dt) {
         Logger::info("[rendertest] WARPING to bookmark '{}' (world={})", b.bookmarkName, printWorldId(b.target.first));
         m_universeClient->warpPlayer(WarpToWorld(b.target.first, b.target.second), false);
         m_renderTestWarped = true;
+        m_renderTestWarpWorldId = printWorldId(b.target.first);   // asserted on arrival, below
         // The destination world has to stream in from scratch, so restart the LOAD phase from here. Otherwise
         // the freeze would land mid-load and we would measure a half-built world.
         m_renderTestFrame = 0;

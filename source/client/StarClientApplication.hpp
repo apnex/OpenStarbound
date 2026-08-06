@@ -217,6 +217,12 @@ private:
   bool m_renderTestLoading = true;
   String m_renderTestWarp;      // STAR_RENDERTEST_WARP=<substring of a teleport bookmark name>
   bool m_renderTestWarped = false;
+  // THE WORLD THE WARP ASKED FOR, so arrival can be asserted rather than assumed. Issuing a warp and
+  // arriving are different events, and a bookmark whose world no longer resolves produces the first
+  // without the second: the run then captures wherever the player actually is and reports a fingerprint
+  // that looks perfectly clean. Measured -- 'precursor-surface' logged WARPING to ...91620126 and
+  // captured the previous location, silently, and the sweep that used it read as data.
+  String m_renderTestWarpWorldId;
   String m_renderTestAbKey;
   Json m_renderTestAbA;
   Json m_renderTestAbB;
