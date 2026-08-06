@@ -238,7 +238,12 @@
    "evidence": "source/application/StarRenderer_opengl.cpp:1078 `Telemetry::timer(name, desc).record((int64_t)(elapsedNs / 1000));` inside `if (available)` is the sole registration for all ten per-pass keys (render.pass.{world,parallax,parallax.compose,environment,environment.compose,compose,interface}.gpu_us, lighting.gpu.{spread,point,compose,upscale}.gpu_us). GlGpuTimer::begin also returns at :1043-1044 if `!Telemetry::deepEnabled()` and at :1055 if STAR_NO_PERPASS_GPU_TIMERS is set. Owner `gl`'s Total, render.frame.gpu_span_us, is registered only at :1168 inside `if (t1 > t0)` (:1159). No eager `Telemetry::declare(name, desc)` exists anywhere for these keys.",
    "impact": "The two compose keys are mutually-exclusive arms (source/rendering/StarBackdropPass.cpp:116 composeEnvStandalone vs :667 the parallax compose), so on the backdropComposeMerge and parallaxRefreshInterval legs a Budget part of owner `gl` can exist on one arm and not the other. A cost table row that is present on the baseline and missing on the off leg reads as 'this pass got infinitely cheaper' unless a human knows it was never registered. It also means owner `gl` closes over a DIFFERENT set of parts on the two legs, and #236's 4% bound is applied to both without noticing. UNVERIFIABLE whether any specific pass actually fails to register at the pinned location \u2014 that depends on the scene \u2014 but the mechanism is unconditional and nothing in the tooling distinguishes the cases.",
    "fixShape": "Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so the key exists at zero from the first bracketed frame; equivalently register every pass key at renderer construction from a static table.",
-   "signature": null
+   "signature": {
+    "glob": "source/application/StarRenderer_opengl.cpp",
+    "re": "ring\\.timer = Telemetry::timer\\(name, desc\\)[\\s\\S]*?if \\(available\\)",
+    "absent": true,
+    "desc": "the per-pass key is resolved at begin(), BEFORE the readback branch that used to be its sole registration -- so a pass that runs but never resolves reads zero, not absent"
+   }
   },
   {
    "id": "R08",
@@ -247,7 +252,12 @@
    "evidence": "source/game/StarNetworkedAnimator.cpp:1216, inside `NetworkedAnimator::shadowCompare`, called only at :1036 and :1179 under `if (shadow)` where `shadow = configuration->get(\"renderDrawableCacheShadowCompare\", false).toBool()` (:937, :1101). harness/storage-perf/starbound.config:556 pins `renderDrawableCacheShadowCompare: false`. scripts/lever-table.json's renderDrawableCache row asserts \"Byte-identity is verified by a dedicated shadowCompare diagnostic\".",
    "impact": "The lever table quotes renderDrawableCache's saving as free (`changesOutput: false`) on the strength of an oracle that is switched off in the pinned harness config and whose counter therefore never registers in any of the 27+ leg profiles. 'Zero mismatches in the matrix run' and 'the oracle never ran during the matrix run' are the same reading. This is the named failure mode \u2014 a gate that ran, compared nothing, and exited 0 \u2014 displaced one level: the gate did not even run, and its absence is invisible in the output.",
    "fixShape": "Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, and separately add a companion counter for oracle INVOCATIONS so the matrix output can distinguish 'ran, clean' from 'never ran'.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarNetworkedAnimator.cpp",
+    "re": "\"render\\.drawable\\.cache\\.shadowMismatch\"[\\s\\S]*?void NetworkedAnimator::shadowCompare\\(",
+    "absent": true,
+    "desc": "shadowMismatch is registered by the dispatcher, above the oracle function it is sampled in, and a shadowCompares companion counts invocations so 'ran clean' and 'never ran' differ"
+   }
   },
   {
    "id": "R09",
@@ -256,7 +266,12 @@
    "evidence": "source/rendering/StarWorldPainter.cpp:22, inside `static void shadowCompareFull(...)`. It is registered ABOVE an early return at :17 (`if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || ...) return;`) but the whole function is reached only when lightingGpuShadowCompare is set; harness/storage-perf/starbound.config:531 pins it false.",
    "impact": "Every matrix leg runs with lightingGpu true (config:529). The only instrument that could say the GPU lightmap still matches the CPU reference is absent from all leg profiles, so a lighting-cost delta cannot be checked against a parity signal at all. Secondary defect: even when armed, the registration at :22 precedes the size-validity return at :17-18, so a dimension mismatch produces a registered-but-never-incremented zero \u2014 an oracle that reads GREEN precisely when it could not compare.",
    "fixShape": "Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return path so 'could not compare' is distinguishable from 'compared and matched'.",
-   "signature": null
+   "signature": {
+    "glob": "source/rendering/StarWorldPainter.cpp",
+    "re": "\"lighting\\.gpu\\.point\\.mismatch\"[\\s\\S]*?static void shadowCompareFull",
+    "absent": true,
+    "desc": "the parity counter is registered at file scope, above shadowCompareFull, with compared/uncomparable companions splitting 'compared and matched' from 'could not compare'"
+   }
   },
   {
    "id": "R10",
@@ -265,7 +280,12 @@
    "evidence": "source/game/StarWorldClient.cpp:2662 and :2664. Two returns precede them: :2267 `if (!m_pendingLightReady.load()) return;` and :2299 `return; // calm -> reuse the previously-published lightmap` (the lightingTemporalDecouple gate at :2296). Every other timer/counter in the function is correctly hoisted to :2221-2263, above both returns \u2014 these two are not.",
    "impact": "On the `lightingTemporalDecouple` baseline leg (true), a run in which the temporal gate skips every recompute in the process \u2014 a fully calm scene at a pinned location \u2014 never reaches :2662, so both keys are ABSENT. calc.ran/calc.skipped is the pair that says whether the CPU lighting solve was actually skipped under GPU lighting; if both are missing, a consumer cannot tell 'no recomputes happened' from 'the CPU path never ran'. Lower probability over a 94-minute run than the other findings (one recompute suffices), but the fix is free and the failure is silent.",
    "fixShape": "Move both registrations up to the block at StarWorldClient.cpp:2258-2263, above the `m_pendingLightReady` and temporal returns.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarWorldClient.cpp",
+    "re": "Telemetry::counter\\(\"lighting\\.cpu\\.calc\\.ran\"[\\s\\S]*?if \\(!m_pendingLightReady\\.load\\(\\)\\)",
+    "absent": true,
+    "desc": "calc.ran/.skipped register above the m_pendingLightReady return, hence also above the temporal-gate return below it, with every other counter in the function"
+   }
   },
   {
    "id": "R11",
@@ -274,7 +294,12 @@
    "evidence": "source/rendering/StarWorldPainter.cpp:280, inside `else if (!renderData.lightMap.empty())` at :277, itself inside `if (lightMapUpdated)`. Its own comment at :274-276 acknowledges the double conditionality and fixes the cadence to Call, but not the registration. harness/storage-perf/starbound.config:529 pins lightingGpu true.",
    "impact": "Owner `frame`, role Detail, so it does not corrupt closure \u2014 but on every matrix leg where the GPU pass succeeds the key is absent, and on a leg where the GPU pass transiently fails (self-healing per the comment at :288-291) the key appears mid-run and telemetry-window.py:113-127 windows it against `ma = {}` i.e. zero, reporting its full process-lifetime count/total as if it all occurred inside the window. That is a fabricated number, not merely a missing one.",
    "fixShape": "Register uploadTimer at file scope in StarWorldPainter.cpp so it is always present at zero; the TelemetryScope stays inside the branch.",
-   "signature": null
+   "signature": {
+    "glob": "source/rendering/StarWorldPainter.cpp",
+    "re": "\"lighting\\.upload\\.us\"[\\s\\S]*?void WorldPainter::render",
+    "absent": true,
+    "desc": "the upload timer is registered at file scope, above the render function whose doubly-nested fallback branch samples it -- so it can no longer first appear mid-window"
+   }
   },
   {
    "id": "R12",

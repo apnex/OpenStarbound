@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       997 files
-      239510 lines
+      239580 lines
       6 tiers
     Content
       assets/
@@ -223,15 +223,15 @@ source/
 │   └── scripting/          2 files        55 lines
 ├── metrics/         T2     7 files       847 lines
 ├── platform/        T2     4 files       142 lines
-├── application/     T2    25 files     7,473 lines
+├── application/     T2    25 files     7,489 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,615 lines
+├── game/            T3   500 files   115,641 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     4,560 lines
+├── rendering/       T4    23 files     4,588 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,863 lines
 ├── client/          T5     4 files     2,591 lines
@@ -283,15 +283,15 @@ flowchart TD
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
     metrics["metrics<br/><small>7 files · 847 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
-    application["application<br/><small>25 files · 7,473 lines · Root×0</small>"]
+    application["application<br/><small>25 files · 7,489 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,615 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,641 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 4,560 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 4,588 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,863 lines · Root×200</small>"]
   end
@@ -597,16 +597,16 @@ treemap-beta
     "T1 language"
         "core": 56348
     "T2 services"
-        "application": 7473
+        "application": 7489
         "base": 7449
         "metrics": 847
         "platform": 142
     "T3 simulation"
-        "game": 115615
+        "game": 115641
     "T4 presentation"
         "frontend": 16863
         "windowing": 9646
-        "rendering": 4560
+        "rendering": 4588
     "T5 shells"
         "client": 2591
         "server": 783
@@ -621,9 +621,9 @@ treemap-beta
 | T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `metrics` | 7 | 847 | 0.4% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
-| T2 services | `application` | 25 | 7,473 | 3.1% |
-| T3 simulation | `game` | 500 | 115,615 | 48.3% |
-| T4 presentation | `rendering` | 23 | 4,560 | 1.9% |
+| T2 services | `application` | 25 | 7,489 | 3.1% |
+| T3 simulation | `game` | 500 | 115,641 | 48.3% |
+| T4 presentation | `rendering` | 23 | 4,588 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
 | T5 shells | `client` | 4 | 2,591 | 1.1% |
@@ -851,7 +851,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 4,560 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 4,588 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,863 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

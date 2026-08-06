@@ -278,6 +278,10 @@ private:
       GLuint queries[RingDepth] = {};
       bool issued[RingDepth] = {};
       unsigned writeIdx = 0;
+      // The handle the readback records through, resolved at begin() rather than at the readback. That is
+      // what makes the key EXIST from the first bracketed frame instead of from the first query that
+      // happens to resolve -- see GlGpuTimer::begin.
+      TelemetryTimer timer;
     };
 
     function<void()> m_flushPending;

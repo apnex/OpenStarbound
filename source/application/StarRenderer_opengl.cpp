@@ -1074,6 +1074,19 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   }();
   if (!perPassEnabled)
     return;
+  // REGISTERED ON THE FIRST begin(), NOT ON THE FIRST SUCCESSFUL READBACK. The Telemetry::timer() call in
+  // the readback below used to be the ONLY registration for all ten per-pass keys, and it sits inside
+  // `if (available)`. A pass that runs every frame but whose queries never resolve was therefore ABSENT from
+  // the snapshot rather than zero, and a consumer differencing two snapshots cannot tell those apart -- on
+  // the counter set that carries every GPU number. It also meant owner `gl` closed over a DIFFERENT set of
+  // parts on the two arms of a lever that switches one compose pass for another.
+  //
+  // RE-RESOLVED ON EVERY begin, not once behind a flag. Two call sites may name one key (environment and
+  // parallax each have two), and descConflict is raised only by a call that PASSES a desc -- registering
+  // once would silence the drift detection the descriptor-at-begin design exists for. Caching the handle in
+  // the ring pays for it: the readback path no longer touches the registry mutex at all.
+  auto& ring = m_rings[name];
+  ring.timer = Telemetry::timer(name, desc);
   // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
   // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
   // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlSurface is
@@ -1084,7 +1097,6 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   }
   // Submit any pending primitives first so the query measures only the work that follows.
   m_flushPending();
-  auto& ring = m_rings[name];
   unsigned slot = ring.writeIdx;
   if (ring.queries[slot] == 0)
     glGenQueries(1, &ring.queries[slot]);
@@ -1095,7 +1107,7 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
     if (available) {
       GLuint64 elapsedNs = 0;
       glGetQueryObjectui64v(ring.queries[slot], GL_QUERY_RESULT, &elapsedNs);
-      Telemetry::timer(name, desc).record((int64_t)(elapsedNs / 1000));
+      ring.timer.record((int64_t)(elapsedNs / 1000));
       m_lastMicros[name] = (int64_t)(elapsedNs / 1000);
     } else {
       // COUNT THE LOSS. A discarded sample is not a missing datum, it is a BIASED one: the results still

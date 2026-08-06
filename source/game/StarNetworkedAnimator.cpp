@@ -943,8 +943,21 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   static auto s_regPartitionScans = Telemetry::counter("render.drawable.partition.scans",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  // AND THE ORACLE ITSELF, which is the sharpest of the lot. shadowMismatch registers inside
+  // shadowCompare, and shadowCompare runs only when renderDrawableCacheShadowCompare is set -- which the
+  // pinned harness config does not set. So on every measured leg "zero mismatches" and "the oracle never
+  // ran" were the same reading, on the counter this lever's byte-identity claim rests on.
+  //
+  // shadowCompares is the companion that tells them apart, and it is the load-bearing half: a zero
+  // mismatch count means nothing without a NONZERO compare count beside it. Registering the pair here
+  // makes the distinction visible in every snapshot rather than inferable from the config file.
+  static auto s_regShadowMismatch = Telemetry::counter("render.drawable.cache.shadowMismatch",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_regShadowCompares = Telemetry::counter("render.drawable.cache.shadowCompares",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   (void)s_regRekeyVersion; (void)s_regRekeyGeneration; (void)s_regRekeyLocalTransform;
   (void)s_regRebuiltRekey; (void)s_regPartitionScans;
+  (void)s_regShadowMismatch; (void)s_regShadowCompares;
 
   auto configuration = Root::singleton().configuration();
   // Per-part cache wins over whole-entity when both are on (A/B sets exactly one).
@@ -1231,8 +1244,14 @@ namespace {
 void NetworkedAnimator::shadowCompare(List<pair<Drawable, float>> const& cached,
     List<pair<Drawable, float>> const& rebuilt,
     List<pair<size_t, String const*>> const& partStarts) const {
+  // Both keys are already REGISTERED by the dispatcher (drawablesWithZLevel), which runs whether or not
+  // this oracle is armed; these handles only resolve them. Counting the invocation is what makes a zero
+  // mismatch count readable: 0 of 0 is an oracle that did not run, 0 of N is a clean bill of health.
   static auto s_mismatchCounter = Telemetry::counter("render.drawable.cache.shadowMismatch",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_compareCounter = Telemetry::counter("render.drawable.cache.shadowCompares",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  s_compareCounter.inc();
 
   auto partNameAt = [&](size_t index) -> String {
     String const* name = nullptr;

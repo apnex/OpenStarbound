@@ -117,5 +117,25 @@
   "status": "done",
   "commit": "pending",
   "note": "The defect as filed -- no scene fingerprint at all -- is closed: sim.entities.live armed per leg, bound measured at 5% from the matrix's own 16 off-legs (worst observed 2.84%), carried into legs.tsv and the manifest, selftest 15/15 with both bound directions proven. The residual #84 names is split to O14 and stays open; its close is the in-process A/B."
+ },
+ "R07": {
+  "status": "done",
+  "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
+ },
+ "R08": {
+  "status": "done",
+  "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
+ },
+ "R09": {
+  "status": "done",
+  "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
+ },
+ "R10": {
+  "status": "done",
+  "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
+ },
+ "R11": {
+  "status": "done",
+  "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
  }
 }

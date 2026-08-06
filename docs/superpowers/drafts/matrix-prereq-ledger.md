@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**20 of 53 rows carry a machine-checkable signature.** `--check` asserts an
+**25 of 53 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 33 | not started |
+| **open** | 28 | not started |
 | **doing** | 0 | in progress |
-| **done** | 20 | closed; `commit` says where |
+| **done** | 25 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -51,15 +51,10 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
-| `R07` | degrade | Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather  | Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so th |
-| `R08` | degrade | render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matr | Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, an |
-| `R09` | degrade | lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls | Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return pat |
-| `R10` | degrade | lighting.cpu.calc.ran / .skipped register after two early returns in lightingCalc | Move both registrations up to the block at StarWorldClient.cpp:2258-2263, above the `m_pendingLightReady` and temporal r |
 | `D06` | cosmetic | animator.{state,part}.merge.* declare MetricOwner::Sim but the counters are incremented on the client render path and read as a client HUD statistic | Split into client/server keys or declare MetricOwner::Unknown rather than asserting Sim; at minimum document at the regi |
 | `D07` | cosmetic | render.glstate.mismatches declares Cadence::Frame but its value is a count of mismatched state items, incremented only on frames that already failed | Declare MetricCadence::Call — errors are exceptional and not per-anything, exactly the reasoning already written for ren |
 | `D08` | cosmetic | Renderer-internal CPU counters split between MetricOwner::Frame and MetricOwner::Gl within one file, including a lever WITNESS | Pick one owner for OpenGlRenderer-internal CPU counters (Gl, matching the file's own render.glstate.mismatches) and appl |
 | `D09` | cosmetic | lighting.cells / lighting.calc.cells declare Cadence::Call while every sibling lighting metric declares Recompute | Declare both MetricCadence::Recompute to match the phase they are set inside. |
-| `R11` | cosmetic | lighting.upload.us registers only on the CPU-lightmap fallback branch and is absent whenever GPU lighting succeeds | Register uploadTimer at file scope in StarWorldPainter.cpp so it is always present at zero; the TelemetryScope stays ins |
 
 ## Closed
 
@@ -84,6 +79,11 @@ rather than hidden, because an unchecked row is not a checked one.
 | `R04` | lighting.gather.margin_cells registers only inside the SCROLL arm of the lightingGatherCache ON path — doubly unreachable on the off leg and at a pinn | pending |
 | `R05` | lighting.gather.calc_outside_loaded — the safety counter licensing the gather cache's sector assumption — registers only inside the cache-ON branch | pending |
 | `R06` | render.gputimer.dropped registers ONLY when a drop occurs — the loss counter that guards every GPU number cannot report zero loss | pending |
+| `R07` | Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather  | [#238] cluster A -- registration hoisted out of the branch it measures |
+| `R08` | render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matr | [#238] cluster A -- registration hoisted out of the branch it measures |
+| `R09` | lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls | [#238] cluster A -- registration hoisted out of the branch it measures |
+| `R10` | lighting.cpu.calc.ran / .skipped register after two early returns in lightingCalc | [#238] cluster A -- registration hoisted out of the branch it measures |
+| `R11` | lighting.upload.us registers only on the CPU-lightmap fallback branch and is absent whenever GPU lighting succeeds | [#238] cluster A -- registration hoisted out of the branch it measures |
 | `R12` | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | pending |
 
 ## Evidence
@@ -596,7 +596,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `source/application/StarRenderer_opengl.cpp` matching `droppedCounter\(\);` — present while open. (the drop counter is not registered at begin())
 
-### `R07` — DEGRADES_MATRIX — open
+### `R07` — DEGRADES_MATRIX — done
 
 **Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather than zero**
 
@@ -606,7 +606,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so the key exists at zero from the first bracketed frame; equivalently register every pass key at renderer construction from a static table.
 
-### `R08` — DEGRADES_MATRIX — open
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `ring\.timer = Telemetry::timer\(name, desc\)[\s\S]*?if \(available\)` — present while open. (the per-pass key is resolved at begin(), BEFORE the readback branch that used to be its sole registration -- so a pass that runs but never resolves reads zero, not absent)
+
+### `R08` — DEGRADES_MATRIX — done
 
 **render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matrix leg**
 
@@ -616,7 +618,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, and separately add a companion counter for oracle INVOCATIONS so the matrix output can distinguish 'ran, clean' from 'never ran'.
 
-### `R09` — DEGRADES_MATRIX — open
+*Signature.* `source/game/StarNetworkedAnimator.cpp` matching `"render\.drawable\.cache\.shadowMismatch"[\s\S]*?void NetworkedAnimator::shadowCompare\(` — present while open. (shadowMismatch is registered by the dispatcher, above the oracle function it is sampled in, and a shadowCompares companion counts invocations so 'ran clean' and 'never ran' differ)
+
+### `R09` — DEGRADES_MATRIX — done
 
 **lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls**
 
@@ -626,7 +630,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return path so 'could not compare' is distinguishable from 'compared and matched'.
 
-### `R10` — DEGRADES_MATRIX — open
+*Signature.* `source/rendering/StarWorldPainter.cpp` matching `"lighting\.gpu\.point\.mismatch"[\s\S]*?static void shadowCompareFull` — present while open. (the parity counter is registered at file scope, above shadowCompareFull, with compared/uncomparable companions splitting 'compared and matched' from 'could not compare')
+
+### `R10` — DEGRADES_MATRIX — done
 
 **lighting.cpu.calc.ran / .skipped register after two early returns in lightingCalc**
 
@@ -636,7 +642,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Move both registrations up to the block at StarWorldClient.cpp:2258-2263, above the `m_pendingLightReady` and temporal returns.
 
-### `R11` — COSMETIC — open
+*Signature.* `source/game/StarWorldClient.cpp` matching `Telemetry::counter\("lighting\.cpu\.calc\.ran"[\s\S]*?if \(!m_pendingLightReady\.load\(\)\)` — present while open. (calc.ran/.skipped register above the m_pendingLightReady return, hence also above the temporal-gate return below it, with every other counter in the function)
+
+### `R11` — COSMETIC — done
 
 **lighting.upload.us registers only on the CPU-lightmap fallback branch and is absent whenever GPU lighting succeeds**
 
@@ -645,6 +653,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* Owner `frame`, role Detail, so it does not corrupt closure — but on every matrix leg where the GPU pass succeeds the key is absent, and on a leg where the GPU pass transiently fails (self-healing per the comment at :288-291) the key appears mid-run and telemetry-window.py:113-127 windows it against `ma = {}` i.e. zero, reporting its full process-lifetime count/total as if it all occurred inside the window. That is a fabricated number, not merely a missing one.
 
 *Closes by.* Register uploadTimer at file scope in StarWorldPainter.cpp so it is always present at zero; the TelemetryScope stays inside the branch.
+
+*Signature.* `source/rendering/StarWorldPainter.cpp` matching `"lighting\.upload\.us"[\s\S]*?void WorldPainter::render` — present while open. (the upload timer is registered at file scope, above the render function whose doubly-nested fallback branch samples it -- so it can no longer first appear mid-window)
 
 ### `R12` — BLOCKS_MATRIX — done
 

@@ -10,6 +10,36 @@
 
 namespace Star {
 
+namespace {
+  // FILE SCOPE, AND THAT IS THE FIX. Every one of these used to register inside the function that samples
+  // it, and every one of those functions is reached only on a path the pinned harness config switches off:
+  // shadowCompareFull needs lightingGpuShadowCompare (false), and the CPU lightmap upload is the fallback
+  // taken when the GPU pass does NOT run (lightingGpu is true). A counter that can only appear once it has
+  // something to report makes "ran and found nothing" and "never ran" the same reading -- and for the
+  // parity counter that reading is the only signal the GPU lightmap has that it still matches the CPU one.
+  //
+  // Registered at static-init rather than behind an accessor function: an accessor is the same lazy
+  // registration one call deeper, and it would still first run when something reached it.
+  //
+  // lighting.upload.us is worse than merely missing. On a leg where the GPU pass fails transiently the key
+  // appears MID-WINDOW, and scripts/telemetry-window.py then differences it against an absent entry -- so
+  // its whole process-lifetime total, world load included, is reported as this window's cost. That is a
+  // fabricated number, not an absent one, and it is silent by construction.
+  auto s_pointMismatch = Telemetry::counter("lighting.gpu.point.mismatch",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  // COMPARED vs UNCOMPARABLE, because a mismatch count of zero cannot say WHY it is zero. `compared` counts
+  // the invocations that walked both images; `uncomparable` counts the ones that returned on the
+  // size-validity check before the loop -- an oracle that reads GREEN precisely when it could not compare.
+  auto s_pointCompared = Telemetry::counter("lighting.gpu.point.compared",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  auto s_pointUncomparable = Telemetry::counter("lighting.gpu.point.uncomparable",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  // Cadence::Call: doubly conditional -- inside `if (lightMapUpdated)` AND only on the CPU-lightMap
+  // fallback path. Same defect as lighting.gpu.cpu_cost.us; see the note at its registration.
+  auto s_uploadTimer = Telemetry::timer("lighting.upload.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+}
+
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
 // point + cap) is calc-region sized; the CPU lightMap is the full (spread+point+cap) query-region
 // result. With point lighting now on BOTH sides this is apples-to-apples in ANY scene. Crop the
@@ -19,12 +49,13 @@ namespace Star {
 static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, int border,
     ImageView const& emission, ImageView const& obstacle,
     List<ColoredCellularLightArray::PointLight> const& lights, PointParameters const& params, unsigned iterations) {
-  static auto mismatchCounter = Telemetry::counter("lighting.gpu.point.mismatch",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   unsigned qw = cpuQuery.width(), qh = cpuQuery.height();
   Vec2U gpuSize = gpuCalc.size();
-  if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border)
+  if (qw == 0 || qh == 0 || border < 0 || gpuSize[0] < qw + 2 * border || gpuSize[1] < qh + 2 * border) {
+    s_pointUncomparable.inc(1);
     return;
+  }
+  s_pointCompared.inc(1);
 
   float const meanTol = 3.0f / 255.0f, maxTol = 10.0f / 255.0f;
   double sumAbs = 0.0;
@@ -46,7 +77,7 @@ static void shadowCompareFull(Image const& gpuCalc, Lightmap const& cpuQuery, in
   }
   float mean = (float)(sumAbs / (qw * qh * 3));
   if (mean > meanTol || worst > maxTol) {
-    mismatchCounter.inc(1);
+    s_pointMismatch.inc(1);
     static int warnBudget = 8;   // rate-limited; the counter carries the running total
     if (warnBudget > 0) {
       --warnBudget;
@@ -278,12 +309,9 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
         // => a garbage offset, dark world, when the CPU calc is skipped).
         m_lightMapBorder = lm.border;
       } else if (!renderData.lightMap.empty()) {
-        // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable).
-        // Cadence::Call: doubly conditional -- inside `if (lightMapUpdated)` AND only on the CPU-lightMap
-        // fallback path. Same defect as lighting.gpu.cpu_cost.us; see the note there.
-        static auto uploadTimer = Telemetry::timer("lighting.upload.us",
-          MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
-        TelemetryScope uploadScope(uploadTimer);
+        // CPU lightMap upload (deep-gated; also the fallback when the GPU path is off/unavailable). The
+        // TIMER stays here, where the cost is; its REGISTRATION does not -- see the file-scope block.
+        TelemetryScope uploadScope(s_uploadTimer);
         m_renderer->setEffectTexture("lightMap", renderData.lightMap);
         m_lightMapBorder = 0;
       }

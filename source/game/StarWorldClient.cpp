@@ -2261,6 +2261,16 @@ void WorldClient::lightingCalc() {
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto temporalSkipped = Telemetry::counter("lighting.temporal.skipped",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  // UP HERE WITH THE REST, above BOTH early returns. These two used to register beside the calculate
+  // phase, which two returns dominate -- the m_pendingLightReady check just below, and the temporal gate's
+  // calm-scene return. A process whose temporal gate skipped every recompute never reached them, so the one
+  // pair that says whether the CPU solve was actually skipped under GPU lighting read ABSENT, and a
+  // consumer could not tell "no recomputes happened" from "the CPU path never ran". Every other timer and
+  // counter in this function was already hoisted here for exactly that reason; these two were missed.
+  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
 
   MutexLocker prepLocker(m_lightMapPrepMutex);
   if (!m_pendingLightReady.load())
@@ -2667,10 +2677,7 @@ void WorldClient::lightingCalc() {
   //    m_lightMap exists for the fallback; if a later GPU frame fails, the render thread
   //    reports false and the CPU path re-arms within ~1 frame (self-healing).
   //  - !shadowCompare: shadow-compare keeps the CPU lightMap as the parity reference.
-  static auto calcRan = Telemetry::counter("lighting.cpu.calc.ran",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
-  static auto calcSkipped = Telemetry::counter("lighting.cpu.calc.skipped",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+  // calcRan / calcSkipped are registered at the top of this function, above both early returns.
   {
     TelemetryScope calculateScope(calculateTimer);
     bool skipCpuCalc = lightingGpu && !shadowCompare && m_gpuLightingActive.load(std::memory_order_relaxed);
