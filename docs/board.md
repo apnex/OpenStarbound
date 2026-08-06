@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**183 tasks** across 2 store(s): 4 in_progress, 36 pending, 143 completed
+**183 tasks** across 2 store(s): 4 in_progress, 35 pending, 144 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 182 tasks, ids 64–246
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,15 +43,16 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | rank | id | task | startable |
 |---:|---|---|---|
-| 1 | `#240` | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | ready |
 | 2 | `#241` | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | ready |
 | 3 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | blocked by #240 |
+| 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
 | 5 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
 | 6 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
 | 7 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
+
+> **Ranking integrity:** rank sequence has gaps at 1
 
 ---
 
@@ -89,7 +90,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 143.
+**Completed tasks citing no commit and no doc:** 84 of 144.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -277,11 +278,11 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
-| [#240](#c29c1332-240) | `c29c1332` | open | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `495682df` | — |
+| [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
 | [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `495682df` `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
@@ -5055,8 +5056,9 @@ descriptor convergence regardless.
 
 #### #240 — R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK
 
-status: **pending** · blocks: #242 · metadata: `{"rank": 1}`
+status: **completed** · blocks: #242
 
+- `5605be17` R13 CLOSED: the four lock timers register at static init, not at first acquisition
 - `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
 
 ```
@@ -5187,6 +5189,7 @@ Register as a gate with a fires-arm. Commit ends [#243].
 
 status: **pending**
 
+- `35bbb97c` BOARD-NEXT: a ranked Next list whose source is the task itself
 - `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
 - `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
 
