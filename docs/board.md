@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**173 tasks** across 2 store(s): 4 in_progress, 28 pending, 141 completed
+**174 tasks** across 2 store(s): 4 in_progress, 29 pending, 141 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 172 tasks, ids 64–236
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 173 tasks, ids 64–237
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 172, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 174, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -148,7 +148,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
-| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | `matrix-prereq-ledger.md` |
+| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `d8f36de7` `404781e0` `0c27d76b` `a8196e52` `6e1e691f` `4e95c50c` | `matrix-prereq-ledger.md` |
 | [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
@@ -247,7 +247,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
 | [#235](#c29c1332-235) | `c29c1332` | open | GM-1d: every CPU phase timer measures WALL time, not CPU work | `72ad0000` `50d57866` | — |
-| [#236](#c29c1332-236) | `c29c1332` | **active** | GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent | `9db54200` `0290f6ef` | — |
+| [#236](#c29c1332-236) | `c29c1332` | **active** | GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
+| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1251,6 +1252,11 @@ Related: #136 (the P-1 bugs in this same gate, code merged, awaiting the Directo
 
 status: **pending**
 
+- `d8f36de7` O13: the harness measured wherever the player happened to be, and quiescence fired on the world it was leaving
+- `404781e0` ORACLE-136d: the golden reproduces to ONE LSB with no world body and 19% of pixels with one -- #191 was right
+- `0c27d76b` ORACLE-136c: two per-run terms pinned out of the sky, and the golden-hash blocker is NOT what #191 named
+- `a8196e52` ORACLE-136b: the blocker's own evidence does not survive, and two clauses of the trade were false
+- `6e1e691f` ORACLE-136a: the staleness bound was one operand nothing tested, and a refuted claim about the instrument
 - `4e95c50c` telemetry: the two compose arms are mutually exclusive -- Cadence::Call, not Frame [#136]
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
@@ -4757,6 +4763,11 @@ THE FIX IS NOT SIMPLY SWAPPING THE CLOCK. CLOCK_THREAD_CPUTIME_ID excludes block
 
 status: **in_progress**
 
+- `e8814a61` PREREQ-4: a lifetime total wearing a window's label, and 42 unrecorded content inputs
+- `49249551` PREREQ-3: the harness measured a window nobody chose, on a clock that was not the cadence's
+- `420f1759` PREREQ-2: eight counters could not report zero -- including the one guarding every GPU number
+- `040a5033` PREREQ-1: three matrix blockers closed -- a governor, a stale binary, and a scaled-up phantom
+- `feb8886f` LEDGER-MATRIX: 49 matrix prerequisites, durable, and each row checked against the TREE
 - `9db54200` GM-2d (#236): the GPU parts were never a partition -- root cause, not a tolerance
 - `0290f6ef` GPU-CLOSE-1a (#236): the closure check gets a MEASURED bound, watched from both ends
 
@@ -4820,6 +4831,66 @@ denominator is the disputed quantity.
 
 BLOCKS: the 27-leg lever matrix. Director's call, and correct -- running 94 minutes to produce costs
 whose denominator is under question would be the defective baseline again.
+```
+
+<a id="c29c1332-237"></a>
+
+#### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
+
+status: **pending**
+
+```
+PROPOSED 2026-08-06 by the Director, from evidence produced closing #136/O13. NOT STARTED, not queued.
+
+WHAT IT IS. A fifth ENTRYPOINT in the TSSA's existing composition scheme (participant + presentation
+backend + driver, chosen independently). The spec already states the relation outright: "swap `rendering`
+for `transcript` and the same chain ends in `recordTick`". So this is not a new KIND of thing.
+
+    client_opengl     frameLoop     rendering  -> GPU     window, GUI, human
+    client_headless   headlessLoop  transcript -> file    none
+    PROPOSED          headlessLoop  rendering  -> GPU     none
+
+It is a REAL CLIENT and behaves as a real player: real WorldClient, real player entity, logs in, warps,
+walks, streams worlds. "Headless" here means no window, no GUI, no human input -- NOT no rendering.
+
+IT IS NOT #199, and conflating them would be the mistake. #199 is presentation-NULL: "no GL context at
+all", linking star_extern + star_core + star_base + star_game only, the way starbound_server does, for
+throughput and agents. This one KEEPS the renderer, because golden frames and GL_TIME_ELAPSED are the
+entire point -- a transcript backend is useless to a render-measurement instrument. The link delta is
+therefore precise and checkable: drop star_windowing and star_frontend, KEEP star_rendering and
+star_application. #199 stays deferred on its own terms; the boundary_ratchet keeps it warm.
+
+WHY -- three defects, all one cause, all measured 2026-08-06. The harness is ~8% resident in stock
+StarClientApplication (177 of 2233 lines in the .cpp, 36 of 296 in the .hpp) and therefore INHERITS state
+it never asked for:
+  * THE SCENE SELECTED ITSELF. No notion of a target scene; it inherits the player save's persisted
+    position. Every early determinism run landed at 03-Surface Outpost, which fails both preconditions
+    (never settles, dayLevel=0 so the terms under test draw nothing). Nobody chose it.
+  * QUIESCENCE FIRED ON THE DEPARTURE WORLD. The settle criterion is written against the client's
+    world-load lifecycle and knows nothing about a pending warp; the ship holds still, so the counter
+    reached 90 mid-transition. Warp issued t+0.1s, load "ended" 2.8s later still aboard the ship.
+  * IT REWRITES ITS OWN INVENTORY. Runs go through the real save path; the bookmark list went 27 -> 23
+    across one evening, and an instance world's population went 47 -> 1.
+Fixes for all three shipped (d8f36de7) as ASSERTIONS. That is the tell: I had to DETECT being in the
+wrong world because nothing prevented it. A peer module makes all three impossible by construction.
+
+WHAT IT OWNS THAT TODAY'S HARNESS CANNOT:
+  1. ITS FIXTURE -- which world, which spawn, which motion, when to capture: declared, not inherited.
+  2. ITS STORAGE -- read-only or restored per run, so a run cannot mutate the inventory it measures.
+  3. ITS LOOP -- no title-screen state machine, no GUI, no input path to inherit ordering from.
+
+SECOND COST, independent of correctness: StarClientApplication is STOCK upstream (origin/main has its own
+commits on it, e.g. 4427a49b). Every upstream merge negotiates around our scaffolding, and the fork is
+already ~83 commits behind.
+
+INSTRUMENT ALREADY EXISTS. scripts/grant-sweep.py checks the TSSA grant table against the tree and reports
+UNVERIFIABLE for target components with no files yet -- rather than passing over what it cannot see. A new
+entrypoint starts as UNVERIFIABLE rows and earns each grant back, so the module boundary is enforced from
+day one instead of asserted.
+
+SEQUENCING. Behind the TSSA (#204/#207) -- that is where the grant table and the entrypoint set live, and
+this adds a row to both. Cross-refs: #199 (the presentation-null sibling), #200/#203 (boundary work),
+O13 in docs/superpowers/drafts/matrix-prereq-ledger.md (the three defects, with measurements).
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
