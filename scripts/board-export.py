@@ -418,13 +418,16 @@ def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dea
     if not ranked:
         A("*Nothing is ranked.*")
     else:
-        A("| rank | id | task | startable |")
-        A("|---:|---|---|---|")
-        for r, _store, t in ranked:
+        # BOTH, because they are different facts and this file is the authority. `#` is the position
+        # in the queue and always starts at 1; `rank` is the stored metadata.rank sort key, sparse by
+        # design, and the value you set to reprioritise.
+        A("| # | rank | id | task | startable |")
+        A("|---:|---:|---|---|---|")
+        for pos, (r, _store, t) in enumerate(ranked, 1):
             live = [str(b) for b in (t.get("blockedBy") or [])
                     if by_id.get(str(b), {}).get("status") != "completed"]
             state = "ready" if not live else "blocked by " + ", ".join("#" + b for b in live)
-            A(f"| {r} | `#{t.get('id')}` | {cell(t.get('subject', ''), 110)} | {state} |")
+            A(f"| {pos} | {r} | `#{t.get('id')}` | {cell(t.get('subject', ''), 110)} | {state} |")
     A("")
     for p in rank_problems(ranked, stores_data):
         A(f"> **Ranking integrity:** {p}")
@@ -633,13 +636,22 @@ def render_html(stores_data):
         return ('<span class="tag t-blocked">blocked by '
                 + ", ".join("#" + _h.escape(b) for b in live) + '</span>')
 
+    # POSITION, NOT THE STORED RANK. The reader's question is "what do I do next, and what after
+    # that" -- that is a position in a queue, and it starts at 1 whatever the keys happen to be.
+    # The stored rank is a stable SORT KEY: it deliberately does NOT renumber when something
+    # completes, because renumbering is churn and it invalidates any reference made to "rank 3".
+    # Two different facts; showing the key where the position belongs made a correct list read as
+    # broken. The key is still surfaced, quietly, so reprioritising does not require leaving the
+    # page to discover what value to set.
     nexts = []
-    for r, store, t in ranked:
+    for pos, (r, store, t) in enumerate(ranked, 1):
         tid = str(t.get("id", "?"))
         desc, _ = clean_desc(t.get("description", ""))
         first = next((ln.strip() for ln in desc.splitlines() if ln.strip()), "")
         nexts.append(
-            f'<li class="nx"><span class="nrank">{r}</span>'
+            f'<li class="nx"><span class="nrank">{pos}</span>'
+            f'<span class="nkey" title="stored metadata.rank -- the sort key, not the position">'
+            f'r{r}</span>'
             f'<a class="nid" href="#t{_h.escape(tid)}">#{_h.escape(tid)}</a>'
             f'<span class="nsub">{_h.escape(t.get("subject", "") or "")}'
             f'<em>{_h.escape(first[:150])}</em></span>'
