@@ -38,6 +38,18 @@ void EnvironmentPainter::update(float dt) {
   m_timer = std::fmod(m_timer, Constants::pi * 100000.0);
 }
 
+void EnvironmentPainter::pinRayAnimation(uint64_t seed, double timer) {
+  if (!m_rayPerlinPinned) {
+    m_rayPerlin = PerlinF(1, RayPerlinFrequency, RayPerlinAmplitude, 0, 2.0f, 2.0f, seed);
+    m_rayPerlinPinned = true;
+    // SAY THAT IT FIRED. The call site guards on a pointer, so a null there would make this a silent
+    // no-op -- and a determinism experiment run against a no-op measures nothing while looking like a
+    // clean refutation of whatever it was testing.
+    Logger::info("[rendertest] ray animation pinned: seed={:016x} timer={:.4f}", seed, timer);
+  }
+  m_timer = timer;
+}
+
 void EnvironmentPainter::renderStars(float pixelRatio, Vec2F const& screenSize, SkyRenderData const& sky) {
   float nightSkyAlpha = 1.0f - min(sky.dayLevel, sky.skyAlpha);
   if (nightSkyAlpha <= 0.0f)

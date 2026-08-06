@@ -127,6 +127,10 @@ void WorldPainter::update(float dt) {
   m_environmentPainter->update(dt);
 }
 
+void WorldPainter::pinRayAnimation(uint64_t seed, double timer) {
+  m_environmentPainter->pinRayAnimation(seed, timer);
+}
+
 LightmapResult WorldPainter::runGpuLightmapPass(WorldRenderData& renderData) {
   auto config = Root::singleton().configuration();
   if (!(config->getOrDefault("lightingGpu").toBool() && renderData.lightingInputsValid))

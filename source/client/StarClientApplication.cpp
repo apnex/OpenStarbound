@@ -166,8 +166,18 @@ Json const AdditionalDefaultConfiguration = Json::parseJson(R"JSON(
 // Fixed sky clock for the render harness (P-0). Any constant works; it only has to be the SAME constant in
 // every run, so two binaries render the same sky. The universe clock is wall-clock derived, so without this
 // two runs of the same save land on a different epochTime -- which moves stars, orbiters, day/night colour and
-// parallax drift, and was the SOLE source of cross-run hash drift once the world was paused.
+// parallax drift.
+//
+// IT WAS NOT THE SOLE SOURCE, and this comment said it was. Measured on the current binary: four settled
+// runs at one location, IDENTICAL fingerprint (this epochTime, same camera, parallaxLayers=31,
+// entities=189), four distinct frame hashes -- each self-consistent across its own 30 captured frames.
+// Two more per-run terms live in the sun rays, and the constants below pin them; see
+// EnvironmentPainter::pinRayAnimation for what they are and why neither is reachable from here.
 static double const RenderTestEpochTime = 36714000.0;
+// Same rule as the epoch: arbitrary, but the SAME in every run. The seed replaces a Random::randu64()
+// draw and the timer replaces an accumulation of real load-phase frametimes.
+static uint64_t const RenderTestRaySeed = 0x5EED5A4Bull;
+static double const RenderTestRayTime = 1234.5;
 
 void ClientApplication::startup(StringList const& cmdLineArgs) {
   RootLoader rootLoader({AdditionalAssetsSettings, AdditionalDefaultConfiguration, String("starbound.log"), LogLevel::Info, false, String("starbound.config")});
@@ -566,8 +576,13 @@ void ClientApplication::render() {
       // Render harness: pin the sky clock BEFORE the sky bakes its render data (star offsets, orbit angle,
       // day/night colour are all derived from epochTime, so overriding the field afterwards would be too late).
       // With the world paused this was the sole remaining source of cross-run hash drift.
-      if (m_renderTestFrames)
+      if (m_renderTestFrames) {
         worldClient->pinSkyEpochTime(RenderTestEpochTime);
+        // The sky clock is not enough on its own -- the rays carry two terms epochTime does not reach.
+        // Pinned every frame, like the epoch, so the value never depends on how long the load took.
+        if (m_worldPainter)
+          m_worldPainter->pinRayAnimation(RenderTestRaySeed, RenderTestRayTime);
+      }
       worldClient->render(m_renderData, TilePainter::BorderTileSize);
       LogMap::set("client_render_world_client", strf(u8"{:05d}\u00b5s", Time::monotonicMicroseconds() - clientStart));
 
@@ -1516,10 +1531,15 @@ void ClientApplication::renderTestCapture() {
   // State fingerprint alongside the pixel hash. If two runs disagree on the HASH, this says WHICH input
   // drifted -- pixels alone cannot tell you whether the renderer changed or the world did.
   auto const& sky = m_renderData.skyRenderData;
+  // dayLevel and skyAlpha are here because without them the fingerprint cannot say whether the SUN is
+  // up -- and the sun rays are the backdrop's only animated term, so a determinism result taken at
+  // night says nothing about them. A fingerprint that cannot distinguish "the term was pinned" from
+  // "the term was never drawn" is not a fingerprint for this question.
   Logger::info("[rendertest] frame={} hash={:016x} size={}x{} meanLuminance={:.6f}"
-               " | epochTime={:.4f} dayLength={:.2f} camera=({:.4f},{:.4f}) parallaxLayers={} entities={}",
+               " | epochTime={:.4f} dayLength={:.2f} dayLevel={:.4f} skyAlpha={:.4f}"
+               " camera=({:.4f},{:.4f}) parallaxLayers={} entities={}",
     index, hash, frame.width(), frame.height(), lum,
-    sky.epochTime, sky.dayLength,
+    sky.epochTime, sky.dayLength, sky.dayLevel, sky.skyAlpha,
     m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
     m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
 

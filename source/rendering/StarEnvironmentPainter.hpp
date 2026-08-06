@@ -18,6 +18,20 @@ public:
 
   void update(float dt);
 
+  // THE RENDER SIDE'S HALF OF pinSkyEpochTime, and the sky is not reproducible without it.
+  //
+  // The sun rays carry the only two per-RUN terms in the whole backdrop chain. m_rayPerlin is seeded
+  // from Random::randu64(), whose source is Time::monotonicTicks() -- one draw per painter, so it is
+  // constant within a process and different in the next one. m_timer accumulates real dt through the
+  // harness's UNPAUSED load phase, whose duration is wall-clock, so its value at the freeze differs
+  // run to run as well. (6e66f36e stopped the timer advancing AFTER the freeze; it never pinned the
+  // value AT it.) Both feed per-ray alpha inside the env draw, so two runs of one binary render
+  // different skies at an identical world state -- which is what a cross-run golden hash trips over.
+  //
+  // Idempotent in the seed: re-seeding per frame would rebuild the Perlin for nothing, and the point
+  // is that the noise field is the SAME field in every run.
+  void pinRayAnimation(uint64_t seed, double timer);
+
   void renderStars(float pixelRatio, Vec2F const& screenSize, SkyRenderData const& sky);
   void renderDebrisFields(float pixelRatio, Vec2F const& screenSize, SkyRenderData const& sky);
   void renderBackOrbiters(float pixelRatio, Vec2F const& screenSize, SkyRenderData const& sky);
@@ -67,6 +81,7 @@ private:
 
   double m_timer;
   PerlinF m_rayPerlin;
+  bool m_rayPerlinPinned = false;   // see pinRayAnimation: the seed is pinned once, the timer every call
 
   uint64_t m_starsHash{};
   List<TexturePtr> m_starTextures;

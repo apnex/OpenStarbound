@@ -26,6 +26,8 @@ public:
   WorldCamera& camera();
 
   void update(float dt);
+  // Render-harness determinism; see EnvironmentPainter::pinRayAnimation for why the sky needs it.
+  void pinRayAnimation(uint64_t seed, double timer);
   void render(WorldRenderData& renderData, function<bool()> lightWaiter);
   void adjustLighting(WorldRenderData& renderData);
   // Slice 4: did the GPU lightmap pass produce this frame's lightMap? The render loop
