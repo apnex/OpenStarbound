@@ -77,6 +77,34 @@
               line-height:1.6; color:var(--ink-dim); margin:0; max-width:120ch; }
   .body .none { color:var(--ink-mut); font-style:italic; font-size:.85rem; }
 
+  h2.sec { font-size:1.05rem; margin:.5rem 0 .8rem; letter-spacing:.01em; }
+  h2.sec small { font-weight:400; color:var(--ink-mut); font-size:.8rem; margin-left:.5rem; }
+  h2.sec small code { font-family:var(--mono); }
+
+  .nextsec { background:var(--panel); border:1px solid var(--accent); border-radius:.6rem;
+             padding:1rem 1.15rem 1.15rem; }
+  .nextsec h2.sec { margin-top:0; color:var(--accent); }
+  .nextlist { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.35rem; }
+  .nx { display:flex; gap:.7rem; align-items:baseline; flex-wrap:wrap;
+        padding:.45rem .55rem; border-radius:.4rem; border:1px solid var(--line); }
+  .nrank { font-family:var(--mono); font-size:.95rem; font-weight:700; color:var(--accent);
+           font-variant-numeric:tabular-nums; min-width:1.4rem; }
+  .nid { font-family:var(--mono); font-size:.8rem; color:var(--ink-dim); text-decoration:none;
+         min-width:3.2rem; }
+  .nid:hover, .nid:focus-visible { color:var(--accent); text-decoration:underline; }
+  .nsub { flex:1 1 34rem; }
+  .nsub em { display:block; font-style:normal; color:var(--ink-mut); font-size:.8rem; margin-top:.15rem; }
+  .t-ready { color:var(--done); background:var(--done-b); border-color:var(--done); }
+  .t-blocked { color:var(--run); background:var(--run-b); border-color:var(--run); }
+  .t-rank { color:var(--accent); background:var(--accent-b); border-color:var(--accent); }
+  .rankwarn { border:1px solid var(--run); background:var(--run-b); border-radius:.45rem;
+              padding:.6rem .8rem; margin:0 0 .7rem; font-size:.85rem; }
+  .rankwarn ul { margin:.3rem 0 0; padding-left:1.1rem; }
+
+  /* Rank order WITHOUT reordering the DOM: the rows are already a flex column, so the Next facet
+     just switches on `order`. Everything unranked carries 999 and sinks. */
+  .rows.by-rank .row { order: var(--r, 999); }
+
   footer { color:var(--ink-mut); font-size:.78rem; border-top:1px solid var(--line);
            padding-top:1rem; font-family:var(--mono); }
   @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
@@ -104,6 +132,7 @@
 
   <div class="controls">
     <input id="q" type="search" placeholder="Filter by id, subject or description…" aria-label="Filter tasks">
+    <button data-f="next" aria-pressed="false">next</button>
     <button data-f="all" aria-pressed="true">all</button>
     <button data-f="in_progress" aria-pressed="false">in progress</button>
     <button data-f="pending" aria-pressed="false">pending</button>
@@ -111,6 +140,9 @@
     <span class="hits" id="hits"></span>
   </div>
 
+  __NEXT__
+
+  <h2 class="sec">All tasks</h2>
   <div class="rows" id="rows">__ROWS__</div>
 
   <footer>__FOOTER__</footer>
@@ -128,12 +160,14 @@
       var needle = q.value.trim().toLowerCase();
       var shown = 0;
       rows.forEach(function (r) {
-        var okStatus = filter === 'all' || r.dataset.status === filter;
+        var okStatus = filter === 'all'
+          || (filter === 'next' ? r.dataset.rank !== '' : r.dataset.status === filter);
         var okText = !needle || r.dataset.hay.indexOf(needle) !== -1;
         var show = okStatus && okText;
         r.hidden = !show;
         if (show) shown++;
       });
+      document.getElementById('rows').classList.toggle('by-rank', filter === 'next');
       hits.textContent = shown + ' / ' + rows.length + ' shown';
     }
     q.addEventListener('input', apply);

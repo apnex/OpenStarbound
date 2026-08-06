@@ -240,6 +240,90 @@ def doc_index():
     return {k: sorted(v) for k, v in idx.items()}
 
 
+# The harness has, on 20 tasks going back to #126, appended the activeForm parameter INTO the
+# description as literal markup. Stripped at RENDER time rather than by rewriting the store: it is
+# non-destructive, it heals historical and future instances alike, and the store belongs to the
+# harness. The count is REPORTED (see the Integrity section) rather than laundered silently -- a
+# normalisation nobody can see is a normalisation nobody can notice is wrong. Anchored to end-of-
+# string and required to be followed by the parameter tag, so it cannot eat real prose.
+# TWO VARIANTS, both anchored to END OF STRING. The common one is a closing tag followed by the
+# activeForm parameter; two tasks carry a bare closing tag with nothing after it. Neither can
+# eat real prose: a mid-text mention of the tag is not at the end, and no legitimate
+# description terminates with a closing tag for itself.
+# FOUR VARIANTS observed across 26 tasks, all one accident: a closing tag from the harness's own
+# parameter vocabulary, at END OF STRING, followed only by more markup or by nothing --
+# `</description><parameter ...>`, `</description></invoke>`, `</parameter></invoke>`, or a bare
+# closing tag. It is written as a RULE over that shape rather than a list of the forms that
+# happened to bite, because the first three drafts each missed the next one.
+#
+# It cannot eat prose: a mid-text mention of a tag is neither followed by `<` nor at the end.
+HARNESS_TAIL = re.compile(r"</(?:description|parameter)>\s*(?:<.*)?\Z", re.S)
+
+
+def clean_desc(text):
+    """(description with the harness tail removed, whether anything was removed)."""
+    out = HARNESS_TAIL.sub("", text or "")
+    return out, out != (text or "")
+
+
+def harness_tail_count(stores_data):
+    """How many descriptions this export had to normalise. REPORTED, never silent.
+
+    The comment above clean_desc used to claim this was reported when nothing counted it -- the
+    same claim-with-no-instrument shape as ledger rows R13/R14, committed the same day. Counted
+    here so the claim is true.
+    """
+    return sum(1 for _, tasks in stores_data for t in tasks
+               if clean_desc(t.get("description", ""))[1])
+
+
+def ranked_tasks(stores_data):
+    """Tasks carrying metadata.rank, in rank order — the NEXT list.
+
+    THE RANK LIVES ON THE TASK, which is the whole point. board.md, this page and the live board all
+    render from one store, so a reprioritisation cannot leave one of them saying something else.
+    Set it with TaskUpdate(metadata={"rank": N}); clear it with {"rank": null}.
+
+    Completed tasks are dropped: a rank is a statement about what comes next, and a finished item
+    holding one is stale by construction. That is counted in Integrity, not hidden.
+    """
+    out, done_ranked = [], []
+    for store, tasks in stores_data:
+        for t in tasks:
+            r = (t.get("metadata") or {}).get("rank")
+            if r is None:
+                continue
+            (done_ranked if t.get("status") == "completed" else out).append((r, store, t))
+    out.sort(key=lambda x: (x[0], str(x[1].name), str(x[2].get("id"))))
+    return out, done_ranked
+
+
+def rank_problems(ranked, stores_data):
+    """Integrity of the ranking itself. Reported, never silently normalised."""
+    by_id = {str(t.get("id")): t for _, tasks in stores_data for t in tasks}
+    problems = []
+    seen = {}
+    for r, _, t in ranked:
+        seen.setdefault(r, []).append(str(t.get("id")))
+    for r, ids in sorted(seen.items()):
+        if len(ids) > 1:
+            problems.append(f"rank {r} is claimed by {len(ids)} tasks: {', '.join('#' + i for i in ids)}")
+    got = sorted(seen)
+    if got and got != list(range(1, len(got) + 1)):
+        missing = [n for n in range(1, (max(got) if got else 0) + 1) if n not in seen]
+        if missing:
+            problems.append("rank sequence has gaps at " + ", ".join(str(m) for m in missing))
+    for r, _, t in ranked:
+        for b in t.get("blockedBy") or []:
+            blocker = by_id.get(str(b))
+            if blocker and blocker.get("status") != "completed":
+                br = (blocker.get("metadata") or {}).get("rank")
+                if br is not None and br > r:
+                    problems.append(f"#{t.get('id')} (rank {r}) is blocked by #{b} (rank {br}) — "
+                                    f"a blocker ranked LATER than the thing it blocks")
+    return problems
+
+
 def cell(s, limit=None):
     """Make arbitrary stored text safe inside a markdown table cell.
 
@@ -317,6 +401,38 @@ def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dea
     A("")
     A("---")
     A("")
+
+    # THE NEXT LIST, IN THE AUTHORITY. The page renders this same block from the same load; if it
+    # only existed on the page, the page would be asserting a priority the repo cannot confirm.
+    ranked, done_ranked = ranked_tasks(stores_data)
+    by_id = {str(t.get("id")): t for _, tasks in stores_data for t in tasks}
+    A("## Next")
+    A("")
+    A("Ranked work, in order. **The rank lives on the task** (`metadata.rank`), not in this file and")
+    A("not in the page — one source, three renderings, so a reprioritisation cannot leave any of them")
+    A("disagreeing. Set with `TaskUpdate(metadata={\"rank\": N})`; clear with `{\"rank\": null}`.")
+    A("")
+    if not ranked:
+        A("*Nothing is ranked.*")
+    else:
+        A("| rank | id | task | startable |")
+        A("|---:|---|---|---|")
+        for r, _store, t in ranked:
+            live = [str(b) for b in (t.get("blockedBy") or [])
+                    if by_id.get(str(b), {}).get("status") != "completed"]
+            state = "ready" if not live else "blocked by " + ", ".join("#" + b for b in live)
+            A(f"| {r} | `#{t.get('id')}` | {cell(t.get('subject', ''), 110)} | {state} |")
+    A("")
+    for p in rank_problems(ranked, stores_data):
+        A(f"> **Ranking integrity:** {p}")
+        A("")
+    if done_ranked:
+        A(f"> **{len(done_ranked)} completed task(s) still carry a rank** "
+          f"({', '.join('#' + str(t.get('id')) for _, _, t in done_ranked)}). A rank is a claim about")
+        A("> what comes next, so a finished item holding one is stale — clear it with `{\"rank\": null}`.")
+        A("")
+    A("---")
+    A("")
     A("## Integrity")
     A("")
     A("A self-check, so the drift this file exists to prevent is *visible* rather than something")
@@ -333,6 +449,14 @@ def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dea
     A(f"**Commit ids cited in task text:** {cited_total}, of which **{dead_n} resolve to nothing** "
       f"in either repository.")
     A("")
+    tails = harness_tail_count(stores_data)
+    if tails:
+        A(f"**Descriptions normalised on export: {tails}.** The task harness has, on these, appended its")
+        A("own closing markup (`</description>`, `</parameter>`, `<parameter name=\"activeForm\">…`) into")
+        A("the stored description. It is stripped at render time rather than by rewriting the store —")
+        A("non-destructive, self-healing, and the store belongs to the harness. Counted here rather than")
+        A("laundered silently: a normalisation nobody can see is one nobody can notice is wrong.")
+        A("")
     if dead_n:
         A("That is expected and mostly harmless: TWO history rewrites destroyed these ids while "
           "preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one "
@@ -454,7 +578,11 @@ def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dea
                     A(f"- cited in `{c}`")
                 if commits.get(tid) or doccites.get(tid):
                     A("")
-            desc = (t.get("description") or "").rstrip()
+            # SAME normalisation as the page -- see clean_desc. If only one of the two
+            # renderings stripped it, the page would be showing a description the authority
+            # does not have, which is precisely the drift this file exists to prevent.
+            desc, _ = clean_desc(t.get("description") or "")
+            desc = desc.rstrip()
             if desc:
                 f = fence_for(desc)
                 A(f)
@@ -489,22 +617,53 @@ def render_html(stores_data):
         stats.append(f'<div class="stat"><b>{n}</b><span>{_h.escape(label.get(st, st))}</span></div>')
     stats.append(f'<div class="stat"><b>{len(stores_data)}</b><span>stores</span></div>')
 
+    ranked, _done_ranked = ranked_tasks(stores_data)
+    rank_of = {str(t.get("id")): r for r, _, t in ranked}
+    by_id = {str(t.get("id")): t for _, tasks in stores_data for t in tasks}
+
+    def blocker_note(t):
+        """Whether this item is actually startable, which is the thing a Next list must not lie about."""
+        live = [str(b) for b in (t.get("blockedBy") or [])
+                if by_id.get(str(b), {}).get("status") != "completed"]
+        if not live:
+            return '<span class="tag t-ready">ready</span>'
+        return ('<span class="tag t-blocked">blocked by '
+                + ", ".join("#" + _h.escape(b) for b in live) + '</span>')
+
+    nexts = []
+    for r, store, t in ranked:
+        tid = str(t.get("id", "?"))
+        desc, _ = clean_desc(t.get("description", ""))
+        first = next((ln.strip() for ln in desc.splitlines() if ln.strip()), "")
+        nexts.append(
+            f'<li class="nx"><span class="nrank">{r}</span>'
+            f'<a class="nid" href="#t{_h.escape(tid)}">#{_h.escape(tid)}</a>'
+            f'<span class="nsub">{_h.escape(t.get("subject", "") or "")}'
+            f'<em>{_h.escape(first[:150])}</em></span>'
+            f'{blocker_note(t)}</li>')
+
     rows = []
     for store, tasks in stores_data:
         for t in tasks:
             tid = str(t.get("id", "?"))
             st = t.get("status", "unknown")
             subj = t.get("subject", "") or ""
-            desc = t.get("description", "") or ""
+            desc, _ = clean_desc(t.get("description", ""))
+            r = rank_of.get(tid)
             # The haystack is lowercased ONCE here rather than per keystroke in the browser.
             hay = _h.escape(f"#{tid} {subj} {desc}".lower(), quote=True)
             body = (f'<pre>{_h.escape(desc)}</pre>' if desc.strip()
                     else '<p class="none">No description recorded.</p>')
+            # --r drives CSS `order` when the Next facet is active, so that view is in RANK order
+            # rather than id order. Pure CSS on the existing flex column; no DOM reordering.
             rows.append(
-                f'<details class="row" data-status="{_h.escape(st)}" data-hay="{hay}">'
+                f'<details class="row" id="t{_h.escape(tid)}" data-status="{_h.escape(st)}" '
+                f'data-rank="{r if r is not None else ""}" data-hay="{hay}" '
+                f'style="--r:{r if r is not None else 999}">'
                 f'<summary><span class="rid">#{_h.escape(tid)}</span>'
                 f'<span class="subj">{_h.escape(subj)}</span>'
-                f'<span class="tag t-{_h.escape(st)}">{_h.escape(label.get(st, st))}</span>'
+                + (f'<span class="tag t-rank">next {r}</span>' if r is not None else '')
+                + f'<span class="tag t-{_h.escape(st)}">{_h.escape(label.get(st, st))}</span>'
                 f'<span class="store">{_h.escape(store.name[:8])}</span></summary>'
                 f'<div class="body">{body}</div></details>')
 
@@ -512,10 +671,22 @@ def render_html(stores_data):
         f"{s.name[:8]} ({len(t)} tasks)" for s, t in stores_data)
     footer = (f"generated by scripts/board-export.py from {len(stores_data)} store(s): {_h.escape(ranges)} "
               f"&middot; docs/board.md is the authority; this page is the same render "
-              f"&middot; ids are per-store, not global")
+              f"&middot; ids are per-store, not global "
+              f"&middot; rank lives in the task's metadata.rank, so this list cannot drift from the board")
+
+    problems = rank_problems(ranked, stores_data)
+    warn = ("" if not problems else
+            '<div class="rankwarn"><b>Ranking integrity</b><ul>'
+            + "".join(f"<li>{_h.escape(p)}</li>" for p in problems) + "</ul></div>")
+
+    nextblock = ("" if not nexts else
+                 f'<section class="nextsec"><h2 class="sec">Next '
+                 f'<small>{len(nexts)} ranked · set with <code>metadata.rank</code></small></h2>'
+                 f'{warn}<ol class="nextlist">{"".join(nexts)}</ol></section>')
 
     return (TEMPLATE_PATH.read_text()
             .replace("__STATS__", "\n".join(stats))
+            .replace("__NEXT__", nextblock)
             .replace("__ROWS__", "\n".join(rows))
             .replace("__FOOTER__", footer))
 

@@ -28,10 +28,30 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**181 tasks** across 2 store(s): 4 in_progress, 34 pending, 143 completed
+**183 tasks** across 2 store(s): 4 in_progress, 36 pending, 143 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 180 tasks, ids 64–244
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 182 tasks, ids 64–246
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
+
+---
+
+## Next
+
+Ranked work, in order. **The rank lives on the task** (`metadata.rank`), not in this file and
+not in the page — one source, three renderings, so a reprioritisation cannot leave any of them
+disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": null}`.
+
+| rank | id | task | startable |
+|---:|---|---|---|
+| 1 | `#240` | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | ready |
+| 2 | `#241` | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | ready |
+| 3 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | blocked by #240 |
+| 5 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
+| 6 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
+| 7 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
+| 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
 
 ---
 
@@ -42,6 +62,12 @@ someone has to go and discover. It is the same discipline as the render oracles:
 reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 179, of which **40 resolve to nothing** in either repository.
+
+**Descriptions normalised on export: 27.** The task harness has, on these, appended its
+own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
+the stored description. It is stripped at render time rather than by rewriting the store —
+non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
+laundered silently: a normalisation nobody can see is one nobody can notice is wrong.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -251,11 +277,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
-| [#240](#c29c1332-240) | `c29c1332` | open | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | — | — |
+| [#240](#c29c1332-240) | `c29c1332` | open | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
 | [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `495682df` `543a2587` | — |
+| [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
+| [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1055,8 +1083,7 @@ REMAINING RED (1/91) -- ItemTest.ItemComparison. NOT swept, tracked as #146:
    DECIDING what "exact match" is supposed to mean -- an engine-design call, not a bugfix.
 
 VERIFIED: core_tests 226/226; game_tests 90/91; renderer untouched and still bit-identical (env oracle
-60 MATCH / 0 DIFF, parallax oracle 60 EXACT / 0 DIFF).</description>
-</invoke>
+60 MATCH / 0 DIFF, parallax oracle 60 EXACT / 0 DIFF).
 ```
 
 <a id="c29c1332-127"></a>
@@ -1198,8 +1225,7 @@ SEVEN parameters. WorldPainter's fullbright branch deliberately leaves lightMapS
 lightmapBilinear / lightmapUpscale stale, relying on the shader ignoring them when lightMapEnabled=false.
 Correct today; a live coupling between config, shader and a C++ branch with nothing asserting it.
 
-Related: #144 carries the same defect class for frameBufferTextures across loadConfig.</description>
-<parameter name="activeForm">Re-auditing the FBO hardening items
+Related: #144 carries the same defect class for frameBufferTextures across loadConfig.
 ```
 
 <a id="c29c1332-134"></a>
@@ -1217,8 +1243,7 @@ Design the "perfect" env-cache / retained-surface implementation (brainstorm →
 status: **completed**
 
 ```
-DONE: brainstorm→spec→plan complete. Root-caused the probe failure (surface-lifecycle, not compose; ship-white = transparent sky + blind alpha=1 replace over non-black envCache; red/black = pre-existing AA×lighting bug). Spec committed kubebound 2f47a6e (specs/2026-07-12-env-cache-design.md); plan committed 3f63085 (plans/2026-07-12-env-cache-plan.md). Design = oracle-first (automated pixel-memcmp as debugging instrument + deploy gate), fix to zero-diff, N-sweep measure, AA-off target + direct fallback. Phase 2 = #133 hardening + parallax/world extensibility. IMPLEMENTATION PENDING = execute the plan (feat/env-cache @ 46b8606 is the WIP start point). Handover: kubebound/2026-07-12-HANDOVER.md.</parameter>
-</invoke>
+DONE: brainstorm→spec→plan complete. Root-caused the probe failure (surface-lifecycle, not compose; ship-white = transparent sky + blind alpha=1 replace over non-black envCache; red/black = pre-existing AA×lighting bug). Spec committed kubebound 2f47a6e (specs/2026-07-12-env-cache-design.md); plan committed 3f63085 (plans/2026-07-12-env-cache-plan.md). Design = oracle-first (automated pixel-memcmp as debugging instrument + deploy gate), fix to zero-diff, N-sweep measure, AA-off target + direct fallback. Phase 2 = #133 hardening + parallax/world extensibility. IMPLEMENTATION PENDING = execute the plan (feat/env-cache @ 46b8606 is the WIP start point). Handover: kubebound/2026-07-12-HANDOVER.md.
 ```
 
 <a id="c29c1332-135"></a>
@@ -1453,8 +1478,7 @@ deliberately NOT folded -- see the note there; its predicate is not crisp and it
 allowlist for its only in-tree case.
 
 PHASES 2-4 (the depth-buffer architecture) are untouched and unrelated to Phase 1; split to #198 so this
-task closes on what it actually delivered rather than staying open on a different project.</description>
-<parameter name="activeForm">Building the GL-state assertion pass
+task closes on what it actually delivered rather than staying open on a different project.
 ```
 
 <a id="c29c1332-140"></a>
@@ -1530,8 +1554,7 @@ REDIRECTS:
 - #139 (depth prepass): currently aimed at the BACKDROP. It should be aimed at the WORLD pass, whose BACKGROUND tiles are precisely what FOREGROUND tiles occlude -- and the engine already computes that occlusion (StarTilePainter.cpp:179-182, occludesBehind), though the flag is a LIAR and must be backed by real texel-alpha coverage (vanilla's own lightblocker.material declares occludesBelow:true on a 100%-transparent block).
 - The 1,702us unattributed block (interface + clears + blit) is now the #3 cost and has never been looked at. On a STATIC scene the interface is redrawn from scratch every frame.
 
-CAVEAT: measured at the SHIP. A surface world (42 parallax layers, dense terrain) will rank differently -- parallax and world both rise. Re-run the same measurement at the Director's BASE before finalizing the lever order.</parameter>
-</invoke>
+CAVEAT: measured at the SHIP. A surface world (42 parallax layers, dense terrain) will rank differently -- parallax and world both rise. Re-run the same measurement at the Director's BASE before finalizing the lever order.
 ```
 
 <a id="c29c1332-142"></a>
@@ -1581,8 +1604,7 @@ VERIFICATION (headless harness, offscreen, real Arc GPU):
 NOTE: cross-run pixel-hash A/B is NOT usable at a populated base -- the unpaused LOAD phase lets the sim diverge
 (entities=213/215/216 across runs). Use the in-frame oracles.
 
-REMAINING: user confirms the crash is gone in live play (it was intermittent, so absence over time is the only proof).</parameter>
-</invoke>
+REMAINING: user confirms the crash is gone in live play (it was intermittent, so absence over time is the only proof).
 ```
 
 <a id="c29c1332-143"></a>
@@ -1650,8 +1672,7 @@ OUR OWN DEBT (audit was asked to judge us honestly):
 PROCESS TRAP (worth a script): the harness reads assets from the REPO (harness/sbinit.config points opensb at
 assets/opensb) while the live game reads ONLY dev/opensb + dev-feat/opensb. So the harness and the live game can run
 DIFFERENT SHADERS and the harness is the one that's right. A repo-only asset edit is a silent no-op in game. Want
-scripts/deploy-install.sh <install> --verify as the single sanctioned repo->install path.</description>
-<parameter name="activeForm">Tracking upstream merge follow-ups
+scripts/deploy-install.sh <install> --verify as the single sanctioned repo->install path.
 ```
 
 <a id="c29c1332-145"></a>
@@ -1695,8 +1716,7 @@ status: **completed**
 - `abf6e2eb` test: game_tests 91/91 — fix the 3 pre-existing failures [#146]
 
 ```
-DONE 2026-07-20 (abf6e2eb). All 3 game_tests failures fixed; scripts/game-tests.sh -> 91/91 PASSED (22s). Two root causes: (1) ItemComparison — pre-existing UPSTREAM failure (perfectlygenericitem ObjectItem injects scriptStorage:{} via retainObjectParametersInItem:true; raw JsonObject== exactMatch rejects it vs pre-construction descriptors). Fixed with a clean() helper in item_test.cpp that strips scriptStorage. (2) ConstructItems + RootTest.All — game_tests fails on any error-level log; ~40 broken third-party workshop mods in sbinit.config. Fixed via scripts/game-tests.sh running against a clean asset set (base + opensb) using harness/sbinit-test.config (local, gitignored like sbinit.config). Render gate keeps the full mod set. Test-only changes; starbound binary + dev deploy unaffected.</parameter>
-</invoke>
+DONE 2026-07-20 (abf6e2eb). All 3 game_tests failures fixed; scripts/game-tests.sh -> 91/91 PASSED (22s). Two root causes: (1) ItemComparison — pre-existing UPSTREAM failure (perfectlygenericitem ObjectItem injects scriptStorage:{} via retainObjectParametersInItem:true; raw JsonObject== exactMatch rejects it vs pre-construction descriptors). Fixed with a clean() helper in item_test.cpp that strips scriptStorage. (2) ConstructItems + RootTest.All — game_tests fails on any error-level log; ~40 broken third-party workshop mods in sbinit.config. Fixed via scripts/game-tests.sh running against a clean asset set (base + opensb) using harness/sbinit-test.config (local, gitignored like sbinit.config). Render gate keeps the full mod set. Test-only changes; starbound binary + dev deploy unaffected.
 ```
 
 <a id="c29c1332-147"></a>
@@ -1758,8 +1778,7 @@ but leaves a declared-but-unbound sampler -- deliberately not taken for a margin
 NOTED FOR LAYER 1 (#145): filtering is a property of the TEXTURE OBJECT, so one framebuffer cannot be
 "nearest" for the spread and "linear" for the bicubic upscale. Per-BINDING filtering belongs in the Surface
 design -- and setEffectTextureFromTarget silently ignoring the effect's declared filtering is a real bug the
-Surface layer should make unrepresentable.</description>
-</invoke>
+Surface layer should make unrepresentable.
 ```
 
 <a id="c29c1332-148"></a>
@@ -2012,8 +2031,7 @@ status: **completed**
 ```
 The second leaf under GlPass. Give an owner to m_effects, loadEffectConfig, setupGlUniforms, and the parameter / scriptable-parameter surface. Once GlTargets (F3a, c05be20bf) and GlEffects both exist, GlPass::bindEffect can finally take GlEffects& and GlTargets& and depend DOWNWARD — GlPass is the TOP of the dependency DAG, so it is built last.
 
-Certify with scripts/render-gate.sh (all three oracles green at shipped defaults) + core_tests + game_tests (ItemComparison is the known red, #146).</description>
-<parameter name="activeForm">Extracting GlEffects
+Certify with scripts/render-gate.sh (all three oracles green at shipped defaults) + core_tests + game_tests (ItemComparison is the known red, #146).
 ```
 
 <a id="c29c1332-155"></a>
@@ -2036,8 +2054,7 @@ REACHABLE IN-TREE: world's lightMap sampler is aliased to a lighting FBO face by
 
 setEffectTextureHalf and setEffectTextureR8 have the identical write-through.
 
-FIX (behaviour change, own gated commit): either EffectTexture knows the texture is target-owned and the upload setters refuse/replace rather than re-spec, or setEffectTextureFromTarget hands over a non-owning view.</description>
-<parameter name="activeForm">Fixing the effect-texture write-through into framebuffer storage
+FIX (behaviour change, own gated commit): either EffectTexture knows the texture is target-owned and the upload setters refuse/replace rather than re-spec, or setEffectTextureFromTarget hands over a non-owning view.
 ```
 
 <a id="c29c1332-156"></a>
@@ -2053,8 +2070,7 @@ Deterministic damage on every link failure: the effect is permanently ABSENT fro
 
 FIX (behaviour change, own gated commit): compile and link into a new program FIRST, replace the registry entry only on success. This -- not a container swap -- is the real fix for the stale m_pass.effect.
 
-RELATED (RB-3, upstream): the compile fallback at cpp:~498-499 passes DefaultVertexShader/DefaultFragmentShader (the raw GLSL SOURCE) to compileShader, whose second parameter is a KEY into the `shaders` map. Both lookups miss, both return 0, nothing is attached: "Shader compile error, using default" compiles NO default at all. It also leaks 2 glCreateShader handles (the create precedes the !source early-return). Correct signature: (GLenum type, char const* label, String const& source). CHECK UPSTREAM FIRST -- inherited, not ours. The pixel oracle CANNOT see this (the catch never runs on stock shaders).</description>
-<parameter name="activeForm">Fixing the erase-before-link ordering
+RELATED (RB-3, upstream): the compile fallback at cpp:~498-499 passes DefaultVertexShader/DefaultFragmentShader (the raw GLSL SOURCE) to compileShader, whose second parameter is a KEY into the `shaders` map. Both lookups miss, both return 0, nothing is attached: "Shader compile error, using default" compiles NO default at all. It also leaks 2 glCreateShader handles (the create precedes the !source early-return). Correct signature: (GLenum type, char const* label, String const& source). CHECK UPSTREAM FIRST -- inherited, not ours. The pixel oracle CANNOT see this (the catch never runs on stock shaders).
 ```
 
 <a id="c29c1332-157"></a>
@@ -2080,8 +2096,7 @@ MINIMAL FIX (for the upstream PR): do not early-out for a double-buffered effect
     if (m_pass.effect == &effect && !effect.doubleBuffered) return true;
 preserving the optimisation for the common case while letting the ping-pong actually iterate.
 
-ACTION: draft as docs/upstream/issues/passes.md alongside the 7 other unfiled drafts. DO NOT FILE without the Director's approval.</description>
-<parameter name="activeForm">Drafting the upstream passes/double-buffer issue
+ACTION: draft as docs/upstream/issues/passes.md alongside the 7 other unfiled drafts. DO NOT FILE without the Director's approval.
 ```
 
 <a id="c29c1332-158"></a>
@@ -2101,8 +2116,7 @@ The generation() counter exists precisely to announce this (StarRenderer.hpp:188
 
 (b) THE LAST COPY OF F1'S SIZE RULE. switchEffectConfig derives `effectScreenSize = m_screenSize / buf->sizeDiv` by hand -- and DROPS overrideSize. F1 collapsed that rule to GlFrameBuffer::sizeFor(); this is the one site it never reached. Latent in-tree (both sized-target effects are always followed by an explicit setRenderTarget(..., size)); live for a mod effect declaring "frameBuffer" on a sized target. Route it through buf->sizeFor()/size().
 
-Also trivial: the dead `screenSize` effectParameter in assets/opensb/rendering/effects/lightingPassthrough.config and lightingUpscale.config resolves a SECOND location for a uniform GlPass owns and pins Vec2F(1,1) into effect.parameters. Inert (setRenderTarget rewrites the real uniform before every draw) but it should go. Asset-only -- deploy via the loose override.</description>
-<parameter name="activeForm">Fixing orphaned target textures and the last size-rule copy
+Also trivial: the dead `screenSize` effectParameter in assets/opensb/rendering/effects/lightingPassthrough.config and lightingUpscale.config resolves a SECOND location for a uniform GlPass owns and pins Vec2F(1,1) into effect.parameters. Inert (setRenderTarget rewrites the real uniform before every draw) but it should go. Asset-only -- deploy via the loose override.
 ```
 
 <a id="c29c1332-159"></a>
@@ -2118,8 +2132,7 @@ RB-6 (b74937721): GlLoneTexture now records its internalFormat, and the Half/R8 
 
 RB-7 (d05f21682): "the pass was never told the targets were rebuilt" -- the last seat of the RB-5 orphan defect; rebindBorrows told the samplers but not the pass. +14 lines in StarRenderer_opengl.cpp.
 
-STATE: HEAD e30c21c4d, clean tree. Full RB backlog (RB-1..RB-7) + 3 upstream issue drafts + 2 upstream PR drafts (docs/upstream/, NOT published) + 3 architecture-assessment docs all committed. Verified this session: build clean, core_tests 226/226, game_tests 90/91 (ItemComparison known red #146), render-gate all 3 oracles green + 0 GL errors, RB-1 fullbright probe GREEN.</description>
-<parameter name="activeForm">Recording RB-6/RB-7 completion
+STATE: HEAD e30c21c4d, clean tree. Full RB backlog (RB-1..RB-7) + 3 upstream issue drafts + 2 upstream PR drafts (docs/upstream/, NOT published) + 3 architecture-assessment docs all committed. Verified this session: build clean, core_tests 226/226, game_tests 90/91 (ItemComparison known red #146), render-gate all 3 oracles green + 0 GL errors, RB-1 fullbright probe GREEN.
 ```
 
 <a id="c29c1332-160"></a>
@@ -2209,8 +2222,7 @@ or adaptive N, no multigrid.
 status: **completed**
 
 ```
-Brainstorm step 1 for per-frame CPU metrics alongside GPU in the live render-profile harness. Establish precisely: which main-loop steps are timed vs untimed (StarMainApplication_sdl.cpp:728-784); scope of the existing render.frame.us (in-world portion only) vs the true frame; thread ownership of every existing timer (main / server / lighting) since tick.server.compute.us = 3199us/frame EXCEEDS the whole GPU span (2952us) and summing across threads reproduces the 119%-of-the-whole bug; how frame-skip (updatesBehind loop) affects per-frame accounting; TelemetryScope cost when deep tracing is off.</description>
-<parameter name="activeForm">Exploring frame-loop timing context
+Brainstorm step 1 for per-frame CPU metrics alongside GPU in the live render-profile harness. Establish precisely: which main-loop steps are timed vs untimed (StarMainApplication_sdl.cpp:728-784); scope of the existing render.frame.us (in-world portion only) vs the true frame; thread ownership of every existing timer (main / server / lighting) since tick.server.compute.us = 3199us/frame EXCEEDS the whole GPU span (2952us) and summing across threads reproduces the 119%-of-the-whole bug; how frame-skip (updatesBehind loop) affects per-frame accounting; TelemetryScope cost when deep tracing is off.
 ```
 
 <a id="c29c1332-163"></a>
@@ -2220,8 +2232,7 @@ Brainstorm step 1 for per-frame CPU metrics alongside GPU in the live render-pro
 status: **completed**
 
 ```
-Brainstorm steps 3-4. One question at a time. Key forks identified so far: (a) purpose — bound VERDICT (is the frame CPU- or GPU-limited) vs full ATTRIBUTION (where did every microsecond go); (b) harness-only vs also-live in the Director's sessions (changes gating, HUD, and the meaning of swap.us: GPU backpressure with vsync off, frame pacing with vsync on); (c) whether the server thread's own budget is in scope. Then propose 2-3 approaches with a recommendation.</description>
-<parameter name="activeForm">Asking clarifying questions and proposing approaches
+Brainstorm steps 3-4. One question at a time. Key forks identified so far: (a) purpose — bound VERDICT (is the frame CPU- or GPU-limited) vs full ATTRIBUTION (where did every microsecond go); (b) harness-only vs also-live in the Director's sessions (changes gating, HUD, and the meaning of swap.us: GPU backpressure with vsync off, frame pacing with vsync on); (c) whether the server thread's own budget is in scope. Then propose 2-3 approaches with a recommendation.
 ```
 
 <a id="c29c1332-164"></a>
@@ -2300,8 +2311,7 @@ FALLBACK (option 2, cheaper): move each declare to namespace scope in the same T
 
 REJECTED: a central declaration table — it is unconditionally reachable and its drift risk is caught loudly by the UNDECLARED oracle, but it separates the descriptor from the pass that owns its meaning, and option 1 gets the same immunity without that cost.
 
-SCOPE NOTE: this touches the GpuTimer contract in StarRenderDiagnostics.hpp, so it is a real change to a Renderer contract, not a tidy-up. Deliberately NOT done inline during plan execution — surfaced for the Director. Do it before the idiom spreads to a 16th pass. Guarded by scripts/render-gate.sh like everything else in this arc.</description>
-<parameter name="activeForm">Binding the GPU descriptor to the recording call
+SCOPE NOTE: this touches the GpuTimer contract in StarRenderDiagnostics.hpp, so it is a real change to a Renderer contract, not a tidy-up. Deliberately NOT done inline during plan execution — surfaced for the Director. Do it before the idiom spreads to a 16th pass. Guarded by scripts/render-gate.sh like everything else in this arc.
 ```
 
 <a id="c29c1332-168"></a>
@@ -2493,7 +2503,7 @@ CONFIRMED BEHAVIOUR worth keeping: a deep-off capture ALWAYS trips the closure o
 
 #### #173 — RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT
 
-status: **pending**
+status: **pending** · blocked by: #242 · metadata: `{"rank": 9}`
 
 ```
 SPLIT OUT of #125 on 2026-07-25 as the genuine residual. #125's orphaning fix removed the COST of each immediate-VBO flush (GPU frame -74 to -81% at the Director's bases). It did not remove the flushes.
@@ -2571,8 +2581,7 @@ motion-aware PIXEL oracle, so a change that moves drawing logic on a motion path
 selection and ambient GL state, not for what it draws. That is the residual, and it is the same gap as the
 world body's missing pixel oracle in #191.
 
-UNBLOCKS: #191 (WorldPass contract 1), the BackdropPass split, and large parts of #135, #136 and #138.</description>
-<parameter name="activeForm">Building the motion-driven harness
+UNBLOCKS: #191 (WorldPass contract 1), the BackdropPass split, and large parts of #135, #136 and #138.
 ```
 
 <a id="c29c1332-175"></a>
@@ -4738,15 +4747,14 @@ FILED WITH EVIDENCE, not a suspicion. source/metrics/StarEngineBusyReader.{hpp,c
 
 THE FIX IS AN API CHANGE, NOT A PATCH: drain a warm-up (~0.30s), then POLL through the window (~0.02s) and accumulate -- the shape scripts/pmu-render-busy.py uses, which has 40/40 clean runs behind it. open()/sample() becomes something like busyOver(seconds). Deliberately NOT half-fixed: draining the warm-up alone removes the catch-up, leaves the staleness, and LOOKS fixed, which is worse than a defect that is written down.
 
-No consumer today, so nothing currently reports a wrong number. The bound to re-measure after the fix: the Python reader's spread was min 0.0020pp / median 0.0757pp / max 0.2863pp over forty concurrent 8s windows at 20.9-25.5% load.</description>
-<parameter name="activeForm">Fixing EngineBusyReader to poll rather than bracket
+No consumer today, so nothing currently reports a wrong number. The bound to re-measure after the fix: the Python reader's spread was min 0.0020pp / median 0.0757pp / max 0.2863pp over forty concurrent 8s windows at 20.9-25.5% load.
 ```
 
 <a id="c29c1332-235"></a>
 
 #### #235 — BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 3}`
 
 - `72ad0000` GM-2c: every lever in the matrix can now prove it engaged
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
@@ -4891,7 +4899,7 @@ whose denominator is under question would be the defective baseline again.
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 7}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5047,7 +5055,9 @@ descriptor convergence regardless.
 
 #### #240 — R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK
 
-status: **pending**
+status: **pending** · blocks: #242 · metadata: `{"rank": 1}`
+
+- `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
 
 ```
 RANK 1 of the post-matrix order (2026-08-07). ~15 minutes.
@@ -5067,15 +5077,14 @@ Ledger row R13 (BLOCKS_MATRIX). Signature is an ordering predicate already check
 directions. Closing this takes the ledger to 0 BLOCK and makes every subsequent matrix run
 quotable. Everything numeric downstream depends on it.
 
-Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].</description>
-<parameter name="activeForm">Hoisting the lock-timer registrations
+Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 ```
 
 <a id="c29c1332-241"></a>
 
 #### #241 — R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 2}`
 
 ```
 RANK 2 of the post-matrix order (2026-08-07). ~45 minutes.
@@ -5100,15 +5109,14 @@ Bounded today because both keys are MetricRole::Detail and do not enter the gl c
 exposure is the printed table and any leg-to-leg part-set diff. It is lever-CORRELATED, landing
 on two of eight levers rather than scattered.
 
-Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit ends [#241].</description>
-<parameter name="activeForm">Registering the compose keys eagerly
+Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit ends [#241].
 ```
 
 <a id="c29c1332-242"></a>
 
 #### #242 — MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside
 
-status: **pending**
+status: **pending** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 4}`
 
 ```
 RANK 4 of the post-matrix order (2026-08-07). ~2h wall-clock, near-zero attention.
@@ -5139,15 +5147,14 @@ WHAT THESE TWO RUNS DECIDE, which is why they sit above the big items:
  * #237 gets its ACCEPTANCE ORACLE: the new entrypoint must reproduce these numbers at these two
    scenes. A rewrite with no oracle is how a silent regression ships.
 
-Do not start any large item below until B has finished.</description>
-<parameter name="activeForm">Re-running the matrix and sampling the PMU
+Do not start any large item below until B has finished.
 ```
 
 <a id="c29c1332-243"></a>
 
 #### #243 — REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance
 
-status: **pending**
+status: **pending** · blocks: #245 · metadata: `{"rank": 5}`
 
 ```
 RANK 5 of the post-matrix order (2026-08-07). ~45 minutes.
@@ -5180,6 +5187,7 @@ Register as a gate with a fires-arm. Commit ends [#243].
 
 status: **pending**
 
+- `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
 - `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
 
 ```
@@ -5227,8 +5235,57 @@ WHAT SURVIVED THE RETRACTION UNTOUCHED: the COUNTER-based work-avoidance figures
 are not durations. env cache skips 75% of redraws; parallax 67%; lighting temporal 60%; gather
 cache 86% hit; drawable cache 72% hit (44.9 cached vs 17.6 rebuilt per frame); VBO orphaning
 avoids 33.9 of 35.99 flushes per frame. Those are what our levers demonstrably do versus vanilla.
-What we still cannot say is what any of it COSTS -- which is items 1 and 3.</description>
-<parameter name="activeForm">Tracking the post-matrix ranked order
+What we still cannot say is what any of it COSTS -- which is items 1 and 3.
+```
+
+<a id="c29c1332-245"></a>
+
+#### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
+
+status: **pending** · blocked by: #243 · metadata: `{"rank": 6}`
+
+```
+RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
+
+lever-matrix.sh emits raw legs and a manifest and explicitly does NOT attribute cost, because
+"the analysis half reads the telemetry vocabulary, and the vocabulary is being converged". This
+is that convergence, plus the analysis half it unblocks.
+
+COUPLED TO #235. Both change the snapshot schema -- #235 adds a second per-timer accumulator for
+thread-CPU alongside wall. Decide deliberately whether they land together or in sequence; do not
+discover the interaction halfway through.
+
+SEQUENCED AFTER #243. This sweep touches all 139 MetricDesc sites, which is the highest-risk
+moment for reintroducing the lazy-registration pattern that produced seven findings. The ratchet
+belongs in place first.
+
+Also folds in the unused descriptor fields: unit, clock, source, boundedness, measures, validWhen,
+whole exist in MetricDesc and ZERO production sites populate any of them (verified 2026-08-07).
+```
+
+<a id="c29c1332-246"></a>
+
+#### #246 — WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy
+
+status: **pending** · blocked by: #242 · metadata: `{"rank": 8}`
+
+```
+RANK 8, and deliberately parked rather than started.
+
+matrix-20260807-071454 showed render.pass.world.gpu_us at 9440 us/frame, 58% of the frame -- by
+far the largest single bracket, next is parallax at 1771. That looked like THE performance target.
+
+IT IS RETRACTED. cpu.frame.swap.us is 6.4 us/frame against cpu.frame.idle.us at 11470, so with
+vsync off the CPU essentially never waits on the GPU and the loop is PACED, not GPU-bound. Both
+GL_TIMESTAMP and GL_TIME_ELAPSED measure elapsed GPU-TIMELINE, not engine busy, so 9440 us is how
+long the bracket was OPEN. It may be 9.4ms of shading or 2ms of shading inside a 9.4ms window.
+
+DO NOT START until #242's PMU sample says the GPU is genuinely busy. If engine busy comes back at
+~25%, there is no GPU bottleneck at this scene and this task should be CLOSED, not done.
+
+SECOND CHECK BEFORE SPENDING: #132's session average recorded world at 1839 us/frame. 9440 is
+~5x that. Different scene, but the gap needs explaining -- scene, resolution, regression, or the
+same wall-vs-busy confusion -- before any lever is designed against it.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
@@ -5275,8 +5332,6 @@ D (pure-structural, ~2hr; overlaps residuals item 2 -- do together or do the bin
 E (upstream). Only postprocess-passes is genuinely liftable (one token). shader-compile-recovery's patch is
   written against our ALREADY-REFACTORED loadEffectConfig -- its upstream form is unwritten work, not a
   cherry-pick. Say so in the PR or write it against upstream first. AND FETCH UPSTREAM BEFORE FILING: our ref
-  is the fork point, ~83+ commits stale.</description>
-<parameter name="activeForm">Fixing the false comments, the face leak, and the GlPass field bag</parameter>
-</invoke>
+  is the fork point, ~83+ commits stale.
 ```
 
