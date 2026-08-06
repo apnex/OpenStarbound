@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**34 of 54 rows carry a machine-checkable signature.** `--check` asserts an
+**35 of 55 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,7 +17,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 21 | not started |
+| **open** | 22 | not started |
 | **doing** | 0 | in progress |
 | **done** | 33 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
@@ -48,6 +48,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
+| `R14` | degrade | R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part se | Register every declared pass key eagerly, by name, independent of whether its arm executes -- e.g. from a static table a |
 
 ## Closed
 
@@ -689,11 +690,23 @@ rather than hidden, because an unchecked row is not a checked one.
 
 **tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the closure oracle stamps that leg's costs not-quotable**
 
-*Evidence.* source/game/StarWorldServerThread.cpp, WorldServerThread::sync(): `static auto t = Telemetry::timer("tick.server.lock.sync.us", ...)` is a function-local static, so the key is registered the first time the sixth lock is taken. Its three siblings (tick.server.lock.us, .message.us, .queue.us) use the same lazy shape but are acquired EVERY TICK, so they register during the load phase before any window opens; sync() is the periodic disk sync and fires rarely. MEASURED, not theorised: in matrix run matrix-20260807-071440, all 10 pass-1 legs reported `1 metric(s) first registered inside the window (tick.server.lock.sync.us)` and it was the ONLY cause across every leg. The same metric appeared in both standalone probes earlier the same day.
+*Evidence.* source/game/StarWorldServerThread.cpp, WorldServerThread::sync(): `static auto t = Telemetry::timer("tick.server.lock.sync.us", ...)` is a function-local static, so the key is registered the first time the sixth lock is taken. Its three siblings (tick.server.lock.us, .message.us, .queue.us) use the same lazy shape but are acquired EVERY TICK, so they register during the load phase before any window opens; sync() is the periodic disk sync and fires rarely. MEASURED, not theorised: in matrix run matrix-20260807-071440, all 28 legs reported `1 metric(s) first registered inside the window (tick.server.lock.sync.us)` and it was the ONLY cause across every leg. The same metric appeared in both standalone probes earlier the same day.
 
-*Why it corrupts a matrix number.* scripts/telemetry-window.py flags a metric whose key is absent from snapshot A: its value is a lifetime total being differenced against nothing, so the whole leg raises an ORACLE VIOLATION and lever-matrix.sh stamps that leg's COSTS not-quotable in the manifest. Observed at 10 of 10 legs -- i.e. 100% -- so a completed matrix run yields witness verdicts and scene fingerprints but NOT ONE QUOTABLE COST NUMBER. Filed BLOCKS rather than DEGRADES on that basis: the runner's own scope statement defers cost analysis, so the run still completes usefully, but the thing the matrix exists to eventually produce cannot be produced from any leg while this stands. It is cluster A's exact defect (lazy registration on a path that is not always taken) in a metric the R-rows did not name, which is why the 2026-08-06 sweep did not reach it.
+*Why it corrupts a matrix number.* scripts/telemetry-window.py flags a metric whose key is absent from snapshot A: its value is a lifetime total being differenced against nothing, so the whole leg raises an ORACLE VIOLATION and lever-matrix.sh stamps that leg's COSTS not-quotable in the manifest. Observed at 28 of 28 legs of the completed run -- i.e. 100%, every leg including the warm-up -- so a completed matrix run yields witness verdicts and scene fingerprints but NOT ONE QUOTABLE COST NUMBER. Filed BLOCKS rather than DEGRADES on that basis: the runner's own scope statement defers cost analysis, so the run still completes usefully, but the thing the matrix exists to eventually produce cannot be produced from any leg while this stands. It is cluster A's exact defect (lazy registration on a path that is not always taken) in a metric the R-rows did not name, which is why the 2026-08-06 sweep did not reach it.
 
 *Closes by.* Hoist the registration out of sync() to namespace scope in StarWorldServerThread.cpp so it is created at static-init regardless of whether the sixth lock is ever taken -- the same shape used for the StarWorldPainter.cpp counters in R09/R11. Do all four lock timers together rather than only this one: the other three are latent instances of the same defect that happen to be saved by running every tick, and leaving them lazy leaves the pattern in the file. Then re-run the matrix and assert zero legs flagged not-quotable.
 
 *Signature.* `source/game/StarWorldServerThread.cpp` matching `void WorldServerThread::sync\(\)[\s\S]*?static auto t = Telemetry::timer\("tick\.server\.lock\.sync\.us"` — present while open. (the sync lock timer is still registered inside sync(), so it first appears whenever the periodic sync happens to fall)
+
+### `R14` — DEGRADES_MATRIX — open
+
+**R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part set on different legs -- reproduced across 27 matrix legs**
+
+*Evidence.* MEASURED in matrix-20260807-071454. The 27 recorded legs carry THREE distinct registered-timer key sets: 21 legs have render.pass.parallax.compose.gpu_us and lack render.pass.environment.compose.gpu_us; the three backdropComposeMerge-OFF legs have BOTH; the three parallaxRefreshInterval-OFF legs have environment.compose and lack parallax.compose. R07's fix registers a pass key at GlGpuTimer::begin, which covers a pass that RUNS but whose queries never resolve -- it cannot cover a pass that never runs at all, because begin() is never called for it. StarBackdropPass chooses between the two compose arms, so exactly one of the pair executes per configuration.
+
+*Why it corrupts a matrix number.* This is R07's own stated impact, unresolved: 'owner gl closes over a DIFFERENT set of parts on the two legs, and the bound is applied to both without noticing.' A cost row present on the baseline and missing on the off leg reads as 'this pass got infinitely cheaper' rather than 'it did not run'. It lands precisely on two of the eight levers -- backdropComposeMerge and parallaxRefreshInterval -- i.e. it is lever-correlated, not scattered. Bounded today only because both compose keys are MetricRole::Detail, so they do not enter the gl closure sum; the exposure is the printed table and any consumer diffing part sets between legs. R07 was closed on a signature that is TRUE (registration does happen at begin) while this half of its impact statement was still live -- internal consistency without correspondence, which is the failure this ledger exists to catch, in the ledger itself.
+
+*Closes by.* Register every declared pass key eagerly, by name, independent of whether its arm executes -- e.g. from a static table at OpenGlRenderer construction. NOTE THE COST that made R07 stop short: the descriptors live at the begin() call sites, so a second list is a second source of truth and a vocabulary-drift hazard (a table naming a key the passes no longer use would read green forever). Either generate the table from the call sites, or gate it with a check that every key in the table is begun somewhere and vice versa. Do not simply duplicate the list.
+
+*Signature.* `source/**/*.cpp` matching `Telemetry::timer\("render\.pass\.environment\.compose\.gpu_us"` — present while open. (render.pass.environment.compose.gpu_us is registered eagerly by name somewhere, not only as an argument to a begin() that its arm may never reach)
 
