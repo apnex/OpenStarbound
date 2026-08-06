@@ -187,12 +187,12 @@ mindmap
       13 declared binaries
     Instruments
       scripts/ + tests
-      37 scripts
+      38 scripts
       23 ctest gates
-      33 CI gates
+      35 CI gates
     Governance
       docs/
-      45 markdown documents
+      46 markdown documents
 ```
 
 A mindmap because this genuinely is a tree: six independent children of one root with no cross-links. Five of the six are invisible to any tool that only reads `source/`.

@@ -1,0 +1,134 @@
+{
+  "_comment": [
+    "THE LEVER TABLE. The matrix is GENERATED from this file, so the set of levers under test is a",
+    "reviewable artefact rather than a number somebody remembers. Add a row and the matrix grows by",
+    "construction; there is no second place to edit.",
+    "",
+    "FIELDS, and why each one is mandatory:",
+    "  key       the runtime config key, exactly as read by the engine.",
+    "  baseline  the value the perf harness runs by default. ASSERTED against",
+    "            harness/storage-perf/starbound.config before every leg -- a lever whose baseline has",
+    "            drifted from the harness is measuring something nobody declared.",
+    "  off       the value that REVERTS THE OPTIMISATION, i.e. restores the behaviour that existed",
+    "            before the lever was written. null is not a placeholder: the runner REFUSES a table",
+    "            with a null off-value, because guessing it is how an A/B measures nothing.",
+    "  witness   the metric key the lever EXISTS TO MOVE. This is the load-bearing field. On",
+    "            2026-08-04 an adaptive-border A/B ran with the lever off on BOTH legs and produced a",
+    "            full table of plausible deltas; the tell was that lighting.calc.cells was identical",
+    "            across the legs, and nothing in the tooling objected. The runner now objects: if the",
+    "            witness does not move between baseline and off, the leg is VOID, not a result.",
+    "  changesOutput  true when the two legs do not render the same image. Such a lever's cost delta",
+    "            is not a free win and may not be quoted as one without saying what was traded.",
+    "  why       what the lever does, in one line. Not narration -- it is what a reader needs to judge",
+    "            whether the witness is the right witness.",
+    "",
+    "EVERY off-VALUE BELOW WAS READ OUT OF THE CODE, NOT REMEMBERED. Two would have been wrong from",
+    "memory, and both would have silently produced a full matrix of artefacts:",
+    "  * parallaxRefreshInterval=0 IS NOT 'off'. 0 is the ADAPTIVE sentinel, resolved to a per-scene N",
+    "    before any clamp (StarBackdropPass.cpp: '0 = ADAPTIVE (default), 1 = off/direct, >1 = manual').",
+    "    The harness baseline therefore runs the parallax cache ON. Setting it to 0 as the 'off' leg",
+    "    would have compared the cache against itself.",
+    "  * envRefreshInterval clamps anything <1 up to 1, and the cache only engages at >1. So 0 and 1",
+    "    are the same behaviour, and 1 -- not 0 -- is the off-value.",
+    "The two keys look like the same quantity, share a type, and are read three lines apart. They are",
+    "not on a shared scale."
+  ],
+  "levers": [
+    {
+      "key": "envRefreshInterval",
+      "baseline": 4,
+      "off": 1,
+      "witness": "render.cache.env.skipped",
+      "changesOutput": true,
+      "why": "Env cache: reuse the composed environment for N frames. At N=1 the cache does not engage at all (envCacheActive is interval>1), so the skip counter must fall to zero on the off leg. Output differs by BOUNDED STALENESS, not quality: a reused frame shows content up to N-1 frames old."
+    },
+    {
+      "key": "parallaxRefreshInterval",
+      "baseline": 0,
+      "off": 1,
+      "witness": "render.cache.parallax.skipped",
+      "changesOutput": true,
+      "why": "Parallax cache. Baseline 0 is ADAPTIVE -- the engine derives N per scene from layer drift rate, snapped to {1,2,4,8,16}. 1 is off/direct. The skip counter must fall to zero on the off leg. Bounded staleness as above, plus a documented sub-ULP quantisation from premultiplied blending."
+    },
+    {
+      "key": "lightingTemporalDecouple",
+      "baseline": true,
+      "off": false,
+      "witness": "lighting.temporal.skipped",
+      "changesOutput": true,
+      "why": "Reuse the previous lightmap on calm frames instead of recomputing every frame. Off is a byte-identical every-frame recompute, so the skip counter must fall to zero. On, a calm frame shows a lightmap up to lightingTemporalFloorMs old."
+    },
+    {
+      "key": "renderDrawableCache",
+      "baseline": true,
+      "off": false,
+      "witness": "render.drawable.parts.cached",
+      "changesOutput": false,
+      "why": "Cache built drawables across frames instead of rebuilding per call. Off takes the full-rebuild path, so the cached-parts counter must fall to zero. Byte-identity is verified by a dedicated shadowCompare diagnostic, modulo a documented sub-ULP float-ordering tolerance on position."
+    }
+  ],
+  "_gapsComment": [
+    "LEVERS DELIBERATELY NOT IN THE MATRIX, AND WHY. Recorded here rather than omitted silently,",
+    "because a matrix that quietly covers half the levers reads exactly like one that covers them all.",
+    "",
+    "Every entry below is the SAME defect: the lever has no registered counter, so nothing in telemetry",
+    "can say whether it ENGAGED. Asserting on its timer instead would assert the RESULT and call it the",
+    "cause -- which is the confusion this whole campaign exists to end. Each gap closes by registering",
+    "one counter at the lever's own branch; none needs a design.",
+    "",
+    "Note the shape: the two levers with the largest measured wins in this project's history are both",
+    "in here. The instrument is weakest exactly where the stakes are highest."
+  ],
+  "gaps": [
+    {
+      "key": "renderVboOrphan",
+      "baseline": true,
+      "off": false,
+      "changesOutput": false,
+      "reason": "No counter exists. The lever is byte-identical by construction and its entire effect is stall cost, so no count differs between the arms. This is the biggest single GPU win the project has measured (74-81% of the GPU frame at the Director's bases), and it is currently the least provable.",
+      "closes": "register a counter of orphaned buffer writes at the branch in StarRenderer_opengl.cpp"
+    },
+    {
+      "key": "lightingGatherCache",
+      "baseline": true,
+      "off": false,
+      "changesOutput": false,
+      "reason": "No counter exists. The branch at StarWorldClient.cpp:2377 selects the stable-grid path or the original direct gather, and neither arm records anything. The key is also read via get(...).optBool() rather than getOrDefault, so it is outside the config-lint declaration gate as well.",
+      "closes": "register a gather cache-hit counter at the branch"
+    },
+    {
+      "key": "scriptProtoCacheEnabled",
+      "baseline": true,
+      "off": false,
+      "changesOutput": false,
+      "reason": "No script.* metric is registered anywhere in the telemetry corpus, so there is nothing to witness. The off path is documented as the original code path byte for byte.",
+      "closes": "register a proto-cache hit/miss counter in StarLuaRoot"
+    },
+    {
+      "key": "backdropComposeMerge",
+      "baseline": true,
+      "off": false,
+      "changesOutput": false,
+      "reason": "The merged arm defers the env compose and the standalone arm calls composeEnvStandalone, so the two arms genuinely differ -- but render.pass.parallax.compose.gpu_us fires in both, so its count does not witness which arm ran. Proven algebraically byte-identical.",
+      "closes": "register a counter on the standalone-compose branch in StarBackdropPass.cpp"
+    }
+  ],
+  "_excludedComment": [
+    "NOT LEVERS, and excluded for reasons that are not gaps:",
+    "  lightingGpu, lightingWorldUpscale, lightingWorldSampleBilinear, lightingTonemap, newLighting,",
+    "  monochromeLighting -- these CHANGE RENDERED OUTPUT. Their cost delta is a trade, not a win, and",
+    "  quoting one as a free saving would be false. lightingGpu additionally has NO bit-identity oracle",
+    "  against the CPU path (lightingGpuShadowCompare is documented as permanently red for an unrelated",
+    "  reason: it can detect a change but cannot certify identity), and toggling it while",
+    "  lightingWorldUpscale stays pinned at 2 gives the world shader a UV scale that does not match the",
+    "  CPU lightmap it is sampling -- a coordinate mismatch, not a quality difference.",
+    "  lightingGpuSpreadIterations -- hybrid. Below the converged value it changes pixels (8.8% differ",
+    "  at 32 vs 48); at or above it is cost-only. The harness pins exactly 48, the boundary, so there is",
+    "  no headroom to lower it without corrupting the comparison.",
+    "  envMaxDriftStepPx, parallaxMaxDriftStepPx, lightingTemporalFloorMs, renderDrawableCachePerPart --",
+    "  tuning parameters of a lever already in the table, not independent on/off switches.",
+    "  vaoBake -- DEAD. Zero readers in source/; #129 reverted the lever it named and the key survived in",
+    "  the pinned harness config controlling nothing. config-lint cannot see it: that gate polices",
+    "  undeclared getOrDefault reads, and a key declared nowhere and read nowhere is invisible to it."
+  ]
+}

@@ -236,6 +236,24 @@ jobs:
       - name: run_gates_verdicts -- pass, skip and fail are three distinct verdicts
         run: scripts/ci/run-gates.sh --selftest
 
+      # THE MATRIX ITSELF IS NOT A GATE -- it needs a GPU and hours. But two things about it are
+      # checkable in milliseconds anywhere, and both are the kind that rot silently.
+      #
+      # The selftest drives all eleven arms in BOTH directions, including the 2026-08-04 shape: two
+      # legs whose witness metric is identical, which the runner must call VOID rather than quote a
+      # delta from. That defect produced a full table of plausible numbers and nothing objected; an
+      # arm nobody has watched fire is not known to fire (#223).
+      - name: lever_matrix_verdicts -- ok, void and refused are distinct verdicts
+        run: scripts/lever-matrix.sh --selftest
+
+      # And this one checks the declared lever table against the TREE, not against itself. Someone
+      # re-pins a key in harness/storage-perf/starbound.config, the table keeps declaring the old
+      # value, and every later matrix run measures a baseline nobody declared -- internal consistency
+      # is not correspondence. Exits 77 while the table is still empty, which is an ABSENT verdict:
+      # run-gates.sh will say so rather than count it green.
+      - name: lever_table -- the declared levers still match the harness config
+        run: scripts/lever-matrix.sh --check-table
+
       - name: metrics_mutual -- the two kernel readers agree, or say why they could not compare
         run: |
           if pgrep -x starbound >/dev/null; then
