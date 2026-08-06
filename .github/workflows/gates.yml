@@ -169,6 +169,18 @@ jobs:
       - name: gputimer_brackets_fires -- the straddle detector fires, and does not over-fire
         run: python3 scripts/gputimer-brackets.py --selftest
 
+      # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
+      # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
+      # the player save, quiescence firing on the departure world, and a run mutating the inventory it
+      # measures. #237 is the fix and it is PARKED, so the quantity it turns on gets a ceiling, the way
+      # boundary_ratchet keeps #199 revisitable from data instead of from memory. A parked decision with
+      # no instrument gets made by accretion.
+      - name: client_residency -- the harness may not grow inside a stock client file
+        run: python3 scripts/client-residency.py
+
+      - name: client_residency_fires -- both ceilings fire, and a missing file is not a pass
+        run: python3 scripts/client-residency.py --selftest
+
       # Vendored provenance. Their hand-written extern/README.md contradicted their own vcpkg.json on the
       # day it landed (ledger B12); ours is derived from the tree and fails when it drifts from it.
       - name: extern_provenance -- every vendored artefact is declared and reachable as declared
