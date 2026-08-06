@@ -236,6 +236,16 @@ jobs:
       - name: run_gates_verdicts -- pass, skip and fail are three distinct verdicts
         run: scripts/ci/run-gates.sh --selftest
 
+      # The gl/gpu closure check now carries a TOLERANCE, derived from a 10-run null control (#236),
+      # because at zero tolerance it fired on 8 of 19 real captures of an UNCHANGED system. A bound
+      # introduced to stop false alarms carries the opposite risk -- silence mistaken for correctness --
+      # so it is watched from both ends: the measured spread must stay quiet, a breach must fire, and
+      # the blind spot (a duplicated part smaller than the bound) is ASSERTED rather than admitted in a
+      # comment, so tightening the bound flips an arm instead of silently changing what is covered.
+      # This is #223's lesson: a bounded-diff oracle read as a zero-diff one reported green for weeks.
+      - name: closure_tolerance -- the gl/gpu bound fires, does not over-fire, and its blind spot holds
+        run: python3 scripts/telemetry-window.py --selftest
+
       # THE MATRIX ITSELF IS NOT A GATE -- it needs a GPU and hours. But two things about it are
       # checkable in milliseconds anywhere, and both are the kind that rot silently.
       #

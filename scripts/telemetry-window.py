@@ -30,6 +30,50 @@ def load(path):
         return json.load(f)
 
 
+# THE CLOSURE AGREEMENT BOUND, AND WHERE THE NUMBER CAME FROM.
+#
+# This check used to fire on ANY positive excess -- parts summing to even one microsecond more than the
+# whole. The two sides are independently sampled GPU timers, and a NULL CONTROL (#236) showed they do
+# not agree that closely: ten runs of the SAME configuration, same location, same 20s window, nothing
+# changed between them, produced the excesses in NULL_CONTROL_PCTS below. Six of the ten are positive.
+# So a zero-tolerance check fired on an unchanged system roughly three times in five, and it killed a
+# whole matrix pass doing it.
+#
+# Mean +0.36%, sd 0.99pp, observed max +2.10%. mean+3sd = +3.33%. The bound is set at 4.0%, which
+# clears both the observed maximum and the 3-sigma estimate with margin.
+#
+# WHAT THIS BOUND CANNOT SEE, stated because a quiet check is not the same as a correct one: it will
+# not detect a part double-counted that is smaller than 4% of the whole. At the location measured, the
+# eleven gpu parts run from 64% of the frame (render.pass.world) down to 0.02%
+# (lighting.gpu.compose), so a duplicated world or parallax pass still trips this easily and a
+# duplicated compose never will. The residual question -- how the parts can exceed the whole AT ALL,
+# since every part is inside the span and counted once -- is NOT answered by widening the bound, and
+# #236 stays open for it. Two candidates are already eliminated by the same null control: the ring
+# dropped zero samples in all ten runs, and five runs at an identical recompute count still spread
+# 1.74pp, so neither timer-drop nor lighting cadence explains the variance.
+GPU_CLOSURE_TOLERANCE = 0.04
+
+# The measured spread itself, kept so the selftest asserts the bound against the DATA it was derived
+# from rather than against a number retyped from a commit message.
+NULL_CONTROL_PCTS = [2.10, -0.13, 1.09, -0.83, 0.64, 0.66, 0.75, 0.91, -1.14, -0.49]
+
+
+def closure_verdict(owner, dom, parts, whole):
+    """None, or the violation string. Pure so it can be exercised without a capture."""
+    if not whole:
+        return None
+    un = whole - parts
+    over = -un / whole              # positive when the parts exceed the whole
+    if over > GPU_CLOSURE_TOLERANCE:
+        return (f"{owner}/{dom}: parts exceed the whole by {-un} us ({100 * over:.2f}%), beyond the "
+                f"{100 * GPU_CLOSURE_TOLERANCE:.1f}% measured agreement bound -- a Detail metric "
+                f"declared as Budget, or a double-counted phase")
+    if un / whole > 0.25:
+        return (f"{owner}/{dom}: {100 * un / whole:.0f}% unattributed "
+                f"-- the instrumentation is missing a phase")
+    return None
+
+
 def bucket_bounds(i):
     """Lower and upper microsecond bound of histogram bucket i (see Telemetry::histogramBucket).
 
@@ -158,7 +202,68 @@ def coverage_scale(v, cadence_ticks, w):
     return v["total"] / coverage, coverage, expected
 
 
+def selftest():
+    """Prove the closure bound fires AND that it does not over-fire. Both ends measured (#194's rule).
+
+    A tolerance nobody has watched fire is not known to fire -- that is #223, where a BOUNDED-diff
+    oracle was read as a zero-diff one and reported green for weeks. This bound was introduced to stop
+    a check crying wolf, so the risk it carries is the opposite one: silence mistaken for correctness.
+    """
+    fails = []
+
+    def arm(name, ok):
+        print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+        if not ok:
+            fails.append(name)
+
+    W = 1_000_000
+
+    # 1. The exact spread the bound was derived from must NOT fire. This is the arm that would catch
+    #    someone lowering the bound below the noise it exists to absorb.
+    worst = max(NULL_CONTROL_PCTS)
+    quiet = [p for p in NULL_CONTROL_PCTS
+             if closure_verdict("gl", "gpu", W * (1 + p / 100.0), W) is None]
+    arm(f"all {len(NULL_CONTROL_PCTS)} null-control runs quiet (worst was +{worst:.2f}%)",
+        len(quiet) == len(NULL_CONTROL_PCTS))
+
+    # 2. ...and a breach beyond the bound DOES fire. Without this the bound could be infinity.
+    over = closure_verdict("gl", "gpu", W * (1 + GPU_CLOSURE_TOLERANCE + 0.01), W)
+    arm(f"excess of {100*GPU_CLOSURE_TOLERANCE + 1:.0f}% fires", over is not None and "exceed" in over)
+
+    # 3. The bound is not vacuous: a DOUBLED pass -- the defect it is meant to catch -- trips it. The
+    #    smallest gpu part that could be duplicated and still caught is one worth 4% of the frame; at
+    #    the measured location render.pass.parallax is 7.6%, so a duplicate of it is caught.
+    arm("a duplicated 7.6% pass fires", closure_verdict("gl", "gpu", W * 1.076, W) is not None)
+
+    # 4. THE HONEST LIMIT, asserted rather than merely admitted in a comment: a duplicated part smaller
+    #    than the bound is NOT caught. If someone later tightens the bound, this arm flips and forces
+    #    them to re-read the trade instead of silently changing what the check covers.
+    arm("a duplicated 0.02% pass is NOT caught (known blind spot, #236)",
+        closure_verdict("gl", "gpu", W * 1.0002, W) is None)
+
+    # 5. The unattributed-ceiling rule still fires -- it shares the function and must not have been
+    #    disarmed by the rewrite.
+    arm("30% unattributed still fires",
+        (closure_verdict("gl", "gpu", W * 0.70, W) or "").find("unattributed") >= 0)
+
+    # 6. A perfectly closed budget is silent, so arm 5 is not passing because everything fires.
+    arm("an exactly-closed budget is silent", closure_verdict("gl", "gpu", W, W) is None)
+
+    # 7. A zero whole must not divide. It is the no-data case and belongs to the NO WHOLE branch.
+    arm("zero whole does not raise", closure_verdict("gl", "gpu", 0, 0) is None)
+
+    print()
+    if fails:
+        print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
+        return 1
+    print("telemetry-window selftest: 7/7 arms ok -- the closure bound fires, does not over-fire, and "
+          "its blind spot is asserted")
+    return 0
+
+
 def main():
+    if "--selftest" in sys.argv[1:]:
+        return selftest()
     ap = argparse.ArgumentParser()
     ap.add_argument("snapdir")
     ap.add_argument("--label", default="profile")
@@ -285,11 +390,15 @@ def main():
             print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of {whole/denom:.1f} "
                   f"({pct:.1f}%) -- unattributed {un/denom:.1f} us/tick  [whole: {total_name}]")
             if un < 0:
-                violations.append(f"{owner}/{dom}: parts exceed the whole by {-un} us "
-                                  f"-- a Detail metric declared as Budget, or a double-counted phase")
-            elif whole and un / whole > 0.25:
-                violations.append(f"{owner}/{dom}: {100*un/whole:.0f}% unattributed "
-                                  f"-- the instrumentation is missing a phase")
+                # PRINTED EVEN WHEN WITHIN TOLERANCE. A bound that silently absorbs everything under it
+                # is how a slow drift becomes invisible: the excess would have to cross 4% in one step
+                # to ever be seen again. This line makes the magnitude readable on every capture, so a
+                # drift toward the bound is noticeable before it trips.
+                print(f"     parts exceed the whole by {-un} us ({-100.0*un/whole:.2f}%) "
+                      f"-- bound is {100*GPU_CLOSURE_TOLERANCE:.1f}%, measured (#236)")
+            v = closure_verdict(owner, dom, parts, whole)
+            if v:
+                violations.append(v)
         print()
 
     # THE HEADLINE CPU NUMBER IS BUSY, NOT TOTAL.
