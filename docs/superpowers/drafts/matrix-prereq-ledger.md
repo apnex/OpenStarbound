@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**19 of 51 rows carry a machine-checkable signature.** `--check` asserts an
+**19 of 52 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -19,7 +19,7 @@ rather than hidden, because an unchecked row is not a checked one.
 |---|---:|---|
 | **open** | 33 | not started |
 | **doing** | 0 | in progress |
-| **done** | 18 | closed; `commit` says where |
+| **done** | 19 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -50,7 +50,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O08` | degrade | #197 (PENDING) — persistent per-effect parameters are unasserted, and backdropComposeMerge changes the number of `world` effect binds between its two  | Do #197 option (b) — the debug-only draw-time check that every declared parameter of the bound effect was written this f |
 | `O10` | degrade | Board status is documented-unreliable, so any prerequisite sweep filtered on status both over- and under-reports | Treat the body text, not the status column, as the authority when assembling the prerequisite list — and specifically re |
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
-| `O12` | degrade | #191's refutation of the golden frame hash was measured against a harness defect fixed nine days later, and a per-run random seed still sits inside th | Re-run the three-run experiment on the post-6e66f36e binary before quoting 'impossible' again. If it still diverges, see |
+| `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `R07` | degrade | Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather  | Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so th |
 | `R08` | degrade | render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matr | Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, an |
 | `R09` | degrade | lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls | Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return pat |
@@ -76,6 +76,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `H04` | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | pending |
 | `O02` | The two cache levers' declared output trade was ASSERTED, not certified -- and two of its clauses are refuted by the tree it describes | pending |
 | `O09` | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | feb8886f |
+| `O12` | #191's golden-hash refutation was measured against a harness defect -- but MEASURING IT PROPERLY SUPPORTS ITS CONCLUSION, and names the term | 0c27d76b |
 | `R01` | render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on | pending |
 | `R02` | render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breakin | pending |
 | `R03` | render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on  | pending |
@@ -488,17 +489,27 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and STAR_RENDERTEST_ZOOM already exist and are NOT gated on NOFREEZE -- renderTestDriveMotion is gated only on !m_renderTestLoading -- so they run under the frozen A/B today. What is missing is capturing WITHIN N frames of the perturbation rather than after each leg's full settle, and firing the in-frame comparison on SKIP frames scored against a staleness bound instead of exact equality.
 
-### `O12` — DEGRADES_MATRIX — open
+### `O12` — DEGRADES_MATRIX — done
 
-**#191's refutation of the golden frame hash was measured against a harness defect fixed nine days later, and a per-run random seed still sits inside the env draw**
+**#191's golden-hash refutation was measured against a harness defect -- but MEASURING IT PROPERLY SUPPORTS ITS CONCLUSION, and names the term**
 
-*Evidence.* #191 recorded three distinct hashes from three frozen runs at an identical state fingerprint (entities=213 in all three) on 2026-07-26, and concluded the golden hash cannot serve, attributing the residual to unpinned entity animation phase -- an attribution nothing isolated. But the render clock was still live in a 'frozen' run until 6e66f36e (2026-08-04), 'the A/B had no null control, and in daylight it measured its own sun rays', which changed `m_worldPainter->update(dt)` to `update(m_renderTestFrozen ? 0.0f : dt)` and measured 7.4% of pixels differing between two renders of an IDENTICAL leg. Independently, StarEnvironmentPainter.cpp seeds the sun-ray Perlin with Random::randu64(), whose source is Time::monotonicTicks() (StarRandom.cpp produceRandomSeed) -- one draw per painter construction, so constant within a run and different across runs, which is #191's reported signature exactly, and it sits INSIDE the env-cache draw lambda.
+*Evidence.* #191 ran 2026-07-26, nine days before 6e66f36e froze the render clock, so its runs were not frozen in the sense it assumed. Re-measured on the current binary with the sky clock AND both ray terms pinned (0c27d76b), at scenes chosen for the two preconditions nobody had ever characterised -- the world must SETTLE, and the sun must be up or the ray terms are inert. THE RESIDUAL TRACKS ENTITY POPULATION: at The Ark Ruins (an InstanceWorld, entities=1) five settled runs gave FOUR BYTE-IDENTICAL frames and one differing by a SINGLE PIXEL at ONE 8-bit LSB (worst maxAbs across all ten pairs = 1; null control of two same-hash runs = 0 differing pixels). At Desert Town (entities 267-271, parallaxLayers=34) five settled runs gave five distinct frames differing by 11-24% of pixels at maxAbs up to 255 -- INCLUDING the one pair whose entity COUNT matched exactly (268 vs 268: 18.78% of pixels, maxAbs 255).
 
-*Why it corrupts a matrix number.* Does not corrupt a matrix number. It matters because O02 as filed, and #136's remaining half, both rest on 'the golden hash is impossible' -- a conclusion whose only measurement is confounded and whose named blocker (animation phase, 'its own project') was never isolated. If the residual is the ray seed, the golden is two pins away rather than a project, and the oracle gap that has shaped this campaign's verification strategy for weeks is narrower than believed.
+*Why it corrupts a matrix number.* Two corrections, in opposite directions. (1) The cross-run frame IS reproducible when there is no world body to be nondeterministic, so 'impossible' was too strong and the per-run backdrop terms this row originally named are worth about ONE PIXEL. (2) At any populated scene the frame is not reproducible at all, and no tolerance rescues it: 19% of pixels at full range is not a bounded difference. So #191's ATTRIBUTION -- per-entity animation phase, which nothing pins -- is supported by this data even though its evidence was confounded, and its 'its own project' sizing stands. A golden full-frame oracle for the WORLD PASS remains out of reach; a golden for a body-free scene is available today.
 
-*Closes by.* Re-run the three-run experiment on the post-6e66f36e binary before quoting 'impossible' again. If it still diverges, seed the ray Perlin deterministically under the harness and pin EnvironmentPainter::m_timer at freeze, then re-run. Both are localised; neither needs the world body to be reproducible.
+*Closes by.* Do NOT pursue further backdrop determinism: it is measured at one pixel. If a world-body golden is wanted it needs entity animation phase pinned at freeze, which is #191's project and unstarted. What IS available now: a body-free instance scene reproduces to 1 LSB, so a golden there could gate the backdrop and compose paths -- and it must be scored as a BOUNDED diff (px count + maxAbs, tolerance 1 LSB) rather than by hash equality, because a hash has no tolerance and one LSB anywhere flips it. That is #223's defect exactly: 'paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one.'
 
-*Signature.* `source/rendering/StarEnvironmentPainter.cpp` matching `Random::randu64\(\)` — present while open. (the sun-ray Perlin is still seeded from a per-run random source inside the env draw)
+*Signature.* `source/rendering/StarEnvironmentPainter.cpp` matching `pinRayAnimation` — present while open. (the harness no longer pins the sun-ray animation terms)
+
+### `O13` — DEGRADES_MATRIX — open
+
+**Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised**
+
+*Evidence.* Measured across 8 bookmarks and ~20 runs. (a) SETTLING IS SCENE-DEPENDENT and the pattern is the opposite of the obvious one: authored places settle (Desert Town 273 entities YES, The Ark Ruins 47 YES) while sparse PROCEDURAL worlds never do (explore/exploring/Deep explore/Zerchesium, 19-21 entities, 'stable for only 1 of 90 required' -- the count changes almost every frame as monsters spawn and despawn around the player). (b) SETTLING IS NOT CONVERGENCE: five settled Desert Town runs froze at 268/268/271/267/270 entities, and the two runs that agreed on the COUNT still differed in 18.78% of pixels. (c) A dead teleport bookmark logs WARPING and never arrives, and the run captures wherever the player actually is: precursor-surface requested world ...91620126 and captured the previous location's fingerprint, silently.
+
+*Why it corrupts a matrix number.* Every cross-run render measurement this campaign has taken was at a scene nobody had checked against either precondition, and the default scene is whatever the player save happens to hold -- the harness inherits the persisted position, so the scene selects itself. 03-Surface Outpost, where all of today's early determinism work ran, fails BOTH: it never settles and it is at dayLevel=0, where the ray terms under test draw nothing.
+
+*Closes by.* Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so a dead marker is loud instead of silent. Put the world id in the [rendertest] fingerprint -- it is the one field that would have made both of today's arrival failures visible immediately instead of via dayLength archaeology. And record the settle/daylight character of the bookmarks a measurement is allowed to use, so scene choice stops being an accident of the save.
 
 ### `R01` — BLOCKS_MATRIX — done
 

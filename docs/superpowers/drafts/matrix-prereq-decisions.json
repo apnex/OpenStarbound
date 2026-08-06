@@ -107,5 +107,10 @@
   "status": "done",
   "commit": "pending",
   "note": "row restated -- BOTH its original pillars are refuted by the tree (the bound never rested on the differential oracles; #191's refutation is confounded, now O12). The real defect, an untested call-site operand, is closed by construction: cadenceHit private, shouldRefresh the only door, bound asserted off-GPU in CI and proven to fire by injection. Two refuted clauses removed from lever-table.json. The genuinely uncertified half is split out as O11."
+ },
+ "O12": {
+  "status": "done",
+  "commit": "0c27d76b",
+  "note": "Investigation complete and the conclusion is MEASURED, not argued. The two per-run backdrop terms are pinned; re-measuring at scenes chosen for the settle/daylight preconditions shows the cross-run residual tracks ENTITY POPULATION -- 1 px at 1 LSB with entities=1, ~19% of pixels at maxAbs 255 with ~268. So #191's attribution (per-entity animation phase) is supported even though its evidence was confounded, and a world-pass golden stays its own project. What is newly available is a body-free golden, which must be scored as a bounded diff rather than by hash equality. The residual SCENE work is O13; the world-pass oracle remains #191's."
  }
 }
