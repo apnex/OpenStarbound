@@ -65,54 +65,67 @@
       "witness": "render.drawable.parts.cached",
       "changesOutput": false,
       "why": "Cache built drawables across frames instead of rebuilding per call. Off takes the full-rebuild path, so the cached-parts counter must fall to zero. Byte-identity is verified by a dedicated shadowCompare diagnostic, modulo a documented sub-ULP float-ordering tolerance on position."
-    }
-  ],
-  "_gapsComment": [
-    "LEVERS DELIBERATELY NOT IN THE MATRIX, AND WHY. Recorded here rather than omitted silently,",
-    "because a matrix that quietly covers half the levers reads exactly like one that covers them all.",
-    "",
-    "Every entry below is the SAME defect: the lever has no registered counter, so nothing in telemetry",
-    "can say whether it ENGAGED. Asserting on its timer instead would assert the RESULT and call it the",
-    "cause -- which is the confusion this whole campaign exists to end. Each gap closes by registering",
-    "one counter at the lever's own branch; none needs a design.",
-    "",
-    "Note the shape: the two levers with the largest measured wins in this project's history are both",
-    "in here. The instrument is weakest exactly where the stakes are highest."
-  ],
-  "gaps": [
+    },
     {
       "key": "renderVboOrphan",
       "baseline": true,
       "off": false,
+      "witness": "render.vbo.orphaned",
       "changesOutput": false,
-      "reason": "No counter exists. The lever is byte-identical by construction and its entire effect is stall cost, so no count differs between the arms. This is the biggest single GPU win the project has measured (74-81% of the GPU frame at the Director's bases), and it is currently the least provable.",
-      "closes": "register a counter of orphaned buffer writes at the branch in StarRenderer_opengl.cpp"
+      "why": "Orphan the immediate VBO before re-writing it, so glBufferSubData does not implicitly synchronise against an in-flight draw. Byte-identical by construction -- same API calls, same data. The witness counts the orphaning call itself, which is the only quantity that can distinguish the arms: the lever's whole effect is stall cost and it moves no other counter."
     },
     {
       "key": "lightingGatherCache",
       "baseline": true,
       "off": false,
+      "witness": "lighting.gather.hit",
       "changesOutput": false,
-      "reason": "No counter exists. The branch at StarWorldClient.cpp:2377 selects the stable-grid path or the original direct gather, and neither arm records anything. The key is also read via get(...).optBool() rather than getOrDefault, so it is outside the config-lint declaration gate as well.",
-      "closes": "register a gather cache-hit counter at the branch"
+      "why": "Reuse the per-frame-invariant stable tile grid across frames; off is the original direct gather (B1+B2), documented as the clean A/B baseline. The hit counter is registered INSIDE the cache branch, so it is absent-then-zero on the off leg by construction."
     },
     {
       "key": "scriptProtoCacheEnabled",
       "baseline": true,
       "off": false,
+      "witness": "script.proto.cache.loaded",
       "changesOutput": false,
-      "reason": "No script.* metric is registered anywhere in the telemetry corpus, so there is nothing to witness. The off path is documented as the original code path byte for byte.",
-      "closes": "register a proto-cache hit/miss counter in StarLuaRoot"
+      "why": "Load Lua chunks from the shared proto cache instead of recompiling per context. Off is documented as the original code path byte for byte. Both arms are counted, so the off leg moves script.proto.cache.bypassed while the witness falls to zero."
     },
     {
       "key": "backdropComposeMerge",
       "baseline": true,
       "off": false,
+      "witness": "render.cache.env.compose_standalone",
       "changesOutput": false,
-      "reason": "The merged arm defers the env compose and the standalone arm calls composeEnvStandalone, so the two arms genuinely differ -- but render.pass.parallax.compose.gpu_us fires in both, so its count does not witness which arm ran. Proven algebraically byte-identical.",
-      "closes": "register a counter on the standalone-compose branch in StarBackdropPass.cpp"
+      "why": "Defer the env compose into the parallax pass so env+parallax are one full-screen pass instead of two. Proven algebraically byte-identical. The witness counts the STANDALONE arm -- the one the lever turns off -- because render.pass.parallax.compose.gpu_us fires on both arms and its count cannot say which ran. Not exactly zero on the baseline leg: a clause-2 recovery frame suppresses the merge and is separately counted by render.backdrop.compose_recovered."
     }
   ],
+  "_gapsComment": [
+    "WITNESS COVERAGE IS NOW COMPLETE FOR EVERY LEVER IN THE TABLE. It was not: four levers had no way",
+    "to say whether they engaged, including the two with the largest measured wins in this project's",
+    "history. The instrument was weakest exactly where the stakes were highest. Three counters closed",
+    "three of them; the fourth was never a gap.",
+    "",
+    "  render.vbo.orphaned                   NEW -- counts the orphaning call itself. Nothing else moves",
+    "                                        when this lever flips: it is byte-identical by construction",
+    "                                        and its whole effect is stall cost.",
+    "  script.proto.cache.loaded/.bypassed   NEW -- both arms, so the OFF leg moves a counter too. A",
+    "                                        consumer differencing two snapshots cannot tell ABSENT from",
+    "                                        ZERO, so a one-sided counter is only half a witness.",
+    "  render.cache.env.compose_standalone   NEW -- counts the arm the lever turns OFF, because the",
+    "                                        existing parallax-compose timer fires on both arms.",
+    "  lighting.gather.hit                   ALREADY EXISTED. Recording this because the first pass filed",
+    "                                        it as a gap and it was not: the counter registers through an",
+    "                                        outcome() lambda, so a grep for Telemetry::counter near",
+    "                                        'gather' does not find it. That is the same blind spot the",
+    "                                        descriptor audit found in the clock ratchet -- an indirect",
+    "                                        registration is invisible to a literal grep, and a survey",
+    "                                        built on one under-reports the population it claims to cover.",
+    "",
+    "A TIMER WAS NOT SUBSTITUTED FOR ANY OF THESE. A timer delta asserts the RESULT and calls it the",
+    "cause; the witness must assert that the code path CHANGED, which is a different question and the",
+    "only one that can void a leg before its cost is read."
+  ],
+  "gaps": [],
   "_excludedComment": [
     "NOT LEVERS, and excluded for reasons that are not gaps:",
     "  lightingGpu, lightingWorldUpscale, lightingWorldSampleBilinear, lightingTonemap, newLighting,",

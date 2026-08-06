@@ -146,6 +146,7 @@ private:
   TelemetryCounter m_parallaxRefreshedCtr;
   TelemetryCounter m_parallaxSkippedCtr;
   TelemetryCounter m_parallaxBypassedCtr;
+  TelemetryCounter m_envComposeStandaloneCtr;
 
   // Rate limit for the clause-2 diagnostic. A MEMBER, reset by invalidateCaches() on world entry --
   // see the comment there.

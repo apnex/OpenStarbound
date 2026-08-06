@@ -908,6 +908,26 @@ List<Drawable> NetworkedAnimator::drawables(Vec2F const& position) const {
 }
 
 List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& position) const {
+  // Telemetry (static-handle idiom: registration/lookup once, then lock-free increments): "cached"
+  // counts static parts served from the cache, "rebuilt" counts parts built (LIVE parts every call,
+  // static parts inside rebuildStaticCache).
+  //
+  // REGISTERED HERE, ABOVE THE BRANCH, NOT AT THE INCREMENT SITE. These used to be block-scope statics
+  // inside the caching arm, so with renderDrawableCache OFF they never registered at all and the keys
+  // read ABSENT rather than ZERO -- which a consumer differencing two snapshots cannot tell apart from
+  // "no such metric". It is the same bug class StarBackdropPass.hpp already names (block-scope statics
+  // that never REGISTER in runtime-gated functions); these predate that lesson. Found by the lever
+  // matrix, which could not compare the renderDrawableCache off leg to its baseline and correctly
+  // VOIDed it rather than reporting a delta.
+  //
+  // This function is the single dispatcher -- per-part, rebuild and whole-entity cache all leave from
+  // here -- so registering at the top makes both keys exist on every path. Registration is idempotent,
+  // so the handles taken further down and in drawablesWithZLevelPerPart resolve to these same nodes.
+  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+
   auto configuration = Root::singleton().configuration();
   // Per-part cache wins over whole-entity when both are on (A/B sets exactly one).
   if (configuration->get("renderDrawableCachePerPart", false).toBool())
@@ -966,15 +986,6 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
   // per-part helper the rebuild uses.  Drawable order is identical to the
   // rebuild by construction, so no merge re-sort is needed (and equal-zLevel
   // ordering is preserved exactly).
-  // Telemetry (static-handle idiom: registration/lookup once, then lock-free
-  // increments): "cached" counts static parts served from the cache, "rebuilt"
-  // counts parts built (LIVE parts here every call, static parts inside
-  // rebuildStaticCache).
-  static auto s_cachedCounter = Telemetry::counter("render.drawable.parts.cached",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
-  static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
-
   List<pair<Drawable, float>> drawables;
   drawables.reserve(partCount + drawableCount);
   // Maps assembled drawable index -> source part name, for shadow-compare

@@ -392,14 +392,36 @@ mkdir -p "$OUT"
 MANIFEST="$OUT/manifest.json"
 : > "$OUT/legs.tsv"
 
+# A LEG THAT RAN AND A LEG WHOSE NUMBERS ARE QUOTABLE ARE TWO DIFFERENT VERDICTS, and the first
+# version of this function collapsed them. telemetry-window.py exits 3 when its closure oracle finds a
+# violation -- "parts exceed the whole", "of UNKNOWN" -- which means DO NOT QUOTE THESE COSTS. It does
+# not mean the leg did not happen: the profile is written, the counters in it are the counters the
+# engine recorded, and the WITNESS question ("did the code path change?") is answered by counters, not
+# by closure. Treating exit 3 as a dead leg killed an entire pass on a pre-existing 1.06% GPU-domain
+# overage that has nothing to do with any lever under test.
+#
+# So exit 3 is kept and FLAGGED, and every other nonzero is fatal. The flag rides into the manifest so
+# the analysis half -- which does read costs -- can refuse the leg on exactly the ground the oracle
+# raised, rather than inheriting a silent pass.
+LEG_VIOLATED=0
 run_leg() { # run_leg <label> <extra --set args...>
   local label=$1; shift
+  local rc
+  LEG_VIOLATED=0
   echo
   echo "--- leg $label ---"
   # Integrity BEFORE the leg, so a failed restore from the previous leg is caught here rather than
   # discovered as an inexplicable result three hours later.
   assert_baseline "$TABLE" "$CFG" || { echo "lever-matrix: aborting -- the config drifted before leg $label" >&2; return 1; }
-  "$PROFILE" "$SECONDS_PER_LEG" "$label" "${BASE_SETS[@]}" "$@" --warp "$WARP" || return 1
+  "$PROFILE" "$SECONDS_PER_LEG" "$label" "${BASE_SETS[@]}" "$@" --warp "$WARP"; rc=$?
+  if [ $rc -eq 3 ]; then
+    LEG_VIOLATED=1
+    echo "  NOTE: the closure oracle raised a violation on this leg. The leg is KEPT -- its counters are"
+    echo "        still what the engine recorded, and the witness check reads counters. Its COSTS are"
+    echo "        flagged not-quotable in the manifest."
+  elif [ $rc -ne 0 ]; then
+    return 1
+  fi
   [ -f "harness/profiles/$label.json" ] || { echo "lever-matrix: leg $label produced no profile" >&2; return 1; }
   command cp "harness/profiles/$label.json" "$OUT/$label.json"
 }
@@ -417,7 +439,8 @@ for r in $(seq 1 "$REPEATS"); do
     echo "  compared against, so the pass is skipped rather than run blind." >&2
     continue
   fi
-  printf '%s\tbaseline\t-\tOK\n' "$BASE_LABEL" >> "$OUT/legs.tsv"
+  BASE_VIOLATED=$LEG_VIOLATED
+  printf '%s\tbaseline\t-\tOK\t-\t%s\n' "$BASE_LABEL" "$([ $BASE_VIOLATED -eq 1 ] && echo no || echo yes)" >> "$OUT/legs.tsv"
 
   # Witnesses are checked against a REAL profile, once, on the first baseline that succeeds. A
   # witness naming a metric that does not exist would otherwise let every leg pass vacuously.
@@ -430,8 +453,11 @@ for r in $(seq 1 "$REPEATS"); do
     k=${row%%$'\t'*}; rest=${row#*$'\t'}; o=${rest##*$'\t'}
     label="$RUN_ID-r$r-off-$k"
     if ! run_leg "$label" --set "$k=$o"; then
-      FAILED+=("$label"); printf '%s\t%s\t%s\tFAILED\n' "$label" "$k" "$o" >> "$OUT/legs.tsv"; continue
+      FAILED+=("$label"); printf '%s\t%s\t%s\tFAILED\t-\t-\n' "$label" "$k" "$o" >> "$OUT/legs.tsv"; continue
     fi
+    # Costs are quotable only if NEITHER end of the comparison was flagged: a delta against a violated
+    # baseline is as unusable as a violated leg, and only one of the two is the leg you are looking at.
+    quotable=$([ $LEG_VIOLATED -eq 0 ] && [ $BASE_VIOLATED -eq 0 ] && echo yes || echo no)
     w=$(python3 -c "
 import json,sys
 for lv in json.load(open('$TABLE'))['levers']:
@@ -441,14 +467,14 @@ for lv in json.load(open('$TABLE'))['levers']:
     case "$verdict" in
       MOVED*)
         echo "  witness $w: ${verdict#MOVED } -- the lever engaged"
-        OK+=("$label"); printf '%s\t%s\t%s\tOK\t%s\n' "$label" "$k" "$o" "$verdict" >> "$OUT/legs.tsv" ;;
+        OK+=("$label"); printf '%s\t%s\t%s\tOK\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" >> "$OUT/legs.tsv" ;;
       IDENTICAL*)
         echo "  VOID: witness $w is IDENTICAL across baseline and off (${verdict#IDENTICAL })."
         echo "        The lever did not engage, so any cost delta from this leg is an artefact."
-        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\t%s\n' "$label" "$k" "$o" "$verdict" >> "$OUT/legs.tsv" ;;
+        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" >> "$OUT/legs.tsv" ;;
       *)
         echo "  VOID: witness $w absent from one of the two profiles."
-        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\twitness-absent\n' "$label" "$k" "$o" >> "$OUT/legs.tsv" ;;
+        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\twitness-absent\t%s\n' "$label" "$k" "$o" "$quotable" >> "$OUT/legs.tsv" ;;
     esac
   done
 done
@@ -460,7 +486,10 @@ rows = []
 for line in open(legs):
     p = line.rstrip("\n").split("\t")
     rows.append({"label": p[0], "lever": p[1], "offValue": p[2], "verdict": p[3],
-                 "witness": p[4] if len(p) > 4 else None})
+                 "witness": p[4] if len(p) > 4 else None,
+                 # "no" means the closure oracle flagged this leg or its baseline. The leg RAN and its
+                 # witness is valid; its COSTS may not be quoted. Two different verdicts, kept apart.
+                 "costsQuotable": (p[5] if len(p) > 5 else None)})
 json.dump({
     "runId": run_id, "warp": warp, "repeats": int(repeats), "secondsPerLeg": int(secs),
     "leverTable": json.load(open(table))["levers"],

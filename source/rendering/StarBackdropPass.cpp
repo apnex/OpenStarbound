@@ -21,7 +21,14 @@ BackdropPass::BackdropPass(Renderer* renderer)
     m_envSkippedCtr(Telemetry::counter("render.cache.env.skipped", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
     m_parallaxRefreshedCtr(Telemetry::counter("render.cache.parallax.refreshed", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
     m_parallaxSkippedCtr(Telemetry::counter("render.cache.parallax.skipped", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
-    m_parallaxBypassedCtr(Telemetry::counter("render.cache.parallax.bypassed_moving", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})) {}
+    m_parallaxBypassedCtr(Telemetry::counter("render.cache.parallax.bypassed_moving", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})),
+    // WITNESS for the backdropComposeMerge lever, counting the arm the lever turns OFF. Merge on => the env
+    // compose is deferred into the parallax pass and this stays at zero; merge off => one per frame. Needed
+    // because render.pass.parallax.compose.gpu_us fires on BOTH arms, so its count cannot say which ran.
+    // It is not exactly zero when the merge is on: a clause-2 recovery frame suppresses the merge and takes
+    // the standalone branch. Those are separately counted by render.backdrop.compose_recovered and are rare,
+    // so the two legs still differ by ~frames rather than by a rounding error.
+    m_envComposeStandaloneCtr(Telemetry::counter("render.cache.env.compose_standalone", MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail})) {}
 
 // CM-1: the merged env+parallax compose. One full-screen quad, sampling the env cache (opaque backdrop) and
 // the parallax cache (premultiplied coverage), writing "main" once via the backdropCompose effect:
@@ -367,6 +374,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
       // freshly-cleared main). composite() sets all four params explicitly, so the lighting compose's
       // mutations of the shared effect can't bleed in -- no forked config needed.
       //
+      m_envComposeStandaloneCtr.inc(1);
       composeEnvStandalone(envScreenSize);
     }
 

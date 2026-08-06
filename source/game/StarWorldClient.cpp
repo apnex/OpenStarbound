@@ -2374,6 +2374,28 @@ void WorldClient::lightingCalc() {
     // re-applies the current-frame environmentLight. On a MISS we re-gather the stable grid. The
     // entity-light add-loop + exportSpreadInputs below run every frame regardless, so moving/flickering
     // lights are never cached. Flag OFF = the original direct gather (B1+B2) -- the clean A/B baseline.
+    //
+    // REGISTERED ABOVE THE BRANCH, NOT INSIDE IT. These six used to be declared inside the cached arm,
+    // so with lightingGatherCache OFF none of them registered and every key read ABSENT rather than
+    // ZERO -- indistinguishable, to a consumer differencing two snapshots, from "no such metric". The
+    // lever matrix caught it: it could not compare the off leg to its baseline and correctly VOIDed the
+    // leg rather than reporting a delta from a lever it could not prove had engaged. Same bug class
+    // StarBackdropPass.hpp already names, and the reason its counters are constructor members.
+    //
+    // The six still partition the CACHED path by construction -- every arm of the chain below
+    // increments exactly one, and the chain has no other exit -- so with the cache on they sum to the
+    // recompute count, and with it off they are all zero. That is the witness.
+    auto outcome = [](char const* key) {
+      return Telemetry::counter(key,
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    };
+    static auto gatherHit       = outcome("lighting.gather.hit");
+    static auto gatherScroll    = outcome("lighting.gather.scroll");
+    static auto gatherFullFirst = outcome("lighting.gather.full.first");
+    static auto gatherFullDims  = outcome("lighting.gather.full.dims");
+    static auto gatherFullEpoch = outcome("lighting.gather.full.epoch");
+    static auto gatherFullJump  = outcome("lighting.gather.full.jump");
+
     if (configuration->get("lightingGatherCache").optBool().value(true)) {
       int64_t gatherStart = Time::monotonicMicroseconds();
       RectI calcRegion = m_lightingCalculator.calculationRegion();
@@ -2416,16 +2438,6 @@ void WorldClient::lightingCalc() {
       // premise has never been measured. The six partition the cached path by construction -- every arm of the
       // chain below increments exactly one and the chain has no other exit -- so the split is verifiable by
       // reading it. Split by reason: "fell back" is not actionable, "fell back because the tile epoch moved" is.
-      auto outcome = [](char const* key) {
-        return Telemetry::counter(key,
-          MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
-      };
-      static auto gatherHit       = outcome("lighting.gather.hit");
-      static auto gatherScroll    = outcome("lighting.gather.scroll");
-      static auto gatherFullFirst = outcome("lighting.gather.full.first");
-      static auto gatherFullDims  = outcome("lighting.gather.full.dims");
-      static auto gatherFullEpoch = outcome("lighting.gather.full.epoch");
-      static auto gatherFullJump  = outcome("lighting.gather.full.jump");
 
       // Same grid layout (size + tile epoch) as last frame? Then we can reuse it: a HIT (same anchor)
       // skips the gather entirely; a scroll (anchor moved, A2) shifts the overlap + gathers only the

@@ -1,5 +1,6 @@
 #include "StarLuaRoot.hpp"
 #include "StarAssets.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
 
@@ -213,10 +214,22 @@ void LuaRoot::ScriptCache::loadContextScript(LuaContext& context, String const& 
   }
   if (!scriptLoaded(assetPath))
     loadScript(context.engine(), assetPath);
-  if (protoCacheEnabled)
+  // WITNESS for the scriptProtoCacheEnabled lever. BOTH arms are counted, not just the cached one: a
+  // consumer differencing two snapshots cannot tell ABSENT from ZERO, so an A/B needs a counter that moves
+  // on the OFF leg too. Registered above the branch so both exist from the first load regardless of which
+  // arm ran. Nothing else in the corpus distinguishes these paths -- the off path is documented as the
+  // original code byte for byte, so its only signature is that it did not use the cache.
+  static auto protoCached = Telemetry::counter("script.proto.cache.loaded",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  static auto protoDirect = Telemetry::counter("script.proto.cache.bypassed",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+  if (protoCacheEnabled) {
+    protoCached.inc(1);
     context.loadCached(assetPath, scripts.get(assetPath));
-  else
+  } else {
+    protoDirect.inc(1);
     context.load(scripts.get(assetPath));  // OFF == the original code path, byte for byte
+  }
 }
 
 size_t LuaRoot::ScriptCache::memoryUsage() const {

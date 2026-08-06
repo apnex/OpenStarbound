@@ -1491,8 +1491,19 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
           // Passing a null pointer to glBufferData first tells the driver the old contents are dead, so it hands
           // back a FRESH backing store instead of waiting for the in-flight draw to finish reading the old one.
           // Same API calls, same data, no sync.
-          if (!NoVboOrphan)
+          //
+          // WITNESS for the renderVboOrphan lever. Registered unconditionally and incremented only on the
+          // orphaning arm, so with the lever off it reads ZERO rather than ABSENT -- a consumer differencing
+          // two snapshots cannot tell those apart. It exists because this lever moves nothing else that is
+          // counted: it is byte-identical by construction and its whole effect is stall cost, so an A/B could
+          // run with it off on BOTH legs and still report a full table of plausible deltas. This is the one
+          // quantity that cannot be nonzero when the lever is off.
+          static auto orphaned = Telemetry::counter("render.vbo.orphaned",
+            MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+          if (!NoVboOrphan) {
             glBufferData(GL_ARRAY_BUFFER, vb.byteCapacity, nullptr, GL_STREAM_DRAW);
+            orphaned.inc(1);
+          }
           glBufferSubData(GL_ARRAY_BUFFER, 0, accumulationBuffer.size(), accumulationBuffer.ptr());
         } else {
           glBufferData(GL_ARRAY_BUFFER, accumulationBuffer.size(), accumulationBuffer.ptr(), GL_STREAM_DRAW);
