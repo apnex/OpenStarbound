@@ -96,10 +96,18 @@ void CellularLightingCalculator::begin(RectI const& queryRegion, Maybe<unsigned>
   // there freezes at whatever the pre-latch load frames left behind. The two are different quantities and
   // conflating them cost the campaign a 4.375x error: the output lightmap is the QUERY region, but every
   // export/convert/fill loop runs over the border-padded CALCULATION region.
+  //
+  // Cadence::Recompute, matching the phase they are set inside: begin() is reached only from the lighting
+  // recompute path, and the timer bracketing this very call declares Recompute. Declared Call they fired
+  // exactly once per recompute while asserting no expectation at all, so they forwent the coverage check
+  // their co-located timer gets. Nothing was scaled wrongly by that -- a gauge is a level, carried rather
+  // than differenced -- so this under-declared rather than misstated. It matters because lighting.calc.cells
+  // is the scene fingerprint used to prove two legs saw the same world, and a fingerprint with no declared
+  // cadence cannot be checked for having been sampled the expected number of times.
   static auto cellsGauge = Telemetry::gauge("lighting.cells",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto calcCellsGauge = Telemetry::gauge("lighting.calc.cells",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
 
   m_queryRegion = queryRegion;
   // ADAPTIVE BORDER (#170). `full` is the historic unconditional padding, ceil(max(spreadMaxAir,

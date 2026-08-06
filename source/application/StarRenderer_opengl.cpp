@@ -92,8 +92,13 @@ OpenGlRenderer::OpenGlRenderer()
   // audit -- a block that only does anything when something is already wrong -- would make ABSENT and ZERO
   // the same reading for anyone differencing two snapshots. That is the defect #181 closed for the
   // backdrop's contract-violation counter, and it is not worth learning twice.
+  //
+  // Cadence::Call, not Frame. Frame asserts the count IS a frame count; this value is a per-frame SUM of
+  // mismatched state items -- 0 on a healthy frame, 1 or 2 or more on a broken one -- so it is neither
+  // per-frame nor a count of frames. Errors are exceptional and not per-anything, which is the reasoning
+  // already written out for render.gl.errors, and Call is returned unscaled by the consumer.
   m_glStateMismatches = Telemetry::counter("render.glstate.mismatches",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 
   glClearColor(0.0, 0.0, 0.0, 1.0);
   glEnable(GL_BLEND);
@@ -1087,11 +1092,20 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   // the ring pays for it: the readback path no longer touches the registry mutex at all.
   auto& ring = m_rings[name];
   ring.timer = Telemetry::timer(name, desc);
+  // COUNT THE REJECTIONS, PER KEY. The guard below used to only warn, and a warning is not a datum: a timer
+  // whose samples the guard rejects reports a `count` that is neither frames nor calls -- it is calls minus
+  // suppressions -- and nothing said which key lost how many, or that anything had been lost at all. The
+  // suppressed time is not lost to the GPU either; it is still physically inside whichever bracket was
+  // already open, so an unwitnessed rejection is a double defect: under-counted here, silently billed there.
+  // Domain/owner match render.gputimer.dropped -- both are losses of the same instrument.
+  ring.nested = Telemetry::counter(name + ".nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
   // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
   // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlSurface is
   // reached during the interface render), and the resulting numbers were nonsense.
   if (m_active) {
+    ring.nested.inc(1);
     Logger::warn("GpuTimer::begin('{}') nested inside an active timer -- ignored (GL_TIME_ELAPSED cannot nest)", name);
     return;
   }
@@ -1528,8 +1542,15 @@ void OpenGlRenderer::GlRenderBuffer::set(List<RenderPrimitive>& primitives) {
           // counted: it is byte-identical by construction and its whole effect is stall cost, so an A/B could
           // run with it off on BOTH legs and still report a full table of plausible deltas. This is the one
           // quantity that cannot be nonzero when the lever is off.
+          //
+          // OWNER=Gl, matching render.glstate.mismatches and the two flush counters: all four are
+          // OpenGlRenderer-internal CPU work in this one translation unit, and owner is the budget a cost
+          // lands in. Split across two owners they would land in two, so promoting any one of them to
+          // Budget later would put it in the wrong closure -- and this one is the declared WITNESS for the
+          // renderVboOrphan lever, so a reader asking which budget that lever moved would have been told
+          // `frame` about work the renderer does.
           static auto orphaned = Telemetry::counter("render.vbo.orphaned",
-            MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+            MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
           if (!NoVboOrphan) {
             glBufferData(GL_ARRAY_BUFFER, vb.byteCapacity, nullptr, GL_STREAM_DRAW);
             orphaned.inc(1);
@@ -1753,10 +1774,11 @@ void OpenGlRenderer::flushImmediatePrimitives(Mat3F const& transformation) {
   // an IMPLICIT SYNCHRONISATION -- a full pipeline stall. Widget::render -> setupDrawRegion -> setScissorRect
   // calls this for EVERY widget, and the in-game HUD has ~92 of them. Count them, and count the primitives per
   // flush: a high flush count with a tiny primitive count is the signature of stall-per-widget.
+  // Owner=Gl, with the other three OpenGlRenderer-internal CPU counters -- see render.vbo.orphaned.
   static auto flushes = Telemetry::counter("render.flush.count",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   static auto flushPrims = Telemetry::counter("render.flush.primitives",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   flushes.inc(1);
   flushPrims.inc(m_immediatePrimitives.size());
 
@@ -1898,9 +1920,23 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 // per frame -- the guard would silently starve the feature. We keep upstream's semantics exactly and only wrap
 // them in the timer: at 2560x1440 RGBA16F, MSAA-resolving when antiAliasing is on, this blit is not free, and
 // it was part of the 1.8-3.5ms/frame the whole-frame span proved was unaccounted for (task #141).
+//
+// CADENCE::CALL, NOT FRAME, and the paragraph above is why. Frame asserts count == frames; this fires once
+// per effect switch that blits, which is a per-frame number nobody controls -- and then the nesting guard
+// suppresses whichever of those land inside another open bracket, which is most of them, since blitGlSurface
+// is reached during the interface render. The surviving count is calls minus suppressions: not frames, not
+// blits, and coverage-scaled against frames it would be scaled by an unknown factor. Call is unscaled, and
+// render.frame.blit.gpu_us.nested now says how many samples the guard took.
+//
+// MEASURED at Desert Town over 60s: 2699 blit samples against 2699 frames, and .nested ZERO -- on this key
+// and on all eleven others. So under the harness effect configuration exactly one switch blits per frame and
+// the guard suppresses nothing; the historical "this bit immediately" is not reproducing today. That is a
+// measured zero rather than an absent one, which is the whole point of the counter. It does not license
+// Frame: the equality holds because of how many post-process effects are enabled, not because of anything
+// in this call path, and a config change would break it silently.
 void OpenGlRenderer::blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt) {
   m_gpuTimer.begin("render.frame.blit.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 
   auto& size = m_screenSize;
   // useAlt: the caller is a double-buffered effect, so it wants the face it is NOT writing -- the one that

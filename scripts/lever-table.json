@@ -64,7 +64,7 @@
       "off": false,
       "witness": "render.drawable.parts.cached",
       "changesOutput": false,
-      "why": "Cache built drawables across frames instead of rebuilding per call. Off takes the full-rebuild path, so the cached-parts counter must fall to zero. Byte-identity is verified by a dedicated shadowCompare diagnostic, modulo a documented sub-ULP float-ordering tolerance on position."
+      "why": "Cache built drawables across frames instead of rebuilding per call. Off takes the full-rebuild path, so the cached-parts counter must fall to zero. Byte-identity is verified OFFLINE by the DrawableCache parity tests in core_tests, which the gate set runs: position is compared with a bounded 4-ulp tolerance (the cache applies the world translate after the part matrix, the rebuild folds it in before) and every other field exactly. Not sub-ULP, and not the in-engine shadowCompare -- that is a different instrument, and it is pinned OFF in the harness config because arming it doubles the drawable build on every frame and so cannot run inside a measurement. Its render.drawable.cache.shadowCompares counter reads zero on every leg, which is what says so rather than leaving it to be inferred from a config file."
     },
     {
       "key": "renderVboOrphan",

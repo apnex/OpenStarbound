@@ -144,11 +144,30 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   size_t const texels = (size_t)size[0] * size[1];
   bool const packedEmission = emissionHalf.size() == texels * 3 && obstacleR8.size() == texels;
 
-  // Owner=Gl (GPU work inside the GPU frame, closes against render.frame.gpu_span_us) but
-  // cadence=Recompute: this fires per lightmap recompute, not per frame, so its COUNT is checked
-  // against recomputes, not frames. Same for point/compose/upscale below.
+  // Owner=Gl (GPU work inside the GPU frame, closes against render.frame.gpu_span_us). Cadence=Call --
+  // which is what all four brackets in this function now declare, and what only the point pass and
+  // cpu_cost.us used to.
+  //
+  // Recompute asserts count == lighting.temporal.recomputed. That counter is incremented on the LIGHTING
+  // thread once per publish; these brackets fire on the RENDER thread once per processFull, which is one
+  // CONSUMPTION of a publish. Under frame skip the update loop runs 1..N times per rendered frame, so
+  // publishes coalesce and the two counts need not be equal -- and nothing in the tree ever asserted they
+  // were. A coverage ratio below 1 makes the consumer scale these totals UP, inventing GPU cost for
+  // recomputes the pass did not run on, straight into the gl closure. Call is returned unscaled, so it
+  // cannot invent; and one invocation event cannot honestly carry two cadences fifty lines apart.
+  //
+  // MEASURED, AND THE MEASUREMENT DOES NOT SETTLE IT. A 60s live capture at Desert Town read 1035
+  // recomputes, 1035 processFull invocations and 1035 samples in each of these four brackets -- exactly 1:1,
+  // coverage 1.00, so Recompute would have scaled nothing and cost nothing THERE. But that run sat at 62 fps
+  // with 72% CPU headroom and 1035 recomputes against 2699 frames: lighting published slower than the
+  // renderer consumed, which is the regime in which coalescing CANNOT occur. The instrument was run against
+  // the case that cannot exhibit the failure, so it confirms nothing about the loaded legs where it would.
+  //
+  // Call is the declaration that is right in both regimes. What it gives up is real and small: Recompute
+  // also prints a coverage column and asserts count <= expectation. Those remain available by eye -- the
+  // count of each bracket and lighting.temporal.recomputed are adjacent rows in the same table.
   m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   if (packedEmission) {
     m_emissionRGBA.resize(texels * 4);
     for (size_t i = 0; i < texels; ++i) {
@@ -313,8 +332,9 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
 
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
+  // Cadence::Call for the same reason as the spread bracket above -- see the note there.
   m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
      {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
@@ -332,8 +352,13 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // effect as a (bilinear) upscale -- the bug that made Form 2's first build show stepped shadow edges.
     unsigned n = (unsigned)(worldUpscale + 0.5f);
     Vec2U upSize = size * n;
+    // Cadence::Call, and this one is doubly earned: the bracket is INSIDE the gate above, so on a recompute
+    // where lightingWorldUpscale is under the threshold -- or the lightingUpscale effect fails to load --
+    // the pass does not run and has no cost to report. Declared Recompute it asserted one sample per
+    // recompute for a pass gated on a config value, which is the parallax defect with a config gate in
+    // place of a content one.
     m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
     m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));

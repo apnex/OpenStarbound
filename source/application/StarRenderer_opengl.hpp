@@ -282,6 +282,10 @@ private:
       // what makes the key EXIST from the first bracketed frame instead of from the first query that
       // happens to resolve -- see GlGpuTimer::begin.
       TelemetryTimer timer;
+      // PER KEY, because "some samples were suppressed" is not actionable and "this key lost N" is. The
+      // nesting guard used to only warn, so a timer whose every sample the guard rejected reported a count
+      // that was neither frames nor calls, and nothing said which timer or how many. See begin().
+      TelemetryCounter nested;
     };
 
     function<void()> m_flushPending;

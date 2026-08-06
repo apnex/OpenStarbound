@@ -284,11 +284,21 @@ AnimatedPartSet::AnimationMode AnimatedPartSet::stringToAnimationMode(String con
   }
 }
 
+// OWNER=UNKNOWN, AND THAT IS THE HONEST DECLARATION -- these five counters aggregate TWO budgets.
+// AnimatedPartSet::update is driven by NetworkedAnimator::update, which runs for client-side slave entities
+// as well as server-side masters, and the client reads all four merge counters straight onto its own
+// telemetry HUD as a skiprate. Declared Sim, a per-leg movement is un-splittable between the server tick and
+// the client frame and so cannot explain a delta in either -- #171's shape in a second subsystem.
+//
+// Unknown is not a placeholder here: the consumer EXCLUDES it from every owner table, which is exactly
+// right for a number that belongs to no single owner. Splitting into client/server keys is the real fix and
+// needs the caller's side plumbed down here; asserting an owner half the samples do not belong to is not a
+// cheaper version of that, it is a wrong answer.
 void AnimatedPartSet::freshenActiveState(StateType& stateType) {
   static auto cPerformed = Telemetry::counter("animator.state.merge.performed",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Unknown, MetricCadence::Call, MetricRole::Detail});
   static auto cSkipped = Telemetry::counter("animator.state.merge.skipped",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Unknown, MetricCadence::Call, MetricRole::Detail});
   auto const& state = *stateType.activeStatePointer;
   auto& activeState = stateType.activeState;
 
@@ -347,13 +357,14 @@ void AnimatedPartSet::freshenActiveState(StateType& stateType) {
   cPerformed.inc();
 }
 
+// Owner=Unknown for the same reason as the state counters above: client and server both reach here.
 void AnimatedPartSet::freshenActivePart(Part& part) {
   static auto cPerformed = Telemetry::counter("animator.part.merge.performed",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Unknown, MetricCadence::Call, MetricRole::Detail});
   static auto cSkipped = Telemetry::counter("animator.part.merge.skipped",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Unknown, MetricCadence::Call, MetricRole::Detail});
   static auto cTransform = Telemetry::counter("animator.part.transform.applied",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Unknown, MetricCadence::Call, MetricRole::Detail});
   auto& activePart = part.activePart;
 
   // (a) ALWAYS: find the highest-priority enabled state type with a matching partState.

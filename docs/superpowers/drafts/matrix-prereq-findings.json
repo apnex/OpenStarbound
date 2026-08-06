@@ -472,7 +472,12 @@
    "evidence": "source/rendering/StarGpuLightmapPass.cpp:318 `if (worldUpscale >= 1.5f && m_renderer->switchEffectConfig(\"lightingUpscale\")) {` ... :326-327 `m_renderer->gpuTimer().begin(\"lighting.gpu.upscale.gpu_us\", MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Budget});` ... end :331. worldUpscale comes from the `lightingWorldUpscale` config read at source/rendering/StarWorldPainter.cpp:300-301. The `else` arm at :332-336 is the ungated path.",
    "impact": "Same class as the point pass, but with a config gate rather than a content gate: the descriptor asserts one sample per lighting recompute for a pass that runs only when a config value is >= 1.5, and additionally only when the lightingUpscale effect loads. If the config is below the threshold the key is never registered at all (GPU keys register lazily inside GlGpuTimer::begin's readback at StarRenderer_opengl.cpp:1078), so the Budget part reads ABSENT, not ZERO. If the effect load ever fails mid-run the coverage becomes partial and the surviving samples are scaled up into the gl closure. Either way a per-leg gl closure number changes for reasons unrelated to the lever under test.",
    "fixShape": "Change lighting.gpu.upscale.gpu_us to MetricCadence::Call, and (separately) register the key unconditionally so its absence is distinguishable from zero.",
-   "signature": null
+   "signature": {
+    "glob": "source/rendering/StarGpuLightmapPass.cpp",
+    "re": "\"lighting\\.gpu\\.upscale\\.gpu_us\",\\n\\s*MetricDesc\\{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call",
+    "absent": true,
+    "desc": "the upscale bracket declares Cadence::Call, matching a pass that runs only when its config gate and its effect load both pass"
+   }
   },
   {
    "id": "D04",
@@ -481,7 +486,12 @@
    "evidence": "source/application/StarRenderer_opengl.cpp:1871-1873 declares `MetricCadence::Frame`. Twelve lines above, :1861-1863: \"NOTE the missing once-per-frame guard. Upstream deliberately dropped the `if (blitted) return;` ... the alt->primary copy must happen on EVERY effect switch, not once per frame\". The sole caller is switchEffectConfig at :535, invoked once per post-process effect per frame (source/client/StarClientApplication.cpp:609-616 loops layers x passes x effects) plus the interface switch at :618. And the nesting guard at :1057-1065 records the consequence explicitly: \"This bit immediately: the blit timer fires INSIDE the interface timer (blitGlSurface is reached during the interface render), and the resulting numbers were nonsense\" \u2014 begin() returns early at :1066-1068 when m_active.",
    "impact": "The declared cadence says count == frames. The actual count is (number of effect switches that blit) minus (all of those that occurred while any other pass bracket was open), which is neither frames nor blits and varies with how many post-process effects are enabled. As a Budget part under owner `gl`, whatever survives is coverage-scaled by telemetry-window.py against the frame count and then summed into the gl closure. Simultaneously, the blit time that WAS suppressed is still physically inside render.pass.interface.gpu_us, so it is double-jeopardy: under-counted here, silently billed there. The matrix cannot attribute any gl-domain delta between legs while this part's denominator is unknowable.",
    "fixShape": "Declare render.frame.blit.gpu_us MetricCadence::Call, and count the nesting-guard rejections per key (the guard at :1066 currently only warns) so suppressed samples are visible rather than inferred.",
-   "signature": null
+   "signature": {
+    "glob": "source/application/StarRenderer_opengl.cpp",
+    "re": "\"render\\.frame\\.blit\\.gpu_us\",\\n\\s*MetricDesc\\{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call",
+    "absent": true,
+    "desc": "the blit declares Cadence::Call, and the nesting guard increments a per-key <name>.nested counter so suppressed samples are a number rather than an inference"
+   }
   },
   {
    "id": "D05",
@@ -490,7 +500,11 @@
    "evidence": "source/rendering/StarGpuLightmapPass.cpp:91-96 \u2014 lighting.gpu.cpu_cost.us is declared `MetricCadence::Call` with the reason spelled out: \"Cadence::Call, not Frame: processFull is reached only inside `if (lightMapUpdated)` (StarWorldPainter.cpp), so it fires on lightmap-publish frames, not every frame.\" Its TelemetryScope opens at :101 and covers the whole function. The four GPU brackets inside that same scope \u2014 :151 spread, :243 point, :308 compose, :327 upscale \u2014 all declare `MetricCadence::Recompute`, asserting count == lighting.temporal.recomputed. lightMapUpdated is `lightWaiter()` (source/rendering/StarWorldPainter.cpp:254), i.e. one render-thread consumption of a publish; lighting.temporal.recomputed is incremented on the lighting thread at source/game/StarWorldClient.cpp:2301.",
    "impact": "One invocation event cannot legitimately be Call for the CPU timer and Recompute for the GPU timers that live inside it \u2014 they fire exactly once each per processFull call. Whichever is right, the other's number is wrong: if publishes and consumptions are 1:1 then cpu_cost.us is silently forgoing its coverage check; if they are not 1:1 (frame skip runs update 1..N times per rendered frame \u2014 StarMainApplication_sdl.cpp:786-790 \u2014 so multiple publishes can coalesce into one consumption) then all four GPU passes are coverage-scaled up by a factor nobody has measured, straight into the gl closure. Nothing in the tree asserts the two counts agree, so this is an instrument checked only against itself.",
    "fixShape": "Register a counter for processFull invocations and assert it equals lighting.temporal.recomputed over a window; then make all five descriptors in the function agree on one cadence.",
-   "signature": null
+   "signature": {
+    "glob": "source/rendering/StarGpuLightmapPass.cpp",
+    "re": "gpuTimer\\(\\)\\.begin\\(\"lighting\\.gpu\\.[a-z]+\\.gpu_us\",\\s*\\n\\s*MetricDesc\\{[^}]*MetricCadence::Recompute",
+    "desc": "no GPU bracket in processFull declares Recompute; all five descriptors in the function (cpu_cost, spread, point, compose, upscale) agree on Call"
+   }
   },
   {
    "id": "D06",
@@ -499,7 +513,11 @@
    "evidence": "source/base/StarAnimatedPartSet.cpp:288-291 and :351-356 declare five counters with `MetricOwner::Sim`. AnimatedPartSet::update is driven by NetworkedAnimator::update (source/game/StarNetworkedAnimator.cpp:1612), which runs for client-side slave entities as well as server-side masters. source/client/StarClientApplication.cpp:659-668 reads all four merge counters and publishes them as `telemetry_animator_state_skiprate` / `telemetry_animator_part_skiprate` on the client's own telemetry HUD.",
    "impact": "One counter aggregates two budgets. A Sim-owned number that is partly Frame work cannot be attributed to either owner, which is #171's shape in a second subsystem: any per-leg movement is un-splittable between the server tick and the client frame, so it cannot be used to explain a delta in either owner's table. Impact is bounded today only because these are MetricRole::Detail counters and scripts/telemetry-window.py:316 restricts owner tables to `type == \"timer\"` \u2014 they never enter a closure. They are still labelled by an owner that does not do all the work.",
    "fixShape": "Split into client/server keys or declare MetricOwner::Unknown rather than asserting Sim; at minimum document at the registration that the value spans two budgets.",
-   "signature": null
+   "signature": {
+    "glob": "source/base/StarAnimatedPartSet.cpp",
+    "re": "MetricOwner::Sim",
+    "desc": "none of the five animator merge counters asserts owner Sim; they declare Unknown, which the consumer excludes from every owner table -- correct for a value spanning two budgets"
+   }
   },
   {
    "id": "D07",
@@ -508,7 +526,12 @@
    "evidence": "source/application/StarRenderer_opengl.cpp:95-96 declares `MetricCadence::Frame`. The only increment is source/application/StarRenderer_opengl.cpp:1253 `m_glStateMismatches.inc(bad);` inside `if (bad)` at :1252, where `bad` is a sum over the pass audit plus the scissor and blend checks (:1222-1250) and can be 0, 1, 2 or more per frame.",
    "impact": "Cadence::Frame asserts the count is checked against the frame count (StarTelemetry.hpp:33-35). This value is neither per-frame nor a frame count \u2014 it is a per-frame SUM of defects, zero on healthy frames. Nothing consumes it today (counters are excluded from telemetry-window.py's owner tables at line 316), so no matrix number moves; but the cadence field on this metric is an assertion no reader can act on, and the counter's own registration comment at :91-94 is careful about ABSENT-vs-ZERO while the cadence is not.",
    "fixShape": "Declare MetricCadence::Call \u2014 errors are exceptional and not per-anything, exactly the reasoning already written for render.gl.errors at StarRenderer_opengl.cpp:1619-1621.",
-   "signature": null
+   "signature": {
+    "glob": "source/application/StarRenderer_opengl.cpp",
+    "re": "\"render\\.glstate\\.mismatches\",\\n\\s*MetricDesc\\{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call",
+    "absent": true,
+    "desc": "the GL-state audit counter declares Cadence::Call -- it is a per-frame SUM of defects, neither per-frame nor a frame count"
+   }
   },
   {
    "id": "D08",
@@ -517,7 +540,11 @@
    "evidence": "In source/application/StarRenderer_opengl.cpp: render.glstate.mismatches is `MetricOwner::Gl` (:96) while render.vbo.orphaned (:1502), render.flush.count (:1727) and render.flush.primitives (:1729) are all `MetricOwner::Frame` \u2014 all four are OpenGlRenderer-internal CPU work in the same translation unit. render.vbo.orphaned is the declared witness for the renderVboOrphan lever (scripts/lever-table.json, witness field).",
    "impact": "Owner is the budget a cost lands in, and these four land in the same one. Declaring the same subsystem two different owners means any future promotion of one of them to Budget puts it in the wrong closure. Today all four are MetricRole::Detail counters and counters do not enter telemetry-window.py's per-owner timer tables, so no matrix number is currently wrong \u2014 but the witness for a live lever is filed under an owner its work does not belong to, which is a misreading waiting to happen when someone asks which budget the renderVboOrphan lever moved.",
    "fixShape": "Pick one owner for OpenGlRenderer-internal CPU counters (Gl, matching the file's own render.glstate.mismatches) and apply it to all four.",
-   "signature": null
+   "signature": {
+    "glob": "source/application/StarRenderer_opengl.cpp",
+    "re": "MetricOwner::Frame",
+    "desc": "no metric in the OpenGlRenderer translation unit declares owner Frame; all four internal CPU counters land in owner Gl, the budget the work belongs to"
+   }
   },
   {
    "id": "D09",
@@ -526,7 +553,12 @@
    "evidence": "source/base/StarCellularLighting.cpp:99-102 declares both gauges `MetricCadence::Call`; they are set inside CellularLightingCalculator::begin, which is reached only from the lighting recompute path (source/game/StarWorldClient.cpp:2238-2239 brackets it as lighting.cpu.begin.us, itself declared MetricCadence::Recompute at :2239).",
    "impact": "The metric fires exactly once per recompute but declares no cadence expectation, so it forgoes the coverage/bounds check that its co-located timer gets. No number is scaled wrongly (gauges carry the latest reading \u2014 scripts/telemetry-window.py:133 \u2014 and are not coverage-scaled), so this under-declares rather than misstates. It matters because lighting.calc.cells is the scene fingerprint used to prove two legs saw the same world; a fingerprint with no declared cadence cannot be checked for having been sampled the expected number of times.",
    "fixShape": "Declare both MetricCadence::Recompute to match the phase they are set inside.",
-   "signature": null
+   "signature": {
+    "glob": "source/base/StarCellularLighting.cpp",
+    "re": "\"lighting\\.calc\\.cells\",\\n\\s*MetricDesc\\{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute",
+    "absent": true,
+    "desc": "the scene-fingerprint gauge declares the cadence of the phase it is set inside, so it can be checked for having been sampled the expected number of times"
+   }
   },
   {
    "id": "C01",

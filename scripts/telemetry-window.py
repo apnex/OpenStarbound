@@ -124,7 +124,13 @@ def percentile(buckets, q):
     return bucket_bounds(BUCKETS - 1)[0], True
 
 
-def window(a, b):
+def window(a, b, zeroed=None):
+    # `zeroed`, when a caller passes a list, collects the REGISTERED timers whose windowed count is zero.
+    # They are dropped from the result -- thirty always-zero rows would bury the table -- and dropping them
+    # silently is the same ABSENT-vs-ZERO defect one level out: a pass that ran on the baseline leg and not
+    # on the off leg loses its row entirely, which reads as "infinitely cheaper" rather than "did not run".
+    # Registering the key at the source (the engine now does) is only half the fix if the consumer then
+    # hides the zero. So the drop is REPORTED rather than made invisible.
     """Delta between two snapshots, carrying each metric's descriptor forward."""
     out = {}
     for name, mb in b.get("metrics", {}).items():
@@ -153,6 +159,8 @@ def window(a, b):
         if mb.get("type") == "timer":
             dc = mb.get("count", 0) - ma.get("count", 0)
             if dc <= 0:
+                if zeroed is not None:
+                    zeroed.append(name)
                 continue
             ba, bb = ma.get("buckets", []), mb.get("buckets", [])
             ba = ba + [0] * (BUCKETS - len(ba))
@@ -355,7 +363,8 @@ def main():
         print(f"snapshot schema {schema}, expected {SCHEMA} -- rebuild and re-capture", file=sys.stderr)
         return 2
 
-    owners, w = b.get("owners", {}), window(a, b)
+    zeroed = []
+    owners, w = b.get("owners", {}), window(a, b, zeroed)
     cadence_ticks = cadence_expectation_map(owners, w)
     meta = dict(b.get("meta", {}))
     # Environment facts the engine deliberately does not read (driver- and platform-specific sysfs paths).
@@ -538,6 +547,18 @@ def main():
         violations.append(f"{len(firsts)} metric(s) first registered inside the window "
                           f"({', '.join(firsts[:4])}{' ...' if len(firsts) > 4 else ''}) -- their "
                           f"values are lifetime totals, not window deltas")
+
+    if zeroed:
+        # NOT a violation -- a registered timer that recorded nothing in the window is a legitimate and
+        # often correct state (a mutually-exclusive compose arm, a fallback path the config never takes).
+        # It is REPORTED because the row is dropped from the tables above, and a row present on one leg and
+        # dropped on the next reads as "this pass got infinitely cheaper" rather than "it did not run".
+        # The engine registers these keys at zero precisely so the distinction exists; hiding it here would
+        # spend that.
+        print(f"\n  registered timers that recorded NOTHING in this window ({len(sorted(zeroed))}) -- "
+              f"dropped from the tables above, listed so their absence is a fact rather than a gap:")
+        for k in sorted(zeroed):
+            print(f"       {k}")
 
     if violations:
         print("\n  !! ORACLE VIOLATIONS -- do not quote these numbers:")

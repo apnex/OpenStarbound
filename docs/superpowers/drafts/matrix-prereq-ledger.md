@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**26 of 53 rows carry a machine-checkable signature.** `--check` asserts an
+**33 of 53 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 27 | not started |
+| **open** | 20 | not started |
 | **doing** | 0 | in progress |
-| **done** | 26 | closed; `commit` says where |
+| **done** | 33 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -31,9 +31,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
 | `C07` | degrade | cpu.frame.total.us — the declared Total and the owner-frame denominator — is a wall-clock pacing period that deliberately contains a sleep, and the sl | Either exclude cpu.frame.idle.us from the Budget set and declare it Detail (making the unattributed remainder visible an |
-| `D03` | degrade | lighting.gpu.upscale.gpu_us declares Cadence::Recompute but its bracket is inside a config-gated arm that is off by default | Change lighting.gpu.upscale.gpu_us to MetricCadence::Call, and (separately) register the key unconditionally so its abse |
-| `D04` | degrade | render.frame.blit.gpu_us declares Cadence::Frame, but the blit has no once-per-frame guard AND the timer is silently dropped by the nesting guard | Declare render.frame.blit.gpu_us MetricCadence::Call, and count the nesting-guard rejections per key (the guard at :1066 |
-| `D05` | degrade | The same event is declared Call by one timer and Recompute by four others, 55 lines apart in one function | Register a counter for processFull invocations and assert it equals lighting.temporal.recomputed over a window; then mak |
 | `H05` | degrade | The load phase is FRAME-capped, not time-capped, and the nofreeze path has no settle phase — so the window opens on a world that is by construction st | Add an explicit post-load settle in wall time (or in ticks) before the window opens — e.g. sleep a fixed settle period a |
 | `H07` | degrade | World and player state persist and mutate across every leg, with no snapshot, restore or assertion — the matrix drifts monotonically with leg index | Snapshot harness/storage-perf/{universe,player} once at matrix start and restore both before every leg (same shape as th |
 | `H08` | degrade | The environment sidecar can silently emit invalid JSON, and even when valid nothing ever compares it between the two legs of a comparison | Make read_gpu_mhz/read_pkg_temp branch on captured output rather than on pipeline status (`v=$(cat ... | head -1); [ -n  |
@@ -50,10 +47,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
-| `D06` | cosmetic | animator.{state,part}.merge.* declare MetricOwner::Sim but the counters are incremented on the client render path and read as a client HUD statistic | Split into client/server keys or declare MetricOwner::Unknown rather than asserting Sim; at minimum document at the regi |
-| `D07` | cosmetic | render.glstate.mismatches declares Cadence::Frame but its value is a count of mismatched state items, incremented only on frames that already failed | Declare MetricCadence::Call — errors are exceptional and not per-anything, exactly the reasoning already written for ren |
-| `D08` | cosmetic | Renderer-internal CPU counters split between MetricOwner::Frame and MetricOwner::Gl within one file, including a lever WITNESS | Pick one owner for OpenGlRenderer-internal CPU counters (Gl, matching the file's own render.glstate.mismatches) and appl |
-| `D09` | cosmetic | lighting.cells / lighting.calc.cells declare Cadence::Call while every sibling lighting metric declares Recompute | Declare both MetricCadence::Recompute to match the phase they are set inside. |
 
 ## Closed
 
@@ -64,6 +57,13 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
 | `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
+| `D03` | lighting.gpu.upscale.gpu_us declares Cadence::Recompute but its bracket is inside a config-gated arm that is off by default | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D04` | render.frame.blit.gpu_us declares Cadence::Frame, but the blit has no once-per-frame guard AND the timer is silently dropped by the nesting guard | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D05` | The same event is declared Call by one timer and Recompute by four others, 55 lines apart in one function | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D06` | animator.{state,part}.merge.* declare MetricOwner::Sim but the counters are incremented on the client render path and read as a client HUD statistic | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D07` | render.glstate.mismatches declares Cadence::Frame but its value is a count of mismatched state items, incremented only on frames that already failed | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D08` | Renderer-internal CPU counters split between MetricOwner::Frame and MetricOwner::Gl within one file, including a lever WITNESS | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
+| `D09` | lighting.cells / lighting.calc.cells declare Cadence::Call while every sibling lighting metric declares Recompute | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
 | `H01` | The measurement window's length is a snapshot-count lottery, and the end-trim RULE FLIPS below 4 snapshots — the leg that loses the trim is the one th | pending |
 | `H02` | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | pending |
 | `H03` | The load-wait loop can time out silently, after which the measurement window straddles the world load | pending |
@@ -188,7 +188,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `source/rendering/StarGpuLightmapPass.cpp` matching `"lighting\.gpu\.point\.gpu_us",\s*\n\s*MetricDesc\{[^}]*MetricCadence::Recompute` — present while open. (point pass still declares Recompute inside a content gate)
 
-### `D03` — DEGRADES_MATRIX — open
+### `D03` — DEGRADES_MATRIX — done
 
 **lighting.gpu.upscale.gpu_us declares Cadence::Recompute but its bracket is inside a config-gated arm that is off by default**
 
@@ -198,7 +198,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Change lighting.gpu.upscale.gpu_us to MetricCadence::Call, and (separately) register the key unconditionally so its absence is distinguishable from zero.
 
-### `D04` — DEGRADES_MATRIX — open
+*Signature.* `source/rendering/StarGpuLightmapPass.cpp` matching `"lighting\.gpu\.upscale\.gpu_us",\n\s*MetricDesc\{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call` — present while open. (the upscale bracket declares Cadence::Call, matching a pass that runs only when its config gate and its effect load both pass)
+
+### `D04` — DEGRADES_MATRIX — done
 
 **render.frame.blit.gpu_us declares Cadence::Frame, but the blit has no once-per-frame guard AND the timer is silently dropped by the nesting guard**
 
@@ -208,7 +210,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Declare render.frame.blit.gpu_us MetricCadence::Call, and count the nesting-guard rejections per key (the guard at :1066 currently only warns) so suppressed samples are visible rather than inferred.
 
-### `D05` — DEGRADES_MATRIX — open
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `"render\.frame\.blit\.gpu_us",\n\s*MetricDesc\{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call` — present while open. (the blit declares Cadence::Call, and the nesting guard increments a per-key <name>.nested counter so suppressed samples are a number rather than an inference)
+
+### `D05` — DEGRADES_MATRIX — done
 
 **The same event is declared Call by one timer and Recompute by four others, 55 lines apart in one function**
 
@@ -218,7 +222,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register a counter for processFull invocations and assert it equals lighting.temporal.recomputed over a window; then make all five descriptors in the function agree on one cadence.
 
-### `D06` — COSMETIC — open
+*Signature.* `source/rendering/StarGpuLightmapPass.cpp` matching `gpuTimer\(\)\.begin\("lighting\.gpu\.[a-z]+\.gpu_us",\s*\n\s*MetricDesc\{[^}]*MetricCadence::Recompute` — present while open. (no GPU bracket in processFull declares Recompute; all five descriptors in the function (cpu_cost, spread, point, compose, upscale) agree on Call)
+
+### `D06` — COSMETIC — done
 
 **animator.{state,part}.merge.* declare MetricOwner::Sim but the counters are incremented on the client render path and read as a client HUD statistic**
 
@@ -228,7 +234,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Split into client/server keys or declare MetricOwner::Unknown rather than asserting Sim; at minimum document at the registration that the value spans two budgets.
 
-### `D07` — COSMETIC — open
+*Signature.* `source/base/StarAnimatedPartSet.cpp` matching `MetricOwner::Sim` — present while open. (none of the five animator merge counters asserts owner Sim; they declare Unknown, which the consumer excludes from every owner table -- correct for a value spanning two budgets)
+
+### `D07` — COSMETIC — done
 
 **render.glstate.mismatches declares Cadence::Frame but its value is a count of mismatched state items, incremented only on frames that already failed**
 
@@ -238,7 +246,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Declare MetricCadence::Call — errors are exceptional and not per-anything, exactly the reasoning already written for render.gl.errors at StarRenderer_opengl.cpp:1619-1621.
 
-### `D08` — COSMETIC — open
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `"render\.glstate\.mismatches",\n\s*MetricDesc\{MetricDomain::Cpu, MetricOwner::Gl, MetricCadence::Call` — present while open. (the GL-state audit counter declares Cadence::Call -- it is a per-frame SUM of defects, neither per-frame nor a frame count)
+
+### `D08` — COSMETIC — done
 
 **Renderer-internal CPU counters split between MetricOwner::Frame and MetricOwner::Gl within one file, including a lever WITNESS**
 
@@ -248,7 +258,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Pick one owner for OpenGlRenderer-internal CPU counters (Gl, matching the file's own render.glstate.mismatches) and apply it to all four.
 
-### `D09` — COSMETIC — open
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `MetricOwner::Frame` — present while open. (no metric in the OpenGlRenderer translation unit declares owner Frame; all four internal CPU counters land in owner Gl, the budget the work belongs to)
+
+### `D09` — COSMETIC — done
 
 **lighting.cells / lighting.calc.cells declare Cadence::Call while every sibling lighting metric declares Recompute**
 
@@ -257,6 +269,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* The metric fires exactly once per recompute but declares no cadence expectation, so it forgoes the coverage/bounds check that its co-located timer gets. No number is scaled wrongly (gauges carry the latest reading — scripts/telemetry-window.py:133 — and are not coverage-scaled), so this under-declares rather than misstates. It matters because lighting.calc.cells is the scene fingerprint used to prove two legs saw the same world; a fingerprint with no declared cadence cannot be checked for having been sampled the expected number of times.
 
 *Closes by.* Declare both MetricCadence::Recompute to match the phase they are set inside.
+
+*Signature.* `source/base/StarCellularLighting.cpp` matching `"lighting\.calc\.cells",\n\s*MetricDesc\{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute` — present while open. (the scene-fingerprint gauge declares the cadence of the phase it is set inside, so it can be checked for having been sampled the expected number of times)
 
 ### `H01` — BLOCKS_MATRIX — done
 
