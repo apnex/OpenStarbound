@@ -114,11 +114,20 @@ struct MetricDesc {
 
   // THE ONLY SAME-TYPED ADJACENT PAIR IN THIS STRUCT, and therefore the only transposition hazard.
   // Every other field is a distinct enum type, so swapping domain and owner is ALREADY a compile error
-  // -- which is why converting all 127 registration sites to designated initializers would buy nothing.
-  // These two are both `char const*`, so writing them in the wrong order compiles, passes every check,
-  // and produces a descriptor whose stated meaning and stated condition are swapped. It does not show.
-  // scripts/metric-desc-lint.py therefore requires DESIGNATED INITIALIZERS (.measures = / .validWhen =)
-  // at any site that sets either one. A convention is not enforcement; the lint is.
+  // -- which is why converting every registration site to designated initializers would buy nothing.
+  // These two are both `char const*` (with `whole` behind them), so writing them in the wrong order
+  // compiles, passes every check, and produces a descriptor whose stated meaning and stated condition
+  // are swapped. It does not show: the strings are only ever printed.
+  //
+  // scripts/metric-desc-lint.py therefore requires DESIGNATED INITIALIZERS (.measures = / .validWhen =
+  // / .whole =) at any site that sets one. A convention is not enforcement; the lint is.
+  //
+  // THAT SENTENCE WAS FALSE FOR AS LONG AS IT STOOD HERE. The lint was named, described and credited
+  // with enforcing the rule, and the file did not exist -- so the paragraph asserting a check was in
+  // place was the only thing holding the rule up. Written 2026-08-06, it fired on its first run: the
+  // single site in the tree that sets these fields is telemetry_test's fixture FOR this hazard, and it
+  // was built positionally. The gate reports how many sites it examined and how many set a prose field,
+  // so a pass with nothing to check reads as one rather than as a clean bill of health.
   //
   // NOTE: an earlier draft proposed strong_typedef for these. It does not work. The macro's guard is
   // `explicit NewType(BaseType const&)` -- explicit only from a String -- while `using BaseType::BaseType`

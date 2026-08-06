@@ -148,6 +148,18 @@ jobs:
       - name: comment_claims -- no source comment cites a file by line number
         run: python3 scripts/comment-claims.py
 
+      # measures/validWhen/whole are the only same-typed fields in MetricDesc, so writing them in the
+      # wrong order compiles, passes every other check, and swaps a metric's stated meaning with its
+      # stated condition -- with no runtime symptom, since the strings are only printed. The header
+      # claimed this lint enforced designators here for as long as the lint did not exist; it now does,
+      # and its first run found the one site that sets those fields, built positionally, in the fixture
+      # for this very hazard. Static: no GPU, no binary.
+      - name: metric_desc_lint -- a MetricDesc prose field may not be set positionally
+        run: python3 scripts/metric-desc-lint.py --check
+
+      - name: metric_desc_lint_fires -- the positional detector fires, and does not over-fire
+        run: python3 scripts/metric-desc-lint.py --selftest
+
       # Same reason prose_claims has a companion: a green ban proves nothing unless the scanner can see.
       - name: comment_claims_fires -- the citation detector fires, and does not over-fire
         run: python3 scripts/comment-claims.py --selftest

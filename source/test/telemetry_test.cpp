@@ -55,11 +55,18 @@ TEST(Telemetry, SnapshotEmitsCountersAndGaugesBuckets) {
 // counter that never registers: present in the source, absent from the evidence.
 TEST(Telemetry, SnapshotCarriesTheFullDescriptor) {
   Telemetry::reset();
+  // DESIGNATED, and this site is the reason the rule exists. It was written positionally -- three bare
+  // string literals counted out after eight enums -- which is the one construction shape that can put
+  // `validWhen`'s text into `measures` with no compile error, no runtime symptom and a green test. The
+  // fixture for the transposition hazard was itself transposable. scripts/metric-desc-lint.py refuses it
+  // now, and found this site on its first run.
   Telemetry::counter("test.desc.full", MetricDesc{
-    MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget,
-    MetricUnit::Nanoseconds, MetricClock::ThreadCpu, MetricSource::ProcFs,
-    MetricBoundedness::Monotonic,
-    "CPU time in the tile gather", "always", "lighting.cpu.total.us"}).inc(1);
+    .domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+    .cadence = MetricCadence::Recompute, .role = MetricRole::Budget,
+    .unit = MetricUnit::Nanoseconds, .clock = MetricClock::ThreadCpu,
+    .source = MetricSource::ProcFs, .boundedness = MetricBoundedness::Monotonic,
+    .measures = "CPU time in the tile gather", .validWhen = "always",
+    .whole = "lighting.cpu.total.us"}).inc(1);
 
   Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.full");
   EXPECT_EQ(m.getString("unit"), "ns");
