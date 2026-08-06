@@ -67,5 +67,25 @@
   "status": "done",
   "commit": "pending",
   "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "H01": {
+  "status": "done",
+  "commit": "pending",
+  "note": "harness determinism pass; verified on hardware"
+ },
+ "H02": {
+  "status": "done",
+  "commit": "pending",
+  "note": "harness determinism pass; verified on hardware"
+ },
+ "H03": {
+  "status": "done",
+  "commit": "pending",
+  "note": "harness determinism pass; verified on hardware"
+ },
+ "H04": {
+  "status": "done",
+  "commit": "pending",
+  "note": "harness determinism pass; verified on hardware"
  }
 }

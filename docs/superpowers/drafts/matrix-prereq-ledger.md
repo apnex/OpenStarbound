@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**10 of 49 rows carry a machine-checkable signature.** `--check` asserts an
+**14 of 49 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 39 | not started |
+| **open** | 35 | not started |
 | **doing** | 0 | in progress |
-| **done** | 10 | closed; `commit` says where |
+| **done** | 14 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -28,10 +28,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | id | sev | finding | closes by |
 |---|---|---|---|
 | `C02` | **BLOCK** | The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress tas | Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the  |
-| `H01` | **BLOCK** | The measurement window's length is a snapshot-count lottery, and the end-trim RULE FLIPS below 4 snapshots — the leg that loses the trim is the one th | Pin the window explicitly: pass --first/--last (or a required --intervals N) from render-profile.sh, refuse the leg if f |
-| `H02` | **BLOCK** | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | Stop bounding the leg by wall clock. Either have render-profile.sh poll until a fixed COUNT of post-load snapshot files  |
-| `H03` | **BLOCK** | The load-wait loop can time out silently, after which the measurement window straddles the world load | Set a flag inside the loop on `break`, and after the loop `[ "$flag" = 1 ] || { archive_log "$LABEL-NOLOAD"; exit 1; }`  |
-| `H04` | **BLOCK** | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | Run and DISCARD one full warm-up leg before pass 1, and randomise (or rotate) the leg order within each pass so the base |
 | `O01` | **BLOCK** | #84 (PENDING) — the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all | Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose |
 | `O02` | **BLOCK** | #136 (PENDING) — the ORACLE GAP is still open, and the golden full-frame hash that was supposed to close it was later proven impossible by #191 | Either close #136(b) with a reproducible world-body oracle (needs #191's animation-phase pinning) or state on the matrix |
 | `O09` | **BLOCK** | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | Run scripts/board-export.py before the measurement run, and add a high-water-mark assertion to the Integrity block so a  |
@@ -75,6 +71,10 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
 | `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
+| `H01` | The measurement window's length is a snapshot-count lottery, and the end-trim RULE FLIPS below 4 snapshots — the leg that loses the trim is the one th | pending |
+| `H02` | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | pending |
+| `H03` | The load-wait loop can time out silently, after which the measurement window straddles the world load | pending |
+| `H04` | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | pending |
 | `R01` | render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on | pending |
 | `R02` | render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breakin | pending |
 | `R03` | render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on  | pending |
@@ -252,7 +252,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Declare both MetricCadence::Recompute to match the phase they are set inside.
 
-### `H01` — BLOCKS_MATRIX — open
+### `H01` — BLOCKS_MATRIX — done
 
 **The measurement window's length is a snapshot-count lottery, and the end-trim RULE FLIPS below 4 snapshots — the leg that loses the trim is the one that ran slowest**
 
@@ -262,7 +262,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Pin the window explicitly: pass --first/--last (or a required --intervals N) from render-profile.sh, refuse the leg if fewer than N+2 snapshots exist, and record the chosen (lo,hi,intervals) into the profile JSON so lever-matrix.sh can assert every leg used the same window shape.
 
-### `H02` — BLOCKS_MATRIX — open
+*Signature.* `scripts/telemetry-window.py` matching `ap\.add_argument\("--intervals"` — present while open. (the window interval count is not declared)
+
+### `H02` — BLOCKS_MATRIX — done
 
 **Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random**
 
@@ -272,7 +274,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Stop bounding the leg by wall clock. Either have render-profile.sh poll until a fixed COUNT of post-load snapshot files exists (then kill), or drive telemetryReportInterval off a wall clock in the engine — and in both cases write the achieved tick/wall ratio into the profile so a leg that fell behind is visible rather than inferred.
 
-### `H03` — BLOCKS_MATRIX — open
+*Signature.* `scripts/render-profile.sh` matching `NEED_SNAPS` — present while open. (the leg is still bounded by wall clock, not snapshots)
+
+### `H03` — BLOCKS_MATRIX — done
 
 **The load-wait loop can time out silently, after which the measurement window straddles the world load**
 
@@ -282,7 +286,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Set a flag inside the loop on `break`, and after the loop `[ "$flag" = 1 ] || { archive_log "$LABEL-NOLOAD"; exit 1; }` — a leg whose load end was never observed must FAIL, not measure.
 
-### `H04` — BLOCKS_MATRIX — open
+*Signature.* `scripts/render-profile.sh` matching `\[ "\$loaded" != 1 \]` — present while open. (an unobserved world load does not fail the leg)
+
+### `H04` — BLOCKS_MATRIX — done
 
 **Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k permanently occupies the same thermal position**
 
@@ -291,6 +297,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* Interleaving repeats removes drift BETWEEN passes; it does nothing about position WITHIN a pass, and the within-pass order never changes. Every baseline in the matrix runs on the coolest package and the lowest GPU clock of its pass, and every lever leg is compared against it — so every lever's delta carries the same one-signed warm-up offset, three times over, which averaging across repeats reinforces rather than cancels. The very first leg of the whole run additionally pays a cold shader cache and cold page cache; this project has already read a cold first run as a +47% instrument cost once.
 
 *Closes by.* Run and DISCARD one full warm-up leg before pass 1, and randomise (or rotate) the leg order within each pass so the baseline is not permanently in slot 0 — then assert from the sidecar that a leg's start clock/temp is within tolerance of its own pass's baseline.
+
+*Signature.* `scripts/lever-matrix.sh` matching `warm-up \(discarded\)` — present while open. (no warm-up leg before pass 1)
 
 ### `H05` — DEGRADES_MATRIX — open
 

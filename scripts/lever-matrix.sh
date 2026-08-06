@@ -390,7 +390,13 @@ echo "  repeats       $REPEATS, INTERLEAVED -- pass 1 runs every leg, then pass 
 echo "                Not three consecutive runs per leg: thermal state drifts over a multi-hour"
 echo "                matrix, and consecutive repeats would bake that drift into whichever lever"
 echo "                happened to run while the package was hot."
-echo "  total legs    $TOTAL_LEGS at ${SECONDS_PER_LEG}s + ~${LOAD_EST}s load  ~= ${EST_MIN} min"
+echo "  warm-up       1 leg, RUN AND DISCARDED, before pass 1 -- so the first RECORDED leg is not the"
+echo "                one paying every cold-start cost (shader cache, page cache, GPU clock ramp)"
+echo "  leg order     ROTATED by pass index, so no lever sits permanently in the same slot"
+# THE PLAN MUST COUNT THE LEG IT IS ABOUT TO RUN. This line read $TOTAL_LEGS while the runner now
+# executes one more -- a summary under-reporting its own work by exactly the leg added to make the
+# rest trustworthy.
+echo "  total legs    $((TOTAL_LEGS + 1)) incl. warm-up, at ${SECONDS_PER_LEG}s + ~${LOAD_EST}s load  ~= $(( (TOTAL_LEGS + 1) * (SECONDS_PER_LEG + LOAD_EST) / 60 )) min"
 echo "  output        $OUT/"
 echo
 for row in "${LEVERS[@]}"; do
@@ -444,6 +450,22 @@ run_leg() { # run_leg <label> <extra --set args...>
 
 FAILED=(); VOID=(); OK=()
 
+# ONE WARM-UP LEG, RUN AND DISCARDED, BEFORE ANY PASS. Baseline was permanently first in every pass
+# and nothing warmed the machine, so the baseline leg carried every cold-start cost -- shader cache,
+# page cache, GPU clock ramp -- and every lever was then compared against it. This project has already
+# read a cold first run as a "+47% instrument cost" once. The warm-up leg is thrown away precisely so
+# that the first RECORDED leg is not the one paying for the rest.
+echo
+echo "############ warm-up (discarded) ############"
+if run_leg "$RUN_ID-warmup"; then
+  rm -f "$OUT/$RUN_ID-warmup.json"
+  echo "  warm-up complete and DISCARDED -- it exists to absorb cold-start cost, not to be reported"
+else
+  echo "lever-matrix: the warm-up leg failed. Refusing to start: if the harness cannot complete one" >&2
+  echo "  leg it will not complete $TOTAL_LEGS, and every later failure would be harder to read." >&2
+  exit 1
+fi
+
 for r in $(seq 1 "$REPEATS"); do
   echo
   echo "############ pass $r of $REPEATS ############"
@@ -465,7 +487,15 @@ for r in $(seq 1 "$REPEATS"); do
     touch "$OUT/.witnesses-checked"
   fi
 
-  for row in "${LEVERS[@]}"; do
+  # ROTATED PER PASS. Even after the warm-up leg absorbs cold start, a fixed order leaves every lever
+  # permanently in the same slot relative to the baseline -- so any residual position effect (thermal
+  # ramp across a pass, cache state left by the previous leg) lands on the same lever every time and
+  # is indistinguishable from that lever's own cost. Rotating by the pass index spreads it.
+  ORDER=()
+  for ((i = 0; i < N_LEVERS; i++)); do
+    ORDER+=("${LEVERS[$(( (i + r - 1) % N_LEVERS ))]}")
+  done
+  for row in "${ORDER[@]}"; do
     k=${row%%$'\t'*}; rest=${row#*$'\t'}; o=${rest##*$'\t'}
     label="$RUN_ID-r$r-off-$k"
     if ! run_leg "$label" --set "$k=$o"; then

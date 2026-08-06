@@ -299,6 +299,10 @@ def main():
     ap.add_argument("--first", type=int, default=None)
     ap.add_argument("--last", type=int, default=None)
     ap.add_argument("--json", default=None)
+    # Declared, not inferred. A window whose length depends on how many files happened to exist is a
+    # window nobody chose.
+    ap.add_argument("--intervals", type=int, default=1,
+                    help="how many snapshot intervals the window spans (default 1)")
     args = ap.parse_args()
 
     files = sorted(f for f in os.listdir(args.snapdir) if f.endswith(".json"))
@@ -308,8 +312,26 @@ def main():
 
     # Trim the ends when affordable: the first snapshot sits closest to load, the last may be a partial
     # interval cut short by the kill.
-    lo = args.first if args.first is not None else (1 if len(files) >= 4 else 0)
-    hi = args.last if args.last is not None else (len(files) - 2 if len(files) >= 4 else len(files) - 1)
+    # THE WINDOW LENGTH WAS A SNAPSHOT-COUNT LOTTERY. The rule used to be "drop the first and last IF
+    # there are at least 4 files, otherwise drop neither" -- so N=4 gave a ONE-interval window and N=5
+    # gave TWO, i.e. exactly twice the duration, with nothing recording which you got. That is the
+    # observed 600-vs-300-frame capture: same command, same location, a window twice as long because
+    # one more snapshot happened to land.
+    #
+    # Now the interval COUNT is explicit and the leg is refused if the files cannot supply it. The
+    # first file is still dropped (closest to load) and so is the last (may be a partial interval cut
+    # short by the kill); the window is then the LAST `intervals` intervals of what remains, so a run
+    # that produced extra snapshots yields the same window shape rather than a longer one.
+    if args.first is not None or args.last is not None:
+        lo = args.first if args.first is not None else 0
+        hi = args.last if args.last is not None else len(files) - 1
+    else:
+        hi = len(files) - 2
+        lo = hi - args.intervals
+        if lo < 1:
+            print(f"need >={args.intervals + 3} snapshots for a {args.intervals}-interval window "
+                  f"(first and last are trimmed); found {len(files)}", file=sys.stderr)
+            return 1
     a, b = load(os.path.join(args.snapdir, files[lo])), load(os.path.join(args.snapdir, files[hi]))
 
     schema = b.get("meta", {}).get("schema", 0)
@@ -499,7 +521,7 @@ def main():
     if args.json:
         with open(args.json, "w") as f:
             json.dump({"label": args.label, "window": [files[lo], files[hi]],
-                       "meta": meta, "owners": owners, "metrics": w, "violations": violations}, f, indent=2)
+                       "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi]), "owners": owners, "metrics": w, "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")
 
     return 3 if violations else 0

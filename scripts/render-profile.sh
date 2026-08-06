@@ -32,6 +32,17 @@ set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 SECONDS_TO_RUN=${1:-90}
+# How many snapshot intervals the window spans. Declared here and passed to the consumer, so the
+# window shape is chosen rather than inherited from however many files happened to exist.
+# DERIVED FROM THE REQUESTED DURATION AND THE ENGINE'S OWN CADENCE, not defaulted to 1. Snapshots are
+# emitted every `telemetryReportInterval` SIMULATED seconds, so the number of intervals a run of
+# SECONDS_TO_RUN can supply is (seconds / cadence) minus the three files the windowing trims (the
+# first, the last, and the interval's own second endpoint). Hardcoding 1 here would have turned a
+# 90-second leg into a ~20-second one while still calling it 90 -- the exact class of quiet mismatch
+# this whole pass exists to remove.
+REPORT_INTERVAL=$(python3 -c "import json;print(json.load(open('harness/storage-perf/starbound.config')).get('telemetryReportInterval',5))")
+INTERVALS=${STAR_PROFILE_INTERVALS:-$(( SECONDS_TO_RUN / REPORT_INTERVAL - 3 ))}
+[ "$INTERVALS" -ge 1 ] || INTERVALS=1
 LABEL=${2:-profile}
 shift 2 2>/dev/null || shift $#
 
@@ -161,9 +172,10 @@ PID=$!
 # STAR_RENDERTEST_LOAD frame cap instead. The harness logs that at error level and warns the frozen state is
 # not reproducible -- true, and irrelevant here, because this instrument does not freeze and does not hash.
 # Waiting only for QUIESCED, as the first version of this script did, blocks for the full timeout every run.
+loaded=0
 for _ in $(seq 1 180); do
   sleep 1
-  grep -qE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" 2>/dev/null && break
+  grep -qE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" 2>/dev/null && { loaded=1; break; }
   kill -0 $PID 2>/dev/null || {
     # "client exited during load" is true but useless on its own -- it reads like a crash. The commonest cause
     # by far is a --warp that matched nothing, which the engine reports and then quits cleanly. Name it.
@@ -179,6 +191,18 @@ for _ in $(seq 1 180); do
     exit 1
   }
 done
+# THE LOOP COULD TIME OUT AND SAY NOTHING. There was no check that the pattern was ever seen: the
+# grep below discards its status, the script sets only `set -u` (no -e, no pipefail), and execution
+# fell straight through to the snapshot purge and the measurement sleep. A leg whose load end was
+# never observed would then window across the world load -- asset streaming reported as render cost.
+# The budget is 180s against the matrix's own 120s estimate, i.e. 1.5x headroom, so this is not a
+# theoretical path.
+if [ "$loaded" != 1 ]; then
+  echo "FAIL: the world-load end was never observed within 180s. This leg would have measured across"
+  echo "      the load. Refusing to report a number for it."
+  archive_log "$LABEL-NOLOAD"
+  kill -TERM $PID 2>/dev/null; exit 1
+fi
 grep -hE "rendertest\] world (QUIESCED|did NOT settle)" "$LOG" \
   | sed 's/^/  /;s/The frozen state is NOT reproducible.*/(expected in a live run -- nothing here is hashed.)/'
 
@@ -217,8 +241,31 @@ read_pkg_temp() {
 }
 GPU_START=$(read_gpu_mhz); TEMP_START=$(read_pkg_temp)
 
-echo "  measuring for ${SECONDS_TO_RUN}s..."
-sleep "$SECONDS_TO_RUN"
+# BOUND THE LEG BY SNAPSHOTS, NOT BY WALL CLOCK. Snapshots are emitted every `telemetryReportInterval`
+# of SIMULATED time -- StarClientApplication feeds the report timer a fixed GlobalTimestep, not a wall
+# delta -- while this script used to `sleep` a wall-clock duration. The main loop caps catch-up at
+# maxFrameSkip, so a leg that cannot hold 60Hz falls behind wall time permanently and emits FEWER
+# snapshots for the same sleep. The window length then moved with the very thing under measurement.
+#
+# Waiting for a snapshot COUNT puts the bound on the same clock as the cadence. The wall-clock limit
+# below is a SAFETY STOP, not the measurement bound: reaching it is a failure, not a shorter run.
+NEED_SNAPS=$(( INTERVALS + 3 ))     # first and last are trimmed; +1 for the interval itself
+WALL_LIMIT=$(( SECONDS_TO_RUN * 4 + 60 ))
+echo "  measuring until $NEED_SNAPS snapshots exist (safety stop ${WALL_LIMIT}s)..."
+waited=0
+while [ "$(ls "$SNAPDIR"/*.json 2>/dev/null | wc -l)" -lt "$NEED_SNAPS" ]; do
+  sleep 1; waited=$((waited + 1))
+  if ! kill -0 $PID 2>/dev/null; then
+    echo "FAIL: the client exited before $NEED_SNAPS snapshots were written"; archive_log "$LABEL-DIED"; exit 1
+  fi
+  if [ "$waited" -ge "$WALL_LIMIT" ]; then
+    echo "FAIL: only $(ls "$SNAPDIR"/*.json 2>/dev/null | wc -l) of $NEED_SNAPS snapshots after ${waited}s."
+    echo "      The sim is running far behind wall clock -- this leg is not comparable to one that"
+    echo "      kept up, and a short window is not a valid substitute for the declared one."
+    archive_log "$LABEL-SLOW"; kill -TERM $PID 2>/dev/null; exit 1
+  fi
+done
+echo "  $NEED_SNAPS snapshots after ${waited}s wall (declared window: $INTERVALS interval(s))"
 
 cat > "$SNAPDIR/../env-sidecar.json" <<EOF
 { "gpuClockMhzStart": ${GPU_START:-null}, "gpuClockMhzEnd": $(read_gpu_mhz),
@@ -238,4 +285,5 @@ echo "  $n telemetry snapshots -> $SNAPDIR"
 [ "$n" -ge 2 ] || { echo "FAIL: need >=2 snapshots to window; got $n"; exit 1; }
 
 mkdir -p harness/profiles
-scripts/telemetry-window.py "$SNAPDIR" --label "$LABEL" --json "harness/profiles/$LABEL.json"
+scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL" \
+  --json "harness/profiles/$LABEL.json"

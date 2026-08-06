@@ -236,7 +236,12 @@
    "evidence": "scripts/telemetry-window.py:282-283 \u2014 `lo = args.first if ... else (1 if len(files) >= 4 else 0)` / `hi = args.last if ... else (len(files) - 2 if len(files) >= 4 else len(files) - 1)`. render-profile.sh:238 invokes it with neither --first nor --last, so the defaults always apply. Verified against real captures: every leg in harness/matrix/matrix-20260806-152507/*.json has a `window` field spanning exactly ONE snapshot interval (e.g. ['telemetry-7431364.json','telemetry-7436227.json'] = 4863 ms), i.e. N=4 files \u2192 hi-lo = 1. One extra file (N=5) makes hi-lo = 2 and the window is exactly twice as long \u2014 that is the observed 600-vs-300-frame capture, and the legs.tsv witness `MOVED 0 300` for backdropComposeMerge confirms 300 = frames in a one-interval window.",
    "impact": "Two things move at once. (a) Window length silently doubles between legs, so every windowed COUNT (the witness quantity, and every histogram bucket the p50/p99 are read off) is on a different scale between baseline and off leg with nothing recording that. (b) Worse, at N<=3 the trim rule inverts to lo=0: the first post-load snapshot \u2014 the one closest to the world load, deliberately trimmed at N>=4 for exactly that reason \u2014 is dragged INTO the window. So a leg that produced 3 snapshots is measured with load-adjacent, cold-cache data included while its baseline, which produced 4, is not. The A/B is then cold-vs-warm, not lever-on-vs-off, and nothing in the profile, the manifest or legs.tsv says which rule fired.",
    "fixShape": "Pin the window explicitly: pass --first/--last (or a required --intervals N) from render-profile.sh, refuse the leg if fewer than N+2 snapshots exist, and record the chosen (lo,hi,intervals) into the profile JSON so lever-matrix.sh can assert every leg used the same window shape.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/telemetry-window.py",
+    "re": "ap\\.add_argument\\(\"--intervals\"",
+    "absent": true,
+    "desc": "the window interval count is not declared"
+   }
   },
   {
    "id": "H02",
@@ -245,7 +250,12 @@
    "evidence": "source/client/StarClientApplication.cpp:462 `float dt = GlobalTimestep * GlobalTimescale;` (a fixed timestep, not a wall delta) feeding StarClientApplication.cpp:519-521 `m_telemetryReportTimer += dt; if (m_telemetryReportTimer >= (float)interval) { m_telemetryReportTimer = 0.0f; ... writeSnapshot(...) }`, with harness/storage-perf/starbound.config:580 `\"telemetryReportInterval\": 5`. So a snapshot is emitted every exactly 300 update ticks. Meanwhile scripts/render-profile.sh:218 `sleep \"$SECONDS_TO_RUN\"` bounds the run in WALL seconds. The main loop (source/application/StarMainApplication_sdl.cpp:785-796) caps catch-up at `m_maxFrameSkip + 1`, so once a leg cannot hold 60 Hz the sim falls behind wall clock permanently.",
    "impact": "This is what makes the previous finding fatal rather than merely noisy. A lever that costs CPU makes 300 update ticks take longer in wall time, so that leg fits FEWER snapshots into the same `sleep` \u2014 systematically, in the direction of the lever's own cost. The heaviest legs are therefore the ones most likely to fall to N<=3 and lose the load-adjacent trim, and the lightest legs get the longest, cleanest windows. The bias and the effect under measurement are the same variable.",
    "fixShape": "Stop bounding the leg by wall clock. Either have render-profile.sh poll until a fixed COUNT of post-load snapshot files exists (then kill), or drive telemetryReportInterval off a wall clock in the engine \u2014 and in both cases write the achieved tick/wall ratio into the profile so a leg that fell behind is visible rather than inferred.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/render-profile.sh",
+    "re": "NEED_SNAPS",
+    "absent": true,
+    "desc": "the leg is still bounded by wall clock, not snapshots"
+   }
   },
   {
    "id": "H03",
@@ -254,7 +264,12 @@
    "evidence": "scripts/render-profile.sh:161-178 \u2014 `for _ in $(seq 1 180); do sleep 1; grep -qE \"rendertest\\] world (QUIESCED|did NOT settle)\" \"$LOG\" && break; kill -0 $PID || {...}; done`. There is NO check after the loop that the pattern was ever seen: line 179's `grep -hE ... | sed ...` prints nothing and its status is discarded, and the script sets only `set -u` (line 31) \u2014 no `-e`, no `pipefail`. Execution falls straight through to the snapshot purge (line 198) and `sleep \"$SECONDS_TO_RUN\"` (line 218). The budget is 180 s against lever-matrix.sh:364 `LOAD_EST=120`, i.e. only 1.5x headroom on the script's own estimate.",
    "impact": "A leg whose load exceeds 180 s opens its window mid-load and measures asset streaming, chunk generation and texture-atlas upload instead of rendering, and reports it as a normal leg with `verdict OK`. The manifest, legs.tsv and the profile JSON carry no field that distinguishes it. Load duration is itself lever-dependent (see the frame-capped-load finding), so this fires preferentially on the expensive legs.",
    "fixShape": "Set a flag inside the loop on `break`, and after the loop `[ \"$flag\" = 1 ] || { archive_log \"$LABEL-NOLOAD\"; exit 1; }` \u2014 a leg whose load end was never observed must FAIL, not measure.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/render-profile.sh",
+    "re": "\\[ \"\\$loaded\" != 1 \\]",
+    "absent": true,
+    "desc": "an unobserved world load does not fail the leg"
+   }
   },
   {
    "id": "H04",
@@ -263,7 +278,12 @@
    "evidence": "scripts/lever-matrix.sh:431-479 \u2014 `for r in $(seq 1 \"$REPEATS\")` runs `run_leg \"$BASE_LABEL\"` first, then `for row in \"${LEVERS[@]}\"` in table order, and repeats that IDENTICAL sequence each pass. The header comment at lever-matrix.sh:373-376 claims interleaving handles this (\"thermal state drifts over a multi-hour matrix, and consecutive repeats would bake that drift into whichever lever happened to run while the package was hot\"). Nothing discards a first leg, and nothing warms or clears the on-disk shader cache (/root/.cache/mesa_shader_cache and /home/apnex/.cache/mesa_shader_cache both exist; neither render-profile.sh nor lever-matrix.sh mentions MESA_*, __GL_*, page cache or a governor pin \u2014 grep returns nothing).",
    "impact": "Interleaving repeats removes drift BETWEEN passes; it does nothing about position WITHIN a pass, and the within-pass order never changes. Every baseline in the matrix runs on the coolest package and the lowest GPU clock of its pass, and every lever leg is compared against it \u2014 so every lever's delta carries the same one-signed warm-up offset, three times over, which averaging across repeats reinforces rather than cancels. The very first leg of the whole run additionally pays a cold shader cache and cold page cache; this project has already read a cold first run as a +47% instrument cost once.",
    "fixShape": "Run and DISCARD one full warm-up leg before pass 1, and randomise (or rotate) the leg order within each pass so the baseline is not permanently in slot 0 \u2014 then assert from the sidecar that a leg's start clock/temp is within tolerance of its own pass's baseline.",
-   "signature": null
+   "signature": {
+    "glob": "scripts/lever-matrix.sh",
+    "re": "warm-up \\(discarded\\)",
+    "absent": true,
+    "desc": "no warm-up leg before pass 1"
+   }
   },
   {
    "id": "H05",
