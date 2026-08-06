@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       996 files
-      239084 lines
+      239116 lines
       6 tiers
     Content
       assets/
@@ -217,7 +217,7 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   216 files    56,164 lines
+├── core/            T1   216 files    56,196 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,449 lines
 │   └── scripting/          2 files        55 lines
@@ -238,7 +238,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    13,986 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    13,994 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -276,7 +276,7 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>216 files · 56,164 lines · Root×0</small>"]
+    core["core<br/><small>216 files · 56,196 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
@@ -595,7 +595,7 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56164
+        "core": 56196
     "T2 services"
         "base": 7449
         "application": 7444
@@ -617,7 +617,7 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
-| T1 language | `core` | 216 | 56,164 | 23.5% |
+| T1 language | `core` | 216 | 56,196 | 23.5% |
 | T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `metrics` | 7 | 847 | 0.4% |
 | T2 services | `platform` | 4 | 142 | 0.1% |

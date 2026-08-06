@@ -411,12 +411,36 @@ namespace {
   // this table as aspirational. It remains a STATIC DESCRIPTION rather than a lookup -- nothing here resolves
   // a key at runtime, and a typo would silently drop an owner's whole table (telemetry-window.py skips an
   // owner whose denominator windows to zero), which is why the keys are also pinned by unit tests.
-  struct OwnerSpec { MetricOwner owner; char const* denominator; char const* total; };
+  // THE TOTAL IS KEYED BY (OWNER, DOMAIN). The denominator is keyed by owner alone. They answer different
+  // questions -- the denominator counts an owner's TICKS, the total is the whole its parts CLOSE AGAINST --
+  // and only the second varies by domain.
+  //
+  // Until this split there was ONE total per owner, while the consumer summed parts PER DOMAIN against it:
+  // telemetry-window.py computes `whole` once, then `for dom in ...: parts = sum(... if domain == dom)`.
+  // So a cpu-domain Budget metric under owner `gl` would have been divided by render.frame.gpu_span_us and
+  // printed as "cpu accounted: N us/tick of <a GPU span>" -- labelled by domain, denominated by another.
+  //
+  // It never fired because exactly one Cpu/Gl metric exists and it is role=Detail. Making CPU first-class
+  // fires it on the first run, which is why this is fixed BEFORE those readers land rather than after they
+  // produce a number nobody can trust.
+  //
+  // A domain with no row here has NO DECLARED WHOLE, which is a legitimate state: owner `gl` has no
+  // cpu-domain Budget parts to close. The consumer must SAY SO rather than skip the domain -- an unclosable
+  // budget that prints nothing reads exactly like a closed one.
+  struct OwnerSpec { MetricOwner owner; char const* denominator; };
   constexpr OwnerSpec c_ownerSpecs[] = {
-    {MetricOwner::Frame,    "cpu.frame.total.us",           "cpu.frame.total.us"},
-    {MetricOwner::Gl,       "cpu.frame.total.us",           "render.frame.gpu_span_us"},
-    {MetricOwner::Sim,      "tick.server.seq",              "tick.server.total.us"},
-    {MetricOwner::Lighting, "lighting.temporal.recomputed", "lighting.cpu.total.us"},
+    {MetricOwner::Frame,    "cpu.frame.total.us"},
+    {MetricOwner::Gl,       "cpu.frame.total.us"},
+    {MetricOwner::Sim,      "tick.server.seq"},
+    {MetricOwner::Lighting, "lighting.temporal.recomputed"},
+  };
+
+  struct OwnerTotalSpec { MetricOwner owner; MetricDomain domain; char const* total; };
+  constexpr OwnerTotalSpec c_ownerTotals[] = {
+    {MetricOwner::Frame,    MetricDomain::Cpu, "cpu.frame.total.us"},
+    {MetricOwner::Gl,       MetricDomain::Gpu, "render.frame.gpu_span_us"},
+    {MetricOwner::Sim,      MetricDomain::Cpu, "tick.server.total.us"},
+    {MetricOwner::Lighting, MetricDomain::Cpu, "lighting.cpu.total.us"},
   };
 }
 
@@ -466,12 +490,20 @@ Json Telemetry::snapshot() {
   for (auto const& spec : c_ownerSpecs) {
     JsonObject o;
     if (spec.denominator) o["denominator"] = Json(String(spec.denominator));
-    if (spec.total) o["total"] = Json(String(spec.total));
+    JsonObject totals;
+    for (auto const& t : c_ownerTotals) {
+      if (t.owner == spec.owner && t.total)
+        totals[String(domainName(t.domain))] = Json(String(t.total));
+    }
+    // `totals` is emitted even when EMPTY. An owner with no declared whole in any domain is a real state
+    // and the consumer must be able to see it; omitting the key would make "no whole declared" and "an
+    // older schema" the same shape on the wire.
+    o["totals"] = Json(std::move(totals));
     owners[String(ownerName(spec.owner))] = std::move(o);
   }
 
   return JsonObject{
-    {"meta", JsonObject{{"schema", Json((uint64_t)2)}}},
+    {"meta", JsonObject{{"schema", Json((uint64_t)3)}}},
     {"owners", std::move(owners)},
     {"metrics", std::move(metrics)}
   };

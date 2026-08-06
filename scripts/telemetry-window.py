@@ -17,7 +17,7 @@ import json
 import os
 import sys
 
-SCHEMA = 2
+SCHEMA = 3
 BUCKETS = 64
 # Tolerated skew between a timer's histogram sum and its count. The engine has four sampling threads at most
 # (main, server, lighting, and the GL readback path), each able to be mid-record() at either snapshot endpoint;
@@ -204,7 +204,7 @@ def main():
     violations = []
     for owner in sorted({m["owner"] for m in w.values() if m.get("owner") not in (None, "unknown")}):
         spec = owners.get(owner, {})
-        denom_name, total_name = spec.get("denominator"), spec.get("total")
+        denom_name, totals = spec.get("denominator"), spec.get("totals", {})
         denom = tick_count(w.get(denom_name)) if denom_name else 0
         if not denom:
             continue
@@ -262,20 +262,34 @@ def main():
         # query typically resolves on FEWER frames than its constituent per-pass queries, since it cannot
         # complete until every part has), so summing raw parts against a raw, more-suppressed whole overstates
         # the closure even when nothing is double-counted.
-        if total_name and total_name in w:
+        # THE WHOLE IS PER (OWNER, DOMAIN). It used to be per owner, while these parts were already summed
+        # per domain -- so a cpu-domain Budget metric under owner `gl` was divided by a GPU span and printed
+        # as "cpu accounted: N us/tick of <gpu span>". Labelled by one domain, denominated by another.
+        for dom in sorted({v["domain"] for _, v in rows}):
+            parts = sum(scaled[k][0] for k, v in rows if v["role"] == "budget" and v["domain"] == dom)
+            total_name = totals.get(dom)
+            if not total_name or total_name not in w:
+                # LOUD, never silent. A domain carrying budget parts with no whole to close them against is
+                # unclosable, and an unclosable budget that prints nothing reads exactly like a closed one --
+                # the same shape as a gate that skips and reports OK (see scripts/ci/run-gates.sh).
+                if parts:
+                    why = "no total declared for this domain" if not total_name \
+                          else f"declared total '{total_name}' is absent from the window"
+                    print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of UNKNOWN -- {why}")
+                    violations.append(f"{owner}/{dom}: {parts} us of budget parts with NO WHOLE -- "
+                                      f"{why}. Nothing was closed; this is not a pass")
+                continue
             whole = scaled[total_name][0] if total_name in scaled else coverage_scale(w[total_name], cadence_ticks, w)[0]
-            for dom in sorted({v["domain"] for _, v in rows}):
-                parts = sum(scaled[k][0] for k, v in rows if v["role"] == "budget" and v["domain"] == dom)
-                un = whole - parts
-                pct = 100.0 * parts / whole if whole else 0.0
-                print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of {whole/denom:.1f} "
-                      f"({pct:.1f}%) -- unattributed {un/denom:.1f} us/tick")
-                if un < 0:
-                    violations.append(f"{owner}/{dom}: parts exceed the whole by {-un} us "
-                                      f"-- a Detail metric declared as Budget, or a double-counted phase")
-                elif whole and un / whole > 0.25:
-                    violations.append(f"{owner}/{dom}: {100*un/whole:.0f}% unattributed "
-                                      f"-- the instrumentation is missing a phase")
+            un = whole - parts
+            pct = 100.0 * parts / whole if whole else 0.0
+            print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of {whole/denom:.1f} "
+                  f"({pct:.1f}%) -- unattributed {un/denom:.1f} us/tick  [whole: {total_name}]")
+            if un < 0:
+                violations.append(f"{owner}/{dom}: parts exceed the whole by {-un} us "
+                                  f"-- a Detail metric declared as Budget, or a double-counted phase")
+            elif whole and un / whole > 0.25:
+                violations.append(f"{owner}/{dom}: {100*un/whole:.0f}% unattributed "
+                                  f"-- the instrumentation is missing a phase")
         print()
 
     # THE HEADLINE CPU NUMBER IS BUSY, NOT TOTAL.

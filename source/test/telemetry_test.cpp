@@ -43,7 +43,10 @@ TEST(Telemetry, SnapshotEmitsCountersAndGaugesBuckets) {
   Json snap = Telemetry::snapshot();
   EXPECT_EQ(snap.getObject("metrics").get("test.counter.x").getUInt("value"), 7u);
   EXPECT_EQ(snap.getObject("metrics").get("test.gauge.y").getInt("value"), 42);
-  EXPECT_EQ(snap.get("meta").getUInt("schema"), 2u);
+  // 3, not 2: the owners block gained per-DOMAIN totals. The bump is the point -- telemetry-window.py
+  // refuses a schema it does not recognise rather than mis-windowing, and a whole keyed by owner alone
+  // would have divided cpu-domain parts by a GPU span.
+  EXPECT_EQ(snap.get("meta").getUInt("schema"), 3u);
 }
 
 TEST(Telemetry, ResetZeroesAllMetrics) {
@@ -313,15 +316,20 @@ TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
   // These are DIFFERENT questions: the denominator counts ticks, the total is the whole parts close against.
   // For `gl` they are different metrics -- GPU work is counted per frame but its whole is the GPU frame span.
   EXPECT_EQ(owners.get("frame").getString("denominator"), "cpu.frame.total.us");
-  EXPECT_EQ(owners.get("frame").getString("total"), "cpu.frame.total.us");
+  EXPECT_EQ(owners.get("frame").getObject("totals").get("cpu").toString(), "cpu.frame.total.us");
   EXPECT_EQ(owners.get("gl").getString("denominator"), "cpu.frame.total.us");
-  EXPECT_EQ(owners.get("gl").getString("total"), "render.frame.gpu_span_us");
+  EXPECT_EQ(owners.get("gl").getObject("totals").get("gpu").toString(), "render.frame.gpu_span_us");
+  // AND `gl` DECLARES NO CPU WHOLE. That absence is the assertion: the consumer sums budget parts per
+  // domain, so before the totals were keyed by domain a cpu-domain part under `gl` would have been divided
+  // by a GPU span and printed as a plausible percentage. If a cpu total is ever added here it must be
+  // because a cpu-domain whole was MEASURED for this owner, not to make a column non-empty.
+  EXPECT_FALSE(owners.get("gl").getObject("totals").contains("cpu"));
   // `sim` HAD no measured whole, and this line used to assert it must not invent one. #175 gave it a real
   // one -- tick.server.total.us wraps the server loop body minus the pacing sleep -- so the assertion
   // inverts. The principle the original comment was protecting is unchanged and worth restating: an owner
   // must not declare a total it does not MEASURE. This one is measured.
   EXPECT_EQ(owners.get("sim").getString("denominator"), "tick.server.seq");
-  EXPECT_EQ(owners.get("sim").getString("total"), "tick.server.total.us");
+  EXPECT_EQ(owners.get("sim").getObject("totals").get("cpu").toString(), "tick.server.total.us");
 }
 
 // The lighting owner's contract had no automated guard: its denominator counts RECOMPUTES while its
@@ -334,7 +342,7 @@ TEST(Telemetry, LightingOwnerDeclaresRecomputeDenominatorAndFrameTotal) {
   JsonObject owners = Telemetry::snapshot().getObject("owners");
   ASSERT_TRUE(owners.contains("lighting"));
   EXPECT_EQ(owners.get("lighting").getString("denominator"), "lighting.temporal.recomputed");
-  EXPECT_EQ(owners.get("lighting").getString("total"), "lighting.cpu.total.us");
+  EXPECT_EQ(owners.get("lighting").getObject("totals").get("cpu").toString(), "lighting.cpu.total.us");
 }
 
 TEST(Telemetry, CadenceCountNeverExceedsDenominator) {
