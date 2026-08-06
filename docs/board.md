@@ -255,7 +255,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
 | [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | — | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `543a2587` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5179,6 +5179,8 @@ Register as a gate with a fires-arm. Commit ends [#243].
 #### #244 — POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them
 
 status: **pending**
+
+- `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
 
 ```
 Director-requested ranking, 2026-08-07, after matrix-20260807-071454 completed and after the

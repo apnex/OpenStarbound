@@ -1,0 +1,149 @@
+<title>Board — the durable task index</title>
+<style>
+  /* Sibling to matrix-prereq-ledger.html.tmpl: same instrumentation dressing so the campaign's
+     pages read as one system. Wide by request -- the board is a dense register, not an essay, and
+     a task subject plus its status plus its evidence wants horizontal room. Body copy inside a
+     card is still capped so prose stays legible at that width. */
+  :root {
+    --bg:#f4f7f8; --panel:#fff; --line:#d3dde1; --ink:#16232a; --ink-dim:#536771; --ink-mut:#7f929b;
+    --accent:#0d7d8c; --accent-b:#e5f4f6;
+    --run:#8a5a12; --run-b:#fbf1e0; --pend:#3a5a70; --pend-b:#e8eff4; --done:#2c6b46; --done-b:#e9f4ee;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1519; --panel:#131f25; --line:#26363e; --ink:#dbe8ec; --ink-dim:#9db0b9;
+            --ink-mut:#6d828c; --accent:#3fd0c9; --accent-b:#122b2e;
+            --run:#e5b768; --run-b:#2a2113; --pend:#8fb3cc; --pend-b:#16242e;
+            --done:#77d79f; --done-b:#12271c; } }
+  :root[data-theme="dark"] { --bg:#0d1519; --panel:#131f25; --line:#26363e; --ink:#dbe8ec;
+    --ink-dim:#9db0b9; --ink-mut:#6d828c; --accent:#3fd0c9; --accent-b:#122b2e;
+    --run:#e5b768; --run-b:#2a2113; --pend:#8fb3cc; --pend-b:#16242e; --done:#77d79f; --done-b:#12271c; }
+  :root[data-theme="light"] { --bg:#f4f7f8; --panel:#fff; --line:#d3dde1; --ink:#16232a;
+    --ink-dim:#536771; --ink-mut:#7f929b; --accent:#0d7d8c; --accent-b:#e5f4f6;
+    --run:#8a5a12; --run-b:#fbf1e0; --pend:#3a5a70; --pend-b:#e8eff4; --done:#2c6b46; --done-b:#e9f4ee; }
+
+  body { background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55;
+         margin:0; padding:2.5rem 1.5rem 5rem; }
+  .wrap { max-width:120rem; margin:0 auto; display:flex; flex-direction:column; gap:1.75rem; }
+
+  .eyebrow { font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+             color:var(--accent); margin:0 0 .5rem; }
+  h1 { font-size:clamp(1.7rem,3.4vw,2.3rem); margin:0 0 .6rem; letter-spacing:-.018em; text-wrap:balance; }
+  header p { margin:0; color:var(--ink-dim); max-width:95ch; }
+  header p code, .warn code { font-family:var(--mono); font-size:.85em; }
+
+  .stats { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:.5rem; padding:.55rem .9rem; }
+  .stat b { display:block; font-family:var(--mono); font-size:1.2rem; font-variant-numeric:tabular-nums; }
+  .stat span { font-size:.7rem; color:var(--ink-mut); letter-spacing:.06em; text-transform:uppercase; }
+
+  .warn { border:1px solid var(--line); border-left:3px solid var(--accent); background:var(--accent-b);
+          border-radius:.5rem; padding:.9rem 1.1rem; color:var(--ink); max-width:110ch; }
+  .warn b { color:var(--accent); }
+
+  .controls { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center;
+              position:sticky; top:0; z-index:5; background:var(--bg); padding:.6rem 0; }
+  .controls input { flex:1 1 22rem; min-width:14rem; background:var(--panel); color:var(--ink);
+                    border:1px solid var(--line); border-radius:.45rem; padding:.5rem .75rem;
+                    font-family:var(--sans); font-size:.9rem; }
+  .controls input:focus-visible, .controls button:focus-visible { outline:2px solid var(--accent);
+                    outline-offset:2px; }
+  .controls button { background:var(--panel); color:var(--ink-dim); border:1px solid var(--line);
+                     border-radius:.45rem; padding:.5rem .8rem; font-family:var(--mono);
+                     font-size:.78rem; cursor:pointer; }
+  .controls button[aria-pressed="true"] { background:var(--accent-b); color:var(--accent);
+                     border-color:var(--accent); }
+  .hits { font-family:var(--mono); font-size:.78rem; color:var(--ink-mut); font-variant-numeric:tabular-nums; }
+
+  .rows { display:flex; flex-direction:column; gap:.4rem; }
+  .row { background:var(--panel); border:1px solid var(--line); border-radius:.5rem; }
+  .row[hidden] { display:none; }
+  .row > summary { cursor:pointer; list-style:none; padding:.6rem .85rem; display:flex; gap:.7rem;
+                   align-items:baseline; flex-wrap:wrap; }
+  .row > summary::-webkit-details-marker { display:none; }
+  .row > summary:hover { background:var(--accent-b); border-radius:.5rem; }
+  .rid { font-family:var(--mono); font-size:.82rem; color:var(--accent); font-weight:600;
+         font-variant-numeric:tabular-nums; min-width:3.6rem; }
+  .subj { flex:1 1 32rem; }
+  .tag { font-family:var(--mono); font-size:.68rem; letter-spacing:.04em; padding:.14rem .45rem;
+         border-radius:.3rem; border:1px solid transparent; white-space:nowrap; }
+  .t-in_progress { color:var(--run); background:var(--run-b); border-color:var(--run); }
+  .t-pending     { color:var(--pend); background:var(--pend-b); border-color:var(--pend); }
+  .t-completed   { color:var(--done); background:var(--done-b); border-color:var(--done); }
+  .store { font-family:var(--mono); font-size:.66rem; color:var(--ink-mut); }
+  .body { padding:0 .85rem 1rem 4.45rem; }
+  .body pre { white-space:pre-wrap; word-wrap:break-word; font-family:var(--mono); font-size:.78rem;
+              line-height:1.6; color:var(--ink-dim); margin:0; max-width:120ch; }
+  .body .none { color:var(--ink-mut); font-style:italic; font-size:.85rem; }
+
+  footer { color:var(--ink-mut); font-size:.78rem; border-top:1px solid var(--line);
+           padding-top:1rem; font-family:var(--mono); }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; animation:none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">OpenStarbound · generated by scripts/board-export.py</p>
+    <h1>Board — the durable task index</h1>
+    <p>The live board is the Claude Code task store at
+       <code>~/.claude/tasks/&lt;session-uuid&gt;/</code> — outside the repo, in no git history, keyed by
+       session UUID. The ids it hands out are permanent: commit messages end <code>[#131]</code> and the
+       architecture docs cite <code>task #168</code>. This page and <code>docs/board.md</code> are the
+       same render from the same generator, so neither can say something the other does not.</p>
+  </header>
+
+  <div class="stats">__STATS__</div>
+
+  <div class="warn"><b>The repo is the authority; this page is a reading surface.</b>
+    <code>docs/board.md</code> is version-controlled and checked by <code>board-export.py --check</code>;
+    a published page cannot be verified by any gate and does not resolve from a clone. Ids are
+    <b>per-store, not global</b> — two stores can both hold a <code>#4</code>. And status is what the
+    store says, which is not always what the tree says: an audit on 2026-07-25 found three wrong in
+    both directions.</div>
+
+  <div class="controls">
+    <input id="q" type="search" placeholder="Filter by id, subject or description…" aria-label="Filter tasks">
+    <button data-f="all" aria-pressed="true">all</button>
+    <button data-f="in_progress" aria-pressed="false">in progress</button>
+    <button data-f="pending" aria-pressed="false">pending</button>
+    <button data-f="completed" aria-pressed="false">completed</button>
+    <span class="hits" id="hits"></span>
+  </div>
+
+  <div class="rows" id="rows">__ROWS__</div>
+
+  <footer>__FOOTER__</footer>
+</div>
+
+<script>
+  (function () {
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.row'));
+    var q = document.getElementById('q');
+    var hits = document.getElementById('hits');
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('.controls button'));
+    var filter = 'all';
+
+    function apply() {
+      var needle = q.value.trim().toLowerCase();
+      var shown = 0;
+      rows.forEach(function (r) {
+        var okStatus = filter === 'all' || r.dataset.status === filter;
+        var okText = !needle || r.dataset.hay.indexOf(needle) !== -1;
+        var show = okStatus && okText;
+        r.hidden = !show;
+        if (show) shown++;
+      });
+      hits.textContent = shown + ' / ' + rows.length + ' shown';
+    }
+    q.addEventListener('input', apply);
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () {
+        filter = b.dataset.f;
+        buttons.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+        apply();
+      });
+    });
+    apply();
+  })();
+</script>
