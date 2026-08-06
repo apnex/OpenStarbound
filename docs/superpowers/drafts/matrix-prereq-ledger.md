@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**33 of 53 rows carry a machine-checkable signature.** `--check` asserts an
+**34 of 54 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,7 +17,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 20 | not started |
+| **open** | 21 | not started |
 | **doing** | 0 | in progress |
 | **done** | 33 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
@@ -27,6 +27,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | sev | finding | closes by |
 |---|---|---|---|
+| `R13` | **BLOCK** | tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the  | Hoist the registration out of sync() to namespace scope in StarWorldServerThread.cpp so it is created at static-init reg |
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
@@ -683,4 +684,16 @@ rather than hidden, because an unchecked row is not a checked one.
 *Closes by.* In window(), when `name not in a["metrics"]`, either drop the metric or emit it with a `first_seen_in_window: true` flag, and have lever-matrix.sh refuse to quote costs for a leg carrying any such flag — the same treatment exit-3 closure violations already get.
 
 *Signature.* `scripts/telemetry-window.py` matching `firstSeenInWindow` — present while open. (a key first registering mid-window is not flagged)
+
+### `R13` — BLOCKS_MATRIX — open
+
+**tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the closure oracle stamps that leg's costs not-quotable**
+
+*Evidence.* source/game/StarWorldServerThread.cpp, WorldServerThread::sync(): `static auto t = Telemetry::timer("tick.server.lock.sync.us", ...)` is a function-local static, so the key is registered the first time the sixth lock is taken. Its three siblings (tick.server.lock.us, .message.us, .queue.us) use the same lazy shape but are acquired EVERY TICK, so they register during the load phase before any window opens; sync() is the periodic disk sync and fires rarely. MEASURED, not theorised: in matrix run matrix-20260807-071440, all 10 pass-1 legs reported `1 metric(s) first registered inside the window (tick.server.lock.sync.us)` and it was the ONLY cause across every leg. The same metric appeared in both standalone probes earlier the same day.
+
+*Why it corrupts a matrix number.* scripts/telemetry-window.py flags a metric whose key is absent from snapshot A: its value is a lifetime total being differenced against nothing, so the whole leg raises an ORACLE VIOLATION and lever-matrix.sh stamps that leg's COSTS not-quotable in the manifest. Observed at 10 of 10 legs -- i.e. 100% -- so a completed matrix run yields witness verdicts and scene fingerprints but NOT ONE QUOTABLE COST NUMBER. Filed BLOCKS rather than DEGRADES on that basis: the runner's own scope statement defers cost analysis, so the run still completes usefully, but the thing the matrix exists to eventually produce cannot be produced from any leg while this stands. It is cluster A's exact defect (lazy registration on a path that is not always taken) in a metric the R-rows did not name, which is why the 2026-08-06 sweep did not reach it.
+
+*Closes by.* Hoist the registration out of sync() to namespace scope in StarWorldServerThread.cpp so it is created at static-init regardless of whether the sixth lock is ever taken -- the same shape used for the StarWorldPainter.cpp counters in R09/R11. Do all four lock timers together rather than only this one: the other three are latent instances of the same defect that happen to be saved by running every tick, and leaving them lazy leaves the pattern in the file. Then re-run the matrix and assert zero legs flagged not-quotable.
+
+*Signature.* `source/game/StarWorldServerThread.cpp` matching `void WorldServerThread::sync\(\)[\s\S]*?static auto t = Telemetry::timer\("tick\.server\.lock\.sync\.us"` — present while open. (the sync lock timer is still registered inside sync(), so it first appears whenever the periodic sync happens to fall)
 
