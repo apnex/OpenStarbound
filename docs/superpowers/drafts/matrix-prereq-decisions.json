@@ -22,5 +22,20 @@
   "It passed --check silently because R05 carries no signature. That is exactly why the UNVERIFIABLE",
   "count is printed on every run: a row nothing can check is a row that can be mislabelled, and the",
   "number is the honest measure of how much of this ledger is asserted rather than verified."
- ]
+ ],
+ "C01": {
+  "status": "done",
+  "commit": "pending",
+  "note": "serverFidelity pinned to 'high' in the perf harness; asserted before every leg via lever-table 'pinned'"
+ },
+ "C03": {
+  "status": "done",
+  "commit": "pending",
+  "note": "staleness refusal extracted to scripts/assert-binary-fresh.sh; profiler, matrix and gate all call it"
+ },
+ "D02": {
+  "status": "done",
+  "commit": "pending",
+  "note": "lighting.gpu.point.gpu_us Cadence::Recompute -> Call; the bracket is inside a content gate"
+ }
 }

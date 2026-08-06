@@ -93,20 +93,9 @@ fi
 #
 # (1) runs FIRST, before the game boots, so a stale binary costs milliseconds instead of a 30-frame GPU
 # run. There is deliberately no override: an escape hatch here is the defect.
-[ -x "$BIN" ] || { echo "REFUSING TO CERTIFY: no executable at $BIN."; exit 1; }
-
-# dist/ IS the CMake runtime output directory (source/CMakeLists.txt:574), so $BIN's mtime is its link
-# time -- not a copy's. source/test is pruned: it builds the test binaries, not the game.
-stale=$(find source -path source/test -prune -o -type f \
-          \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name 'CMakeLists.txt' \) \
-          -newer "$BIN" -print 2>/dev/null | sort | head -20)
-if [ -n "$stale" ]; then
-  echo "REFUSING TO CERTIFY: these sources are newer than $BIN -- the build never ran, or it FAILED:"
-  echo "$stale" | sed 's/^/    /'
-  echo "  Rebuild, CONFIRM THE LINK SUCCEEDED, then re-run. A failed build leaves the binary untouched,"
-  echo "  so everything this gate would then tell you is a fact about the PREVIOUS binary."
-  exit 1
-fi
+# The staleness refusal moved to scripts/assert-binary-fresh.sh so the profiler and the matrix
+# share it. Same find, same verdict; one declaration instead of three.
+scripts/assert-binary-fresh.sh "$BIN" || exit 1
 
 [ -f "$LOG" ] && rm -f "$LOG"
 

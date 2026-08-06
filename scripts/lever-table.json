@@ -143,5 +143,21 @@
     "  vaoBake -- DEAD. Zero readers in source/; #129 reverted the lever it named and the key survived in",
     "  the pinned harness config controlling nothing. config-lint cannot see it: that gate polices",
     "  undeclared getOrDefault reads, and a key declared nowhere and read nowhere is invisible to it."
-  ]
+  ],
+  "_pinnedComment": [
+    "NOT LEVERS -- values that must hold on EVERY leg and are never flipped. The runner asserts these",
+    "alongside the lever baselines before each leg, so a drift is caught before the measurement rather",
+    "than inferred from it afterwards.",
+    "",
+    "serverFidelity: the adaptive-fidelity governor is NEGATIVE FEEDBACK on the very quantity owner",
+    "`sim` measures -- StarWorldServerThread.cpp says so in its own comment: a slower tick lowers",
+    "fidelity, which makes the next tick cheaper. Left on 'automatic' (the shipped default) an A/B on",
+    "the sim budget measures the governor's response to the lever, not the lever. Pinned to 'high': the",
+    "governor is disabled and the workload is constant AND maximal, so a lever's effect is visible",
+    "rather than absorbed. 'high' rather than a lower rung because the harness already reports 72% idle",
+    "-- automatic would have climbed to high anyway, so this pins the status quo instead of changing it."
+  ],
+  "pinned": {
+    "serverFidelity": "high"
+  }
 }

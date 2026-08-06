@@ -403,9 +403,10 @@
    "impact": "The matrix runs client-side render levers in a single process that also hosts the server thread, both inside `taskset -c 6-15 nice -n 19` (render-profile.sh:145-149). A lever that frees CPU hands it to the server thread; spareTime rises; fidelity increments; more liquid cells, more entity phases, more sectors generate. The OFF leg and the baseline leg then render DIFFERENT SCENES, and every counter moves together \u2014 which is exactly the #84 failure the fingerprint refused (\"Every control moved the same way ... The win was the scene\"). None of the 42 findings names the governor: the sweeps covered thermal position, contention, world-file drift and snapshot cadence, but not the in-process feedback loop between client cost and simulated workload. Worse, because the level is LogMap-only, a leg cannot even be retrospectively disqualified \u2014 there is no record of what fidelity it ran at.",
    "fixShape": "Pin `serverFidelity` to a named level in harness/storage-perf/starbound.config, add it to lever-table.json's asserted-baseline set so a drift is fatal, and register the live level as a gauge so every leg's snapshot states it.",
    "signature": {
-    "glob": "harness/storage-perf/starbound.config",
-    "re": "\"serverFidelity\"\\s*:\\s*\"automatic\"",
-    "desc": "serverFidelity still automatic in the perf harness"
+    "glob": "scripts/lever-table.json",
+    "re": "\"pinned\"[\\s\\S]{0,200}?\"serverFidelity\"",
+    "absent": true,
+    "desc": "the matrix does not pin/assert serverFidelity (harness config is gitignored, so the enforceable half is the pinned map)"
    }
   },
   {
@@ -425,9 +426,10 @@
    "impact": "A failed or forgotten build leaves dist/starbound untouched, so a 94-minute matrix can run entirely against a binary that predates the levers, the counters, or the descriptor-convergence work now in flight. The witness gate catches only the narrow case where a lever key is absent from the binary (the OFF leg then reads identical to baseline and VOIDs that one leg); every other leg, including the baseline whose cost is the reference for all eight comparisons, passes silently while describing a different tree. And because nothing records which binary produced the numbers, the run cannot afterwards be tied to a commit \u2014 the matrix's output is unattributable by construction, which is the one property the Director's \"perfectly closed\" standard cannot tolerate.",
    "fixShape": "Lift render-gate.sh:96-106's staleness find into the lever-matrix preflight, and write `git rev-parse HEAD`, the binary's sha256 and its mtime into the manifest and into every leg's profile JSON.",
    "signature": {
-    "glob": "scripts/render-profile.sh",
-    "re": "\\[ -x \\\"\\$BIN\\\" \\] \\|\\| \\{ echo \\\"no \\$BIN",
-    "desc": "the profiler still only checks the binary EXISTS, not that it is current"
+    "glob": "scripts/lever-matrix.sh",
+    "re": "assert-binary-fresh",
+    "absent": true,
+    "desc": "the matrix preflight does not assert the binary is current"
    }
   },
   {

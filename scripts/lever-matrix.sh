@@ -119,9 +119,19 @@ assert_baseline() { # assert_baseline <table> <config>
   python3 - "$1" "$2" <<'PY'
 import json, sys
 table, cfgpath = sys.argv[1], sys.argv[2]
-levers = json.load(open(table))["levers"]
+doc = json.load(open(table))
+levers = doc["levers"]
 cfg = json.load(open(cfgpath))
 bad = []
+# NOT LEVERS, but they must hold on every leg. A governor left adaptive, or an oracle left armed,
+# changes the workload between legs without appearing in any lever's descriptor -- so it is asserted
+# here, where a drift is caught BEFORE the measurement rather than inferred from it afterwards.
+for k, want in doc.get("pinned", {}).items():
+    if k not in cfg:
+        bad.append("%s: pinned to %r but ABSENT from %s -- the engine would use its code default"
+                   % (k, want, cfgpath))
+    elif cfg[k] != want:
+        bad.append("%s: config has %r, pinned value is %r" % (k, cfg[k], want))
 for lv in levers:
     k = lv["key"]
     if k not in cfg:
@@ -288,7 +298,11 @@ check_table_only() {
   fi
   [ $rc -eq 0 ] || return 1
   assert_baseline "$TABLE" "$CFG" || return 1
-  echo "lever_table: $(printf '%s\n' "$rows" | wc -l) levers declared, every baseline matches $CFG"
+  local npin
+  npin=$(python3 -c "import json;print(len(json.load(open('$TABLE')).get('pinned',{})))")
+  # NAME WHAT WAS CHECKED. A gate that reports "8 levers" while also verifying pinned values leaves
+  # the pinned check invisible -- and an invisible check is one nobody notices going missing.
+  echo "lever_table: $(printf '%s\n' "$rows" | wc -l) lever baselines + $npin pinned value(s) all match $CFG"
   return 0
 }
 
@@ -320,7 +334,9 @@ echo "=== lever matrix: preflight ==="
 
 [ -f "$TABLE" ]   || { echo "lever-matrix: no $TABLE" >&2; exit 1; }
 [ -x "$PROFILE" ] || { echo "lever-matrix: no $PROFILE" >&2; exit 1; }
-[ -x dist/starbound ] || { echo "lever-matrix: no dist/starbound -- build first" >&2; exit 1; }
+# BEFORE the plan is printed and long before the world loads: a stale binary discovered on leg 1 has
+# already cost a world load, and discovered later has cost the run.
+scripts/assert-binary-fresh.sh dist/starbound || exit 1
 
 # The Director must be out of the game: a second client competes for the same GPU, and every number
 # this run produces would be contention. pgrep -x, not -f: -f matches this script's own command line.

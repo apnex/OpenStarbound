@@ -58,7 +58,10 @@ ARCHIVE="$PWD/harness/logs-perf/archive"
 # for a world load. Refreshed every run; the engine is the authority, this is only a fast pre-flight.
 BOOKMARKS="$PWD/harness/logs-perf/bookmarks.txt"
 
-[ -x "$BIN" ] || { echo "no $BIN -- build first"; exit 1; }
+# A binary that merely EXISTS is not a binary that contains the sources on disk. A failed build
+# leaves the old one in place, and every number below would then describe it while wearing this
+# run's label. render-gate.sh has refused on this basis since #178; the profiler did not.
+scripts/assert-binary-fresh.sh "$BIN" || exit 1
 
 mkdir -p "$PWD/harness/logs-perf" "$ARCHIVE"
 

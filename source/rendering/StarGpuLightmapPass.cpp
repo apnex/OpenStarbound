@@ -239,8 +239,17 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
     m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
+    // Cadence::Call, NOT Recompute. THE BRACKET IS INSIDE THE GATE -- `if (!lights.empty())` above --
+    // so on a recompute with no point lights this pass does not run and has no cost to report.
+    // Declared Recompute it asserts one sample per recompute, coverage then reads below 1, and the
+    // windowing scales this total UP: inventing GPU cost for recomputes on which the pass genuinely
+    // did not execute. The rule is already written at StarWorldPainter.cpp ("Bracket INSIDE the gate,
+    // Cadence::Call ... A pass that did not happen has no cost to report") and was learned a second
+    // time on cpu.frame.idle.us; this is the third site. It bites hardest on the
+    // lightingTemporalDecouple leg, which moves the recompute count directly -- so baseline and off
+    // leg would get different scale factors applied to the same physical work.
     m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Recompute, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result

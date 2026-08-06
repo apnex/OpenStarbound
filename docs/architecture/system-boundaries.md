@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       997 files
-      239324 lines
+      239333 lines
       6 tiers
     Content
       assets/
@@ -187,7 +187,7 @@ mindmap
       13 declared binaries
     Instruments
       scripts/ + tests
-      39 scripts
+      40 scripts
       23 ctest gates
       38 CI gates
     Governance
@@ -231,7 +231,7 @@ source/
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     4,500 lines
+├── rendering/       T4    23 files     4,509 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,863 lines
 ├── client/          T5     4 files     2,509 lines
@@ -291,7 +291,7 @@ flowchart TD
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 4,500 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 4,509 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,863 lines · Root×200</small>"]
   end
@@ -606,7 +606,7 @@ treemap-beta
     "T4 presentation"
         "frontend": 16863
         "windowing": 9646
-        "rendering": 4500
+        "rendering": 4509
     "T5 shells"
         "client": 2509
         "server": 783
@@ -623,7 +623,7 @@ treemap-beta
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,455 | 3.1% |
 | T3 simulation | `game` | 500 | 115,589 | 48.3% |
-| T4 presentation | `rendering` | 23 | 4,500 | 1.9% |
+| T4 presentation | `rendering` | 23 | 4,509 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
 | T5 shells | `client` | 4 | 2,509 | 1.0% |
@@ -851,7 +851,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 4,500 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 4,509 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,863 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 48 | not started |
+| **open** | 45 | not started |
 | **doing** | 0 | in progress |
-| **done** | 1 | closed; `commit` says where |
+| **done** | 4 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -27,10 +27,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | sev | finding | closes by |
 |---|---|---|---|
-| `C01` | **BLOCK** | serverFidelity is left on "automatic" in the pinned harness config — a negative-feedback governor that changes the simulated WORKLOAD between legs, an | Pin `serverFidelity` to a named level in harness/storage-perf/starbound.config, add it to lever-table.json's asserted-ba |
 | `C02` | **BLOCK** | The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress tas | Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the  |
-| `C03` | **BLOCK** | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | Lift render-gate.sh:96-106's staleness find into the lever-matrix preflight, and write `git rev-parse HEAD`, the binary' |
-| `D02` | **BLOCK** | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | Change lighting.gpu.point.gpu_us to MetricCadence::Call (unscaled, no expectation), matching the rule already written at |
 | `H01` | **BLOCK** | The measurement window's length is a snapshot-count lottery, and the end-trim RULE FLIPS below 4 snapshots — the leg that loses the trim is the one th | Pin the window explicitly: pass --first/--last (or a required --intervals N) from render-profile.sh, refuse the leg if f |
 | `H02` | **BLOCK** | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | Stop bounding the leg by wall clock. Either have render-profile.sh poll until a fixed COUNT of post-load snapshot files  |
 | `H03` | **BLOCK** | The load-wait loop can time out silently, after which the measurement window straddles the world load | Set a flag inside the loop on `break`, and after the loop `[ "$flag" = 1 ] || { archive_log "$LABEL-NOLOAD"; exit 1; }`  |
@@ -80,11 +77,14 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | finding | where |
 |---|---|---|
+| `C01` | serverFidelity is left on "automatic" in the pinned harness config — a negative-feedback governor that changes the simulated WORKLOAD between legs, an | pending |
+| `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
+| `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
 
 ## Evidence
 
-### `C01` — BLOCKS_MATRIX — open
+### `C01` — BLOCKS_MATRIX — done
 
 **serverFidelity is left on "automatic" in the pinned harness config — a negative-feedback governor that changes the simulated WORKLOAD between legs, and whose level never reaches telemetry**
 
@@ -94,7 +94,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Pin `serverFidelity` to a named level in harness/storage-perf/starbound.config, add it to lever-table.json's asserted-baseline set so a drift is fatal, and register the live level as a gauge so every leg's snapshot states it.
 
-*Signature.* `harness/storage-perf/starbound.config` matching `"serverFidelity"\s*:\s*"automatic"` — present while open. (serverFidelity still automatic in the perf harness)
+*Signature.* `scripts/lever-table.json` matching `"pinned"[\s\S]{0,200}?"serverFidelity"` — present while open. (the matrix does not pin/assert serverFidelity (harness config is gitignored, so the enforceable half is the pinned map))
 
 ### `C02` — BLOCKS_MATRIX — open
 
@@ -106,7 +106,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the manifest, and re-assert it before every leg so a mid-run content change aborts instead of landing as a delta.
 
-### `C03` — BLOCKS_MATRIX — open
+### `C03` — BLOCKS_MATRIX — done
 
 **Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and the manifest records no commit or binary identity at all**
 
@@ -116,7 +116,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Lift render-gate.sh:96-106's staleness find into the lever-matrix preflight, and write `git rev-parse HEAD`, the binary's sha256 and its mtime into the manifest and into every leg's profile JSON.
 
-*Signature.* `scripts/render-profile.sh` matching `\[ -x \"\$BIN\" \] \|\| \{ echo \"no \$BIN` — present while open. (the profiler still only checks the binary EXISTS, not that it is current)
+*Signature.* `scripts/lever-matrix.sh` matching `assert-binary-fresh` — present while open. (the matrix preflight does not assert the binary is current)
 
 ### `C04` — DEGRADES_MATRIX — open
 
@@ -170,7 +170,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `source/**/*.cpp` matching `MetricDesc\s*\{[^}]*MetricDomain::Gpu[^}]*MetricRole::Budget` — present while open. (a gpu-domain descriptor still declared Budget)
 
-### `D02` — BLOCKS_MATRIX — open
+### `D02` — BLOCKS_MATRIX — done
 
 **lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())`**
 

@@ -37,13 +37,23 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FINDINGS = os.path.join(REPO, "docs/superpowers/drafts/matrix-prereq-findings.json")
 DECISIONS = os.path.join(REPO, "docs/superpowers/drafts/matrix-prereq-decisions.json")
 LEDGER = os.path.join(REPO, "docs/superpowers/drafts/matrix-prereq-ledger.md")
+# The page template lives beside this script rather than inside it, so the CSS stays editable and
+# the data stays generated. One generator, two renderings.
+TEMPLATE_PATH = os.path.join(REPO, "scripts/matrix-prereq-ledger.html.tmpl")
 
 OPEN_STATES = ("open", "doing")
 ALL_STATES = ("open", "doing", "done", "declined", "deferred")
 
 
 def signature_matches(sig):
-    """True when the defect the signature describes is still present in the tree."""
+    """True when the defect the signature describes is still present in the tree.
+
+    SOME DEFECTS ARE ABSENCES. A missing freshness assertion, an unregistered counter, a check nobody
+    wrote -- for those the pattern describes the FIX, and its absence is the defect. `"absent": true`
+    inverts the sense so both shapes can be expressed, rather than forcing a contorted regex that
+    matches the old code and silently stops meaning anything once that code is edited for an
+    unrelated reason.
+    """
     pat = re.compile(sig["re"])
     pattern = os.path.join(REPO, sig["glob"])
     for path in glob.glob(pattern, recursive=True):
@@ -51,10 +61,10 @@ def signature_matches(sig):
             continue
         try:
             if pat.search(open(path, encoding="utf-8", errors="replace").read()):
-                return True
+                return False if sig.get("absent") else True
         except OSError:
             continue
-    return False
+    return True if sig.get("absent") else False
 
 
 def load():
@@ -159,6 +169,58 @@ def render(rows, decisions):
     return "\n".join(out) + "\n"
 
 
+
+def render_html(rows, decisions):
+    """The same rows as the markdown, as a scannable page. ONE GENERATOR, TWO RENDERINGS -- a page
+    hand-written beside a generated doc is two descriptions of one claim, which is the drift this
+    ledger exists to prevent."""
+    import html as _h
+    TEMPLATE = open(TEMPLATE_PATH).read()
+
+    sev_meta = {"BLOCKS_MATRIX": ("BLOCK", "block"), "DEGRADES_MATRIX": ("degrade", "degrade"),
+                "COSMETIC": ("cosmetic", "cosmetic")}
+    n = len(rows)
+    openish = [r for r in rows if decisions.get(r["id"], {}).get("status", "open") in OPEN_STATES]
+    blocks = [r for r in openish if r["severity"] == "BLOCKS_MATRIX"]
+    verified = [r for r in rows if r.get("signature")]
+    pct = round(100 * len(verified) / n)
+
+    cards = []
+    for r in sorted(rows, key=lambda r: (list(sev_meta).index(r["severity"]), r["id"])):
+        st = decisions.get(r["id"], {}).get("status", "open")
+        label, cls = sev_meta[r["severity"]]
+        sig = r.get("signature")
+        vb = ('<span class="tag ok" title="a predicate over the tree decides this row\'s status">'
+              'verified</span>') if sig else \
+             ('<span class="tag warn" title="no predicate; this row\'s status is asserted, not checked">'
+              'asserted</span>')
+        d = decisions.get(r["id"], {})
+        where = _h.escape(d.get("commit", d.get("note", "")))
+        cards.append(f'''<article class="row {cls}" data-sev="{cls}" data-status="{st}"
+   data-checked="{"y" if sig else "n"}">
+  <header>
+    <code class="rid">{r["id"]}</code>
+    <span class="tag sev-{cls}">{label}</span>
+    <span class="tag st-{st}">{st}</span>
+    {vb}
+    {f'<span class="where">{where}</span>' if where else ''}
+  </header>
+  <h3>{_h.escape(r["title"])}</h3>
+  <dl>
+    <dt>Evidence</dt><dd>{_h.escape(r["evidence"])}</dd>
+    <dt>Why it corrupts a matrix number</dt><dd>{_h.escape(r["impact"])}</dd>
+    <dt>Closes by</dt><dd>{_h.escape(r["fixShape"])}</dd>
+    {f'<dt>Signature</dt><dd class="mono">{_h.escape(sig["glob"])} &nbsp;·&nbsp; {_h.escape(sig["re"])}<br><span class="muted">present while open — {_h.escape(sig["desc"])}</span></dd>' if sig else ''}
+  </dl>
+</article>''')
+
+    return TEMPLATE.replace("__CARDS__", "\n".join(cards)) \
+                   .replace("__N__", str(n)).replace("__OPEN__", str(len(openish))) \
+                   .replace("__BLOCKS__", str(len(blocks))) \
+                   .replace("__VERIFIED__", str(len(verified))) \
+                   .replace("__ASSERTED__", str(n - len(verified))) \
+                   .replace("__PCT__", str(pct))
+
 def selftest():
     """Both directions, because a checker that only ever passes is not known to work."""
     fails = []
@@ -177,6 +239,12 @@ def selftest():
             "desc": "nothing"}
     arm("a signature that matches is detected as present", signature_matches(real) is True)
     arm("a signature that does not match is detected as absent", signature_matches(fake) is False)
+
+    inv = {"glob": "scripts/matrix-prereq-ledger.py", "re": r"def selftest", "absent": True,
+           "desc": "the fix is missing"}
+    arm("an ABSENT-sense signature reads present-fix as defect-gone", signature_matches(inv) is False)
+    inv2 = dict(inv, re="no" + "_such" + "_token_here")
+    arm("an ABSENT-sense signature reads missing-fix as defect-present", signature_matches(inv2) is True)
 
     rows = [{"id": "X01", "severity": "BLOCKS_MATRIX", "title": "t", "evidence": "e", "impact": "i",
              "fixShape": "f", "signature": real}]
@@ -204,7 +272,7 @@ def selftest():
     if fails:
         print(f"matrix-prereq-ledger selftest: FAILED -- {len(fails)}: {', '.join(fails)}")
         return 1
-    print("matrix-prereq-ledger selftest: 9/9 arms ok -- the checker fires in BOTH directions and "
+    print("matrix-prereq-ledger selftest: 11/11 arms ok -- the checker fires in BOTH directions and "
           "refuses to pass an unverifiable row silently")
     return 0
 
@@ -214,6 +282,11 @@ def main():
         return selftest()
     rows, decisions = load()
     problems, unverifiable = check(rows, decisions)
+    if "--html" in sys.argv[1:]:
+        out = sys.argv[sys.argv.index("--html") + 1]
+        open(out, "w").write(render_html(rows, decisions))
+        print(f"wrote {out}")
+        return 0
     if "--check" in sys.argv[1:]:
         for p in problems:
             print(f"matrix-prereq-ledger: {p}", file=sys.stderr)
