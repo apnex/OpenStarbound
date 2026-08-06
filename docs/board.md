@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**165 tasks** across 2 store(s): 3 in_progress, 27 pending, 135 completed
+**173 tasks** across 2 store(s): 4 in_progress, 28 pending, 141 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 164 tasks, ids 64–228
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 172 tasks, ids 64–236
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 170, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 172, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 80 of 135.
+**Completed tasks citing no commit and no doc:** 84 of 141.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -87,7 +87,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#72](#c29c1332-72) | `c29c1332` | done | L3: move-not-copy in addCallbacks | — | — |
 | [#73](#c29c1332-73) | `c29c1332` | done | StatusEffectChurnBench micro-bench (L1/L3 clean A/B) | — | — |
 | [#74](#c29c1332-74) | `c29c1332` | done | L2: Proto-cache engine + T1/T4 tests (core_tests) | — | — |
-| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | — |
+| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | `matrix-prereq-ledger.md` |
 | [#76](#c29c1332-76) | `c29c1332` | done | Build-window: L2 default-on + C++ fallback consistency (flags KEPT) | — | — |
 | [#77](#c29c1332-77) | `c29c1332` | done | Move 1: Entity de-RTTI via entityCast virtual-accessor downcast | — | — |
 | [#78](#c29c1332-78) | `c29c1332` | done | Follow-up: extend entityCast to residual per-candidate cast sites | — | — |
@@ -96,7 +96,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `9346f86a` `35808327` | — |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `9346f86a` `35808327` | `matrix-prereq-ledger.md` |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -142,13 +142,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#127](#c29c1332-127) | `c29c1332` | done | Texture-upload churn (#127) — stable-grid lever SHIPPED (91e3fca, cluster 7.09%→2.37%) | — | — |
 | [#128](#c29c1332-128) | `c29c1332` | done | Lighting GPU-pass dispatch CPU lever (~13% render-thread frame CPU) | — | — |
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
-| [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
+| [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | `matrix-prereq-ledger.md` |
 | [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
 | [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
 | [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
-| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | — |
+| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `4e95c50c` | `matrix-prereq-ledger.md` |
 | [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
@@ -156,7 +156,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `2026-07-25-unified-telemetry-model-design.md` |
 | [#142](#c29c1332-142) | `c29c1332` | done | FBO-1: FBO subsystem hardening — honour explicit size, gate oracle surfaces, diagnosable failures | — | — |
 | [#143](#c29c1332-143) | `c29c1332` | done | CM-1: merge the env + parallax composes into one full-screen pass (MEASURED: ~2ms/frame) | — | — |
-| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | — |
+| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | `matrix-prereq-ledger.md` |
 | [#145](#c29c1332-145) | `c29c1332` | done | RS-0 DONE: the design gate passed 2026-07-14; spec approved, committed, and now implemented by L1/L2 | — | `layer1-vs-vanilla-assessment.md` |
 | [#146](#c29c1332-146) | `c29c1332` | done | GT-1: ItemTest.ItemComparison — exactMatch compares post-buildscript vs pre-buildscript parameters | `abf6e2eb` | — |
 | [#147](#c29c1332-147) | `c29c1332` | done | J-2: obstacle flag in the lightmap's unused alpha (17 -&gt; 9 taps) — BLOCKED on a lighting bit-identity oracle | — | — |
@@ -202,20 +202,20 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
 | [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
 | [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `2026-08-01-target-state-system-architecture.md` |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `matrix-prereq-ledger.md` `2026-08-01-target-state-system-architecture.md` |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
 | [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `903f4ce0` `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
-| [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
+| [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | `matrix-prereq-ledger.md` |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
 | [#200](#c29c1332-200) | `c29c1332` | open | ARCH-1: whole-system boundary document + arch-graph generator + gate | `7d22d2bb` | — |
 | [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -237,9 +237,17 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
 | [#224](#c29c1332-224) | `c29c1332` | done | SPREAD-CAP-1 CLOSED: cap 48 covers 100% of measured content (10 locations); margin is 1.7% but a breach is now loud, no… | `f95abac2` `9f2aba93` `8b05254b` `bf6fa6bf` `5f77683b` | — |
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
-| [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | — |
+| [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | `matrix-prereq-ledger.md` |
 | [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | `122ca40a` | — |
 | [#228](#c29c1332-228) | `c29c1332` | done | BEAM-EPS-1 CLOSED (0fed2045): unified on 0; bit-identical for all real content, colored path provably untouched | `0fed2045` | — |
+| [#229](#c29c1332-229) | `c29c1332` | done | GPUTEL-B1: explore context for the sovereign GPU telemetry design | `8a081d61` `dc722dee` `934afba9` `c3a92060` `8d5734f6` `fecf37f6` `320b67bc` `c3181e45` `e6bde922` `8ed374c4` `fb9c13bc` `db4e35d2` `60997cb8` `11ebce0c` `8261ce4e` `dcb7daf6` `9b3c9428` | — |
+| [#230](#c29c1332-230) | `c29c1332` | done | GPUTEL-B2: clarifying questions, one at a time | — | — |
+| [#231](#c29c1332-231) | `c29c1332` | done | GPUTEL-B3: propose 2-3 approaches with trade-offs | — | — |
+| [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
+| [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
+| [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
+| [#235](#c29c1332-235) | `c29c1332` | open | GM-1d: every CPU phase timer measures WALL time, not CPU work | `72ad0000` `50d57866` | — |
+| [#236](#c29c1332-236) | `c29c1332` | **active** | GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent | `9db54200` `0290f6ef` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -371,6 +379,8 @@ L2 Proto cache implemented: engine (StarLua.cpp/.hpp: extern-C lua internals, pu
 
 status: **pending**
 
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
+
 ```
 Two opportunistic items for the next in-game session (NOT gates; L2 is default-ON):
 (1) Verify the same-session toggle FIX (commit f136c6b): setConfiguration(scriptProtoCacheEnabled, false/true) + /serverreload -> check the new INFO log 'Lua Proto cache: ENABLED/disabled' confirms the flip (and a profile shows loadCached/no luaU_undump when ON). If it logs 'disabled' after a true set -> config-persistence root cause to chase. Mechanism already proven by ProtoCacheToggle.* regression tests.
@@ -465,6 +475,7 @@ status: **pending**
 
 - `9346f86a` docs(board): regenerate -- #84 revisited [#84]
 - `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 REVISITED 2026-07-25. Half this task's premise is now false, and the other half has a sharper reason.
@@ -1076,6 +1087,8 @@ Stage-0 default-OFF spike, then settled at user's base with two independent in-g
 
 status: **in_progress**
 
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
+
 ```
 Sovereign apnex_ fork of the scan/print/dup capability (BiaB 729460427 + MiaB 729456260) for OSB+FU. Repo /home/apnex/base-in-a-box-reforged (moved from /root — /root unreadable by the apnex game process). STAGE 0 (extraction + scaffold + baseline) DONE + VERIFIED IN-GAME 2026-07-07: mod loads clean, scan→print loop works, ZERO LuaExceptions, and recipes are craftable normally at the Engineer's Table with NO /learnblueprint needed (defaultBlueprints applied fine for the existing char — earlier concern was wrong). build_fork.py reproducible; verify.sh green; deployed loose to dev+dev-feat sbinit (BiaB/MiaB unsubscribed + stale sbinit pak entries removed by me). NEXT = HARDENING BACKLOG: (2) usability/discoverability — no in-game instructions, confusing names (Receiver='Scanning Marker'); (3) author known issues (can't scan trees/unbreakable; leaves blocks in protected areas; print-on-self); (4) FU round-trip fidelity — scan/print FU custom blocks/materials/liquids/objects faithfully + large-area perf (the utility core). Each = own design→fix→verify cycle.
 ```
@@ -1239,6 +1252,7 @@ Related: #136 (the P-1 bugs in this same gate, code merged, awaiting the Directo
 status: **pending**
 
 - `4e95c50c` telemetry: the two compose arms are mutually exclusive -- Cadence::Call, not Frame [#136]
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 STATUS CORRECTED 2026-07-25. This was marked in_progress as though code work remained. It does not: the code is in `integration` and shipping.
@@ -1573,6 +1587,8 @@ DONE 2026-07-20. CM-1 shipped on render/decomposition (752bc251 effect + e214ce4
 #### #144 — UM-1: upstream merge landed — remaining audit findings (27 confirmed)
 
 status: **pending**
+
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 DONE 2026-07-14: dev/upstream-merge @ 854b4b7f. Merged 83 upstream commits (fc3d55e..2c7f972b) + shader unification.
@@ -3106,6 +3122,7 @@ status: **pending**
 
 - `334bc38d` tools: measure the game&lt;-&gt;render boundary before anyone moves it
 - `b2ac6c27` render: EntityDrawables moves out of the header the slice exists to avoid
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 - cited in `docs/superpowers/specs/2026-08-01-target-state-system-architecture.md`
 
 ```
@@ -3238,6 +3255,8 @@ run-gates 27/27 green. Bookkeeping f0b9fb1f.
 #### #197 — FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure
 
 status: **pending**
+
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 SPLIT OUT of #133 item 1 on 2026-07-26, after the re-audit found the original case solved but the hazard intact.
@@ -3468,6 +3487,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress**
 
+- `d65c9488` board: #224 closed on evidence -- 10-location emission sweep, cap 48 covers all, 1.7% margin with a loud breach [#204]
 - `a0ace793` board: #224 last open item closed -- 48 is a point fix, breach now detected [#204]
 - `f6855fef` board: #224 CLOSED at 9f2aba93 -- cap 48 verified live, declarations reconciled, config pin caught [#204]
 - `bd139fc8` board: #224 MEASURED on hardware -- cap binds at the bases, 8.8% of pixels, 48 proven sufficient [#204]
@@ -4511,6 +4531,7 @@ cache that now does what it was built to do.
 status: **completed**
 
 - `8f322517` EPOCH: bump on sector load and world parameters, and stop bumping on liquid that cannot light [#226][#225]
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 Found by the read-only trace run for #225, which was asked the adversarial question: is any input the lighting gather reads written by a path that does not bump m_lightingTileEpoch at all? Three answers. Two are now fixed.
@@ -4618,6 +4639,187 @@ core_tests 289/289, game_tests 72/72, run-gates 27/27.
 NOT DONE, deliberately: no in-game visual confirmation. The change cannot alter any pixel for content
 on this machine, so there is nothing for a play session to observe -- asking for one would imply a
 check that could not fail.
+```
+
+<a id="c29c1332-229"></a>
+
+#### #229 — GPUTEL-B1: explore context for the sovereign GPU telemetry design
+
+status: **completed**
+
+- `8a081d61` GM-2a (T2): the whole a part closes against is keyed by (owner, DOMAIN)
+- `dc722dee` GATE-SKIP-1: a gate that did not run may no longer read as green
+- `934afba9` GM-1 Task 6c: CORRECTION -- EngineBusyReader's "PROVEN" claim was measured badly
+- `c3a92060` GM-1 Tasks 8+9: mutual validation, plus the docs and the gate
+- `8d5734f6` GM-1 Task 7: the metrics CLI -- measures a process from outside it
+- `fecf37f6` GM-1 Task 6b: refuse a PMU event whose unit is not nanoseconds
+- `320b67bc` GM-1 Task 6: EngineBusyReader -- the second, independent path to one quantity
+- `c3181e45` GM-1 Tasks 4+5: unavailable is never zero; a reset counter is discarded
+- `e6bde922` GM-1 Task 3: ClientBusyReader, with the 4x dedup bug pinned as a test
+- `8ed374c4` GM-1 Task 2: MetricSample -- a reading carries its meaning or does not exist
+- `fb9c13bc` GM-1 Task 1: register `metrics` as a component -- duty, grant, derivation
+- `db4e35d2` GM-1: implementation plan -- 9 tasks, TDD, from the approved design
+- `60997cb8` GM-0: ship row finalised at N=3 -- 14.83% busy, 2403us/frame, +/-0.7%
+- `11ebce0c` GM-0: sovereign metrics design -- GM-1 specified, GM-2..GM-5 scoped
+- `8261ce4e` GPUTIMER-3: CORRECTION -- the 96.8% GPU-busy claim in 9b3c9428 is WRONG
+- `dcb7daf6` GPUTIMER-2: gate the straddled bracket, at authoring time
+- `9b3c9428` GPUTIMER-1: the per-pass GPU timers under-reported the frame by 3.4x
+
+```
+DONE. Established this session: (a) per-pass GL_TIME_ELAPSED measures elapsed GPU-timeline span INCLUDING idle -- parts sum to ~100% of the 16.2ms frame period while true GPU busy is 24.1%; (b) the GL timers cost +11.4pp busy = +47% relative, so timers-on is not the shipped config; (c) TickRateApproacher(60.0f) is hardcoded at StarMainApplication_sdl.cpp:1386 -- uncapping would speed the SIM, not just the pacing; (d) fdinfo drm-engine-render deduped by drm-client-id is exact and free but whole-process only; (e) hardware exposes i915 PMU (rcs0-busy, actual-frequency-gt0/gt1, rc6-residency, per-engine sema/wait), GL_INTEL_performance_query (real per-region HW counters), and GL_EXT_disjoint_timer_query (GL_GPU_DISJOINT_EXT -- NEVER CHECKED by our code, and the GPU clocks 933-2350MHz).
+```
+
+<a id="c29c1332-230"></a>
+
+#### #230 — GPUTEL-B2: clarifying questions, one at a time
+
+status: **completed**
+
+```
+Understand purpose/constraints/success criteria for the sovereign GPU telemetry system. Load-bearing unknowns: (1) what questions must it answer -- absolute per-pass attribution, lever A/B deltas, regression gating, or shipped-config health; (2) whether an invasive high-fidelity MEASUREMENT MODE is acceptable (instrument may cost, runs only in the harness) versus an always-on near-zero-cost path -- the current system attempts both and fails at both; (3) whether changing the frame pacing to saturate the GPU is on the table, given it changes the sim workload.
+```
+
+<a id="c29c1332-231"></a>
+
+#### #231 — GPUTEL-B3: propose 2-3 approaches with trade-offs
+
+status: **completed**
+
+```
+Candidate axes established by B1: (A) kernel-side truth -- i915 PMU rcs0-busy + fdinfo per-client, exact and near-free but whole-process, no per-pass split; (B) GL_INTEL_performance_query hardware counters per region -- genuine per-pass work attribution independent of idle, but Mesa/Intel-specific and heavyweight; (C) saturation mode -- decouple render pacing from sim tick so elapsed==busy, making the existing timers valid, at the cost of a real change to the frame loop; (D) differential-only methodology -- rank levers purely by their delta on kernel-side busy, no budget attribution at all. Include the disjoint-query fix in whichever lands.
+```
+
+<a id="c29c1332-232"></a>
+
+#### #232 — GPUTEL-B4: present design, get approval per section
+
+status: **completed**
+
+```
+Cover architecture, components, data flow, error handling, testing. HARD GATE: no implementation until the Director approves. Must state, for every metric the system emits, WHAT PHYSICAL QUANTITY IT MEASURES and under what condition that is valid -- the failure being repaired is a metric whose name claimed one thing and whose value meant another. Must also carry a self-validation story: an instrument that cannot be checked against an independent one is how both the 4.04x step and the 96.8% busy figure survived.
+```
+
+<a id="c29c1332-233"></a>
+
+#### #233 — GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans
+
+status: **completed**
+
+```
+Write to docs/superpowers/specs/2026-08-05-sovereign-gpu-telemetry-design.md and commit. Self-review for placeholders, internal contradictions, scope, ambiguity. Then Director review. Terminal state is invoking superpowers:writing-plans -- no other implementation skill. Note the Director does not read spec markdown (memory: surface-decisions-not-doc-review), so surface every director-critical decision INLINE in chat and follow Claude's lean elsewhere.
+```
+
+<a id="c29c1332-234"></a>
+
+#### #234 — GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily
+
+status: **completed**
+
+- `9505dd92` GM-1b (#234): EngineBusyReader polls; a single read can no longer escape
+
+```
+FILED WITH EVIDENCE, not a suspicion. source/metrics/StarEngineBusyReader.{hpp,cpp} has two defects characterised during GM-1 Task 8 (see commit 934afba9 for the correction, c3a92060 for the measurement):
+
+(1) CATCH-UP. open() returns its first sample immediately. The first read after perf_event_open carries unbounded historic busy time -- 2.74 SECONDS arrived in one 0.5s interval during characterisation.
+(2) STALENESS. The i915 PMU publishes lazily. Under steady 35% load sampled at 0.5s, 4 of 40 intervals advanced by exactly ZERO ns and the next by double. Staleness scales with read interval (10% zero-advance at 50ms, 6% at 200ms, never >2 deep). A window ending inside a stale interval under-reports by whatever is unpublished. 2 of 20 runs disagreed grossly: one read 0.000000 against 29.6% fdinfo, another exactly half.
+
+THE FIX IS AN API CHANGE, NOT A PATCH: drain a warm-up (~0.30s), then POLL through the window (~0.02s) and accumulate -- the shape scripts/pmu-render-busy.py uses, which has 40/40 clean runs behind it. open()/sample() becomes something like busyOver(seconds). Deliberately NOT half-fixed: draining the warm-up alone removes the catch-up, leaves the staleness, and LOOKS fixed, which is worse than a defect that is written down.
+
+No consumer today, so nothing currently reports a wrong number. The bound to re-measure after the fix: the Python reader's spread was min 0.0020pp / median 0.0757pp / max 0.2863pp over forty concurrent 8s windows at 20.9-25.5% load.</description>
+<parameter name="activeForm">Fixing EngineBusyReader to poll rather than bracket
+```
+
+<a id="c29c1332-235"></a>
+
+#### #235 — GM-1d: every CPU phase timer measures WALL time, not CPU work
+
+status: **pending**
+
+- `72ad0000` GM-2c: every lever in the matrix can now prove it engaged
+- `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
+
+```
+STRUCTURAL, same class as GPUTIMER-1. source/core/StarTelemetry.cpp:258/261 takes `Time::monotonicMicroseconds()` at scope entry and exit, so every cpu-domain timer -- tick.server.compute.*.us, lighting.cpu.*.us, cpu.frame.*.us, render.*.us -- records the ELAPSED WALL TIME of a code region, including any blocking, lock wait, page fault or preemption inside it. Nothing in the tree uses CLOCK_THREAD_CPUTIME_ID or CLOCK_PROCESS_CPUTIME_ID (verified by grep: zero hits). getrusage(RUSAGE_SELF) appears once, in StarTelemetryReporter.cpp:26, and is process-granular only.
+
+WHY IT IS THE SAME DEFECT: a bracket that counts whatever happens inside it, including not-working, under a name asserting work. It is far less severe than the GPU case -- a CPU region is usually actually executing, where a GPU region is idle-heavy by construction -- but the two diverge exactly where it matters most: under contention, which is when a phase looks expensive.
+
+EVIDENCE IT HAS BITTEN AT LEAST ONCE: cpu.wait.lighting.us exists (StarClientApplication.cpp:578), i.e. someone already had to carve a waiting-quantity out of a timer that was charging waiting as work.
+
+NOT YET DEMONSTRATED TO HAVE PRODUCED A WRONG NUMBER -- do not assert that it has without checking. The check is now cheap: run-queue wait from /proc/<pid>/task/*/schedstat field 2 (arriving with GM-1c) shows when a thread was runnable but unscheduled during a window a timer was charging as work. Compare a phase timer's total against the same thread's on-cpu delta over the same window; a gap is the wall-vs-CPU error, measured rather than argued.
+
+THE FIX IS NOT SIMPLY SWAPPING THE CLOCK. CLOCK_THREAD_CPUTIME_ID excludes blocking, which is sometimes the very thing being measured (cpu.wait.* wants wall). So the model must let a timer DECLARE which quantity it takes -- which is the generalisation work, not a patch. Blocked on the key/value design.</description>
+<parameter name="activeForm">Fixing the wall-vs-CPU timer conflation
+```
+
+<a id="c29c1332-236"></a>
+
+#### #236 — GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent
+
+status: **in_progress**
+
+- `9db54200` GM-2d (#236): the GPU parts were never a partition -- root cause, not a tolerance
+- `0290f6ef` GPU-CLOSE-1a (#236): the closure check gets a MEASURED bound, watched from both ends
+
+```
+RESHAPED BY EVIDENCE. Both hypotheses in the original filing are REFUTED. Do not act on them.
+
+MEASURED across 9 legs of one rehearsal matrix (matrix-20260806-152507, 03-Surface Outpost, 20s
+windows, 300 frames each). excess = (sum of gpu-domain role=Budget parts under owner gl) - whole,
+where whole = render.frame.gpu_span_us:
+
+  baseline                       +29,480 us   +0.61%
+  off-lightingTemporalDecouple   +32,699      +0.67%
+  off-renderDrawableCache         -1,740      -0.04%
+  off-parallaxRefreshInterval     -3,795      -0.08%
+  off-scriptProtoCacheEnabled    -37,379      -0.77%
+  off-backdropComposeMerge       -39,913      -0.81%
+  off-renderVboOrphan           -102,358      -2.10%
+  off-lightingGatherCache       -123,537      -2.53%
+  off-envRefreshInterval        -159,181      -3.29%
+(a separate earlier baseline, matrix-20260806-152124, read +1.06%.)
+
+THE EXCESS IS BIDIRECTIONAL. That kills both original hypotheses by arithmetic:
+  * A DOUBLE COUNT can only ever be positive. Refuted.
+  * A CADENCE LEAK (lighting.gpu.* at Recompute cadence running outside the per-frame span) can only
+    ever be positive. Refuted as the sole cause.
+Negative excess is not a defect at all -- it is UNATTRIBUTED GPU work inside the span, which is
+expected and is the normal state.
+
+WHAT IS ACTUALLY WRONG IS THE ORACLE, NOT (necessarily) THE ACCOUNTING. telemetry-window.py raises
+"parts exceed the whole" on ANY positive difference. The two sides are independently sampled GPU
+timers that agree only to within about +/-3%, so a zero-tolerance comparison fires whenever the noise
+lands positive -- roughly a coin flip. It flagged 2 of 9 legs here and killed an entire matrix pass.
+
+THIS IS A KNOWN DEFECT CLASS IN THIS REPO, TWICE OVER:
+  #223 GATE-TOLERANCE-1 -- "paralloracle was never failing; the gate read a BOUNDED-diff oracle as a
+       zero-diff one."
+  #194 CI-3 -- "absolute 15us bound -> 4x ratio; BOTH ENDS MEASURED, injection proves it fires."
+The fix shape is the same: measure the agreement, set a bound from the measurement, and prove the
+bound fires on an injected breach and does not fire on the measured spread.
+
+STILL GENUINELY OPEN, AND THE REASON THIS IS NOT JUST A TOLERANCE FIX: HOW CAN THE PARTS EVER EXCEED
+THE WHOLE AT ALL? If every part is inside the span and counted once, positive excess is impossible at
+any magnitude. Candidates, none yet tested:
+  (a) differing ring-buffer capture rates between the span timer and the pass timers -- if the SPAN
+      drops more samples than its parts, the span under-reports. Note the ring was 3 and is now 16
+      (drop rate was measured at 74%); render.gputimer.dropped exists and is registered.
+  (b) a real but PARTIAL cadence leak, whose positive contribution is usually masked by the larger
+      negative unattributed term. Weak support: the two positive legs have high lighting part totals
+      (867k, 1138k us) while the most negative has the lowest (677k) -- but 1280k and 1260k legs are
+      NEGATIVE, so the correlation does not hold across the set. DO NOT treat this as established.
+  (c) overlapping brackets (GL_TIME_ELAPSED cannot nest; parallax vs parallax.compose is the pair to
+      check on the GPU timeline).
+
+METHOD, and the trap to avoid: these 9 legs each change a DIFFERENT lever, so scene workload is
+confounded with the lever. This is not a controlled series for correlating excess against anything.
+A null control is required: repeat the SAME configuration N times and measure the spread of the
+excess, before attributing any part of it to a cause. Count intervals, not events.
+
+DO NOT quote a per-pass GPU cost as a percentage of the GPU frame until this is settled: the
+denominator is the disputed quantity.
+
+BLOCKS: the 27-leg lever matrix. Director's call, and correct -- running 94 minutes to produce costs
+whose denominator is under question would be the defective baseline again.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

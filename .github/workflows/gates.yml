@@ -246,6 +246,20 @@ jobs:
       - name: closure_tolerance -- the gl/gpu bound fires, does not over-fire, and its blind spot holds
         run: python3 scripts/telemetry-window.py --selftest
 
+      # The lever-matrix prerequisite ledger: 49 findings from a five-agent read-only sweep, each one
+      # something that would make a matrix number wrong. --check asserts each row's status against the
+      # TREE -- an open row's defect must still be present, a done row's must be gone -- and prints how
+      # many rows carry no signature and are therefore asserted rather than verified.
+      #
+      # That last number is the point. scripts/pr570-ledger.py checks its table against its decisions
+      # file and vice versa: two views of one claim agreeing with each other, which let ten rows sit
+      # "accepted" while the change was already shipped. Internal consistency is not correspondence.
+      - name: matrix_prereq_ledger -- every row's status corresponds to the tree
+        run: python3 scripts/matrix-prereq-ledger.py --check
+
+      - name: matrix_prereq_ledger_verdicts -- the checker fires in both directions
+        run: python3 scripts/matrix-prereq-ledger.py --selftest
+
       # THE MATRIX ITSELF IS NOT A GATE -- it needs a GPU and hours. But two things about it are
       # checkable in milliseconds anywhere, and both are the kind that rot silently.
       #

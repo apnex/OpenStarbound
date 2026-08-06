@@ -1,0 +1,26 @@
+{
+ "_comment": [
+  "One entry per decided row of matrix-prereq-findings.json. Absent means status=open.",
+  "declined REQUIRES a reason; deferred REQUIRES an `until` trigger. The generator rejects either",
+  "without one, and --check rejects a decision naming a row that no longer exists.",
+  "",
+  "AND --check ASSERTS EACH STATUS AGAINST THE TREE, not against this file. A row marked done whose",
+  "defect signature still matches is a FAILURE, not a green: that is the exact hole the PR-570 ledger",
+  "had, where ten rows sat accepted while the change was already shipped."
+ ],
+ "D01": {
+  "status": "done",
+  "commit": "9db54200",
+  "note": "all 15 gpu_us pass timers Budget -> Detail; the consumer learns the RANK case"
+ },
+ "_correction": [
+  "R05 was briefly marked done against commit 72ad0000. WRONG ROW: R05 is",
+  "lighting.gather.calc_outside_loaded, which is still open; 72ad0000 hoisted",
+  "render.drawable.parts.cached and the six lighting.gather.* counters, and the sweep -- which ran",
+  "AFTER that commit -- correctly found no row for them because they were already fixed.",
+  "",
+  "It passed --check silently because R05 carries no signature. That is exactly why the UNVERIFIABLE",
+  "count is printed on every run: a row nothing can check is a row that can be mislabelled, and the",
+  "number is the honest measure of how much of this ledger is asserted rather than verified."
+ ]
+}
