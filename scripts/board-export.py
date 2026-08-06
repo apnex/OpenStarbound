@@ -308,11 +308,14 @@ def rank_problems(ranked, stores_data):
     for r, ids in sorted(seen.items()):
         if len(ids) > 1:
             problems.append(f"rank {r} is claimed by {len(ids)} tasks: {', '.join('#' + i for i in ids)}")
-    got = sorted(seen)
-    if got and got != list(range(1, len(got) + 1)):
-        missing = [n for n in range(1, (max(got) if got else 0) + 1) if n not in seen]
-        if missing:
-            problems.append("rank sequence has gaps at " + ", ".join(str(m) for m in missing))
+    # NO CONTIGUITY CHECK, deliberately, and it was here for one commit before firing on correct
+    # behaviour. Completing the top item and clearing its rank leaves 2..N, which the check called
+    # "a gap at 1" -- so it fired on every act of PROGRESS, and satisfying it would mean renumbering
+    # every remaining task after each completion. A rank is an ORDER: it needs to be total, not
+    # dense. 2 < 3 < 4 orders fine, and sparse numbering (1, 2, 50) is useful for inserting without
+    # a renumber. Duplicates are the real defect, because two items at one position have no order
+    # between them. A check that cries wolf on the normal path is how the real signal below gets
+    # ignored -- the same over-fire hazard gputimer-brackets.py keeps dedicated arms for.
     for r, _, t in ranked:
         for b in t.get("blockedBy") or []:
             blocker = by_id.get(str(b))

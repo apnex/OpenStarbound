@@ -52,8 +52,6 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
 
-> **Ranking integrity:** rank sequence has gaps at 1
-
 ---
 
 ## Integrity
@@ -282,7 +280,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
 | [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `35bbb97c` `495682df` `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
@@ -5189,6 +5187,7 @@ Register as a gate with a fires-arm. Commit ends [#243].
 
 status: **pending**
 
+- `361f9e8d` BOARD: #240 done, rank cleared — #242 now startable
 - `35bbb97c` BOARD-NEXT: a ranked Next list whose source is the task itself
 - `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
 - `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
