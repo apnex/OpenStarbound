@@ -13,11 +13,16 @@
   {
    "id": "O02",
    "severity": "BLOCKS_MATRIX",
-   "title": "#136 (PENDING) \u2014 the ORACLE GAP is still open, and the golden full-frame hash that was supposed to close it was later proven impossible by #191",
-   "evidence": "docs/board.md:1284-1290 (task #136, status pending): \"ORACLE GAP (still open, feeds P-2 #137): none of the four bugs were catchable by the existing oracles. Both are DIFFERENTIAL ... so they certify only 'cache path == direct path GIVEN identical ambient state'. Refresh-key omissions, FBO lifecycle and ambient-state changes all cancel exactly. An oracle that cannot catch the failure mode is not a gate. P-2 must add (a) a GL-state assertion pass ... and (b) a golden full-frame hash, before any code motion.\" Half (a) shipped (#139). Half (b) is refuted at docs/board.md:3144-3148 (task #191, status pending): \"the golden full-frame hash CANNOT serve as the world-body oracle. Same frozen scene, IDENTICAL state fingerprint ... different hash every run \u2014 stable within a run, different across runs, and NOT ASLR (3 runs under setarch -R gave 3 distinct hashes).\"",
-   "impact": "scripts/lever-table.json declares envRefreshInterval and parallaxRefreshInterval with changesOutput:true and a specific claim about WHAT changed \u2014 \"Output differs by BOUNDED STALENESS, not quality\" and \"bounded staleness ... plus a documented sub-ULP quantisation\". That claim is certified only by the differential env/parallax oracles, which #136 records as structurally blind to refresh-key omission and FBO lifecycle \u2014 precisely the class that makes staleness UNBOUNDED rather than bounded. A cost delta quoted against an unbounded, uncharacterised output change is not a trade anyone can price. And the replacement oracle named in the same task is now known not to exist.",
-   "fixShape": "Either close #136(b) with a reproducible world-body oracle (needs #191's animation-phase pinning) or state on the matrix output that the two cache levers' output-delta bound is UNCERTIFIED, so their numbers are not quoted as bounded-staleness trades.",
-   "signature": null
+   "title": "The two cache levers' declared output trade was ASSERTED, not certified -- and two of its clauses are refuted by the tree it describes",
+   "evidence": "AS ORIGINALLY FILED this row said the bound rests on the differential oracles that #136 records as blind, and that the replacement (a golden full-frame hash) was proven impossible by #191. BOTH PILLARS FAIL ON READING THE TREE. (1) The bound does not rest on those oracles: source/rendering/StarBackdropPass.cpp ORs an unconditionally-evaluated cadence term into the refresh predicate, so a refresh happens every N frames whatever the key does -- staleness is bounded by construction, and the ~12 env inputs absent from the content key are bounded by that term alone. The oracles certify a DIFFERENT property (refresh-frame fidelity), and the code says so itself: 'it claims nothing about the N-1 frames in between'. (2) #191's refutation is confounded -- see O12. SEPARATELY, scripts/lever-table.json carried two clauses the tree contradicts: 'snapped to {1,2,4,8,16}' (StarBackdropPass.cpp says 'No rung-snapping: any integer N is fine'; the harness has logged N=10, 13, 3, 6) and 'sub-ULP quantisation' (the oracle emits '<=~1 LSB expected: premult double-rounding' and render-gate.sh tolerates 1/255, the 8-BIT LSB -- a far weaker claim).",
+   "impact": "The matrix quotes a cost delta for each of these two levers against a stated trade. A trade stated in terms the instrument does not measure ('sub-ULP') and a derivation the code does not perform ('snapped') cannot be priced by the reader, and the bound that IS real was enforced by a single operand of a single call-site expression that no test constructed -- deleting it compiled clean and passed every gate.",
+   "fixShape": "Fold the cadence into RetainedSurface::shouldRefresh and make cadenceHit private, so no consumer can take the frame counter without the ceiling; assert the bound off-GPU in CI; and restate both `why` strings in terms of the mechanism that enforces the bound and the instrument that measures the delta. (Signature note: it points at the CONSUMER, not at retained_surface_test.cpp, because signature_matches skips every path containing '/test/' -- a signature aimed there can never match and would report the defect as permanently present.)",
+   "signature": {
+    "glob": "source/rendering/StarBackdropPass.cpp",
+    "re": "shouldRefresh",
+    "absent": true,
+    "desc": "the cache call sites no longer route through the bounded refresh decision"
+   }
   },
   {
    "id": "O03",
@@ -95,6 +100,28 @@
    "impact": "The Director's instruction was to sweep PENDING/IN_PROGRESS items. On this board that filter admits four already-finished infra tasks as if they were blockers, and \u2014 more dangerously \u2014 EXCLUDES #226, whose open H3 residual is the one item in this sweep that touches two matrix witnesses. A prerequisite list built by status filtering is therefore not closed by construction; the closure has to come from reading bodies.",
    "fixShape": "Treat the body text, not the status column, as the authority when assembling the prerequisite list \u2014 and specifically re-read every completed task whose body contains STILL OPEN / residual / unverified.",
    "signature": null
+  },
+  {
+   "id": "O11",
+   "severity": "DEGRADES_MATRIX",
+   "title": "The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every existing instrument's null space",
+   "evidence": "envoracle/paralloracle build their reference from the SAME draw lambda at the SAME frame position under the SAME ambient GL state, and run ONLY on refresh frames, so an FBO-lifecycle event or a stale ambient parameter applies to both sides and cancels (#136, and BackdropPass says so at the call site). The in-process frozen A/B cannot substitute: on a frozen world the server is paused, Sky::update never runs and pinSkyEpochTime re-pins epochTime every frame, so EVERY term of both content keys is constant. Measured in the shipped gate's own log: 30 captured frames at envRefreshInterval=4 gave exactly ONE distinct frame hash, and envoracle fired exactly 8 times (=30/4, pure cadence). A stale cache is trivially correct there.",
+   "impact": "Not a wrong number -- a limit on what the matrix output may CLAIM. The cost delta for these two levers is valid; the accompanying 'not quality' half of the trade is uncertified for that one class, and both `why` strings now say so explicitly rather than implying full certification.",
+   "fixShape": "Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and STAR_RENDERTEST_ZOOM already exist and are NOT gated on NOFREEZE -- renderTestDriveMotion is gated only on !m_renderTestLoading -- so they run under the frozen A/B today. What is missing is capturing WITHIN N frames of the perturbation rather than after each leg's full settle, and firing the in-frame comparison on SKIP frames scored against a staleness bound instead of exact equality.",
+   "signature": null
+  },
+  {
+   "id": "O12",
+   "severity": "DEGRADES_MATRIX",
+   "title": "#191's refutation of the golden frame hash was measured against a harness defect fixed nine days later, and a per-run random seed still sits inside the env draw",
+   "evidence": "#191 recorded three distinct hashes from three frozen runs at an identical state fingerprint (entities=213 in all three) on 2026-07-26, and concluded the golden hash cannot serve, attributing the residual to unpinned entity animation phase -- an attribution nothing isolated. But the render clock was still live in a 'frozen' run until 6e66f36e (2026-08-04), 'the A/B had no null control, and in daylight it measured its own sun rays', which changed `m_worldPainter->update(dt)` to `update(m_renderTestFrozen ? 0.0f : dt)` and measured 7.4% of pixels differing between two renders of an IDENTICAL leg. Independently, StarEnvironmentPainter.cpp seeds the sun-ray Perlin with Random::randu64(), whose source is Time::monotonicTicks() (StarRandom.cpp produceRandomSeed) -- one draw per painter construction, so constant within a run and different across runs, which is #191's reported signature exactly, and it sits INSIDE the env-cache draw lambda.",
+   "impact": "Does not corrupt a matrix number. It matters because O02 as filed, and #136's remaining half, both rest on 'the golden hash is impossible' -- a conclusion whose only measurement is confounded and whose named blocker (animation phase, 'its own project') was never isolated. If the residual is the ray seed, the golden is two pins away rather than a project, and the oracle gap that has shaped this campaign's verification strategy for weeks is narrower than believed.",
+   "fixShape": "Re-run the three-run experiment on the post-6e66f36e binary before quoting 'impossible' again. If it still diverges, seed the ray Perlin deterministically under the harness and pin EnvironmentPainter::m_timer at freeze, then re-run. Both are localised; neither needs the world body to be reproducible.",
+   "signature": {
+    "glob": "source/rendering/StarEnvironmentPainter.cpp",
+    "re": "Random::randu64\\(\\)",
+    "desc": "the sun-ray Perlin is still seeded from a per-run random source inside the env draw"
+   }
   },
   {
    "id": "R01",

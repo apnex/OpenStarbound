@@ -102,5 +102,10 @@
   "status": "done",
   "commit": "feb8886f",
   "note": "docs/board.md re-exported; #229-236 present"
+ },
+ "O02": {
+  "status": "done",
+  "commit": "pending",
+  "note": "row restated -- BOTH its original pillars are refuted by the tree (the bound never rested on the differential oracles; #191's refutation is confounded, now O12). The real defect, an untested call-site operand, is closed by construction: cadenceHit private, shouldRefresh the only door, bound asserted off-GPU in CI and proven to fire by injection. Two refuted clauses removed from lever-table.json. The genuinely uncertified half is split out as O11."
  }
 }

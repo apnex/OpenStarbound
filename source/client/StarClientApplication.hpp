@@ -186,16 +186,26 @@ private:
   // machine-speed-independent, which is what the in-process A/B below needs: both legs run against one
   // freeze, so a settle point that wanders no longer wanders BETWEEN the legs.
   //
-  // IT DOES NOT MAKE THE FRAME HASH A CROSS-BINARY GOLDEN, and this comment claimed for twelve days that it
-  // did. #191 tested the claim on its own terms and refuted it: three runs of one binary, frozen, at an
-  // IDENTICAL state fingerprint -- epochTime, dayLength, camera, parallaxLayers=1, and entities=213 in all
-  // three -- produced three distinct hashes. Stable within a run, different across runs, and not ASLR (three
-  // runs under setarch -R gave three distinct hashes). So quiescence delivered exactly the observable it
-  // converges, the entity COUNT, and a converged count is not a converged world: the residual is per-entity
-  // animation phase, which nothing here pins. A cross-run golden needs that pinning and is its own project.
+  // IT DOES NOT, ON THIS EVIDENCE, MAKE THE FRAME HASH A CROSS-BINARY GOLDEN -- and the claim that it did
+  // stood here unqualified. #191 tested it and got three distinct hashes from three frozen runs at an
+  // IDENTICAL state fingerprint (epochTime, dayLength, camera, parallaxLayers=1, entities=213 in all three),
+  // stable within a run, different across runs, not ASLR. So a converged entity COUNT is not a converged
+  // world, and quiescence alone does not deliver a golden.
   //
-  // What survives is the in-process A/B, and it is stronger than the golden would have been -- it holds the
-  // world fixed by construction instead of hoping two runs agree. See #153.
+  // BUT THE CAUSE IS NOT ESTABLISHED, and #191's stated one -- per-entity animation phase, "its own
+  // project" -- is an attribution nothing isolated. Two facts stand against it, both on the BACKDROP side:
+  //   * #191 ran 2026-07-26. The render clock was still live in a "frozen" run until 6e66f36e on 08-04,
+  //     which found the harness reading its own sun-ray animation and measured 7.4% of pixels differing
+  //     between two renders of an IDENTICAL leg. #191's runs were not frozen in the sense it assumed.
+  //   * EnvironmentPainter's constructor seeds m_rayPerlin from Random::randu64(), whose source is
+  //     Time::monotonicTicks() (StarRandom's produceRandomSeed). One draw per painter construction:
+  //     constant within a run, different across runs. That is #191's signature exactly, it sits inside
+  //     the env draw, and nothing pins it.
+  // So the golden may be one or two pins away rather than a project. Nobody has re-run it since the freeze
+  // landed; until someone does, "impossible" is not a finding this tree can quote.
+  //
+  // Independent of how that resolves, the in-process A/B is the stronger instrument -- it holds the world
+  // fixed by construction instead of hoping two runs agree. See #153.
   //
   //   STAR_RENDERTEST_QUIESCE -- consecutive frames the entity count must hold before freezing. Default 90.
   //   STAR_RENDERTEST_LOAD    -- now a HARD CAP, not a target: if the world has not settled by then, we freeze

@@ -40,7 +40,7 @@
       "off": 1,
       "witness": "render.cache.env.skipped",
       "changesOutput": true,
-      "why": "Env cache: reuse the composed environment for N frames. At N=1 the cache does not engage at all (envCacheActive is interval>1), so the skip counter must fall to zero on the off leg. Output differs by BOUNDED STALENESS, not quality: a reused frame shows content up to N-1 frames old."
+      "why": "Env cache: reuse the composed environment for N frames. At N=1 the cache does not engage at all (envCacheActive is interval>1), so the skip counter must fall to zero on the off leg. Output differs by BOUNDED STALENESS -- a reused frame shows content up to N-1 frames old. WHAT ENFORCES THAT BOUND is the cadence operand, not the content key: RetainedSurface::shouldRefresh ORs an unconditionally-evaluated cadenceHit onto the caller's discretionary reasons, so a refresh happens every N frames whatever else is true (asserted off-GPU in CI by RetainedSurfaceTest.ShouldRefreshBoundsStalenessAtN). The key is an EARLY-refresh accelerator and is deliberately incomplete: about twelve inputs reach drawEnv that no key term names -- skyParameters.seed, settings/starList/starFrames, orbitAngle, timeOfDay, sub-second epochTime, EnvironmentPainter::m_timer -- and every one of them is bounded by the cadence alone. NOT CERTIFIED: that a refresh-frame redraw is pixel-equal to the direct path across an FBO-lifecycle or ambient-GL-state change. envoracle runs only on refresh frames and builds its reference from the same lambda in the same ambient state, so that class cancels on both sides (#136)."
     },
     {
       "key": "parallaxRefreshInterval",
@@ -48,7 +48,7 @@
       "off": 1,
       "witness": "render.cache.parallax.skipped",
       "changesOutput": true,
-      "why": "Parallax cache. Baseline 0 is ADAPTIVE -- the engine derives N per scene from layer drift rate, snapped to {1,2,4,8,16}. 1 is off/direct. The skip counter must fall to zero on the off leg. Bounded staleness as above, plus a documented sub-ULP quantisation from premultiplied blending."
+      "why": "Parallax cache. Baseline 0 is ADAPTIVE -- N is clamp(maxDriftStepPx / fastest-layer drift, 1, 16), ANY INTEGER. An earlier revision of this line said 'snapped to {1,2,4,8,16}'; StarBackdropPass.cpp says the opposite in as many words ('No rung-snapping: any integer N is fine'), and the harness has logged N=10, 13, 3 and 6. 1 is off/direct. The skip counter must fall to zero on the off leg. Staleness is bounded at N+1 frames, not N: the cross-surface arbiter may defer one time-gated refresh by exactly one frame and no more, because !alreadyDeferred stops it re-deferring -- without that guard, env at N=1 froze the parallax cache permanently, measured, with the oracle diff climbing to full-screen saturation. The cache also engages only once the camera is PARKED, so a moving frame runs direct and carries no staleness at all. The refresh-frame output delta is <=~1 8-BIT LSB from premultiplied double-rounding: that is what the code emits ('<=~1 LSB expected: premult double-rounding') and what render-gate.sh tolerates (1/255), worst measured 0.00073, under a fifth of it. An earlier revision said 'sub-ULP', which claims something far stronger than any instrument here measures. NOT CERTIFIED: the same refresh-frame FBO/ambient-state class as the env cache, and nothing anywhere asserts that the adaptive N actually holds displayed drift inside its step threshold."
     },
     {
       "key": "lightingTemporalDecouple",
