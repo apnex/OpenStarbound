@@ -80,6 +80,25 @@ DRY_RUN=0
 #
 # Cheap by construction: path + size + mtime, not a content hash. Reading 39 pak files per leg would
 # itself perturb the page cache the harness depends on, and mtime moves for every edit that matters.
+# THE SCENE FINGERPRINT'S READER. sim.entities.live is a gauge, so telemetry-window carries the LEVEL
+# rather than a delta -- see its type check. Absent reads as 0, and a 0 baseline makes every percentage
+# undefined, which the caller reports rather than dividing by.
+scene_entities() {
+  python3 - "$1" <<'SCENEPY'
+import json, sys
+try:
+    m = json.load(open(sys.argv[1])).get("metrics", {})
+except Exception:
+    print(0); raise SystemExit
+e = m.get("sim.entities.live") or {}
+print(int(e.get("value", 0)))
+SCENEPY
+}
+
+# Percent by which a leg's population may differ from its baseline's before its COSTS stop being
+# quotable. Measured, not chosen: see the note at the comparison site.
+SCENE_BOUND_PCT=${SCENE_BOUND_PCT:-5}
+
 asset_fingerprint() {
   python3 - "$BOOT" <<'ASSETPY'
 import json, os, sys, hashlib
@@ -322,9 +341,28 @@ EOF
   assert_baseline "$tmp/good.json" "$tmp/absent.cfg" >/dev/null 2>&1
   arm "absent baseline key refused" 1 $?
 
+  # 11. THE SCENE FINGERPRINT READS THE GAUGE, and reads it as a LEVEL. If it ever differenced this the
+  #     way a counter is differenced, every leg would report ~0 population and the bound would pass
+  #     everything -- a fingerprint that certifies whatever it is shown.
+  printf '{"metrics":{"sim.entities.live":{"type":"gauge","value":418}}}' > "$tmp/scene.json"
+  [ "$(scene_entities "$tmp/scene.json")" = "418" ]; arm "scene gauge read as a level" 0 $?
+
+  # 12. A profile with NO fingerprint reads 0 rather than inventing a number, which is what lets the
+  #     caller refuse instead of dividing by a value it never had.
+  printf '{"metrics":{}}' > "$tmp/noscene.json"
+  [ "$(scene_entities "$tmp/noscene.json")" = "0" ]; arm "absent fingerprint reads 0, not a guess" 0 $?
+
+  # 13. THE BOUND FIRES. 418 -> 441 is +5.50%, past the 5% bound; 418 -> 430 is +2.87%, inside it and
+  #     close to the 2.84% worst case actually observed across two matrix runs. Both directions, so the
+  #     comparison is not passing merely because it always fails or always passes.
+  over=$(python3 -c "print(1 if abs(100.0*(441-418)/418) > $SCENE_BOUND_PCT else 0)")
+  [ "$over" = "1" ]; arm "population past the bound is refused" 0 $?
+  under=$(python3 -c "print(1 if abs(100.0*(430-418)/418) > $SCENE_BOUND_PCT else 0)")
+  [ "$under" = "0" ]; arm "population inside the bound is accepted" 0 $?
+
   echo
   [ $fails -eq 0 ] || { echo "lever-matrix selftest: FAILED"; return 1; }
-  echo "lever-matrix selftest: 11/11 arms ok -- every check proven to fire AND to pass"
+  echo "lever-matrix selftest: 15/15 arms ok -- every check proven to fire AND to pass"
   return 0
 }
 
@@ -543,7 +581,17 @@ for r in $(seq 1 "$REPEATS"); do
     continue
   fi
   BASE_VIOLATED=$LEG_VIOLATED
-  printf '%s\tbaseline\t-\tOK\t-\t%s\n' "$BASE_LABEL" "$([ $BASE_VIOLATED -eq 1 ] && echo no || echo yes)" >> "$OUT/legs.tsv"
+  # The population every leg in this pass is compared against. Captured per PASS, not once for the run:
+  # the baseline is re-measured each pass, and comparing a leg to a stale baseline from an hour earlier
+  # would fold an hour of scene drift into the leg's own number.
+  BASE_SCENE=$(scene_entities "$OUT/$BASE_LABEL.json")
+  if [ "$BASE_SCENE" -eq 0 ]; then
+    echo "lever-matrix: baseline $BASE_LABEL has no sim.entities.live -- the scene fingerprint is BLIND" >&2
+    echo "  for this pass, and #84's failure is exactly the one it exists to catch. Refusing." >&2
+    exit 1
+  fi
+  echo "  scene baseline: $BASE_SCENE entities (legs may differ by <= ${SCENE_BOUND_PCT}%)"
+  printf '%s\tbaseline\t-\tOK\t-\t%s\t%s\t+0.00\n' "$BASE_LABEL" "$([ $BASE_VIOLATED -eq 1 ] && echo no || echo yes)" "$BASE_SCENE" >> "$OUT/legs.tsv"
 
   # Witnesses are checked against a REAL profile, once, on the first baseline that succeeds. A
   # witness naming a metric that does not exist would otherwise let every leg pass vacuously.
@@ -564,11 +612,39 @@ for r in $(seq 1 "$REPEATS"); do
     k=${row%%$'\t'*}; rest=${row#*$'\t'}; o=${rest##*$'\t'}
     label="$RUN_ID-r$r-off-$k"
     if ! run_leg "$label" --set "$k=$o"; then
-      FAILED+=("$label"); printf '%s\t%s\t%s\tFAILED\t-\t-\n' "$label" "$k" "$o" >> "$OUT/legs.tsv"; continue
+      FAILED+=("$label"); printf '%s\t%s\t%s\tFAILED\t-\t-\t-\t-\n' "$label" "$k" "$o" >> "$OUT/legs.tsv"; continue
     fi
     # Costs are quotable only if NEITHER end of the comparison was flagged: a delta against a violated
     # baseline is as unusable as a violated leg, and only one of the two is the leg you are looking at.
     quotable=$([ $LEG_VIOLATED -eq 0 ] && [ $BASE_VIOLATED -eq 0 ] && echo yes || echo no)
+
+    # THE SCENE FINGERPRINT (#84 / ledger row O01). Pinning the warp pins the CAMERA, not the POPULATION:
+    # entities spawn, despawn and stream at the same coordinates, so a leg's delta is
+    # (lever effect + scene difference) with no term able to separate them. #84 measured that exactly --
+    # a "+5.7% win" in which every control moved the same way and the heaviest-load run happened to be
+    # the lever-OFF one, then a second round where the fingerprint REFUSED to certify at a 6.5%
+    # population spread. This matrix has been running with no fingerprint at all.
+    #
+    # sim.entities.live is a GAUGE -- a level, which telemetry-window carries rather than differences.
+    # lighting.lights.sources would have been the WRONG choice: it is a counter summed over frames, so a
+    # lever that changes frame rate moves it, and the fingerprint would then report the lever's own
+    # effect as a scene difference -- building in the very artefact it exists to detect.
+    scene=$(scene_entities "$OUT/$label.json")
+    scene_pct=$(python3 -c "
+b, v = $BASE_SCENE, $scene
+print('%+.2f' % (100.0 * (v - b) / b) if b else 'nan')")
+    # THE BOUND IS MEASURED, not chosen by taste. Across the 16 off-legs of two earlier matrix runs the
+    # worst |leg - baseline| was 2.84%, and the SAME lever drifted in opposite directions between runs --
+    # so this is scene noise, not the lever moving the population. 5% sits above that observed noise and
+    # below the 6.5% #84's fingerprint correctly refused. The per-leg number is PRINTED whatever the
+    # verdict: a bound is one signal, and a marginal leg must not hide behind a pass.
+    if [ "$(python3 -c "print(1 if abs($scene_pct) > $SCENE_BOUND_PCT else 0)")" = 1 ]; then
+      echo "  SCENE DRIFT: $scene entities vs baseline $BASE_SCENE (${scene_pct}%), past the ${SCENE_BOUND_PCT}% bound."
+      echo "        The lever effect and the population difference cannot be separated in this leg."
+      quotable=no
+    else
+      echo "  scene $scene entities vs baseline $BASE_SCENE (${scene_pct}%)"
+    fi
     w=$(python3 -c "
 import json,sys
 for lv in json.load(open('$TABLE'))['levers']:
@@ -578,19 +654,19 @@ for lv in json.load(open('$TABLE'))['levers']:
     case "$verdict" in
       MOVED*)
         echo "  witness $w: ${verdict#MOVED } -- the lever engaged"
-        OK+=("$label"); printf '%s\t%s\t%s\tOK\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" >> "$OUT/legs.tsv" ;;
+        OK+=("$label"); printf '%s\t%s\t%s\tOK\t%s\t%s\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" "$scene" "$scene_pct" >> "$OUT/legs.tsv" ;;
       IDENTICAL*)
         echo "  VOID: witness $w is IDENTICAL across baseline and off (${verdict#IDENTICAL })."
         echo "        The lever did not engage, so any cost delta from this leg is an artefact."
-        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" >> "$OUT/legs.tsv" ;;
+        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\t%s\t%s\t%s\t%s\n' "$label" "$k" "$o" "$verdict" "$quotable" "$scene" "$scene_pct" >> "$OUT/legs.tsv" ;;
       *)
         echo "  VOID: witness $w absent from one of the two profiles."
-        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\twitness-absent\t%s\n' "$label" "$k" "$o" "$quotable" >> "$OUT/legs.tsv" ;;
+        VOID+=("$label"); printf '%s\t%s\t%s\tVOID\twitness-absent\t%s\t%s\t%s\n' "$label" "$k" "$o" "$quotable" "$scene" "$scene_pct" >> "$OUT/legs.tsv" ;;
     esac
   done
 done
 
-ASSET_FP="$ASSET_FP" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
+ASSET_FP="$ASSET_FP" SCENE_BOUND_PCT="$SCENE_BOUND_PCT" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
 import json, sys, os
 manifest, run_id, warp, repeats, secs, table, legs = sys.argv[1:8]
 rows = []
@@ -598,14 +674,23 @@ for line in open(legs):
     p = line.rstrip("\n").split("\t")
     rows.append({"label": p[0], "lever": p[1], "offValue": p[2], "verdict": p[3],
                  "witness": p[4] if len(p) > 4 else None,
-                 # "no" means the closure oracle flagged this leg or its baseline. The leg RAN and its
-                 # witness is valid; its COSTS may not be quoted. Two different verdicts, kept apart.
-                 "costsQuotable": (p[5] if len(p) > 5 else None)})
+                 # "no" means the closure oracle flagged this leg or its baseline, OR the scene drifted
+                 # past the bound. The leg RAN and its witness is valid; its COSTS may not be quoted.
+                 # Two different verdicts, kept apart.
+                 "costsQuotable": (p[5] if len(p) > 5 else None),
+                 # The scene this leg actually measured. #84's whole finding is that a cost delta is
+                 # (lever effect + scene difference), so the population travels WITH the number rather
+                 # than being reconstructable only by whoever still has the profiles.
+                 "sceneEntities": (int(p[6]) if len(p) > 6 and p[6] not in ("-", "") else None),
+                 "sceneDeltaPct": (float(p[7]) if len(p) > 7 and p[7] not in ("-", "") else None)})
 json.dump({
     "runId": run_id, "warp": warp, "repeats": int(repeats), "secondsPerLeg": int(secs),
     # The content the numbers describe. A run whose asset chain is unrecorded cannot be compared
     # to any other run, and would not know it.
     "assetFingerprint": os.environ.get("ASSET_FP", "unrecorded"),
+    # The bound legs were judged against, recorded so a reader never has to guess which one was in force
+    # -- a tolerance that lives only in the script is a tolerance nobody can audit a past run against.
+    "sceneBoundPct": float(os.environ.get("SCENE_BOUND_PCT", "0")),
     "leverTable": json.load(open(table))["levers"],
     "legs": rows,
     "analysis": "NOT PERFORMED -- this runner emits raw legs only. Cost attribution reads the "

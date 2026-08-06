@@ -112,5 +112,10 @@
   "status": "done",
   "commit": "0c27d76b",
   "note": "Investigation complete and the conclusion is MEASURED, not argued. The two per-run backdrop terms are pinned; re-measuring at scenes chosen for the settle/daylight preconditions shows the cross-run residual tracks ENTITY POPULATION -- 1 px at 1 LSB with entities=1, ~19% of pixels at maxAbs 255 with ~268. So #191's attribution (per-entity animation phase) is supported even though its evidence was confounded, and a world-pass golden stays its own project. What is newly available is a body-free golden, which must be scored as a bounded diff rather than by hash equality. The residual SCENE work is O13; the world-pass oracle remains #191's."
+ },
+ "O01": {
+  "status": "done",
+  "commit": "pending",
+  "note": "The defect as filed -- no scene fingerprint at all -- is closed: sim.entities.live armed per leg, bound measured at 5% from the matrix's own 16 off-legs (worst observed 2.84%), carried into legs.tsv and the manifest, selftest 15/15 with both bound directions proven. The residual #84 names is split to O14 and stays open; its close is the in-process A/B."
  }
 }

@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**19 of 52 rows carry a machine-checkable signature.** `--check` asserts an
+**20 of 53 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -19,7 +19,7 @@ rather than hidden, because an unchecked row is not a checked one.
 |---|---:|---|
 | **open** | 33 | not started |
 | **doing** | 0 | in progress |
-| **done** | 19 | closed; `commit` says where |
+| **done** | 20 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -27,7 +27,6 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | id | sev | finding | closes by |
 |---|---|---|---|
-| `O01` | **BLOCK** | #84 (PENDING) — the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all | Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose |
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
@@ -51,6 +50,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O10` | degrade | Board status is documented-unreliable, so any prerequisite sweep filtered on status both over- and under-reports | Treat the body text, not the status column, as the authority when assembling the prerequisite list — and specifically re |
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
+| `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
 | `R07` | degrade | Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather  | Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so th |
 | `R08` | degrade | render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matr | Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, an |
 | `R09` | degrade | lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls | Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return pat |
@@ -74,6 +74,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `H02` | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | pending |
 | `H03` | The load-wait loop can time out silently, after which the measurement window straddles the world load | pending |
 | `H04` | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | pending |
+| `O01` | The matrix ran with NO scene fingerprint, and its own artefacts show the drift #84 was refused for -- armed, measured, bounded | pending |
 | `O02` | The two cache levers' declared output trade was ASSERTED, not certified -- and two of its clauses are refuted by the tree it describes | pending |
 | `O09` | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | feb8886f |
 | `O12` | #191's golden-hash refutation was measured against a harness defect -- but MEASURING IT PROPERLY SUPPORTS ITS CONCLUSION, and names the term | 0c27d76b |
@@ -375,15 +376,17 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Move the pgrep check into run_leg alongside assert_baseline, and additionally re-check after the leg completes, so a leg that started clean and finished contended is failed rather than quoted.
 
-### `O01` — BLOCKS_MATRIX — open
+### `O01` — BLOCKS_MATRIX — done
 
-**#84 (PENDING) — the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all**
+**The matrix ran with NO scene fingerprint, and its own artefacts show the drift #84 was refused for -- armed, measured, bounded**
 
-*Evidence.* docs/board.md:460-497 (task #84, status pending): "Round 1 (no fingerprint): compute.entities ON 401.3 / OFF 425.6 = '+5.7% win'. INVALID. Every control moved the same way ... The win was the scene." and "Round 2 (sim.entities.live armed): ... The fingerprint gate REFUSED TO CERTIFY. Correct behaviour." and "THE WAY OUT is the render side's GATE-1 answer: an IN-PROCESS A/B ... and it generalises to every server lever with a runtime flag." Against that: scripts/lever-matrix.sh:371 prints "location --warp '$WARP' (pinned; the same scene for every leg)" and `grep -n "fingerprint|lights.sources|entities.live|control" scripts/lever-matrix.sh` returns NO per-leg scene control — only the witness check.
+*Evidence.* #84 ran two cross-run A/B rounds and the second was REFUSED by sim.entities.live at a 6.5% population spread. Correct behaviour, and the matrix had no fingerprint at all. MEASURED FROM THE MATRIX'S OWN ARTEFACTS (two runs, 16 off-legs, harness/matrix/matrix-20260806-152507 and -153458): the worst |leg - baseline| population delta is 2.84%, and the SAME lever drifts in OPPOSITE directions between runs (backdropComposeMerge +0.24% then -2.84%; parallaxRefreshInterval +2.15% then -2.84%) -- so this is scene noise, not levers moving the population, which would have been a worse problem. #84's own scene explains its larger figure: it ran at bookmark 'explore', a procedural biome, which the 2026-08-06 sweep measured as the least stable class there is (19-21 entities, never settles, 'stable for only 1 of 90 required').
 
-*Why it corrupts a matrix number.* The matrix is exactly the cross-run design #84 records as having produced a full table of plausible-but-false deltas. Pinning the warp point pins the CAMERA, not the population: entity spawn/despawn, chunk streaming and light-source count vary run-to-run at the same coordinates. Every leg's cost delta is then (lever effect + scene difference) with no term able to separate them. The witness check cannot save this — the witness proves the CODE PATH changed, and #84's Round 2 failure was a case where the lever engaged AND the number was still the scene. A pinned location plus interleaving reduces drift; it does not detect it, and #84 states flatly that no number of repeats fixes a systematic arm-vs-arm population difference.
+*Why it corrupts a matrix number.* A leg's cost delta is (lever effect + scene difference) with nothing to separate them, and until now the population was neither recorded nor bounded -- so a reader could not even tell a clean leg from a drifted one after the fact.
 
-*Closes by.* Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose baseline and off arms differ beyond a declared bound — or convert the render levers to the in-process A/B shape #153/GATE-1 already proved out.
+*Closes by.* ARMED. sim.entities.live is captured per leg, printed with its delta against that pass's baseline, carried into legs.tsv and the manifest, and legs past a 5% bound have costsQuotable set to no. The gauge is read as a LEVEL, not differenced -- and lighting.lights.sources was rejected as the fingerprint because it is a counter summed over frames, so a lever that changes frame rate would move it and the fingerprint would report the lever's own effect as a scene difference. Bound measured, not chosen: above the observed 2.84%, below the 6.5% #84 refused. The RESIDUAL -- systematic arm-vs-arm drift INSIDE the bound -- is O14, and its close is #84's in-process A/B.
+
+*Signature.* `scripts/lever-matrix.sh` matching `sim\.entities\.live` — present while open. (the matrix runs with no scene fingerprint)
 
 ### `O02` — BLOCKS_MATRIX — done
 
@@ -510,6 +513,16 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* Every cross-run render measurement this campaign has taken was at a scene nobody had checked against either precondition, and the default scene is whatever the player save happens to hold -- the harness inherits the persisted position, so the scene selects itself. 03-Surface Outpost, where all of today's early determinism work ran, fails BOTH: it never settles and it is at dayLevel=0, where the ray terms under test draw nothing.
 
 *Closes by.* Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so a dead marker is loud instead of silent. Put the world id in the [rendertest] fingerprint -- it is the one field that would have made both of today's arrival failures visible immediately instead of via dayLength archaeology. And record the settle/daylight character of the bookmarks a measurement is allowed to use, so scene choice stops being an accident of the save.
+
+### `O14` — DEGRADES_MATRIX — open
+
+**A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it**
+
+*Evidence.* #84, having been refused at 6.5%, states the limit flatly: 'no number of repeated runs fixes a systematic arm-vs-arm population difference'. The bound armed in O01 catches gross drift; it cannot separate a lever effect from a 2% population difference that happens to fall the same way every pass. Interleaving and per-pass rotation reduce that risk; they do not detect it.
+
+*Why it corrupts a matrix number.* Cost deltas of the same order as the scene's own noise are not separable. It does not corrupt the matrix wholesale -- every leg now carries its population and its delta, so a marginal number is visible rather than silent -- but a small lever measured against a drifting scene is still a number whose name asserts more than its value means.
+
+*Closes by.* #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever between two measured windows within a SINGLE run, so both arms see literally the same world, the same entities and the same tick. Needs a per-lever check that each config key is safe to flip mid-run -- some are read per frame, some may not be -- before it is promised.
 
 ### `R01` — BLOCKS_MATRIX — done
 

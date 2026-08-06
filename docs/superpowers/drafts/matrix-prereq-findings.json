@@ -4,11 +4,16 @@
   {
    "id": "O01",
    "severity": "BLOCKS_MATRIX",
-   "title": "#84 (PENDING) \u2014 the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all",
-   "evidence": "docs/board.md:460-497 (task #84, status pending): \"Round 1 (no fingerprint): compute.entities ON 401.3 / OFF 425.6 = '+5.7% win'. INVALID. Every control moved the same way ... The win was the scene.\" and \"Round 2 (sim.entities.live armed): ... The fingerprint gate REFUSED TO CERTIFY. Correct behaviour.\" and \"THE WAY OUT is the render side's GATE-1 answer: an IN-PROCESS A/B ... and it generalises to every server lever with a runtime flag.\" Against that: scripts/lever-matrix.sh:371 prints \"location --warp '$WARP' (pinned; the same scene for every leg)\" and `grep -n \"fingerprint|lights.sources|entities.live|control\" scripts/lever-matrix.sh` returns NO per-leg scene control \u2014 only the witness check.",
-   "impact": "The matrix is exactly the cross-run design #84 records as having produced a full table of plausible-but-false deltas. Pinning the warp point pins the CAMERA, not the population: entity spawn/despawn, chunk streaming and light-source count vary run-to-run at the same coordinates. Every leg's cost delta is then (lever effect + scene difference) with no term able to separate them. The witness check cannot save this \u2014 the witness proves the CODE PATH changed, and #84's Round 2 failure was a case where the lever engaged AND the number was still the scene. A pinned location plus interleaving reduces drift; it does not detect it, and #84 states flatly that no number of repeats fixes a systematic arm-vs-arm population difference.",
-   "fixShape": "Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose baseline and off arms differ beyond a declared bound \u2014 or convert the render levers to the in-process A/B shape #153/GATE-1 already proved out.",
-   "signature": null
+   "title": "The matrix ran with NO scene fingerprint, and its own artefacts show the drift #84 was refused for -- armed, measured, bounded",
+   "evidence": "#84 ran two cross-run A/B rounds and the second was REFUSED by sim.entities.live at a 6.5% population spread. Correct behaviour, and the matrix had no fingerprint at all. MEASURED FROM THE MATRIX'S OWN ARTEFACTS (two runs, 16 off-legs, harness/matrix/matrix-20260806-152507 and -153458): the worst |leg - baseline| population delta is 2.84%, and the SAME lever drifts in OPPOSITE directions between runs (backdropComposeMerge +0.24% then -2.84%; parallaxRefreshInterval +2.15% then -2.84%) -- so this is scene noise, not levers moving the population, which would have been a worse problem. #84's own scene explains its larger figure: it ran at bookmark 'explore', a procedural biome, which the 2026-08-06 sweep measured as the least stable class there is (19-21 entities, never settles, 'stable for only 1 of 90 required').",
+   "impact": "A leg's cost delta is (lever effect + scene difference) with nothing to separate them, and until now the population was neither recorded nor bounded -- so a reader could not even tell a clean leg from a drifted one after the fact.",
+   "fixShape": "ARMED. sim.entities.live is captured per leg, printed with its delta against that pass's baseline, carried into legs.tsv and the manifest, and legs past a 5% bound have costsQuotable set to no. The gauge is read as a LEVEL, not differenced -- and lighting.lights.sources was rejected as the fingerprint because it is a counter summed over frames, so a lever that changes frame rate would move it and the fingerprint would report the lever's own effect as a scene difference. Bound measured, not chosen: above the observed 2.84%, below the 6.5% #84 refused. The RESIDUAL -- systematic arm-vs-arm drift INSIDE the bound -- is O14, and its close is #84's in-process A/B.",
+   "signature": {
+    "glob": "scripts/lever-matrix.sh",
+    "re": "sim\\.entities\\.live",
+    "absent": true,
+    "desc": "the matrix runs with no scene fingerprint"
+   }
   },
   {
    "id": "O02",
@@ -131,6 +136,15 @@
    "evidence": "Measured across 8 bookmarks and ~20 runs. (a) SETTLING IS SCENE-DEPENDENT and the pattern is the opposite of the obvious one: authored places settle (Desert Town 273 entities YES, The Ark Ruins 47 YES) while sparse PROCEDURAL worlds never do (explore/exploring/Deep explore/Zerchesium, 19-21 entities, 'stable for only 1 of 90 required' -- the count changes almost every frame as monsters spawn and despawn around the player). (b) SETTLING IS NOT CONVERGENCE: five settled Desert Town runs froze at 268/268/271/267/270 entities, and the two runs that agreed on the COUNT still differed in 18.78% of pixels. (c) A dead teleport bookmark logs WARPING and never arrives, and the run captures wherever the player actually is: precursor-surface requested world ...91620126 and captured the previous location's fingerprint, silently.",
    "impact": "Every cross-run render measurement this campaign has taken was at a scene nobody had checked against either precondition, and the default scene is whatever the player save happens to hold -- the harness inherits the persisted position, so the scene selects itself. 03-Surface Outpost, where all of today's early determinism work ran, fails BOTH: it never settles and it is at dayLevel=0, where the ray terms under test draw nothing.",
    "fixShape": "Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so a dead marker is loud instead of silent. Put the world id in the [rendertest] fingerprint -- it is the one field that would have made both of today's arrival failures visible immediately instead of via dayLength archaeology. And record the settle/daylight character of the bookmarks a measurement is allowed to use, so scene choice stops being an accident of the save.",
+   "signature": null
+  },
+  {
+   "id": "O14",
+   "severity": "DEGRADES_MATRIX",
+   "title": "A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it",
+   "evidence": "#84, having been refused at 6.5%, states the limit flatly: 'no number of repeated runs fixes a systematic arm-vs-arm population difference'. The bound armed in O01 catches gross drift; it cannot separate a lever effect from a 2% population difference that happens to fall the same way every pass. Interleaving and per-pass rotation reduce that risk; they do not detect it.",
+   "impact": "Cost deltas of the same order as the scene's own noise are not separable. It does not corrupt the matrix wholesale -- every leg now carries its population and its delta, so a marginal number is visible rather than silent -- but a small lever measured against a drifting scene is still a number whose name asserts more than its value means.",
+   "fixShape": "#84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever between two measured windows within a SINGLE run, so both arms see literally the same world, the same entities and the same tick. Needs a per-lever check that each config key is safe to flip mid-run -- some are read per frame, some may not be -- before it is promised.",
    "signature": null
   },
   {
