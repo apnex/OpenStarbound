@@ -182,9 +182,20 @@ private:
   // frame hash "legitimately differed", and it is why we could only ever certify a refactor against the
   // in-frame oracles, which cover env/parallax/lighting and NOT the world pass.
   //
-  // Freezing when the entity count has been STABLE for N consecutive frames converges to the same world state
-  // regardless of machine speed -- which makes the frozen-world frame hash a valid CROSS-BINARY golden, and
-  // therefore makes every refactor certifiable, not just the oracle-covered ones.
+  // Freezing when the entity count has been STABLE for N consecutive frames makes the SETTLE POINT
+  // machine-speed-independent, which is what the in-process A/B below needs: both legs run against one
+  // freeze, so a settle point that wanders no longer wanders BETWEEN the legs.
+  //
+  // IT DOES NOT MAKE THE FRAME HASH A CROSS-BINARY GOLDEN, and this comment claimed for twelve days that it
+  // did. #191 tested the claim on its own terms and refuted it: three runs of one binary, frozen, at an
+  // IDENTICAL state fingerprint -- epochTime, dayLength, camera, parallaxLayers=1, and entities=213 in all
+  // three -- produced three distinct hashes. Stable within a run, different across runs, and not ASLR (three
+  // runs under setarch -R gave three distinct hashes). So quiescence delivered exactly the observable it
+  // converges, the entity COUNT, and a converged count is not a converged world: the residual is per-entity
+  // animation phase, which nothing here pins. A cross-run golden needs that pinning and is its own project.
+  //
+  // What survives is the in-process A/B, and it is stronger than the golden would have been -- it holds the
+  // world fixed by construction instead of hoping two runs agree. See #153.
   //
   //   STAR_RENDERTEST_QUIESCE -- consecutive frames the entity count must hold before freezing. Default 90.
   //   STAR_RENDERTEST_LOAD    -- now a HARD CAP, not a target: if the world has not settled by then, we freeze

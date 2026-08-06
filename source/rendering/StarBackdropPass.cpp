@@ -262,11 +262,6 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     // orbiterAndPlanetRatio above), so a ZOOM change alters the cached image at an unchanged screen size --
     // without it, zooming left the sky stale until the counter next came round.
     bool envInvalidated = m_envCache.invalidated(envScreenSize, envPixelRatio);
-    // cadenceHit is called UNCONDITIONALLY (not short-circuited behind envInvalidated) so the frame counter
-    // advances every active frame -- exactly the old separate `++m_envRefreshCounter;` statement, which ran
-    // even when the modulo test was skipped. Folding it into `envInvalidated || cadenceHit(...)` would stop
-    // advancing the counter on invalidation frames and silently shift the N-cadence phase afterwards.
-    bool envCadence = m_envCache.cadenceHit(envRefreshInterval);
 
     // THE MOTION TERM THE ENV CACHE NEVER HAD. `invalidated()` covers only size and pixelRatio, so
     // before this the predicate could not tell a static planet sky from a warp: during ship flight the
@@ -306,10 +301,11 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     uint64_t envContentKey = envKey.value();
     bool envContentChanged = envContentKey != m_envCacheContentKey;
 
-    // envCadence STAYS the last operand and is still evaluated unconditionally above, so the frame
-    // counter advances exactly as before and the N-cadence phase does not shift. It remains the ceiling
-    // on staleness for anything that drifts below the per-frame threshold but accumulates.
-    bool refreshEnv = envInvalidated || envMotion || envContentChanged || envCadence;
+    // The three terms above are DISCRETIONARY -- each fires only when something actually changed.
+    // shouldRefresh ORs the N-frame cadence onto them, and that operand is what makes the trade bounded:
+    // it is the ceiling on staleness for anything drifting below the per-frame threshold but accumulating.
+    // It lives in RetainedSurface so this call site cannot omit it; see the note at shouldRefresh.
+    bool refreshEnv = m_envCache.shouldRefresh(envRefreshInterval, envInvalidated || envMotion || envContentChanged);
     (refreshEnv ? m_envRefreshedCtr : m_envSkippedCtr).inc(1);
     m_envRefreshedThisFrame = refreshEnv;
 
@@ -584,10 +580,10 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     bool parallaxInvalidated = m_parallaxCache.invalidated(parallaxScreenSize, parallaxPixelRatio)
         || (m_parallaxWorldPosition != m_parallaxCachePosition)
         || (parallaxContentKey != m_parallaxCacheContentKey);
-    // cadenceHit advances the counter every active frame -- exactly the old separate `++m_parallaxRefreshCounter;`
-    // statement. It is the FIRST operand of the || so it is always evaluated (never short-circuited); the
-    // deferred flag is a side-effect-free bool read, so OR order is immaterial. (Same reasoning as the env cache.)
-    bool parallaxTimeGate = m_parallaxCache.cadenceHit(parallaxRefreshInterval) || m_parallaxRefreshDeferred;
+    // The TIME gate: the N-frame cadence, plus a refresh the arbiter below deferred out of the previous
+    // frame. shouldRefresh evaluates the cadence unconditionally, so the counter advances every active
+    // frame whichever operand decides -- exactly the old separate `++m_parallaxRefreshCounter;` statement.
+    bool parallaxTimeGate = m_parallaxCache.shouldRefresh(parallaxRefreshInterval, m_parallaxRefreshDeferred);
 
     // CROSS-SURFACE ARBITER. Stacking the env redraw and the parallax redraw into one frame spikes that frame's
     // GPU time. The old mechanism -- offsetting parallax's gate by +N/2 -- could not prevent it: env fires on

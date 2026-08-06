@@ -126,13 +126,25 @@ public:
     return size != m_size || pixelRatio != m_pixelRatio;
   }
 
-  // The ordinary N-frame cadence gate: true once every refreshInterval frames. Advances the counter,
-  // so call exactly once per frame the cache is on the retained path. refreshInterval is clamped to
-  // >= 1 by callers; guard here too so a stray 0 can't divide-by-zero.
-  bool cadenceHit(unsigned refreshInterval) {
-    if (refreshInterval < 1)
-      refreshInterval = 1;
-    return (m_counter++ % refreshInterval) == 0;
+  // THE REFRESH DECISION, AND THE ONLY DOOR TO IT. `forced` carries every discretionary reason the
+  // caller has — invalidation, motion, a moved content key — and this ORs the N-frame cadence onto it.
+  //
+  // THE CADENCE OPERAND IS THE STALENESS BOUND, which is why it lives here and not at the call site.
+  // A retained surface serves an image drawn on some earlier frame; what makes that a bounded trade
+  // rather than an open-ended one is that the cadence fires unconditionally every N frames whatever
+  // else is true. That bound is the entire content of the backdrop cache levers' declared "output
+  // differs by bounded staleness" claim. It used to be one operand of an expression inside
+  // BackdropPass, which no test constructs: deleting it compiled clean, passed every gate, and made
+  // staleness unbounded. Now a consumer cannot obtain the frame counter without also obtaining the
+  // ceiling — cadenceHit is private, and this is the only caller.
+  //
+  // `forced` is evaluated by the caller and the cadence is evaluated HERE, unconditionally, before the
+  // OR. Short-circuiting the cadence behind `forced` would stop the counter on forced frames and shift
+  // the whole N-cadence phase, so a surface forced often enough would drift off its own schedule.
+  // RetainedSurfaceTest.ForcedRefreshDoesNotStopTheCounter holds that.
+  bool shouldRefresh(unsigned refreshInterval, bool forced) {
+    bool cadence = cadenceHit(refreshInterval);
+    return forced || cadence;
   }
 
   // Record the structural key the cache was just filled at (call on a refresh frame, after drawing).
@@ -148,6 +160,16 @@ public:
   }
 
 private:
+  // PRIVATE ON PURPOSE — see shouldRefresh. The ordinary N-frame cadence gate: true once every
+  // refreshInterval frames. Advances the counter, so it is called exactly once per frame the cache is on
+  // the retained path, which shouldRefresh guarantees by being its only caller. refreshInterval is
+  // clamped to >= 1 by callers; guard here too so a stray 0 can't divide-by-zero.
+  bool cadenceHit(unsigned refreshInterval) {
+    if (refreshInterval < 1)
+      refreshInterval = 1;
+    return (m_counter++ % refreshInterval) == 0;
+  }
+
   String m_name;
   uint64_t m_counter = 0;
   Vec2U m_size = {0, 0};

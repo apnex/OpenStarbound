@@ -35,39 +35,90 @@ TEST(RetainedSurfaceTest, InvalidateForcesRefresh) {
   EXPECT_TRUE(s.invalidated({640, 360}, 1.0f));
 }
 
+// The cadence is asserted through shouldRefresh because that is the only door: cadenceHit is private,
+// so no consumer can take the frame counter without also taking the bound it exists to impose.
 TEST(RetainedSurfaceTest, CadenceHitsEveryN) {
   RetainedSurface s("c");
-  EXPECT_TRUE(s.cadenceHit(4));    // frame 0
-  EXPECT_FALSE(s.cadenceHit(4));   // 1
-  EXPECT_FALSE(s.cadenceHit(4));   // 2
-  EXPECT_FALSE(s.cadenceHit(4));   // 3
-  EXPECT_TRUE(s.cadenceHit(4));    // 4
-  EXPECT_FALSE(s.cadenceHit(4));   // 5
-  EXPECT_FALSE(s.cadenceHit(4));   // 6
-  EXPECT_FALSE(s.cadenceHit(4));   // 7
-  EXPECT_TRUE(s.cadenceHit(4));    // 8
+  EXPECT_TRUE(s.shouldRefresh(4, false));    // frame 0
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 1
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 2
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 3
+  EXPECT_TRUE(s.shouldRefresh(4, false));    // 4
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 5
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 6
+  EXPECT_FALSE(s.shouldRefresh(4, false));   // 7
+  EXPECT_TRUE(s.shouldRefresh(4, false));    // 8
 }
 
 TEST(RetainedSurfaceTest, CadenceN1AlwaysHits) {
   RetainedSurface s("c");
   for (int i = 0; i < 5; ++i)
-    EXPECT_TRUE(s.cadenceHit(1));
+    EXPECT_TRUE(s.shouldRefresh(1, false));
 }
 
 TEST(RetainedSurfaceTest, CadenceZeroClampsToOne) {
   // A stray 0 must not divide-by-zero; it behaves as N=1 (always hits).
   RetainedSurface s("c");
   for (int i = 0; i < 3; ++i)
-    EXPECT_TRUE(s.cadenceHit(0));
+    EXPECT_TRUE(s.shouldRefresh(0, false));
 }
 
 TEST(RetainedSurfaceTest, CadenceAndInvalidationAreIndependent) {
   // The counter advances regardless of invalidation state, and vice versa.
   RetainedSurface s("c");
   s.recordFilled({100, 100}, 1.0f);
-  EXPECT_TRUE(s.cadenceHit(4));                    // frame 0 hits
+  EXPECT_TRUE(s.shouldRefresh(4, false));          // frame 0 hits
   EXPECT_FALSE(s.invalidated({100, 100}, 1.0f));   // key unchanged
-  EXPECT_FALSE(s.cadenceHit(4));                   // frame 1: counter advanced independently
+  EXPECT_FALSE(s.shouldRefresh(4, false));         // frame 1: counter advanced independently
+}
+
+TEST(RetainedSurfaceTest, ForcedRefreshDoesNotStopTheCounter) {
+  // A forced refresh must not RESET or SKIP the cadence, or a surface that is forced often enough
+  // silently loses its ceiling: the counter would keep being re-based and the modulo test would stop
+  // landing. Frame 0 hits on cadence anyway; frames 1 and 2 are forced; frame 4 must still be the next
+  // cadence hit, exactly as if nothing had been forced.
+  RetainedSurface s("c");
+  EXPECT_TRUE(s.shouldRefresh(4, false));   // 0 -- cadence
+  EXPECT_TRUE(s.shouldRefresh(4, true));    // 1 -- forced
+  EXPECT_TRUE(s.shouldRefresh(4, true));    // 2 -- forced
+  EXPECT_FALSE(s.shouldRefresh(4, false));  // 3 -- neither
+  EXPECT_TRUE(s.shouldRefresh(4, false));   // 4 -- cadence, unmoved by the two forces
+}
+
+TEST(RetainedSurfaceTest, ShouldRefreshBoundsStalenessAtN) {
+  // THE STALENESS BOUND ITSELF, asserted on the decision rather than on the counter underneath it.
+  //
+  // This is the entire content of the two backdrop cache levers' declared "bounded staleness" trade:
+  // with every discretionary reason false -- nothing invalidated, nothing moved, no content change --
+  // the cadence alone must still fire within N calls, so a displayed frame is never more than N-1
+  // frames old. Until this test the bound lived only in a call-site expression in BackdropPass, which
+  // no test constructs; deleting the cadence operand there compiled clean and made staleness unbounded.
+  // THE TRAILING GAP IS COUNTED, AND THE REFRESH COUNT IS ASSERTED. The first draft of this test did
+  // neither, and an injection caught it: with the cadence operand deleted, shouldRefresh never returned
+  // true, so the loop never entered the branch that records a gap, `worst` stayed at its initial 0, and
+  // the test reported the bound HELD on a surface that had not refreshed once in 200 frames. A bound
+  // check that only samples inside the event it is bounding measures nothing when the event stops.
+  static constexpr int Frames = 200;
+  for (unsigned n : {1u, 2u, 3u, 4u, 16u}) {
+    RetainedSurface s("c");
+    unsigned gap = 0, worst = 0, refreshes = 0;
+    for (int i = 0; i < Frames; ++i) {
+      if (s.shouldRefresh(n, false)) {
+        ++refreshes;
+        if (gap > worst)
+          worst = gap;
+        gap = 0;
+      } else {
+        ++gap;
+      }
+    }
+    if (gap > worst)   // the run ends mid-gap; an unterminated gap is still a gap
+      worst = gap;
+    // CEIL, not floor: the counter starts at 0 and 0 % n == 0, so the first frame on the retained path
+    // is always a refresh. At N=3 over 200 frames that is 67 refreshes, not 66.
+    EXPECT_EQ(refreshes, ((unsigned)Frames + n - 1) / n) << "N=" << n << ": wrong number of refreshes";
+    EXPECT_LE(worst, n - 1) << "N=" << n << ": went " << worst << " frames without a refresh";
+  }
 }
 
 TEST(RetainedSurfaceTest, InitialPixelRatioSentinelIsConfigurable) {
