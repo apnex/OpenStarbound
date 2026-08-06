@@ -156,16 +156,33 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // recomputes the pass did not run on, straight into the gl closure. Call is returned unscaled, so it
   // cannot invent; and one invocation event cannot honestly carry two cadences fifty lines apart.
   //
-  // MEASURED, AND THE MEASUREMENT DOES NOT SETTLE IT. A 60s live capture at Desert Town read 1035
-  // recomputes, 1035 processFull invocations and 1035 samples in each of these four brackets -- exactly 1:1,
-  // coverage 1.00, so Recompute would have scaled nothing and cost nothing THERE. But that run sat at 62 fps
-  // with 72% CPU headroom and 1035 recomputes against 2699 frames: lighting published slower than the
-  // renderer consumed, which is the regime in which coalescing CANNOT occur. The instrument was run against
-  // the case that cannot exhibit the failure, so it confirms nothing about the loaded legs where it would.
+  // MEASURED, AND RECOMPUTE IS REFUTED. Two live captures at Desert Town on this binary:
   //
-  // Call is the declaration that is right in both regimes. What it gives up is real and small: Recompute
-  // also prints a coverage column and asserts count <= expectation. Those remain available by eye -- the
-  // count of each bracket and lighting.temporal.recomputed are adjacent rows in the same table.
+  //   lightingTemporalDecouple ON    1035 publishes / 2699 frames -> 1035 processFull.  gap 0
+  //   lightingTemporalDecouple OFF   4499 publishes / 4499 frames -> 4487 processFull.  gap 12
+  //
+  // The temporal gate throttles publishes to ~38% of frames, and at that rate the producer can never get
+  // ahead: the first row is the NULL CONTROL and its gap is exactly zero. Turn the lever off, publishes
+  // rise to one per frame, and twelve of them were overwritten before the render thread consumed them.
+  // waitForLighting clears a FLAG (m_lightingInputsFresh), not a queue, so a second publish between two
+  // consumes replaces the first and is never consumed at all. It does NOT need frame skip to happen:
+  // cpu.frame.updates read 4500 against 4499 frames, so update() ran once per frame throughout. Ordinary
+  // producer/consumer jitter is sufficient.
+  //
+  // Two other explanations were excluded before attributing it. Every publish took the skip-calculate GPU
+  // path (lighting.cpu.calc.ran 0, .skipped 4499), so runGpuLightmapPass's lightingInputsValid guard never
+  // fired; lighting.upload.us recorded nothing, so the CPU-lightMap fallback never ran; and its pass-null
+  // check constructs rather than returns. No consumption reached the caller and failed to reach here.
+  //
+  // WHY A 0.27% GAP IS WORTH THIS MUCH TEXT. Declared Recompute, coverage reads 4487/4499 and the consumer
+  // scales these four totals UP by 0.27% -- on the OFF leg only, because the baseline leg measures exactly
+  // 1.0000. The two arms of the very lever under test would carry different scale factors, applied to GPU
+  // work that did not change between them. Small, one-directional and lever-correlated is the shape that
+  // corrupts an A/B; noise is none of the three. Call is returned unscaled and cannot do it.
+  //
+  // What Call gives up is real and small: Recompute also prints a coverage column and asserts count <=
+  // expectation. Both remain available by eye -- each bracket's count and lighting.temporal.recomputed are
+  // adjacent rows in the same table.
   m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   if (packedEmission) {

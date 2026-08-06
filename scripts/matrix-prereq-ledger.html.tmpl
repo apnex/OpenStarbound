@@ -1,0 +1,169 @@
+<title>Lever-matrix prerequisites — findings ledger</title>
+<style>
+  /* An instrument's own defect ledger, so the page is dressed as instrumentation: a cyan-biased
+     slate ground, phosphor accent, and semantic colour kept strictly separate from that accent so
+     "which severity" and "which is emphasis" never argue. Scanned, not read: summary before detail,
+     state encoded in form as well as in words. */
+  :root {
+    --bg:#0B1014; --panel:#121A20; --panel2:#17222B; --line:#22323C;
+    --ink:#DCE6EA; --muted:#7E939D; --accent:#3FB8C4;
+    --block:#E4572E; --degrade:#D9A521; --cosmetic:#6E7F88;
+    --ok:#37A66B; --warn:#9A7FB8;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#F5F8F9; --panel:#FFFFFF; --panel2:#EDF3F5; --line:#D8E2E7;
+            --ink:#14212A; --muted:#5A6E79; --accent:#0E7C88; --ok:#1F7A4C; --warn:#6C5490; }
+  }
+  :root[data-theme="light"] { --bg:#F5F8F9; --panel:#FFFFFF; --panel2:#EDF3F5; --line:#D8E2E7;
+            --ink:#14212A; --muted:#5A6E79; --accent:#0E7C88; --ok:#1F7A4C; --warn:#6C5490; }
+  :root[data-theme="dark"]  { --bg:#0B1014; --panel:#121A20; --panel2:#17222B; --line:#22323C;
+            --ink:#DCE6EA; --muted:#7E939D; --accent:#3FB8C4; --ok:#37A66B; --warn:#9A7FB8; }
+
+  body { background:var(--bg); color:var(--ink); font-family:var(--sans); line-height:1.55;
+         margin:0; padding:0 20px 96px; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:2160px; margin:0 auto; }
+  h1 { font-size:clamp(22px,3.4vw,32px); font-weight:650; letter-spacing:-.02em; margin:44px 0 6px;
+       text-wrap:balance; }
+  .sub { color:var(--muted); font-size:15px; max-width:70ch; margin:0 0 4px; }
+  .eyebrow { font:600 11px/1 var(--mono); letter-spacing:.16em; text-transform:uppercase;
+             color:var(--accent); margin:0 0 14px; }
+
+  /* THE SUMMARY IS THE PAGE'S THESIS. Open-count is the obvious number; the one that actually says
+     how much of this ledger is knowledge rather than assertion is verified-vs-asserted, so it gets
+     the bar and the others get plain figures. */
+  .strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px;
+           background:var(--line); border:1px solid var(--line); border-radius:10px;
+           overflow:hidden; margin:26px 0 20px; }
+  .stat { background:var(--panel); padding:14px 16px; }
+  .stat b { display:block; font:650 26px/1.1 var(--mono); letter-spacing:-.02em;
+            font-variant-numeric:tabular-nums; }
+  .stat span { display:block; font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+               color:var(--muted); margin-top:5px; }
+  .stat.is-block b { color:var(--block); }
+
+  .cov { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+         padding:16px 18px; margin-bottom:28px; }
+  .cov h2 { font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+            margin:0 0 10px; font-weight:600; }
+  .bar { display:flex; height:12px; border-radius:6px; overflow:hidden; background:var(--panel2); }
+  .bar i { display:block; }
+  .bar .v { background:var(--ok); }
+  .bar .a { background:var(--warn); }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; margin-top:10px; font-size:13px;
+            color:var(--muted); }
+  .legend b { color:var(--ink); font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px;
+         vertical-align:baseline; }
+
+  .filters { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+  .chip { font:500 12px/1 var(--sans); padding:7px 12px; border-radius:999px; cursor:pointer;
+          background:var(--panel); color:var(--muted); border:1px solid var(--line); }
+  .chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--bg);
+                               font-weight:600; }
+  .chip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .row { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--cosmetic);
+         border-radius:8px; padding:16px 18px; margin-bottom:10px; }
+  .row.block { border-left-color:var(--block); }
+  .row.degrade { border-left-color:var(--degrade); }
+  .row header { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px; }
+  .rid { font:600 12px var(--mono); color:var(--accent); letter-spacing:.04em; }
+  .row h3 { font-size:15px; font-weight:600; margin:0 0 12px; line-height:1.4; text-wrap:balance; }
+  .tag { font:600 10px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase;
+         padding:4px 7px; border-radius:4px; background:var(--panel2); color:var(--muted); }
+  .sev-block { background:color-mix(in srgb, var(--block) 18%, transparent); color:var(--block); }
+  .sev-degrade { background:color-mix(in srgb, var(--degrade) 18%, transparent); color:var(--degrade); }
+  .tag.ok { background:color-mix(in srgb, var(--ok) 18%, transparent); color:var(--ok); }
+  .tag.warn { background:color-mix(in srgb, var(--warn) 20%, transparent); color:var(--warn); }
+  .st-done { background:color-mix(in srgb, var(--ok) 18%, transparent); color:var(--ok); }
+  .where { font:500 11px var(--mono); color:var(--muted); margin-left:auto; }
+
+  dl { margin:0; display:grid; grid-template-columns:minmax(0,1fr); gap:9px; }
+  dt { font:600 10px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase;
+       color:var(--muted); }
+  dd { margin:3px 0 0; font-size:13.5px; color:var(--ink); overflow-wrap:anywhere; }
+  dd.mono { font-family:var(--mono); font-size:12px; overflow-x:auto; }
+  .muted { color:var(--muted); }
+  @media (min-width:760px) { dl { grid-template-columns:150px minmax(0,1fr); align-items:baseline; }
+                             dt { text-align:right; } dd { margin-top:0; } }
+
+  footer { margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
+           color:var(--muted); font-size:13px; max-width:78ch; }
+  code { font-family:var(--mono); font-size:.92em; }
+  @media (prefers-reduced-motion:no-preference) { .row { transition:border-color .15s ease; } }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">OpenStarbound · perf campaign</p>
+  <h1>Lever-matrix prerequisites</h1>
+  <p class="sub">Everything that would make a number produced by the 27-leg lever matrix wrong or
+  uninterpretable. Found by a five-agent read-only sweep of the tree; generated from
+  <code>matrix-prereq-findings.json</code> by <code>scripts/matrix-prereq-ledger.py</code>, the same
+  generator that emits the committed markdown — so this page and the repo cannot disagree.</p>
+
+  <div class="strip">
+    <div class="stat"><b>__N__</b><span>findings</span></div>
+    <div class="stat"><b>__OPEN__</b><span>open</span></div>
+    <div class="stat is-block"><b>__BLOCKS__</b><span>block the matrix</span></div>
+    <div class="stat"><b>__VERIFIED__</b><span>verified</span></div>
+    <div class="stat"><b>__ASSERTED__</b><span>asserted only</span></div>
+  </div>
+
+  <section class="cov">
+    <h2>Coverage — how much of this ledger is checked by machine</h2>
+    <div class="bar" role="img"
+         aria-label="__VERIFIED__ of __N__ rows verified against the tree; __ASSERTED__ asserted only">
+      <i class="v" style="width:__PCT__%"></i><i class="a" style="width:calc(100% - __PCT__%)"></i>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--ok)"></i>verified against the tree
+        <b>__VERIFIED__</b></span>
+      <span><i class="dot" style="background:var(--warn)"></i>asserted, nothing checks it
+        <b>__ASSERTED__</b></span>
+    </div>
+    <p class="sub" style="margin-top:12px;font-size:13.5px">A <em>verified</em> row carries a
+    signature — a predicate over the source tree that is true while the defect is present. The
+    checker asserts an open row's defect is <em>still there</em> and a closed row's is <em>gone</em>.
+    That is correspondence against the code, not two files agreeing with each other: the prior
+    ledger checked its table against its decisions and let ten rows sit “accepted” while the change
+    had already shipped. An <em>asserted</em> row is a judgement nothing can check — not a defect in
+    the ledger, but the honest measure of its reach, and the reason this bar is the headline rather
+    than the open count.</p>
+  </section>
+
+  <div class="filters" role="group" aria-label="Filter findings">
+    <button class="chip" data-f="all" aria-pressed="true">All</button>
+    <button class="chip" data-f="block" aria-pressed="false">Blockers</button>
+    <button class="chip" data-f="degrade" aria-pressed="false">Degrades</button>
+    <button class="chip" data-f="checked" aria-pressed="false">Verified only</button>
+    <button class="chip" data-f="unchecked" aria-pressed="false">Asserted only</button>
+    <button class="chip" data-f="done" aria-pressed="false">Closed</button>
+  </div>
+
+  <main id="rows">
+__CARDS__
+  </main>
+
+  <footer>
+    Severity is about the measurement, not the game: <strong>block</strong> means a matrix number
+    would be wrong or unattributable; <strong>degrade</strong> means it survives but with a stated
+    caveat. Rows are burned down through the task board, which carries the <code>[#N]</code> ids that
+    commits reference; this ledger carries the evidence and the machine check.
+  </footer>
+</div>
+
+<script>
+  const rows = [...document.querySelectorAll('.row')];
+  const chips = [...document.querySelectorAll('.chip')];
+  const match = (r, f) => f === 'all' ? true
+    : f === 'checked' ? r.dataset.checked === 'y'
+    : f === 'unchecked' ? r.dataset.checked === 'n'
+    : f === 'done' ? r.dataset.status === 'done'
+    : r.dataset.sev === f;
+  chips.forEach(c => c.addEventListener('click', () => {
+    chips.forEach(o => o.setAttribute('aria-pressed', String(o === c)));
+    rows.forEach(r => { r.hidden = !match(r, c.dataset.f); });
+  }));
+</script>
