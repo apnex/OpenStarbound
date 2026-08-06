@@ -387,7 +387,12 @@
    "evidence": "source/client/StarClientApplication.cpp:1766-1785 \u2014 the warp block runs in updateRunning, is gated on `m_universeClient->worldClient()->inWorld()`, and on success sets only `m_renderTestFrame = 0;` (line 1775) with the comment \"restart the LOAD phase from here\". It does NOT set `m_renderTestLoading = true`, and does not reset `m_renderTestStable` / `m_renderTestLastEntities`. The load phase is exited unconditionally in renderTestCapture at StarClientApplication.cpp:1306-1310 once `m_renderTestFrame >= m_renderTestLoad` (900).",
    "impact": "The `m_renderTestFrame = 0` reset only protects the case where the load phase is still running when the warp fires. If reaching inWorld() takes longer than 900 rendered frames, the load phase has already ended, the engine has already emitted the QUIESCED/did-NOT-settle line the harness polls for (render-profile.sh:163), and render-profile.sh then purges snapshots and opens its window \u2014 while the warp, the universe transition and a full destination-world load happen inside it. The stale m_renderTestStable also means a post-warp quiesce can be satisfied by stable-frame credit earned in the ORIGIN world. Nothing in the harness or the profile can distinguish such a leg from a clean one.",
    "fixShape": "Set `m_renderTestLoading = true; m_renderTestStable = 0; m_renderTestLastEntities = 0;` alongside the m_renderTestFrame reset at the warp, and have render-profile.sh require the 'WARPING to bookmark' log line to appear BEFORE the QUIESCED/did-NOT-settle line.",
-   "signature": null
+   "signature": {
+    "glob": "source/client/StarClientApplication.cpp",
+    "re": "bool warpPending = !m_renderTestWarp\\.empty\\(\\)[\\s\\S]*?m_renderTestLoading = true;\\n\\s+m_renderTestFrame = 0;\\n\\s+m_renderTestStable = 0;",
+    "absent": true,
+    "desc": "the settle gate is armed by the REQUESTED warp (m_renderTestWarp, true from frame zero) rather than the resolved world id, and the warp re-enters the load phase instead of only resetting its frame counter"
+   }
   },
   {
    "id": "H07",

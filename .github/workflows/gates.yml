@@ -158,6 +158,14 @@ jobs:
       - name: render_gate_verdicts -- every oracle verdict arm fires, and does not over-fire
         run: scripts/render-gate.sh --selftest
 
+      # The profiler's warp cannot be issued until the client is in-world, so a load phase that ends first
+      # puts an entire destination-world load INSIDE the measurement window and reports it as render cost.
+      # The engine refuses that at the cause now; this is the independent read of the log's own ordering,
+      # and it is the arm that still fires against a binary predating the engine fix. Same shape as the two
+      # above: pure shell against synthetic logs, no GPU, no binary.
+      - name: render_profile_verdicts -- ordered, reversed and absent warps are three distinct verdicts
+        run: scripts/render-profile.sh --selftest
+
       # A GPU timer that brackets a gate it does not enter records a ~0us sample on every skip, so its
       # `count` counts frames rather than draws and its mean is a blend of real work with zeros. Three
       # sites did this; the parallax one reported a 4.04x cost step while the GPU did identical work, and

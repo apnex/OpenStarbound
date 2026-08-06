@@ -31,6 +31,43 @@
 set -u
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
+# THE WARP MUST PRECEDE THE LOAD END, and until #238 nothing here read the order. The warp cannot be issued
+# until the client reaches inWorld(); if the load phase ends before that, the engine declares the world
+# settled, this script purges snapshots and opens its window, and the warp plus an entire destination-world
+# load then happen INSIDE it -- reported as render cost. The engine now refuses that at the cause. This is the
+# INDEPENDENT read of the same fact, and it is the one that still fires against a binary predating the fix.
+#
+# Pure: takes a log path and reads nothing else, so --selftest can drive all three verdicts. A missing load-end
+# line is `ok` here rather than a failure -- a different check owns that, and an instrument that reports another
+# instrument's defect under its own name is how a red gets attributed to the wrong cause.
+warp_order_verdict() {
+  local log="$1" warp_at load_at
+  warp_at=$(grep -nE "rendertest\] WARPING to bookmark" "$log" 2>/dev/null | head -1 | cut -d: -f1)
+  load_at=$(grep -nE "rendertest\] world (QUIESCED|did NOT settle)" "$log" 2>/dev/null | head -1 | cut -d: -f1)
+  [ -n "$warp_at" ] || { echo never; return; }
+  [ -n "$load_at" ] || { echo ok; return; }
+  if [ "$warp_at" -lt "$load_at" ]; then echo ok; else echo late; fi
+}
+
+if [ "${1:-}" = "--selftest" ]; then
+  t=$(mktemp -d) || exit 2
+  printf 'x\n[rendertest] WARPING to bookmark a\ny\n[rendertest] world QUIESCED after 300 frames\n' > "$t/ok.log"
+  printf 'x\n[rendertest] world did NOT settle: hit the cap\ny\n[rendertest] WARPING to bookmark a\n' > "$t/late.log"
+  printf 'x\n[rendertest] world QUIESCED after 300 frames\n' > "$t/never.log"
+  rc=0
+  for arm in ok late never; do
+    got=$(warp_order_verdict "$t/$arm.log")
+    if [ "$got" = "$arm" ]; then
+      printf '  ok   %-5s -> %s\n' "$arm" "$got"
+    else
+      printf '  FAIL %-5s -> %s\n' "$arm" "$got"; rc=1
+    fi
+  done
+  rm -rf "$t"
+  [ $rc -eq 0 ] && echo "  render-profile warp-order selftest: 3/3 arms ok -- ordered, reversed and absent are three distinct verdicts"
+  exit $rc
+fi
+
 SECONDS_TO_RUN=${1:-90}
 # How many snapshot intervals the window spans. Declared here and passed to the consumer, so the
 # window shape is chosen rather than inherited from however many files happened to exist.
@@ -213,7 +250,17 @@ grep -o "bookmark: '[^']*'" "$LOG" 2>/dev/null | sed "s/bookmark: '//;s/'$//" | 
 
 # Pin what was actually measured. A capture whose location is not recorded cannot be compared to another one
 # later -- and the harness player's position PERSISTS between runs, so "no --warp" does not mean "the ship".
-if grep -q "rendertest\] WARPING to bookmark" "$LOG" 2>/dev/null; then
+if [ -n "$WARP" ]; then
+  case "$(warp_order_verdict "$LOG")" in
+    never)
+      echo "FAIL: --warp '$WARP' was requested and no 'WARPING to bookmark' line was ever logged. The load"
+      echo "      ended somewhere nobody chose, and the fingerprint would be perfectly self-consistent there."
+      archive_log "$LABEL-NOWARP"; kill -TERM $PID 2>/dev/null; exit 1 ;;
+    late)
+      echo "FAIL: the warp was issued AFTER the load ended. The destination world streamed in inside the"
+      echo "      measurement window, so this leg would report asset streaming as render cost."
+      archive_log "$LABEL-WARPLATE"; kill -TERM $PID 2>/dev/null; exit 1 ;;
+  esac
   grep -o "rendertest\] WARPING to bookmark.*" "$LOG" | sed 's/^/  /' | head -1
 else
   echo "  location: NOT PINNED (no --warp) -- wherever the harness player was left by the previous run."

@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**25 of 53 rows carry a machine-checkable signature.** `--check` asserts an
+**26 of 53 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 28 | not started |
+| **open** | 27 | not started |
 | **doing** | 0 | in progress |
-| **done** | 25 | closed; `commit` says where |
+| **done** | 26 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -35,7 +35,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `D04` | degrade | render.frame.blit.gpu_us declares Cadence::Frame, but the blit has no once-per-frame guard AND the timer is silently dropped by the nesting guard | Declare render.frame.blit.gpu_us MetricCadence::Call, and count the nesting-guard rejections per key (the guard at :1066 |
 | `D05` | degrade | The same event is declared Call by one timer and Recompute by four others, 55 lines apart in one function | Register a counter for processFull invocations and assert it equals lighting.temporal.recomputed over a window; then mak |
 | `H05` | degrade | The load phase is FRAME-capped, not time-capped, and the nofreeze path has no settle phase — so the window opens on a world that is by construction st | Add an explicit post-load settle in wall time (or in ticks) before the window opens — e.g. sleep a fixed settle period a |
-| `H06` | degrade | m_renderTestLoading is not re-armed at the warp, so if the load phase ends before the warp fires the destination world streams in INSIDE the measured  | Set `m_renderTestLoading = true; m_renderTestStable = 0; m_renderTestLastEntities = 0;` alongside the m_renderTestFrame  |
 | `H07` | degrade | World and player state persist and mutate across every leg, with no snapshot, restore or assertion — the matrix drifts monotonically with leg index | Snapshot harness/storage-perf/{universe,player} once at matrix start and restore both before every leg (same shape as th |
 | `H08` | degrade | The environment sidecar can silently emit invalid JSON, and even when valid nothing ever compares it between the two legs of a comparison | Make read_gpu_mhz/read_pkg_temp branch on captured output rather than on pipeline status (`v=$(cat ... | head -1); [ -n  |
 | `H09` | degrade | The witness gate is an exact integer inequality with no tolerance — it survives only because every off-value in today's table happens to be exactly ze | Declare the expected witness direction and magnitude per lever in lever-table.json (e.g. `"offWitness": 0` or a required |
@@ -69,6 +68,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `H02` | Snapshot cadence is measured in SIMULATED time; the run length is measured in WALL time — so the snapshot count is lever-correlated, not random | pending |
 | `H03` | The load-wait loop can time out silently, after which the measurement window straddles the world load | pending |
 | `H04` | Leg order inside a pass is fixed and identical every pass, and there is no warm-up leg — so baseline is permanently the coldest slot and lever k perma | pending |
+| `H06` | m_renderTestLoading is not re-armed at the warp, so if the load phase ends before the warp fires the destination world streams in INSIDE the measured  | [#238] cluster B -- the arrival gate was vacuous until the warp fired; harness r |
 | `O01` | The matrix ran with NO scene fingerprint, and its own artefacts show the drift #84 was refused for -- armed, measured, bounded | pending |
 | `O02` | The two cache levers' declared output trade was ASSERTED, not certified -- and two of its clauses are refuted by the tree it describes | pending |
 | `O09` | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | feb8886f |
@@ -316,7 +316,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Add an explicit post-load settle in wall time (or in ticks) before the window opens — e.g. sleep a fixed settle period after the QUIESCED/did-NOT-settle line and BEFORE `rm -f "$SNAPDIR"/*.json` — and record the entity count and load-end frame into the profile so two legs can be shown to have opened on comparable worlds.
 
-### `H06` — DEGRADES_MATRIX — open
+### `H06` — DEGRADES_MATRIX — done
 
 **m_renderTestLoading is not re-armed at the warp, so if the load phase ends before the warp fires the destination world streams in INSIDE the measured window**
 
@@ -325,6 +325,8 @@ rather than hidden, because an unchecked row is not a checked one.
 *Why it corrupts a matrix number.* The `m_renderTestFrame = 0` reset only protects the case where the load phase is still running when the warp fires. If reaching inWorld() takes longer than 900 rendered frames, the load phase has already ended, the engine has already emitted the QUIESCED/did-NOT-settle line the harness polls for (render-profile.sh:163), and render-profile.sh then purges snapshots and opens its window — while the warp, the universe transition and a full destination-world load happen inside it. The stale m_renderTestStable also means a post-warp quiesce can be satisfied by stable-frame credit earned in the ORIGIN world. Nothing in the harness or the profile can distinguish such a leg from a clean one.
 
 *Closes by.* Set `m_renderTestLoading = true; m_renderTestStable = 0; m_renderTestLastEntities = 0;` alongside the m_renderTestFrame reset at the warp, and have render-profile.sh require the 'WARPING to bookmark' log line to appear BEFORE the QUIESCED/did-NOT-settle line.
+
+*Signature.* `source/client/StarClientApplication.cpp` matching `bool warpPending = !m_renderTestWarp\.empty\(\)[\s\S]*?m_renderTestLoading = true;\n\s+m_renderTestFrame = 0;\n\s+m_renderTestStable = 0;` — present while open. (the settle gate is armed by the REQUESTED warp (m_renderTestWarp, true from frame zero) rather than the resolved world id, and the warp re-enters the load phase instead of only resetting its frame counter)
 
 ### `H07` — DEGRADES_MATRIX — open
 

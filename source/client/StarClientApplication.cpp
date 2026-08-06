@@ -1324,12 +1324,18 @@ void ClientApplication::renderTestCapture() {
     // transition is still in flight, and quiescence fires on the world we are leaving. Measured: a warp
     // issued at t+0.1s and a load that "ended" 2.8s later still aboard the ship, with the destination
     // bookmark present and perfectly valid. Every earlier arrival was a race this happened to win.
-    bool arrived = m_renderTestWarpWorldId.empty()
-        || printWorldId(m_universeClient->playerWorld()) == m_renderTestWarpWorldId;
-    if (!arrived)
+    //
+    // ARMED BY THE REQUEST, NOT BY THE ISSUE. This check used to key off m_renderTestWarpWorldId alone,
+    // which is written when the warp FIRES -- so on every frame before that it was vacuously true. The warp
+    // cannot fire until inWorld(), and if the load phase ends first the settle is declared, the harness
+    // opens its measurement window, and the warp plus a whole destination-world load then happen inside it.
+    // STAR_RENDERTEST_WARP being set is the fact that is true from frame zero, so that is what arms the gate.
+    bool warpPending = !m_renderTestWarp.empty()
+        && (!m_renderTestWarped || printWorldId(m_universeClient->playerWorld()) != m_renderTestWarpWorldId);
+    if (warpPending)
       m_renderTestStable = 0;
 
-    bool quiesced = arrived && m_renderTestStable >= m_renderTestQuiesce;
+    bool quiesced = !warpPending && m_renderTestStable >= m_renderTestQuiesce;
     bool timedOut = m_renderTestFrame >= m_renderTestLoad;
 
     if (quiesced || timedOut) {
@@ -1350,8 +1356,18 @@ void ClientApplication::renderTestCapture() {
       // and the question "are we actually there?" has an answer. A dead bookmark issues a warp that never
       // completes, and every downstream number then describes a location nobody asked for -- silently,
       // because the fingerprint's camera and entity count are perfectly self-consistent at the wrong place.
-      if (!m_renderTestWarpWorldId.empty()) {
+      if (!m_renderTestWarp.empty()) {
         String here = printWorldId(m_universeClient->playerWorld());
+        // TWO WAYS TO NOT BE THERE, and only the second used to be caught. Keying this block on the
+        // RESOLVED world id meant a run whose warp never fired at all -- inWorld() not reached inside the
+        // frame cap -- skipped the assertion entirely and measured wherever the save left the player.
+        if (!m_renderTestWarped) {
+          Logger::error("[rendertest] FAIL: a warp to '{}' was requested and never ISSUED -- the load ended "
+                        "in {} without the client reaching inWorld(). Refusing to measure a location nobody "
+                        "chose. Raise STAR_RENDERTEST_LOAD.", m_renderTestWarp, here);
+          appController()->quit();
+          return;
+        }
         if (here != m_renderTestWarpWorldId) {
           Logger::error("[rendertest] FAIL: asked for world {} but the load ended in {}. The warp was issued "
                         "and never arrived -- a dead teleport bookmark, or a destination that would not load. "
@@ -1826,9 +1842,14 @@ void ClientApplication::updateRunning(float dt) {
         m_universeClient->warpPlayer(WarpToWorld(b.target.first, b.target.second), false);
         m_renderTestWarped = true;
         m_renderTestWarpWorldId = printWorldId(b.target.first);   // asserted on arrival, below
-        // The destination world has to stream in from scratch, so restart the LOAD phase from here. Otherwise
-        // the freeze would land mid-load and we would measure a half-built world.
+        // RESTART THE LOAD PHASE -- which this comment already claimed and the code did not do. Resetting
+        // the frame counter alone moves the CAP; it does not re-enter the phase, and it leaves the stability
+        // counter holding credit earned in the departure world. The destination streams in from scratch, so
+        // every part of the load state has to go back to its starting value together.
+        m_renderTestLoading = true;
         m_renderTestFrame = 0;
+        m_renderTestStable = 0;
+        m_renderTestLastEntities = 0;
         break;
       }
     }

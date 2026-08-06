@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       997 files
-      239580 lines
+      239601 lines
       6 tiers
     Content
       assets/
@@ -189,7 +189,7 @@ mindmap
       scripts/ + tests
       41 scripts
       23 ctest gates
-      40 CI gates
+      41 CI gates
     Governance
       docs/
       47 markdown documents
@@ -234,7 +234,7 @@ source/
 ├── rendering/       T4    23 files     4,588 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,863 lines
-├── client/          T5     4 files     2,591 lines
+├── client/          T5     4 files     2,612 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
@@ -297,7 +297,7 @@ flowchart TD
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,591 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,612 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -608,7 +608,7 @@ treemap-beta
         "windowing": 9646
         "rendering": 4588
     "T5 shells"
-        "client": 2591
+        "client": 2612
         "server": 783
 ```
 
@@ -626,7 +626,7 @@ treemap-beta
 | T4 presentation | `rendering` | 23 | 4,588 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
-| T5 shells | `client` | 4 | 2,591 | 1.1% |
+| T5 shells | `client` | 4 | 2,612 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.

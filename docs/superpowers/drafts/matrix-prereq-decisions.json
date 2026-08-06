@@ -137,5 +137,9 @@
  "R11": {
   "status": "done",
   "commit": "[#238] cluster A -- registration hoisted out of the branch it measures"
+ },
+ "H06": {
+  "status": "done",
+  "commit": "[#238] cluster B -- the arrival gate was vacuous until the warp fired; harness reads the order too"
  }
 }
