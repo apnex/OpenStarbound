@@ -19,7 +19,11 @@
 #   metrics-mutual-check.sh [pid]     # default target: pgrep -x starbound
 #   metrics-mutual-check.sh --selftest
 #
-# exit 0  the two agreed, OR the check could not run and said so
+# exit 0  the two agreed
+# exit 77 the check COULD NOT RUN and said so -- the runner prints SKIP and refuses to count it green.
+#         This was exit 0 until 2026-08-05, and scripts/ci/run-gates.sh printed OK for it: a check
+#         that compared nothing was counted toward "31/31 gates green". An absent verdict must be
+#         spelled differently from a passing one, or the tally lies on the one day it matters.
 # exit 1  the two disagreed by more than the bound
 # exit 2  the caller asked for a comparison that has no subject (no pid, no binary)
 set -uo pipefail
@@ -187,7 +191,7 @@ if ! python3 scripts/pmu-render-busy.py --for 0.05 >/dev/null 2>"$TMP/probe.err"
   echo "  The cross-check DID NOT RUN. Nothing was compared and nothing was verified; this line is"
   echo "  NOT a pass. Re-run with CAP_PERFMON (or as root, or with perf_event_paranoid <= 0) on a"
   echo "  host with an i915 GPU to get a verdict."
-  exit 0
+  exit 77
 fi
 
 echo "=== mutual check: pid $PID, ${WINDOW}s window, two kernel mechanisms ==="
@@ -212,7 +216,7 @@ if [ "$client_rc" -eq 3 ] || [ "$pmu_rc" -eq 3 ]; then
   echo "  DID NOT COMPARE -- a reader became unavailable during the window:"
   sed 's/^/    /' "$TMP/client.err" "$TMP/pmu.err" 2>/dev/null | grep -v '^    $' || true
   echo "  The cross-check DID NOT RUN. THIS IS NOT A PASS."
-  exit 0
+  exit 77
 fi
 if [ "$client_rc" -ne 0 ] || [ "$pmu_rc" -ne 0 ]; then
   echo "  <-- FAIL: an instrument failed outright (dist/metrics exit $client_rc, PMU reader exit $pmu_rc)"
@@ -242,5 +246,5 @@ mutual_verdict "$CLIENT" "$PMU" "$OTHERS"
 case $? in
   0) echo; echo "MUTUAL: PASS"; exit 0 ;;
   1) echo; echo "MUTUAL: FAIL"; exit 1 ;;
-  *) echo; echo "MUTUAL: DID NOT RUN (not a pass)"; exit 0 ;;
+  *) echo; echo "MUTUAL: DID NOT RUN (not a pass)"; exit 77 ;;
 esac

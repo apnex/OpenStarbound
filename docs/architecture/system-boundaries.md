@@ -189,7 +189,7 @@ mindmap
       scripts/ + tests
       37 scripts
       23 ctest gates
-      32 CI gates
+      33 CI gates
     Governance
       docs/
       45 markdown documents

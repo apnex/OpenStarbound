@@ -229,10 +229,21 @@ jobs:
       # READ THE STEP, NOT THE TALLY. scripts/ci/run-gates.sh prints OK/FAIL and discards a passing
       # step's output, so the not-run line below is invisible in its summary and this step counts
       # toward "N/N green" on every machine where it cannot run.
+      # The runner that reports every other gate needs one of its own. It classified on `rc == 0`, so a
+      # gate that RAN AND COMPARED NOTHING was indistinguishable from one that verified something --
+      # and metrics_mutual was silently exercising exactly that path. Exit 77 is now a third verdict.
+      # Safe as a step despite invoking the runner: --selftest returns before gates.yml is parsed.
+      - name: run_gates_verdicts -- pass, skip and fail are three distinct verdicts
+        run: scripts/ci/run-gates.sh --selftest
+
       - name: metrics_mutual -- the two kernel readers agree, or say why they could not compare
         run: |
           if pgrep -x starbound >/dev/null; then
             scripts/metrics-mutual-check.sh
           else
             echo "metrics_mutual: NOT RUN -- no GPU client on this machine. Nothing was compared."
+            # 77, not a fall-through. This else-branch used to end here and exit 0, so run-gates.sh
+            # printed OK and counted a comparison that never happened toward the green tally. The
+            # guard was the hole, one level above the runner's own.
+            exit 77
           fi
