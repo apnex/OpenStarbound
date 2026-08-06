@@ -37,5 +37,35 @@
   "status": "done",
   "commit": "pending",
   "note": "lighting.gpu.point.gpu_us Cadence::Recompute -> Call; the bracket is inside a content gate"
+ },
+ "R01": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "R02": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "R03": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "R04": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "R05": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
+ },
+ "R06": {
+  "status": "done",
+  "commit": "pending",
+  "note": "registration hoisted above the gating branch; verified on hardware -- the key reads 0 on the off leg instead of vanishing"
  }
 }

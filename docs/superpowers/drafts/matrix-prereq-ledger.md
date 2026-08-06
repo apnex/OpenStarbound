@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**6 of 49 rows carry a machine-checkable signature.** `--check` asserts an
+**10 of 49 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 45 | not started |
+| **open** | 39 | not started |
 | **doing** | 0 | in progress |
-| **done** | 4 | closed; `commit` says where |
+| **done** | 10 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -35,11 +35,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O01` | **BLOCK** | #84 (PENDING) — the only cross-run A/B this project ever certified was REFUSED by its own scene fingerprint, and the matrix has no fingerprint at all | Arm a per-leg scene fingerprint (the existing sim.entities.live / lighting.lights.sources pair) and REFUSE any leg whose |
 | `O02` | **BLOCK** | #136 (PENDING) — the ORACLE GAP is still open, and the golden full-frame hash that was supposed to close it was later proven impossible by #191 | Either close #136(b) with a reproducible world-body oracle (needs #191's animation-phase pinning) or state on the matrix |
 | `O09` | **BLOCK** | The durable board itself is 12 tasks stale: #229–#236, including BOTH known prerequisites, are absent from docs/board.md | Run scripts/board-export.py before the measurement run, and add a high-water-mark assertion to the Integrity block so a  |
-| `R01` | **BLOCK** | render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on | Hoist the three `static auto` handles to the top of drawablesWithZLevel alongside s_cachedCounter/s_rebuiltCounter (:926 |
-| `R02` | **BLOCK** | render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breakin | Register rebuilt.rekey next to rebuilt at StarNetworkedAnimator.cpp:928 in the single dispatcher, and delete the duplica |
-| `R03` | **BLOCK** | render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on  | Move the handle to file/namespace scope in StarNetworkedAnimator.cpp (as StarWorldServer.cpp:652-667 does for the sim ph |
-| `R04` | **BLOCK** | lighting.gather.margin_cells registers only inside the SCROLL arm of the lightingGatherCache ON path — doubly unreachable on the off leg and at a pinn | Hoist the handle to sit beside the six `outcome()` counters at StarWorldClient.cpp:2392-2398 (above the `lightingGatherC |
-| `R06` | **BLOCK** | render.gputimer.dropped registers ONLY when a drop occurs — the loss counter that guards every GPU number cannot report zero loss | Register `dropped` at GlGpuTimer construction (StarRenderer_opengl.cpp:1039-1040) as a member, exactly as `m_glStateMism |
 | `R12` | **BLOCK** | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | In window(), when `name not in a["metrics"]`, either drop the metric or emit it with a `first_seen_in_window: true` flag |
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
@@ -62,7 +57,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O07` | degrade | #144 (PENDING) — the harness reads assets from the repo while the deployed game reads dev/opensb, and the renderVboOrphan lever's env override is sile | Assert at leg start that the harness asset tree matches the deployed one (the deploy-install.sh --verify #144 asks for), |
 | `O08` | degrade | #197 (PENDING) — persistent per-effect parameters are unasserted, and backdropComposeMerge changes the number of `world` effect binds between its two  | Do #197 option (b) — the debug-only draw-time check that every declared parameter of the bound effect was written this f |
 | `O10` | degrade | Board status is documented-unreliable, so any prerequisite sweep filtered on status both over- and under-reports | Treat the body text, not the status column, as the authority when assembling the prerequisite list — and specifically re |
-| `R05` | degrade | lighting.gather.calc_outside_loaded — the safety counter licensing the gather cache's sector assumption — registers only inside the cache-ON branch | Move the registration above the `if` at :2399 (next to the six outcome counters), keeping the `Telemetry::enabled()`-gat |
 | `R07` | degrade | Every *.gpu_us key registers lazily on the first successful query READBACK — a GPU pass that runs but never resolves, or never runs, is ABSENT rather  | Have GlGpuTimer::begin call a declare-and-create on `name`/`desc` on the first begin (before the readback branch), so th |
 | `R08` | degrade | render.drawable.cache.shadowMismatch — the byte-identity oracle backing renderDrawableCache's `changesOutput: false` claim — is absent from every matr | Register s_mismatchCounter at NetworkedAnimator construction (or file scope) so 0 is reported when the oracle is off, an |
 | `R09` | degrade | lighting.gpu.point.mismatch — the GPU-vs-CPU lighting parity oracle — registers inside shadowCompareFull, which the pinned harness never calls | Move the counter to file scope in StarWorldPainter.cpp, and add a second counter incremented on the :17 early-return pat |
@@ -81,6 +75,12 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
 | `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
+| `R01` | render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on | pending |
+| `R02` | render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breakin | pending |
+| `R03` | render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on  | pending |
+| `R04` | lighting.gather.margin_cells registers only inside the SCROLL arm of the lightingGatherCache ON path — doubly unreachable on the off leg and at a pinn | pending |
+| `R05` | lighting.gather.calc_outside_loaded — the safety counter licensing the gather cache's sector assumption — registers only inside the cache-ON branch | pending |
+| `R06` | render.gputimer.dropped registers ONLY when a drop occurs — the loss counter that guards every GPU number cannot report zero loss | pending |
 
 ## Evidence
 
@@ -462,7 +462,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Treat the body text, not the status column, as the authority when assembling the prerequisite list — and specifically re-read every completed task whose body contains STILL OPEN / residual / unverified.
 
-### `R01` — BLOCKS_MATRIX — open
+### `R01` — BLOCKS_MATRIX — done
 
 **render.drawable.cache.rekey.{version,generation,localtransform} register inside the renderDrawableCache ON arm — the lever's own diagnostics vanish on its OFF leg**
 
@@ -472,9 +472,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Hoist the three `static auto` handles to the top of drawablesWithZLevel alongside s_cachedCounter/s_rebuiltCounter (:926-929), above the two early returns at :934/:936, so registration is idempotent and unconditional; leave the .inc() calls where they are.
 
-*Signature.* `source/game/StarNetworkedAnimator.cpp` matching `    static auto s_rekeyVersionCounter` — present while open. (rekey counters still block-scope inside the cached arm)
+*Signature.* `source/game/StarNetworkedAnimator.cpp` matching `s_regRekeyVersion` — present while open. (the rekey trio is not registered at the dispatcher)
 
-### `R02` — BLOCKS_MATRIX — open
+### `R02` — BLOCKS_MATRIX — done
 
 **render.drawable.parts.rebuilt.rekey registers only inside rebuildStaticCache / the per-part cache — ABSENT on the renderDrawableCache OFF leg, breaking the documented `rebuilt - rebuilt.rekey` identity**
 
@@ -484,7 +484,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register rebuilt.rekey next to rebuilt at StarNetworkedAnimator.cpp:928 in the single dispatcher, and delete the duplicate block-scope declarations at :1048 and :1107.
 
-### `R03` — BLOCKS_MATRIX — open
+*Signature.* `source/game/StarNetworkedAnimator.cpp` matching `s_regRebuiltRekey` — present while open. (rebuilt.rekey is not registered at the dispatcher)
+
+### `R03` — BLOCKS_MATRIX — done
 
 **render.drawable.partition.scans — a counter written expressly for the renderDrawableCache A/B — is registered inside the cache path and disappears on the arm it exists to compare against**
 
@@ -494,7 +496,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Move the handle to file/namespace scope in StarNetworkedAnimator.cpp (as StarWorldServer.cpp:652-667 does for the sim phases), or register it alongside the hoisted pair at :928.
 
-### `R04` — BLOCKS_MATRIX — open
+*Signature.* `source/game/StarNetworkedAnimator.cpp` matching `s_regPartitionScans` — present while open. (partition.scans is not registered at the dispatcher)
+
+### `R04` — BLOCKS_MATRIX — done
 
 **lighting.gather.margin_cells registers only inside the SCROLL arm of the lightingGatherCache ON path — doubly unreachable on the off leg and at a pinned, parked camera**
 
@@ -504,7 +508,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Hoist the handle to sit beside the six `outcome()` counters at StarWorldClient.cpp:2392-2398 (above the `lightingGatherCache` branch), keeping `marginCells.inc(...)` at :2176.
 
-### `R05` — DEGRADES_MATRIX — open
+*Signature.* `source/game/StarWorldClient.cpp` matching `marginCellsReg` — present while open. (margin_cells is not registered above the gather-cache branch)
+
+### `R05` — DEGRADES_MATRIX — done
 
 **lighting.gather.calc_outside_loaded — the safety counter licensing the gather cache's sector assumption — registers only inside the cache-ON branch**
 
@@ -514,7 +520,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Move the registration above the `if` at :2399 (next to the six outcome counters), keeping the `Telemetry::enabled()`-gated increment loop where it is.
 
-### `R06` — BLOCKS_MATRIX — open
+*Signature.* `source/game/StarWorldClient.cpp` matching `calcOutsideReg` — present while open. (calc_outside_loaded is not registered above the gather-cache branch)
+
+### `R06` — BLOCKS_MATRIX — done
 
 **render.gputimer.dropped registers ONLY when a drop occurs — the loss counter that guards every GPU number cannot report zero loss**
 
@@ -524,7 +532,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register `dropped` at GlGpuTimer construction (StarRenderer_opengl.cpp:1039-1040) as a member, exactly as `m_glStateMismatches` is at :95 with the comment at :90-94 explaining why; keep the .inc() in the loss branch.
 
-*Signature.* `source/application/StarRenderer_opengl.cpp` matching `static auto dropped = Telemetry::counter\(\"render\.gputimer\.dropped\"` — present while open. (the drop counter still registers only where a drop occurs)
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `droppedCounter\(\);` — present while open. (the drop counter is not registered at begin())
 
 ### `R07` — DEGRADES_MATRIX — open
 

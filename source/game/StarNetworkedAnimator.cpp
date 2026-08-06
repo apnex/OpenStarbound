@@ -927,6 +927,24 @@ List<pair<Drawable, float>> NetworkedAnimator::drawablesWithZLevel(Vec2F const& 
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
   static auto s_rebuiltCounter = Telemetry::counter("render.drawable.parts.rebuilt",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  // THE SAME REASON, FOUR MORE KEYS. Each of these is declared deeper inside an arm this dispatcher
+  // chooses -- the rekey trio inside the whole-entity cache path, rebuilt.rekey inside
+  // rebuildStaticCache and the per-part path, partition.scans inside a helper only the cache path
+  // calls. With renderDrawableCache off, none of them registers, and every one reads ABSENT rather
+  // than ZERO. partition.scans is the sharpest: its own comment calls it "the direct 'partition work'
+  // signal for the cache A/B", and it was invisible on exactly the leg the A/B compares against.
+  static auto s_regRekeyVersion = Telemetry::counter("render.drawable.cache.rekey.version",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_regRekeyGeneration = Telemetry::counter("render.drawable.cache.rekey.generation",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_regRekeyLocalTransform = Telemetry::counter("render.drawable.cache.rekey.localtransform",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_regRebuiltRekey = Telemetry::counter("render.drawable.parts.rebuilt.rekey",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  static auto s_regPartitionScans = Telemetry::counter("render.drawable.partition.scans",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  (void)s_regRekeyVersion; (void)s_regRekeyGeneration; (void)s_regRekeyLocalTransform;
+  (void)s_regRebuiltRekey; (void)s_regPartitionScans;
 
   auto configuration = Root::singleton().configuration();
   // Per-part cache wins over whole-entity when both are on (A/B sets exactly one).

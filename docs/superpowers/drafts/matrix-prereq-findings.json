@@ -100,8 +100,9 @@
    "fixShape": "Hoist the three `static auto` handles to the top of drawablesWithZLevel alongside s_cachedCounter/s_rebuiltCounter (:926-929), above the two early returns at :934/:936, so registration is idempotent and unconditional; leave the .inc() calls where they are.",
    "signature": {
     "glob": "source/game/StarNetworkedAnimator.cpp",
-    "re": "    static auto s_rekeyVersionCounter",
-    "desc": "rekey counters still block-scope inside the cached arm"
+    "re": "s_regRekeyVersion",
+    "absent": true,
+    "desc": "the rekey trio is not registered at the dispatcher"
    }
   },
   {
@@ -111,7 +112,12 @@
    "evidence": "source/game/StarNetworkedAnimator.cpp:1048 (inside `rebuildStaticCache`, whose only caller is :981, itself below the `renderDrawableCache` early return at :935) and source/game/StarNetworkedAnimator.cpp:1107 (inside `drawablesWithZLevelPerPart`, gated by `renderDrawableCachePerPart` at :933, pinned FALSE at harness/storage-perf/starbound.config:555). Both are the only registration sites. Contrast: `render.drawable.parts.rebuilt` is also registered unconditionally at :928, so it survives \u2014 its partner does not.",
    "impact": "The comment at :1044-1047 states the consumer contract: `rebuilt - rebuilt.rekey = genuinely-live part builds`. On the off leg `rebuilt` is present (hoisted) and `rebuilt.rekey` is ABSENT. Any consumer performing that subtraction either raises KeyError or silently substitutes 0 \u2014 and cannot distinguish that from a leg where the metric was simply never wired in. The asymmetry (one operand present, one absent) is worse than both being absent, because it produces a number rather than a gap.",
    "fixShape": "Register rebuilt.rekey next to rebuilt at StarNetworkedAnimator.cpp:928 in the single dispatcher, and delete the duplicate block-scope declarations at :1048 and :1107.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarNetworkedAnimator.cpp",
+    "re": "s_regRebuiltRekey",
+    "absent": true,
+    "desc": "rebuilt.rekey is not registered at the dispatcher"
+   }
   },
   {
    "id": "R03",
@@ -120,7 +126,12 @@
    "evidence": "source/game/StarNetworkedAnimator.cpp:2318, inside `partIsStaticCacheableStructural`. Its own comment at :2315-2317 reads \"the direct 'partition work' signal for the cache A/B. Cache-path only: rebuildStaticCache is the sole engine caller\". Callers verified: partIsStaticCacheable is called only from StarNetworkedAnimator.cpp:1056 (rebuildStaticCache) and :1131 (drawablesWithZLevelPerPart) \u2014 both below the renderDrawableCache / renderDrawableCachePerPart gates at :933-936. It is additionally behind the memo-hit early return at ~:2291 `if (auto memo = m_partitionMemo.maybe(partName)) return *memo;`.",
    "impact": "A metric whose stated purpose is \"the direct partition-work signal for the cache A/B\" is structurally unable to appear on the OFF arm of that very A/B. The number's NAME asserts a per-lever work quantity; its VALUE on the off leg is not zero, it is nothing. Anyone reading the matrix output sees a large baseline figure and no off figure, which invites reading the delta as \"the whole of it\" when the correct reading is \"this instrument does not measure the off path at all\".",
    "fixShape": "Move the handle to file/namespace scope in StarNetworkedAnimator.cpp (as StarWorldServer.cpp:652-667 does for the sim phases), or register it alongside the hoisted pair at :928.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarNetworkedAnimator.cpp",
+    "re": "s_regPartitionScans",
+    "absent": true,
+    "desc": "partition.scans is not registered at the dispatcher"
+   }
   },
   {
    "id": "R04",
@@ -129,7 +140,12 @@
    "evidence": "source/game/StarWorldClient.cpp:2170, inside `WorldClient::shiftAndGatherMargin` (defined :2102). Its only call site is source/game/StarWorldClient.cpp:2460, inside `if (adx < calcDims[0] && ady < calcDims[1])` (the scroll arm), inside `if (configuration->get(\"lightingGatherCache\").optBool().value(true))` at :2399. `lightingGatherCache` is lever #6 in scripts/lever-table.json (baseline true, off false).",
    "impact": "Two failures. (1) On the `off-lightingGatherCache` leg the branch at :2399 is not taken, so the key is ABSENT \u2014 the same defect the six `outcome()` counters at :2389-2398 were hoisted to fix, sitting eleven lines below the comment that describes the fix. (2) scripts/lever-matrix.sh pins ONE location (`--warp \"$WARP\"`) with the sim running; if the camera does not scroll the calc anchor during the window, the scroll arm is never entered and the key is absent on the BASELINE leg too. The comment at :2166-2169 says this counter is how you tell \"a thin strip\" from \"nearly a full re-gather\" \u2014 i.e. it is the interpretation key for the gather cost, and it may be missing from both sides.",
    "fixShape": "Hoist the handle to sit beside the six `outcome()` counters at StarWorldClient.cpp:2392-2398 (above the `lightingGatherCache` branch), keeping `marginCells.inc(...)` at :2176.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarWorldClient.cpp",
+    "re": "marginCellsReg",
+    "absent": true,
+    "desc": "margin_cells is not registered above the gather-cache branch"
+   }
   },
   {
    "id": "R05",
@@ -138,7 +154,12 @@
    "evidence": "source/game/StarWorldClient.cpp:2426, indented inside `if (configuration->get(\"lightingGatherCache\").optBool().value(true)) {` at :2399. Its own comment at :2422-2424 states \"This counter says whether it happens at all: zero in play means alignment has been covering us, non-zero means the padding must be derived from the calc region.\"",
    "impact": "The metric's declared semantics are 'zero means safe'. On the lightingGatherCache OFF leg it is ABSENT, and telemetry-window.py drops it entirely \u2014 which renders as the same thing a reader would take for 'zero, safe'. It is a #210 breach detector whose silence is indistinguishable from its non-existence. Since the cache-off leg is precisely the arm where the assumption does not apply, the practical corruption is smaller than the drawable ones, but the leg's profile no longer carries the safety row and any cross-leg diff of safety metrics is asymmetric.",
    "fixShape": "Move the registration above the `if` at :2399 (next to the six outcome counters), keeping the `Telemetry::enabled()`-gated increment loop where it is.",
-   "signature": null
+   "signature": {
+    "glob": "source/game/StarWorldClient.cpp",
+    "re": "calcOutsideReg",
+    "absent": true,
+    "desc": "calc_outside_loaded is not registered above the gather-cache branch"
+   }
   },
   {
    "id": "R06",
@@ -149,8 +170,9 @@
    "fixShape": "Register `dropped` at GlGpuTimer construction (StarRenderer_opengl.cpp:1039-1040) as a member, exactly as `m_glStateMismatches` is at :95 with the comment at :90-94 explaining why; keep the .inc() in the loss branch.",
    "signature": {
     "glob": "source/application/StarRenderer_opengl.cpp",
-    "re": "static auto dropped = Telemetry::counter\\(\\\"render\\.gputimer\\.dropped\\\"",
-    "desc": "the drop counter still registers only where a drop occurs"
+    "re": "droppedCounter\\(\\);",
+    "absent": true,
+    "desc": "the drop counter is not registered at begin()"
    }
   },
   {

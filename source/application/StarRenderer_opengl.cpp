@@ -1039,7 +1039,27 @@ void OpenGlRenderer::flush(Mat3F const& transformation) {
 OpenGlRenderer::GlGpuTimer::GlGpuTimer(function<void()> flushPending)
   : m_flushPending(std::move(flushPending)) {}
 
+
+namespace {
+  // REGISTERED ON THE FIRST begin(), NOT THE FIRST DROP. This counter used to be declared inside the
+  // drop branch, so a run with no drops never registered it -- and a consumer differencing two
+  // snapshots cannot tell ABSENT from ZERO. On the counter that guards every GPU number, that means
+  // "we lost no samples" and "nothing was watching" were the same reading.
+  //
+  // It matters more here than anywhere else: at ring depth 3, 74% of parallax redraws were discarded
+  // and the capture rate then shifted 26% -> 98% mid-run, moving the reported cost 4.04x while the
+  // GPU did identical work. That survived for exactly one reason -- nothing counted it. A drop
+  // counter that can only appear once it has something to report keeps half of that hole open.
+  Star::TelemetryCounter& droppedCounter() {
+    static auto c = Star::Telemetry::counter("render.gputimer.dropped",
+      Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                       Star::MetricCadence::Call, Star::MetricRole::Detail});
+    return c;
+  }
+}
+
 void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& desc) {
+  droppedCounter();
   if (!Telemetry::deepEnabled())
     return;
   // Task #141: STAR_NO_PERPASS_GPU_TIMERS=1 suppresses the per-pass GL_TIME_ELAPSED queries while LEAVING the
@@ -1085,9 +1105,7 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
       // Measured, not theorised: at ring depth 3, 74% of parallax redraws were discarded, and the capture
       // rate then shifted 26% -> 98% mid-run, moving the reported cost 4.04x while the GPU did identical
       // work. It survived for exactly one reason -- nothing counted it.
-      static auto dropped = Telemetry::counter("render.gputimer.dropped",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
-      dropped.inc(1);
+      droppedCounter().inc(1);
     }
     ring.issued[slot] = false; // reuse the query object regardless
   }

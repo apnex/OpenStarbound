@@ -2395,6 +2395,14 @@ void WorldClient::lightingCalc() {
     static auto gatherFullDims  = outcome("lighting.gather.full.dims");
     static auto gatherFullEpoch = outcome("lighting.gather.full.epoch");
     static auto gatherFullJump  = outcome("lighting.gather.full.jump");
+    // TWO MORE THAT LIVE DEEPER THAN THIS BRANCH. margin_cells is declared inside
+    // shiftAndGatherMargin, which only the SCROLL arm calls -- doubly gated, so a window with the
+    // cache on but no scroll still reads ABSENT. calc_outside_loaded is the safety counter licensing
+    // the gather cache's sector assumption, and a safety counter that cannot report zero is one that
+    // cannot report anything.
+    static auto marginCellsReg = outcome("lighting.gather.margin_cells");
+    static auto calcOutsideReg = outcome("lighting.gather.calc_outside_loaded");
+    (void)marginCellsReg; (void)calcOutsideReg;
 
     if (configuration->get("lightingGatherCache").optBool().value(true)) {
       int64_t gatherStart = Time::monotonicMicroseconds();

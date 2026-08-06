@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       997 files
-      239333 lines
+      239377 lines
       6 tiers
     Content
       assets/
@@ -223,9 +223,9 @@ source/
 │   └── scripting/          2 files        55 lines
 ├── metrics/         T2     7 files       847 lines
 ├── platform/        T2     4 files       142 lines
-├── application/     T2    25 files     7,455 lines
+├── application/     T2    25 files     7,473 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,589 lines
+├── game/            T3   500 files   115,615 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -283,11 +283,11 @@ flowchart TD
     base["base<br/><small>32 files · 7,449 lines · Root×0</small>"]
     metrics["metrics<br/><small>7 files · 847 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
-    application["application<br/><small>25 files · 7,455 lines · Root×0</small>"]
+    application["application<br/><small>25 files · 7,473 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,589 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,615 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -597,12 +597,12 @@ treemap-beta
     "T1 language"
         "core": 56348
     "T2 services"
-        "application": 7455
+        "application": 7473
         "base": 7449
         "metrics": 847
         "platform": 142
     "T3 simulation"
-        "game": 115589
+        "game": 115615
     "T4 presentation"
         "frontend": 16863
         "windowing": 9646
@@ -621,8 +621,8 @@ treemap-beta
 | T2 services | `base` | 32 | 7,449 | 3.1% |
 | T2 services | `metrics` | 7 | 847 | 0.4% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
-| T2 services | `application` | 25 | 7,455 | 3.1% |
-| T3 simulation | `game` | 500 | 115,589 | 48.3% |
+| T2 services | `application` | 25 | 7,473 | 3.1% |
+| T3 simulation | `game` | 500 | 115,615 | 48.3% |
 | T4 presentation | `rendering` | 23 | 4,509 | 1.9% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
