@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**174 tasks** across 2 store(s): 4 in_progress, 29 pending, 141 completed
+**181 tasks** across 2 store(s): 4 in_progress, 34 pending, 143 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 173 tasks, ids 64–237
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 180 tasks, ids 64–244
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -41,7 +41,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 174, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 179, of which **40 resolve to nothing** in either repository.
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
@@ -63,7 +63,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 141.
+**Completed tasks citing no commit and no doc:** 84 of 143.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -96,7 +96,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `9346f86a` `35808327` | `matrix-prereq-ledger.md` |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `91cd1ef4` `9346f86a` `35808327` | — |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -246,9 +246,16 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
-| [#235](#c29c1332-235) | `c29c1332` | open | GM-1d: every CPU phase timer measures WALL time, not CPU work | `72ad0000` `50d57866` | — |
+| [#235](#c29c1332-235) | `c29c1332` | open | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | `72ad0000` `50d57866` | — |
 | [#236](#c29c1332-236) | `c29c1332` | **active** | GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
-| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | — | — |
+| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
+| [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
+| [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
+| [#240](#c29c1332-240) | `c29c1332` | open | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | — | — |
+| [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
+| [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
+| [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -474,9 +481,9 @@ Per windLevel investigation (wjsdj5oez). Plant::update unconditionally computes 
 
 status: **pending**
 
+- `91cd1ef4` SCENE-FINGERPRINT (O01/#84): the matrix had none, and its own artefacts show the drift #84 was refused for
 - `9346f86a` docs(board): regenerate -- #84 revisited [#84]
 - `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
-- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
 REVISITED 2026-07-25. Half this task's premise is now false, and the other half has a sharper reason.
@@ -4737,7 +4744,7 @@ No consumer today, so nothing currently reports a wrong number. The bound to re-
 
 <a id="c29c1332-235"></a>
 
-#### #235 — GM-1d: every CPU phase timer measures WALL time, not CPU work
+#### #235 — BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere
 
 status: **pending**
 
@@ -4745,16 +4752,63 @@ status: **pending**
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
 
 ```
-STRUCTURAL, same class as GPUTIMER-1. source/core/StarTelemetry.cpp:258/261 takes `Time::monotonicMicroseconds()` at scope entry and exit, so every cpu-domain timer -- tick.server.compute.*.us, lighting.cpu.*.us, cpu.frame.*.us, render.*.us -- records the ELAPSED WALL TIME of a code region, including any blocking, lock wait, page fault or preemption inside it. Nothing in the tree uses CLOCK_THREAD_CPUTIME_ID or CLOCK_PROCESS_CPUTIME_ID (verified by grep: zero hits). getrusage(RUSAGE_SELF) appears once, in StarTelemetryReporter.cpp:26, and is process-granular only.
+SCOPE WIDENED 2026-08-07 (Director). Was "every CPU phase timer measures WALL time, not CPU
+work" -- kept at #235 because StarMetricDesc.hpp cites this number by name in the MetricClock
+comment, and that citation must stay true.
 
-WHY IT IS THE SAME DEFECT: a bracket that counts whatever happens inside it, including not-working, under a name asserting work. It is far less severe than the GPU case -- a CPU region is usually actually executing, where a GPU region is idle-heavy by construction -- but the two diverge exactly where it matters most: under contention, which is when a phase looks expensive.
+THE DEFECT, RESTATED. Every duration in this system is a WALL span between two points. That is
+true on both sides:
+  * TelemetryScope records a monotonic-clock delta -- busy + blocked + preempted, undifferentiated.
+  * GL_TIME_ELAPSED / GL_TIMESTAMP record elapsed GPU-TIMELINE, which includes GPU idle inside the
+    bracket if the CPU under-feeds it.
+So no phase in the tree can answer "was this work, or waiting?" -- and the two have OPPOSITE fixes.
 
-EVIDENCE IT HAS BITTEN AT LEAST ONCE: cpu.wait.lighting.us exists (StarClientApplication.cpp:578), i.e. someone already had to carve a waiting-quantity out of a timer that was charging waiting as work.
+IT HAS NOW BITTEN THREE TIMES IN ONE DAY (2026-08-07):
+  * I read render.frame.gpu_span_us (16207us/frame, ~= the frame period) as "the GPU is saturated"
+    and reported a per-pass cost table with world at 58%. RETRACTED: cpu.frame.swap.us is 6.4us
+    and cpu.frame.idle.us is 11470us, so the loop is PACED and the CPU never waits on the GPU.
+    The span was tracking the frame period, not GPU work, and the "cost table" was a table of how
+    long each bracket was open.
+  * D05's cadence question was the same shape one level down.
+  * This row itself.
 
-NOT YET DEMONSTRATED TO HAVE PRODUCED A WRONG NUMBER -- do not assert that it has without checking. The check is now cheap: run-queue wait from /proc/<pid>/task/*/schedstat field 2 (arriving with GM-1c) shows when a thread was runnable but unscheduled during a window a timer was charging as work. Compare a phase timer's total against the same thread's on-cpu delta over the same window; a gap is the wall-vs-CPU error, measured rather than argued.
+THE TYPE SYSTEM ALREADY NAMES THE ANSWER and nothing populates it:
+  enum class MetricClock { Undeclared, NotApplicable, Wall, ThreadCpu, ProcessCpu, GpuEngine,
+                           GpuTimeline };
+ZERO sites in the tree declare a clock (verified 2026-08-07 -- the only site setting any prose or
+extended descriptor field is telemetry_test's fixture). GpuEngine vs GpuTimeline is exactly the
+engine-busy vs elapsed-span distinction that was missing today.
 
-THE FIX IS NOT SIMPLY SWAPPING THE CLOCK. CLOCK_THREAD_CPUTIME_ID excludes blocking, which is sometimes the very thing being measured (cpu.wait.* wants wall). So the model must let a timer DECLARE which quantity it takes -- which is the generalisation work, not a patch. Blocked on the key/value design.</description>
-<parameter name="activeForm">Fixing the wall-vs-CPU timer conflation
+THREE PIECES.
+ 1. DUAL-CLOCK TelemetryScope (the CPU half, and the original #235). Read CLOCK_MONOTONIC and
+    CLOCK_THREAD_CPUTIME_ID per scope; store both on the node. Then busy = cpu and
+    blocked = wall - cpu are derivable for EVERY phase, forever, with no new call sites and no
+    per-site migration. This is the piece that makes it "always, for everything".
+ 2. GpuEngine READER (the GPU half). There is no GL query for engine-busy inside a bracket, so
+    stop implying one: declare every GL query GpuTimeline honestly, and add a PMU-backed
+    GpuEngine reader (scripts/pmu-render-busy.py and #234's EngineBusyReader already exist).
+    Then a STANDING ORACLE, not a probe: sum(GpuTimeline brackets) must not exceed GpuEngine busy
+    for the same interval. Divergence PROVES the brackets contain idle -- today's ambiguity turned
+    into a check that runs on every capture.
+ 3. DECLARATION RATCHET. Extend scripts/metric-desc-lint.py (landed 2026-08-07) to ratchet the
+    count of MetricClock::Undeclared sites downward, so a new timer cannot be added without saying
+    which clock it is on. Same shape as client-residency.py.
+
+WHAT IT BUYS. The closure arithmetic becomes meaningful: tick.server.total.us closes at 99.9%
+today, but that is a WALL budget closing against WALL parts, in which a lock wait and real compute
+are indistinguishable. A BUSY budget can be closed, and "expensive" separates from "blocked".
+
+MEASURE BEFORE BUILDING. CLOCK_THREAD_CPUTIME_ID is not guaranteed vDSO on every kernel; if it
+falls through to a syscall the whole shape changes. #172 measured deep-telemetry arming at +2.16%
+before trusting it and this deserves the same treatment BEFORE it goes near the hot path. That
+measurement is the first task, not an afterthought.
+
+COUPLING. Piece 1 changes the snapshot schema, which lands inside the 3->4 descriptor convergence
+already in flight (docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md).
+Decide deliberately whether this folds into that convergence or ships beside it -- do not discover
+the interaction halfway through.
+
+PROCESS: this is a design, not a patch. brainstorm -> spec before any editing.
 ```
 
 <a id="c29c1332-236"></a>
@@ -4839,6 +4893,9 @@ whose denominator is under question would be the defective baseline again.
 
 status: **pending**
 
+- `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
+- `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
+
 ```
 PROPOSED 2026-08-06 by the Director, from evidence produced closing #136/O13. NOT STARTED, not queued.
 
@@ -4891,6 +4948,285 @@ day one instead of asserted.
 SEQUENCING. Behind the TSSA (#204/#207) -- that is where the grant table and the entrypoint set live, and
 this adds a row to both. Cross-refs: #199 (the presentation-null sibling), #200/#203 (boundary work),
 O13 in docs/superpowers/drafts/matrix-prereq-ledger.md (the three defects, with measurements).
+```
+
+<a id="c29c1332-238"></a>
+
+#### #238 — LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run
+
+status: **completed**
+
+- `a8df237e` D05-PROBE: publishes DO outrun consumptions, and Recompute is refuted by measurement
+- `b879c332` DESC-LINT: the paragraph asserting a check was in place was the only thing holding the rule up
+- `92b8a3eb` CLUSTER C (D03-D09): a descriptor asserting one quantity while the code produces another
+- `a66a7378` CLUSTER B (H06): the arrival gate was vacuous on every frame before the warp fired
+- `246d75df` CLUSTER A (R07-R11): a counter registered inside the branch it measures cannot report zero
+
+```
+DONE 2026-08-06. All 13 rows closed across three commits, each with signatures null-controlled against HEAD.
+
+246d75df CLUSTER A (R07-R11) -- registration hoisted out of the branch it measures.
+a66a7378 CLUSTER B (H06) -- the arrival gate was vacuous before the warp fired; warp now re-enters the load phase; render-profile.sh reads the log ordering (new gate render_profile_verdicts).
+92b8a3eb CLUSTER C (D03-D09) -- seven descriptor corrections, measured against a 60s live capture.
+
+Ledger: 53 rows, 20 open (was 33), 0 BLOCK, 33 verified (was 20). Artifact refreshed at
+https://claude.ai/code/artifact/a26d0a94-2aba-4769-9779-eb3251b2ccc6
+
+FOUND WHILE VERIFYING, still open and NOT in the approved scope:
+1. scripts/metric-desc-lint.py does not exist, though StarMetricDesc.hpp says it "requires DESIGNATED
+   INITIALIZERS at any site that sets .measures/.validWhen". No source site uses either field, and no
+   site uses designated initializers. A claim with no instrument, plus two never-used descriptor fields.
+2. client-residency reads 184/185 harness lines in StarClientApplication.cpp -- one line of headroom.
+   The next harness edit turns it red. Raising it is a decision (defer #237 again), not a formality.
+3. D05's cadence question is not settled by data: 1035/1035 was measured at 72% headroom, the regime
+   where publish/consume coalescing cannot occur. Call is safe in both regimes; the loaded regime is
+   untested. The matrix's own heavy legs are the natural place to check it.
+```
+
+<a id="c29c1332-239"></a>
+
+#### #239 — MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440
+
+status: **completed**
+
+- `297090b0` R14: the matrix reproduced R07's own impact statement on a row I had closed
+- `f6cb3258` R13: the matrix produced 28 legs and not one quotable cost, for one lazy registration
+
+```
+COMPLETE 2026-08-07 08:02. Run matrix-20260807-071454, 28 legs in 48 min (~105s/leg, not the
+estimated 98 min). Data: harness/matrix/matrix-20260807-071454/ (GITIGNORED -- findings below are
+the copy that travels).
+
+VERDICT: 24 lever legs OK, 0 VOID, 0 failed. Cost attribution NOT performed, by design.
+
+WHAT THE RUN PROVED ABOUT ITSELF
+ * Scene fingerprint (O01), first real use: baselines 560/556/559 entities, every one of 24 lever
+   legs within 1.44% (most under 0.72%) against a 5% bound. Every leg measured the same scene.
+ * Witnesses: all 24 read MOVED. drawableCache 201750->0 / 202455->0 / 208824->0; vboOrphan
+   152259->0 / 153728->0 / 153609->0; envRefresh 3374/3375/3375->0; parallaxRefresh
+   2998/2999/3000->0; temporalDecouple 2689/2686/2655->0; gatherCache 1561/1634/1692->0;
+   backdropComposeMerge inverts 0->4499/4500/4498. WEAKEST WITNESS: scriptProtoCacheEnabled at
+   231 / 45 / 238 -- a 5x swing between passes. Worth a look before anyone leans on that lever.
+ * Frame rate identical on every leg: 16191-16211us, 0.12% spread, 62 fps, ~72% idle throughout.
+   The loop is PACED, not saturated. No lever moved it.
+
+FOUR READ-OUTS
+ 1. D05 coalescing -- CONFIRMED, MY PREDICTION WRONG. 3 of 27 legs coalesced, at 0.99903 /
+    0.99942 / 0.99956. I predicted ~0.997 on the three lightingTemporalDecouple legs; two of
+    those were EXACTLY 1.00000 despite 4500 publishes each, and two of the three hits were
+    lightingGatherCache legs instead. So coalescing is real, sporadic, an order of magnitude
+    smaller than the 0.27% probe, and NOT reliably produced by raising the publish rate. The
+    probe also had antiAliasing on, which the matrix legs did not -- a plausible untested
+    contributor. Cadence::Call remains correct and is arguably better justified: under Recompute
+    3 of 27 legs would be scaled up for reasons unrelated to GPU work, which reads as noise
+    rather than as bias and is therefore harder to catch.
+ 2. D04 nesting suppression -- MEASURED NULL. All 12 .nested counters zero across all 27 legs, on
+    top of 0 in two standalone probes. The guard suppresses nothing at this scene. The
+    Frame->Call cadence fix stands on its own argument (count is neither frames nor blits), not
+    on suppression.
+ 3. R07 part-set stability -- FAILED, see R14. Three distinct timer key sets across 27 legs; the
+    absent key is always a mutually-exclusive compose arm, and it lands on backdropComposeMerge
+    and parallaxRefreshInterval specifically. R07's fix covers ran-but-unresolved, not never-ran.
+ 4. Settle-vs-cap -- 3 of 28 legs capped. Established as world-settling noise, NOT lever-driven
+    (same lever capped in one pass and settled in another; fps identical across all legs). My
+    two mid-run mechanisms were both wrong; reading 1 was right.
+
+LEDGER CONSEQUENCES, both committed
+ * R13 (f6cb3258, evidence corrected in 297090b0): tick.server.lock.sync.us registers on first
+   acquisition; costsQuotable "no" on 28 of 28 legs. BLOCKS_MATRIX.
+ * R14 (297090b0): R07 half-closed. Filed because the matrix reproduced R07's own impact
+   statement on a row I had already marked done -- the signature was true and answered the
+   smaller half.
+
+NEXT RUN NEEDS, in order: fix R13 (one hoist, plus the three latent siblings), then R14, then
+re-run and assert zero legs flagged. The cost-analysis half still waits on the schema 3->4
+descriptor convergence regardless.
+```
+
+<a id="c29c1332-240"></a>
+
+#### #240 — R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK
+
+status: **pending**
+
+```
+RANK 1 of the post-matrix order (2026-08-07). ~15 minutes.
+
+tick.server.lock.sync.us is a function-local static in WorldServerThread::sync(). sync() is the
+PERIODIC disk sync, so its first acquisition usually falls INSIDE the measurement window;
+telemetry-window.py then refuses to difference a lifetime total against an absent entry and
+lever-matrix.sh flags that leg's costs not-quotable. Measured: 28 of 28 legs of
+matrix-20260807-071454, costsQuotable "no" on every one including the warm-up.
+
+FIX: hoist to namespace scope in StarWorldServerThread.cpp -- and do ALL FOUR lock timers
+(.sync.us, .us, .message.us, .queue.us), not just the one that bites. The other three share the
+lazy shape and are saved only by being acquired every tick; fixing one leaves the pattern in the
+file for the next rare-path timer to inherit.
+
+Ledger row R13 (BLOCKS_MATRIX). Signature is an ordering predicate already checked in both
+directions. Closing this takes the ledger to 0 BLOCK and makes every subsequent matrix run
+quotable. Everything numeric downstream depends on it.
+
+Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].</description>
+<parameter name="activeForm">Hoisting the lock-timer registrations
+```
+
+<a id="c29c1332-241"></a>
+
+#### #241 — R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT
+
+status: **pending**
+
+```
+RANK 2 of the post-matrix order (2026-08-07). ~45 minutes.
+
+R07's fix registers a GPU pass key at GlGpuTimer::begin, which covers a pass that RUNS but whose
+queries never resolve. It cannot cover a pass that NEVER RUNS, because begin() is never called for
+it -- and StarBackdropPass picks exactly one of two mutually-exclusive compose arms.
+
+MEASURED in matrix-20260807-071454: three distinct registered-timer key sets across 27 legs.
+21 legs have parallax.compose and lack environment.compose; the three backdropComposeMerge-OFF
+legs have both; the three parallaxRefreshInterval-OFF legs have environment.compose and lack
+parallax.compose. Owner `gl` closes over a different part set on different legs of the very
+levers being compared -- R07's own impact statement, live on a row marked done.
+
+FIX, and it is cheaper than R07 assumed. Both keys AND both descriptors already live in
+StarBackdropPass.cpp. Lift each key+desc into a named constant used by BOTH an eager
+construction-time registration and the begin() call. No second source of truth, no global table,
+no vocabulary-drift hazard -- which was the exact objection that made R07 stop short, and it
+dissolves at file scope.
+
+Bounded today because both keys are MetricRole::Detail and do not enter the gl closure sum; the
+exposure is the printed table and any leg-to-leg part-set diff. It is lever-CORRELATED, landing
+on two of eight levers rather than scattered.
+
+Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit ends [#241].</description>
+<parameter name="activeForm">Registering the compose keys eagerly
+```
+
+<a id="c29c1332-242"></a>
+
+#### #242 — MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside
+
+status: **pending**
+
+```
+RANK 4 of the post-matrix order (2026-08-07). ~2h wall-clock, near-zero attention.
+BLOCKED BY #240 (R13). Run only after the fix lands and the binary is rebuilt.
+
+TWO RUNS, IN THIS ORDER, AND THE ORDER IS THE POINT.
+
+ A. Desert Town re-run (48 min). Same scene, same binary, so it is a clean before/after NULL
+    CONTROL: the only thing that should change is quotability. Assert ZERO legs flagged
+    not-quotable. If anything else moved, know it after 48 minutes rather than 108.
+    Banks the numbers the 2026-08-07 discussion rested on but could not quote.
+
+ B. Second scene (1h). One --warp change. EVERY number we hold is from one location at 72% CPU
+    idle. The harness carries the warning from exactly this failure: "a whole day of parallax
+    optimization was aimed at a pass that is not in the scene being complained about." Candidate
+    scenes from the bookmark list: a dense base, or Ark Ruins (authored, settles cleanly).
+
+SAMPLE THE PMU ALONGSIDE BOTH. scripts/pmu-render-busy.py reads i915 render-engine busy
+OUT OF PROCESS -- utilisation, not span. The metrics_mutual gate has SKIPPED every run to date
+("no GPU client on this machine") and a matrix leg IS a live client. Near-zero marginal cost, and
+it answers the question that retracted the GPU-bound claim: is the GPU actually busy, or are the
+GL brackets merely open? This is the cheap down-payment on #235 piece 2.
+
+WHAT THESE TWO RUNS DECIDE, which is why they sit above the big items:
+ * #173 (36 flushes/frame) is a CPU lever on a system with 72% CPU idle. If that holds at both
+   scenes it should be CLOSED, not done.
+ * The world pass (#243) only becomes a target if the PMU shows real GPU busy AND it generalises.
+ * #237 gets its ACCEPTANCE ORACLE: the new entrypoint must reproduce these numbers at these two
+   scenes. A rewrite with no oracle is how a silent regression ships.
+
+Do not start any large item below until B has finished.</description>
+<parameter name="activeForm">Re-running the matrix and sampling the PMU
+```
+
+<a id="c29c1332-243"></a>
+
+#### #243 — REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance
+
+status: **pending**
+
+```
+RANK 5 of the post-matrix order (2026-08-07). ~45 minutes.
+
+SEVEN INSTANCES OF ONE PATTERN, all found in two days: cluster A's five rows (R07-R11), plus R13
+(tick.server.lock.sync.us), plus R14 (the never-ran compose arm). Every one is a telemetry handle
+registered on a path that is not always taken, so the key reads ABSENT rather than ZERO and a
+consumer differencing two snapshots cannot tell "found nothing" from "never ran".
+
+Full static reachability analysis is hard and not worth it. The CHEAP, SOUND form is a RATCHET,
+same shape as scripts/client-residency.py: count function-local `static auto x = Telemetry::
+(counter|gauge|timer|rate)` registration sites, pin the ceiling at today's number, forbid growth.
+It does not fix existing instances -- #240 and #241 do that -- it stops the eighth.
+
+SEQUENCING MATTERS: this belongs BEFORE the schema 3->4 descriptor convergence, not after. That
+sweep touches all 139 MetricDesc sites, and a large mechanical pass is precisely the highest-risk
+moment for reintroducing the pattern. Afterwards it is a lock on an empty stable.
+
+Build on scripts/metric-desc-lint.py (landed 2026-08-07): same file could carry both the
+positional-prose check and the registration ratchet, and it already has the selftest harness and
+a gates.yml registration. Must PRINT its denominator like the others -- a ratchet whose count
+nobody sees is a ratchet nobody notices is wrong.
+
+Register as a gate with a fires-arm. Commit ends [#243].
+```
+
+<a id="c29c1332-244"></a>
+
+#### #244 — POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them
+
+status: **pending**
+
+```
+Director-requested ranking, 2026-08-07, after matrix-20260807-071454 completed and after the
+"GPU-bound" reading was RETRACTED. This is the index; each item links to its own task.
+
+WHY THE RANKING MOVED. Two things collapsed on 2026-08-07:
+  * "The GPU is saturated" is FALSE. cpu.frame.swap.us is 6.4us/frame and cpu.frame.idle.us is
+    11470us/frame -- with vsync off, swap blocks only when the GPU queue is full, so the CPU
+    essentially never waits on the GPU. The loop is PACED at 60Hz. render.frame.gpu_span_us was
+    tracking the frame period, not GPU work.
+  * Therefore the per-pass "cost table" (world 9440us = 58%) is NOT a cost table. It is a table of
+    how long each bracket was open. The world-pass target loses its justification until an
+    engine-busy measurement replaces it.
+  Net: the two items that looked like the performance work dropped to the bottom, and the item
+  that makes durations interpretable at all rose to the top three.
+
+THE RANKED NINE
+
+ 1  #240  R13 FIX -- hoist four lazy lock-timer registrations.        ~15 min.  CLOSES 1 BLOCK.
+ 2  #241  R14 FIX -- register both compose keys eagerly.              ~45 min.  Correctness.
+ 3  #235  BUSY-VS-WALL as a first-class metric property.              Design.   See below.
+ 4  #242  MATRIX RE-RUN + second scene + PMU sample alongside.        ~2h unattended. Blocked by 1.
+ 5  #243  REG-RATCHET -- no eighth lazy registration.                 ~45 min.  Before the convergence.
+ 6  --    Descriptor convergence 3->4 + the cost-analysis half.       Large. COUPLED to #235.
+ 7  #237  MEASURE-CLIENT -- the fifth entrypoint.                     Large. Gets its oracle from #242.
+ 8  --    WORLD PASS.  Justification RETRACTED; re-open only if #242's PMU shows real GPU busy.
+ 9  #173  36 flushes/frame -- a CPU lever on a system with 72% CPU idle. Likely CLOSE, not do.
+
+WHY #235 SITS AT 3 DESPITE BEING THE MOST WORK. Every duration in the tree is a wall span. Until
+work and waiting are separable, NO item below can be honestly ranked -- 8 and 9 both just lost
+their evidence to precisely this confusion, and #235's own row is the third instance in one day.
+It is the precondition for the performance arc meaning anything, not another entry in it.
+Its cheap down-payment rides along free with #242 (the PMU sample), which is why 4 follows 3.
+
+DEPENDENCY / DERISK CHAIN
+  1 -> 4        the fix must land before the runs, or they produce more unquotable data
+  4A -> 4B      Desert Town first: same scene, same binary, a clean null control on the fix
+  4  -> 8, 9    may CANCEL both rather than inform them
+  4  -> 7       supplies #237 its acceptance oracle (reproduce these numbers at these two scenes)
+  5 -> 6        ratchet before the 139-site sweep, not after
+  3 <-> 6       both change the snapshot schema; decide deliberately, do not collide
+
+WHAT SURVIVED THE RETRACTION UNTOUCHED: the COUNTER-based work-avoidance figures, because counts
+are not durations. env cache skips 75% of redraws; parallax 67%; lighting temporal 60%; gather
+cache 86% hit; drawable cache 72% hit (44.9 cached vs 17.6 rebuilt per frame); VBO orphaning
+avoids 33.9 of 35.99 flushes per frame. Those are what our levers demonstrably do versus vanilla.
+What we still cannot say is what any of it COSTS -- which is items 1 and 3.</description>
+<parameter name="activeForm">Tracking the post-matrix ranked order
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
