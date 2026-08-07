@@ -212,6 +212,18 @@ jobs:
       - name: pmu_join_fires -- deltas inside the resolution floor are refused, not quoted
         run: python3 scripts/pmu-join.py --selftest
 
+      # A telemetry handle registered on a path that is not always taken makes the key ABSENT rather
+      # than ZERO, and a consumer differencing two snapshots cannot tell that from "ran and found
+      # nothing". NINE instances of that one pattern were found in two days (R07-R11, R13, R14, then
+      # R15 and R16 while fixing R14); R13 alone stamped 28 of 28 matrix legs not-quotable. This does
+      # not fix them -- it stops the tenth, and it lands BEFORE the descriptor convergence touches all
+      # 152 MetricDesc sites, because a large mechanical pass is when the pattern comes back.
+      - name: reg_ratchet -- the count of lazily-registered telemetry handles may not grow
+        run: python3 scripts/metric-desc-lint.py --check-registrations
+
+      - name: reg_ratchet_fires -- the ratchet fires on growth and refuses to pass on zero matches
+        run: python3 scripts/metric-desc-lint.py --selftest-registrations
+
       # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
       # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
       # the player save, quiescence firing on the departure world, and a run mutating the inventory it
