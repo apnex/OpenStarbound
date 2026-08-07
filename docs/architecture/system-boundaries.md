@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       997 files
-      239728 lines
+      239824 lines
       6 tiers
     Content
       assets/
@@ -189,7 +189,7 @@ mindmap
       scripts/ + tests
       42 scripts
       23 ctest gates
-      43 CI gates
+      45 CI gates
     Governance
       docs/
       47 markdown documents
@@ -217,13 +217,13 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   217 files    56,357 lines
+├── core/            T1   217 files    56,363 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,468 lines
 │   └── scripting/          2 files        55 lines
 ├── metrics/         T2     7 files       847 lines
 ├── platform/        T2     4 files       142 lines
-├── application/     T2    25 files     7,529 lines
+├── application/     T2    25 files     7,562 lines
 │   └── discord/         vendored — excluded from every count here
 ├── game/            T3   500 files   115,658 lines
 │   ├── interfaces/        47 files     3,123 lines
@@ -231,7 +231,7 @@ source/
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     4,630 lines
+├── rendering/       T4    23 files     4,687 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,863 lines
 ├── client/          T5     4 files     2,612 lines
@@ -276,14 +276,14 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>217 files · 56,357 lines · Root×0</small>"]
+    core["core<br/><small>217 files · 56,363 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,468 lines · Root×0</small>"]
     metrics["metrics<br/><small>7 files · 847 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
-    application["application<br/><small>25 files · 7,529 lines · Root×0</small>"]
+    application["application<br/><small>25 files · 7,562 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
@@ -291,7 +291,7 @@ flowchart TD
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 4,630 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 4,687 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,863 lines · Root×200</small>"]
   end
@@ -595,9 +595,9 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56357
+        "core": 56363
     "T2 services"
-        "application": 7529
+        "application": 7562
         "base": 7468
         "metrics": 847
         "platform": 142
@@ -606,7 +606,7 @@ treemap-beta
     "T4 presentation"
         "frontend": 16863
         "windowing": 9646
-        "rendering": 4630
+        "rendering": 4687
     "T5 shells"
         "client": 2612
         "server": 783
@@ -617,13 +617,13 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.2% |
-| T1 language | `core` | 217 | 56,357 | 23.5% |
+| T1 language | `core` | 217 | 56,363 | 23.5% |
 | T2 services | `base` | 32 | 7,468 | 3.1% |
 | T2 services | `metrics` | 7 | 847 | 0.4% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
-| T2 services | `application` | 25 | 7,529 | 3.1% |
+| T2 services | `application` | 25 | 7,562 | 3.2% |
 | T3 simulation | `game` | 500 | 115,658 | 48.2% |
-| T4 presentation | `rendering` | 23 | 4,630 | 1.9% |
+| T4 presentation | `rendering` | 23 | 4,687 | 2.0% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
 | T5 shells | `client` | 4 | 2,612 | 1.1% |
@@ -813,8 +813,8 @@ flowchart TB
   X1 -.->|2| frontend
   X2{{"Telemetry"}}
   X2 -.->|5| game
+  X2 -.->|4| rendering
   X2 -.->|3| base
-  X2 -.->|3| rendering
   X2 -.->|2| core
   X2 -.->|2| application
   X3{{"Assets"}}
@@ -833,7 +833,7 @@ Edge labels are files naming the concern. Single-file touches are elided (4 of t
 |:--------|------:|------------:|------:|:-------------------|
 | **Scripting** | 128 | 6 | 5 of 6 | Lua VM is 4 files in core; the binding surface is spread across six directories |
 | **Protocol** | 187 | 6 | 5 of 6 | wire format and save format, versioned independently of the code that reads them |
-| **Telemetry** | 16 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
+| **Telemetry** | 17 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
 | **Assets** | 66 | 7 | 5 of 6 | loader in base, consumed everywhere, content lives outside the tree entirely |
 <!-- END GENERATED: crosscut -->
 
@@ -851,7 +851,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 4,630 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 4,687 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,863 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

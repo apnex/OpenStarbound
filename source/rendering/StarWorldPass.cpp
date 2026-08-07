@@ -12,6 +12,14 @@
 
 namespace Star {
 
+namespace {
+  // Eager, by name -- see the note at the head of StarBackdropPass.cpp. This one is reached on every frame
+  // that renders a world, so it has never been observed absent; it is registered here for the same reason
+  // the others are, and so gpu_pass_keys can assert the set rather than a subset somebody curated.
+  auto s_worldTimer = Telemetry::timer("render.pass.world.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+}
+
 WorldPass::WorldPass(AssetsConstPtr assets) : m_assets(std::move(assets)) {
   m_highlightConfig = m_assets->json("/highlights.config");
   for (auto p : m_highlightConfig.get("highlightDirectives").iterateObject())

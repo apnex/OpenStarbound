@@ -303,12 +303,27 @@ def selftest():
     arm("a whole with no parts would be mis-reported if asked -- so the caller must not ask",
         (closure_verdict("gl", "gpu", 0, W) or "").find("unattributed") >= 0)
 
+    # 9. A REGISTERED TIMER THAT RECORDED NOTHING MUST REACH THE CONSUMER, and must not reach it as a
+    #    metric. This is R14's consumer half: the engine now registers every GPU pass key at zero, but
+    #    window() drops zero-delta timers, so without `zeroed` the --json artifact was identical whether
+    #    a key was registered-at-zero or absent from the binary -- and the three distinct key sets that
+    #    R14 measured across 27 legs would have persisted unchanged after the engine fix. The second half
+    #    of the arm is load-bearing too: a count=0 row inside `metrics` would reach coverage_scale.
+    snap = lambda c: {"metrics": {"render.pass.x.gpu_us": {"type": "timer", "count": c, "total": 0,
+                                                           "domain": "gpu", "owner": "gl",
+                                                           "cadence": "call", "role": "detail"}}}
+    z = []
+    m = window(snap(0), snap(0), z)
+    arm("a timer that recorded nothing lands in `zeroed`", z == ["render.pass.x.gpu_us"])
+    arm("...and is kept OUT of `metrics`, where it would reach coverage_scale", m == {})
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
         return 1
-    print("telemetry-window selftest: 8/8 arms ok -- the bound fires, does not over-fire, its blind "
-          "spot is asserted, and the rank case is distinguished from a broken budget")
+    print("telemetry-window selftest: 10/10 arms ok -- the bound fires, does not over-fire, its blind "
+          "spot is asserted, the rank case is distinguished from a broken budget, and a timer that "
+          "recorded nothing is reported rather than silently dropped")
     return 0
 
 
@@ -381,6 +396,18 @@ def main():
           f"pkgTempC={meta.get('packageTempCStart')}->{meta.get('packageTempCEnd')}\n")
 
     violations = []
+    # UNDECLARED, SAID OUT LOUD. The owner loop below skips owner=="unknown", and skipping is all it did:
+    # a metric registered with an empty MetricDesc left the tables with no mention, so "nobody declared
+    # this" and "this owner has no metrics" were the same output. StarRenderDiagnostics.hpp cites this line
+    # as what catches a deliberate `{}` at a GPU timer -- it is cited by the design, so it has to exist.
+    # Not a violation: an undeclared metric is under-described, not wrong.
+    undeclared = sorted(k for k, m in w.items() if m.get("owner") in (None, "unknown"))
+    if undeclared:
+        print(f"  UNDECLARED ({len(undeclared)}) -- no owner declared, so these are in no budget and appear "
+              f"in no table below:")
+        for k in undeclared:
+            print(f"       {k}")
+        print()
     for owner in sorted({m["owner"] for m in w.values() if m.get("owner") not in (None, "unknown")}):
         spec = owners.get(owner, {})
         denom_name, totals = spec.get("denominator"), spec.get("totals", {})
@@ -554,7 +581,11 @@ def main():
         # It is REPORTED because the row is dropped from the tables above, and a row present on one leg and
         # dropped on the next reads as "this pass got infinitely cheaper" rather than "it did not run".
         # The engine registers these keys at zero precisely so the distinction exists; hiding it here would
-        # spend that.
+        # spend that -- and until R14 this was printed to STDOUT ONLY, so every automated consumer saw the
+        # same `metrics` dict whether a key was registered-at-zero or absent from the binary entirely. It
+        # now travels in --json BESIDE `metrics`, never inside it: a count=0 row placed among the metrics
+        # would reach coverage_scale and the cadence over-count check, both of which are sound only
+        # because zero-delta rows never get that far.
         print(f"\n  registered timers that recorded NOTHING in this window ({len(sorted(zeroed))}) -- "
               f"dropped from the tables above, listed so their absence is a fact rather than a gap:")
         for k in sorted(zeroed):
@@ -568,7 +599,8 @@ def main():
     if args.json:
         with open(args.json, "w") as f:
             json.dump({"label": args.label, "window": [files[lo], files[hi]],
-                       "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi]), "owners": owners, "metrics": w, "violations": violations}, f, indent=2)
+                       "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi]), "owners": owners,
+                       "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")
 
     return 3 if violations else 0

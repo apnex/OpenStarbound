@@ -35,7 +35,11 @@ namespace Star {
 // longer be left undeclared by a branch that does not run, and a multi-site key just repeats the same desc at
 // each call rather than needing one declaration proven to dominate every site. (It is still possible to pass
 // `{}` on purpose and get owner=Unknown -- omission is impossible, deliberate vagueness is not. The profile
-// check's UNDECLARED line catches that.)
+// check's UNDECLARED line reports that.)
+//
+// It also cannot register a pass that NEVER RUNS, because begin() is never reached for it -- so each key is
+// ALSO registered eagerly at namespace scope in the file that begins it, and gpu_pass_keys asserts the two
+// sets are equal in both directions (R14). The descriptor still lives here, at the call.
 //
 // The desc is spelled out in full at every call rather than hidden behind shape constants like
 // `GpuFrameBudget`. Deliberate: cadence and role are exactly the fields that have been mis-set historically,

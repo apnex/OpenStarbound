@@ -1061,6 +1061,35 @@ namespace {
                        Star::MetricCadence::Call, Star::MetricRole::Detail});
     return c;
   }
+
+  // The renderer's own two GPU brackets, registered eagerly for the reason given at the head of
+  // StarBackdropPass.cpp. blit is the conditional one: blitGlSurface is reached only from the
+  // `if (effect.blitFrameBuffer)` arm of switchEffectConfig, so an effect configuration that declares no
+  // blit target leaves the key ABSENT for the whole run rather than at zero.
+  //
+  // These two also sit at m_gpuTimer.begin rather than gpuTimer().begin, which is why gputimer_brackets
+  // never scanned them -- 13 of 15 sites, silently. Both gates now match either spelling.
+  auto s_clearTimer = Star::Telemetry::timer("render.frame.clear.gpu_us",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Frame, Star::MetricRole::Detail});
+  auto s_blitTimer = Star::Telemetry::timer("render.frame.blit.gpu_us",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+
+  // NOT CO-LOCATED WITH ITS begin(), DELIBERATELY. render.pass.interface.gpu_us is begun in
+  // ClientApplication::render(), and StarClientApplication.cpp is an upstream file whose line count
+  // client_residency ratchets precisely so our code LEAVES it (#237). Registering there would have
+  // pushed nine more of our lines into it and forced that ceiling up. It sits here instead, with the
+  // renderer's own two brackets, because this is where GlGpuTimer lives. gpu_pass_keys checks the sets,
+  // not the addresses, so the pairing is still asserted; drift in the descriptor is caught at runtime by
+  // descConflict, which is the only thing co-location would have bought.
+  //
+  // The bracket is triply gated -- past the title state, STAR_RENDERTEST_NO_INTERFACE unset, then
+  // begin() -- so a session that never leaves the menus, or any headless render-test run, left this key
+  // absent rather than at zero.
+  auto s_interfaceTimer = Star::Telemetry::timer("render.pass.interface.gpu_us",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Frame, Star::MetricRole::Detail});
 }
 
 void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& desc) {

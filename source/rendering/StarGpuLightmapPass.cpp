@@ -5,6 +5,21 @@
 
 namespace Star {
 
+namespace {
+  // Eager, by name -- see the note at the head of StarBackdropPass.cpp for why begin() cannot do this.
+  // Every one of these four is doubly conditional: the whole pass runs only when lightingGpu is on, and
+  // spread/point/upscale each sit behind their own dispatch decision, so a scene that never needs one
+  // leaves its key ABSENT rather than at zero. Descriptors must match the begin() sites exactly.
+  auto s_spreadTimer = Telemetry::timer("lighting.gpu.spread.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_pointTimer = Telemetry::timer("lighting.gpu.point.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_composeTimer = Telemetry::timer("lighting.gpu.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_upscaleTimer = Telemetry::timer("lighting.gpu.upscale.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 
 // Moved here from WorldPainter by #137. Byte-identical to the loop it replaces: same scan over the same

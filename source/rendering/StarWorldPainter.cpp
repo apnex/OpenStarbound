@@ -38,6 +38,12 @@ namespace {
   // fallback path. Same defect as lighting.gpu.cpu_cost.us; see the note at its registration.
   auto s_uploadTimer = Telemetry::timer("lighting.upload.us",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+  // The dim overlay draws only when the world is dimmed, so this GPU key is the same defect one layer out --
+  // see the note at the head of StarBackdropPass.cpp. It is not a hypothetical: this key is absent from ALL
+  // 27 legs of matrix-20260807-071454, which is why it never showed up as a DIFFERENCE between legs and went
+  // unnamed while its two compose siblings were being chased.
+  auto s_composePassTimer = Telemetry::timer("render.pass.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +

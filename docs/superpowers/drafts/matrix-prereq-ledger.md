@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 21 | not started |
+| **open** | 20 | not started |
 | **doing** | 0 | in progress |
-| **done** | 34 | closed; `commit` says where |
+| **done** | 35 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -47,7 +47,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
-| `R14` | degrade | R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part se | Register every declared pass key eagerly, by name, independent of whether its arm executes -- e.g. from a static table a |
 
 ## Closed
 
@@ -87,6 +86,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `R11` | lighting.upload.us registers only on the CPU-lightmap fallback branch and is absent whenever GPU lighting succeeds | [#238] cluster A -- registration hoisted out of the branch it measures |
 | `R12` | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | pending |
 | `R13` | tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the  | [#240] all four lock timers hoisted to namespace scope |
+| `R14` | R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part se | [#241] all 13 pass keys registered eagerly by name; gpu_pass_keys asserts begun  |
 
 ## Evidence
 
@@ -698,7 +698,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `source/game/StarWorldServerThread.cpp` matching `void WorldServerThread::sync\(\)[\s\S]*?static auto t = Telemetry::timer\("tick\.server\.lock\.sync\.us"` — present while open. (the sync lock timer is still registered inside sync(), so it first appears whenever the periodic sync happens to fall)
 
-### `R14` — DEGRADES_MATRIX — open
+### `R14` — DEGRADES_MATRIX — done
 
 **R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part set on different legs -- reproduced across 27 matrix legs**
 

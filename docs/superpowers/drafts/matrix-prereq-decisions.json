@@ -173,5 +173,9 @@
  "R13": {
   "status": "done",
   "commit": "[#240] all four lock timers hoisted to namespace scope"
+ },
+ "R14": {
+  "status": "done",
+  "commit": "[#241] all 13 pass keys registered eagerly by name; gpu_pass_keys asserts begun == registered in both directions; telemetry-window --json now carries `zeroed`, without which the leg files were unchanged"
  }
 }

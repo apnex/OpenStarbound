@@ -43,8 +43,14 @@ struct MetricNode {
 namespace {
   // First declaration wins. A conflicting second one is a BUG in the call sites, not a runtime condition to
   // paper over: it means two places disagree about what the metric means. Flag it (the caller logs, since
-  // this runs under Registry::mutex and must not) and keep the first so the data stays self-consistent; the
-  // telemetry self-test asserts none survive. Returns true iff a NEW conflict was just flagged.
+  // this runs under Registry::mutex and must not) and keep the first so the data stays self-consistent.
+  //
+  // NOTHING ASSERTS THAT NONE SURVIVE. This said the telemetry self-test did; the only test touching the
+  // flag asserts a DELIBERATE conflict on a fixture key IS raised, which is the detector working, not the
+  // registry being clean. A live conflict reaches a Logger::warn and a snapshot field, and no gate reads
+  // either. Stated rather than fixed here because a whole-registry assertion needs a run to assert over.
+  //
+  // Returns true iff a NEW conflict was just flagged.
   bool applyDesc(MetricNode& n, MetricDesc const& desc) {
     if (!n.declared) {
       n.desc = desc;

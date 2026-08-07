@@ -11,6 +11,34 @@
 
 namespace Star {
 
+namespace {
+  // EAGER, BY NAME, BECAUSE begin() CANNOT REGISTER A PASS THAT NEVER RUNS. GlGpuTimer::begin resolves its
+  // key on the first call, which covers a pass that runs but whose queries never resolve -- and cannot cover
+  // an arm that is never taken, because begin() is never reached for it. The two composes below are the
+  // MUTUALLY EXCLUSIVE arms of the compose decision, so exactly one of them executes per configuration.
+  //
+  // Measured across the 27 recorded legs of matrix-20260807-071454: 21 legs carried parallax.compose and no
+  // environment.compose, 3 carried both, 3 the reverse -- three different registered key sets from one
+  // binary. Owner `gl` therefore closed over a different set of parts on different legs, and a row present
+  // on the baseline and missing on the off leg reads as "this pass got infinitely cheaper" rather than "it
+  // did not run".
+  //
+  // THE DESCRIPTOR IS STILL SPELLED IN FULL AT EVERY begin(), which StarRenderDiagnostics.hpp requires and
+  // explains. These handles exist to create the node, not to carry meaning: they are deliberately unused,
+  // and each descriptor must match its call site exactly or descConflict fires -- which is the check, not a
+  // hazard. gpu_pass_keys (scripts/gputimer-brackets.py) asserts this list and the begin() sites name the
+  // same key set in BOTH directions, so a registration that outlives its pass is as loud as a pass that
+  // outlives its registration.
+  auto s_envTimer = Telemetry::timer("render.pass.environment.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_envComposeTimer = Telemetry::timer("render.pass.environment.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_parallaxTimer = Telemetry::timer("render.pass.parallax.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_parallaxComposeTimer = Telemetry::timer("render.pass.parallax.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+
 BackdropPass::BackdropPass(Renderer* renderer)
   : m_renderer(renderer),
     // #181: registered HERE, so every key exists in snapshot() from frame zero whatever the frame does.

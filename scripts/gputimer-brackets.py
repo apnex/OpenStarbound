@@ -24,16 +24,39 @@ simply describing something other than what its name claimed.
 THE RULE. If the work is gated, the bracket opens INSIDE the gate, and the metric is Cadence::Call --
 because the act being timed is the call, not the frame that may or may not contain one.
 
+THE SECOND RULE, gpu_pass_keys (R14). A pass key is registered by GlGpuTimer::begin on its first call --
+which cannot register a pass whose arm never runs, because begin() is never reached for it. Measured across
+27 matrix legs: three different registered key sets out of one binary, depending on which mutually exclusive
+compose arm executed. Each key is therefore ALSO registered eagerly at namespace scope in the file that
+begins it, and this gate asserts the two sets are equal IN BOTH DIRECTIONS.
+
+Both directions, because each has its own failure. A key begun with no eager registration is the R14 defect
+returning. A key registered with no begin is its mirror: a constant that outlived its pass, reporting
+present-at-zero forever -- "this pass exists and cost nothing" -- which is harder to notice than an absence,
+for the same reason the straddle above went unnoticed. R14's fix note demanded exactly this pair.
+
+SCOPE OF THE SECOND RULE: keys ending `.gpu_us`, which is precisely the set GlGpuTimer brackets.
+render.frame.gpu_span_us is deliberately outside it -- a GL_TIMESTAMP span read directly rather than a
+GpuTimer bracket, so it has no begin() to pair with.
+
 Usage:
-    gputimer-brackets.py --check      # scan source/, exit 1 on any violation
-    gputimer-brackets.py --selftest   # prove the detector fires, and does not over-fire
+    gputimer-brackets.py --check         # bracket rule: scan source/, exit 1 on any violation
+    gputimer-brackets.py --selftest      # prove the straddle detector fires, and does not over-fire
+    gputimer-brackets.py --check-keys    # key rule: begun set == eagerly-registered set, both ways
+    gputimer-brackets.py --selftest-keys # prove the bijection detector fires four ways
 """
 import re
 import sys
 import pathlib
 
-BEGIN = re.compile(r'gpuTimer\(\)\.begin\(\s*"([^"]+)"')
-END = re.compile(r'gpuTimer\(\)\.end\(\s*"([^"]+)"')
+# EITHER SPELLING. These were `gpuTimer\(\)\.` alone, so the two sites reaching the timer through the
+# renderer's own member -- render.frame.clear.gpu_us and render.frame.blit.gpu_us in
+# StarRenderer_opengl.cpp -- were scanned by neither rule. 13 of 15 sites, and the gate printed OK.
+BEGIN = re.compile(r'(?:gpuTimer\(\)|m_gpuTimer)\.begin\(\s*"([^"]+)"')
+END = re.compile(r'(?:gpuTimer\(\)|m_gpuTimer)\.end\(\s*"([^"]+)"')
+# The eager registration: a LITERAL key handed to Telemetry::timer. Deliberately not matched against a
+# variable, because a variable is what begin() already passes and is exactly what cannot be checked here.
+EAGER = re.compile(r'Telemetry::timer\(\s*"([^"]*\.gpu_us)"')
 
 
 def strip_comment(line):
@@ -175,23 +198,150 @@ def selftest():
     return 0
 
 
-def check():
+def sources():
+    """Every scanned .cpp as {repo-relative path: text}. One definition, both rules."""
     root = pathlib.Path(__file__).resolve().parent.parent / "source"
+    return {str(p.relative_to(root.parent)): p.read_text(encoding="utf-8", errors="replace")
+            for p in sorted(root.rglob("*.cpp"))}
+
+
+def check():
     found = []
-    for p in sorted(root.rglob("*.cpp")):
-        found += violations(p.read_text(encoding="utf-8", errors="replace"),
-                            str(p.relative_to(root.parent)))
+    begun = 0
+    for path, text in sources().items():
+        found += violations(text, path)
+        begun += len(BEGIN.findall("\n".join(strip_comment(l) for l in text.splitlines())))
     for path, line, key in found:
         print(f"  {path}:{line}: GPU timer '{key}' brackets a gate it does not enter -- "
               f"skip iterations record ~0us samples. Open the bracket inside the conditional "
               f"and declare MetricCadence::Call.")
     if found:
-        print(f"gputimer_brackets: FAIL -- {len(found)} straddled bracket(s)")
+        print(f"gputimer_brackets: FAIL -- {len(found)} straddled bracket(s) of {begun} scanned")
         return 1
-    print("gputimer_brackets: OK -- no GPU timer brackets a gate it does not enter")
+    # THE DENOMINATOR IS PART OF THE VERDICT. This printed OK on whatever it happened to match, so a
+    # refactor that changed the call spelling would have retired the gate silently while it went on
+    # reporting a pass -- which is how the wrong word passed a screaming oracle (#223). An empty corpus
+    # is now a FAILURE, not a vacuous success.
+    if begun == 0:
+        print("gputimer_brackets: FAIL -- scanned 0 begin sites. The detector matched nothing, so it "
+              "verified nothing; the call spelling has moved out from under BEGIN.")
+        return 1
+    print(f"gputimer_brackets: OK -- {begun} begin site(s) scanned, none brackets a gate it does not enter")
+    return 0
+
+
+def key_problems(files):
+    """Every key whose begun-set and eagerly-registered-set membership disagree.
+
+    `files` is {path: text}, so the same function serves the tree and the selftest fixtures.
+    """
+    begun, eager = {}, {}
+    for path, text in files.items():
+        body = "\n".join(strip_comment(l) for l in text.splitlines())
+        for k in BEGIN.findall(body):
+            begun.setdefault(k, set()).add(path)
+        for k in EAGER.findall(body):
+            eager.setdefault(k, set()).add(path)
+    out = []
+    for k in sorted(set(begun) - set(eager)):
+        out.append(f"  {k}: begun at {', '.join(sorted(begun[k]))} but NEVER REGISTERED EAGERLY -- an arm "
+                   f"that does not run leaves this key absent, not zero (R14). Add a namespace-scope "
+                   f'Telemetry::timer("{k}", ...) to that file.')
+    for k in sorted(set(eager) - set(begun)):
+        out.append(f"  {k}: registered eagerly at {', '.join(sorted(eager[k]))} but NEVER BEGUN -- a "
+                   f"constant that outlived its pass. It will report present-at-zero forever, which reads "
+                   f"as 'this pass exists and cost nothing'. Delete the registration.")
+    # SET EQUALITY, NOT CO-LOCATION. An earlier draft also required the registration to sit in the file
+    # that begins the key. It read well and was wrong: render.pass.interface.gpu_us is begun in
+    # StarClientApplication.cpp, an UPSTREAM file that client_residency ratchets precisely so our code
+    # leaves it -- so the rule would have forced nine lines of ours deeper into the file we are trying to
+    # vacate, and the only way to stay green would have been to raise that ceiling. A rule that pushes
+    # code into a file another rule is pushing it out of is not a rule, it is a collision. The invariant
+    # R14 needs is that the two SETS agree; where the registration lives is a judgement, made at the site.
+    return out, len(begun), len(eager)
+
+
+def check_keys():
+    problems, nb, ne = key_problems(sources())
+    for p in problems:
+        print(p)
+    if problems:
+        print(f"gpu_pass_keys: FAIL -- {len(problems)} key(s) disagree ({nb} begun, {ne} registered)")
+        return 1
+    if nb == 0:
+        print("gpu_pass_keys: FAIL -- scanned 0 begin sites, so the two sets are trivially equal and "
+              "nothing was checked.")
+        return 1
+    print(f"gpu_pass_keys: OK -- {nb} key(s) both begun and eagerly registered, in both directions")
+    return 0
+
+
+# Fixtures for the bijection detector. Deliberately spelled the way the tree spells it, so a change to
+# the call shape breaks these arms rather than quietly retiring the rule.
+KEYS_MATCHED = {"m.cpp": '''
+namespace {
+  auto s_xTimer = Telemetry::timer("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+void P::draw() {
+  m_renderer->gpuTimer().begin("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  drawIt();
+  m_renderer->gpuTimer().end("render.pass.x.gpu_us");
+}
+'''}
+
+KEYS_BEGUN_ONLY = {"m.cpp": '''
+void P::draw() {
+  m_renderer->gpuTimer().begin("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  drawIt();
+  m_renderer->gpuTimer().end("render.pass.x.gpu_us");
+}
+'''}
+
+KEYS_EAGER_ONLY = {"m.cpp": '''
+namespace {
+  auto s_goneTimer = Telemetry::timer("render.pass.gone.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+'''}
+
+# The member spelling, which neither rule matched before R14. If this arm stops firing, the two
+# StarRenderer_opengl.cpp sites have fallen out of scope again.
+KEYS_MEMBER_SPELLING = {"m.cpp": '''
+void R::startFrame() {
+  m_gpuTimer.begin("render.frame.clear.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+  clearIt();
+  m_gpuTimer.end("render.frame.clear.gpu_us");
+}
+'''}
+
+
+def selftest_keys():
+    fails = []
+    if key_problems(KEYS_MATCHED)[0]:
+        fails.append("bijection detector fired on a key that is both begun and registered")
+    if not key_problems(KEYS_BEGUN_ONLY)[0]:
+        fails.append("detector did NOT fire on a key begun with no eager registration (the R14 defect)")
+    if not key_problems(KEYS_EAGER_ONLY)[0]:
+        fails.append("detector did NOT fire on a registration that outlived its pass")
+    if not key_problems(KEYS_MEMBER_SPELLING)[0]:
+        fails.append("detector did NOT see m_gpuTimer.begin -- the two renderer-member sites are unscanned")
+    # An empty corpus must FAIL, not pass vacuously. Without this arm the gate is one refactor away from
+    # the silent-vacuous green it exists to replace.
+    if key_problems({})[1] != 0:
+        fails.append("an empty corpus did not read as zero begin sites")
+    for f in fails:
+        print(f"  FAIL: {f}")
+    if fails:
+        return 1
+    print("  gpu_pass_keys selftest: 5/5 arms ok (fires three ways, declines once, counts an empty corpus)")
     return 0
 
 
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
-    sys.exit(selftest() if arg == "--selftest" else check())
+    sys.exit({"--selftest": selftest, "--check-keys": check_keys,
+              "--selftest-keys": selftest_keys}.get(arg, check)())
