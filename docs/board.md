@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**185 tasks** across 2 store(s): 4 in_progress, 35 pending, 146 completed
+**186 tasks** across 2 store(s): 4 in_progress, 34 pending, 148 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 184 tasks, ids 64–248
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 185 tasks, ids 64–249
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,16 +43,15 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#248` | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | ready |
-| 2 | 4 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
-| 3 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
-| 4 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 5 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 6 | 8 | `#246` | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | ready |
-| 7 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | ready |
-| 8 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 4 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
+| 2 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
+| 3 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 4 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
+| 5 | 8 | `#246` | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | ready |
+| 6 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | ready |
+| 7 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
-> **2 completed task(s) still carry a rank** (#241, #242). A rank is a claim about
+> **4 completed task(s) still carry a rank** (#241, #242, #248, #249). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -63,7 +62,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 179, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 182, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 26.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -91,7 +90,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 146.
+**Completed tasks citing no commit and no doc:** 84 of 148.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -287,7 +286,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | — | — |
 | [#247](#c29c1332-247) | `c29c1332` | open | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
-| [#248](#c29c1332-248) | `c29c1332` | open | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | — | — |
+| [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
+| [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -4765,63 +4765,67 @@ status: **pending** · metadata: `{"rank": 6}`
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
 
 ```
-SCOPE WIDENED 2026-08-07 (Director). Was "every CPU phase timer measures WALL time, not CPU
-work" -- kept at #235 because StarMetricDesc.hpp cites this number by name in the MetricClock
-comment, and that citation must stay true.
+SCOPE WIDENED 2026-08-07 (Director). Was "every CPU phase timer measures WALL time, not CPU work" --
+kept at #235 because StarMetricDesc.hpp cites this number by name in the MetricClock comment.
 
-THE DEFECT, RESTATED. Every duration in this system is a WALL span between two points. That is
-true on both sides:
-  * TelemetryScope records a monotonic-clock delta -- busy + blocked + preempted, undifferentiated.
-  * GL_TIME_ELAPSED / GL_TIMESTAMP record elapsed GPU-TIMELINE, which includes GPU idle inside the
-    bracket if the CPU under-feeds it.
-So no phase in the tree can answer "was this work, or waiting?" -- and the two have OPPOSITE fixes.
+THE DEFECT, RESTATED. Every duration in this system is a WALL span between two points, on both sides:
+TelemetryScope records a monotonic delta (busy + blocked + preempted, undifferentiated), and
+GL_TIME_ELAPSED / GL_TIMESTAMP record elapsed GPU TIMELINE. No phase can answer "was this work, or
+waiting?" -- and the two have OPPOSITE fixes.
 
-IT HAS NOW BITTEN THREE TIMES IN ONE DAY (2026-08-07):
-  * I read render.frame.gpu_span_us (16207us/frame, ~= the frame period) as "the GPU is saturated"
-    and reported a per-pass cost table with world at 58%. RETRACTED: cpu.frame.swap.us is 6.4us
-    and cpu.frame.idle.us is 11470us, so the loop is PACED and the CPU never waits on the GPU.
-    The span was tracking the frame period, not GPU work, and the "cost table" was a table of how
-    long each bracket was open.
-  * D05's cadence question was the same shape one level down.
-  * This row itself.
+PROVEN 2026-08-07, no longer argued: render.frame.gpu_span_us reports ~16,200us -- the frame period --
+at 0.22%, 9.97%, 23.39% and 32.93% real engine busy alike. A metric identical across a 1.4x change in
+the quantity it names (both ends correctly aligned) is measuring elapsed timeline, not work.
 
-THE TYPE SYSTEM ALREADY NAMES THE ANSWER and nothing populates it:
-  enum class MetricClock { Undeclared, NotApplicable, Wall, ThreadCpu, ProcessCpu, GpuEngine,
-                           GpuTimeline };
-ZERO sites in the tree declare a clock (verified 2026-08-07 -- the only site setting any prose or
-extended descriptor field is telemetry_test's fixture). GpuEngine vs GpuTimeline is exactly the
-engine-busy vs elapsed-span distinction that was missing today.
+=== THE SUBSTRATE EXISTS TODAY, MEASURED NOT PROPOSED (2026-08-07) ===
 
-THREE PIECES.
- 1. DUAL-CLOCK TelemetryScope (the CPU half, and the original #235). Read CLOCK_MONOTONIC and
-    CLOCK_THREAD_CPUTIME_ID per scope; store both on the node. Then busy = cpu and
-    blocked = wall - cpu are derivable for EVERY phase, forever, with no new call sites and no
-    per-site migration. This is the piece that makes it "always, for everything".
- 2. GpuEngine READER (the GPU half). There is no GL query for engine-busy inside a bracket, so
-    stop implying one: declare every GL query GpuTimeline honestly, and add a PMU-backed
-    GpuEngine reader (scripts/pmu-render-busy.py and #234's EngineBusyReader already exist).
-    Then a STANDING ORACLE, not a probe: sum(GpuTimeline brackets) must not exceed GpuEngine busy
-    for the same interval. Divergence PROVES the brackets contain idle -- today's ambiguity turned
-    into a check that runs on every capture.
- 3. DECLARATION RATCHET. Extend scripts/metric-desc-lint.py (landed 2026-08-07) to ratchet the
-    count of MetricClock::Undeclared sites downward, so a new timer cannot be added without saying
-    which clock it is on. Same shape as client-residency.py.
+Both BUSY quantities are available OUT OF PROCESS, per-owner, as cumulative counters on a wall clock.
+Sampled live against a running matrix leg:
 
-WHAT IT BUYS. The closure arithmetic becomes meaningful: tick.server.total.us closes at 99.9%
-today, but that is a WALL budget closing against WALL parts, in which a lock wait and real compute
-are indistinguishable. A BUSY budget can be closed, and "expensive" separates from "blocked".
+  /proc/<pid>/fdinfo/<drm fd>   drm-engine-{render,copy,compute,video,video-enhance}: ns, PER CLIENT
+      measured 10.95% for the game's own pid while the system-wide i915 PMU read 14.06% --
+      so ~3.1pp of what we have been quoting was NEVER THE GAME. This kills the wobbling floor
+      (0.213% one hour, 5.1% the next, 2.34% a third time): the floor for a per-client counter is
+      ZERO BY CONSTRUCTION. Also yields drm-total/drm-resident -- VRAM, free, same read.
+  /proc/<pid>/task/<tid>/stat   utime+stime: CPU BUSY ns, PER THREAD
+      measured 27.22% of one core across 36 threads.
 
-MEASURE BEFORE BUILDING. CLOCK_THREAD_CPUTIME_ID is not guaranteed vDSO on every kernel; if it
-falls through to a syscall the whole shape changes. #172 measured deep-telemetry arming at +2.16%
-before trusting it and this deserves the same treatment BEFORE it goes near the hot path. That
-measurement is the first task, not an afterthought.
+AND THE THREAD NAMES ALREADY CARRY THE OWNER TAXONOMY. Measured, 3s window:
+      starbound          24.0% of a core   -> MetricOwner::Frame
+      WorldServerThre     6.0%             -> MetricOwner::Sim
+      WorldClient::li     1.0%             -> MetricOwner::Lighting
+      starboun:gdrv0      0.3%             -> MetricOwner::Gl (driver thread)
+      SDLAudioP15, UniverseServer/Connect, SystemWorldServ -> Unknown/other
+So CPU busy is attributable to the DECLARED owner vocabulary with a name->owner map and no engine
+change at all. That is the missing half of the model, and it was never an engine problem.
 
-COUPLING. Piece 1 changes the snapshot schema, which lands inside the 3->4 descriptor convergence
-already in flight (docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md).
-Decide deliberately whether this folds into that convergence or ships beside it -- do not discover
-the interaction halfway through.
+=== WHAT THIS MAKES #235 ===
 
-PROCESS: this is a design, not a patch. brainstorm -> spec before any editing.
+NOT "add busy-vs-wall to the telemetry model". MetricClock already has exactly the right enumerators
+-- Wall, ThreadCpu, ProcessCpu, GpuEngine, GpuTimeline -- and ZERO production sites populate it. The
+work is:
+ 1. Make `clock` mandatory and gated; refuse to compare or sum across clocks.
+ 2. Make clock=GpuTimeline with role=Budget|Total a CONFIGURE-TIME ERROR. render.frame.gpu_span_us
+    carries exactly that combination today and it is wrong in kind: a timeline span cannot close a
+    budget, ever.
+ 3. Add the two sovereign busy readers above beside the PMU one, joined by the window stamps #248
+    built. The in-process telemetry keeps doing what ONLY it can do -- which pass, which entity,
+    which branch -- and the sovereign observer supplies busy. Reconcile per owner.
+ 4. RETAIN THE TIME SERIES. telemetry-window differences files[lo] and files[hi] of ~15+ snapshots
+    per leg; the snapshots are cumulative, so differencing CONSECUTIVE pairs already yields a
+    per-interval series for EVERY declared metric, including the histogram buckets (p99 over time).
+    The data is emitted and thrown away at the last step. That is the whole distance between what we
+    have and a plottable stream.
+
+DIRECTOR'S NORTH STAR, stated 2026-08-07: "both GPU and CPU metrics, correctly attributed, as a
+stream of time series data that can be directly plotted and compared against every single lever."
+Dimensions: wall time; subsystem (cpu / gpu engine class); owner; lever configuration; scene; and the
+metric's own descriptor. All five sources above share one wall-clock axis and are all
+cumulative-differenceable, so the join is the one #248 already ships.
+
+RELATED: #248 built the alignment and the floor discipline. #249 is the re-measurement. The sham-leg
+proposal (a leg configured identically to baseline, run under a lever's name) gives a universal noise
+floor for EVERY stream at once and should land with this.
 ```
 
 <a id="c29c1332-236"></a>
@@ -5343,48 +5347,114 @@ Also open and adjacent, NOT closed by #241: ledger row C05 -- descConflict/typeC
 
 #### #248 — PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **completed** · metadata: `{"rank": 3}`
+
+- `dd30bfa5` PMU-ATTRIB: the second instrument is now always on, and the floor is a mechanism
 
 ```
-FROM #242. The PMU is calibrated and sound -- idle floor 0.213%, glxgears uncapped 88.67%, a 416x
-working range, and it separates scenes by ~50x (Desert Town 0.22% vs Ark Ruins 9.97%). What it CANNOT
-currently do is attribute cost to a single lever.
+DONE 2026-08-07 (dd30bfa5). Mechanism built AND proven end-to-end on a real run
+(matrix-20260807-145441, --repeats 1). On its first live run it falsified the numbers that motivated
+building it, which is the tool working.
 
-THE DEFECT IS SAMPLING, NOT THE INSTRUMENT. scripts/pmu-render-busy.py was invoked as spot samples --
-10s windows every ~45s, so 6-8 samples inside each 90s leg. Against a LIVE sim (render-profile.sh runs
-STAR_RENDERTEST_NOFREEZE=1 by design, "non-deterministic, therefore useless for correctness, and
-therefore the only honest thing to quote a millisecond from"), the baseline itself moved 12.30 / 8.16 /
-9.46 % across its three repeats -- a 4.13pp spread. Most per-lever deltas are smaller than that:
+WHAT SHIPPED, four parts:
+ 1. telemetry-window stamps meta.windowStartEpoch/EndEpoch from the mtimes of the two snapshots the
+    window is ACTUALLY differenced over. Not the env sidecar -- that brackets the wider measurement
+    phase. Stamped at window time because render-profile purges the snapshot dir at the next leg.
+ 2. scripts/pmu-engine-sample.py -- continuous rcs0 with a slow ccs0/bcs0/vecs0 control sweep.
+    UNAVAILABLE is written, never 0.000000.
+ 3. scripts/pmu-join.py -- prints a RESOLUTION FLOOR, reports anything inside it as UNRESOLVED.
+    Floor = max(null-control delta, baseline spread), measured IN THAT RUN.
+ 4. lever-table.json declares gpuNullControl on scriptProtoCacheEnabled; pmu-join READS it.
+ lever-matrix starts the sampler itself and joins at the end, non-fatal by construction.
 
-  off-renderVboOrphan          +4.24pp   spread 2.40   marginal
-  off-lightingTemporalDecouple +3.41pp   spread 0.46   THE ONLY CLEARLY SEPARATED ONE
-  off-envRefreshInterval       +2.78pp   spread 1.10   r3 lands exactly on baseline r1
-  off-parallaxRefreshInterval  +2.11pp   spread 1.69   and the leg is VOID -- witness never moved
-  off-lightingGatherCache      +1.56pp
-  off-backdropComposeMerge     +1.02pp
-  off-renderDrawableCache      +0.82pp   spread 4.60   pure noise
-  off-scriptProtoCacheEnabled  +0.48pp   CPU-ONLY LEVER -- this is the noise floor, and it is not zero
+PROVEN: 751 usable samples vs 47 across the whole previous 48-minute run; 9 of 9 legs stamped and
+resolved; null control read +0.15pp; both selftests registered as gates; 45 gates green.
 
-Quoting that table would be the campaign's own recurring defect: a plausible number with nothing
-contradicting it. It is recorded here so nobody recomputes it and believes it.
+AND IT IMMEDIATELY RETRACTED ITS OWN PREMISE. Same scene, same binary, same warp:
+    Desert Town baseline, OLD method (leg-JSON mtime -90s, 4-6 spot samples):   0.22 %
+    Desert Town baseline, EXACT stamps (50 samples inside the real window):    23.39 %
+    idle floor measured immediately after, game not running:                    2.34 %
+The leg JSON is written AFTER the client is killed and the log archived, so [mtime-90, mtime] is
+shifted late and straddles the inter-leg gap where the client is DEAD and the GPU is at idle. With
+4-6 samples per leg at 53s cadence against ~103s legs, the mean was decided by sampling PHASE.
 
-THE FIX, and it is cheap:
- 1. Sample CONTINUOUSLY for the whole run at a short window (1-2s), not in spot bursts. The script
-    already polls internally at POLL_SECONDS=0.02 and handles the lazy-publication problem (#234).
- 2. Emit a leg-boundary marker so alignment is exact rather than inferred from leg-JSON mtime minus 90s.
-    render-profile.sh knows when the window opens and closes; have it stamp the PMU series, or have
-    lever-matrix.sh write leg start/end epochs into legs.tsv (it currently writes neither).
- 3. Then per-leg attribution is mean-over-the-window with a real n, and the CPU-only lever
-    (scriptProtoCacheEnabled) stays in the matrix permanently as the null control it accidentally became.
+CONSEQUENTLY RETRACTED (see the follow-up task):
+  * "Desert Town runs at the idle floor / the campaign has taken essentially all the GPU load."
+  * "~50x scene difference between Desert Town and Ark Ruins" -- BOTH figures used the bad alignment.
 
-RELATION TO OTHER TASKS: this is the measurement half of #235 (BUSY-VS-WALL) and the input #245 needs --
-cost attribution must read PMU busy, never the GL spans, which #242 proved are blind to a 150x change
-in real GPU load. Do NOT fold this into #235's design work; it is a harness change, small and separable.
+SURVIVES, and is now stronger for having a correctly-aligned pair:
+  * gpu_span_us is BLIND. 23.39% busy -> 16,208us; 32.93% busy -> 16,193us. Both correctly aligned
+    (the all-caches-off probe sampled concurrently over a single profile). A 1.4x change in real GPU
+    work moves the reported "GPU span" by 0.1%.
+  * The instrument itself: idle 2.34%, glxgears uncapped 88.67%.
+  * #246 -- render.pass.world.gpu_us is 9,578us while the WHOLE GPU is busy 23.39% of a 16.2ms frame
+    ~= 3.8ms. The bracket is still ~2.5x the entire GPU's busy time (was quoted as 5.6x on the bad
+    baseline). It is a span. CLOSE stands.
+  * #173 -- CPU 72% idle at this baseline. CLOSE stands.
 
-The multi-engine sampler used for #242 is at scratchpad/pmu-all-engines.py (round-robins rcs0/ccs0/
-bcs0/vecs0; ccs0/bcs0/vecs0 read exactly 0.000 in every condition measured, so rcs0 alone is
-sufficient and the others are worth keeping only as a periodic control). It should move into scripts/
-if it is going to be quoted from.
+NOT TRUSTWORTHY YET, and stated rather than buried: this verification ran --repeats 1, so the
+baseline spread is 0.00pp by construction and the floor collapses to the null control alone (0.15pp).
+The 3-repeat run showed the baseline moving 4.13pp between repeats. Every delta in the verification
+table is provisional until a 3-repeat run with the fixed alignment.
+```
+
+<a id="c29c1332-249"></a>
+
+#### #249 — RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps
+
+status: **completed** · metadata: `{"rank": 3}`
+
+- `ad4e2f54` PMU-JOIN: a delta smaller than its own scatter is not a measurement, and one selftest arm could not fail
+- `caea59f5` PMU-JOIN: a leg the runner VOIDed must not reach the table
+
+```
+DONE 2026-08-07. Both scenes re-measured with the exact window stamps.
+  Desert Town  matrix-20260807-151445   23 OK, 1 VOID, 0 failed, 2150 samples, 27/27 stamped
+  Ark Ruins    matrix-20260807-160513   21 OK, 3 VOID, 0 failed, 2158 samples, 27/27 stamped
+All three assertions pass at BOTH scenes: every leg stamped; floor built from both terms; and the
+null control lands INSIDE the floor (+0.04pp / -0.06pp against floors of 0.45 / 0.43).
+
+THE RETRACTION HELD, AND THE DIRECTION WAS ALSO WRONG. Mis-aligned data said Desert Town 0.22% and
+Ark Ruins 9.97% -- a ~50x gap with Ark the heavier scene. Correctly aligned:
+    Desert Town baseline  23.70 %   (repeats 23.93 / 23.48 / 23.68, spread 0.45)
+    Ark Ruins   baseline  11.39 %   (repeats 11.64 / 11.32 / 11.21, spread 0.43)
+A real ~2x scene difference, with DESERT TOWN THE HEAVIER ONE -- the opposite of what was reported.
+Baseline spread fell from 4.13pp to ~0.44pp: what was called run-to-run variance was sampling phase.
+
+PER-LEVER GPU COST, first quotable table in the campaign, both scenes:
+
+  lever                        Desert Town        Ark Ruins
+  parallaxRefreshInterval      +16.61 pp          VOID (no parallax pass at this scene, all 3 repeats)
+  envRefreshInterval            +5.42 pp          +1.42 pp
+  renderVboOrphan               +3.16 pp          +3.85 pp
+  lightingTemporalDecouple      +2.48 pp          +2.07 pp
+  backdropComposeMerge          +1.68 pp          unresolved (-0.17, inside floor)
+  renderDrawableCache          unresolved         unresolved (own spread 2.27 > delta 0.59)
+  lightingGatherCache          unresolved         unresolved (own spread 3.17 > delta 0.83)
+  scriptProtoCacheEnabled      +0.04 (control)    -0.06 (control)
+
+WHAT GENERALISES, which is what the second scene was for:
+  * renderVboOrphan is the ONLY lever that resolves at BOTH scenes and is top-3 at both (#3 Desert,
+    #1 Ark). The most robust lever we own -- and it is #125, the VBO orphaning work.
+  * lightingTemporalDecouple and envRefreshInterval also resolve at both, in the same direction.
+  * parallaxRefreshInterval is the largest single lever anywhere (+16.61pp) and is INAPPLICABLE at
+    the other scene. Most scene-dependent thing in the table by a wide margin.
+  * renderDrawableCache and lightingGatherCache resolve at NEITHER scene on the GPU. Both are
+    plausibly CPU levers; that is a statement about the GPU axis only.
+
+AND NOTHING MOVES THE FRAME. Every leg at both scenes runs 61.7 fps within ~13us. Going from 23.70%
+to 40.31% GPU busy -- a 70% increase in real GPU work -- moves the frame by 0.06%. The frame is paced
+and the CPU sits 71-74% idle, so the levers buy POWER, THERMAL HEADROOM AND MARGIN, not frames. Any
+future lever must be justified on that basis at these scenes.
+
+TWO TOOL DEFECTS FOUND BY THE RUNS AND FIXED (caea59f5, ad4e2f54): pmu-join was quoting deltas from
+legs the runner had VOIDed; and its floor was blind to a lever's own scatter, which let two
+outlier-driven Ark Ruins results read as RESOLVED. A selftest arm that could not fail was also found
+and repaired.
+
+NOT ADDITIVE, stated so nobody sums the column: the seven Desert Town deltas total +29.22pp, while
+turning those seven off together measured +9.2pp over baseline. The levers overlap heavily; each
+number is a MARGINAL cost given every other lever is on.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
