@@ -57,19 +57,23 @@ OUT = REPO / "docs" / "board.md"
 TEMPLATE_PATH = REPO / "scripts" / "board.html.tmpl"
 DEFAULT_STORE_ROOT = pathlib.Path.home() / ".claude" / "tasks"
 
-# Our commit convention: the message ENDS with [#<task>]. The bracket form is unambiguous, which
-# is why it is the only cross-reference this script trusts -- see the namespace warning below.
+# Our commit convention: the message CARRIES a [#<task>] stamp, conventionally last. The bracket form
+# is unambiguous, which is why it is the only cross-reference this script trusts -- see the namespace
+# warning below.
 #
-# THE BOARD CANNOT CONTAIN THE HASH OF THE COMMIT THAT CREATES IT. That is a fixed point, not a bug,
-# and it has one consequence worth stating because otherwise --check trains you to ignore it: a
-# commit that stamps [#NNN] AND touches docs/board.md makes the board it contains immediately stale,
-# so --check goes RED the moment you commit a fresh board. Observed 2026-08-07 with 7ec8a0bb.
+# ANYWHERE IN THE MESSAGE, NOT ONLY AT THE END, and that is load-bearing rather than lax. This comment
+# used to say the message ENDS with the stamp; the regex has always matched anywhere, and the tree
+# depends on the regex. Counted 2026-08-07 before touching it: tightening to a trailing-only match
+# takes the corpus from 396 links to 327 and orphans 66 real work commits whose stamp is followed by
+# more text. The DOC was the false claim, not the code -- so the doc changed.
 #
-# THE CONVENTION, therefore: a commit that only regenerates the board carries NO task stamp. It is
-# not work on a task, it is the board catching up, and an unstamped commit never enters the scan
-# above -- so the board is a fixed point again. Put the findings in the task description (which the
-# board renders) rather than in a stamped board-only commit message, or they end up in a commit the
-# board is structurally unable to cite.
+# THE PRICE, and the convention that pays it: a commit message cannot MENTION a stamp without being
+# linked by it. Combined with the fact that the board cannot contain the hash of the commit that
+# creates it -- a fixed point, not a bug -- a board-only commit that stamps or quotes [#NNN] leaves
+# --check RED the instant you finish using it, which is how a check trains you to ignore it. So a
+# commit that only regenerates the board carries NO stamp and quotes none: refer to tasks in prose
+# ("task 242") instead. Findings belong in the task description, which the board renders, not in a
+# board-only commit message the board is structurally unable to cite.
 COMMIT_STAMP = re.compile(r"\[#(\d+)\]")
 # In prose the bare "#NNN" is NOT ours to claim: the same namespace carries upstream PR and issue
 # numbers (#542, #561, #204, #285, #510), and at least one number -- #104 -- is BOTH a task here

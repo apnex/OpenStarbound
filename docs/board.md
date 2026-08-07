@@ -281,7 +281,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
-| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `7ec8a0bb` `c0238e96` | — |
+| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` `7ec8a0bb` `c0238e96` | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
 | [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
@@ -5127,6 +5127,7 @@ Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit 
 
 status: **completed** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 3}`
 
+- `24bd4a51` BOARD: the board cannot cite the commit that creates it -- name the fixed point
 - `7ec8a0bb` MATRIX-RERUN done: both scenes quotable, and the GPU numbers were from the cheap location
 - `c0238e96` BOARD: #242 moves above #235 -- the rerun is the null control for #240 and #241
 
