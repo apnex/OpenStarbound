@@ -81,6 +81,27 @@ def read_series(path):
     return out, unavailable
 
 
+def read_verdicts(run_dir):
+    """{leg name: OK|VOID|...} from legs.tsv -- the runner's verdict on whether the experiment HAPPENED.
+
+    WITHOUT THIS THE JOIN QUOTES DELTAS FROM LEGS THE RUNNER REFUSED. A VOID leg is one whose witness
+    did not move: the lever was set and nothing responded, so the two arms are the same experiment run
+    twice. Its PMU delta is therefore a measurement of noise wearing a lever's name -- which is exactly
+    what lever-matrix exists to prevent, and this script was cheerfully undoing one directory away.
+    Caught 2026-08-07 when a null-control leg VOIDed and still appeared in the table.
+    """
+    out = {}
+    try:
+        with open(os.path.join(run_dir, "legs.tsv")) as fh:
+            for line in fh:
+                cols = line.rstrip("\n").split("\t")
+                if len(cols) >= 4:
+                    out[cols[0]] = cols[3]
+    except OSError:
+        pass
+    return out
+
+
 def read_legs(run_dir):
     """{lever: {repeat: (start, end)}} from each leg profile's stamped window."""
     legs, unstamped = collections.defaultdict(dict), []
@@ -106,17 +127,22 @@ def read_legs(run_dir):
     return legs, unstamped
 
 
-def per_leg(series, legs, engine=RENDER_ENGINE):
-    out = collections.defaultdict(dict)
+def per_leg(series, legs, engine=RENDER_ENGINE, verdicts=None, run_id=""):
+    """Per-lever, per-repeat mean busy. Legs the runner VOIDed are excluded and returned separately."""
+    out, voided = collections.defaultdict(dict), collections.defaultdict(list)
     for lever, reps in legs.items():
         for rep, (s, e) in reps.items():
+            name = f"{run_id}-{rep}-{lever}" if run_id else None
+            if verdicts and name and verdicts.get(name) == "VOID":
+                voided[lever].append(rep)
+                continue
             v = [pct for (t, eng, pct) in series if eng == engine and s <= t <= e]
             if v:
                 out[lever][rep] = (st.mean(v), len(v))
-    return out
+    return out, voided
 
 
-def report(joined, null_control):
+def report(joined, null_control, voided=None):
     if not joined:
         print("pmu-join: FAIL -- no leg window contained a single sample. Either the series and the "
               "run are from different sessions, or the sampler was not running.")
@@ -160,6 +186,14 @@ def report(joined, null_control):
         d = st.mean([m for m, _ in joined[lever].values()]) - base_mean
         (resolved if abs(d) > floor else unresolved).append((lever, d))
 
+    if voided:
+        # A THIRD VERDICT, because two were not enough. VOID is not "small effect" and not "noisy" --
+        # it is "the lever was set and the witness did not move", i.e. the two arms were the same
+        # experiment. Printing its delta at all would undo the runner one directory away.
+        print(f"\n  VOID -- the runner says the lever did not engage; no delta is quotable ({len(voided)}):")
+        for lever in sorted(voided):
+            print(f"       {lever:34s} repeats {', '.join(sorted(voided[lever]))}")
+
     print(f"\n  RESOLVED -- delta clears the floor ({len(resolved)}):")
     for lever, d in sorted(resolved, key=lambda x: -abs(x[1])):
         print(f"       {lever:34s} {d:+7.2f} pp")
@@ -189,7 +223,7 @@ def selftest():
                  (25, 11.0), (125, 11.0), (225, 11.0),        # small: +1pp, inside the floor
                  (35, 10.5), (135, 9.5), (235, 10.0)):        # null control: ~0
         series.append((t, RENDER_ENGINE, v))
-    joined = per_leg(series, legs)
+    joined, _ = per_leg(series, legs)
     if set(joined) != {"baseline", "off-big", "off-small", "off-nullctl"}:
         fails.append("the join lost or invented a leg")
 
@@ -215,6 +249,18 @@ def selftest():
     if nobase_rc != EXIT_NOTHING:
         fails.append("a run with no baseline did not fail")
 
+    # A LEG THE RUNNER VOIDED MUST NOT REACH THE TABLE. Same series, same windows, but r2 of the big
+    # lever declared VOID: it must vanish from the join and appear under its own verdict instead. Without
+    # this arm the exclusion is untested code guarding the most consequential case.
+    verdicts = {"RUN-r2-off-big": "VOID", "RUN-r1-off-big": "OK", "RUN-r3-off-big": "OK"}
+    j2, voided2 = per_leg(series, legs, verdicts=verdicts, run_id="RUN")
+    if "r2" in j2.get("off-big", {}):
+        fails.append("a VOID leg was joined into the table anyway")
+    if voided2.get("off-big") != ["r2"]:
+        fails.append("a VOID leg was not reported under the VOID verdict")
+    if set(j2.get("off-big", {})) != {"r1", "r3"}:
+        fails.append("excluding a VOID leg also dropped its healthy repeats")
+
     # UNAVAILABLE must never enter the arithmetic as a zero.
     import tempfile
     with tempfile.TemporaryDirectory() as d:
@@ -230,7 +276,7 @@ def selftest():
         print(f"  FAIL: {f}")
     if fails:
         return 1
-    print("  pmu_join selftest: 5/5 arms ok (clears the floor, is swallowed by it, empty and "
+    print("  pmu_join selftest: 6/6 arms ok (clears the floor, is swallowed by it, empty and "
           "baseline-less runs fail, UNAVAILABLE is not zero)")
     return EXIT_OK
 
@@ -266,7 +312,9 @@ def main(argv):
     else:
         print("  !! NO NULL CONTROL DECLARED -- no lever in scripts/lever-table.json carries "
               "gpuNullControl, so the floor falls back to the baseline's own spread alone.")
-    return report(per_leg(series, legs), null_control)
+    run_id = os.path.basename(args.run_dir.rstrip("/"))
+    joined, voided = per_leg(series, legs, verdicts=read_verdicts(args.run_dir), run_id=run_id)
+    return report(joined, null_control, voided)
 
 
 if __name__ == "__main__":
