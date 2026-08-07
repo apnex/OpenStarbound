@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**189 tasks** across 2 store(s): 3 in_progress, 33 pending, 153 completed
+**189 tasks** across 2 store(s): 4 in_progress, 31 pending, 154 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 188 tasks, ids 64–252
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -58,7 +58,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 184, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 185, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 24.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -86,7 +86,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 153.
+**Completed tasks citing no commit and no doc:** 86 of 154.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -269,8 +269,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
-| [#235](#c29c1332-235) | `c29c1332` | open | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | `72ad0000` `50d57866` | — |
-| [#236](#c29c1332-236) | `c29c1332` | open | GPU-CLOSE-1: the zero-tolerance closure is now INERT, not fixed — it revives broken if any gpu metric is re-declared Bu… | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
+| [#235](#c29c1332-235) | `c29c1332` | **active** | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
+| [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
@@ -4755,8 +4755,12 @@ No consumer today, so nothing currently reports a wrong number. The bound to re-
 
 #### #235 — BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere
 
-status: **pending** · blocks: #252, #250 · metadata: `{"rank": 6}`
+status: **in_progress** · blocks: #252, #250 · metadata: `{"rank": 6}`
 
+- `e368f046` GPU-CLOCK: a timeline span is not work, so it may not be a budget or a whole -- and now it cannot become one [#235]
+- `0eef793b` THREAD-BUSY: CPU busy attributed to the declared owners, and the process keeps time no live thread can account for [#235]
+- `11a28ba0` BUSY-FIELD: the shared reading's map was named for GPU engines, and the third reader does not key by engine [#235]
+- `3a8c530e` SERIES: the snapshots were deleted, the intervals were counted and discarded, and the only timestamp was a filename [#235]
 - `72ad0000` GM-2c: every lever in the matrix can now prove it engaged
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
 
@@ -4826,9 +4830,9 @@ floor for EVERY stream at once and should land with this.
 
 <a id="c29c1332-236"></a>
 
-#### #236 — GPU-CLOSE-1: the zero-tolerance closure is now INERT, not fixed — it revives broken if any gpu metric is re-declared Budget
+#### #236 — GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically
 
-status: **pending**
+status: **completed**
 
 - `e8814a61` PREREQ-4: a lifetime total wearing a window's label, and 42 unrecorded content inputs
 - `49249551` PREREQ-3: the harness measured a window nobody chose, on a clock that was not the cadence's
