@@ -102,10 +102,10 @@ BusyReading ClientBusyReader::readFdinfoDir(String const& dir) {
   BusyReading reading;
   for (auto const& client : byClient) {
     for (auto const& engine : client.second)
-      reading.engineNs[engine.first] += engine.second;
+      reading.busyNs[engine.first] += engine.second;
   }
 
-  if (reading.engineNs.empty())
+  if (reading.busyNs.empty())
     return BusyReading::unavailable(strf("no fd under '{}' carries drm-engine-* busy time", dir));
 
   reading.clients = (unsigned)byClient.size();
@@ -122,15 +122,20 @@ BusyReading busyDelta(BusyReading const& a, BusyReading const& b, int64_t wallNs
     return BusyReading::unavailable(strf("non-positive sampling window: {} ns", wallNs));
 
   BusyReading d;
-  for (auto const& engine : b.engineNs) {
-    // A client that exits and restarts resets its counters. The whole reading is discarded, not just
-    // the one engine: the reset means some unknown amount of busy time happened under an identity
-    // this pair of samples cannot see, so no engine's difference is trustworthy either.
-    int64_t before = a.engineNs.value(engine.first, 0);
-    if (engine.second < before)
-      return BusyReading::unavailable(strf("engine '{}' counter moved backwards ({} -> {}): the "
-                                           "client restarted", engine.first, before, engine.second));
-    d.engineNs[engine.first] = engine.second - before;
+  for (auto const& key : b.busyNs) {
+    // A subject that exits and restarts resets its counters. The WHOLE reading is discarded, not just
+    // the one key: the reset means some unknown amount of busy time happened under an identity this
+    // pair of samples cannot see, so no key's difference is trustworthy either.
+    //
+    // Worded by KEY rather than by engine because three readers now share this: a DRM client that
+    // restarted, a PMU counter that was reopened, and a THREAD that exited and had its tid reused --
+    // the last being why the thread reader needs this and not a variant of it.
+    int64_t before = a.busyNs.value(key.first, 0);
+    if (key.second < before)
+      return BusyReading::unavailable(strf("busy counter '{}' moved backwards ({} -> {}): the subject "
+                                           "this pair was measuring is not the same one", key.first,
+                                           before, key.second));
+    d.busyNs[key.first] = key.second - before;
   }
 
   // b's count, not a's: the delta describes the window's end state, and a client that appeared or

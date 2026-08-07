@@ -52,14 +52,19 @@ namespace {
   }
 
   List<MetricSample> samplesFor(BusyReading const& delta, int64_t wallNs, int64_t tMonotonicNs) {
-    // engineNs is a hash map, so its iteration order is stable within a build and meaningless across
+    // busyNs is a hash map, so its iteration order is stable within a build and meaningless across
     // one. Sorting makes two runs of the same tool diffable.
-    auto engines = delta.engineNs.keys();
+    //
+    // The keys ARE engine names here because this function is only ever handed a DRM reader's result;
+    // the field itself is keyed by whatever its reader attributes to, which is why it is no longer
+    // named for engines. When this moves into the library (task #250) that assumption becomes the
+    // caller's to state rather than this function's to assume.
+    auto engines = delta.busyNs.keys();
     engines.sort();
 
     List<MetricSample> samples;
     for (auto const& engine : engines) {
-      int64_t busyNs = delta.engineNs.get(engine);
+      int64_t busyNs = delta.busyNs.get(engine);
       samples.append(MetricSample(strf("gpu.engine.{}.busy_ns", engine), (double)busyNs, "ns",
                                   strf("{} engine busy time, summed over this process's DRM clients", engine),
                                   SampleValidWhen, SampleSource, tMonotonicNs));

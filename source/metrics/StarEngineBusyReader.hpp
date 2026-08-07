@@ -28,7 +28,7 @@ struct EngineOpenResult {
 // caller asked for plus however long the closing read took, and is therefore a measurement rather
 // than the caller's own request restated.
 //
-// `busy.engineNs` holds the window's DIFFERENCE, on the same terms as busyDelta's result, so a PMU
+// `busy.busyNs` holds the window's DIFFERENCE, on the same terms as busyDelta's result, so a PMU
 // window and a differenced pair of ClientBusyReader samples are the same shape and can be compared
 // directly. It is never a raw counter value: see EngineOpenResult for why one of those is not a
 // measurement.

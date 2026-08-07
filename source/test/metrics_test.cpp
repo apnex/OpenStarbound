@@ -81,7 +81,7 @@ TEST(ClientBusyReaderTest, DeduplicatesFdsSharingOneClientId) {
   auto r = ClientBusyReader::readFdinfoDir(dir);
   ASSERT_TRUE(r.available) << r.unavailableReason.utf8Ptr();
   EXPECT_EQ(r.clients, 1u);
-  EXPECT_EQ(r.engineNs.get("render"), 3213824640);   // 1x, NOT 4x
+  EXPECT_EQ(r.busyNs.get("render"), 3213824640);   // 1x, NOT 4x
 }
 
 TEST(ClientBusyReaderTest, SumsDistinctClients) {
@@ -89,7 +89,7 @@ TEST(ClientBusyReaderTest, SumsDistinctClients) {
   auto r = ClientBusyReader::readFdinfoDir(dir);
   ASSERT_TRUE(r.available);
   EXPECT_EQ(r.clients, 2u);
-  EXPECT_EQ(r.engineNs.get("render"), 1500);
+  EXPECT_EQ(r.busyNs.get("render"), 1500);
 }
 
 // render.pass.compose.gpu_us reported 0us for its whole existence because it bracketed a conditional
@@ -100,7 +100,7 @@ TEST(ClientBusyReaderTest, MissingProcessIsUnavailableNotZero) {
   auto r = ClientBusyReader::read(0x7FFFFFFF);   // above pid_max on any configuration
   EXPECT_FALSE(r.available);
   EXPECT_FALSE(r.unavailableReason.empty());
-  EXPECT_TRUE(r.engineNs.empty());               // NOT {"render": 0}
+  EXPECT_TRUE(r.busyNs.empty());               // NOT {"render": 0}
 }
 
 TEST(ClientBusyReaderTest, NonDrmDirectoryIsUnavailableNotZero) {
@@ -115,11 +115,11 @@ TEST(BusyDeltaTest, ForwardDeltaIsTheDifference) {
   BusyReading a, b;
   a.available = b.available = true;
   a.clients = b.clients = 1;
-  a.engineNs["render"] = 1000;
-  b.engineNs["render"] = 3000;
+  a.busyNs["render"] = 1000;
+  b.busyNs["render"] = 3000;
   auto d = busyDelta(a, b, 4000);
   ASSERT_TRUE(d.available) << d.unavailableReason.utf8Ptr();
-  EXPECT_EQ(d.engineNs.get("render"), 2000);
+  EXPECT_EQ(d.busyNs.get("render"), 2000);
 }
 
 // A client that exits and restarts resets its counters to zero. Differencing across that reset
@@ -129,15 +129,15 @@ TEST(BusyDeltaTest, BackwardsCounterIsDiscardedNotReported) {
   BusyReading a, b;
   a.available = b.available = true;
   a.clients = b.clients = 1;
-  a.engineNs["render"] = 3000;
-  b.engineNs["render"] = 1000;      // client restarted
+  a.busyNs["render"] = 3000;
+  b.busyNs["render"] = 1000;      // client restarted
   auto d = busyDelta(a, b, 4000);
-  EXPECT_FALSE(d.available) << "reported delta = " << d.engineNs.value("render", 0) << " ns";
+  EXPECT_FALSE(d.available) << "reported delta = " << d.busyNs.value("render", 0) << " ns";
   EXPECT_TRUE(d.unavailableReason.contains("backwards")) << d.unavailableReason.utf8Ptr();
 }
 
 TEST(BusyDeltaTest, UnavailableEndpointPoisonsTheDelta) {
-  BusyReading a; a.available = true; a.clients = 1; a.engineNs["render"] = 1000;
+  BusyReading a; a.available = true; a.clients = 1; a.busyNs["render"] = 1000;
   auto d = busyDelta(a, BusyReading::unavailable("process exited"), 4000);
   EXPECT_FALSE(d.available);
 }
@@ -186,7 +186,7 @@ TEST(EngineBusyReaderTest, EitherReadsOrExplainsItself) {
 
   auto window = reader.busyOver(TestWindowSeconds);
   ASSERT_TRUE(window.busy.available) << window.busy.unavailableReason.utf8Ptr();
-  EXPECT_TRUE(window.busy.engineNs.contains("rcs0"));
+  EXPECT_TRUE(window.busy.busyNs.contains("rcs0"));
   // The denominator is the clock the poll loop observed, so it covers at least the window asked for.
   // Anything shorter would mean the loop never ran and the reading is two adjacent reads again.
   EXPECT_GE(window.wallNs, (int64_t)(TestWindowSeconds * 1e9));
@@ -205,7 +205,7 @@ TEST(EngineBusyReaderTest, MeasureBeforeOpenIsUnavailable) {
   EXPECT_FALSE(window.busy.available);
   EXPECT_FALSE(window.busy.unavailableReason.empty());
   EXPECT_EQ(window.wallNs, 0);
-  EXPECT_TRUE(window.busy.engineNs.empty());     // NOT {"rcs0": 0}
+  EXPECT_TRUE(window.busy.busyNs.empty());     // NOT {"rcs0": 0}
 }
 
 // A window that is not a duration is a caller error, and it is refused before the counter state is

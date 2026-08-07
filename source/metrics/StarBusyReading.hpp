@@ -19,8 +19,19 @@ struct BusyReading {
   }
 
   bool available = false;
-  String unavailableReason;        // non-empty exactly when !available
-  StringMap<int64_t> engineNs;     // "render" -> busy nanoseconds, summed over DISTINCT clients
+  String unavailableReason;      // non-empty exactly when !available
+
+  // BUSY NANOSECONDS, KEYED BY WHATEVER THAT READER ATTRIBUTES TO -- a GPU engine class ("render",
+  // "copy") for the two DRM readers, a MetricOwner ("sim", "lighting") for the thread reader. It was
+  // called `engineNs` while both readers happened to key by engine, and the third one does not: a CPU
+  // thread's nanoseconds under a field named for a GPU engine is a name asserting one quantity while
+  // holding another, which is the defect class this whole component exists to remove. The field says
+  // WHAT the number is; naming the key is each reader's job, in its own header.
+  StringMap<int64_t> busyNs;
+
+  // DRM clients this reading was summed over. Set by ClientBusyReader alone -- the PMU is system-wide
+  // and has no client to count, and threads are not clients. It stays 0 elsewhere, which is why no
+  // consumer may read it without knowing which reader produced the value.
   unsigned clients = 0;
 };
 

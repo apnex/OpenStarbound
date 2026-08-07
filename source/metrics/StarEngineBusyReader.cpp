@@ -166,7 +166,7 @@ EngineOpenResult EngineBusyReader::open(String const& event) {
     return EngineOpenResult::refused(strf("the i915 PMU exposes no event '{}': '{}' is unreadable or "
                                           "carries no config= term", event, eventPath));
 
-  // THE UNIT IS ASKED OF THE DRIVER, NOT INFERRED FROM THE NAME. The result field is engineNs and
+  // THE UNIT IS ASKED OF THE DRIVER, NOT INFERRED FROM THE NAME. The result field is busyNs and
   // the result is a ratio against wall-clock nanoseconds, so only a counter of TIME may reach it:
   // this PMU also exposes actual-frequency-gt0 in megahertz and interrupts as a bare count, and
   // admitting either would put a number under a name asserting a unit it does not have -- the exact
@@ -278,7 +278,7 @@ EngineBusyWindow EngineBusyReader::busyOver(double seconds) {
                                               "which no window contains", m_engine, busyNs, wallNs));
 
   EngineBusyWindow window;
-  window.busy.engineNs[m_engine] = (int64_t)busyNs;
+  window.busy.busyNs[m_engine] = (int64_t)busyNs;
   // `clients` stays 0. It counts DISTINCT GPU clients, which is a thing only the per-client reader
   // can resolve; the PMU sees one device and no clients at all. Writing 1 here would be inventing
   // the very quantity the cross-check against ClientBusyReader depends on being independent.
