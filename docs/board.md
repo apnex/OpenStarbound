@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**186 tasks** across 2 store(s): 4 in_progress, 34 pending, 148 completed
+**186 tasks** across 2 store(s): 3 in_progress, 32 pending, 151 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 185 tasks, ids 64–249
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -47,11 +47,9 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 2 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
 | 3 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
 | 4 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 5 | 8 | `#246` | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | ready |
-| 6 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | ready |
-| 7 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
-> **4 completed task(s) still carry a rank** (#241, #242, #248, #249). A rank is a claim about
+> **6 completed task(s) still carry a rank** (#173, #241, #242, #246, #248, #249). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -64,7 +62,7 @@ reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 182, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 26.** The task harness has, on these, appended its
+**Descriptions normalised on export: 24.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -90,7 +88,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 148.
+**Completed tasks citing no commit and no doc:** 86 of 151.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -212,7 +210,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | `board.md` |
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
-| [#173](#c29c1332-173) | `c29c1332` | open | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | — | — |
+| [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
@@ -274,7 +272,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
 | [#235](#c29c1332-235) | `c29c1332` | open | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | `72ad0000` `50d57866` | — |
-| [#236](#c29c1332-236) | `c29c1332` | **active** | GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
+| [#236](#c29c1332-236) | `c29c1332` | open | GPU-CLOSE-1: the zero-tolerance closure is now INERT, not fixed — it revives broken if any gpu metric is re-declared Bu… | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
@@ -282,9 +280,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` `7ec8a0bb` `c0238e96` | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
-| [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | — | — |
+| [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
 | [#247](#c29c1332-247) | `c29c1332` | open | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
@@ -2506,40 +2504,37 @@ CONFIRMED BEHAVIOUR worth keeping: a deep-off capture ALWAYS trips the closure o
 
 <a id="c29c1332-173"></a>
 
-#### #173 — RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT
+#### #173 — RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes
 
-status: **pending** · blocked by: #242 · metadata: `{"rank": 9}`
+status: **completed** · blocked by: #242 · metadata: `{"rank": 9}`
 
 ```
-SPLIT OUT of #125 on 2026-07-25 as the genuine residual. #125's orphaning fix removed the COST of each immediate-VBO flush (GPU frame -74 to -81% at the Director's bases). It did not remove the flushes.
+CLOSED 2026-08-07, NOT DONE, and closed the way this task asked to be: "EXPECTED SIZE: unknown and
+possibly small now that the stalls are gone... be prepared for this to come back MEASURED NULL like
+#129 (VAO-format bake), which was cleanly removed rather than shipped."
 
-THE REMAINING WASTE: Widget::render -> setupDrawRegion -> setScissorRect -> flushImmediatePrimitives fires
-for EVERY widget. The in-game HUD is ~92 widgets across 5 panes (ActionBar 32 children, TeamBar 12,
-QuestTracker 7, Chat 9 invisible, StatusPane). Measured pre-orphan: ~21 extra flushes/frame carrying
-~12 primitives each -- tiny batches, one draw call apiece, plus all the per-flush CPU (accumulation
-buffer copy, buffer bind, vertex attrib setup, draw).
+THE PREMISE IS PER-FLUSH CPU OVERHEAD -- accumulation-buffer copy, buffer bind, vertex attrib setup,
+one draw call apiece -- after #125's orphaning removed the pipeline STALLS. That premise needs CPU
+deadline pressure to matter, and there is none at either measured scene:
 
-WHY IT IS PLAUSIBLY WORTH DOING ANYWAY: a scissor change is NOT a vertex-format change. The primitives
-are homogeneous; only the scissor rect differs. So either
-  (a) BATCH PER SCISSOR RECT -- accumulate primitives keyed by scissor, flush once per distinct rect
-      rather than once per widget. Most HUD widgets in a pane share a rect or nest, so the distinct-rect
-      count should be far below 92.
-  (b) FOLD THE SCISSOR INTO THE DRAW -- pass the rect as vertex data or a uniform and clip in the shader,
-      removing the state change entirely. Bigger change, needs care with the existing scissor semantics
-      (GuiContext.cpp:136-140 sets and clears it around draw regions).
+    Desert Town   cpu.frame.idle.us 11,635 of a 16,195 us frame  -> the loop SLEEPS 72% of each frame
+    Ark Ruins     cpu.frame.idle.us ~13,600 of ~16,180 us        -> ~84%
+    every leg at both scenes: 61.7 fps, within ~13 us of each other
 
-MEASUREMENT IS ALREADY WIRED: render.flush.count and render.flush.primitives exist in
-flushImmediatePrimitives (StarRenderer_opengl.cpp) as Cpu/Frame/Call/Detail counters. flushes-per-frame
-and primitives-per-flush are directly readable from any profile capture -- a high count with a tiny
-primitive count is the signature. Capture at a base WITH the HUD up.
+cpu.frame.idle.us measures sleeping directly, so this closure does NOT depend on the per-phase CPU
+attribution that is still unbuilt. Shaving CPU work off a loop that spends most of its time waiting
+for the next frame buys nothing a player can see.
 
-EXPECTED SIZE: unknown and possibly small now that the stalls are gone -- the per-flush cost after
-orphaning is CPU-side batching overhead, not a 400us pipeline stall. DO NOT assume the pre-orphan ~8.3ms
-figure carries over; that number WAS the stalls. Measure before designing, and be prepared for this to
-come back MEASURED NULL like #129 (VAO-format bake), which was cleanly removed rather than shipped.
+WHAT WOULD RE-OPEN IT, so the close is falsifiable: a scene where cpu.frame.idle.us approaches zero --
+dense combat, a large base with the full HUD up, or a slower machine -- with render.flush.count still
+near 92/frame. Both counters (render.flush.count, render.flush.primitives) are already wired and ride
+in every profile, so re-opening costs one capture rather than an investigation.
 
-SEQUENCING: strictly after #137 (P-2) if it touches pass structure, since the interface render path is
-inside WorldPainter's orchestration. Independent of the lighting work (#169/#170/#171).
+NOTE THE AXIS. This is a CPU lever and the campaign currently has a rigorous GPU table and no CPU
+equivalent. The closure above rests on IDLE TIME, measured directly. It deliberately does NOT rest on
+the per-lever CPU deltas, which are noise-dominated today -- baseline spread 488 us on a 4,190 us
+signal, and one lever's removal apparently making the CPU FASTER. Those are the CPU-column work, and
+they are not used here.
 ```
 
 <a id="c29c1332-174"></a>
@@ -4830,9 +4825,9 @@ floor for EVERY stream at once and should land with this.
 
 <a id="c29c1332-236"></a>
 
-#### #236 — GPU-CLOSE-1: the gl/gpu closure is a ZERO-TOLERANCE check on a quantity that only agrees to a few percent
+#### #236 — GPU-CLOSE-1: the zero-tolerance closure is now INERT, not fixed — it revives broken if any gpu metric is re-declared Budget
 
-status: **in_progress**
+status: **pending**
 
 - `e8814a61` PREREQ-4: a lifetime total wearing a window's label, and 42 unrecorded content inputs
 - `49249551` PREREQ-3: the harness measured a window nobody chose, on a clock that was not the cadence's
@@ -4843,65 +4838,46 @@ status: **in_progress**
 - `0290f6ef` GPU-CLOSE-1a (#236): the closure check gets a MEASURED bound, watched from both ends
 
 ```
-RESHAPED BY EVIDENCE. Both hypotheses in the original filing are REFUTED. Do not act on them.
+RESHAPED AGAIN 2026-08-07. The earlier reshaping stands and is not retracted: the excess is
+BIDIRECTIONAL across 9 legs (+0.61% to -3.29%), which refutes both original hypotheses by arithmetic,
+and the real defect is a ZERO-TOLERANCE comparison between two independently-sampled quantities that
+agree only to about +/-3%. That analysis is still correct.
 
-MEASURED across 9 legs of one rehearsal matrix (matrix-20260806-152507, 03-Surface Outpost, 20s
-windows, 300 frames each). excess = (sum of gpu-domain role=Budget parts under owner gl) - whole,
-where whole = render.frame.gpu_span_us:
+WHAT CHANGED, AND IT IS NOT A FIX. The oracle CANNOT FIRE ANY MORE. D01 demoted the 13 GPU pass
+timers from MetricRole::Budget to Detail, so a real leg now contains:
 
-  baseline                       +29,480 us   +0.61%
-  off-lightingTemporalDecouple   +32,699      +0.67%
-  off-renderDrawableCache         -1,740      -0.04%
-  off-parallaxRefreshInterval     -3,795      -0.08%
-  off-scriptProtoCacheEnabled    -37,379      -0.77%
-  off-backdropComposeMerge       -39,913      -0.81%
-  off-renderVboOrphan           -102,358      -2.10%
-  off-lightingGatherCache       -123,537      -2.53%
-  off-envRefreshInterval        -159,181      -3.29%
-(a separate earlier baseline, matrix-20260806-152124, read +1.06%.)
+    gpu-domain role=detail   25
+    gpu-domain role=total     1
+    gpu-domain role=budget under owner gl: 0
 
-THE EXCESS IS BIDIRECTIONAL. That kills both original hypotheses by arithmetic:
-  * A DOUBLE COUNT can only ever be positive. Refuted.
-  * A CADENCE LEAK (lighting.gpu.* at Recompute cadence running outside the per-frame span) can only
-    ever be positive. Refuted as the sole cause.
-Negative excess is not a defect at all -- it is UNATTRIBUTED GPU work inside the span, which is
-expected and is the normal state.
+telemetry-window's closure runs under `if parts:`; with zero budget parts it takes the RANK-ONLY
+branch and computes no closure at all. Verified against a real leg of matrix-20260807-151445:
+violations = []. So the check this task exists to repair has silently stopped existing.
 
-WHAT IS ACTUALLY WRONG IS THE ORACLE, NOT (necessarily) THE ACCOUNTING. telemetry-window.py raises
-"parts exceed the whole" on ANY positive difference. The two sides are independently sampled GPU
-timers that agree only to within about +/-3%, so a zero-tolerance comparison fires whenever the noise
-lands positive -- roughly a coin flip. It flagged 2 of 9 legs here and killed an entire matrix pass.
+THE HAZARD THAT KEEPS THIS OPEN. An inert check is not a safe check -- it is a landmine with the pin
+back in. Re-declare ANY gpu-domain metric as Budget under owner gl, which the descriptor convergence
+(#245) touches 139 sites and could easily do, and the zero-tolerance oracle springs back with the
+same coin-flip failure that killed an entire matrix pass. Nothing announces that.
 
-THIS IS A KNOWN DEFECT CLASS IN THIS REPO, TWICE OVER:
-  #223 GATE-TOLERANCE-1 -- "paralloracle was never failing; the gate read a BOUNDED-diff oracle as a
-       zero-diff one."
-  #194 CI-3 -- "absolute 15us bound -> 4x ratio; BOTH ENDS MEASURED, injection proves it fires."
-The fix shape is the same: measure the agreement, set a bound from the measurement, and prove the
-bound fires on an injected breach and does not fire on the measured spread.
+AND THE PREMISE IS NOW WORSE THAN "NOISY". Measured 2026-08-07: render.frame.gpu_span_us -- the
+`whole` in that comparison -- reports ~16,200 us at 0.22%, 11.39%, 23.39% and 32.93% real engine
+busy. It is the frame period. The parts are timeline spans too. So the closure was never comparing
+work against work; it was comparing one span against a sum of spans, and the +/-3% agreement was
+agreement about bracket durations. A tolerance would have made a meaningless check quiet rather than
+correct.
 
-STILL GENUINELY OPEN, AND THE REASON THIS IS NOT JUST A TOLERANCE FIX: HOW CAN THE PARTS EVER EXCEED
-THE WHOLE AT ALL? If every part is inside the span and counted once, positive excess is impossible at
-any magnitude. Candidates, none yet tested:
-  (a) differing ring-buffer capture rates between the span timer and the pass timers -- if the SPAN
-      drops more samples than its parts, the span under-reports. Note the ring was 3 and is now 16
-      (drop rate was measured at 74%); render.gputimer.dropped exists and is registered.
-  (b) a real but PARTIAL cadence leak, whose positive contribution is usually masked by the larger
-      negative unattributed term. Weak support: the two positive legs have high lighting part totals
-      (867k, 1138k us) while the most negative has the lowest (677k) -- but 1280k and 1260k legs are
-      NEGATIVE, so the correlation does not hold across the set. DO NOT treat this as established.
-  (c) overlapping brackets (GL_TIME_ELAPSED cannot nest; parallax vs parallax.compose is the pair to
-      check on the GPU timeline).
+WHAT IS ACTUALLY LEFT, and it is small:
+ 1. Make the inertness LOUD rather than silent: if any gpu-domain Budget part appears under an owner
+    whose declared total has clock=GpuTimeline, that is a configure-time or gate-time error, not a
+    runtime coin flip. This is the same assertion #235 needs for role=Budget|Total + GpuTimeline.
+ 2. If a gl/gpu closure is ever wanted again, build it on PMU busy or per-client drm-engine
+    accounting -- quantities that ARE work -- never on *.gpu_us brackets.
+ 3. The tolerance lesson stands for whenever it returns, and the shape is already written down twice:
+    #223 (a BOUNDED-diff oracle read as a zero-diff one) and #194 (both ends measured, injection
+    proves it fires).
 
-METHOD, and the trap to avoid: these 9 legs each change a DIFFERENT lever, so scene workload is
-confounded with the lever. This is not a controlled series for correlating excess against anything.
-A null control is required: repeat the SAME configuration N times and measure the spread of the
-excess, before attributing any part of it to a cause. Count intervals, not events.
-
-DO NOT quote a per-pass GPU cost as a percentage of the GPU frame until this is settled: the
-denominator is the disputed quantity.
-
-BLOCKS: the 27-leg lever matrix. Director's call, and correct -- running 94 minutes to produce costs
-whose denominator is under question would be the defective baseline again.
+DEPENDENCY: item 1 belongs with #235 and should land there rather than here. This task stays open
+only to own the hazard until it does. It is NOT in progress and nothing should be built against it.
 ```
 
 <a id="c29c1332-237"></a>
@@ -5218,9 +5194,9 @@ Register as a gate with a fires-arm. Commit ends [#243].
 
 <a id="c29c1332-244"></a>
 
-#### #244 — POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them
+#### #244 — POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved
 
-status: **pending**
+status: **completed**
 
 - `bb29075c` BOARD: Next shows POSITION, which always starts at 1
 - `ce8a089d` BOARD: drop the rank contiguity check — it fired on progress
@@ -5230,51 +5206,31 @@ status: **pending**
 - `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
 
 ```
-Director-requested ranking, 2026-08-07, after matrix-20260807-071454 completed and after the
-"GPU-bound" reading was RETRACTED. This is the index; each item links to its own task.
+CLOSED 2026-08-07 as superseded. This was the ranked-nine index written the morning the "GPU-bound"
+reading was retracted. Keeping it would leave a second, stale copy of the order beside the board,
+which renders the live ranks from metadata.rank -- exactly the two-sources-of-truth shape this
+campaign keeps paying for.
 
-WHY THE RANKING MOVED. Two things collapsed on 2026-08-07:
-  * "The GPU is saturated" is FALSE. cpu.frame.swap.us is 6.4us/frame and cpu.frame.idle.us is
-    11470us/frame -- with vsync off, swap blocks only when the GPU queue is full, so the CPU
-    essentially never waits on the GPU. The loop is PACED at 60Hz. render.frame.gpu_span_us was
-    tracking the frame period, not GPU work.
-  * Therefore the per-pass "cost table" (world 9440us = 58%) is NOT a cost table. It is a table of
-    how long each bracket was open. The world-pass target loses its justification until an
-    engine-busy measurement replaces it.
-  Net: the two items that looked like the performance work dropped to the bottom, and the item
-  that makes durations interpretable at all rose to the top three.
+WHAT HAPPENED TO THE NINE, so the history resolves without re-reading this file:
+  1  #240 R13-FIX                  DONE. Closed the ledger's only BLOCK.
+  2  #241 R14-FIX                  DONE. All 13 pass keys eager; gpu_pass_keys gate added.
+  3  #235 BUSY-VS-WALL             OPEN, and much cheaper than it looked -- the substrate turned out
+                                   to exist in /proc (per-client GPU, per-thread CPU).
+  4  #242 MATRIX RE-RUN            DONE, then re-done as #249 after #248 proved the alignment wrong.
+  5  #243 REG-RATCHET              OPEN, unchanged, still precedes #245.
+  6  --   descriptor convergence   = #245, OPEN, still coupled to #235.
+  7  #237 MEASURE-CLIENT           OPEN. Its acceptance oracle now exists: two banked scenes.
+  8  --   WORLD PASS               = #246, CLOSED. Engine busy came back at 23.70%/11.39%, which is
+                                   the condition that task set for closing itself.
+  9  #173 RB-FLUSH                 CLOSED. CPU lever, loop sleeps 72-84% of every frame.
 
-THE RANKED NINE
+THE RANKING PREMISE HELD. This file argued #235 belonged at 3 "despite being the most work" because
+until work and waiting are separable, nothing below it can be honestly ranked -- and items 8 and 9
+had just lost their evidence to that confusion. Both are now closed on measurements that only became
+possible once an instrument measured WORK rather than span. The argument was right.
 
- 1  #240  R13 FIX -- hoist four lazy lock-timer registrations.        ~15 min.  CLOSES 1 BLOCK.
- 2  #241  R14 FIX -- register both compose keys eagerly.              ~45 min.  Correctness.
- 3  #235  BUSY-VS-WALL as a first-class metric property.              Design.   See below.
- 4  #242  MATRIX RE-RUN + second scene + PMU sample alongside.        ~2h unattended. Blocked by 1.
- 5  #243  REG-RATCHET -- no eighth lazy registration.                 ~45 min.  Before the convergence.
- 6  --    Descriptor convergence 3->4 + the cost-analysis half.       Large. COUPLED to #235.
- 7  #237  MEASURE-CLIENT -- the fifth entrypoint.                     Large. Gets its oracle from #242.
- 8  --    WORLD PASS.  Justification RETRACTED; re-open only if #242's PMU shows real GPU busy.
- 9  #173  36 flushes/frame -- a CPU lever on a system with 72% CPU idle. Likely CLOSE, not do.
-
-WHY #235 SITS AT 3 DESPITE BEING THE MOST WORK. Every duration in the tree is a wall span. Until
-work and waiting are separable, NO item below can be honestly ranked -- 8 and 9 both just lost
-their evidence to precisely this confusion, and #235's own row is the third instance in one day.
-It is the precondition for the performance arc meaning anything, not another entry in it.
-Its cheap down-payment rides along free with #242 (the PMU sample), which is why 4 follows 3.
-
-DEPENDENCY / DERISK CHAIN
-  1 -> 4        the fix must land before the runs, or they produce more unquotable data
-  4A -> 4B      Desert Town first: same scene, same binary, a clean null control on the fix
-  4  -> 8, 9    may CANCEL both rather than inform them
-  4  -> 7       supplies #237 its acceptance oracle (reproduce these numbers at these two scenes)
-  5 -> 6        ratchet before the 139-site sweep, not after
-  3 <-> 6       both change the snapshot schema; decide deliberately, do not collide
-
-WHAT SURVIVED THE RETRACTION UNTOUCHED: the COUNTER-based work-avoidance figures, because counts
-are not durations. env cache skips 75% of redraws; parallax 67%; lighting temporal 60%; gather
-cache 86% hit; drawable cache 72% hit (44.9 cached vs 17.6 rebuilt per frame); VBO orphaning
-avoids 33.9 of 35.99 flushes per frame. Those are what our levers demonstrably do versus vanilla.
-What we still cannot say is what any of it COSTS -- which is items 1 and 3.
+Two items were added after it and are not in the nine: #248 (PMU attribution machinery, DONE) and
+#249 (the re-measurement it forced, DONE). Live order lives on the board and in the artifact.
 ```
 
 <a id="c29c1332-245"></a>
@@ -5304,27 +5260,36 @@ whole exist in MetricDesc and ZERO production sites populate any of them (verifi
 
 <a id="c29c1332-246"></a>
 
-#### #246 — WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time
+#### #246 — WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost
 
-status: **pending** · blocked by: #242 · metadata: `{"rank": 8}`
+status: **completed** · blocked by: #242 · metadata: `{"rank": 8}`
 
 ```
-RANK 8, and deliberately parked rather than started.
+CLOSED 2026-08-07, NOT DONE, on the exact criterion this task set for itself: "DO NOT START until
+#242's PMU sample says the GPU is genuinely busy. If engine busy comes back at ~25%, there is no GPU
+bottleneck at this scene and this task should be CLOSED, not done."
 
-matrix-20260807-071454 showed render.pass.world.gpu_us at 9440 us/frame, 58% of the frame -- by
-far the largest single bracket, next is parallax at 1771. That looked like THE performance target.
+Engine busy came back at 23.70% at Desert Town and 11.39% at Ark Ruins, both measured with a
+calibrated out-of-process instrument (idle floor 2.34%, glxgears uncapped 88.67%) and exact window
+alignment. That is the stated condition, met.
 
-IT IS RETRACTED. cpu.frame.swap.us is 6.4 us/frame against cpu.frame.idle.us at 11470, so with
-vsync off the CPU essentially never waits on the GPU and the loop is PACED, not GPU-bound. Both
-GL_TIMESTAMP and GL_TIME_ELAPSED measure elapsed GPU-TIMELINE, not engine busy, so 9440 us is how
-long the bracket was OPEN. It may be 9.4ms of shading or 2ms of shading inside a 9.4ms window.
+THE ARITHMETIC THAT SETTLES IT. At Desert Town the whole GPU is busy 23.70% of a 16.2 ms frame,
+i.e. ~3.84 ms of actual engine time per frame. render.pass.world.gpu_us reports 9,578 us. The
+"biggest bracket" is ~2.5x the entire GPU's busy time for the whole frame -- it cannot be a cost.
+It is how long the bracket was OPEN.
+(An earlier note here said ~5.6x; that used the mis-aligned 0.22% baseline and is corrected.)
 
-DO NOT START until #242's PMU sample says the GPU is genuinely busy. If engine busy comes back at
-~25%, there is no GPU bottleneck at this scene and this task should be CLOSED, not done.
+AND THE SECOND CHECK THIS TASK ASKED FOR IS ANSWERED. It required explaining the gap between #132's
+session average of 1,839 us/frame for the world pass and the matrix's 9,440. The explanation is the
+same one: both are timeline spans, and a span's size tracks how long the frame was, not how much work
+happened inside it. render.frame.gpu_span_us reports ~16,200 us -- the frame period -- at 0.22%,
+11.39%, 23.39% and 32.93% engine busy alike. Nothing about the 5x gap needs a scene or a regression
+to explain it.
 
-SECOND CHECK BEFORE SPENDING: #132's session average recorded world at 1839 us/frame. 9440 is
-~5x that. Different scene, but the gap needs explaining -- scene, resolution, regression, or the
-same wall-vs-busy confusion -- before any lever is designed against it.
+WHAT WOULD RE-OPEN IT: a scene where per-client engine busy is high enough that the GPU is the
+binding constraint. Neither measured scene is close -- 61.7 fps on every leg, frame paced, CPU 72-84%
+idle. If such a scene is found, the target must be chosen from PMU busy or per-client drm-engine
+accounting, NEVER from a *.gpu_us bracket, which is the mistake this task was filed on.
 ```
 
 <a id="c29c1332-247"></a>
