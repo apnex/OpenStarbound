@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**184 tasks** across 2 store(s): 4 in_progress, 35 pending, 145 completed
+**184 tasks** across 2 store(s): 5 in_progress, 34 pending, 145 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 183 tasks, ids 64–247
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,14 +43,14 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 2 | 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
-| 3 | 5 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
-| 4 | 6 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 5 | 7 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 3 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
+| 2 | 4 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
+| 3 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
+| 4 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 5 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
 | 6 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
 | 7 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
-| 8 | 10 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
+| 8 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
 > **1 completed task(s) still carry a rank** (#241). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -65,7 +65,7 @@ reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 179, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 27.** The task harness has, on these, appended its
+**Descriptions normalised on export: 26.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -280,8 +280,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
-| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `775176ff` | — |
-| [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
+| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
+| [#242](#c29c1332-242) | `c29c1332` | **active** | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
 | [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
@@ -4758,7 +4758,7 @@ No consumer today, so nothing currently reports a wrong number. The bound to re-
 
 #### #235 — BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **pending** · metadata: `{"rank": 6}`
 
 - `72ad0000` GM-2c: every lever in the matrix can now prove it engaged
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
@@ -4903,7 +4903,7 @@ whose denominator is under question would be the defective baseline again.
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 7}`
+status: **pending** · metadata: `{"rank": 10}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5091,6 +5091,7 @@ Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 
 status: **completed** · metadata: `{"rank": 2}`
 
+- `cd0b5175` LEDGER: file R15 and R16 -- the two registrations R14 did not reach
 - `775176ff` R14-FIX: a pass that never runs now reads ZERO, not ABSENT -- and the leg file says so
 
 ```
@@ -5123,23 +5124,39 @@ Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit 
 
 #### #242 — MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside
 
-status: **pending** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 4}`
+status: **in_progress** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 3}`
 
 ```
-RANK 4 of the post-matrix order (2026-08-07). ~2h wall-clock, near-zero attention.
-BLOCKED BY #240 (R13). Run only after the fix lands and the binary is rebuilt.
+RANK 3 of the post-matrix order (re-ranked 2026-08-07 with Director agreement, was 4).
+UNBLOCKED: #240 (R13) landed, #241 (R14) landed, binary rebuilt at both.
+
+Moved ABOVE #235 because leg A is the NULL CONTROL for #240 and #241 themselves — both are
+verified against gates, tests and one live profile, but not against the artifact that exposed
+them. That check is cheapest today and degrades with every further commit.
 
 TWO RUNS, IN THIS ORDER, AND THE ORDER IS THE POINT.
 
- A. Desert Town re-run (48 min). Same scene, same binary, so it is a clean before/after NULL
-    CONTROL: the only thing that should change is quotability. Assert ZERO legs flagged
-    not-quotable. If anything else moved, know it after 48 minutes rather than 108.
+ A. Desert Town re-run (48 min). Same scene, so it is a clean before/after against
+    matrix-20260807-071454.
     Banks the numbers the 2026-08-07 discussion rested on but could not quote.
 
  B. Second scene (1h). One --warp change. EVERY number we hold is from one location at 72% CPU
     idle. The harness carries the warning from exactly this failure: "a whole day of parallax
     optimization was aimed at a pass that is not in the scene being complained about." Candidate
     scenes from the bookmark list: a dense base, or Ark Ruins (authored, settles cleanly).
+
+LEG A NOW ASSERTS THREE THINGS, NOT ONE. The original wording — "the only thing that should
+change is quotability" — was written before #241 and is no longer true, BY DESIGN:
+  1. ZERO legs flagged not-quotable          (tests #240 / R13; was 28 of 28 flagged)
+  2. ONE registered *.gpu_us key set across all legs, not three, and 13 keys in it
+                                             (tests #241 / R14; was 21/3/3 with 11-12 keys)
+  3. `zeroed` present in every leg JSON and carrying the arms that did not run
+                                             (tests #241's consumer half)
+Anything ELSE that moved is the thing to know after 48 minutes rather than 108.
+
+KNOWN RISK, AND A REASON TO RUN A SOON RATHER THAN LATE: #241 added `zeroed` as a sibling key in
+the leg JSON. That path has been exercised through render-profile.sh but NOT through
+lever-matrix.sh's manifest/quotability logic. Leg A is its first real test; it fails fast.
 
 SAMPLE THE PMU ALONGSIDE BOTH. scripts/pmu-render-busy.py reads i915 render-engine busy
 OUT OF PROCESS -- utilisation, not span. The metrics_mutual gate has SKIPPED every run to date
@@ -5150,7 +5167,7 @@ GL brackets merely open? This is the cheap down-payment on #235 piece 2.
 WHAT THESE TWO RUNS DECIDE, which is why they sit above the big items:
  * #173 (36 flushes/frame) is a CPU lever on a system with 72% CPU idle. If that holds at both
    scenes it should be CLOSED, not done.
- * The world pass (#243) only becomes a target if the PMU shows real GPU busy AND it generalises.
+ * The world pass (#246) only becomes a target if the PMU shows real GPU busy AND it generalises.
  * #237 gets its ACCEPTANCE ORACLE: the new entrypoint must reproduce these numbers at these two
    scenes. A rewrite with no oracle is how a silent regression ships.
 
@@ -5161,7 +5178,7 @@ Do not start any large item below until B has finished.
 
 #### #243 — REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance
 
-status: **pending** · blocks: #245 · metadata: `{"rank": 5}`
+status: **pending** · blocks: #245 · metadata: `{"rank": 4}`
 
 ```
 RANK 5 of the post-matrix order (2026-08-07). ~45 minutes.
@@ -5253,7 +5270,7 @@ What we still cannot say is what any of it COSTS -- which is items 1 and 3.
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 6}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 7}`
 
 ```
 RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5303,7 +5320,7 @@ same wall-vs-busy confusion -- before any lever is designed against it.
 
 #### #247 — R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach
 
-status: **pending** · metadata: `{"rank": 10}`
+status: **pending** · metadata: `{"rank": 5}`
 
 ```
 Found by #241's own verification work, both filed to the matrix-prereq ledger rather than folded into it.
