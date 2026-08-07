@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**186 tasks** across 2 store(s): 3 in_progress, 32 pending, 151 completed
+**186 tasks** across 2 store(s): 3 in_progress, 31 pending, 152 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 185 tasks, ids 64–249
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,13 +43,12 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 4 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
-| 2 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
-| 3 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 4 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 5 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
+| 2 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 3 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 4 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
-> **6 completed task(s) still carry a rank** (#173, #241, #242, #246, #248, #249). A rank is a claim about
+> **7 completed task(s) still carry a rank** (#173, #241, #242, #243, #246, #248, #249). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -60,7 +59,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 182, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 183, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 24.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -88,7 +87,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 151.
+**Completed tasks citing no commit and no doc:** 86 of 152.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -279,7 +278,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` `7ec8a0bb` `c0238e96` | — |
-| [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
+| [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
 | [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
@@ -5165,31 +5164,49 @@ WHAT THESE RUNS DECIDE:
 
 #### #243 — REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance
 
-status: **pending** · blocks: #245 · metadata: `{"rank": 4}`
+status: **completed** · blocks: #245 · metadata: `{"rank": 4}`
+
+- `d3650330` REG-RATCHET: pin the lazy-registration count at 95, so there is no tenth instance
 
 ```
-RANK 5 of the post-matrix order (2026-08-07). ~45 minutes.
+DONE 2026-08-07 (d3650330), in scripts/metric-desc-lint.py as the task specified -- same file, same
+selftest harness, its own gate name and verdict line.
 
-SEVEN INSTANCES OF ONE PATTERN, all found in two days: cluster A's five rows (R07-R11), plus R13
-(tick.server.lock.sync.us), plus R14 (the never-ran compose arm). Every one is a telemetry handle
-registered on a path that is not always taken, so the key reads ABSENT rather than ZERO and a
-consumer differencing two snapshots cannot tell "found nothing" from "never ran".
+THE RATCHET: 95 function-local `static auto x = Telemetry::(counter|gauge|timer|rate)(` sites, pinned.
+Registered as gates reg_ratchet + reg_ratchet_fires.
 
-Full static reachability analysis is hard and not worth it. The CHEAP, SOUND form is a RATCHET,
-same shape as scripts/client-residency.py: count function-local `static auto x = Telemetry::
-(counter|gauge|timer|rate)` registration sites, pin the ceiling at today's number, forbid growth.
-It does not fix existing instances -- #240 and #241 do that -- it stops the eighth.
+THE RULE IT ENCODES, and it is a MEASURED convention rather than an assumption:
+    static auto x = Telemetry::...(...)   in a function   -> LAZY, counted
+    auto x       = Telemetry::...(...)    namespace scope  -> EAGER, ignored
+All 95 static-auto sites are indented (none at column 0), and every eager registration shipped by
+#240 and #241 is written WITHOUT `static`. So `static` on a Telemetry registration MEANS lazy. That
+convention is now written down at the regex, including the instruction to drop `static` when writing
+an eager namespace-scope registration -- otherwise a correct fix would read as a regression here.
 
-SEQUENCING MATTERS: this belongs BEFORE the schema 3->4 descriptor convergence, not after. That
-sweep touches all 139 MetricDesc sites, and a large mechanical pass is precisely the highest-risk
-moment for reintroducing the pattern. Afterwards it is a lock on an empty stable.
+THREE REFUSALS, each from a defect this repo has actually paid for:
+  * ZERO MATCHES FAILS. A naive `total > ceiling` reports the tree's best-ever result the moment the
+    pattern stops matching. Caught three times now; twice today in gates written the same afternoon.
+  * SLACK IS REPORTED, with the number to lower the ceiling to. A ceiling above the real count is
+    exactly the room the next lazy registration slides into unnoticed.
+  * IT PRINTS ITS DENOMINATOR -- the task's own instruction, "a ratchet whose count nobody sees is a
+    ratchet nobody notices is wrong".
 
-Build on scripts/metric-desc-lint.py (landed 2026-08-07): same file could carry both the
-positional-prose check and the registration ratchet, and it already has the selftest harness and
-a gates.yml registration. Must PRINT its denominator like the others -- a ratchet whose count
-nobody sees is a ratchet nobody notices is wrong.
+NOT COVERED, NAMED IN THE DOCSTRING RATHER THAN LEFT SILENT: a function-local NON-static registration
+(`auto c = Telemetry::counter(key, desc)` inside a function body) registers on first call exactly like
+the static form. Exactly one exists -- cpu.process.total_us in StarTelemetryReporter::writeSnapshot,
+low risk because that function runs on a fixed interval and so always registers early. Separating it
+from the eager namespace-scope form needs brace-depth parsing, and an indentation heuristic is
+precisely what gputimer-brackets refuses ("indentation is a style, braces are the language"). If a
+second appears, the docstring paragraph is where the note is.
 
-Register as a gate with a fires-arm. Commit ends [#243].
+PROVEN, not asserted: 6/6 selftest arms (counts lazy, ignores eager, ignores comments, fires on
+growth, passes exactly at the ceiling, refuses to pass on zero matches), plus an injection against the
+REAL tree -- one added lazy registration takes the count to 96 and turns the gate red. 47 gates green.
+
+SEQUENCING SATISFIED: this landed BEFORE #245's descriptor convergence, which touches all 152
+MetricDesc sites. A large mechanical pass is exactly when the pattern comes back, and the lock is now
+on before the stable is opened. #247 will REMOVE instances, so expect the ceiling to need lowering --
+the check will say so by name.
 ```
 
 <a id="c29c1332-244"></a>
