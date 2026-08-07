@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 22 | not started |
+| **open** | 20 | not started |
 | **doing** | 0 | in progress |
-| **done** | 35 | closed; `commit` says where |
+| **done** | 37 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -47,8 +47,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
-| `R15` | degrade | The 13 <key>.nested rejection counters are still registered lazily inside begin(), and their keys are rebuilt by String concatenation on the render pa | Register the 13 .nested counters eagerly beside their timers and cache the handle so begin() stops rebuilding the key. D |
-| `R16` | degrade | render.frame.gpu_span_us -- owner `gl`'s DECLARED TOTAL -- registers four conditionals deep inside the readback, so the denominator can be absent whil | Register it eagerly by name at namespace scope beside the renderer's other keys, as R14 did for the 13. Separately, tele |
 
 ## Closed
 
@@ -89,6 +87,8 @@ rather than hidden, because an unchecked row is not a checked one.
 | `R12` | telemetry-window.py windows a key that first REGISTERS between the two snapshots against zero, reporting its whole process-lifetime value as the windo | pending |
 | `R13` | tick.server.lock.sync.us registers on its FIRST LOCK ACQUISITION, and sync() is periodic -- so it first appears INSIDE the measurement window and the  | [#240] all four lock timers hoisted to namespace scope |
 | `R14` | R07 is HALF closed: the never-RAN arm of a mutually-exclusive GPU pass is still ABSENT rather than zero, so owner `gl` closes over a different part se | [#241] all 13 pass keys registered eagerly by name; gpu_pass_keys asserts begun  |
+| `R15` | The 13 <key>.nested rejection counters are still registered lazily inside begin(), and their keys are rebuilt by String concatenation on the render pa | [#247] all 13 .nested rejection counters registered eagerly, paired with their t |
+| `R16` | render.frame.gpu_span_us -- owner `gl`'s DECLARED TOTAL -- registers four conditionals deep inside the readback, so the denominator can be absent whil | [#247] render.frame.gpu_span_us -- owner gl's declared Total -- registered eager |
 
 ## Evidence
 
@@ -712,7 +712,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Signature.* `source/**/*.cpp` matching `Telemetry::timer\("render\.pass\.environment\.compose\.gpu_us"` — present while open. (render.pass.environment.compose.gpu_us is registered eagerly by name somewhere, not only as an argument to a begin() that its arm may never reach)
 
-### `R15` — DEGRADES_MATRIX — open
+### `R15` — DEGRADES_MATRIX — done
 
 **The 13 <key>.nested rejection counters are still registered lazily inside begin(), and their keys are rebuilt by String concatenation on the render path every frame**
 
@@ -722,9 +722,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register the 13 .nested counters eagerly beside their timers and cache the handle so begin() stops rebuilding the key. Derive each .nested key from the timer key rather than spelling a second list, so gpu_pass_keys can assert the .nested set is exactly the begun set with the suffix applied, in both directions, at no new vocabulary cost.
 
-*Signature.* `source/application/StarRenderer_opengl.cpp` matching `ring\.nested = Telemetry::counter\(name \+ "\.nested"` — present while open. (the nested-rejection counter is still registered, and its key still built, inside begin())
+*Signature.* `source/**/*.cpp` matching `Telemetry::counter\("render\.pass\.environment\.compose\.gpu_us\.nested"` — present while open. (RE-AUTHORED at fix time, and the reason is worth stating. The original pattern was the literal `ring.nested = Telemetry::counter(name + ".nested"` in begin(), and it STILL MATCHES after the fix -- begin() continues to resolve the handle, now once per key behind a guard instead of once per frame. The defect was never that text: it was (a) the NODE existing only after begin() first ran, and (b) a heap allocation per pass per frame. Both are fixed; the line stays. So the signature now asserts the substantive state -- the rejection counter for the arm that never runs is registered eagerly by name -- mirroring R14's. gpu_pass_keys covers all 13 pairs and DERIVES the .nested expectation from the begun key rather than holding a second list.)
 
-### `R16` — DEGRADES_MATRIX — open
+### `R16` — DEGRADES_MATRIX — done
 
 **render.frame.gpu_span_us -- owner `gl`'s DECLARED TOTAL -- registers four conditionals deep inside the readback, so the denominator can be absent while its parts are present**
 
@@ -734,5 +734,5 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Register it eagerly by name at namespace scope beside the renderer's other keys, as R14 did for the 13. Separately, telemetry-window's no-whole branch should be loud even when parts is zero: a declared total that is absent is a fact about the instrument whether or not anything was waiting to be divided by it.
 
-*Signature.* `source/**/*.cpp` matching `auto \w+ = Telemetry::timer\("render\.frame\.gpu_span_us"` — present while open. (render.frame.gpu_span_us is registered eagerly by name, not only at the record site four conditionals deep)
+*Signature.* `source/**/*.cpp` matching `auto \w+ = (?:Star::)?Telemetry::timer\("render\.frame\.gpu_span_us"` — present while open. (render.frame.gpu_span_us is registered eagerly by name, not only at the record site four conditionals deep. The (?:Star::)? was added at fix time: the anonymous namespace holding the renderer's eager registrations sits OUTSIDE `namespace Star`, so every key there is qualified. The claim is unchanged -- the qualification is incidental to it, and a signature that reads red because of a namespace prefix is a signature about spelling.)
 

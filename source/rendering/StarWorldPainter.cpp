@@ -44,6 +44,9 @@ namespace {
   // unnamed while its two compose siblings were being chased.
   auto s_composePassTimer = Telemetry::timer("render.pass.compose.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp.
+  auto s_composePassNested = Telemetry::counter("render.pass.compose.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +

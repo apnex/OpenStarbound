@@ -673,9 +673,10 @@
    "impact": "For a pass whose arm never runs, 'no samples were rejected' and 'nothing was watching' stay the same reading -- which is verbatim the sentence the droppedCounter comment a few lines above uses to justify its own eager registration. Lower severity than R14: these are MetricRole::Detail diagnostics entering no budget, and a nested bracket is rare. The allocation is a SECOND, independent defect and is the instrument perturbing its own subject: thirteen timers over a three-hundred-frame window is thousands of heap allocations on the exact path task #141 exists to measure without disturbing.",
    "fixShape": "Register the 13 .nested counters eagerly beside their timers and cache the handle so begin() stops rebuilding the key. Derive each .nested key from the timer key rather than spelling a second list, so gpu_pass_keys can assert the .nested set is exactly the begun set with the suffix applied, in both directions, at no new vocabulary cost.",
    "signature": {
-    "glob": "source/application/StarRenderer_opengl.cpp",
-    "re": "ring\\.nested = Telemetry::counter\\(name \\+ \"\\.nested\"",
-    "desc": "the nested-rejection counter is still registered, and its key still built, inside begin()"
+    "glob": "source/**/*.cpp",
+    "re": "Telemetry::counter\\(\"render\\.pass\\.environment\\.compose\\.gpu_us\\.nested\"",
+    "absent": true,
+    "desc": "RE-AUTHORED at fix time, and the reason is worth stating. The original pattern was the literal `ring.nested = Telemetry::counter(name + \".nested\"` in begin(), and it STILL MATCHES after the fix -- begin() continues to resolve the handle, now once per key behind a guard instead of once per frame. The defect was never that text: it was (a) the NODE existing only after begin() first ran, and (b) a heap allocation per pass per frame. Both are fixed; the line stays. So the signature now asserts the substantive state -- the rejection counter for the arm that never runs is registered eagerly by name -- mirroring R14's. gpu_pass_keys covers all 13 pairs and DERIVES the .nested expectation from the begun key rather than holding a second list."
    }
   },
   {
@@ -687,9 +688,9 @@
    "fixShape": "Register it eagerly by name at namespace scope beside the renderer's other keys, as R14 did for the 13. Separately, telemetry-window's no-whole branch should be loud even when parts is zero: a declared total that is absent is a fact about the instrument whether or not anything was waiting to be divided by it.",
    "signature": {
     "glob": "source/**/*.cpp",
-    "re": "auto \\w+ = Telemetry::timer\\(\"render\\.frame\\.gpu_span_us\"",
+    "re": "auto \\w+ = (?:Star::)?Telemetry::timer\\(\"render\\.frame\\.gpu_span_us\"",
     "absent": true,
-    "desc": "render.frame.gpu_span_us is registered eagerly by name, not only at the record site four conditionals deep"
+    "desc": "render.frame.gpu_span_us is registered eagerly by name, not only at the record site four conditionals deep. The (?:Star::)? was added at fix time: the anonymous namespace holding the renderer's eager registrations sits OUTSIDE `namespace Star`, so every key there is qualified. The claim is unchanged -- the qualification is incidental to it, and a signature that reads red because of a namespace prefix is a signature about spelling."
    }
   }
  ]

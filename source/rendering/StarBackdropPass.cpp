@@ -29,13 +29,27 @@ namespace {
   // hazard. gpu_pass_keys (scripts/gputimer-brackets.py) asserts this list and the begin() sites name the
   // same key set in BOTH directions, so a registration that outlives its pass is as loud as a pass that
   // outlives its registration.
+  // EACH KEY IS A PAIR (R15). <key>.nested counts samples the nesting guard REJECTED, and it carried the
+  // same defect one level down: registered inside begin(), so for a pass whose arm never runs "no samples
+  // were rejected" and "nothing was watching" stayed the same reading. That is verbatim the sentence
+  // render.gputimer.dropped's own comment uses to justify ITS eager registration. Paired here rather than
+  // listed separately so the two cannot drift apart by eye; gpu_pass_keys DERIVES the .nested expectation
+  // from the begun key rather than being told it, so this is one list, not two.
   auto s_envTimer = Telemetry::timer("render.pass.environment.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_envNested = Telemetry::counter("render.pass.environment.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_envComposeTimer = Telemetry::timer("render.pass.environment.compose.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_envComposeNested = Telemetry::counter("render.pass.environment.compose.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_parallaxTimer = Telemetry::timer("render.pass.parallax.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_parallaxNested = Telemetry::counter("render.pass.parallax.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_parallaxComposeTimer = Telemetry::timer("render.pass.parallax.compose.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_parallaxComposeNested = Telemetry::counter("render.pass.parallax.compose.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 

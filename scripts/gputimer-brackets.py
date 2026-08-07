@@ -56,7 +56,18 @@ BEGIN = re.compile(r'(?:gpuTimer\(\)|m_gpuTimer)\.begin\(\s*"([^"]+)"')
 END = re.compile(r'(?:gpuTimer\(\)|m_gpuTimer)\.end\(\s*"([^"]+)"')
 # The eager registration: a LITERAL key handed to Telemetry::timer. Deliberately not matched against a
 # variable, because a variable is what begin() already passes and is exactly what cannot be checked here.
+# The closing quote is load-bearing: it stops "<key>.gpu_us.nested" matching as if it were a pass key.
 EAGER = re.compile(r'Telemetry::timer\(\s*"([^"]*\.gpu_us)"')
+
+# THE PAIR (R15). Every pass key has a <key>.nested counter recording samples the nesting guard rejected,
+# and it carried the identical absent-vs-zero defect: registered inside begin(), so for a pass whose arm
+# never runs "no samples were rejected" and "nothing was watching" were the same reading.
+#
+# The EXPECTATION IS DERIVED, not declared. The gate appends ".nested" to each begun key rather than
+# reading a second list, so there is nothing here for a future key to be forgotten from -- which is the
+# hazard R14's fix note warned about when it said "do not simply duplicate the list".
+EAGER_NESTED = re.compile(r'Telemetry::counter\(\s*"([^"]*\.gpu_us\.nested)"')
+NESTED_SUFFIX = ".nested"
 
 
 def strip_comment(line):
@@ -235,13 +246,15 @@ def key_problems(files):
 
     `files` is {path: text}, so the same function serves the tree and the selftest fixtures.
     """
-    begun, eager = {}, {}
+    begun, eager, nested = {}, {}, {}
     for path, text in files.items():
         body = "\n".join(strip_comment(l) for l in text.splitlines())
         for k in BEGIN.findall(body):
             begun.setdefault(k, set()).add(path)
         for k in EAGER.findall(body):
             eager.setdefault(k, set()).add(path)
+        for k in EAGER_NESTED.findall(body):
+            nested.setdefault(k, set()).add(path)
     out = []
     for k in sorted(set(begun) - set(eager)):
         out.append(f"  {k}: begun at {', '.join(sorted(begun[k]))} but NEVER REGISTERED EAGERLY -- an arm "
@@ -251,6 +264,17 @@ def key_problems(files):
         out.append(f"  {k}: registered eagerly at {', '.join(sorted(eager[k]))} but NEVER BEGUN -- a "
                    f"constant that outlived its pass. It will report present-at-zero forever, which reads "
                    f"as 'this pass exists and cost nothing'. Delete the registration.")
+    # THE .nested PAIR, derived from the begun key rather than from a second list.
+    for k in sorted(set(begun)):
+        if k + NESTED_SUFFIX not in nested:
+            out.append(f"  {k}{NESTED_SUFFIX}: the pass key is begun but its REJECTION COUNTER is not "
+                       f"registered eagerly. For a pass whose arm never runs, 'no samples were rejected' "
+                       f'and "nothing was watching" are then the same reading (R15).')
+    for k in sorted(set(nested)):
+        if k[:-len(NESTED_SUFFIX)] not in begun:
+            out.append(f"  {k}: a rejection counter with no pass -- {k[:-len(NESTED_SUFFIX)]} is never "
+                       f"begun anywhere, so this counter reports present-at-zero forever.")
+
     # SET EQUALITY, NOT CO-LOCATION. An earlier draft also required the registration to sit in the file
     # that begins the key. It read well and was wrong: render.pass.interface.gpu_us is begun in
     # StarClientApplication.cpp, an UPSTREAM file that client_residency ratchets precisely so our code
@@ -258,21 +282,21 @@ def key_problems(files):
     # vacate, and the only way to stay green would have been to raise that ceiling. A rule that pushes
     # code into a file another rule is pushing it out of is not a rule, it is a collision. The invariant
     # R14 needs is that the two SETS agree; where the registration lives is a judgement, made at the site.
-    return out, len(begun), len(eager)
+    return out, len(begun), len(eager), len(nested)
 
 
 def check_keys():
-    problems, nb, ne = key_problems(sources())
+    problems, nb, ne, nn = key_problems(sources())
     for p in problems:
         print(p)
     if problems:
-        print(f"gpu_pass_keys: FAIL -- {len(problems)} key(s) disagree ({nb} begun, {ne} registered)")
+        print(f"gpu_pass_keys: FAIL -- {len(problems)} key(s) disagree ({nb} begun, {ne} registered, {nn} .nested)")
         return 1
     if nb == 0:
         print("gpu_pass_keys: FAIL -- scanned 0 begin sites, so the two sets are trivially equal and "
               "nothing was checked.")
         return 1
-    print(f"gpu_pass_keys: OK -- {nb} key(s) both begun and eagerly registered, in both directions")
+    print(f"gpu_pass_keys: OK -- {nb} key(s) begun, {ne} eagerly registered, {nn} rejection counters; all three sets agree in both directions")
     return 0
 
 
@@ -281,6 +305,8 @@ def check_keys():
 KEYS_MATCHED = {"m.cpp": '''
 namespace {
   auto s_xTimer = Telemetry::timer("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_xNested = Telemetry::counter("render.pass.x.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 void P::draw() {
@@ -319,6 +345,29 @@ void R::startFrame() {
 '''}
 
 
+# A pass key registered eagerly but with NO rejection counter -- R15's defect, one level down.
+KEYS_NO_NESTED = {"m.cpp": '''
+namespace {
+  auto s_xTimer = Telemetry::timer("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+void P::draw() {
+  m_renderer->gpuTimer().begin("render.pass.x.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  drawIt();
+  m_renderer->gpuTimer().end("render.pass.x.gpu_us");
+}
+'''}
+
+# A rejection counter whose pass no longer exists -- the mirror, reporting present-at-zero forever.
+KEYS_ORPHAN_NESTED = {"m.cpp": '''
+namespace {
+  auto s_goneNested = Telemetry::counter("render.pass.gone.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+}
+'''}
+
+
 def selftest_keys():
     fails = []
     if key_problems(KEYS_MATCHED)[0]:
@@ -329,6 +378,10 @@ def selftest_keys():
         fails.append("detector did NOT fire on a registration that outlived its pass")
     if not key_problems(KEYS_MEMBER_SPELLING)[0]:
         fails.append("detector did NOT see m_gpuTimer.begin -- the two renderer-member sites are unscanned")
+    if not any("REJECTION COUNTER" in p for p in key_problems(KEYS_NO_NESTED)[0]):
+        fails.append("detector did NOT fire on a pass key with no .nested rejection counter (R15)")
+    if not any("no pass" in p for p in key_problems(KEYS_ORPHAN_NESTED)[0]):
+        fails.append("detector did NOT fire on a .nested counter whose pass does not exist")
     # An empty corpus must FAIL, not pass vacuously. Without this arm the gate is one refactor away from
     # the silent-vacuous green it exists to replace.
     if key_problems({})[1] != 0:
@@ -337,7 +390,8 @@ def selftest_keys():
         print(f"  FAIL: {f}")
     if fails:
         return 1
-    print("  gpu_pass_keys selftest: 5/5 arms ok (fires three ways, declines once, counts an empty corpus)")
+    print("  gpu_pass_keys selftest: 7/7 arms ok (fires five ways incl. both .nested directions, "
+          "declines once, counts an empty corpus)")
     return 0
 
 

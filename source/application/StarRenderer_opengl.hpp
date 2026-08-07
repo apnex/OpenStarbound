@@ -286,6 +286,13 @@ private:
       // nesting guard used to only warn, so a timer whose every sample the guard rejected reported a count
       // that was neither frames nor calls, and nothing said which timer or how many. See begin().
       TelemetryCounter nested;
+      // RESOLVED ONCE, NOT PER BEGIN (R15). Re-resolving it rebuilt the key with `name + ".nested"` --
+      // a heap allocation per pass per frame on the render path, which StarMetricDesc.hpp forbids in as
+      // many words and for this exact reason. The TIMER above is deliberately still re-resolved every
+      // begin: two call sites may name one key, and descConflict is raised only by a call that PASSES a
+      // desc. The nested counter carries one descriptor everywhere, so it has nothing to drift against
+      // and nothing to detect -- the asymmetry is the point, not an oversight.
+      bool nestedResolved = false;
     };
 
     function<void()> m_flushPending;

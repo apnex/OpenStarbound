@@ -246,6 +246,30 @@ def coverage_scale(v, cadence_ticks, w):
     return v["total"] / coverage, coverage, expected
 
 
+def no_whole_report(owner, dom, total_name, parts, denom):
+    """(line, violation-or-None) for a domain whose declared total is missing from the window.
+
+    SAID OUT LOUD EVEN WHEN THERE ARE NO PARTS (R16). This used to sit behind `if parts:`, so a domain
+    with a missing TOTAL and no budget parts printed nothing at all and the whole owner/domain block
+    simply vanished -- indistinguishable from an owner that has no metrics. That is not hypothetical
+    for gpu: D01 demoted the 13 pass timers to Detail, so the gpu domain has ZERO budget parts, and
+    render.frame.gpu_span_us registered four conditionals deep. Lose the total and the entire gl/gpu
+    section disappears silently, which is the exact shape of a gate that skips and reports OK.
+
+    A VIOLATION only when parts exist, and that asymmetry is deliberate: with parts, a real budget went
+    unclosed and the leg's costs are not quotable. With none, nothing was mis-closed -- but the
+    instrument still failed to produce its denominator, and that is a fact about the run.
+    """
+    why = "no total declared for this domain" if not total_name \
+          else f"declared total '{total_name}' is absent from the window"
+    if parts:
+        return (f"{dom} accounted: {parts/denom:8.1f} us/tick of UNKNOWN -- {why}",
+                f"{owner}/{dom}: {parts} us of budget parts with NO WHOLE -- {why}. "
+                f"Nothing was closed; this is not a pass")
+    return (f"{dom}: NO WHOLE and no budget parts -- {why}. Nothing was measured for this "
+            f"owner/domain; read the absence as an instrument gap, not as an empty budget.", None)
+
+
 def selftest():
     """Prove the closure bound fires AND that it does not over-fire. Both ends measured (#194's rule).
 
@@ -317,11 +341,20 @@ def selftest():
     arm("a timer that recorded nothing lands in `zeroed`", z == ["render.pass.x.gpu_us"])
     arm("...and is kept OUT of `metrics`, where it would reach coverage_scale", m == {})
 
+    # 11-12. A MISSING TOTAL IS SAID OUT LOUD EVEN WITH NO PARTS (R16), and is a violation only when
+    #        parts exist. The gpu domain has zero budget parts by declaration, so without this the
+    #        whole gl/gpu block vanishes the moment its denominator fails to register.
+    line_np, viol_np = no_whole_report("gl", "gpu", "render.frame.gpu_span_us", 0, 1)
+    arm("a missing total with NO parts still prints", "NO WHOLE" in line_np and "absent" in line_np)
+    arm("...and is not raised as a violation, because nothing was mis-closed", viol_np is None)
+    line_p, viol_p = no_whole_report("frame", "cpu", "cpu.frame.total.us", 5000, 100)
+    arm("a missing total WITH parts is still a violation", viol_p is not None and "NO WHOLE" in viol_p)
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
         return 1
-    print("telemetry-window selftest: 10/10 arms ok -- the bound fires, does not over-fire, its blind "
+    print("telemetry-window selftest: 13/13 arms ok -- the bound fires, does not over-fire, its blind "
           "spot is asserted, the rank case is distinguished from a broken budget, and a timer that "
           "recorded nothing is reported rather than silently dropped")
     return 0
@@ -511,12 +544,10 @@ def main():
                 # LOUD, never silent. A domain carrying budget parts with no whole to close them against is
                 # unclosable, and an unclosable budget that prints nothing reads exactly like a closed one --
                 # the same shape as a gate that skips and reports OK (see scripts/ci/run-gates.sh).
-                if parts:
-                    why = "no total declared for this domain" if not total_name \
-                          else f"declared total '{total_name}' is absent from the window"
-                    print(f"\n  {dom} accounted: {parts/denom:8.1f} us/tick of UNKNOWN -- {why}")
-                    violations.append(f"{owner}/{dom}: {parts} us of budget parts with NO WHOLE -- "
-                                      f"{why}. Nothing was closed; this is not a pass")
+                line, viol = no_whole_report(owner, dom, total_name, parts, denom)
+                print(f"\n  {line}")
+                if viol:
+                    violations.append(viol)
                 continue
             whole = scaled[total_name][0] if total_name in scaled else coverage_scale(w[total_name], cadence_ticks, w)[0]
             if not any(v["role"] == "budget" and v["domain"] == dom for _, v in rows):

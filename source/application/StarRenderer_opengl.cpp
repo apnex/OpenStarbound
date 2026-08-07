@@ -1090,6 +1090,35 @@ namespace {
   auto s_interfaceTimer = Star::Telemetry::timer("render.pass.interface.gpu_us",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
                      Star::MetricCadence::Frame, Star::MetricRole::Detail});
+
+  // The three .nested rejection counters for the keys above -- see the note at the head of
+  // StarBackdropPass.cpp. All Cadence::Call whatever their timer's cadence: a rejection is an event at
+  // a begin(), not a per-frame quantity, and begin() declares them Call. These MUST match that
+  // descriptor exactly or descConflict fires -- which is the check working, not a hazard.
+  auto s_clearNested = Star::Telemetry::counter("render.frame.clear.gpu_us.nested",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+  auto s_blitNested = Star::Telemetry::counter("render.frame.blit.gpu_us.nested",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+  auto s_interfaceNested = Star::Telemetry::counter("render.pass.interface.gpu_us.nested",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+
+  // R16: OWNER `gl`'s DECLARED TOTAL, registered eagerly. Its only other registration is the
+  // Telemetry::timer(...).record(...) in startFrame, which sits FOUR conditionals deep -- deepEnabled,
+  // then ring.issued, then both timestamps resolving, then t1 > t0. Strictly worse than the parts this
+  // pattern was fixed for in R14: those were Detail, this is the DENOMINATOR. When it is absent,
+  // telemetry-window takes its "declared total is absent from the window" branch, and because the pass
+  // timers are Detail there are no budget parts, so `if parts:` is false and that branch prints NOTHING
+  // -- the whole gl/gpu table simply vanishes, indistinguishable from an owner that has no metrics.
+  //
+  // NOT a GpuTimer bracket: it is a GL_TIMESTAMP span read directly, so it has no begin() to pair with
+  // and sits outside gpu_pass_keys by design. Counted in 27 of 27 legs when checked, so this was latent
+  // rather than live -- fixed on the strength of what it costs when it does bite, not on a sighting.
+  auto s_frameSpanTimer = Star::Telemetry::timer("render.frame.gpu_span_us",
+    Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
+                     Star::MetricCadence::Frame, Star::MetricRole::Total});
 }
 
 void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& desc) {
@@ -1127,8 +1156,17 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   // suppressed time is not lost to the GPU either; it is still physically inside whichever bracket was
   // already open, so an unwitnessed rejection is a double defect: under-counted here, silently billed there.
   // Domain/owner match render.gputimer.dropped -- both are losses of the same instrument.
-  ring.nested = Telemetry::counter(name + ".nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  //
+  // ONCE PER KEY, NOT PER BEGIN (R15). This ran every begin, and `name + ".nested"` heap-allocates a
+  // String each time -- per pass, per frame, on the render path. StarMetricDesc.hpp forbids exactly that
+  // shape a few lines from its own definition ("thousands of allocations, on the exact path this system
+  // exists to measure without disturbing"), and the instrument was doing it to itself. The node itself is
+  // registered EAGERLY at namespace scope now, so this resolve only fetches a handle that already exists.
+  if (!ring.nestedResolved) {
+    ring.nested = Telemetry::counter(name + ".nested",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    ring.nestedResolved = true;
+  }
   // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
   // GL_INVALID_OPERATION, the inner begin is dropped, and the inner END then closes the OUTER query -- silently
   // darkening both. This bit immediately: the blit timer fires INSIDE the interface timer (blitGlSurface is

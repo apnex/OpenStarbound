@@ -18,6 +18,10 @@ namespace {
   // the others are, and so gpu_pass_keys can assert the set rather than a subset somebody curated.
   auto s_worldTimer = Telemetry::timer("render.pass.world.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+  // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp. Cadence::Call,
+  // not Frame: a rejection is an event at a begin(), not a per-frame quantity, whatever the timer is.
+  auto s_worldNested = Telemetry::counter("render.pass.world.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 
 WorldPass::WorldPass(AssetsConstPtr assets) : m_assets(std::move(assets)) {

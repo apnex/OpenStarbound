@@ -177,5 +177,13 @@
  "R14": {
   "status": "done",
   "commit": "[#241] all 13 pass keys registered eagerly by name; gpu_pass_keys asserts begun == registered in both directions; telemetry-window --json now carries `zeroed`, without which the leg files were unchanged"
+ },
+ "R15": {
+  "status": "done",
+  "commit": "[#247] all 13 .nested rejection counters registered eagerly, paired with their timers; begin() resolves the handle ONCE per key instead of rebuilding `name + \".nested\"` per pass per frame; gpu_pass_keys derives the .nested expectation from the begun key, both directions"
+ },
+ "R16": {
+  "status": "done",
+  "commit": "[#247] render.frame.gpu_span_us -- owner gl's declared Total -- registered eagerly at namespace scope; it was reachable only four conditionals deep, and when absent telemetry-window's no-whole branch prints nothing because the pass timers are Detail"
  }
 }

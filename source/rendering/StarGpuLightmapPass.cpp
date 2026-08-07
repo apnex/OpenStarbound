@@ -10,13 +10,22 @@ namespace {
   // Every one of these four is doubly conditional: the whole pass runs only when lightingGpu is on, and
   // spread/point/upscale each sit behind their own dispatch decision, so a scene that never needs one
   // leaves its key ABSENT rather than at zero. Descriptors must match the begin() sites exactly.
+  // Paired with their .nested rejection counters -- see the note at the head of StarBackdropPass.cpp.
   auto s_spreadTimer = Telemetry::timer("lighting.gpu.spread.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_spreadNested = Telemetry::counter("lighting.gpu.spread.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_pointTimer = Telemetry::timer("lighting.gpu.point.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_pointNested = Telemetry::counter("lighting.gpu.point.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_composeTimer = Telemetry::timer("lighting.gpu.compose.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_composeNested = Telemetry::counter("lighting.gpu.compose.gpu_us.nested",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
   auto s_upscaleTimer = Telemetry::timer("lighting.gpu.upscale.gpu_us",
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+  auto s_upscaleNested = Telemetry::counter("lighting.gpu.upscale.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
 }
 
