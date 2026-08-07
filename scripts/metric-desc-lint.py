@@ -306,8 +306,99 @@ def selftest_registrations():
     return 0
 
 
+# A GPU TIMELINE SPAN CANNOT BE A BUDGET OR A WHOLE, and this is the rule that keeps it that way.
+#
+# EARNED, AND EXPENSIVELY. render.frame.gpu_span_us was declared MetricRole::Total -- owner gl's
+# denominator -- while measuring a GL_TIME_ELAPSED span. It reported ~16,200us, the frame PERIOD, at
+# 0.22%, 11.39%, 23.39% and 32.93% real engine busy alike: constant across a 1.4x change in the very
+# quantity it denominated. Every "% of the GPU frame" derived from it was a ratio against a constant.
+#
+# The 13 pass timers were declared Budget on the same reasoning and closed against it, which is how a
+# zero-tolerance oracle came to compare one span against a sum of spans and call the agreement a budget.
+#
+# THE TEST IS THE CLOCK, NOT THE DOMAIN. A gpu-domain metric read from the PMU or from drm-engine
+# accounting has clock=GpuEngine and IS work; it may legitimately be a Total. What may never be one is
+# a TIMELINE: elapsed wall between two GPU markers, which includes every stall and every gap.
+GPU_TIMELINE_WHOLE = re.compile(
+    r"MetricDesc\{[^}]*?MetricRole::(Budget|Total)[^}]*?MetricClock::GpuTimeline[^}]*?\}"
+    r"|MetricDesc\{[^}]*?MetricClock::GpuTimeline[^}]*?MetricRole::(Budget|Total)[^}]*?\}",
+    re.S)
+
+
+def timeline_wholes(text):
+    """(line, role) for every descriptor pairing a GpuTimeline clock with Budget or Total."""
+    stripped = strip_comments(text)
+    out = []
+    for m in GPU_TIMELINE_WHOLE.finditer(stripped):
+        out.append((stripped[:m.start()].count("\n") + 1, m.group(1) or m.group(2)))
+    return out
+
+
+def check_timeline():
+    root = pathlib.Path(__file__).resolve().parent.parent / "source"
+    found, seen = [], 0
+    for p in sorted(list(root.rglob("*.cpp")) + list(root.rglob("*.hpp"))):
+        if "/test/" in str(p):
+            continue
+        text = p.read_text(encoding="utf-8", errors="replace")
+        seen += text.count("MetricClock::GpuTimeline")
+        for line, role in timeline_wholes(text):
+            found.append((str(p.relative_to(root.parent)), line, role))
+    for path, line, role in found:
+        print(f"  {path}:{line}: MetricRole::{role} declared with MetricClock::GpuTimeline. A timeline "
+              f"span is elapsed time between two GPU markers, stalls and gaps included -- it is not "
+              f"work, so it can neither BE a whole nor close against one. Declare it Detail, or measure "
+              f"work (clock=GpuEngine) instead.")
+    if found:
+        print(f"gpu_timeline_role: FAIL -- {len(found)} timeline span(s) declared as a budget or a whole")
+        return 1
+    if seen == 0:
+        # A rule with nothing in scope has not been satisfied, it has been skipped. Saying so is the
+        # difference between this gate and one that greps for a word the tree stopped using.
+        print("gpu_timeline_role: OK -- but NOTHING declares MetricClock::GpuTimeline, so nothing was "
+              "checked. This gate is inert, not clean.")
+        return 0
+    print(f"gpu_timeline_role: OK -- {seen} GpuTimeline declaration(s), none of them Budget or Total")
+    return 0
+
+
+def selftest_timeline():
+    """Fires on both field orders, and declines where the clock is work rather than a timeline."""
+    fails = []
+
+    def arm(name, ok):
+        print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+        if not ok:
+            fails.append(name)
+
+    arm("Total after the clock fires", len(timeline_wholes(
+        "MetricDesc{MetricDomain::Gpu, MetricClock::GpuTimeline, MetricRole::Total}")) == 1)
+    arm("Total before the clock fires too -- field order is not the rule", len(timeline_wholes(
+        "MetricDesc{MetricDomain::Gpu, MetricRole::Total, MetricClock::GpuTimeline}")) == 1)
+    arm("Budget fires", len(timeline_wholes(
+        "MetricDesc{MetricRole::Budget, MetricClock::GpuTimeline}")) == 1)
+    arm("Detail does NOT fire -- the shape the tree now uses", len(timeline_wholes(
+        "MetricDesc{MetricRole::Detail, MetricClock::GpuTimeline}")) == 0)
+    # THE ARM THAT STOPS THIS BECOMING A DOMAIN RULE. Work measured on the GPU may be a whole; only a
+    # timeline may not. Without this, someone would "fix" a false positive by widening the exemption.
+    arm("a GpuEngine Total does NOT fire -- that one IS work", len(timeline_wholes(
+        "MetricDesc{MetricDomain::Gpu, MetricRole::Total, MetricClock::GpuEngine}")) == 0)
+    arm("commented-out code does not count", len(timeline_wholes(
+        "// MetricDesc{MetricRole::Total, MetricClock::GpuTimeline}")) == 0)
+
+    print()
+    if fails:
+        print(f"gpu_timeline_role selftest: FAILED -- {len(fails)}: {', '.join(fails)}")
+        return 1
+    print("  gpu_timeline_role selftest: 6/6 arms ok -- fires on both field orders and both roles, "
+          "declines on Detail, declines on a work clock, and ignores comments")
+    return 0
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
     sys.exit({"--selftest": selftest,
               "--check-registrations": check_registrations,
-              "--selftest-registrations": selftest_registrations}.get(arg, check)())
+              "--selftest-registrations": selftest_registrations,
+              "--check-timeline": check_timeline,
+              "--selftest-timeline": selftest_timeline}.get(arg, check)())

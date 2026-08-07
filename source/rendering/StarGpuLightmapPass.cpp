@@ -12,21 +12,21 @@ namespace {
   // leaves its key ABSENT rather than at zero. Descriptors must match the begin() sites exactly.
   // Paired with their .nested rejection counters -- see the note at the head of StarBackdropPass.cpp.
   auto s_spreadTimer = Telemetry::timer("lighting.gpu.spread.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_spreadNested = Telemetry::counter("lighting.gpu.spread.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_pointTimer = Telemetry::timer("lighting.gpu.point.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_pointNested = Telemetry::counter("lighting.gpu.point.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_composeTimer = Telemetry::timer("lighting.gpu.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_composeNested = Telemetry::counter("lighting.gpu.compose.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_upscaleTimer = Telemetry::timer("lighting.gpu.upscale.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_upscaleNested = Telemetry::counter("lighting.gpu.upscale.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
 }
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
@@ -208,7 +208,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // expectation. Both remain available by eye -- each bracket's count and lighting.temporal.recomputed are
   // adjacent rows in the same table.
   m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   if (packedEmission) {
     m_emissionRGBA.resize(texels * 4);
     for (size_t i = 0; i < texels; ++i) {
@@ -309,7 +309,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // lightingTemporalDecouple leg, which moves the recompute count directly -- so baseline and off
     // leg would get different scale factors applied to the same physical work.
     m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
@@ -375,7 +375,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
   // Cadence::Call for the same reason as the spread bracket above -- see the note there.
   m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   m_renderer->composite("lightingPassthrough", composeTarget, size, "inputTexture", lastTarget,
     {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
      {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
@@ -399,7 +399,7 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // recompute for a pass gated on a config value, which is the parallax defect with a config gate in
     // place of a content one.
     m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     m_renderer->setEffectTextureFromTarget("inputTexture", composeTarget);
     m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
     m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));

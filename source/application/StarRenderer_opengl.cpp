@@ -1058,7 +1058,7 @@ namespace {
   Star::TelemetryCounter& droppedCounter() {
     static auto c = Star::Telemetry::counter("render.gputimer.dropped",
       Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                       Star::MetricCadence::Call, Star::MetricRole::Detail});
+                       Star::MetricCadence::Call, Star::MetricRole::Detail, Star::MetricUnit::Count, Star::MetricClock::NotApplicable});
     return c;
   }
 
@@ -1071,10 +1071,10 @@ namespace {
   // never scanned them -- 13 of 15 sites, silently. Both gates now match either spelling.
   auto s_clearTimer = Star::Telemetry::timer("render.frame.clear.gpu_us",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Frame, Star::MetricRole::Detail});
+                     Star::MetricCadence::Frame, Star::MetricRole::Detail, Star::MetricUnit::Microseconds, Star::MetricClock::GpuTimeline});
   auto s_blitTimer = Star::Telemetry::timer("render.frame.blit.gpu_us",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+                     Star::MetricCadence::Call, Star::MetricRole::Detail, Star::MetricUnit::Microseconds, Star::MetricClock::GpuTimeline});
 
   // NOT CO-LOCATED WITH ITS begin(), DELIBERATELY. render.pass.interface.gpu_us is begun in
   // ClientApplication::render(), and StarClientApplication.cpp is an upstream file whose line count
@@ -1089,7 +1089,7 @@ namespace {
   // absent rather than at zero.
   auto s_interfaceTimer = Star::Telemetry::timer("render.pass.interface.gpu_us",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Frame, Star::MetricRole::Detail});
+                     Star::MetricCadence::Frame, Star::MetricRole::Detail, Star::MetricUnit::Microseconds, Star::MetricClock::GpuTimeline});
 
   // The three .nested rejection counters for the keys above -- see the note at the head of
   // StarBackdropPass.cpp. All Cadence::Call whatever their timer's cadence: a rejection is an event at
@@ -1097,13 +1097,13 @@ namespace {
   // descriptor exactly or descConflict fires -- which is the check working, not a hazard.
   auto s_clearNested = Star::Telemetry::counter("render.frame.clear.gpu_us.nested",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+                     Star::MetricCadence::Call, Star::MetricRole::Detail, Star::MetricUnit::Count, Star::MetricClock::NotApplicable});
   auto s_blitNested = Star::Telemetry::counter("render.frame.blit.gpu_us.nested",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+                     Star::MetricCadence::Call, Star::MetricRole::Detail, Star::MetricUnit::Count, Star::MetricClock::NotApplicable});
   auto s_interfaceNested = Star::Telemetry::counter("render.pass.interface.gpu_us.nested",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Call, Star::MetricRole::Detail});
+                     Star::MetricCadence::Call, Star::MetricRole::Detail, Star::MetricUnit::Count, Star::MetricClock::NotApplicable});
 
   // R16: OWNER `gl`'s DECLARED TOTAL, registered eagerly. Its only other registration is the
   // Telemetry::timer(...).record(...) in startFrame, which sits FOUR conditionals deep -- deepEnabled,
@@ -1116,9 +1116,19 @@ namespace {
   // NOT a GpuTimer bracket: it is a GL_TIMESTAMP span read directly, so it has no begin() to pair with
   // and sits outside gpu_pass_keys by design. Counted in 27 of 27 legs when checked, so this was latent
   // rather than live -- fixed on the strength of what it costs when it does bite, not on a sighting.
+  // ROLE::DETAIL, NOT TOTAL, AND THE CLOCK IS WHY. This is a GL_TIME_ELAPSED span across the frame's
+  // GPU work -- elapsed TIMELINE, not busy time. It was owner gl's declared whole, and a whole that
+  // does not measure work cannot be one: it read ~16,200us, the frame PERIOD, at 0.22%, 11.39%, 23.39%
+  // and 32.93% real engine busy alike. A denominator identical across a 1.4x change in the quantity it
+  // denominates is not a denominator.
+  //
+  // Nothing replaces it. Owner gl/gpu now declares NO whole, which telemetry-window's no-whole branch
+  // says out loud rather than passing over -- absent and honest beats present and wrong. When a GPU
+  // budget is wanted again it must be built on quantities that ARE work: the per-client drm-engine
+  // counters or the PMU, both of which the metrics component already reads.
   auto s_frameSpanTimer = Star::Telemetry::timer("render.frame.gpu_span_us",
     Star::MetricDesc{Star::MetricDomain::Gpu, Star::MetricOwner::Gl,
-                     Star::MetricCadence::Frame, Star::MetricRole::Total});
+                     Star::MetricCadence::Frame, Star::MetricRole::Detail, Star::MetricUnit::Microseconds, Star::MetricClock::GpuTimeline});
 }
 
 void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& desc) {
@@ -1164,7 +1174,7 @@ void OpenGlRenderer::GlGpuTimer::begin(String const& name, MetricDesc const& des
   // registered EAGERLY at namespace scope now, so this resolve only fetches a handle that already exists.
   if (!ring.nestedResolved) {
     ring.nested = Telemetry::counter(name + ".nested",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
     ring.nestedResolved = true;
   }
   // NESTING GUARD. GL_TIME_ELAPSED queries CANNOT nest: a glBeginQuery while one is active is
@@ -1277,7 +1287,7 @@ void OpenGlRenderer::startFrame() {
           // uses the ordinary CPU-style Telemetry::timer(key, desc) overload directly; the desc travels
           // with the call that records it, same as everywhere else.
           Telemetry::timer("render.frame.gpu_span_us",
-            MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Total})
+            MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline})
             .record((int64_t)((t1 - t0) / 1000));
         }
       }
@@ -1294,7 +1304,7 @@ void OpenGlRenderer::startFrame() {
   // Task #141: EVERY framebuffer is cleared EVERY frame -- at 2560x1440 that is several full-screen RGBA16F
   // clears, and none of them were ever timed. Part of the unattributed 1.8-3.5ms.
   m_gpuTimer.begin("render.frame.clear.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
 
   // The REGISTRY clears its targets; each surface clears its own faces. Nobody reaches for the raw face ids.
   m_targets.clearAll();
@@ -1738,7 +1748,7 @@ bool OpenGlRenderer::logGlErrorSummary(String prefix) {
   // the gate ASSERT zero. cadence=Call because errors are exceptional -- they are not per-anything, so
   // there is no tick count to be a fraction of, and Call is returned unscaled by the consumer.
   static auto glErrors = Telemetry::counter("render.gl.errors",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
 
   // RATE LIMIT. Now that this is drained every frame rather than only at shutdown, a persistent error
   // would emit two log lines per frame forever -- burying everything else in the log, which is the exact
@@ -2003,7 +2013,7 @@ void OpenGlRenderer::renderGlBuffer(GlRenderBuffer const& renderBuffer, Mat3F co
 // in this call path, and a config change would break it silently.
 void OpenGlRenderer::blitGlSurface(RefPtr<GlSurface> const& frameBuffer, bool const& useAlt) {
   m_gpuTimer.begin("render.frame.blit.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
 
   auto& size = m_screenSize;
   // useAlt: the caller is a double-buffered effect, so it wants the face it is NOT writing -- the one that

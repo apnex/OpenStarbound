@@ -224,6 +224,17 @@ jobs:
       - name: reg_ratchet_fires -- the ratchet fires on growth and refuses to pass on zero matches
         run: python3 scripts/metric-desc-lint.py --selftest-registrations
 
+      # A GL_TIME_ELAPSED span is elapsed TIMELINE, not work. One was declared owner gl's Total and
+      # reported the frame PERIOD at 0.22%, 11.39%, 23.39% and 32.93% real engine busy alike, so every
+      # "% of the GPU frame" taken from it was a ratio against a constant. The rule keys on the CLOCK
+      # rather than the domain: GPU work measured by the PMU or by drm-engine accounting may
+      # legitimately be a whole; a timeline never may.
+      - name: gpu_timeline_role -- a GpuTimeline span may not be declared Budget or Total
+        run: python3 scripts/metric-desc-lint.py --check-timeline
+
+      - name: gpu_timeline_role_fires -- the rule fires on both field orders and spares a work clock
+        run: python3 scripts/metric-desc-lint.py --selftest-timeline
+
       # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
       # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
       # the player save, quiescence firing on the departure world, and a run mutating the inventory it

@@ -473,10 +473,20 @@ namespace {
     {MetricOwner::Lighting, "lighting.temporal.recomputed"},
   };
 
+  // (Gl, Gpu) HAS NO ROW, AND ITS ABSENCE IS THE STATEMENT. It named render.frame.gpu_span_us, which is
+  // a GL_TIME_ELAPSED span -- elapsed timeline, not work -- and therefore cannot be a whole anything
+  // closes against. Measured: it reports ~16,200us, the frame PERIOD, at 0.22%, 11.39%, 23.39% and
+  // 32.93% real engine busy alike, so it is constant across a 1.4x change in the very quantity it was
+  // the denominator for.
+  //
+  // A row here is a CLAIM that the named metric is the owner's whole. Removing it is not losing a
+  // number; it is withdrawing a claim that was false. telemetry-window's no-whole branch prints that
+  // gl/gpu declares no total, which is a reader learning something true instead of dividing by a
+  // constant. Restoring a GPU whole means measuring GPU WORK -- the per-client drm-engine counters or
+  // the PMU -- not re-promoting a bracket.
   struct OwnerTotalSpec { MetricOwner owner; MetricDomain domain; char const* total; };
   constexpr OwnerTotalSpec c_ownerTotals[] = {
     {MetricOwner::Frame,    MetricDomain::Cpu, "cpu.frame.total.us"},
-    {MetricOwner::Gl,       MetricDomain::Gpu, "render.frame.gpu_span_us"},
     {MetricOwner::Sim,      MetricDomain::Cpu, "tick.server.total.us"},
     {MetricOwner::Lighting, MetricDomain::Cpu, "lighting.cpu.total.us"},
   };

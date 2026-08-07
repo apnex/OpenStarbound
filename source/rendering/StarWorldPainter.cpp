@@ -43,10 +43,10 @@ namespace {
   // 27 legs of matrix-20260807-071454, which is why it never showed up as a DIFFERENCE between legs and went
   // unnamed while its two compose siblings were being chased.
   auto s_composePassTimer = Telemetry::timer("render.pass.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp.
   auto s_composePassNested = Telemetry::counter("render.pass.compose.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
@@ -361,7 +361,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0) {
     m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     m_renderer->render(renderFlatRect(RectF::withSize({}, Vec2F(m_camera.screenSize())), Vec4B(renderData.dimColor, dimLevel), 0.0f));
     m_renderer->gpuTimer().end("render.pass.compose.gpu_us");
   }

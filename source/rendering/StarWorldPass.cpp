@@ -17,11 +17,11 @@ namespace {
   // that renders a world, so it has never been observed absent; it is registered here for the same reason
   // the others are, and so gpu_pass_keys can assert the set rather than a subset somebody curated.
   auto s_worldTimer = Telemetry::timer("render.pass.world.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp. Cadence::Call,
   // not Frame: a rejection is an event at a begin(), not a per-frame quantity, whatever the timer is.
   auto s_worldNested = Telemetry::counter("render.pass.world.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
 }
 
 WorldPass::WorldPass(AssetsConstPtr assets) : m_assets(std::move(assets)) {
@@ -65,7 +65,7 @@ void WorldPass::renderWorld(WorldCamera const& camera, Input in) {
   // unrepresentable: there is no longer a separate declare statement that a branch or a config flag could
   // route around.
   m_renderer->gpuTimer().begin("render.pass.world.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   Map<EntityRenderLayer, List<pair<EntityHighlightEffect, List<Drawable>>>> entityDrawables;
   for (auto& ed : in.entityDrawables) {
     for (auto& p : ed.layers)

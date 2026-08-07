@@ -36,21 +36,21 @@ namespace {
   // listed separately so the two cannot drift apart by eye; gpu_pass_keys DERIVES the .nested expectation
   // from the begun key rather than being told it, so this is one list, not two.
   auto s_envTimer = Telemetry::timer("render.pass.environment.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_envNested = Telemetry::counter("render.pass.environment.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_envComposeTimer = Telemetry::timer("render.pass.environment.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_envComposeNested = Telemetry::counter("render.pass.environment.compose.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_parallaxTimer = Telemetry::timer("render.pass.parallax.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_parallaxNested = Telemetry::counter("render.pass.parallax.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
   auto s_parallaxComposeTimer = Telemetry::timer("render.pass.parallax.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_parallaxComposeNested = Telemetry::counter("render.pass.parallax.compose.gpu_us.nested",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
 }
 
 BackdropPass::BackdropPass(Renderer* renderer)
@@ -156,7 +156,7 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
 // belongs in one function rather than two.
 void BackdropPass::composeEnvStandalone(Vec2U const& size) {
   m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_envCache.name(),
     passthroughParams(false));
   m_renderer->gpuTimer().end("render.pass.environment.compose.gpu_us");
@@ -294,7 +294,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
     m_envCache.invalidate();
     // Cadence::Call, matching the cache arm below -- one name, one declared cadence. See the parallax pair.
     m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     drawEnv();
     m_renderer->gpuTimer().end("render.pass.environment.gpu_us");
   } else {
@@ -356,7 +356,7 @@ void BackdropPass::renderEnvironment(WorldCamera const& camera, Input const& in,
       // recorded every skip frame as a ~0us sample: 80% of this timer's records were zeros, and the mean it
       // reported (~346us) was ~5x below the true per-redraw cost of ~1700us. See the parallax pair.
       m_renderer->gpuTimer().begin("render.pass.environment.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
       // Redirect the env draws from "main" into the cache. setScreenSize now records screen-sized FBO
       // textureSize, so envCache is not reallocated mid-frame (which would discard content); the passed
       // size still drives the first-frame / post-resize (re)alloc + the viewport.
@@ -613,7 +613,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     // descriptor conflict on one name -- and Frame would be wrong regardless, since neither arm covers
     // every frame once the other can fire.
     m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     drawParallax();
     m_renderer->gpuTimer().end("render.pass.parallax.gpu_us");
   } else {
@@ -659,7 +659,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
       // expensive sample to a single ring slot so its capture went all-or-nothing. Same defect and same
       // fix as the compose pair (see composeEnvStandalone above), which was corrected on its own evidence.
       m_renderer->gpuTimer().begin("render.pass.parallax.gpu_us",
-        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
       m_renderer->setRenderTarget(m_parallaxCache.name(), parallaxScreenSize);
       m_renderer->clearRenderTarget(Vec4F(0.0f, 0.0f, 0.0f, 0.0f));   // transparent -> premultiplied accumulation
       m_renderer->setBlendMode(BlendMode::PremultiplyInto);
@@ -703,7 +703,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
     // two are mutually exclusive arms of the compose decision, so neither fires every frame, and declaring
     // either at Frame cadence makes coverage_scale inflate it.
     m_renderer->gpuTimer().begin("render.pass.parallax.compose.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail});
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
     if (m_envComposeDeferred) {
       mergedCompose(parallaxScreenSize);
       m_envComposeDeferred = false;

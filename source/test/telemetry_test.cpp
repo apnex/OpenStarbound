@@ -404,15 +404,29 @@ TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
   telemetrySetUp();
   JsonObject owners = Telemetry::snapshot().getObject("owners");
   // These are DIFFERENT questions: the denominator counts ticks, the total is the whole parts close against.
-  // For `gl` they are different metrics -- GPU work is counted per frame but its whole is the GPU frame span.
   EXPECT_EQ(owners.get("frame").getString("denominator"), "cpu.frame.total.us");
   EXPECT_EQ(owners.get("frame").getObject("totals").get("cpu").toString(), "cpu.frame.total.us");
   EXPECT_EQ(owners.get("gl").getString("denominator"), "cpu.frame.total.us");
-  EXPECT_EQ(owners.get("gl").getObject("totals").get("gpu").toString(), "render.frame.gpu_span_us");
-  // AND `gl` DECLARES NO CPU WHOLE. That absence is the assertion: the consumer sums budget parts per
-  // domain, so before the totals were keyed by domain a cpu-domain part under `gl` would have been divided
-  // by a GPU span and printed as a plausible percentage. If a cpu total is ever added here it must be
-  // because a cpu-domain whole was MEASURED for this owner, not to make a column non-empty.
+
+  // `gl` DECLARES NO WHOLE IN EITHER DOMAIN, and both absences are the assertion.
+  //
+  // The GPU one used to say render.frame.gpu_span_us. That is a GL_TIME_ELAPSED span -- elapsed
+  // TIMELINE between two GPU markers, stalls and gaps included -- and it reported ~16,200us, the frame
+  // PERIOD, at 0.22%, 11.39%, 23.39% and 32.93% real engine busy alike. A denominator that does not
+  // move when the quantity it denominates changes by 1.4x is not a denominator, so every "% of the GPU
+  // frame" derived from it was a ratio against a constant. The row is withdrawn rather than replaced:
+  // an absent whole is reported by the consumer's no-whole branch, which teaches a reader something
+  // true, where a wrong one taught them something false and looked identical.
+  //
+  // The CPU one was never there. The consumer sums budget parts per domain, so before totals were
+  // keyed by domain a cpu-domain part under `gl` would have been divided by a GPU span and printed as
+  // a plausible percentage.
+  //
+  // A whole may be added back to EITHER domain only when one is MEASURED for this owner -- for gpu
+  // that means the per-client drm-engine counters or the PMU, both of which measure work. Never to
+  // make a column non-empty. scripts/metric-desc-lint.py --check-timeline refuses the re-promotion
+  // mechanically; this asserts the table that would have to change alongside it.
+  EXPECT_FALSE(owners.get("gl").getObject("totals").contains("gpu"));
   EXPECT_FALSE(owners.get("gl").getObject("totals").contains("cpu"));
   // `sim` HAD no measured whole, and this line used to assert it must not invent one. #175 gave it a real
   // one -- tick.server.total.us wraps the server loop body minus the pacing sleep -- so the assertion
