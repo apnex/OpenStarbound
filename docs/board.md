@@ -44,7 +44,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 2 | 7 | `#252` | TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call… | blocked by #235 |
+| 2 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #235 |
 | 3 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #235 |
 | 4 | 9 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
 | 5 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
@@ -286,7 +286,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
-| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call sites must… | — | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5601,68 +5601,101 @@ valid, which is upstream of what they mean.
 
 <a id="c29c1332-252"></a>
 
-#### #252 — TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call sites must NOT move
+#### #252 — TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding insi…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
+```
 
 status: **pending** · blocked by: #235 · metadata: `{"rank": 7}`
 
 ```
-DIRECTOR, 2026-08-07: "I understand there's a 'ride in' component right now living in StarClient - but we will target a full separation and extraction as part of our TSSA."
+DIRECTOR, 2026-08-07, two rulings:
+  (a) "I agree that instrumental stays - we should aim to keep this as thin a 'shim' as possible,
+      but with greatest 'useful metric atomic coverage' in source."
+  (b) "All code that wrangles, projects or consumes metrics should probably move to the metrics
+      folder for now, and in future we can fold some of the python into the sovereign modules and
+      interfaces yet to be built."
 
-MEASURED THE RIDE-IN RATHER THAN ESTIMATING IT, and it is far smaller than the raw grep suggests
--- which is the finding, because it means this does NOT have to wait for the TSSA.
+Ruling (b) WIDENS THIS TASK from the ~60-line client ride-in it was filed as. Measured, not
+estimated:
 
-  source/metrics/            878 lines, 8 files   <- sovereign today
-  source/core/ telemetry     976 lines            <- Telemetry 729, MetricDesc 163, Reporter 84
-  ride-in sites             410 across 21 files   <- game 183, rendering 105, application 69,
-                                                     base 29, client 21, frontend 3
+  StarTelemetry.cpp                       587 lines
+    lines 342-484   naming tables + c_ownerSpecs      ~143   PROJECTION
+    lines 485-587   Telemetry::snapshot()             ~103   PROJECTION
+    remainder       lock-free registry, atomics,      ~341   STORE
+                    histogram bucketing, applyDesc
+  StarTelemetryReporter.{cpp,hpp}          84 lines          PROJECTION (writes the file)
+  StarClientApplication + CommandProcessor ~60 lines          MECHANISM (5 sites)
+                                          ------
+                                          ~390 lines to move
 
-=== THE SPLIT THAT DECIDES EVERYTHING ===
+So ~42% of what is filed as "the core store" is projection: nine xName() tables rendering the
+descriptor vocabulary to strings, the OwnerSpec denominator/total table, and the JSON serialiser.
+None of that is the store. All of it is interpretation.
 
-(a) INSTRUMENTATION CALL SITES -- roughly 380 of the 410 -- MUST STAY WHERE THEY ARE. A
-    TelemetryScope in WorldClient::lightingCalc belongs in WorldClient. #167 established this
-    outright and the convergence spec restates it: "the descriptor stays bound to the recording
-    call site -- separating them is the reachability bug class that task closed." R07-R16, the
-    NINE registration defects closed 2026-08-05..07, were all about keeping declaration AT the
-    call site. Relocating these into metrics/ would recreate the entire class by hand. They are
-    not a sovereignty debt; they are the correct shape.
+=== THE SEAM ===
 
-(b) THE MECHANISM -- the extraction target, and it is 5 sites:
-    * StarClientApplication.cpp:366-367  config -> Telemetry::setEnabled / setDeepEnabled
-    * StarClientApplication.cpp:527-534  the interval timer + writeSnapshot call -- REPORTING
-                                         POLICY living inside the client's update loop
-    * StarClientApplication.cpp:673-684  the HUD, reading counters by name inline
-    * StarClientCommandProcessor.cpp:611-645  /telemetry -- reads and writes four config keys
-                                         and calls the setters
-    * StarRootLoader.cpp:97-100          the defaults
-    ~60 lines. It becomes a metrics-owned service that owns enablement, cadence, RETENTION,
-    transport and the HUD's data source; the client's whole relationship becomes construct-it,
-    tick-it, and the /telemetry command stays in frontend as a thin binding over it.
+snapshot() reads registry().nodes directly with relaxed atomic loads. Moving it means Telemetry
+exposes a READ-ONLY VISITOR over its nodes and metrics/ owns the rendering. Narrow seam, and it
+keeps the rule that survives from StarMetricDesc.hpp: the in-process store is the subject
+reporting on itself and stays in core; the outsider that must never be a peer of its subject
+owns everything that interprets.
 
-=== WHAT DOES NOT MOVE, AND THE REASON IS ALREADY WRITTEN DOWN ===
+=== WHY THIS IS NOT TIDYING: THE VOCABULARY IS ALREADY SPELLED TWICE ===
 
-Telemetry (core, 729 lines) and MetricDesc (core, 163) STAY IN CORE. StarMetricDesc.hpp states
-the boundary at the top of the file: "Two components use it and they are two DUTIES, not one:
-Telemetry is the subject reporting on itself -- in-process, bound to the recording call site
-(#167), and perturbing by construction -- while metrics/ is an outsider measuring any pid and
-must never be a peer of its subject. What converges here is a vocabulary, not a duty."
-So "as much as possible under metrics/" has a principled stopping point, and this is it.
-Moving the in-process registry into metrics/ would make the sovereign module a peer of its
-subject, which is the one property that makes it trustworthy.
+  unitName()   in core emits "ns", "us", "ratio", "count", "hz"
+  MetricSample in metrics_main.cpp writes the LITERALS "ns" and "ratio"
+They agree today BY COINCIDENCE. Nothing enforces it, and there is no test that would notice.
 
-=== WHY IT NEED NOT WAIT FOR THE TSSA ===
+And `source` ALREADY DIVERGES:
+  sourceName()          emits "procfs", "perf_event", "in_process", "sysfs", "gl_query"
+  MetricSample.source   carries "fdinfo:drm-engine", "i915-pmu:rcs0-busy"
+StarMetricDesc.hpp records the mapping in a COMMENT -- "the existing free-text values map onto
+these -- 'fdinfo:*' to ProcFs, 'i915-pmu:*' to PerfEvent" -- and nothing executes it. That is a
+rule held up by prose, which is the exact shape of the defect the designated-initializer lint was
+written to end. It is UNFIXABLE while the renderer lives in core and the sample lives in metrics/;
+one table in one place fixes it by construction.
 
-The TSSA (#204/#207/#208) owns the BOUNDARY DECLARATION -- the grant-table row, the entrypoint
-set, the arch-graph. The code move is ~60 lines across 3 files and is testable by construction:
-scripts/grant-sweep.py already reports UNVERIFIABLE for target components with no files yet,
-so a new metrics-owned service starts as UNVERIFIABLE rows and earns each grant back.
-Sequence: land the move with or immediately after #235, declare the boundary in the TSSA.
+=== RULING (a): THE SHIM'S THICKNESS IS A COVERAGE LIMITER ===
 
-CARRIES THE RETENTION POLICY. dev/storage/telemetry holds 54,364 files / 250MB with nothing
-ever deleting them, and #235 is about to start filling that directory DELIBERATELY. Retention
-belongs to whoever owns cadence, which after this move is metrics/.
+Today a call site is `static auto x = Telemetry::timer("key", MetricDesc{...})` plus a
+TelemetryScope. MetricDesc now has ELEVEN fields, and #245 populates seven more across 166 sites.
+Left alone, the shim gets THICKER at exactly the moment the Director asked for it to be thinner --
+and an eleven-field brace-init per site is a disincentive to declare a metric at all, which caps
+"useful metric atomic coverage" by friction rather than by judgement.
 
-CROSS-REF: #250 (GM-3, the transport this service exposes), #235, #204/#208 (TSSA), #200
-(ARCH-1 -- and the 1,932 lines of Python analysis in scripts/ that no component owns at all).
+Resolution, and it belongs in #245 rather than here: NAMED DESCRIPTOR FACTORIES at the call site.
+The descriptor stays BOUND to the recording call (#167 -- separating them is the reachability bug
+class), it just stops being eighteen fields of text. Cheap-to-declare is the precondition for
+dense coverage.
+
+=== WHAT STILL DOES NOT MOVE ===
+
+Roughly 400 of the 410 telemetry sites outside metrics/ and core/ are instrumentation AT the
+point of measurement -- game 183, rendering 105, application 69, base 29. A TelemetryScope in
+WorldClient::lightingCalc belongs in WorldClient. R07-R16, the nine registration defects closed
+2026-08-05..07, were every one of them about keeping declaration at the call site. These stay,
+and the goal for them is THINNER, not elsewhere.
+
+Telemetry's lock-free registry (~341 lines) and MetricDesc (163) stay in core, per the boundary
+written at the top of StarMetricDesc.hpp: a vocabulary two components share belongs where both
+are granted; the duties differ and only the interpretation moves.
+
+=== FUTURE, PER RULING (b) ===
+
+The 1,932 lines of Python in scripts/ -- telemetry-window (661), gputimer-brackets (401),
+pmu-join (372), metric-desc-lint (313), pmu-engine-sample (185) -- are consumers and fold into
+the sovereign modules "in future ... interfaces yet to be built". NOT this task. #250 builds the
+interface they would fold into; #200 owns declaring their boundary meanwhile.
+
+CARRIES THE RETENTION POLICY: dev/storage/telemetry holds 54,364 files / 250MB with nothing that
+deletes them, and #235 is about to fill that directory deliberately. Retention belongs to whoever
+owns cadence, which after this move is metrics/.
+
+CROSS-REF: #250 (GM-3 transport), #235, #245 (the factories), #204/#208 (TSSA boundary), #200.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
