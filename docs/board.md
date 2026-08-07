@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**186 tasks** across 2 store(s): 3 in_progress, 30 pending, 153 completed
+**189 tasks** across 2 store(s): 3 in_progress, 33 pending, 153 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 185 tasks, ids 64–249
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 188 tasks, ids 64–252
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -44,11 +44,11 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 2 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 3 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-
-> **8 completed task(s) still carry a rank** (#173, #241, #242, #243, #246, #247, #248, #249). A rank is a claim about
-> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
+| 2 | 7 | `#252` | TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call… | blocked by #235 |
+| 3 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #235 |
+| 4 | 9 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 5 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 6 | 11 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
 ---
 
@@ -284,6 +284,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
+| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
+| [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call sites must… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2504,7 +2507,7 @@ CONFIRMED BEHAVIOUR worth keeping: a deep-off capture ALWAYS trips the closure o
 
 #### #173 — RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes
 
-status: **completed** · blocked by: #242 · metadata: `{"rank": 9}`
+status: **completed** · blocked by: #242
 
 ```
 CLOSED 2026-08-07, NOT DONE, and closed the way this task asked to be: "EXPECTED SIZE: unknown and
@@ -4752,7 +4755,7 @@ No consumer today, so nothing currently reports a wrong number. The bound to re-
 
 #### #235 — BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere
 
-status: **pending** · metadata: `{"rank": 6}`
+status: **pending** · blocks: #252, #250 · metadata: `{"rank": 6}`
 
 - `72ad0000` GM-2c: every lever in the matrix can now prove it engaged
 - `50d57866` GM-2b: the lever matrix asserts the experiment happened; descriptor design revised
@@ -4882,7 +4885,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 10}`
+status: **pending** · metadata: `{"rank": 11}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5068,7 +5071,7 @@ Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 
 #### #241 — R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT
 
-status: **completed** · metadata: `{"rank": 2}`
+status: **completed**
 
 - `cd0b5175` LEDGER: file R15 and R16 -- the two registrations R14 did not reach
 - `775176ff` R14-FIX: a pass that never runs now reads ZERO, not ABSENT -- and the leg file says so
@@ -5103,7 +5106,7 @@ Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit 
 
 #### #242 — MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside
 
-status: **completed** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 3}`
+status: **completed** · blocked by: #240 · blocks: #173, #246
 
 - `24bd4a51` BOARD: the board cannot cite the commit that creates it -- name the fixed point
 - `7ec8a0bb` MATRIX-RERUN done: both scenes quotable, and the GPU numbers were from the cheap location
@@ -5163,7 +5166,7 @@ WHAT THESE RUNS DECIDE:
 
 #### #243 — REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance
 
-status: **completed** · blocks: #245 · metadata: `{"rank": 4}`
+status: **completed** · blocks: #245
 
 - `d3650330` REG-RATCHET: pin the lazy-registration count at 95, so there is no tenth instance
 
@@ -5253,7 +5256,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 7}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 9}`
 
 ```
 RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5278,7 +5281,7 @@ whole exist in MetricDesc and ZERO production sites populate any of them (verifi
 
 #### #246 — WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost
 
-status: **completed** · blocked by: #242 · metadata: `{"rank": 8}`
+status: **completed** · blocked by: #242
 
 ```
 CLOSED 2026-08-07, NOT DONE, on the exact criterion this task set for itself: "DO NOT START until
@@ -5312,7 +5315,7 @@ accounting, NEVER from a *.gpu_us bracket, which is the mistake this task was fi
 
 #### #247 — R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach
 
-status: **completed** · metadata: `{"rank": 5}`
+status: **completed**
 
 - `cb59fc50` R15+R16: the rejection counters and owner gl's TOTAL -- the two registrations R14 did not reach
 
@@ -5362,7 +5365,7 @@ needed. 47 gates green, core_tests 312/312, game_tests 72/72, telemetry-window s
 
 #### #248 — PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline
 
-status: **completed** · metadata: `{"rank": 3}`
+status: **completed**
 
 - `dd30bfa5` PMU-ATTRIB: the second instrument is now always on, and the floor is a mechanism
 
@@ -5417,7 +5420,7 @@ table is provisional until a 3-repeat run with the fixed alignment.
 
 #### #249 — RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps
 
-status: **completed** · metadata: `{"rank": 3}`
+status: **completed**
 
 - `ad4e2f54` PMU-JOIN: a delta smaller than its own scatter is not a measurement, and one selftest arm could not fail
 - `caea59f5` PMU-JOIN: a leg the runner VOIDed must not reach the table
@@ -5470,6 +5473,196 @@ and repaired.
 NOT ADDITIVE, stated so nobody sums the column: the seven Desert Town deltas total +29.22pp, while
 turning those seven off together measured +9.2pp over baseline. The levers overlap heavily; each
 number is a MARGINAL cost given every other lever is on.
+```
+
+<a id="c29c1332-250"></a>
+
+#### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
+
+status: **pending** · blocked by: #235 · metadata: `{"rank": 8}`
+
+```
+DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any performance impact later, but let's not restrict our design because of it." And: "as much of our sovereign observability and metrics system is in fact sovereign, under the metrics/ directory."
+
+NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 lists GM-3 as "exporters: OpenMetrics + IPC socket -> external tooling consumes without linking us", and §4.6 puts it explicitly out of scope for GM-1. GM-1 shipped; nothing carried GM-3 onto the board. This is that row.
+
+=== WHAT THE STREAMING DIRECTIVE DECIDES, ARCHITECTURALLY ===
+
+Full streaming rules the FILE PATH out of the live axis. Measured 2026-08-07:
+  * TelemetryReporter::writeSnapshot serialises ~70KB of JSON for 143 keys and is called
+    SYNCHRONOUSLY on the client main thread (StarClientApplication.cpp:527-534, the
+    telemetryReportInterval path).
+  * There is NO retention policy anywhere in TelemetryReporter or ClientApplication.
+    dev/storage/telemetry already holds 54,364 files / 250MB, accumulated with nothing
+    ever deleting them.
+A file per snapshot was only ever tenable at a ~5s cadence. So the live path is a DIFFERENT
+path from the archive path: a lock-free ring the sovereign side drains out-of-process. Files
+remain for the harness and the archive, where cost does not matter. This is not a perf
+compromise -- it is what "streaming" means, and it makes the retention problem stop scaling
+with the sampling rate.
+
+=== SCOPE ===
+
+ 1. HOIST THE CONVERGENCE POINT INTO THE LIBRARY. samplesFor() -- the one function that turns
+    a reader result into MetricSamples -- lives in metrics_main.cpp, i.e. in the EXECUTABLE.
+    A second consumer must reimplement it or shell out and parse JSON. Pure relocation into
+    star_metrics. This demotes the CLI from OWNER of the sample vocabulary to its first
+    consumer, which is the precondition for there ever being a second one.
+ 2. ONE READER INTERFACE. main calls two readers by hand and they return DIFFERENT types
+    (BusyReading vs EngineBusyWindow -- deliberately, because the PMU cannot be bracketed).
+    A unified surface must absorb that difference rather than expose it:
+        enumerate(pid, window) -> List<MetricSample>
+    with ClientBusyReader / EngineBusyReader / ThreadBusyReader (#235) / SnapshotReader
+    behind it. MetricDesc's MetricSource enum -- InProcess, ProcFs, SysFs, PerfEvent,
+    GlQuery -- is ALREADY the taxonomy for this.
+ 3. THE SnapshotReader ARM IS THE POINT. It makes the game's own 143 in-process keys just
+    another source behind the same surface. Two stores, one API. NEVER a merged store: the
+    convergence spec §1 already refuted merging (Telemetry is a process-global singleton with
+    no subject parameter; MetricSample holds five Strings and throws, so it cannot go on a
+    per-call bracket). This is a PRESENTER over two stores.
+ 4. TRANSPORT. Socket + OpenMetrics. Shaped as REPEATED WINDOWS ON A COMMON CLOCK from day
+    one -- a single-shot API retrofitted to stream is the expensive version.
+ 5. BOTH CLOCKS ON THE SAMPLE. The C++ side is consistently CLOCK_MONOTONIC (MetricSample
+    .tMonotonicNs, and the snapshot FILENAME via Time::monotonicMilliseconds -- the snapshot
+    meta carries no timestamp at all, only {schema, vsync}). The Python side is consistently
+    UNIX epoch (windowStartEpoch, the PMU TSV). Carry monotonic for interval arithmetic
+    (immune to NTP steps) and epoch for the join and the x-axis. Picking one loses something.
+ 6. RESAMPLING RULE, and it is load-bearing: re-difference RAW CUMULATIVE COUNTERS onto a
+    common grid, NEVER interpolate a rate. Interpolating a rate invents work the hardware
+    never did -- the same rule busyDelta already encodes for counters that move backwards.
+    MetricBoundedness decides whether a point is allowed to exist: a level and a rate are the
+    same line on a plot, and differencing a HighWaterMark (lighting.gpu.spread
+    .max_emission_x1000) yields a smooth, plausible, meaningless series.
+
+=== THE UNOWNED HALF, STATED SO IT IS A DECISION AND NOT AN OMISSION ===
+
+The CONSUMER half of this system is 1,932 lines of Python in scripts/ with no component at
+all -- telemetry-window.py (661), gputimer-brackets.py (401), pmu-join.py (372),
+metric-desc-lint.py (313), pmu-engine-sample.py (185). By line count that is the largest
+sovereignty gap in the observability system, larger than the StarClient ride-in. Whether it
+becomes C++ under metrics/ or stays Python with a DECLARED boundary is a TSSA question and
+belongs with #200 (ARCH-1, whole-system boundary document). Naming it here so it is not
+discovered later as a surprise.
+
+DEPENDS ON #235 for ThreadBusyReader (the third reader is what earns the interface).
+CROSS-REF: #245 is GM-2. #237 would be a consumer. #200 owns the scripts/ boundary question.
+```
+
+<a id="c29c1332-251"></a>
+
+#### #251 — GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may ha…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
+```
+
+status: **pending** · metadata: `{"rank": 10}`
+
+```
+NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
+
+  "GM-4 carries a known unfixed hazard: GL_EXT_disjoint_timer_query exposes GL_GPU_DISJOINT_EXT,
+   which reports when a timer result was invalidated by frequency change or preemption. Our code
+   has never checked it, and this GPU clocks between 933MHz and 2350MHz. Every historical
+   GL_TIME_ELAPSED sample may have been silently disjoint."
+
+WHY THIS IS THE SAME CLASS AS THE DEFECTS ALREADY CLOSED, not a new kind of thing. The driver
+publishes a flag saying "the number I just gave you is not valid". Nothing in the tree reads it.
+That is exactly:
+  * C05 -- the engine emits descConflict/typeConflict on every metric and NOTHING reads them.
+  * R14/R15/R16 -- a handle registered on a path not always taken, so ABSENT and ZERO are the
+    same reading.
+  * "A claim with no instrument" -- "checked by X" is itself a claim.
+An instrument that discards the driver's own validity flag is reporting confidence it was
+explicitly told not to have.
+
+AND THE EXPOSURE IS MEASURED, not hypothetical. The env sidecar records gpuClockMhzStart /
+gpuClockMhzEnd on every leg precisely because clock drift was suspected; a real leg of
+matrix-20260807-160513 reads 883MHz at both ends. The clock MOVES during the runs we quote from.
+
+SCOPE:
+ 1. Query GL_GPU_DISJOINT_EXT around the timer ring in OpenGlRenderer and DISCARD -- not
+    silently, but into a declared counter -- any sample taken across a disjoint interval.
+    render.gputimer.dropped already exists as the precedent for a rejection counter that is
+    registered EAGERLY so "none rejected" and "nothing watching" cannot be confused (#247).
+ 2. Decide whether the extension is present at all on this driver, and say so honestly if not:
+    an UNAVAILABLE reading is visible, a silent zero is not (BusyReading::unavailable is the
+    established shape).
+ 3. Re-read the retained GPU numbers in light of whatever the disjoint rate turns out to be.
+    If it is non-zero, the per-pass gpu_us table needs a stated uncertainty, the way #235's
+    findings forced the PMU numbers to be re-measured.
+
+RELATED: #236 (the gl closure is inert), #235 (gpu_span_us is a timeline, not work). Both
+concern the same instrument family. This one is about whether the individual samples were ever
+valid, which is upstream of what they mean.
+```
+
+<a id="c29c1332-252"></a>
+
+#### #252 — TEL-EXTRACT: the telemetry MECHANISM rides in StarClient — ~5 sites, ~60 lines; the 410 instrumentation call sites must NOT move
+
+status: **pending** · blocked by: #235 · metadata: `{"rank": 7}`
+
+```
+DIRECTOR, 2026-08-07: "I understand there's a 'ride in' component right now living in StarClient - but we will target a full separation and extraction as part of our TSSA."
+
+MEASURED THE RIDE-IN RATHER THAN ESTIMATING IT, and it is far smaller than the raw grep suggests
+-- which is the finding, because it means this does NOT have to wait for the TSSA.
+
+  source/metrics/            878 lines, 8 files   <- sovereign today
+  source/core/ telemetry     976 lines            <- Telemetry 729, MetricDesc 163, Reporter 84
+  ride-in sites             410 across 21 files   <- game 183, rendering 105, application 69,
+                                                     base 29, client 21, frontend 3
+
+=== THE SPLIT THAT DECIDES EVERYTHING ===
+
+(a) INSTRUMENTATION CALL SITES -- roughly 380 of the 410 -- MUST STAY WHERE THEY ARE. A
+    TelemetryScope in WorldClient::lightingCalc belongs in WorldClient. #167 established this
+    outright and the convergence spec restates it: "the descriptor stays bound to the recording
+    call site -- separating them is the reachability bug class that task closed." R07-R16, the
+    NINE registration defects closed 2026-08-05..07, were all about keeping declaration AT the
+    call site. Relocating these into metrics/ would recreate the entire class by hand. They are
+    not a sovereignty debt; they are the correct shape.
+
+(b) THE MECHANISM -- the extraction target, and it is 5 sites:
+    * StarClientApplication.cpp:366-367  config -> Telemetry::setEnabled / setDeepEnabled
+    * StarClientApplication.cpp:527-534  the interval timer + writeSnapshot call -- REPORTING
+                                         POLICY living inside the client's update loop
+    * StarClientApplication.cpp:673-684  the HUD, reading counters by name inline
+    * StarClientCommandProcessor.cpp:611-645  /telemetry -- reads and writes four config keys
+                                         and calls the setters
+    * StarRootLoader.cpp:97-100          the defaults
+    ~60 lines. It becomes a metrics-owned service that owns enablement, cadence, RETENTION,
+    transport and the HUD's data source; the client's whole relationship becomes construct-it,
+    tick-it, and the /telemetry command stays in frontend as a thin binding over it.
+
+=== WHAT DOES NOT MOVE, AND THE REASON IS ALREADY WRITTEN DOWN ===
+
+Telemetry (core, 729 lines) and MetricDesc (core, 163) STAY IN CORE. StarMetricDesc.hpp states
+the boundary at the top of the file: "Two components use it and they are two DUTIES, not one:
+Telemetry is the subject reporting on itself -- in-process, bound to the recording call site
+(#167), and perturbing by construction -- while metrics/ is an outsider measuring any pid and
+must never be a peer of its subject. What converges here is a vocabulary, not a duty."
+So "as much as possible under metrics/" has a principled stopping point, and this is it.
+Moving the in-process registry into metrics/ would make the sovereign module a peer of its
+subject, which is the one property that makes it trustworthy.
+
+=== WHY IT NEED NOT WAIT FOR THE TSSA ===
+
+The TSSA (#204/#207/#208) owns the BOUNDARY DECLARATION -- the grant-table row, the entrypoint
+set, the arch-graph. The code move is ~60 lines across 3 files and is testable by construction:
+scripts/grant-sweep.py already reports UNVERIFIABLE for target components with no files yet,
+so a new metrics-owned service starts as UNVERIFIABLE rows and earns each grant back.
+Sequence: land the move with or immediately after #235, declare the boundary in the TSSA.
+
+CARRIES THE RETENTION POLICY. dev/storage/telemetry holds 54,364 files / 250MB with nothing
+ever deleting them, and #235 is about to start filling that directory DELIBERATELY. Retention
+belongs to whoever owns cadence, which after this move is metrics/.
+
+CROSS-REF: #250 (GM-3, the transport this service exposes), #235, #204/#208 (TSSA), #200
+(ARCH-1 -- and the 1,932 lines of Python analysis in scripts/ that no component owns at all).
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
