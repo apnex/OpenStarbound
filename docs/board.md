@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**186 tasks** across 2 store(s): 3 in_progress, 31 pending, 152 completed
+**186 tasks** across 2 store(s): 3 in_progress, 30 pending, 153 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 185 tasks, ids 64–249
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,12 +43,11 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
-| 2 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 3 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 4 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 2 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 3 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
-> **7 completed task(s) still carry a rank** (#173, #241, #242, #243, #246, #248, #249). A rank is a claim about
+> **8 completed task(s) still carry a rank** (#173, #241, #242, #243, #246, #247, #248, #249). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -59,7 +58,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 183, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 184, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 24.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -87,7 +86,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 152.
+**Completed tasks citing no commit and no doc:** 86 of 153.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -282,7 +281,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
-| [#247](#c29c1332-247) | `c29c1332` | open | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
+| [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
@@ -5313,16 +5312,50 @@ accounting, NEVER from a *.gpu_us bracket, which is the mistake this task was fi
 
 #### #247 — R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach
 
-status: **pending** · metadata: `{"rank": 5}`
+status: **completed** · metadata: `{"rank": 5}`
+
+- `cb59fc50` R15+R16: the rejection counters and owner gl's TOTAL -- the two registrations R14 did not reach
 
 ```
-Found by #241's own verification work, both filed to the matrix-prereq ledger rather than folded into it.
+DONE 2026-08-07 (cb59fc50). Both rows closed; ledger 22 open -> 20.
 
-R15 -- the 13 <key>.nested rejection counters are still registered lazily inside GlGpuTimer::begin(), the same shape R14 fixed for the timers, on the counter that says samples from this pass were REJECTED for nesting. For a pass whose arm never runs, "no rejections" and "nothing was watching" remain the same reading. Second, independent defect in the same line: `name + ".nested"` allocates a String per pass per frame on the render path, which StarMetricDesc.hpp's design note forbids in as many words -- the instrument perturbing the path #141 exists to measure. Fix: register the 13 eagerly beside their timers and cache the handle; derive each .nested key from the timer key so no second list appears, and let gpu_pass_keys assert the suffixed set both ways.
+R15 -- THE 13 .nested REJECTION COUNTERS. Each records samples the nesting guard rejected, and each
+carried R14's defect one level down: registered inside begin(), so for a pass whose arm never runs "no
+samples were rejected" and "nothing was watching" were the same reading -- verbatim the sentence
+render.gputimer.dropped's own comment uses to justify ITS eager registration, three lines away. All 13
+now register eagerly, PAIRED with their timers so they cannot drift apart by eye.
 
-R16 -- render.frame.gpu_span_us is owner `gl`'s DECLARED TOTAL and registers four conditionals deep inside the readback (deepEnabled, ring.issued, availB && availE, t1 > t0). Worse in KIND than R14: R14's keys were parts, this is the whole. When it is missing, telemetry-window takes its "declared total is absent" branch -- but the 13 pass timers are Detail, so there are no budget parts under gpu, `if parts:` is false, and the branch prints NOTHING and raises NOTHING. The gl/gpu table just vanishes, indistinguishable from an owner with no metrics. NOT currently biting: counted, present in 27/27 legs of matrix-20260807-071454, so latent not live. R14 deliberately left it out -- it is a GL_TIMESTAMP span, not a GpuTimer bracket, so it has no begin() to pair with and sits outside gpu_pass_keys by design. Fix: eager registration by name, plus make telemetry-window's no-whole branch loud even when parts is zero.
+Second, independent defect on the same line: `name + ".nested"` heap-allocated a String per pass per
+frame on the render path. StarMetricDesc.hpp forbids exactly that a few lines from its own definition.
+begin() now resolves the handle ONCE per key behind a flag on Ring. The TIMER is deliberately still
+re-resolved every begin -- two call sites may name one key and descConflict is raised only by a call
+that PASSES a desc; the nested counter has one descriptor everywhere, so it has nothing to detect.
 
-Also open and adjacent, NOT closed by #241: ledger row C05 -- descConflict/typeConflict are emitted on every metric and nothing reads them, and owner=="unknown" rows are dropped. #241 added the UNDECLARED report line (so StarRenderDiagnostics.hpp's claim about it is now true) but did NOT raise them as violations, which is what C05 asks for.
+R16 -- OWNER gl's DECLARED TOTAL, render.frame.gpu_span_us, was reachable only four conditionals deep.
+Worse in kind than the R14 keys: those were Detail, this is the DENOMINATOR. When absent,
+telemetry-window took its "declared total is absent" branch and printed NOTHING, because D01 demoted
+the pass timers to Detail so `if parts:` was false -- the whole gl/gpu block vanished, indistinguishable
+from an owner with no metrics. Counted before fixing: present in 27 of 27 legs, so latent not live.
+
+BOTH HALVES OF R16. no_whole_report is extracted and speaks even with zero parts, and is a VIOLATION
+only when parts exist: with parts a real budget went unclosed; with none nothing was mis-closed, but
+the instrument still failed to produce its denominator and that is a fact about the run.
+
+THE GATE DERIVES THE PAIR. gpu_pass_keys appends ".nested" to each begun key rather than reading a
+second list -- there is nothing for a future key to be forgotten from, which is what R14's fix note
+meant by "do not simply duplicate the list". Now 13 begun / 13 registered / 13 rejection counters, all
+three sets agreeing both ways, with two new selftest arms (missing .nested; orphan .nested) proven to
+fire against the REAL tree by injection, not only fixtures.
+
+TWO SIGNATURES RE-AUTHORED, recorded because rewriting a signature to match what you did is how a
+ledger stops corresponding to anything:
+  * R15's original pattern STILL MATCHES after the fix -- begin() still resolves the handle, now once
+    behind a guard. The defect was never that text. Signature now asserts the substantive state.
+  * R16's failed only because the renderer's anonymous namespace sits OUTSIDE `namespace Star`.
+    Widened to (?:Star::)?; a signature that reads red over a namespace prefix is about spelling.
+
+Ratchet unchanged at 95 -- neither fix adds or removes a function-local static, so no ceiling move was
+needed. 47 gates green, core_tests 312/312, game_tests 72/72, telemetry-window selftest 13/13.
 ```
 
 <a id="c29c1332-248"></a>
