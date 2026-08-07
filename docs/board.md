@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**184 tasks** across 2 store(s): 5 in_progress, 34 pending, 145 completed
+**185 tasks** across 2 store(s): 4 in_progress, 35 pending, 146 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 183 tasks, ids 64–247
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 184 tasks, ids 64–248
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,16 +43,16 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
+| 1 | 3 | `#248` | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | ready |
 | 2 | 4 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
 | 3 | 5 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
 | 4 | 6 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
 | 5 | 7 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 6 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
-| 7 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
+| 6 | 8 | `#246` | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | ready |
+| 7 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | ready |
 | 8 | 10 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
-> **1 completed task(s) still carry a rank** (#241). A rank is a claim about
+> **2 completed task(s) still carry a rank** (#241, #242). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -91,7 +91,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 145.
+**Completed tasks citing no commit and no doc:** 84 of 146.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -281,12 +281,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
-| [#242](#c29c1332-242) | `c29c1332` | **active** | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
+| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `c0238e96` | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
 | [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
-| [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | — | — |
+| [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time | — | — |
 | [#247](#c29c1332-247) | `c29c1332` | open | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
+| [#248](#c29c1332-248) | `c29c1332` | open | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5124,54 +5125,58 @@ Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit 
 
 #### #242 — MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside
 
-status: **in_progress** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 3}`
+status: **completed** · blocked by: #240 · blocks: #173, #246 · metadata: `{"rank": 3}`
+
+- `c0238e96` BOARD: #242 moves above #235 -- the rerun is the null control for #240 and #241
 
 ```
-RANK 3 of the post-matrix order (re-ranked 2026-08-07 with Director agreement, was 4).
-UNBLOCKED: #240 (R13) landed, #241 (R14) landed, binary rebuilt at both.
+DONE 2026-08-07. Two runs: matrix-20260807-112809 (Desert Town, 47m46s) and
+matrix-20260807-122912 (The Ark Ruins, ~48m). PMU sampled alongside both.
 
-Moved ABOVE #235 because leg A is the NULL CONTROL for #240 and #241 themselves — both are
-verified against gates, tests and one live profile, but not against the artifact that exposed
-them. That check is cheapest today and degrades with every further commit.
+LEG A -- ALL THREE ASSERTIONS PASS, and they pass at BOTH scenes:
+                              before (071454)   Desert Town   Ark Ruins
+  legs not-quotable            27 of 27          0 of 27       0 of 27
+  distinct *.gpu_us key sets   3 (sizes 11-12)   1 (size 13)   1 (size 13)
+  legs carrying `zeroed`       0 of 27           27 of 27      27 of 27
+#240 and #241 are now verified against the artifact that exposed them, at two scenes.
+Nothing else moved: baseline cpu.frame.total 16203->16206, idle 11600->11509, gpu_span 16200->16207.
+Ark Ruins: 21 OK, 3 VOID, 0 failed. All 3 VOIDs are parallaxRefreshInterval (below).
 
-TWO RUNS, IN THIS ORDER, AND THE ORDER IS THE POINT.
+THE HEADLINE: SCENE DEPENDENCE IS ~50x, AND EVERY NUMBER THIS CAMPAIGN HOLDS CAME FROM THE CHEAP ONE.
+  i915 rcs0-busy, calibrated (idle floor 0.213%, glxgears uncapped 88.67%, 416x working range):
+    Desert Town baseline      0.22%   -- INSIDE the idle floor
+    Ark Ruins baseline        9.97%   (12.30 / 8.16 / 9.46 across r1/r2/r3)
+    Desert Town, ALL caches off  32.93%
+  render.pass.parallax.gpu_us is 5174us at Desert Town and EXACTLY 0 at Ark Ruins -- the parallax pass
+  does not run there at all, which is why all three parallaxRefreshInterval legs VOIDed on a witness
+  that reads 0 in both arms. The runner caught a lever that would otherwise have produced a
+  plausible delta from two identical arms.
 
- A. Desert Town re-run (48 min). Same scene, so it is a clean before/after against
-    matrix-20260807-071454.
-    Banks the numbers the 2026-08-07 discussion rested on but could not quote.
+GPU_SPAN_US IS BLIND, PROVEN THREE WAYS. render.frame.gpu_span_us reports ~16,200us/frame -- the frame
+period -- in every condition measured:
+    Desert Town caches on   0.22% busy -> 16,207us
+    Desert Town caches off 32.93% busy -> 16,193us
+    Ark Ruins   caches on   9.97% busy -> 16,176us
+  A metric identical across a 150x change in the quantity it names is measuring elapsed GPU TIMELINE,
+  not work. Every per-pass *.gpu_us number this campaign has quoted is a span. This is #235's thesis,
+  measured rather than argued.
 
- B. Second scene (1h). One --warp change. EVERY number we hold is from one location at 72% CPU
-    idle. The harness carries the warning from exactly this failure: "a whole day of parallax
-    optimization was aimed at a pass that is not in the scene being complained about." Candidate
-    scenes from the bookmark list: a dense base, or Ark Ruins (authored, settles cleanly).
+WHAT I COULD NOT PRODUCE, STATED AS A RESULT: PER-LEVER GPU COST. I computed a delta table
+(off-renderVboOrphan +4.24pp, off-lightingTemporalDecouple +3.41pp, ...) and it DOES NOT SURVIVE ITS
+OWN NOISE CONTROL. The baseline's own repeat-to-repeat spread is 4.13pp (12.30 / 8.16 / 9.46), which
+exceeds most of the deltas. Only off-lightingTemporalDecouple (13.09/13.55/13.50, spread 0.46, above
+baseline's MAX) is clearly separated. The sim is live and non-deterministic by design, and 6-8 samples
+of 10s across a 90s leg cannot resolve a few pp against that. Attribution needs continuous sampling
+aligned to leg boundaries -- see the follow-up task.
 
-LEG A NOW ASSERTS THREE THINGS, NOT ONE. The original wording — "the only thing that should
-change is quotability" — was written before #241 and is no longer true, BY DESIGN:
-  1. ZERO legs flagged not-quotable          (tests #240 / R13; was 28 of 28 flagged)
-  2. ONE registered *.gpu_us key set across all legs, not three, and 13 keys in it
-                                             (tests #241 / R14; was 21/3/3 with 11-12 keys)
-  3. `zeroed` present in every leg JSON and carrying the arms that did not run
-                                             (tests #241's consumer half)
-Anything ELSE that moved is the thing to know after 48 minutes rather than 108.
-
-KNOWN RISK, AND A REASON TO RUN A SOON RATHER THAN LATE: #241 added `zeroed` as a sibling key in
-the leg JSON. That path has been exercised through render-profile.sh but NOT through
-lever-matrix.sh's manifest/quotability logic. Leg A is its first real test; it fails fast.
-
-SAMPLE THE PMU ALONGSIDE BOTH. scripts/pmu-render-busy.py reads i915 render-engine busy
-OUT OF PROCESS -- utilisation, not span. The metrics_mutual gate has SKIPPED every run to date
-("no GPU client on this machine") and a matrix leg IS a live client. Near-zero marginal cost, and
-it answers the question that retracted the GPU-bound claim: is the GPU actually busy, or are the
-GL brackets merely open? This is the cheap down-payment on #235 piece 2.
-
-WHAT THESE TWO RUNS DECIDE, which is why they sit above the big items:
- * #173 (36 flushes/frame) is a CPU lever on a system with 72% CPU idle. If that holds at both
-   scenes it should be CLOSED, not done.
- * The world pass (#246) only becomes a target if the PMU shows real GPU busy AND it generalises.
- * #237 gets its ACCEPTANCE ORACLE: the new entrypoint must reproduce these numbers at these two
-   scenes. A rewrite with no oracle is how a silent regression ships.
-
-Do not start any large item below until B has finished.
+WHAT THESE RUNS DECIDE:
+  * #246 WORLD-PASS -- justification stays RETRACTED, now by positive proof. render.pass.world.gpu_us
+    is ~9700us (Desert Town) / ~8900us (Ark Ruins), but total GPU busy at Ark Ruins is 9.97% of a
+    16.2ms frame ~= 1.6ms. The "biggest bracket" is ~5.6x the entire GPU's busy time. It is a span.
+  * #173 RB-FLUSH -- CPU lever. CPU is 71% idle at Desert Town and 84% idle at Ark Ruins, and the GPU
+    is at the idle floor at one of them. CLOSE, do not do.
+  * #237 gets its acceptance oracle: two scenes, two banked runs, all legs quotable.
+  * #245 cost attribution must read PMU busy, NOT the GL spans.
 ```
 
 <a id="c29c1332-243"></a>
@@ -5293,7 +5298,7 @@ whole exist in MetricDesc and ZERO production sites populate any of them (verifi
 
 <a id="c29c1332-246"></a>
 
-#### #246 — WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy
+#### #246 — WORLD-PASS: CLOSE — the "biggest GPU bracket" is a span ~5.6x larger than the whole GPU's busy time
 
 status: **pending** · blocked by: #242 · metadata: `{"rank": 8}`
 
@@ -5330,6 +5335,54 @@ R15 -- the 13 <key>.nested rejection counters are still registered lazily inside
 R16 -- render.frame.gpu_span_us is owner `gl`'s DECLARED TOTAL and registers four conditionals deep inside the readback (deepEnabled, ring.issued, availB && availE, t1 > t0). Worse in KIND than R14: R14's keys were parts, this is the whole. When it is missing, telemetry-window takes its "declared total is absent" branch -- but the 13 pass timers are Detail, so there are no budget parts under gpu, `if parts:` is false, and the branch prints NOTHING and raises NOTHING. The gl/gpu table just vanishes, indistinguishable from an owner with no metrics. NOT currently biting: counted, present in 27/27 legs of matrix-20260807-071454, so latent not live. R14 deliberately left it out -- it is a GL_TIMESTAMP span, not a GpuTimer bracket, so it has no begin() to pair with and sits outside gpu_pass_keys by design. Fix: eager registration by name, plus make telemetry-window's no-whole branch loud even when parts is zero.
 
 Also open and adjacent, NOT closed by #241: ledger row C05 -- descConflict/typeConflict are emitted on every metric and nothing reads them, and owner=="unknown" rows are dropped. #241 added the UNDECLARED report line (so StarRenderDiagnostics.hpp's claim about it is now true) but did NOT raise them as violations, which is what C05 asks for.
+```
+
+<a id="c29c1332-248"></a>
+
+#### #248 — PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline
+
+status: **pending** · metadata: `{"rank": 3}`
+
+```
+FROM #242. The PMU is calibrated and sound -- idle floor 0.213%, glxgears uncapped 88.67%, a 416x
+working range, and it separates scenes by ~50x (Desert Town 0.22% vs Ark Ruins 9.97%). What it CANNOT
+currently do is attribute cost to a single lever.
+
+THE DEFECT IS SAMPLING, NOT THE INSTRUMENT. scripts/pmu-render-busy.py was invoked as spot samples --
+10s windows every ~45s, so 6-8 samples inside each 90s leg. Against a LIVE sim (render-profile.sh runs
+STAR_RENDERTEST_NOFREEZE=1 by design, "non-deterministic, therefore useless for correctness, and
+therefore the only honest thing to quote a millisecond from"), the baseline itself moved 12.30 / 8.16 /
+9.46 % across its three repeats -- a 4.13pp spread. Most per-lever deltas are smaller than that:
+
+  off-renderVboOrphan          +4.24pp   spread 2.40   marginal
+  off-lightingTemporalDecouple +3.41pp   spread 0.46   THE ONLY CLEARLY SEPARATED ONE
+  off-envRefreshInterval       +2.78pp   spread 1.10   r3 lands exactly on baseline r1
+  off-parallaxRefreshInterval  +2.11pp   spread 1.69   and the leg is VOID -- witness never moved
+  off-lightingGatherCache      +1.56pp
+  off-backdropComposeMerge     +1.02pp
+  off-renderDrawableCache      +0.82pp   spread 4.60   pure noise
+  off-scriptProtoCacheEnabled  +0.48pp   CPU-ONLY LEVER -- this is the noise floor, and it is not zero
+
+Quoting that table would be the campaign's own recurring defect: a plausible number with nothing
+contradicting it. It is recorded here so nobody recomputes it and believes it.
+
+THE FIX, and it is cheap:
+ 1. Sample CONTINUOUSLY for the whole run at a short window (1-2s), not in spot bursts. The script
+    already polls internally at POLL_SECONDS=0.02 and handles the lazy-publication problem (#234).
+ 2. Emit a leg-boundary marker so alignment is exact rather than inferred from leg-JSON mtime minus 90s.
+    render-profile.sh knows when the window opens and closes; have it stamp the PMU series, or have
+    lever-matrix.sh write leg start/end epochs into legs.tsv (it currently writes neither).
+ 3. Then per-leg attribution is mean-over-the-window with a real n, and the CPU-only lever
+    (scriptProtoCacheEnabled) stays in the matrix permanently as the null control it accidentally became.
+
+RELATION TO OTHER TASKS: this is the measurement half of #235 (BUSY-VS-WALL) and the input #245 needs --
+cost attribution must read PMU busy, never the GL spans, which #242 proved are blind to a 150x change
+in real GPU load. Do NOT fold this into #235's design work; it is a harness change, small and separable.
+
+The multi-engine sampler used for #242 is at scratchpad/pmu-all-engines.py (round-robins rcs0/ccs0/
+bcs0/vecs0; ccs0/bcs0/vecs0 read exactly 0.000 in every condition measured, so rcs0 alone is
+sufficient and the others are worth keeping only as a periodic control). It should move into scripts/
+if it is going to be quoted from.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
