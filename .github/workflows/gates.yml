@@ -200,6 +200,18 @@ jobs:
       - name: gpu_pass_keys_fires -- the bijection detector fires three ways and counts an empty corpus
         run: python3 scripts/gputimer-brackets.py --selftest-keys
 
+      # Engine BUSY is not observable from inside the process, so the PMU series is the only place that
+      # quantity exists -- and a series that reads an unopenable counter as 0% is indistinguishable from
+      # an idle GPU. Both selftests are synthetic: no GPU, no privilege, no binary.
+      - name: pmu_engine_sample_fires -- an unavailable counter is not a zero, and stamps are joinable
+        run: python3 scripts/pmu-engine-sample.py --selftest
+
+      # The floor is the whole point. A per-lever GPU table was produced by hand on 2026-08-07 whose
+      # deltas were smaller than the baseline's own repeat spread; it was withdrawn by hand, and by hand
+      # is not a mechanism. This asserts the floor swallows what it should and passes what it should.
+      - name: pmu_join_fires -- deltas inside the resolution floor are refused, not quoted
+        run: python3 scripts/pmu-join.py --selftest
+
       # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
       # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
       # the player save, quiescence firing on the departure world, and a run mutating the inventory it

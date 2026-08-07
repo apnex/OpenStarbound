@@ -371,6 +371,24 @@ def main():
             return 1
     a, b = load(os.path.join(args.snapdir, files[lo])), load(os.path.join(args.snapdir, files[hi]))
 
+    # WHEN THE WINDOW WAS, in wall-clock epoch seconds, stamped from the mtimes of the two snapshots the
+    # window is actually differenced over. Any out-of-process observer -- the i915 PMU sampler is the one
+    # that motivated this -- has a time series and no way to say which of its samples belong to this leg.
+    #
+    # Stamped HERE and not in render-profile.sh's env sidecar, which brackets the whole measurement PHASE:
+    # that is wider than the window by the snapshots --intervals trims, and aligning against the wider
+    # bracket silently mixes in the legs' ragged edges. These two files ARE the window; nothing else is.
+    #
+    # Stat them now, while they exist. render-profile.sh purges the snapshot directory at the start of the
+    # NEXT leg, so a consumer trying to recover these mtimes after a matrix run finds one leg's files at
+    # most -- measured 2026-08-07, 1 of 27 resolvable. Absent rather than wrong if the stat fails.
+    def _mtime(name):
+        try:
+            return round(os.path.getmtime(os.path.join(args.snapdir, name)), 3)
+        except OSError:
+            return None
+    window_start, window_end = _mtime(files[lo]), _mtime(files[hi])
+
     schema = b.get("meta", {}).get("schema", 0)
     if schema != SCHEMA:
         # Refuse rather than mis-window. A pre-v2 snapshot has no descriptors, and guessing them is how the
@@ -599,7 +617,9 @@ def main():
     if args.json:
         with open(args.json, "w") as f:
             json.dump({"label": args.label, "window": [files[lo], files[hi]],
-                       "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi]), "owners": owners,
+                       "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi],
+                                    windowStartEpoch=window_start, windowEndEpoch=window_end),
+                       "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")
 

@@ -88,7 +88,9 @@
       "off": false,
       "witness": "script.proto.cache.loaded",
       "changesOutput": false,
-      "why": "Load Lua chunks from the shared proto cache instead of recompiling per context. Off is documented as the original code path byte for byte. Both arms are counted, so the off leg moves script.proto.cache.bypassed while the witness falls to zero."
+      "gpuNullControl": true,
+      "why": "Load Lua chunks from the shared proto cache instead of recompiling per context. Off is documented as the original code path byte for byte. Both arms are counted, so the off leg moves script.proto.cache.bypassed while the witness falls to zero.",
+      "whyNullControl": "This lever touches Lua chunk loading and CANNOT move the GPU, so its measured delta on an i915 engine-busy counter is a NOISE FLOOR rather than a result -- obtained for free, in the same run, under the same thermals. Measured 2026-08-07 at Ark Ruins: +0.48pp, while a genuine lever read +3.41pp; several apparent findings between 0.5 and 2.8pp were withdrawn on the strength of it. A floor borrowed from another run is a number about a different afternoon -- idle read 0.213% one hour and 5.1% the next, depending only on what else was on screen. KEEP THIS LEVER IN EVERY MATRIX even if the proto cache is one day removed: replace it with another lever that cannot touch the GPU rather than deleting the control. scripts/pmu-join.py reads this flag."
     },
     {
       "key": "backdropComposeMerge",

@@ -507,6 +507,28 @@ mkdir -p "$OUT"
 MANIFEST="$OUT/manifest.json"
 : > "$OUT/legs.tsv"
 
+# THE SECOND INSTRUMENT, STARTED HERE SO NOBODY HAS TO REMEMBER TO START IT. Every *.gpu_us the engine
+# emits is elapsed GPU TIMELINE: render.frame.gpu_span_us reported ~16,200us -- the frame period -- at
+# 0.22%, 9.97% and 32.93% real engine busy alike, measured 2026-08-07. Engine BUSY is not observable
+# from inside the process at all, so a run without this series has no way to tell a pass that cost
+# something from a pass that merely held a bracket open.
+#
+# metrics_mutual is the gate that was supposed to catch that, and it has SKIPPED every run to date
+# because it needs a live GPU client -- the check most likely to find a systematic error was the one
+# hardest to run. A matrix leg IS a live GPU client, and the PMU read is out-of-process and costs
+# nothing measurable, so the inversion is free: sample always, and let the analysis decide later.
+#
+# NON-FATAL BY CONSTRUCTION. If the PMU is unavailable or unprivileged the sampler writes UNAVAILABLE
+# rows and the matrix carries on; losing corroboration must never cost us the run itself.
+PMU_SERIES="$OUT/pmu.tsv"
+python3 scripts/pmu-engine-sample.py --for $(( (REPEATS * 9 + 1) * (SECONDS_PER_LEG + 180) )) \
+  --out "$PMU_SERIES" >/dev/null 2>&1 &
+PMU_PID=$!
+# Stop it on EVERY exit path, including the failure ones -- a sampler outliving its run would attribute
+# the next run's GPU load to this one's legs.
+trap '[ -n "${PMU_PID:-}" ] && kill -TERM "$PMU_PID" 2>/dev/null; wait "$PMU_PID" 2>/dev/null' EXIT
+echo "  pmu series    $PMU_SERIES (i915 engine busy, out of process, pid $PMU_PID)"
+
 # A LEG THAT RAN AND A LEG WHOSE NUMBERS ARE QUOTABLE ARE TWO DIFFERENT VERDICTS, and the first
 # version of this function collapsed them. telemetry-window.py exits 3 when its closure oracle finds a
 # violation -- "parts exceed the whole", "of UNKNOWN" -- which means DO NOT QUOTE THESE COSTS. It does
@@ -705,6 +727,21 @@ echo "  ${#OK[@]} legs OK, ${#VOID[@]} VOID, ${#FAILED[@]} failed  ->  $OUT/"
 [ ${#VOID[@]}   -gt 0 ] && { echo "  VOID (the lever did not engage; do NOT quote a delta from these):"; printf '    %s\n' "${VOID[@]}"; }
 [ ${#FAILED[@]} -gt 0 ] && { echo "  FAILED:"; printf '    %s\n' "${FAILED[@]}"; }
 echo "  cost attribution NOT performed -- raw legs only, by design. See the header."
+
+# GPU attribution is the ONE cost question this runner does answer, because it does not read the
+# telemetry vocabulary at all -- it joins an out-of-process engine-busy series to each leg's stamped
+# window. The vocabulary is mid-convergence (schema 3 -> 4); a PMU percentage is not part of it.
+#
+# It prints a RESOLUTION FLOOR and refuses to quote anything inside it. That is the whole point: the
+# first per-lever GPU table produced here was withdrawn by hand because the baseline's own spread was
+# larger than most of its deltas, and by hand is not a mechanism.
+kill -TERM "$PMU_PID" 2>/dev/null; wait "$PMU_PID" 2>/dev/null; PMU_PID=""
+if [ -s "$PMU_SERIES" ]; then
+  echo
+  python3 scripts/pmu-join.py "$OUT" "$PMU_SERIES" || true
+else
+  echo "  !! no PMU series was written -- GPU busy went unmeasured for this run."
+fi
 
 if [ ${#OK[@]} -eq 0 ]; then
   echo "lever-matrix: NOTHING was measured -- 0 legs produced a usable result. This is a SKIP, not a pass."
