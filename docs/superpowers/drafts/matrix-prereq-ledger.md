@@ -8,7 +8,7 @@ Every row is something that would make a number produced by the lever matrix wro
 uninterpretable. Source: a five-agent read-only sweep of the tree. Unlike the PR-570 ledger,
 the inputs live IN this repository, so this file rebuilds from a clean clone.
 
-**35 of 55 rows carry a machine-checkable signature.** `--check` asserts an
+**37 of 57 rows carry a machine-checkable signature.** `--check` asserts an
 open row's defect is still present and a done row's is gone -- correspondence against the
 tree, not agreement between two files. The remainder are judgements; their count is printed
 rather than hidden, because an unchecked row is not a checked one.
@@ -17,7 +17,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 20 | not started |
+| **open** | 22 | not started |
 | **doing** | 0 | in progress |
 | **done** | 35 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
@@ -47,6 +47,8 @@ rather than hidden, because an unchecked row is not a checked one.
 | `O11` | degrade | The half of the cache levers' trade that IS uncertified -- refresh-frame fidelity across an FBO-lifecycle or ambient-GL-state change -- is in every ex | Drive the perturbation the oracles cancel: STAR_RENDERTEST_TOGGLE (a key whose change reallocates every framebuffer) and |
 | `O13` | degrade | Quiescence gives WITHIN-run stability and was read as CROSS-run convergence; and which locations settle at all had never been characterised | Assert ARRIVAL, not just departure: after warping, refuse to capture unless the current world matches the bookmark's, so |
 | `O14` | degrade | A scene difference INSIDE the fingerprint's bound still corrupts a leg, and no repetition fixes it | #84's own conclusion, and #153/GATE-1 proved the shape on the render side: an IN-PROCESS A/B that flips the lever betwee |
+| `R15` | degrade | The 13 <key>.nested rejection counters are still registered lazily inside begin(), and their keys are rebuilt by String concatenation on the render pa | Register the 13 .nested counters eagerly beside their timers and cache the handle so begin() stops rebuilding the key. D |
+| `R16` | degrade | render.frame.gpu_span_us -- owner `gl`'s DECLARED TOTAL -- registers four conditionals deep inside the readback, so the denominator can be absent whil | Register it eagerly by name at namespace scope beside the renderer's other keys, as R14 did for the 13. Separately, tele |
 
 ## Closed
 
@@ -709,4 +711,28 @@ rather than hidden, because an unchecked row is not a checked one.
 *Closes by.* Register every declared pass key eagerly, by name, independent of whether its arm executes -- e.g. from a static table at OpenGlRenderer construction. NOTE THE COST that made R07 stop short: the descriptors live at the begin() call sites, so a second list is a second source of truth and a vocabulary-drift hazard (a table naming a key the passes no longer use would read green forever). Either generate the table from the call sites, or gate it with a check that every key in the table is begun somewhere and vice versa. Do not simply duplicate the list.
 
 *Signature.* `source/**/*.cpp` matching `Telemetry::timer\("render\.pass\.environment\.compose\.gpu_us"` — present while open. (render.pass.environment.compose.gpu_us is registered eagerly by name somewhere, not only as an argument to a begin() that its arm may never reach)
+
+### `R15` — DEGRADES_MATRIX — open
+
+**The 13 <key>.nested rejection counters are still registered lazily inside begin(), and their keys are rebuilt by String concatenation on the render path every frame**
+
+*Evidence.* Found by R14's own fix work, in the function R14 edited. source/application/StarRenderer_opengl.cpp, GlGpuTimer::begin(): `ring.nested = Telemetry::counter(name + ".nested", ...)` sits after the deep gate and after the STAR_NO_PERPASS_GPU_TIMERS gate, so it registers only when its pass first begins -- exactly the shape R14 fixed for the timers, on the counter that says samples from this pass were REJECTED for nesting. Separately, `name + ".nested"` allocates a String per pass per frame on the render path, which StarMetricDesc.hpp's design note forbids in as many words: the prose fields are char const* precisely because MetricDesc is 'constructed as a TEMPORARY, PER CALL, PER FRAME at the GPU timer sites' and 'a String member would add a heap allocation per timer per frame to the render path'.
+
+*Why it corrupts a matrix number.* For a pass whose arm never runs, 'no samples were rejected' and 'nothing was watching' stay the same reading -- which is verbatim the sentence the droppedCounter comment a few lines above uses to justify its own eager registration. Lower severity than R14: these are MetricRole::Detail diagnostics entering no budget, and a nested bracket is rare. The allocation is a SECOND, independent defect and is the instrument perturbing its own subject: thirteen timers over a three-hundred-frame window is thousands of heap allocations on the exact path task #141 exists to measure without disturbing.
+
+*Closes by.* Register the 13 .nested counters eagerly beside their timers and cache the handle so begin() stops rebuilding the key. Derive each .nested key from the timer key rather than spelling a second list, so gpu_pass_keys can assert the .nested set is exactly the begun set with the suffix applied, in both directions, at no new vocabulary cost.
+
+*Signature.* `source/application/StarRenderer_opengl.cpp` matching `ring\.nested = Telemetry::counter\(name \+ "\.nested"` — present while open. (the nested-rejection counter is still registered, and its key still built, inside begin())
+
+### `R16` — DEGRADES_MATRIX — open
+
+**render.frame.gpu_span_us -- owner `gl`'s DECLARED TOTAL -- registers four conditionals deep inside the readback, so the denominator can be absent while its parts are present**
+
+*Evidence.* source/application/StarRenderer_opengl.cpp, startFrame(): the sole `Telemetry::timer("render.frame.gpu_span_us", ...).record(...)` sits inside `if (Telemetry::deepEnabled())`, then `else if (ring.issued[slot])`, then `if (availB && availE)`, then `if (t1 > t0)`. source/core/StarTelemetry.cpp names that key as owner Gl's Total for the Gpu domain. NOT CURRENTLY BITING, counted rather than assumed: present in 27 of 27 recorded legs of matrix-20260807-071454. R14 deliberately did not cover it -- it is a GL_TIMESTAMP span read directly rather than a GpuTimer bracket, so it has no begin() to pair with and sits outside gpu_pass_keys by design.
+
+*Why it corrupts a matrix number.* Worse in KIND than R14, which is why it is filed rather than folded: R14's keys were parts, this is the whole. scripts/telemetry-window.py takes its 'declared total is absent from the window' branch when the key is missing -- but because the 13 pass timers are Detail there are no budget parts under the gpu domain, so `if parts:` is false and that branch prints NOTHING and raises NOTHING. The gl/gpu table simply vanishes, which reads exactly like an owner that has no metrics. Four conditions must all hold on the first eligible frame for the key to exist at all; a short enough run, or a driver slow enough to resolve, drops the denominator silently.
+
+*Closes by.* Register it eagerly by name at namespace scope beside the renderer's other keys, as R14 did for the 13. Separately, telemetry-window's no-whole branch should be loud even when parts is zero: a declared total that is absent is a fact about the instrument whether or not anything was waiting to be divided by it.
+
+*Signature.* `source/**/*.cpp` matching `auto \w+ = Telemetry::timer\("render\.frame\.gpu_span_us"` — present while open. (render.frame.gpu_span_us is registered eagerly by name, not only at the record site four conditionals deep)
 

@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**183 tasks** across 2 store(s): 4 in_progress, 35 pending, 144 completed
+**184 tasks** across 2 store(s): 4 in_progress, 35 pending, 145 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 182 tasks, ids 64–246
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 183 tasks, ids 64–247
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,14 +43,17 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 2 | `#241` | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | ready |
-| 2 | 3 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
-| 3 | 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
-| 4 | 5 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
-| 5 | 6 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
-| 6 | 7 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 7 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
-| 8 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
+| 1 | 3 | `#235` | BUSY-VS-WALL: make work-vs-waiting a first-class property of every metric, always, everywhere | ready |
+| 2 | 4 | `#242` | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | ready |
+| 3 | 5 | `#243` | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | ready |
+| 4 | 6 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | blocked by #243 |
+| 5 | 7 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 6 | 8 | `#246` | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | blocked by #242 |
+| 7 | 9 | `#173` | RB-FLUSH: setScissorRect flushes per widget (~92/frame) — orphaning killed the stall COST, not the flush COUNT | blocked by #242 |
+| 8 | 10 | `#247` | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | ready |
+
+> **1 completed task(s) still carry a rank** (#241). A rank is a claim about
+> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
 
@@ -88,7 +91,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 84 of 144.
+**Completed tasks citing no commit and no doc:** 84 of 145.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -178,7 +181,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
-| [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `2026-07-25-unified-telemetry-model-design.md` |
+| [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `matrix-prereq-ledger.md` `2026-07-25-unified-telemetry-model-design.md` |
 | [#142](#c29c1332-142) | `c29c1332` | done | FBO-1: FBO subsystem hardening — honour explicit size, gate oracle surfaces, diagnosable failures | — | — |
 | [#143](#c29c1332-143) | `c29c1332` | done | CM-1: merge the env + parallax composes into one full-screen pass (MEASURED: ~2ms/frame) | — | — |
 | [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | `matrix-prereq-ledger.md` |
@@ -277,12 +280,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
-| [#241](#c29c1332-241) | `c29c1332` | open | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
+| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | open | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
 | [#243](#c29c1332-243) | `c29c1332` | open | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | open | POST-MATRIX ORDER: the ranked 9, and what the matrix run changed about them | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
 | [#245](#c29c1332-245) | `c29c1332` | open | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | — | — |
 | [#246](#c29c1332-246) | `c29c1332` | open | WORLD-PASS: the biggest GPU bracket — but its justification is RETRACTED pending real engine-busy | — | — |
+| [#247](#c29c1332-247) | `c29c1332` | open | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -1519,6 +1523,7 @@ cache-under-test cancel those exactly. A GL-state assertion pass and a golden fu
 
 status: **completed**
 
+- cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 - cited in `docs/superpowers/specs/2026-07-25-unified-telemetry-model-design.md`
 
 ```
@@ -5084,7 +5089,9 @@ Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 
 #### #241 — R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT
 
-status: **pending** · metadata: `{"rank": 2}`
+status: **completed** · metadata: `{"rank": 2}`
+
+- `775176ff` R14-FIX: a pass that never runs now reads ZERO, not ABSENT -- and the leg file says so
 
 ```
 RANK 2 of the post-matrix order (2026-08-07). ~45 minutes.
@@ -5187,6 +5194,7 @@ Register as a gate with a fires-arm. Commit ends [#243].
 
 status: **pending**
 
+- `bb29075c` BOARD: Next shows POSITION, which always starts at 1
 - `ce8a089d` BOARD: drop the rank contiguity check — it fired on progress
 - `361f9e8d` BOARD: #240 done, rank cleared — #242 now startable
 - `35bbb97c` BOARD-NEXT: a ranked Next list whose source is the task itself
@@ -5289,6 +5297,22 @@ DO NOT START until #242's PMU sample says the GPU is genuinely busy. If engine b
 SECOND CHECK BEFORE SPENDING: #132's session average recorded world at 1839 us/frame. 9440 is
 ~5x that. Different scene, but the gap needs explaining -- scene, resolution, regression, or the
 same wall-vs-busy confusion -- before any lever is designed against it.
+```
+
+<a id="c29c1332-247"></a>
+
+#### #247 — R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach
+
+status: **pending** · metadata: `{"rank": 10}`
+
+```
+Found by #241's own verification work, both filed to the matrix-prereq ledger rather than folded into it.
+
+R15 -- the 13 <key>.nested rejection counters are still registered lazily inside GlGpuTimer::begin(), the same shape R14 fixed for the timers, on the counter that says samples from this pass were REJECTED for nesting. For a pass whose arm never runs, "no rejections" and "nothing was watching" remain the same reading. Second, independent defect in the same line: `name + ".nested"` allocates a String per pass per frame on the render path, which StarMetricDesc.hpp's design note forbids in as many words -- the instrument perturbing the path #141 exists to measure. Fix: register the 13 eagerly beside their timers and cache the handle; derive each .nested key from the timer key so no second list appears, and let gpu_pass_keys assert the suffixed set both ways.
+
+R16 -- render.frame.gpu_span_us is owner `gl`'s DECLARED TOTAL and registers four conditionals deep inside the readback (deepEnabled, ring.issued, availB && availE, t1 > t0). Worse in KIND than R14: R14's keys were parts, this is the whole. When it is missing, telemetry-window takes its "declared total is absent" branch -- but the 13 pass timers are Detail, so there are no budget parts under gpu, `if parts:` is false, and the branch prints NOTHING and raises NOTHING. The gl/gpu table just vanishes, indistinguishable from an owner with no metrics. NOT currently biting: counted, present in 27/27 legs of matrix-20260807-071454, so latent not live. R14 deliberately left it out -- it is a GL_TIMESTAMP span, not a GpuTimer bracket, so it has no begin() to pair with and sits outside gpu_pass_keys by design. Fix: eager registration by name, plus make telemetry-window's no-whole branch loud even when parts is zero.
+
+Also open and adjacent, NOT closed by #241: ledger row C05 -- descConflict/typeConflict are emitted on every metric and nothing reads them, and owner=="unknown" rows are dropped. #241 added the UNDECLARED report line (so StarRenderDiagnostics.hpp's claim about it is now true) but did NOT raise them as violations, which is what C05 asks for.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
