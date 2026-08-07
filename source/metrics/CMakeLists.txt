@@ -9,11 +9,15 @@ SET (star_metrics_HEADERS
     StarClientBusyReader.hpp
     StarEngineBusyReader.hpp
     StarMetricSample.hpp
+    StarProcFs.hpp
+    StarThreadBusyReader.hpp
   )
 
 SET (star_metrics_SOURCES
     StarClientBusyReader.cpp
     StarEngineBusyReader.cpp
+    StarProcFs.cpp
+    StarThreadBusyReader.cpp
   )
 
 # OBJECT, like star_core and star_base: consumers name $<TARGET_OBJECTS:star_metrics> in their

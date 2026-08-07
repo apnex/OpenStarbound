@@ -29,10 +29,17 @@ struct BusyReading {
   // WHAT the number is; naming the key is each reader's job, in its own header.
   StringMap<int64_t> busyNs;
 
-  // DRM clients this reading was summed over. Set by ClientBusyReader alone -- the PMU is system-wide
-  // and has no client to count, and threads are not clients. It stays 0 elsewhere, which is why no
-  // consumer may read it without knowing which reader produced the value.
-  unsigned clients = 0;
+  // HOW MANY SUBJECTS WERE SUMMED, in the terms each reader counts in. Exactly one of these is set by
+  // any given reader and the rest stay 0, which is why no consumer may read either without knowing
+  // which reader produced the value -- a 0 here means "not this reader's unit", never "none found".
+  // A reader with nothing to count returns unavailable() instead, so the ambiguity never reaches a
+  // caller that is holding an available reading.
+  //
+  // Two near-identical counters is the seam task #250 collapses: once every reader hands back
+  // MetricSamples, the count becomes a declared metric with its own descriptor rather than a field
+  // whose meaning depends on provenance the type does not carry.
+  unsigned clients = 0;   // DISTINCT DRM clients        -- ClientBusyReader only
+  unsigned threads = 0;   // tasks with a parsable stat  -- ThreadBusyReader only
 };
 
 // Difference two readings taken wallNs apart. Either endpoint being unavailable poisons the result,

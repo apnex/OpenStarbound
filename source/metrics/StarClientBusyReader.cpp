@@ -2,6 +2,7 @@
 
 #include "StarFile.hpp"
 #include "StarLexicalCast.hpp"
+#include "StarProcFs.hpp"
 
 namespace Star {
 
@@ -16,27 +17,6 @@ namespace {
     Maybe<int64_t> clientId;
     StringMap<int64_t> engineNs;
   };
-
-  // File::readFileString cannot read procfs and returns "" instead of failing. It loops until
-  // File::atEnd(), which is `ftell >= fsize`, and fsize is an lseek(SEEK_END) that procfs answers
-  // with EINVAL -- so the loop ends before the first read and every /proc file comes back empty,
-  // which this reader would then report as a driver exposing no engines. Reading until read()
-  // yields 0 is the only end-of-file procfs answers truthfully.
-  //
-  // Nothing here returns an error for a missing file: fds open and close constantly, and one that
-  // vanishes between the dirList and the open is normal traffic, not a failed measurement.
-  Maybe<String> slurp(String const& path) {
-    try {
-      FilePtr file = File::open(path, IOMode::Read);
-      std::string text;
-      char buffer[4096];
-      while (size_t got = file->read(buffer, sizeof(buffer)))
-        text.append(buffer, got);
-      return String(std::move(text));
-    } catch (StarException const&) {
-      return {};
-    }
-  }
 
   FdInfo parseFdinfo(String const& text) {
     FdInfo info;
@@ -89,7 +69,7 @@ BusyReading ClientBusyReader::readFdinfoDir(String const& dir) {
   for (auto const& entry : entries) {
     if (entry.second)
       continue;
-    auto text = slurp(File::relativeTo(dir, entry.first));
+    auto text = ProcFs::read(File::relativeTo(dir, entry.first));
     if (!text)
       continue;
     auto info = parseFdinfo(*text);
@@ -138,9 +118,12 @@ BusyReading busyDelta(BusyReading const& a, BusyReading const& b, int64_t wallNs
     d.busyNs[key.first] = key.second - before;
   }
 
-  // b's count, not a's: the delta describes the window's end state, and a client that appeared or
-  // left mid-window is exactly what the caller must be able to see.
+  // b's counts, not a's: the delta describes the window's END state, and a client or thread that
+  // appeared or left mid-window is exactly what the caller must be able to see. BOTH are forwarded --
+  // carrying one and not the other would hand the thread reader a delta whose count silently read 0,
+  // which its own contract says means "not this reader's unit".
   d.clients = b.clients;
+  d.threads = b.threads;
   d.available = true;
   return d;
 }

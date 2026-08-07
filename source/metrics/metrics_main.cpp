@@ -1,6 +1,7 @@
 #include "StarBusyReading.hpp"
 #include "StarClientBusyReader.hpp"
 #include "StarMetricSample.hpp"
+#include "StarThreadBusyReader.hpp"
 
 #include "StarFormat.hpp"
 #include "StarJson.hpp"
@@ -25,6 +26,10 @@ namespace {
 
   char const* const SampleSource = "fdinfo:drm-engine";
   char const* const SampleValidWhen = "always";
+  char const* const CpuSource = "procfs:task-stat";
+  // Threads that no rule claims land under owner `unknown` rather than being dropped, so this
+  // holds whatever the process was doing -- attributed or not -- and the sum is the process.
+  char const* const CpuValidWhen = "always";
 
   double const DefaultWindowSeconds = 5.0;
   double const MaxWindowSeconds = 3600.0;
@@ -71,6 +76,28 @@ namespace {
       samples.append(MetricSample(strf("gpu.engine.{}.busy_ratio", engine), (double)busyNs / (double)wallNs, "ratio",
                                   strf("{} engine busy time as a fraction of wall clock", engine),
                                   SampleValidWhen, SampleSource, tMonotonicNs));
+    }
+    return samples;
+  }
+
+  List<MetricSample> cpuSamplesFor(BusyReading const& delta, int64_t wallNs, int64_t tMonotonicNs) {
+    auto owners = delta.busyNs.keys();
+    owners.sort();
+
+    List<MetricSample> samples;
+    for (auto const& owner : owners) {
+      int64_t busyNs = delta.busyNs.get(owner);
+      samples.append(MetricSample(strf("cpu.owner.{}.busy_ns", owner), (double)busyNs, "ns",
+                                  strf("CPU busy time of the threads attributed to owner '{}'", owner),
+                                  CpuValidWhen, CpuSource, tMonotonicNs));
+      // CORES, NOT A RATIO, AND THE NAME HAS TO SAY SO. The GPU figure beside it is a fraction of one
+      // engine's wall time and cannot exceed 1; this one is busy time over wall time for a set of
+      // THREADS, so an owner running four of them flat out reads 4.0. Calling it a ratio would invite
+      // exactly the reading it cannot bear, and the two numbers sit in the same output.
+      samples.append(MetricSample(strf("cpu.owner.{}.busy_cores", owner),
+                                  (double)busyNs / (double)wallNs, "ratio",
+                                  strf("CPU busy time of owner '{}' as a multiple of ONE core", owner),
+                                  CpuValidWhen, CpuSource, tMonotonicNs));
     }
     return samples;
   }
@@ -157,9 +184,13 @@ namespace {
     // scan proceeds, so end-of-scan is the closest instant either endpoint can be attributed to, and
     // the window must not silently include the scan's own duration at one end only.
     BusyReading before = ClientBusyReader::read(*pid);
+    BusyReading cpuBefore = ThreadBusyReader::read(*pid);
+    auto procBefore = ThreadBusyReader::processBusyNs(*pid);
     int64_t t0 = monotonicNanoseconds();
     Thread::sleep((unsigned)std::llround(windowSeconds * 1000.0));
     BusyReading after = ClientBusyReader::read(*pid);
+    BusyReading cpuAfter = ThreadBusyReader::read(*pid);
+    auto procAfter = ThreadBusyReader::processBusyNs(*pid);
     int64_t t1 = monotonicNanoseconds();
 
     int64_t wallNs = t1 - t0;
@@ -172,6 +203,37 @@ namespace {
     }
 
     auto samples = samplesFor(delta, wallNs, t1);
+
+    // CPU IS ADDITIVE HERE, NOT A SECOND WAY TO FAIL. The two readers measure different hardware
+    // through different kernel interfaces, and a machine that cannot supply one can still supply the
+    // other -- so an unavailable CPU reading is reported on stderr and yields no samples, rather than
+    // suppressing a GPU measurement that succeeded. The exit code stays the GPU reader's to decide,
+    // which is the contract this tool already had.
+    BusyReading cpuDelta = busyDelta(cpuBefore, cpuAfter, wallNs);
+    if (cpuDelta.available) {
+      samples.appendAll(cpuSamplesFor(cpuDelta, wallNs, t1));
+
+      // ATTRIBUTED VS ACTUAL, because the two are not the same number and the difference is invisible
+      // otherwise. /proc/<pid>/stat is a thread-group aggregate that RETAINS the time of threads which
+      // have since exited, while /proc/<pid>/task lists only the living -- so a thread that finishes
+      // inside the window takes its cost out of the owner sums and leaves it here. Measured
+      // deterministically at 49 ticks appearing the instant four burning threads exited.
+      //
+      // Emitted as a residual rather than folded into an owner: nobody can say WHICH owner the departed
+      // thread belonged to, and inventing one would be worse than reporting the gap.
+      if (procBefore && procAfter && *procAfter >= *procBefore) {
+        int64_t attributed = 0;
+        for (auto const& o : cpuDelta.busyNs)
+          attributed += o.second;
+        int64_t residual = (*procAfter - *procBefore) - attributed;
+        samples.append(MetricSample("cpu.unattributed.busy_ns", (double)(residual > 0 ? residual : 0), "ns",
+                                    "CPU busy time the process spent that no LIVE thread still accounts "
+                                    "for -- threads that exited within the window",
+                                    "always", CpuSource, t1));
+      }
+    } else
+      cerrf("metrics: no CPU attribution for pid {}: {}\n", *pid, cpuDelta.unavailableReason);
+
     if (json)
       coutf("{}\n", toJson(*pid, wallNs, delta, samples).printJson(2, true));
     else

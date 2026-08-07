@@ -43,8 +43,19 @@ BIN=${1:?usage: assert-binary-fresh.sh <binary>}
 [ -x "$BIN" ] || { echo "REFUSING TO MEASURE: no executable at $BIN." >&2; exit 1; }
 
 # dist/ IS the CMake runtime output directory (source/CMakeLists.txt), so the binary's mtime is its
-# LINK time, not a copy's. source/test is pruned: it builds the test binaries, not the game.
-stale=$(find source -path source/test -prune -o -type f \
+# LINK time, not a copy's.
+#
+# TWO TREES ARE PRUNED, AND FOR ONE REASON: NEITHER IS LINKED INTO THE BINARY BEING CHECKED, so an
+# edit there can never move its mtime and the check would stay red for ever. source/test builds the
+# test binaries. source/metrics builds the sovereign `metrics` tool, whose whole design property is
+# that it links star_core and star_metrics and NOTHING of the game -- starbound's ADD_EXECUTABLE names
+# seven object libraries and star_metrics is not among them.
+#
+# This was not foresight. Adding a reader under source/metrics made the guard refuse every harness run
+# on this machine, with a message naming files the binary does not contain -- a check that cannot pass
+# is worth no more than one that cannot fail, and it costs more to ignore. If a future component IS
+# linked into the game, it must NOT be listed here.
+stale=$(find source -path source/test -prune -o -path source/metrics -prune -o -type f \
           \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' -o -name 'CMakeLists.txt' \) \
           -newer "$BIN" -print 2>/dev/null | sort | head -20)
 if [ -n "$stale" ]; then

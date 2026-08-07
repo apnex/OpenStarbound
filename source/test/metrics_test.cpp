@@ -1,8 +1,11 @@
 #include "StarClientBusyReader.hpp"
 #include "StarEngineBusyReader.hpp"
 #include "StarMetricSample.hpp"
+#include "StarThreadBusyReader.hpp"
 
 #include "StarFile.hpp"
+
+#include <unistd.h>
 
 #include "gtest/gtest.h"
 
@@ -238,4 +241,145 @@ TEST(EngineBusyReaderTest, NonTimeEventIsRefusedByItsDeclaredUnit) {
   EXPECT_TRUE(opened.reason.contains(strf("'{}'", *unit)))
       << "refusal does not name the unit " << unit->utf8Ptr() << ": " << opened.reason.utf8Ptr();
   EXPECT_TRUE(opened.reason.contains("nanoseconds")) << opened.reason.utf8Ptr();
+}
+
+// ---------------------------------------------------------------------------------------------------
+// ThreadBusyReader -- CPU busy, attributed to the declared owner vocabulary.
+// ---------------------------------------------------------------------------------------------------
+
+namespace {
+
+// A /proc/<pid>/task-shaped directory: one subdirectory per tid, each holding a `stat` file.
+class TempTaskDir {
+public:
+  // (tid, comm, utime ticks, stime ticks)
+  explicit TempTaskDir(List<tuple<int, String, int64_t, int64_t>> const& tasks)
+    : m_path(File::temporaryDirectory()) {
+    for (auto const& t : tasks) {
+      String sub = File::relativeTo(m_path, toString(get<0>(t)));
+      File::makeDirectory(sub);
+      // Fields 3..15 with utime at 14 and stime at 15, matching the kernel's layout. The filler is
+      // real-shaped rather than zeros so an off-by-one in the reader lands on a NUMBER and produces a
+      // wrong answer, not a parse failure that would look like a different bug entirely.
+      File::writeFile(String(strf("{} ({}) S 1 1 1 0 -1 4194304 100 0 0 0 {} {} 0 0 20 0 5 0 0\n",
+                                  get<0>(t), get<1>(t), get<2>(t), get<3>(t))),
+                      File::relativeTo(sub, "stat"));
+    }
+  }
+  ~TempTaskDir() { try { File::removeDirectoryRecursive(m_path); } catch (...) {} }
+  TempTaskDir(TempTaskDir const&) = delete;
+  TempTaskDir& operator=(TempTaskDir const&) = delete;
+  operator String const&() const { return m_path; }
+private:
+  String m_path;
+};
+
+int64_t nsPerTickForTest() {
+  long hz = sysconf(_SC_CLK_TCK);
+  return hz > 0 ? 1'000'000'000LL / (int64_t)hz : 10'000'000LL;
+}
+
+}
+
+TEST(ThreadBusyReaderTest, MapsMeasuredThreadNamesToOwners) {
+  // The names are what the kernel actually reports, truncated to 15 characters -- matching the names
+  // the engine SETS would match nothing.
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("starbound"), MetricOwner::Frame);
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("WorldServerThre"), MetricOwner::Sim);
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("WorldClient::li"), MetricOwner::Lighting);
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("SDLAudioP15"), MetricOwner::Unknown);
+}
+
+TEST(ThreadBusyReaderTest, TheDriverThreadIsNotTheMainThread) {
+  // "starboun:gdrv0" shares a prefix with "starbound", so a prefix test in the other order bills every
+  // GPU driver tick to Frame. This is the arm that pins the ordering.
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("starboun:gdrv0"), MetricOwner::Gl);
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("starboun:disk$0"), MetricOwner::Gl);
+}
+
+TEST(ThreadBusyReaderTest, SimulationLookalikesStayUnknownOnPurpose) {
+  // Both are simulation work by any reasonable reading, and owner `sim`'s declared TOTAL brackets the
+  // WorldServerThread loop and nothing else. Billing them to Sim would put parts under a whole that
+  // does not contain them, which is the one error the closure check cannot catch because it IS the
+  // closure check.
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("UniverseServer/"), MetricOwner::Unknown);
+  EXPECT_EQ(ThreadBusyReader::ownerOfThread("SystemWorldServ"), MetricOwner::Unknown);
+}
+
+TEST(ThreadBusyReaderTest, ParsesACommContainingSpacesAndParentheses) {
+  // THE FIELD THAT BREAKS EVERY NAIVE PARSER. The kernel does not escape the thread name, so a name
+  // with spaces shifts every later field and utime lands on some other number -- plausible, numeric,
+  // silently wrong. The name ends at the LAST ')' and nowhere else.
+  TempTaskDir dir({{101, "we (are) many", 30, 12}});
+  auto r = ThreadBusyReader::readTaskDir(dir);
+  ASSERT_TRUE(r.available) << r.unavailableReason.utf8Ptr();
+  EXPECT_EQ(r.busyNs.get("unknown"), 42 * nsPerTickForTest())
+      << "a comm with spaces shifted the field offsets";
+}
+
+TEST(ThreadBusyReaderTest, AttributesPerOwnerAndConservesTheTotal) {
+  TempTaskDir dir({{1, "starbound", 100, 20},        // frame    120
+                   {2, "WorldServerThre", 50, 10},   // sim       60
+                   {3, "WorldClient::li", 5, 0},     // lighting   5
+                   {4, "starboun:gdrv0", 2, 1},      // gl         3
+                   {5, "SDLAudioP15", 7, 0}});       // unknown    7
+  auto r = ThreadBusyReader::readTaskDir(dir);
+  ASSERT_TRUE(r.available) << r.unavailableReason.utf8Ptr();
+  int64_t const k = nsPerTickForTest();
+  EXPECT_EQ(r.busyNs.get("frame"), 120 * k);
+  EXPECT_EQ(r.busyNs.get("sim"), 60 * k);
+  EXPECT_EQ(r.busyNs.get("lighting"), 5 * k);
+  EXPECT_EQ(r.busyNs.get("gl"), 3 * k);
+  EXPECT_EQ(r.busyNs.get("unknown"), 7 * k);
+  EXPECT_EQ(r.threads, 5u);
+
+  // CONSERVATION. Every thread's time reaches exactly one owner, so the owners sum to the threads.
+  // A reader that dropped what it could not name would under-report by an amount invisible precisely
+  // because it is missing -- this is the arm that makes that impossible rather than unlikely.
+  int64_t sum = 0;
+  for (auto const& o : r.busyNs)
+    sum += o.second;
+  EXPECT_EQ(sum, 195 * k);
+}
+
+TEST(ThreadBusyReaderTest, NothingParsableIsUnavailableNotZero) {
+  // The distinction the whole type exists for: "could not measure" must never arrive as "measured
+  // nothing", which is a number a caller would happily plot.
+  String empty = File::temporaryDirectory();
+  auto r = ThreadBusyReader::readTaskDir(empty);
+  EXPECT_FALSE(r.available);
+  EXPECT_TRUE(r.busyNs.empty());
+  EXPECT_FALSE(r.unavailableReason.empty());
+  File::removeDirectoryRecursive(empty);
+}
+
+TEST(ThreadBusyReaderTest, ProcessTotalIsTheGroupAggregateNotTheLiveSum) {
+  // BURN A MEASURABLE AMOUNT FIRST. Read straight away this failed at "0 vs 0" -- run alone under a
+  // filter the test process has used less than one 10ms tick, so the assertion below was green in the
+  // full suite and red on its own. A test whose verdict depends on which other tests ran is not a
+  // test. Fifty milliseconds of arithmetic is several ticks on any USER_HZ a platform reports.
+  volatile int64_t sink = 0;
+  for (int64_t i = 0; i < 40'000'000; ++i)
+    sink += i;
+  (void)sink;
+
+  auto own = ThreadBusyReader::processBusyNs((int)getpid());
+  ASSERT_TRUE(own.isValid()) << "could not read this process's own /proc stat";
+  EXPECT_GT(*own, 0) << "a running test process cannot have used zero CPU";
+
+  // AND IT IS NOT THE SAME QUANTITY AS read()'s SUM. /proc/<pid>/stat retains the time of threads that
+  // have exited; /proc/<pid>/task lists only the living, so the aggregate is >= the live sum and the
+  // difference is what no owner can still be charged for. Asserting the INEQUALITY rather than a value
+  // keeps the arm true on a process that has never reaped a thread, where the two are equal.
+  auto live = ThreadBusyReader::read((int)getpid());
+  ASSERT_TRUE(live.available) << live.unavailableReason.utf8Ptr();
+  int64_t sum = 0;
+  for (auto const& o : live.busyNs)
+    sum += o.second;
+  EXPECT_GE(*own, sum - 2 * 10'000'000LL)
+      << "the group aggregate fell below the live sum by more than read skew: " << *own << " vs " << sum;
+}
+
+TEST(ThreadBusyReaderTest, AMissingProcessHasNoTotalRatherThanZero) {
+  EXPECT_FALSE(ThreadBusyReader::processBusyNs(0x7FFFFFFF).isValid());
 }
