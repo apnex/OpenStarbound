@@ -179,12 +179,24 @@ def report(joined, null_control, voided=None):
         print(f"  null control `{null_control}` (cannot touch the GPU) reads {ctrl_delta:+.2f}pp")
     print(f"  RESOLUTION FLOOR {floor:.2f}pp -- {floor_why}")
 
+    # TWO TESTS, NOT ONE, AND THE SECOND IS THE LEVER'S OWN REPEATS. The run floor is built from the
+    # BASELINE's spread, so it is blind to a lever that is itself unstable. Measured at Ark Ruins
+    # 2026-08-07: off-lightingGatherCache read 14.32 / 11.15 / 11.18 against a baseline of 11.39 --
+    # r2 and r3 sit ON the baseline and the whole +0.83pp "delta" is one outlier repeat. Its own
+    # spread was 3.17pp, nearly 4x the delta, and the 0.43pp floor waved it through as RESOLVED.
+    #
+    # A delta smaller than the scatter of the very legs it is averaged from is not a small effect; it
+    # is the mean of something that did not repeat. So a lever must clear the run floor AND exceed its
+    # own spread. off-renderVboOrphan (15.83/14.99/14.90, delta 3.85, spread 0.93) passes both and is
+    # the shape a real lever has.
     resolved, unresolved = [], []
     for lever in sorted(joined):
         if lever == "baseline":
             continue
-        d = st.mean([m for m, _ in joined[lever].values()]) - base_mean
-        (resolved if abs(d) > floor else unresolved).append((lever, d))
+        means = [m for m, _ in joined[lever].values()]
+        d = st.mean(means) - base_mean
+        own = max(means) - min(means)
+        (resolved if abs(d) > floor and abs(d) > own else unresolved).append((lever, d, own))
 
     if voided:
         # A THIRD VERDICT, because two were not enough. VOID is not "small effect" and not "noisy" --
@@ -194,18 +206,38 @@ def report(joined, null_control, voided=None):
         for lever in sorted(voided):
             print(f"       {lever:34s} repeats {', '.join(sorted(voided[lever]))}")
 
-    print(f"\n  RESOLVED -- delta clears the floor ({len(resolved)}):")
-    for lever, d in sorted(resolved, key=lambda x: -abs(x[1])):
-        print(f"       {lever:34s} {d:+7.2f} pp")
+    print(f"\n  RESOLVED -- delta clears the floor AND the lever's own repeat spread ({len(resolved)}):")
+    for lever, d, own in sorted(resolved, key=lambda x: -abs(x[1])):
+        print(f"       {lever:34s} {d:+7.2f} pp   (own spread {own:.2f})")
     if not resolved:
         print("       (none)")
-    print(f"\n  UNRESOLVED -- delta is inside the floor, so this run did not measure it ({len(unresolved)}):")
-    for lever, d in sorted(unresolved, key=lambda x: -abs(x[1])):
-        print(f"       {lever:34s} {d:+7.2f} pp")
+    print(f"\n  UNRESOLVED -- this run did not measure it ({len(unresolved)}):")
+    for lever, d, own in sorted(unresolved, key=lambda x: -abs(x[1])):
+        why = "inside the floor" if abs(d) <= floor else f"own spread {own:.2f} exceeds the delta"
+        print(f"       {lever:34s} {d:+7.2f} pp   ({why})")
     if unresolved:
         print("\n  An unresolved lever is NOT a lever that costs nothing. It is a lever this run could")
         print("  not separate from its own noise -- sample longer, or at a scene where it engages.")
     return EXIT_OK
+
+
+def _verdict_of(out, lever):
+    """Which VERDICT SECTION a lever landed in -- not merely whether its name appears in the output.
+
+    The first draft of these arms asked `lever in out.split("UNRESOLVED")[0]`, which is satisfied by
+    the RESULTS TABLE at the top of the report, where every lever appears regardless of verdict. So
+    the arm passed whatever the code did: a check that cannot fail, guarding the rule this whole
+    script exists to enforce. Caught 2026-08-07 when a genuinely-failing arm was added beside it.
+    """
+    section = None
+    for line in out.splitlines():
+        head = line.strip()
+        for name in ("RESOLVED --", "UNRESOLVED --", "VOID --"):
+            if head.startswith(name):
+                section = name.split()[0]
+        if section and line.startswith("       ") and lever in line:
+            return section
+    return None
 
 
 def selftest():
@@ -232,10 +264,9 @@ def selftest():
     with contextlib.redirect_stdout(buf):
         report(joined, "nullctl")
     out = buf.getvalue()
-    big_line = [l for l in out.splitlines() if "off-big" in l and "pp" in l]
-    if "RESOLVED" not in out or not any("off-big" in l for l in out.split("UNRESOLVED")[0].splitlines()):
+    if _verdict_of(out, "off-big") != "RESOLVED":
         fails.append("a +20pp lever did not clear a 4pp floor")
-    if not any("off-small" in l for l in out.split("UNRESOLVED")[1].splitlines()):
+    if _verdict_of(out, "off-small") != "UNRESOLVED":
         fails.append("a +1pp lever inside a 4pp floor was reported as resolved")
 
     # An empty join must FAIL, not print an empty-but-cheerful table. A run with legs but no baseline
@@ -248,6 +279,26 @@ def selftest():
         fails.append("an empty join did not fail")
     if nobase_rc != EXIT_NOTHING:
         fails.append("a run with no baseline did not fail")
+
+    # A LEVER THAT DID NOT REPEAT IS NOT A MEASUREMENT, even when its MEAN clears the run floor.
+    # Modelled on the real Ark Ruins case: baseline ~11.4, lever reads 14.3 / 11.15 / 11.18 -- r2 and
+    # r3 sit on the baseline and the whole delta is one outlier. Mean delta ~+0.8pp clears a 0.43pp
+    # floor; own spread ~3.2pp does not. It must land in UNRESOLVED, for that stated reason.
+    legs3 = {"baseline": {"r1": (0, 10), "r2": (100, 110), "r3": (200, 210)},
+             "off-outlier": {"r1": (10, 20), "r2": (110, 120), "r3": (210, 220)},
+             "off-nullctl": {"r1": (30, 40), "r2": (130, 140), "r3": (230, 240)}}
+    s3 = [(5, RENDER_ENGINE, 11.4), (105, RENDER_ENGINE, 11.4), (205, RENDER_ENGINE, 11.4),
+          (15, RENDER_ENGINE, 14.3), (115, RENDER_ENGINE, 11.15), (215, RENDER_ENGINE, 11.18),
+          (35, RENDER_ENGINE, 11.4), (135, RENDER_ENGINE, 11.4), (235, RENDER_ENGINE, 11.4)]
+    j3, _ = per_leg(s3, legs3)
+    b3 = io.StringIO()
+    with contextlib.redirect_stdout(b3):
+        report(j3, "nullctl")
+    o3 = b3.getvalue()
+    if _verdict_of(o3, "off-outlier") != "UNRESOLVED":
+        fails.append("a lever carried entirely by one outlier repeat was reported as RESOLVED")
+    if "own spread" not in [l for l in o3.splitlines() if "off-outlier" in l and "pp" in l][-1]:
+        fails.append("the outlier rejection did not say it was the lever's own spread")
 
     # A LEG THE RUNNER VOIDED MUST NOT REACH THE TABLE. Same series, same windows, but r2 of the big
     # lever declared VOID: it must vanish from the join and appear under its own verdict instead. Without
@@ -276,8 +327,8 @@ def selftest():
         print(f"  FAIL: {f}")
     if fails:
         return 1
-    print("  pmu_join selftest: 6/6 arms ok (clears the floor, is swallowed by it, empty and "
-          "baseline-less runs fail, UNAVAILABLE is not zero)")
+    print("  pmu_join selftest: 7/7 arms ok (clears the floor, is swallowed by it and by its own scatter, "
+          "empty and baseline-less runs fail, UNAVAILABLE is not zero)")
     return EXIT_OK
 
 
