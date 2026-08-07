@@ -571,6 +571,20 @@ run_leg() { # run_leg <label> <extra --set args...>
   fi
   [ -f "harness/profiles/$label.json" ] || { echo "lever-matrix: leg $label produced no profile" >&2; return 1; }
   command cp "harness/profiles/$label.json" "$OUT/$label.json"
+  # The per-interval series travels WITH its leg. render-profile.sh archives the window's snapshots to
+  # harness/profiles/<label>.snapshots/, but that path is overwritten by the next leg carrying the same
+  # label -- which is every repeat of every lever. Carrying it into $OUT is what makes the series
+  # addressable per leg after the run, on the same terms as the windowed JSON beside it.
+  #
+  # Absence is NOT fatal here, deliberately: a leg whose costs are quotable does not become unquotable
+  # because its raw series failed to copy, and render-profile.sh has already said so loudly if it did.
+  if [ -d "harness/profiles/$label.snapshots" ]; then
+    rm -rf "$OUT/$label.snapshots"
+    command cp -a "harness/profiles/$label.snapshots" "$OUT/$label.snapshots"
+  fi
+  [ -f "harness/profiles/$label.series.json" ] &&
+    command cp "harness/profiles/$label.series.json" "$OUT/$label.series.json"
+  return 0   # the two copies above are additive; neither absence makes a measured leg unmeasured
 }
 
 FAILED=(); VOID=(); OK=()
@@ -584,6 +598,8 @@ echo
 echo "############ warm-up (discarded) ############"
 if run_leg "$RUN_ID-warmup"; then
   rm -f "$OUT/$RUN_ID-warmup.json"
+  rm -rf "$OUT/$RUN_ID-warmup.snapshots"   # discarded means discarded; its series is not evidence either
+  rm -f  "$OUT/$RUN_ID-warmup.series.json"
   echo "  warm-up complete and DISCARDED -- it exists to absorb cold-start cost, not to be reported"
 else
   echo "lever-matrix: the warm-up leg failed. Refusing to start: if the harness cannot complete one" >&2

@@ -332,5 +332,47 @@ echo "  $n telemetry snapshots -> $SNAPDIR"
 [ "$n" -ge 2 ] || { echo "FAIL: need >=2 snapshots to window; got $n"; exit 1; }
 
 mkdir -p harness/profiles
+
+# ARCHIVE THE WHOLE WINDOW, NOT JUST ITS TWO ENDPOINTS.
+#
+# Two `rm` calls above are correct and stay: line ~148 clears a stale SNAPDIR before launch, because a
+# stale snapshot reads exactly like a fresh one, and the post-load purge drops the load phase so
+# --first/--last cannot select a window straddling it. But NOTHING ever copied the survivors out, so the
+# next leg's pre-launch wipe destroyed them. Verified against matrix-20260807-160513: of the ~15
+# snapshots inside the r1-baseline window, ZERO remain on disk -- only the final leg of a run ever
+# survived, and only until the next run started.
+#
+# What was thrown away is the series itself. The files are CUMULATIVE, so differencing CONSECUTIVE pairs
+# yields a per-interval reading for every declared metric -- including the histogram buckets, so p99 over
+# time -- while telemetry-window differences only files[lo] and files[hi]. Its own meta says so:
+# `"intervals": 15, "windowIndices": [1, 16]`. It counts fifteen and keeps two. This copy is the whole
+# difference between that and a plottable stream, and it costs ~1MB per leg.
+#
+# COPIED, NOT MOVED, and copied BEFORE the window runs: telemetry-window reads SNAPDIR, and a leg whose
+# archive step failed must still produce its profile. The archive is an addition to this script's output,
+# never a precondition of it.
+SNAPARCHIVE="harness/profiles/$LABEL.snapshots"
+rm -rf "$SNAPARCHIVE"; mkdir -p "$SNAPARCHIVE"
+# -p, so the mtimes survive the copy. telemetry-window now prefers each snapshot's own tEpochNs and only
+# falls back to mtime, but every snapshot captured before that field existed has nothing else -- and an
+# archive that silently restamped them to the moment of copying would put a whole leg at the wrong place
+# on the axis, uniformly, which is the hardest kind of wrong to notice.
+command cp -p "$SNAPDIR"/*.json "$SNAPARCHIVE"/ 2>/dev/null || true
+a=$(ls "$SNAPARCHIVE"/*.json 2>/dev/null | wc -l)
+if [ "$a" -eq "$n" ]; then
+  echo "  $a snapshots archived -> $SNAPARCHIVE/"
+else
+  # Loud rather than silent. An archive short of the window it claims to hold would produce a series with
+  # a hole in it, and a hole in a cumulative series does not look like a hole -- it looks like one long
+  # interval that did more work.
+  echo "  WARNING: archived $a of $n snapshots to $SNAPARCHIVE/ -- the series for this leg is INCOMPLETE"
+fi
+
+# BOTH ARTEFACTS, from ONE traversal of one directory. --json is the verdict about the chosen window;
+# --series is every interval under it, individually stamped. Emitting the series here rather than leaving
+# it to be re-derived later is what makes it directly plottable, which is the whole ask -- and the raw
+# snapshots are archived above regardless, so the series stays RE-DERIVABLE rather than becoming the only
+# copy of anything.
 scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL" \
-  --json "harness/profiles/$LABEL.json"
+  --json "harness/profiles/$LABEL.json" \
+  --series "harness/profiles/$LABEL.series.json"

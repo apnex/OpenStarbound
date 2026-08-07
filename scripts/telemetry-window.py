@@ -181,6 +181,76 @@ def window(a, b, zeroed=None):
     return out
 
 
+def stamp_of(snap, mtime):
+    """(epoch seconds, source) for one snapshot, preferring the stamp the engine wrote.
+
+    THE FILE'S OWN STAMP BEATS ITS mtime, and the difference is not academic. Until schema 4 carried
+    `tEpochNs` the only time a snapshot had was its mtime -- a property of the FILESYSTEM, not of the
+    measurement: copy the file and the number changes. This consumer is now pointed at an ARCHIVE that
+    render-profile.sh copies per leg, so mtime-as-truth would have started lying the moment the series
+    became retainable. mtime stays as the fallback because every snapshot written before that field
+    existed has nothing else.
+
+    The SOURCE travels with the value, because a stamp that silently changed provenance between two legs
+    is exactly the shape this file keeps paying for: a number that reads the same and means something else.
+    """
+    ns = snap.get("meta", {}).get("tEpochNs")
+    if isinstance(ns, (int, float)) and ns > 0:
+        return round(ns / 1e9, 3), "meta"
+    if mtime is not None:
+        return round(mtime, 3), "mtime"
+    return None, "absent"
+
+
+def series(snaps, stamps):
+    """Per-interval deltas over CONSECUTIVE snapshot pairs -- the stream this consumer used to discard.
+
+    Snapshots are cumulative, so differencing neighbours yields a reading for every declared metric over
+    every interval, histogram buckets included, which is p99 over time. main() differences exactly
+    files[lo] against files[hi] and drops everything between; its own output has said so all along --
+    `"intervals": 15, "windowIndices": [1, 16]` counts fifteen and keeps two.
+
+    REUSES window() rather than reimplementing the delta, so the gauge-is-a-level rule, the
+    firstSeenInWindow flag and the descriptor forwarding are the SAME code the headline number uses. A
+    series computed by a second, similar-looking differencer is two things that must be kept in step, and
+    they would diverge at the first schema field only one of them learned about.
+
+    EVERY interval is emitted, including the two main() trims. Trimming is a choice about which single
+    window to QUOTE -- the first sits closest to load, the last may be cut short by the kill -- and a
+    consumer holding individually stamped intervals can make that choice for itself. Dropping them here
+    would be this function deciding what a plot is allowed to show.
+    """
+    out = []
+    for i in range(len(snaps) - 1):
+        a, b = snaps[i], snaps[i + 1]
+        na = a.get("meta", {}).get("tMonotonicNs")
+        nb = b.get("meta", {}).get("tMonotonicNs")
+        # DURATION FROM THE MONOTONIC PAIR WHEREVER BOTH ENDS HAVE ONE. Epoch is the join axis; monotonic
+        # is the ruler. An NTP step moves the epoch stamps without moving any work, and at one snapshot
+        # every ~5s such a step lands INSIDE an interval rather than harmlessly between runs. Falling back
+        # to epoch beats refusing to measure, but the fallback is NAMED in the output, so a rate computed
+        # against a stepped clock is identifiable rather than merely wrong.
+        if isinstance(na, (int, float)) and isinstance(nb, (int, float)) and nb > na:
+            duration, dur_src = (nb - na) / 1e9, "monotonic"
+        elif (stamps[i][0] is not None and stamps[i + 1][0] is not None
+              and stamps[i + 1][0] > stamps[i][0]):
+            duration, dur_src = round(stamps[i + 1][0] - stamps[i][0], 3), stamps[i][1]
+        else:
+            duration, dur_src = None, "absent"
+        z = []
+        out.append({
+            "index": i,
+            "tStartEpoch": stamps[i][0],
+            "tEndEpoch": stamps[i + 1][0],
+            "stampSource": stamps[i + 1][1],
+            "durationS": duration,
+            "durationSource": dur_src,
+            "metrics": window(a, b, z),
+            "zeroed": sorted(z),
+        })
+    return out
+
+
 def tick_count(m):
     """A metric's windowed tick count, regardless of whether it is a timer or a counter.
 
@@ -350,13 +420,46 @@ def selftest():
     line_p, viol_p = no_whole_report("frame", "cpu", "cpu.frame.total.us", 5000, 100)
     arm("a missing total WITH parts is still a violation", viol_p is not None and "NO WHOLE" in viol_p)
 
+    # 14-16. THE STAMP'S PROVENANCE. The failure this guards is not a crash -- it is a stamp that keeps
+    #        working while quietly changing what it means, which is what mtime does the moment a snapshot
+    #        is copied. Each source is asserted BY NAME, so a future edit that flips the precedence fails
+    #        here rather than in a plot nobody can reconcile six weeks later.
+    arm("an in-file tEpochNs wins over mtime",
+        stamp_of({"meta": {"tEpochNs": 1_700_000_000_000_000_000}}, 999.0) == (1.7e9, "meta"))
+    arm("...mtime is used, and NAMED, when the snapshot predates the field",
+        stamp_of({"meta": {"schema": 4}}, 1234.5678) == (1234.568, "mtime"))
+    arm("...and absence is a third answer, never a zero",
+        stamp_of({}, None) == (None, "absent"))
+
+    # 17-20. THE SERIES. Two snapshots -> one interval; three -> two. The arithmetic arm matters most:
+    #        a cumulative counter differenced per interval must yield the PER-INTERVAL amount, and the
+    #        way to get this wrong is to emit the cumulative value, which looks entirely plausible
+    #        (monotonically rising, right units) and is the metric's whole life at every point.
+    def _snap(mono, val):
+        return {"meta": {"schema": SCHEMA, "tMonotonicNs": mono, "tEpochNs": mono},
+                "metrics": {"k": {"type": "counter", "owner": "frame", "domain": "cpu", "value": val}}}
+    s3 = series([_snap(0, 10), _snap(2_000_000_000, 30), _snap(5_000_000_000, 90)],
+                [(0.0, "meta"), (2.0, "meta"), (5.0, "meta")])
+    arm("three snapshots yield two intervals", len(s3) == 2)
+    arm("each interval carries the DELTA, not the cumulative value",
+        [iv["metrics"]["k"]["value"] for iv in s3] == [20, 60])
+    arm("duration comes from the monotonic pair and is named as such",
+        [(iv["durationS"], iv["durationSource"]) for iv in s3] == [(2.0, "monotonic"), (3.0, "monotonic")])
+    # The fallback has to be exercised, not merely written: a branch that has never run is a branch
+    # nobody has checked, and this one only fires on snapshots older than the field it prefers.
+    s_fb = series([{"meta": {}, "metrics": {}}, {"meta": {}, "metrics": {}}],
+                  [(100.0, "mtime"), (104.5, "mtime")])
+    arm("with no monotonic pair it falls back to epoch and says so",
+        s_fb[0]["durationS"] == 4.5 and s_fb[0]["durationSource"] == "mtime")
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
         return 1
-    print("telemetry-window selftest: 13/13 arms ok -- the bound fires, does not over-fire, its blind "
-          "spot is asserted, the rank case is distinguished from a broken budget, and a timer that "
-          "recorded nothing is reported rather than silently dropped")
+    print("telemetry-window selftest: 20/20 arms ok -- the bound fires, does not over-fire, its blind "
+          "spot is asserted, the rank case is distinguished from a broken budget, a timer that recorded "
+          "nothing is reported rather than silently dropped, every stamp names its own source, and the "
+          "series carries per-interval deltas rather than cumulative values")
     return 0
 
 
@@ -373,6 +476,12 @@ def main():
     # window nobody chose.
     ap.add_argument("--intervals", type=int, default=1,
                     help="how many snapshot intervals the window spans (default 1)")
+    # SEPARATE FLAG, NOT A SIDE EFFECT OF --json. The windowed number is a VERDICT about one chosen
+    # interval span and the series is the RAW STREAM under it; folding the second into the first would put
+    # ~15x the data behind a name that promises one window, and every existing consumer of --json reads
+    # that name.
+    ap.add_argument("--series", default=None,
+                    help="write the per-interval series (every consecutive pair) as JSON to this path")
     args = ap.parse_args()
 
     files = sorted(f for f in os.listdir(args.snapdir) if f.endswith(".json"))
@@ -412,15 +521,21 @@ def main():
     # that is wider than the window by the snapshots --intervals trims, and aligning against the wider
     # bracket silently mixes in the legs' ragged edges. These two files ARE the window; nothing else is.
     #
-    # Stat them now, while they exist. render-profile.sh purges the snapshot directory at the start of the
-    # NEXT leg, so a consumer trying to recover these mtimes after a matrix run finds one leg's files at
-    # most -- measured 2026-08-07, 1 of 27 resolvable. Absent rather than wrong if the stat fails.
+    # PREFER THE STAMP THE ENGINE WROTE; mtime is now the FALLBACK, not the source. schema 4 carries
+    # `tEpochNs` in every snapshot's meta, which survives being copied -- and the snapshots are copied now,
+    # per leg, into an archive. An mtime does not survive that, so a rule that was merely fragile would
+    # have become wrong the moment the series was retained. stamp_of() reports which it used.
+    #
+    # The reason this was ever a stat: render-profile.sh purges the snapshot directory at the start of the
+    # NEXT leg, so a consumer trying to recover mtimes after a matrix run found one leg's files at most --
+    # measured 2026-08-07, 1 of 27 resolvable. That purge still happens; the archive is what changed.
     def _mtime(name):
         try:
-            return round(os.path.getmtime(os.path.join(args.snapdir, name)), 3)
+            return os.path.getmtime(os.path.join(args.snapdir, name))
         except OSError:
             return None
-    window_start, window_end = _mtime(files[lo]), _mtime(files[hi])
+    (window_start, ws_src) = stamp_of(a, _mtime(files[lo]))
+    (window_end, we_src) = stamp_of(b, _mtime(files[hi]))
 
     schema = b.get("meta", {}).get("schema", 0)
     if schema != SCHEMA:
@@ -649,10 +764,29 @@ def main():
         with open(args.json, "w") as f:
             json.dump({"label": args.label, "window": [files[lo], files[hi]],
                        "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi],
-                                    windowStartEpoch=window_start, windowEndEpoch=window_end),
+                                    windowStartEpoch=window_start, windowEndEpoch=window_end,
+                                    windowStampSource=[ws_src, we_src]),
                        "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")
+
+    if args.series:
+        # Loads every file, not just the two endpoints. ~15 files at ~70KB is nothing next to what the
+        # capture already cost, and reading them here means the series and the headline window come from
+        # ONE traversal of one directory rather than from two tools that could be pointed at different ones.
+        snaps = [load(os.path.join(args.snapdir, f)) for f in files]
+        stamps = [stamp_of(s, _mtime(f)) for s, f in zip(snaps, files)]
+        ivals = series(snaps, stamps)
+        with open(args.series, "w") as f:
+            json.dump({"label": args.label, "schema": SCHEMA, "files": files,
+                       # WHICH INTERVALS THE HEADLINE NUMBER USED, carried alongside rather than applied.
+                       # The series is every interval; this says which of them --json quoted, so the two
+                       # artefacts can be checked against each other instead of merely coexisting.
+                       "quotedWindowIndices": [lo, hi],
+                       "intervals": ivals}, f, indent=2)
+        named = sum(1 for iv in ivals if iv["durationSource"] == "monotonic")
+        print(f"  wrote {args.series} -- {len(ivals)} interval(s), "
+              f"{named} timed by the monotonic pair, {len(ivals) - named} by fallback")
 
     return 3 if violations else 0
 

@@ -191,6 +191,46 @@ TEST(Telemetry, ReporterWritesSnapshotJsonFile) {
   File::removeDirectoryRecursive(dir);
 }
 
+TEST(Telemetry, SnapshotIsStampedOnBothClocks) {
+  // WITHOUT THESE TWO FIELDS A RUN OF SNAPSHOTS IS A PILE OF FILES, NOT A SERIES. The only time a
+  // snapshot used to carry was its FILENAME, which is a property of the filesystem: copy or archive the
+  // file -- which the harness now does, per leg -- and its position on the axis is gone.
+  //
+  // Both are asserted, because they do different jobs and either alone silently loses one. Monotonic is
+  // the ruler (immune to NTP steps, so it is what an interval is measured with); epoch is the join axis
+  // (survives a reboot, and is the base the out-of-process samplers publish). scripts/telemetry-window.py
+  // prefers tEpochNs over mtime and reads tMonotonicNs for every interval's duration, so a regression here
+  // would not crash it -- it would quietly fall back to mtime and keep producing numbers.
+  // EXPLICIT, DISTINCT stamps for the two writes. The filename is telemetry-<monotonicMillis>.json, so two
+  // snapshots taken inside one millisecond RESOLVE TO THE SAME PATH and the second silently overwrites the
+  // first -- which this test hit on its first run. Harmless at the ~5s report interval and not this task's
+  // to fix, but it is a real collision on any faster path, so the test does not depend on the clock ticking
+  // between two adjacent calls. The stamps below only NAME the files; both snapshots are stamped from the
+  // real clocks regardless, which is the property under test.
+  telemetrySetUp();
+  String dir = File::temporaryDirectory();
+  String path = TelemetryReporter::writeSnapshot(dir, {}, 1);
+  Json meta = Json::parse(File::readFileString(path)).getObject("meta");
+
+  // Bounded below by a date already in the past when this was written, so the arm fails on a zero, an
+  // absent field or a value in the wrong unit -- not merely on a missing key. A stamp of 0 is the
+  // failure mode that would otherwise read as "January 1970" and plot as a single point at the origin.
+  ASSERT_TRUE(meta.contains("tEpochNs"));
+  EXPECT_GT(meta.getInt("tEpochNs"), 1700000000000000000LL);   // 2023-11-14, nanoseconds
+  ASSERT_TRUE(meta.contains("tMonotonicNs"));
+  EXPECT_GT(meta.getInt("tMonotonicNs"), 0);
+
+  // AND THE CALLER CANNOT SHADOW THEM. They are stamped after the caller's meta merges, precisely so a
+  // joiner can trust them; without this arm that ordering is a comment rather than a property.
+  String path2 = TelemetryReporter::writeSnapshot(dir, JsonObject{{"tEpochNs", Json(1)}}, 2);
+  Json meta2 = Json::parse(File::readFileString(path2)).getObject("meta");
+  EXPECT_GT(meta2.getInt("tEpochNs"), 1700000000000000000LL);
+
+  File::remove(path);
+  File::remove(path2);
+  File::removeDirectoryRecursive(dir);
+}
+
 TEST(Telemetry, DeclareAttachesDescriptorAndIsIdempotent) {
   telemetrySetUp();
   MetricDesc d{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
