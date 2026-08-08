@@ -46,15 +46,11 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 1 | 6 | `#253` | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | ready |
 | 2 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | blocked by #253 |
 | 3 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #253, #254 |
-| 4 | 9 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 5 | 9 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
-| 6 | 10 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
-| 7 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 8 | 11 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-
-> **Ranking integrity:** rank 9 is claimed by 2 tasks: #245, #252
-
-> **Ranking integrity:** rank 10 is claimed by 2 tasks: #250, #251
+| 4 | 9 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
+| 5 | 10 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
+| 6 | 11 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 7 | 12 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 8 | 13 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
 > **1 completed task(s) still carry a rank** (#235). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -4910,7 +4906,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 11}`
+status: **pending** · metadata: `{"rank": 13}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5281,7 +5277,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 9}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 11}`
 
 ```
 RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5583,7 +5579,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 10}`
+status: **pending** · metadata: `{"rank": 12}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
