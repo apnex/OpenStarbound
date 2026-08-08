@@ -222,6 +222,28 @@ jobs:
       - name: pmu_join_fires -- deltas inside the resolution floor are refused, not quoted
         run: python3 scripts/pmu-join.py --selftest
 
+      # The SOVEREIGN half of the same job -- per-owner CPU and per-client GPU, which the PMU cannot
+      # see. Both selftests are synthetic (a fake /proc, a fake reader, no GPU and no client), which is
+      # what makes them registrable here rather than only runnable beside a game.
+      #
+      # The sampler's rules decide whether a leg was measured AT ALL: two matching processes REFUSE
+      # rather than guess (a plausible series about the wrong process is worse than none), an absent
+      # target writes an UNAVAILABLE ROW rather than falling silent (silence cannot be told apart from
+      # a dead sampler), and respawn is FLOORED -- an instantly-exiting reader was relaunched 500 times
+      # in 0.3 seconds before that floor existed, and a sampler burning a core is not the passive
+      # observer the whole design rests on.
+      - name: metrics_sample_fires -- ambiguity refuses, an absent target is a row, respawn is floored
+        run: python3 scripts/metrics-sample.py --selftest
+
+      # The join's rules decide whether the number MEANS anything. Cumulative counters are
+      # RE-DIFFERENCED rather than averaged (a rate cannot be re-windowed); the denominator is the span
+      # actually COVERED, not the nominal interval, which is otherwise a silent under-report worst at
+      # the edges; a pid change or a falling counter is discarded AND reported; one sample is not a
+      # measurement; and the attribution residual keeps its SIGN, which is the only evidence available
+      # that it is per-thread tick quantisation rather than a leak.
+      - name: obs_join_fires -- counters re-differenced, denominator covered, residual signed
+        run: python3 scripts/obs-join.py --selftest
+
       # A telemetry handle registered on a path that is not always taken makes the key ABSENT rather
       # than ZERO, and a consumer differencing two snapshots cannot tell that from "ran and found
       # nothing". NINE instances of that one pattern were found in two days (R07-R11, R13, R14, then

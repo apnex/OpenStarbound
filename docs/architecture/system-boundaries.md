@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      240359 lines
+      240586 lines
       6 tiers
     Content
       assets/
@@ -187,9 +187,9 @@ mindmap
       13 declared binaries
     Instruments
       scripts/ + tests
-      45 scripts
+      47 scripts
       23 ctest gates
-      55 CI gates
+      57 CI gates
     Governance
       docs/
       47 markdown documents
@@ -221,7 +221,7 @@ source/
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,468 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2    11 files     1,196 lines
+├── metrics/         T2    11 files     1,423 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,672 lines
 │   └── discord/         vendored — excluded from every count here
@@ -281,7 +281,7 @@ flowchart TD
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,468 lines · Root×0</small>"]
-    metrics["metrics<br/><small>11 files · 1,196 lines · Root×0</small>"]
+    metrics["metrics<br/><small>11 files · 1,423 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,672 lines · Root×0</small>"]
   end
@@ -599,7 +599,7 @@ treemap-beta
     "T2 services"
         "application": 7672
         "base": 7468
-        "metrics": 1196
+        "metrics": 1423
         "platform": 142
     "T3 simulation"
         "game": 115658
@@ -616,10 +616,10 @@ treemap-beta
 
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
-| T0 vendored | `extern` | 15 | 17,193 | 7.2% |
-| T1 language | `core` | 217 | 56,409 | 23.5% |
+| T0 vendored | `extern` | 15 | 17,193 | 7.1% |
+| T1 language | `core` | 217 | 56,409 | 23.4% |
 | T2 services | `base` | 32 | 7,468 | 3.1% |
-| T2 services | `metrics` | 11 | 1,196 | 0.5% |
+| T2 services | `metrics` | 11 | 1,423 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,672 | 3.2% |
 | T3 simulation | `game` | 500 | 115,658 | 48.1% |
@@ -674,7 +674,7 @@ xychart-beta
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
 | `core` | 155 | 474 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
-| `metrics` | 7 | 9 | 1 | 14% | 1 | yes, freely |
+| `metrics` | 7 | 10 | 1 | 14% | 1 | yes, freely |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |
