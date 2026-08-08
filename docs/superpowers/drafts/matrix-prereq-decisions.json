@@ -178,6 +178,11 @@
   "status": "done",
   "commit": "[#241] all 13 pass keys registered eagerly by name; gpu_pass_keys asserts begun == registered in both directions; telemetry-window --json now carries `zeroed`, without which the leg files were unchanged"
  },
+ "C07": {
+  "status": "done",
+  "commit": "[#235] eec79ca1 -- cpu.frame.work.us is the owner-frame whole, measured at the top of the pacing sleep; total.us stays the DENOMINATOR (one iteration is one frame) and becomes Detail; idle becomes Detail because it is the COMPLEMENT of work, not one of its parts",
+  "note": "VERIFIED ON A REAL LEG, not only by construction. The closure now reads 4912.3 of 4914.3 us/tick (100.0%, unattributed 1.9) against cpu.frame.work.us, where it previously closed against a 16,212us pacing period holding 11,298us of sleep -- the parts summed to the whole no matter what any part did. The same leg shows why: render.frame.gpu_span_us reads 16,211.6 us/tick against cpu.frame.total.us at 16,212.3, so the 'GPU frame span' was the frame PERIOD to within 0.7us. Zero violations."
+ },
  "R15": {
   "status": "done",
   "commit": "[#247] all 13 .nested rejection counters registered eagerly, paired with their timers; begin() resolves the handle ONCE per key instead of rebuilding `name + \".nested\"` per pass per frame; gpu_pass_keys derives the .nested expectation from the begun key, both directions"
