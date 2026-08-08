@@ -79,8 +79,15 @@ CARVED_OUT = {"application": {
                     "StarUserGeneratedContentService_pc_steam.hpp",
                     "StarUserGeneratedContentService_pc_steam.cpp"},
 },
-              "core": {"telemetry": {"StarTelemetry.hpp", "StarTelemetry.cpp",
-                                     "StarTelemetryReporter.hpp", "StarTelemetryReporter.cpp"}}}
+              "core": {"telemetry": {"StarTelemetry.hpp", "StarTelemetry.cpp"}}}
+
+# `StarTelemetryReporter.{hpp,cpp}` ARE DELIBERATELY ABSENT FROM THE CARVE-OUT ABOVE, and this comment
+# is the whole reason. They were assigned to `telemetry` when the second key was added, in the SAME
+# commit that removed `TelemetryReporter` from that component's contents cell -- so the register said
+# "not here" while this file said "here, and there are four of them", both machine-read, both green.
+# The Reporter is PROJECTION, not the handle: it turns a snapshot into a run artifact, which is a
+# second duty and therefore a second component under the Law of One. Until that component is declared
+# these two files map to `core`, which is honest about where they sit and dishonest about nothing.
 
 # Directories with no residue: every file they do not hand to a named component leaves the design.
 DISSOLVES = ("application",)
@@ -115,7 +122,7 @@ NOT_YET_BUILT = ("scene", "presentation", "transcript", "host_null", "gpu_sdl",
 
 # The register's own file counts, cross-checked against FROM_APPLICATION.
 REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10,
-                   "telemetry": 4}
+                   "telemetry": 2}
 
 # ---------------------------------------------------------------------------------------------
 # EDGES THE DESIGN EXISTS TO DELETE. These are not missing grants -- granting them would declare the
