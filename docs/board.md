@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**189 tasks** across 2 store(s): 3 in_progress, 31 pending, 155 completed
+**192 tasks** across 2 store(s): 3 in_progress, 34 pending, 155 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 188 tasks, ids 64–252
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 191 tasks, ids 64–255
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,11 +43,18 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 2 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 3 | 9 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 4 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 5 | 11 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 6 | `#253` | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | ready |
+| 2 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | blocked by #253 |
+| 3 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #253, #254 |
+| 4 | 9 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 5 | 9 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
+| 6 | 10 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
+| 7 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 8 | 11 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+
+> **Ranking integrity:** rank 9 is claimed by 2 tasks: #245, #252
+
+> **Ranking integrity:** rank 10 is claimed by 2 tasks: #250, #251
 
 > **1 completed task(s) still carry a rank** (#235). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -244,7 +251,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
-| [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
+| [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | `board.md` |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
 | [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | `b18797e4` `b1e66be4` | — |
@@ -289,6 +296,9 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
+| [#253](#c29c1332-253) | `c29c1332` | open | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | — | — |
+| [#254](#c29c1332-254) | `c29c1332` | open | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | — | — |
+| [#255](#c29c1332-255) | `c29c1332` | open | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3784,6 +3794,8 @@ REMAINING under #207: `celestial`'s vocabulary/lookup split (blocked on dividing
 
 status: **pending** · blocked by: #207
 
+- cited in `docs/board.md`
+
 ```
 Blocked by #207.
 
@@ -5492,7 +5504,7 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235 · metadata: `{"rank": 8}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 10}`
 
 ```
 DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any performance impact later, but let's not restrict our design because of it." And: "as much of our sovereign observability and metrics system is in fact sovereign, under the metrics/ directory."
@@ -5622,7 +5634,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235 · metadata: `{"rank": 7}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 9}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -5709,6 +5721,125 @@ deletes them, and #235 is about to fill that directory deliberately. Retention b
 owns cadence, which after this move is metrics/.
 
 CROSS-REF: #250 (GM-3 transport), #235, #245 (the factories), #204/#208 (TSSA boundary), #200.
+```
+
+<a id="c29c1332-253"></a>
+
+#### #253 — OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg
+
+status: **pending** · blocks: #254, #255, #250 · metadata: `{"rank": 6}`
+
+```
+THE NORTH STAR'S CENTRAL CLAIM, AND IT DOES NOT EXIST YET. Director, 2026-08-07: "both GPU and CPU
+metrics, correctly attributed, as a stream of time series data that can be directly plotted and
+compared against every single lever."
+
+After [#235] we have both halves and they are separate artefacts:
+  * IN-PROCESS  per-leg per-interval series, 143 keys, stamped tMonotonicNs + tEpochNs   (retained)
+  * SOVEREIGN   GPU engine busy via the i915 PMU, joined to legs by window stamp         (pmu-join.py)
+  * SOVEREIGN   CPU busy per OWNER, and per-client GPU busy via fdinfo                   (NO CONSUMER)
+
+The third line is the gap. ThreadBusyReader and ClientBusyReader are reachable only by pointing
+`dist/metrics --pid N` at a running process BY HAND. lever-matrix.sh samples the PMU and nothing else,
+so a matrix run today would produce three of the four cells of the busy model and leave the CPU
+attribution -- the half #235 was built for -- empty.
+
+SCOPE
+ 1. A continuous out-of-process sampler for the sovereign readers, alongside the PMU one. Same shape
+    as scripts/pmu-engine-sample.py: started per run with an EXIT trap, discovers the client pid,
+    appends TSV on the epoch clock, writes UNAVAILABLE rather than 0.
+ 2. Join it per leg on the window stamps #248 built -- the same mechanism pmu-join.py already proves,
+    including its rules: exclude VOID legs, never interpolate a rate, re-difference raw counters.
+ 3. ONE joined artefact per leg: in-process intervals and both sovereign readers on a single epoch
+    axis. This has never been assembled once, and assembling it is what tells us what #250's interface
+    must actually carry. Designing the interface first would fit the diagram rather than the data.
+
+SEQUENCING, STATED SO IT IS A CHOICE. This lands in the harness scripts, which adds to the 1,932 lines
+of consumer Python that no component owns -- the thing [#252] exists to end. Deliberate: prove the join
+works end to end, then re-home it. The alternative is an API designed for a join nobody has performed.
+
+ALSO: the TSSA component register (docs/superpowers/specs/2026-08-01-target-state-system-architecture.md,
+the `metrics` row) names ClientBusyReader and EngineBusyReader and not ThreadBusyReader or ProcFs. One
+reader out of date as of [#235]. The register belongs to task #208; noted here because this is the task
+that makes the missing reader load-bearing.
+```
+
+<a id="c29c1332-254"></a>
+
+#### #254 — OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders
+
+status: **pending** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 7}`
+
+```
+The series JSON exists after [#235]; nothing draws it. "Directly plotted" was in the Director's
+statement of the goal and is the clause that makes the rest legible -- a per-interval stream nobody
+looks at is a file, not an instrument.
+
+THE DESIGN IS ALREADY SETTLED, from the exchange on 2026-08-07:
+  * SHARED X AXIS = the instant. Both series are cumulative counters differenced onto a common grid,
+    which is the join, not the arithmetic.
+  * SHARED Y AXIS IS FINE for CPU and GPU together: both are dimensionless utilisation ratios. The
+    denominator objection only ever applied to SUMMING them.
+  * THE CPU DENOMINATOR IS ONE CORE, per owner -- because GPU engine busy is also "one engine", so
+    both curves answer the same question about different hardware. Normalising to all 16 cores is
+    technically correct system utilisation and squashes every pattern against the floor.
+  * RESAMPLE BY RE-DIFFERENCING RAW CUMULATIVE COUNTERS, never by interpolating a rate. Interpolating
+    invents work the hardware never did -- the rule busyDelta already encodes for backwards counters.
+  * MetricBoundedness decides whether a point may exist at all: a level and a rate are the same line,
+    and differencing a HighWaterMark yields a smooth, plausible, meaningless series.
+  * The two sources may keep their NATIVE rates -- in-process ~4.85s, sovereign as fast as we like --
+    plotted on one axis rather than the fast one downsampled to the slow. The out-of-process reader can
+    sample fast precisely because it does not perturb, which is the module boundary paying for itself.
+
+WHAT IT SHOULD MAKE VISIBLE, from the one leg measured so far: 61.7 fps pinned while CPU work swings
+2.04x within a single leg (3,744 -> 7,646 us/frame) and neither resource is saturated. That is the
+regime finding the campaign has been inferring from three separately-measured numbers in three
+documents; on one axis it stops needing to be argued.
+
+Published as an artefact so the Director can read it without reading a log. BLOCKED BY the join: a plot
+of half the model would be the most convincing wrong picture available.
+```
+
+<a id="c29c1332-255"></a>
+
+#### #255 — MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever
+
+status: **pending** · blocked by: #253, #254 · blocks: #252 · metadata: `{"rank": 8}`
+
+```
+NOT A LEVER HUNT. Director, 2026-08-07: "does our new sovereign observability system give us
+measurement and insights into the wall, busy, work of CPU and GPU and with attribution that we've
+never previously had?" This run answers that question; any lever finding is a by-product, and the
+Director has ruled that no new render/engine optimisation is chased off the back of it yet.
+
+WHY A MATRIX AND NOT ANOTHER SINGLE LEG. Everything built in [#235] has been validated against ONE
+leg. Every defect this campaign has found surfaced the moment something ran at scale -- the
+mis-aligned PMU across 27 legs, the 4x fdinfo error, the 504-tick thread-sum gap. 28 legs across
+warps, load phases and lever toggles is a far harder test of the series retention, the stamps, the
+join and the CPU attribution than anything constructible by hand.
+
+WHAT IT PRODUCES THAT HAS NEVER EXISTED
+  * per-lever CPU WORK, against a whole that can now shrink -- impossible before C07, because the
+    denominator was a pacing period holding 11,298us of sleep and the sleep was one of its parts
+  * per-lever CPU BUSY per owner, from outside the process
+  * per-lever GPU busy (re-confirms the existing table through the same instrument)
+  * a per-interval series per leg, on one axis with the above
+  * the first real test of cpu.unattributed.busy_ns, which has only ever read 0.0 -- every leg crosses
+    a load phase, and load is exactly when threads exit and take their cost out of the live sum
+
+BLOCKED BY #253 and #254. Running before the join gives three cells of four and a 47-minute re-run;
+running before the plot gives numbers nobody can read against each other.
+
+RUN IT BEFORE THE REFACTOR, NOT AFTER. #252 and #250 move and re-home this machinery. A completed
+matrix is the regression baseline those changes get compared against -- the same discipline as every
+byte-identical extraction on this fork. Refactoring first means having nothing to compare to.
+
+EXPECTATION, SET DELIBERATELY: the most likely headline is that no lever moves CPU meaningfully at
+these scenes either, given the frame is pinned at 61.7 fps with ~30% CPU and ~24% GPU utilised. A
+MEASURED null on CPU levers is a result this campaign has never been able to produce, and it is what
+would justify moving the target rather than the levers.
+
+Cost: ~47 minutes unattended for one scene at 3 repeats, per matrix-20260807-160513.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
