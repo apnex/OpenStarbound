@@ -97,6 +97,13 @@ ALLOWED = {
     # do: registering `round_trip_ceiling` in the workflow made the document red, because the second
     # declaration of the same fact had not been updated. One writer. What stays here is what
     # gates.yml does NOT know about.
+    # AXIOM DOMAIN-OF-VALIDITY TAGS. Not components and never will be: an axiom binds a system whose
+    # architecture satisfies its tags, so these are the names of the CONDITIONS, not of anything the
+    # register holds. They lived only inside the axiom table's tag column until D14 argued the two
+    # conditional axioms into force in prose, which is the first time the checker could see them.
+    "stateful": "axiom domain-of-validity tag (A1), not a component",
+    "declarative": "axiom domain-of-validity tag (A2), not a component",
+    "any-system": "axiom domain-of-validity tag (the unconditional set), not a component",
     "dedup_measure": "measurement, not a gate",
     "link_sweep": "MEASURES containment; deliberately not gated -- it reads a build tree",
     "render_surface_tests": "test", "core_tests": "test", "game_tests": "test",
@@ -849,6 +856,15 @@ def check_unverifiable(text, comp):
     return out
 
 
+def _absent_decision(text):
+    """-> a decision tag the document certainly does not define, derived from the ones it does.
+
+    The self-test needs a reference that DANGLES. Hard-coding one works until that decision is
+    ratified, which is how this drive went silent on the day D14 landed."""
+    used = [int(m) for m in re.findall(r'\| \*\*D(\d+)\*\*', text)]
+    return "D%d" % ((max(used) if used else 0) + 1)
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -1062,7 +1078,11 @@ SELFTEST = [
     ("STALE_ZONE",  "the dedicated server has no SEAM zone at all."),
     ("STALE_ZONE",  "`content` is a LIBRARY, SUBSTRATE."),
     ("UNKNOWN_NAME", "The `client` component owns the prediction clock."),
-    ("DANGLING_D",  "This follows directly from D14."),
+    # DERIVED, NOT PASTED -- this drive named D14 as its obviously-absent decision, and went SILENT
+    # the day D14 was ratified. Exactly the failure the MODAL_ZONE comment above describes, in a
+    # different verdict: a drive keyed on a literal stops testing the moment the literal becomes real.
+    # `_absent_decision()` reads the register and returns one past the highest, so it cannot collide.
+    ("DANGLING_D",  "This follows directly from {ABSENT_D}."),
     ("DANGLING_SECTION", "The rule is stated in full in Section 27."),
     ("UNREGISTERED_GATE", "The closure is gated by `composition_freshness` on every push."),
     ("MISSING_SCRIPT", "The figures come from `scripts/nonexistent-measure.py`."),
@@ -1085,6 +1105,9 @@ def selftest(text):
         return 1
     bad = 0
     for want, injection in SELFTEST:
+        # {ABSENT_D} is resolved HERE, against the document in hand, so the drive cannot go silent
+        # the day its literal becomes real -- which is exactly how it failed when D14 was ratified.
+        injection = injection.replace("{ABSENT_D}", _absent_decision(text))
         kinds = {k for k, _ in scan(text + "\n\n" + injection)}
         ok = want in kinds
         bad += not ok
