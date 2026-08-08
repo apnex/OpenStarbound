@@ -779,6 +779,19 @@ else
   echo "  !! no PMU series was written -- GPU busy went unmeasured for this run."
 fi
 
+# THE RUN'S OWN READING SURFACE, built here so it is never a separate step someone remembers to run.
+# Every leg already carries a joined artefact; this draws all of them onto one page so 28 legs can be
+# read against each other rather than opened one at a time.
+#
+# NON-FATAL, like every other addition to this script's output: a run whose legs are quotable does not
+# become unquotable because the renderer failed, and the joined JSON remains the evidence either way.
+if compgen -G "$OUT/*.joined.json" > /dev/null; then
+  echo
+  python3 scripts/obs-plot.py "$OUT" --out "$OUT/busy-model.html" || true
+else
+  echo "  !! no joined artefacts -- the busy model was not plotted for this run."
+fi
+
 if [ ${#OK[@]} -eq 0 ]; then
   echo "lever-matrix: NOTHING was measured -- 0 legs produced a usable result. This is a SKIP, not a pass."
   exit $EXIT_SKIP
