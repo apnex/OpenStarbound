@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**200 tasks** across 2 store(s): 2 in_progress, 37 pending, 161 completed
+**202 tasks** across 2 store(s): 2 in_progress, 34 pending, 166 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 199 tasks, ids 64–263
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 201 tasks, ids 64–265
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,22 +43,22 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 6 | `#257` | DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it | ready |
-| 2 | 7 | `#258` | GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away | ready |
-| 3 | 8 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | ready |
-| 4 | 9 | `#259` | OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it | ready |
-| 5 | 10 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #254, #259 |
-| 6 | 11 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
-| 7 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 8 | 13 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 9 | 14 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 10 | 15 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 11 | 16 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 17 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 13 | 18 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
-| 14 | 19 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
+| 1 | 10 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
+| 2 | 11 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
+| 3 | 12 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 4 | 13 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 5 | 14 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 6 | 15 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 7 | 16 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 8 | 17 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 9 | 18 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 19 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 11 | 20 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
 
-> **Ranking integrity:** #260 (rank 16) is blocked by #261 (rank 17) — a blocker ranked LATER than the thing it blocks
+> **Ranking integrity:** #260 (rank 17) is blocked by #261 (rank 18) — a blocker ranked LATER than the thing it blocks
+
+> **5 completed task(s) still carry a rank** (#254, #255, #257, #258, #259). A rank is a claim about
+> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
 
@@ -68,9 +68,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 204, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 210, of which **41 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 29.** The task harness has, on these, appended its
+**Descriptions normalised on export: 31.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -82,21 +82,22 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **3** — NOT YET INVESTIGATED
+- **4** — NOT YET INVESTIGATED
 
-**Unexplained ids: 3.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 4.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
 | [#199](#c29c1332-199) | `555c692b` |
 | [#207](#c29c1332-207) | `66b9715a` |
 | [#214](#c29c1332-214) | `471488eed310861f` |
+| [#254](#c29c1332-254) | `14904c73` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 161.
+**Completed tasks citing no commit and no doc:** 86 of 166.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -297,17 +298,19 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
-| [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
-| [#254](#c29c1332-254) | `c29c1332` | open | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | — | — |
-| [#255](#c29c1332-255) | `c29c1332` | open | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | — | — |
+| [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
+| [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
+| [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `a4fc43b3` | — |
 | [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | `94f44d59` | — |
-| [#257](#c29c1332-257) | `c29c1332` | open | DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it | — | — |
-| [#258](#c29c1332-258) | `c29c1332` | open | GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away | — | — |
-| [#259](#c29c1332-259) | `c29c1332` | open | OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it | — | — |
+| [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
+| [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
+| [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | open | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | — | — |
+| [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
+| [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -4921,7 +4924,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 15}`
+status: **pending** · metadata: `{"rank": 16}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5292,7 +5295,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 12}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 13}`
 
 ```
 Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5535,7 +5538,7 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 13}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 14}`
 
 - cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/board.md`
@@ -5631,7 +5634,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 14}`
+status: **pending** · metadata: `{"rank": 15}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
@@ -5682,7 +5685,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 11}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 12}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -5785,6 +5788,8 @@ CROSS-REF: #250 (GM-3 transport), #245 (the factories), #204/#208 (TSSA boundary
 
 status: **completed** · blocks: #254, #255, #250
 
+- `a4fc43b3` MATRIX-CPU: the acceptance test ran, and the CPU half answered [#255]
+- `5fcc401c` OBS-PMU-WIRE: the joiner had a PMU column and nothing ever filled it [#259]
 - `57d00526` OBS-JOIN: register both selftests as gates, and refresh the arch graph [#253]
 - `be2ceeee` FOLD: the attribution residual was clamped, so it could never show it was noise [#253]
 - `f5029bf3` OBS-JOIN: the harness runs the sovereign sampler per leg and joins before the leg is over [#253]
@@ -5862,9 +5867,12 @@ measured denominator, T12 signed residual).
 
 <a id="c29c1332-254"></a>
 
-#### #254 — OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders
+#### #254 — OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792)
 
-status: **pending** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 8}`
+status: **completed** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 8}`
+
+- `991b7940` OBS-PLOT: the matrix draws its own busy model at the end, so 28 legs read against each other [#254]
+- `46a4c792` OBS-PLOT: the last clause of the north star — CPU and GPU on one axis, and a plot that cannot lie [#254]
 
 ```
 UNBLOCKED 2026-08-08: [#253] closed and produced exactly the input this was waiting for. The JOINED
@@ -5919,9 +5927,11 @@ Published as an artefact so the Director can read it without reading a log.
 
 <a id="c29c1332-255"></a>
 
-#### #255 — MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever
+#### #255 — MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3)
 
-status: **pending** · blocked by: #253, #254, #259 · blocks: #252 · metadata: `{"rank": 10}`
+status: **completed** · blocked by: #253, #254, #259 · blocks: #252 · metadata: `{"rank": 10}`
+
+- `a4fc43b3` MATRIX-CPU: the acceptance test ran, and the CPU half answered [#255]
 
 ```
 NOT A LEVER HUNT. Director, 2026-08-07: "does our new sovereign observability system give us
@@ -6008,29 +6018,30 @@ T3/T4/T6 DONE. Three rows added to the observability requires/forbids table, eac
     written beside it because each was bought with a shipped defect: a metric must state its clock; a
     whole must shrink when its parts do; an attribution must state its granularity.
 
-GATE-BLINDNESS DONE, and it was the sharpest find. grant-sweep.py's PASSTHROUGH list omitted
-    `metrics`, so the ONE instrument connecting the grant table to the tree reported the component
-    UNVERIFIABLE while eight of its files sat in the tree. Second instance -- the paragraph three lines
-    above the list describes the first (`server`, 2026-08-01) and says why it matters: "a component the
-    instrument cannot see is indistinguishable from one that agrees with the table." Now measured, and
-    the grant row verifies clean: source/metrics/ includes core (11) and itself (6), nothing else. The
-    spec's own coverage ledger moved 12 -> 13 anchored rows and 39 -> 38 unbuilt components.
+GATE-BLINDNESS DONE, and it was the sharpest find of that pass. grant-sweep.py's PASSTHROUGH list
+    omitted `metrics`, so the ONE instrument connecting the grant table to the tree reported the
+    component UNVERIFIABLE while eight of its files sat in the tree. See T14 below: this is now known
+    to be one of FOUR instances of the same shape.
 
 === FROM [#253], THE JOIN -- THREE DELTAS, ALL OF THE THIRD KIND ===
 
-None of these are the tree violating a stated position, and none are the document lagging the tree.
-All three are things the campaign LEARNED that the document does not say, which is the kind nothing
-goes red for.
+None is the tree violating a stated position, and none is the document lagging the tree. All three are
+things the campaign LEARNED that the document does not say, which is the kind nothing goes red for.
 
 T10. A METRIC MUST STATE ITS METHOD, NOT ONLY ITS CLOCK. T3 bought "a metric that states which clock
     it takes". The join needed a SECOND declaration the vocabulary has nowhere for: how the number was
     DERIVED. The sovereign counters are re-differenced -- exact, and re-windowable over any interval a
     consumer later chooses. The PMU figure is a mean of sub-window rates and is neither. Same unit,
     same clock, same owner, same domain; one survives re-windowing and the other does not, and
-    MetricDesc cannot express the difference. obs-join.py carries a free-text `method` string per
-    source precisely because the vocabulary had no field for it.
+    MetricDesc cannot express the difference.
     PROPOSED ROW -- requires: "a metric that states how it was derived: a level, a difference, or a
     mean of differences". forbids: "two numbers sharing a unit that were made by different arithmetic".
+    NOW HALF-BUILT, AND WHERE IT IS BUILT IS THE POINT ([#254]). scripts/obs-plot.py prints the method
+    beside every series, because a reader who cannot tell the two apart will quote them alike. But the
+    renderer INFERS it from the key's shape (a `.pmu` suffix, a known in-process key name) rather than
+    reading it off the sample -- a second place that knows the vocabulary, which is exactly the
+    divergence this delta predicts. The field belongs on MetricDesc; until then the plot is guessing
+    correctly.
 
 T11. A RATE'S DENOMINATOR MUST BE MEASURED, NOT DECLARED. T4 bought "a whole that shrinks when its
     parts do" -- which governs the NUMERATOR's parts. Nothing governs the denominator, and the join
@@ -6039,24 +6050,57 @@ T11. A RATE'S DENOMINATOR MUST BE MEASURED, NOT DECLARED. T4 bought "a whole tha
     closes. Dividing busy time by the interval's DECLARED duration under-reports by exactly the
     uncovered fraction, silently, and worst at the edges where a lever's effect would show. Measured
     at Desert Town: 92.8% coverage at a 0.5s cadence, so the naive form would have read 7.2% low
-    across every leg. obs-join divides by `coveredS` and carries it beside `durationS` so the
-    shortfall is visible rather than absorbed.
+    across every leg. obs-join divides by `coveredS` and carries it beside `durationS`.
     PROPOSED ROW -- requires: "a rate whose denominator is the span actually measured". forbids: "a
     denominator taken from the interval that was requested".
 
-T12. A DISCREPANCY MUST KEEP ITS SIGN. A REFINEMENT of T4 rather than a new subject, and the sharpest
-    find of this pass. cpu.unattributed.busy_ns was the residual between a whole (process CPU busy)
-    and its parts (the per-owner sums), described as "threads that exited within the window", and
-    CLAMPED AT ZERO. It had never once read anything but 0.0, which the board had recorded as a
-    curiosity. Eleven live intervals gave the true residual as -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2
-    ticks: every value a whole 10ms clock tick, both signs present, and no thread having exited. It is
-    PER-THREAD TICK QUANTISATION -- the owner sum quantises once per thread, the aggregate once -- and
-    the clamp is what made that undiscoverable, because a clamped residual can only ever look like a
-    small steady leak. Fixed in be2ceeee: renamed cpu.attribution.residual_ns, unclamped, both terms
-    named in its description.
+T12. A DISCREPANCY MUST KEEP ITS SIGN. A REFINEMENT of T4 rather than a new subject.
+    cpu.unattributed.busy_ns was the residual between a whole (process CPU busy) and its parts (the
+    per-owner sums), described as "threads that exited within the window", and CLAMPED AT ZERO. It had
+    never once read anything but 0.0, which the board had recorded as a curiosity. Eleven live
+    intervals gave the true residual as -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2 ticks: every value a
+    whole 10ms clock tick, both signs present, and no thread having exited. It is PER-THREAD TICK
+    QUANTISATION -- the owner sum quantises once per thread, the aggregate once -- and the clamp is
+    what made that undiscoverable, because a clamped residual can only ever look like a small steady
+    leak. Fixed at be2ceeee: renamed cpu.attribution.residual_ns, unclamped, both terms named.
     PROPOSED ROW -- requires: "a whole's discrepancy from its parts reported WITH ITS SIGN". forbids:
     "a residual clamped so that noise can only read as a leak". Falsifiability of a whole is not only
     that it CAN shrink; it is that the gap can be seen to be noise.
+
+=== FROM [#257] AND [#258], THE GATE PASS -- TWO DELTAS ABOUT INSTRUMENTS THEMSELVES ===
+
+Neither came from observability work. Both came from fixing gates, and both are general statements
+about what an instrument must be able to do -- which is squarely the observability table's subject.
+
+T13. A RATCHET MUST COUNT A UNIT ONLY THE THING IT NAMES CAN MOVE. dedup_measure ratcheted the number
+    of SYMBOLS the client and presentation closures share. It read 614 against a 596 ceiling and was
+    RED -- and the growth was not coupling. Of the 50 shared symbols in the component that grew, 46
+    were template or inline instantiations the compiler happened to emit into one translation unit:
+    fmt::do_write_float, Star::strf<...>, Logger::logf<...>, shared_ptr destructors. Harness commits
+    had added LOG LINES, and each new argument-type combination instantiates a fresh specialisation
+    there. The ratchet moved 18 without one edge of new coupling.
+    THE SCRIPT'S OWN HEADER HAD SAID SO ALL ALONG -- per-component symbol counts are unreliable at
+    small counts, file-granularity ones are not -- and the ratchet gated on the unreliable one anyway.
+    It now counts FILES (73), which template churn cannot move.
+    PROPOSED ROW -- requires: "a ratchet whose unit only the thing it names can move". forbids: "a
+    threshold on a quantity that drifts with the compiler". THE DEEPER POINT, and why it belongs in the
+    table rather than in one script: a ratchet that moves for reasons the design does not care about
+    teaches its reader to RAISE THE CEILING, which is worse than having no ratchet. That is a claim
+    about instruments in general, and this document has three other ratchets.
+
+T14. AN INSTRUMENT NEEDS A VERDICT FOR "DID NOT RUN", OR IT CANNOT BE DEPLOYED WHERE IT MATTERS. The
+    dedup ratchet was DELIBERATELY excluded from the gate set and the recorded reason was correct:
+    "that job runs scripts without building, where this would permanently SKIP and a permanent skip
+    reads like a pass" (source/test/CMakeLists.txt). So the one instrument behind the north-star
+    deduplication claim sat red and unseen, because it had two verdicts and neither fit.
+    The exclusion EXPIRED the moment a skip could be spelled: exit 77, reported by run-gates.sh as
+    SKIPPED and refused a place in the green tally. The instrument then joined the set unchanged in
+    substance.
+    PROPOSED ROW -- requires: "an instrument whose verdicts include DID NOT RUN". forbids: "an
+    instrument excluded from the run because its absence of a verdict would read as a pass".
+    THE SAME SHAPE HAS NOW APPEARED FOUR TIMES: metrics_mutual (dc722dee), pr570_ledger ([#258], found
+    by a board audit rather than by the sweep aimed directly at it), grant-sweep's PASSTHROUGH
+    blindness, and dedup_measure. Four instances is not a coincidence, it is a missing rule.
 
 === OPEN: TWO CONFLICTS, WHICH ARE THE DIRECTOR'S CALL AND NOT MINE ===
 
@@ -6065,40 +6109,46 @@ T8. THE FORBID COLUMN FORBIDS WHAT WE BUILT. The observability table pairs "the 
     half is about link grants and is right. The FORBIDS half, read literally, prohibits the sovereign
     observer: ClientBusyReader and ThreadBusyReader see kernel accounting -- drm-engine ns, per-thread
     utime -- that the subject cannot name about itself, and that is the entire value of an outsider.
-    The two halves are not the same statement, and the forbid is the one that drifted.
-    PROPOSED: "an instrument that must be LINKED INTO its subject to see it" -- which is the real
-    failure mode, and the one this fork lived: the only thing that could contradict the renderer's GPU
-    timers was inside the renderer.
-    [#253] STRENGTHENS THIS. The sovereign reader has now measured the same thread the engine measures
-    itself: cpu.frame.work.wall_fraction 0.2756 against cpu.owner.frame.busy_cores 0.2606, two
-    mechanisms sharing nothing, agreeing in the direction they must. That check is only possible
-    BECAUSE the instrument sees what its subject cannot name.
+    PROPOSED: "an instrument that must be LINKED INTO its subject to see it" -- the real failure mode,
+    and the one this fork lived: the only thing that could contradict the renderer's GPU timers was
+    inside the renderer.
+    TWO RESULTS NOW STRENGTHEN THIS. [#253]: the sovereign reader measured the same thread the engine
+    measures itself -- cpu.frame.work.wall_fraction 0.2756 against cpu.owner.frame.busy_cores 0.2606,
+    two mechanisms sharing nothing, agreeing in the direction they must. [#259]: the per-leg join now
+    carries the i915 PMU and the fdinfo reader on one axis, and they agree to +0.632pp with the sign
+    right in 10 of 11 intervals. Neither check is possible unless the instrument sees what its subject
+    cannot name.
 
 T9. THE OWNERSHIP RULE HAS NO LAWFUL HOME FOR HALF THE SYSTEM. The table requires "every declared
     instrument owned by a named component" and forbids "telemetry as an ambient global that anything
     may reach". There is no `telemetry` component among the 53. So the in-process instrument -- 410
     call sites across six components -- is the forbidden thing, and the register offers nowhere for it
-    to become the required thing. That is not a violation to fix in code alone; the register is short a
-    row, and what that row IS (a component? a facet of core? a vocabulary?) is an architecture decision.
-    [#252] moves the mechanism; this decides what it moves INTO.
+    to become the required thing. The register is short a row, and what that row IS (a component? a
+    facet of core? a vocabulary?) is an architecture decision. [#252] moves the mechanism; this decides
+    what it moves INTO.
 
 === STILL DEFERRED, ON PURPOSE ===
 
 T5. The sovereign boundary buys sampling freedom, not only correctness -- the out-of-process reader can
-    poll fast BECAUSE it does not perturb. I have not measured the perturbation difference. Writing it
-    now would be a claim with no instrument, which is the failure this fork punishes hardest.
-    [#253] narrows what must be measured: the sampler now runs at 2 Hz against a live client for whole
-    legs, so the experiment is a leg with and without it, and the harness to run it exists.
+    poll fast BECAUSE it does not perturb. The perturbation difference is still unmeasured, and writing
+    it now would be a claim with no instrument. [#253] and [#259] narrow the experiment: TWO samplers
+    now run against a live client for whole legs (procfs at 2 Hz, i915 PMU continuously), so the
+    experiment is a leg with and without them, and the harness to run it exists.
 
 T7. The consumer half -- Python that belongs to none of the 53 components -- waits on [#252]. The
-    precondition is now MET: the join has been performed, so what the consumer must carry is known
-    rather than guessed. It is four things, and none of them is a property of a file format:
+    precondition is MET: the join has been performed AND rendered, so what the consumer must carry is
+    known rather than guessed. It is FIVE things, none of them a property of a file format:
       (a) the counter-vs-gauge distinction (`_total` marks what may be differenced);
-      (b) THREE distinct unavailabilities, not one -- pid changed, counter fell, fewer than two
-          samples -- because each means something different about what happened;
+      (b) THREE distinct unavailabilities -- pid changed, counter fell, fewer than two samples --
+          because each means something different about what happened;
       (c) the covered-span denominator (T11);
-      (d) the method declaration (T10).
-    All four are properties of a SAMPLE TYPE, which is what [#250] is for. That is the shape.
+      (d) the method declaration (T10);
+      (e) SEQUENCE POSITION, added by [#254]. A plot must BREAK its line where a series has no value;
+          drawing across a hole invents a measurement and looks exactly like a real one. To break it,
+          the renderer must know two surviving points are not ADJACENT, and a timestamp cannot tell it
+          that -- intervals vary in length, so "further apart than usual" is a guess. The interval
+          INDEX travels with every point and the pen lifts where it jumps.
+    All five are properties of a SAMPLE TYPE, which is what [#250] is for.
 
 T1. The document's side of the ambient-global violation (the `metrics` owes facet) waits until [#252]
     has a shape.
@@ -6108,9 +6158,11 @@ NOT A REVIEW TASK. Stays open across the observability arc, one entry per comple
 
 <a id="c29c1332-257"></a>
 
-#### #257 — DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it
+#### #257 — DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573)
 
-status: **pending** · metadata: `{"rank": 6}`
+status: **completed** · metadata: `{"rank": 6}`
+
+- `8ef7e573` DEDUP-RATCHET: the ratchet was counting a quantity that moves when you add a log line [#257]
 
 ```
 FOUND BY THE #253 BOARD AUDIT, 2026-08-08. Two defects, and the second is the one that matters.
@@ -6152,9 +6204,12 @@ not reported at all.
 
 <a id="c29c1332-258"></a>
 
-#### #258 — GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away
+#### #258 — GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4)
 
-status: **pending** · metadata: `{"rank": 7}`
+status: **completed** · metadata: `{"rank": 7}`
+
+- `8ef7e573` DEDUP-RATCHET: the ratchet was counting a quantity that moves when you add a log line [#257]
+- `7e9815a4` GATE-SKIP-2: pr570_ledger exits 77, and the rule is now read out of the file rather than remembered [#258]
 
 ```
 FOUND BY THE #253 BOARD AUDIT, 2026-08-08. A one-line fix, filed because the sweep that fixed its twin
@@ -6197,9 +6252,11 @@ The defect is about every machine where it does not.
 
 <a id="c29c1332-259"></a>
 
-#### #259 — OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it
+#### #259 — OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (5fcc401c)
 
-status: **pending** · blocks: #255 · metadata: `{"rank": 9}`
+status: **completed** · blocks: #255 · metadata: `{"rank": 9}`
+
+- `5fcc401c` OBS-PMU-WIRE: the joiner had a PMU column and nothing ever filled it [#259]
 
 ```
 A GAP IN #253's OWN WORK, found by the audit's adversarial pass and confirmed by hand.
@@ -6243,7 +6300,7 @@ not the one anybody reads).
 
 #### #260 — TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task
 
-status: **pending** · blocked by: #261 · metadata: `{"rank": 16}`
+status: **pending** · blocked by: #261 · metadata: `{"rank": 17}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT's completeness critic, 2026-08-08, and verified: the word `ugc` appears
@@ -6279,7 +6336,7 @@ every figure in its §2 state table currently reads wrong at HEAD.
 
 #### #261 — HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong
 
-status: **pending** · blocks: #260 · metadata: `{"rank": 17}`
+status: **pending** · blocks: #260 · metadata: `{"rank": 18}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT, 2026-08-08.
@@ -6320,7 +6377,7 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 #### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
 
-status: **pending** · metadata: `{"rank": 18}`
+status: **pending** · metadata: `{"rank": 19}`
 
 ```
 RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
@@ -6393,7 +6450,7 @@ finding.
 
 #### #263 — BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits
 
-status: **pending** · metadata: `{"rank": 19}`
+status: **pending** · metadata: `{"rank": 20}`
 
 ```
 A RULE I HAVE TO REMEMBER IS NOT A MECHANISM, and this one failed twice in a row on 2026-08-08.
@@ -6432,6 +6489,97 @@ that is what the convention has always actually meant. Cheaper, and it makes pro
 cross-reference in whatever form reads best. The risk is the reverse error -- a real work commit that
 stamps only in its body would stop being counted -- so measure how many existing citations come from
 the body before choosing.
+```
+
+<a id="c29c1332-264"></a>
+
+#### #264 — LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be
+
+status: **pending** · metadata: `{"rank": 11}`
+
+```
+RECORDED DURING [#255] AND DELIBERATELY NOT FIXED THERE, because tuning an estimator after seeing
+which answer it gives is how a result gets manufactured.
+
+scripts/lever-cpu.py reduces each leg to the MEAN over its per-interval axis values, then compares
+lever means to baseline means. For the sovereign owner series that is defensible -- every interval
+carries a similar covered span. For anything derived from a windowed total it is the weaker estimator,
+and the run shows the cost:
+
+    cpu.frame.work.wall_fraction    floor 0.0793, NOTHING resolved
+    the same levers, from the windowed profile totals:
+        off-renderDrawableCache   4649 -> 5266 us/frame   (+13.3%)
+        off-parallaxRefreshInterval 4649 -> 4180          (-10.1%)
+        off-envRefreshInterval      4649 -> 4308          ( -7.3%)
+
+Those are clean, ordered, and consistent with the GPU deltas. The analyser cannot see them because an
+unweighted mean of per-interval rates gives a 4.5s interval the same vote as a 5.2s one and lets a p99
+spike in one interval move the leg's figure.
+
+THIS IS T10's OWN WEAKNESS, APPLIED TO MY OWN ANALYSER. #256 T10 says a re-differenced counter and a
+mean of rates are different kinds of number and only one survives re-windowing. lever-cpu computes a
+mean of rates from data that was re-differenced -- it throws the property away one consumer later.
+
+THE FIX: a span-weighted estimator. For each key, sum the busy over the leg and divide by the summed
+covered span -- which is exactly what obs-join already computes per interval and carries as `coveredS`.
+The joined artefacts hold everything needed; no re-run is required. Apply to the banked run
+matrix-20260808-140430 and compare against the unweighted table rather than replacing it, so the
+change is a measured improvement and not an assertion.
+
+DO NOT quietly restate #255's conclusions afterwards. The resolved set there stands on the unweighted
+estimator; if the weighted one resolves MORE levers, that is a new and better measurement of the same
+banked run, and both should be recorded with the estimator named. The whole point of T10 is that two
+numbers made by different arithmetic are two numbers.
+
+ALSO WORTH FOLDING IN: `cpu.owner.frame` resolved nothing at a floor of 0.0841 while the process whole
+resolved at 0.0476. The main thread is the noisiest owner, and the weighted estimator is the first
+thing to try before concluding anything about it.
+```
+
+<a id="c29c1332-265"></a>
+
+#### #265 — SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it
+
+status: **pending** · metadata: `{"rank": 10}`
+
+```
+FOUND BY [#255], AND IT IS THE KIND OF FINDING THE WHOLE CAMPAIGN WAS BUILT TO PRODUCE: a question
+that could not previously be asked, because per-owner CPU busy did not exist.
+
+At Desert Town, matrix-20260808-140430, three RENDER-SIDE levers turned off moved the SIM owner's CPU
+busy by amounts that clear the run floor (0.0401 cores) and each lever's own repeat spread:
+
+    off-lightingGatherCache      -0.0489 cores   (own spread 0.0139)
+    off-envRefreshInterval       -0.0445 cores   (own spread 0.0303)
+    off-parallaxRefreshInterval  -0.0436 cores   (own spread 0.0276)
+
+`sim` is the WorldServerThread. envRefreshInterval and parallaxRefreshInterval are retained-surface
+refresh policies on the render side. There is no call path from either to the world server, and the
+frame counts are identical across every leg (13,497-13,500), so it is not that fewer server ticks ran.
+
+CANDIDATE MECHANISMS, ALL UNVERIFIED -- listed so the next pass has hypotheses rather than a blank page:
+  1. E-CORE SCHEDULING PRESSURE. The whole process is pinned to cores 6-15. A render thread that
+     blocks longer on a busier GPU leaves more room, and the sim thread may complete the same work in
+     less BUSY time (fewer stalls, better residency). This predicts sim busy falls whenever GPU busy
+     rises, regardless of which lever caused it -- TESTABLE against the existing banked run by
+     correlating the sim delta against the GPU delta across all eight levers.
+  2. FREQUENCY. E-cores clock differently under different load mixes. render-profile samples
+     gt_cur_freq_mhz only at leg start and end; the in-window clock is unobserved (see #251's note).
+  3. SHARED-CACHE INTERFERENCE. A render thread touching a large retained surface every frame evicts
+     what the sim thread would otherwise keep resident. This predicts the OPPOSITE sign from what was
+     measured, so it is probably not the mechanism -- worth stating because it is the first guess most
+     readers will reach for.
+  4. ATTRIBUTION ERROR. A thread whose comm matches the sim rule but does render work, or vice versa.
+     ThreadBusyReader::ownerOfThread maps by comm PREFIX and the kernel truncates comm to 15 chars.
+     Cheapest to check first, and it would invalidate the finding rather than explain it.
+
+CHECK 4 BEFORE 1. It is a two-minute grep of the live thread names against the mapping, and if the
+attribution is wrong then the other three hypotheses are about a number that does not mean what its
+name says -- which is the exact defect class this component exists to remove.
+
+NOT A LEVER HUNT. The Director's standing ruling is that no new render/engine optimisation is chased
+off this run. This task is about whether the INSTRUMENT is telling the truth, and only secondarily
+about what the truth implies.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
