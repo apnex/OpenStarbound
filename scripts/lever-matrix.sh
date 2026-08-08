@@ -529,6 +529,18 @@ PMU_PID=$!
 trap '[ -n "${PMU_PID:-}" ] && kill -TERM "$PMU_PID" 2>/dev/null; wait "$PMU_PID" 2>/dev/null' EXIT
 echo "  pmu series    $PMU_SERIES (i915 engine busy, out of process, pid $PMU_PID)"
 
+# HAND THE PATH DOWN so each leg's own join can put the PMU on the SAME EPOCH AXIS as everything else,
+# instead of the GPU living only in the run-level pmu-join.py report. Without this every per-leg
+# artefact records `pmu.available: false` -- two artefacts that never meet, which is the exact shape
+# [#253] existed to end, surviving one level up.
+#
+# EXPORTED RATHER THAN PASSED AS A FLAG because render-profile.sh's positional arguments are the leg's
+# own (duration, label, --set, --warp), and threading a harness-internal path through them would make
+# it look like something a caller chooses. render-profile.sh reads it, does NOT start a second sampler
+# when it is set, and does NOT kill this one -- a leg that terminated the run-level sampler would blind
+# every leg after it, and the first evidence would be empty GPU columns twenty legs later.
+export STAR_PMU_SERIES="$PMU_SERIES"
+
 # A LEG THAT RAN AND A LEG WHOSE NUMBERS ARE QUOTABLE ARE TWO DIFFERENT VERDICTS, and the first
 # version of this function collapsed them. telemetry-window.py exits 3 when its closure oracle finds a
 # violation -- "parts exceed the whole", "of UNKNOWN" -- which means DO NOT QUOTE THESE COSTS. It does

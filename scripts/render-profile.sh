@@ -185,11 +185,44 @@ python3 scripts/metrics-sample.py --out "$SOVEREIGN_SERIES" --every 0.5 \
   --match sbinit-perf.config --for $(( SECONDS_TO_RUN * 4 + 400 )) >/dev/null 2>&1 &
 SOVEREIGN_PID=$!
 
+# THE PMU SERIES, WHICH THIS SCRIPT DOES NOT ALWAYS OWN.
+#
+# The two samplers sit at different levels ON PURPOSE and the join needs both. The sovereign readers
+# are procfs reads with no warmup, so one runs per leg, above. The i915 PMU pays a warmup per sample
+# and lever-matrix already runs ONE across a whole matrix -- so in a matrix run this script must be
+# told where that file is rather than opening a second counter beside it. Two samplers on one event
+# is not an error, but it doubles the sampling load on the very device under measurement, and neither
+# would be the file pmu-join.py reads.
+#
+# So: honour STAR_PMU_SERIES when the caller sets it (lever-matrix does), and otherwise start one for
+# this leg. A STANDALONE profile run had no PMU series at all before this, which is why every joined
+# artefact [#253] produced recorded `pmu.available: false` -- the joiner took --pmu and nothing ever
+# passed it.
+if [ -n "${STAR_PMU_SERIES:-}" ]; then
+  PMU_SERIES="$STAR_PMU_SERIES"
+  PMU_OWNED=0
+else
+  PMU_SERIES="$PWD/harness/profiles/$LABEL.pmu.tsv"
+  PMU_OWNED=1
+  python3 scripts/pmu-engine-sample.py --for $(( SECONDS_TO_RUN * 4 + 400 )) \
+    --out "$PMU_SERIES" >/dev/null 2>&1 &
+  PMU_PID=$!
+fi
+
 stop_sovereign() {
-  [ -n "${SOVEREIGN_PID:-}" ] || return 0
-  kill -TERM "$SOVEREIGN_PID" 2>/dev/null
-  wait "$SOVEREIGN_PID" 2>/dev/null
-  SOVEREIGN_PID=""
+  if [ -n "${SOVEREIGN_PID:-}" ]; then
+    kill -TERM "$SOVEREIGN_PID" 2>/dev/null
+    wait "$SOVEREIGN_PID" 2>/dev/null
+    SOVEREIGN_PID=""
+  fi
+  # Only ever kill a sampler this script started. A matrix leg that terminated the RUN-LEVEL sampler
+  # would silently blind every leg after it, and the first evidence would be a table of empty GPU
+  # columns twenty legs later.
+  if [ "${PMU_OWNED:-0}" = "1" ] && [ -n "${PMU_PID:-}" ]; then
+    kill -TERM "$PMU_PID" 2>/dev/null
+    wait "$PMU_PID" 2>/dev/null
+    PMU_PID=""
+  fi
 }
 
 # ONE exit trap, because bash only has one and the config restore was already using it. A second
@@ -418,8 +451,15 @@ scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL"
 #
 # NON-FATAL. A leg whose join fails still has both halves on disk under its own label and can be joined
 # by hand; a leg whose profile failed has nothing. The join is an addition to this script's output.
-if [ -s "$SOVEREIGN_SERIES" ]; then
-  scripts/obs-join.py "harness/profiles/$LABEL.series.json" --sovereign "$SOVEREIGN_SERIES" || true
+JOIN_ARGS=()
+[ -s "$SOVEREIGN_SERIES" ] && JOIN_ARGS+=(--sovereign "$SOVEREIGN_SERIES")
+[ -s "$PMU_SERIES" ] && JOIN_ARGS+=(--pmu "$PMU_SERIES")
+if [ ${#JOIN_ARGS[@]} -gt 0 ]; then
+  scripts/obs-join.py "harness/profiles/$LABEL.series.json" "${JOIN_ARGS[@]}" || true
 else
-  echo "  !! no sovereign series was written -- per-owner CPU and per-client GPU went unmeasured."
+  echo "  !! neither sovereign series was written -- CPU attribution and GPU busy went unmeasured."
 fi
+# NAMED, NOT INFERRED FROM THE ABSENCE OF A LINE. A source that produced no file is a fact about this
+# leg, and a reader who has to notice a missing warning is a reader who will not.
+[ -s "$SOVEREIGN_SERIES" ] || echo "  !! no sovereign series -- per-owner CPU and per-client GPU are ABSENT from the join."
+[ -s "$PMU_SERIES" ]       || echo "  !! no PMU series -- device-wide GPU engine busy is ABSENT from the join."
