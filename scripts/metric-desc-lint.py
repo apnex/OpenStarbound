@@ -73,7 +73,7 @@ LAZY_REG = re.compile(r"\bstatic\s+auto\s+\w+\s*=\s*(?:Star::)?Telemetry::(?:cou
 # TODAY'S COUNT, PINNED 2026-08-07. LOWER IT whenever the real number drops: a ceiling left above the
 # count is slack, and slack is exactly the room the next lazy registration slides into unnoticed. The
 # check prints the gap and says so rather than quietly tolerating it.
-LAZY_REG_CEILING = 95
+LAZY_REG_CEILING = 87
 
 # No nested braces occur inside a MetricDesc initializer, so [^}] is a sound terminator here.
 SITE = re.compile(r"MetricDesc\s*\{([^}]*)\}", re.S)
@@ -395,10 +395,95 @@ def selftest_timeline():
     return 0
 
 
+# THE CLOCK RATCHET. MetricClock has had the right enumerators since the descriptor convergence and, until
+# today, ZERO production sites populated any of them -- a field declared, documented, and answering nothing.
+#
+# It has no default ON PURPOSE, which the header spells out: defaulting to Wall would make every unmigrated
+# timer assert a clock nobody checked, and a field claiming otherwise is more convincing than an absent one.
+# So Undeclared is honest, and the number of them is the honest measure of how much of this model still
+# cannot say whether it measures work or waiting.
+#
+# A CEILING RATHER THAN A REQUIREMENT, because 165 sites cannot be migrated in one pass without becoming the
+# highest-risk moment for reintroducing every pattern this file already guards. The count may fall and may
+# not rise. Lower it when you lower it.
+CLOCK_CEILING = 109
+
+METRIC_DESC_BLOCK = re.compile(r"MetricDesc\{.*?\}", re.S)
+
+
+def undeclared_clocks(text):
+    """Count of MetricDesc sites with no MetricClock, comments stripped."""
+    stripped = strip_comments(text)
+    return sum(1 for m in METRIC_DESC_BLOCK.finditer(stripped) if "MetricClock::" not in m.group(0))
+
+
+def check_clocks(files=None, ceiling=CLOCK_CEILING):
+    # sources() hands back {path: text}, the same shape check_registrations takes. Taking a list of paths
+    # instead cost a debugging round: the loop iterated the dict's KEYS, parsed filenames as if they were
+    # source, and reported that nothing matched -- which the "measuring nothing" arm caught, exactly as it
+    # was written to.
+    files = sources() if files is None else files
+    total, sites = 0, 0
+    for text in files.values():
+        total += undeclared_clocks(text)
+        sites += len(METRIC_DESC_BLOCK.findall(strip_comments(text)))
+    if sites == 0:
+        # A ratchet that matched nothing has not been satisfied. reg_ratchet learned this the same way:
+        # a pattern that stops matching reads exactly like a tree that stopped offending.
+        print("clock_ratchet: FAIL -- no MetricDesc sites matched at all. The pattern has drifted from "
+              "the tree, so this gate is measuring nothing.")
+        return 1
+    if total > ceiling:
+        print(f"clock_ratchet: FAIL -- {total} MetricDesc site(s) declare no MetricClock, ceiling is "
+              f"{ceiling}. A metric that cannot say whether it measures work or waiting is the defect "
+              f"this field exists to end; declare the clock at the new site rather than raising the bar.")
+        return 1
+    slack = ceiling - total
+    print(f"clock_ratchet: OK -- {total} of {sites} MetricDesc site(s) declare no MetricClock "
+          f"(ceiling {ceiling}, slack {slack}). {sites - total} DO declare one.")
+    return 0
+
+
+def selftest_clocks():
+    import contextlib, io
+    fails = []
+
+    def arm(name, ok):
+        print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+        if not ok:
+            fails.append(name)
+
+    declared = "MetricDesc{MetricDomain::Cpu, MetricRole::Total, MetricClock::Wall}"
+    bare = "MetricDesc{MetricDomain::Cpu, MetricRole::Total}"
+    arm("a site with no clock counts", undeclared_clocks(bare) == 1)
+    arm("a site with a clock does not", undeclared_clocks(declared) == 0)
+    arm("a commented-out site does not count", undeclared_clocks("// " + bare) == 0)
+    arm("both are seen when both are present", undeclared_clocks(bare + "\n" + declared) == 1)
+
+    # Both ends, per #194's rule. Silence has to be earned by being under the bar, not by matching nothing.
+    with contextlib.redirect_stdout(io.StringIO()):
+        over = check_clocks({"a": bare + "\n" + bare}, ceiling=1)
+        under = check_clocks({"a": bare}, ceiling=1)
+        empty = check_clocks({"a": "int main(){}"}, ceiling=1)
+    arm("two undeclared against a ceiling of one FAILS", over == 1)
+    arm("one undeclared against a ceiling of one passes", under == 0)
+    arm("a corpus with NO MetricDesc at all fails rather than passing vacuously", empty == 1)
+
+    print()
+    if fails:
+        print(f"clock_ratchet selftest: FAILED -- {len(fails)}: {', '.join(fails)}")
+        return 1
+    print("  clock_ratchet selftest: 7/7 arms ok -- counts the undeclared, ignores comments and declared "
+          "sites, fires on growth, and refuses to pass on an empty corpus")
+    return 0
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
     sys.exit({"--selftest": selftest,
               "--check-registrations": check_registrations,
               "--selftest-registrations": selftest_registrations,
               "--check-timeline": check_timeline,
+              "--check-clocks": check_clocks,
+              "--selftest-clocks": selftest_clocks,
               "--selftest-timeline": selftest_timeline}.get(arg, check)())

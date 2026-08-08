@@ -701,13 +701,31 @@ def main():
     # regression moves busy 5774 -> 6774 and idle 10619 -> 9619, and total reads 16393 BOTH TIMES: the A/B
     # reports NO CHANGE for a real, shipped regression. Quote busy. Report total only as the pace it is.
     tot, swap, idle = w.get("cpu.frame.total.us"), w.get("cpu.frame.swap.us"), w.get("cpu.frame.idle.us")
+    work = w.get("cpu.frame.work.us")
     if tot:
-        # idle records ONLY on frames that actually slept, so its count < total's. Normalise by the frame
-        # count, not idle's own count -- the same denominator trap that has already fired three times here.
-        idle_pf = (idle["total"] / tot["count"]) if (idle and tot["count"]) else 0.0
-        busy = tot["mean"] - idle_pf
-        print(f"  CPU busy: {busy:.0f}us/frame of a {tot['mean']:.0f}us pace "
-              f"({100.0 * busy / tot['mean']:.0f}% utilised) -- BUSY is the A/B metric, total is the pacer")
+        # PREFER THE MEASURED WORK SPAN OVER THE DERIVED ONE. This block subtracted idle from total for as
+        # long as the engine had no metric for the frame's work, which made the right number available to a
+        # reader of this output and not to the closure oracle -- the DECLARED model still said total was the
+        # whole and idle was a part of it, and that is what the oracle reads. cpu.frame.work.us is now
+        # recorded at the source and is owner frame's declared Total, so the two agree.
+        #
+        # The subtraction stays as the fallback, because a snapshot captured before that metric existed is
+        # still a valid measurement and must not become unreadable. Which one was used is PRINTED: two ways
+        # of getting a number that silently swap places is how a value changes meaning without changing
+        # name. idle records ONLY on frames that slept, so the fallback normalises by the FRAME count and
+        # not idle's own -- the denominator trap that has already fired three times in this file.
+        if work and work.get("count"):
+            busy, src = work["mean"], "measured"
+        else:
+            idle_pf = (idle["total"] / tot["count"]) if (idle and tot["count"]) else 0.0
+            busy, src = tot["mean"] - idle_pf, "derived total-idle"
+        print(f"  CPU work: {busy:.0f}us/frame of a {tot['mean']:.0f}us pace "
+              f"({100.0 * busy / tot['mean']:.0f}% utilised, {src}) -- WORK is the A/B metric, total is "
+              f"the pacer")
+        # Not "busy": busy is what the CPU actually burned, which only the out-of-process thread reader can
+        # say (cpu.owner.frame.busy_ns). This is WALL time with the deliberate sleep removed, and it still
+        # contains lock waits and GPU stalls. Two numbers, two questions, and one name for both would have
+        # made them look like one measurement taken twice.
     if tot and swap:
         sp, ip = swap["mean"], (idle["mean"] if idle else 0.0)
         if meta.get("vsync"):

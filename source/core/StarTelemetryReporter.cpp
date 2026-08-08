@@ -26,8 +26,13 @@ String TelemetryReporter::writeSnapshot(String const& dir, JsonObject meta, uint
     if (getrusage(RUSAGE_SELF, &ru) == 0) {
       uint64_t us = (uint64_t)ru.ru_utime.tv_sec * 1000000u + (uint64_t)ru.ru_utime.tv_usec
                   + (uint64_t)ru.ru_stime.tv_sec * 1000000u + (uint64_t)ru.ru_stime.tv_usec;
+      // ProcessCpu, AND IT IS THE ONLY METRIC IN THE TREE THAT COULD HONESTLY SAY SO. getrusage returns
+      // utime+stime -- CPU actually burned, with every sleep, lock wait and preemption excluded. Every
+      // other duration here is a WALL span under a name that sounds like work; this one is the exception,
+      // and until the field existed there was no way for it to say which of the two it was.
       auto c = Telemetry::counter("cpu.process.total_us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Process, MetricCadence::Call, MetricRole::Total});
+        MetricDesc{MetricDomain::Cpu, MetricOwner::Process, MetricCadence::Call, MetricRole::Total,
+                   MetricUnit::Microseconds, MetricClock::ProcessCpu});
       // getrusage is already cumulative; advance the counter to it rather than adding, so repeated snapshots
       // do not compound. Guarded because the counter is monotonic and a clock that went backwards would wrap.
       //

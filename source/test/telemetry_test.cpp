@@ -403,9 +403,22 @@ TEST(Telemetry, BudgetPartsCloseAgainstOwnerTotal) {
 TEST(Telemetry, OwnersDeclareDenominatorAndTotal) {
   telemetrySetUp();
   JsonObject owners = Telemetry::snapshot().getObject("owners");
-  // These are DIFFERENT questions: the denominator counts ticks, the total is the whole parts close against.
+  // THESE ARE DIFFERENT QUESTIONS AND, FOR `frame`, DIFFERENT METRICS -- which is the assertion.
+  //
+  // The DENOMINATOR counts ticks, and one loop iteration is one frame, so cpu.frame.total.us is right:
+  // it fires exactly once per frame whatever the frame did.
+  //
+  // The TOTAL is the whole the budget parts close against, and total.us cannot be it. It is a PACING
+  // period containing Thread::sleepPrecise, so it does not shrink when work does -- the saving moves
+  // into the sleep and the period reads identical. Measured: 16,212us of pace holding 5,275us of work.
+  // With idle declared a Budget part of that same whole the sum reached ~100% no matter what any part
+  // did, so the closure oracle ran, compared, and could not fail.
+  //
+  // cpu.frame.work.us is the span from the top of the iteration to the moment the sleep begins. A lever
+  // that removes work shrinks it, so the closure can now be WRONG, which is the only condition under
+  // which it can also be right.
   EXPECT_EQ(owners.get("frame").getString("denominator"), "cpu.frame.total.us");
-  EXPECT_EQ(owners.get("frame").getObject("totals").get("cpu").toString(), "cpu.frame.total.us");
+  EXPECT_EQ(owners.get("frame").getObject("totals").get("cpu").toString(), "cpu.frame.work.us");
   EXPECT_EQ(owners.get("gl").getString("denominator"), "cpu.frame.total.us");
 
   // `gl` DECLARES NO WHOLE IN EITHER DOMAIN, and both absences are the assertion.

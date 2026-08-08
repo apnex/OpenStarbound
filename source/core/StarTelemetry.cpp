@@ -486,7 +486,7 @@ namespace {
   // the PMU -- not re-promoting a bracket.
   struct OwnerTotalSpec { MetricOwner owner; MetricDomain domain; char const* total; };
   constexpr OwnerTotalSpec c_ownerTotals[] = {
-    {MetricOwner::Frame,    MetricDomain::Cpu, "cpu.frame.total.us"},
+    {MetricOwner::Frame,    MetricDomain::Cpu, "cpu.frame.work.us"},
     {MetricOwner::Sim,      MetricDomain::Cpu, "tick.server.total.us"},
     {MetricOwner::Lighting, MetricDomain::Cpu, "lighting.cpu.total.us"},
   };

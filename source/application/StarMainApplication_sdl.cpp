@@ -24,6 +24,85 @@
 
 namespace Star {
 
+namespace {
+  // EAGER, AT NAMESPACE SCOPE, AND THAT IS THE DIFFERENCE BETWEEN A ZERO AND AN ABSENCE. As
+  // function-local statics these ten registered on first execution of the loop body, so every one of
+  // them was missing from a snapshot taken before the first frame -- and a key that is ABSENT reads to
+  // a consumer as a metric that does not exist, not as one that has recorded nothing yet. That is the
+  // defect closed nine times over as R07-R16; the ratchet in scripts/metric-desc-lint.py exists to stop
+  // a tenth, and it counted this block because the shape is the shape.
+  //
+  // They were never the hazardous instance -- this block runs unconditionally at the top of the loop --
+  // but "not currently reachable-conditional" is a property of today's control flow, and the whole point
+  // of the fix class is not to depend on that. Hoisting is cheaper than arguing, and it takes ten off
+  // the ratchet rather than adding one to it.
+  // THE FRAME BUDGET, AND THE WHOLE IT CLOSES AGAINST IS NOT THE FRAME PERIOD.
+  //
+  // cpu.frame.total.us is one loop iteration, which makes it the right DENOMINATOR -- one iteration is
+  // one frame and nothing else is -- and the wrong TOTAL. It is a pacing period: it contains
+  // Thread::sleepPrecise, and the loop sleeps for exactly as long as it takes to hit the target rate.
+  // A lever that saves a millisecond of CPU therefore does not shrink it; the millisecond moves into
+  // the sleep and the period reads identical. Measured at the Director's scene: 16,212us of pace
+  // holding 5,275us of work, so two thirds of the "budget" was the loop waiting on purpose.
+  //
+  // Closing the parts against that is unfalsifiable BY CONSTRUCTION. idle was itself declared a Budget
+  // part of the same whole, so the sum always reached ~100% no matter what any part did -- the oracle
+  // ran, compared, and could not fail. The consumer had already worked this out and computed
+  // total-minus-idle behind the scenes, calling it "the A/B metric" in a comment; the DECLARED model
+  // still said otherwise, and the declared model is what the closure oracle reads.
+  //
+  // cpu.frame.work.us is that whole, measured rather than derived: the span from the top of the
+  // iteration to the moment the pacing sleep begins. Parts now close against work, so a lever that
+  // removes work shrinks the denominator too and the closure can be wrong -- which is the only state
+  // in which it can also be right.
+  //
+  // IT IS NOT CPU BUSY, and the name says work rather than busy for that reason. It is WALL time with
+  // the deliberate sleep removed; it still contains lock waits, GPU stalls and preemption. True CPU
+  // busy for this owner comes from outside the process -- ThreadBusyReader, cpu.owner.frame.busy_ns --
+  // and the two answer different questions. Naming both "busy" would have made them look like one
+  // number measured twice.
+  //
+  // Declared here rather than at first use so the descriptors live in one readable block.
+  auto tWork   = Telemetry::timer("cpu.frame.work.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tTotal  = Telemetry::timer("cpu.frame.total.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tInput  = Telemetry::timer("cpu.frame.input.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tUpdate = Telemetry::timer("cpu.frame.update.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tRender = Telemetry::timer("cpu.frame.render.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tFinish = Telemetry::timer("cpu.frame.finish.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto tSwap   = Telemetry::timer("cpu.frame.swap.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  // Cadence Call, NOT Frame -- idle is the one budget phase that fires CONDITIONALLY. The sleep runs only
+  // when spareTime() is positive, so on a frame with no headroom it genuinely does not happen.
+  //
+  // Cadence answers "how often SHOULD this have fired", and the consumer scales a metric up by 1/coverage
+  // to correct for SAMPLING loss -- work that happened but whose observation was lost, as with a GL timer
+  // query that resolves too late. Tagging idle as Frame told the consumer 3 skipped frames of 1500 were
+  // missed observations rather than genuine zeros, so it scaled the total up and pushed the frame budget
+  // to 100.1% -- parts exceeding their own whole. Call means "no expectation": neither bounds-checked nor
+  // scaled, which is exactly right for a phase whose absence is real.
+  auto tIdle   = Telemetry::timer("cpu.frame.idle.us",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail,
+               MetricUnit::Microseconds, MetricClock::Wall});
+  auto cUpdates = Telemetry::counter("cpu.frame.updates",
+    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail,
+               MetricUnit::Count, MetricClock::NotApplicable});
+
+}
+
+
 #ifdef STAR_SYSTEM_WINDOWS
 static bool copyDibToClipboard(const uint8_t* buf, unsigned int width, unsigned int height) {
   size_t size = (size_t)(width * height * 4u);
@@ -726,37 +805,7 @@ public:
       m_updateTicker.reset();
       m_renderTicker.reset();
 
-      // THE FRAME BUDGET. cpu.frame.total.us is the denominator for owner=frame: one loop iteration IS one
-      // frame, and nothing else is. The other six are role=budget parts that close against it; whatever is
-      // left over is reported as unattributed rather than quietly absorbed.
-      //
-      // Declared here rather than at first use so the descriptors live in one readable block.
-      static auto tTotal  = Telemetry::timer("cpu.frame.total.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Total});
-      static auto tInput  = Telemetry::timer("cpu.frame.input.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
-      static auto tUpdate = Telemetry::timer("cpu.frame.update.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
-      static auto tRender = Telemetry::timer("cpu.frame.render.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
-      static auto tFinish = Telemetry::timer("cpu.frame.finish.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
-      static auto tSwap   = Telemetry::timer("cpu.frame.swap.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Budget});
-      // Cadence Call, NOT Frame -- idle is the one budget phase that fires CONDITIONALLY. The sleep runs only
-      // when spareTime() is positive, so on a frame with no headroom it genuinely does not happen.
-      //
-      // Cadence answers "how often SHOULD this have fired", and the consumer scales a metric up by 1/coverage
-      // to correct for SAMPLING loss -- work that happened but whose observation was lost, as with a GL timer
-      // query that resolves too late. Tagging idle as Frame told the consumer 3 skipped frames of 1500 were
-      // missed observations rather than genuine zeros, so it scaled the total up and pushed the frame budget
-      // to 100.1% -- parts exceeding their own whole. Call means "no expectation": neither bounds-checked nor
-      // scaled, which is exactly right for a phase whose absence is real.
-      static auto tIdle   = Telemetry::timer("cpu.frame.idle.us",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Budget});
-      static auto cUpdates = Telemetry::counter("cpu.frame.updates",
-        MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
-
+      
       int64_t frameStart = Time::monotonicMicroseconds();
 
       bool quit = false;
@@ -840,6 +889,11 @@ public:
         }
 
         int64_t spareMilliseconds = round(m_updateTicker.spareTime() * 1000);
+        // WHERE THE FRAME'S WORK ENDS. One clock read, deliberately placed AFTER the spare-time
+        // arithmetic (that bookkeeping is the frame's own) and BEFORE the sleep (that is not). On a frame
+        // with no headroom nothing sleeps and work equals total, which is the honest reading rather than
+        // a special case.
+        int64_t workEnd = Time::monotonicMicroseconds();
         if (spareMilliseconds > 0) {
           TelemetryScope s(tIdle);
           Thread::sleepPrecise(spareMilliseconds);
@@ -848,6 +902,7 @@ public:
         // Closes the frame and opens the next in one clock read: the total must cover EVERYTHING, including
         // the loop bookkeeping between the phases, or the unattributed remainder becomes meaningless.
         int64_t now = Time::monotonicMicroseconds();
+        tWork.record(workEnd - frameStart);
         tTotal.record(now - frameStart);
         frameStart = now;
       }

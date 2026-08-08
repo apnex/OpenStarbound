@@ -235,6 +235,17 @@ jobs:
       - name: gpu_timeline_role_fires -- the rule fires on both field orders and spares a work clock
         run: python3 scripts/metric-desc-lint.py --selftest-timeline
 
+      # MetricClock has no default on purpose: an undeclared clock says "nobody has decided yet", which is
+      # honest, where a defaulted one would assert something nobody checked. The count of undeclared sites
+      # is therefore the honest measure of how much of this model still cannot say work from waiting. It
+      # may fall and may not rise -- 165 sites is too many to migrate in one pass, and a large mechanical
+      # pass is exactly when the patterns this file guards come back.
+      - name: clock_ratchet -- the count of MetricDesc sites declaring no clock may not grow
+        run: python3 scripts/metric-desc-lint.py --check-clocks
+
+      - name: clock_ratchet_fires -- the ratchet fires on growth and refuses to pass on an empty corpus
+        run: python3 scripts/metric-desc-lint.py --selftest-clocks
+
       # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
       # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
       # the player save, quiescence firing on the departure world, and a run mutating the inventory it
