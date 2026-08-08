@@ -244,6 +244,16 @@ jobs:
       - name: obs_join_fires -- counters re-differenced, denominator covered, residual signed
         run: python3 scripts/obs-join.py --selftest
 
+      # THE RENDERER IS AN INSTRUMENT TOO, and a plot is the easiest place in this whole system to
+      # lie: a line drawn across a hole looks exactly like a measurement. Its arms are the ways that
+      # happens -- a gap must BREAK the line rather than be joined or drawn at zero, no point may be
+      # invented, the signed residual gets an axis symmetric about zero (on its own min..max it would
+      # look one-sided and hide that the quantity is signed at all), each series states the METHOD it
+      # was derived by, an empty join draws nothing and says so, and the palette is defined on bare
+      # :root so the page does not render one theme's text on the other theme's ground.
+      - name: obs_plot_fires -- a gap breaks the line, nothing is interpolated, the residual keeps zero
+        run: python3 scripts/obs-plot.py --selftest
+
       # A telemetry handle registered on a path that is not always taken makes the key ABSENT rather
       # than ZERO, and a consumer differencing two snapshots cannot tell that from "ran and found
       # nothing". NINE instances of that one pattern were found in two days (R07-R11, R13, R14, then
