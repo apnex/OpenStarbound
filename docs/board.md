@@ -43,22 +43,21 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 10 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
-| 2 | 11 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
-| 3 | 12 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 4 | 13 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 5 | 14 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 6 | 15 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 7 | 16 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 8 | 17 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 9 | 18 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 19 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
-| 11 | 20 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
-
-> **Ranking integrity:** #260 (rank 17) is blocked by #261 (rank 18) — a blocker ranked LATER than the thing it blocks
-
-> **5 completed task(s) still carry a rank** (#254, #255, #257, #258, #259). A rank is a claim about
-> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
+| 1 | 1 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 2 | 2 | `#171` | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model chan… | ready |
+| 3 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 4 | 4 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
+| 5 | 5 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
+| 6 | 6 | `#266` | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is u… | ready |
+| 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 9 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 10 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 11 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 14 | 14 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
+| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
 ---
 
@@ -249,7 +248,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d4d07d9a` `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -2488,7 +2487,7 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 #### #171 — Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 2}`
 
 ```
 FOUND during #168's closure work. Owner `lighting` now closes at 99.5-99.7%, but that whole is lighting.cpu.total.us, which covers only WorldClient::lightingCalc(). Real lighting CPU runs outside it, on the render thread, and lands in cpu.frame.render.us:
@@ -3535,8 +3534,9 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 #### #204 — TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work
 
-status: **in_progress**
+status: **in_progress** · metadata: `{"rank": 13}`
 
+- `d4d07d9a` [#204] the section-7 compile diagram was missing 24 edges its own grant table requires
 - `d65c9488` board: #224 closed on evidence -- 10-location emission sweep, cap 48 covers all, 1.7% margin with a loud breach [#204]
 - `a0ace793` board: #224 last open item closed -- 48 is a point fix, breach now detected [#204]
 - `f6855fef` board: #224 CLOSED at 9f2aba93 -- cap 48 verified live, declarations reconciled, config pin caught [#204]
@@ -3807,7 +3807,7 @@ REMAINING under #207: `celestial`'s vocabulary/lookup split (blocked on dividing
 
 #### #208 — TSSA-3: register fields, aggregate review, re-home the anchoring gates
 
-status: **pending** · blocked by: #207
+status: **pending** · blocked by: #207 · metadata: `{"rank": 11}`
 
 ```
 Blocked by #207.
@@ -4925,7 +4925,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 16}`
+status: **pending** · metadata: `{"rank": 3}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5296,7 +5296,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 13}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 1}`
 
 ```
 Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5539,7 +5539,7 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 14}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 8}`
 
 - cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/board.md`
@@ -5635,7 +5635,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 15}`
+status: **pending** · metadata: `{"rank": 9}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
@@ -5686,7 +5686,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 12}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 7}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -5886,7 +5886,7 @@ measured denominator, T12 signed residual).
 
 #### #254 — OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792)
 
-status: **completed** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 8}`
+status: **completed** · blocked by: #253 · blocks: #255
 
 - `991b7940` OBS-PLOT: the matrix draws its own busy model at the end, so 28 legs read against each other [#254]
 - `46a4c792` OBS-PLOT: the last clause of the north star — CPU and GPU on one axis, and a plot that cannot lie [#254]
@@ -5946,7 +5946,7 @@ Published as an artefact so the Director can read it without reading a log.
 
 #### #255 — MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3)
 
-status: **completed** · blocked by: #253, #254, #259 · blocks: #252 · metadata: `{"rank": 10}`
+status: **completed** · blocked by: #253, #254, #259 · blocks: #252
 
 - `a4fc43b3` MATRIX-CPU: the acceptance test ran, and the CPU half answered [#255]
 
@@ -6175,7 +6175,7 @@ over. Re-open with one entry per completed item as [#250]/[#252] land.
 
 #### #257 — DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573)
 
-status: **completed** · metadata: `{"rank": 6}`
+status: **completed**
 
 - `8ef7e573` DEDUP-RATCHET: the ratchet was counting a quantity that moves when you add a log line [#257]
 
@@ -6221,7 +6221,7 @@ not reported at all.
 
 #### #258 — GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4)
 
-status: **completed** · metadata: `{"rank": 7}`
+status: **completed**
 
 - `8ef7e573` DEDUP-RATCHET: the ratchet was counting a quantity that moves when you add a log line [#257]
 - `7e9815a4` GATE-SKIP-2: pr570_ledger exits 77, and the rule is now read out of the file rather than remembered [#258]
@@ -6269,7 +6269,7 @@ The defect is about every machine where it does not.
 
 #### #259 — OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (5fcc401c)
 
-status: **completed** · blocks: #255 · metadata: `{"rank": 9}`
+status: **completed** · blocks: #255
 
 - `5fcc401c` OBS-PMU-WIRE: the joiner had a PMU column and nothing ever filled it [#259]
 
@@ -6315,7 +6315,7 @@ not the one anybody reads).
 
 #### #260 — TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task
 
-status: **pending** · blocked by: #261 · metadata: `{"rank": 17}`
+status: **pending** · blocked by: #261 · metadata: `{"rank": 12}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT's completeness critic, 2026-08-08, and verified: the word `ugc` appears
@@ -6351,7 +6351,7 @@ every figure in its §2 state table currently reads wrong at HEAD.
 
 #### #261 — HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong
 
-status: **pending** · blocks: #260 · metadata: `{"rank": 18}`
+status: **pending** · blocks: #260 · metadata: `{"rank": 10}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT, 2026-08-08.
@@ -6392,7 +6392,7 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 #### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
 
-status: **pending** · metadata: `{"rank": 19}`
+status: **pending** · metadata: `{"rank": 15}`
 
 ```
 RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
@@ -6465,7 +6465,7 @@ finding.
 
 #### #263 — BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits
 
-status: **pending** · metadata: `{"rank": 20}`
+status: **pending** · metadata: `{"rank": 14}`
 
 ```
 A RULE I HAVE TO REMEMBER IS NOT A MECHANISM, and this one failed twice in a row on 2026-08-08.
@@ -6510,7 +6510,7 @@ the body before choosing.
 
 #### #264 — LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be
 
-status: **pending** · metadata: `{"rank": 11}`
+status: **pending** · metadata: `{"rank": 4}`
 
 ```
 RECORDED DURING [#255] AND DELIBERATELY NOT FIXED THERE, because tuning an estimator after seeing
@@ -6555,7 +6555,7 @@ thing to try before concluding anything about it.
 
 #### #265 — SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it
 
-status: **pending** · metadata: `{"rank": 10}`
+status: **pending** · metadata: `{"rank": 5}`
 
 ```
 FOUND BY [#255], AND IT IS THE KIND OF FINDING THE WHOLE CAMPAIGN WAS BUILT TO PRODUCE: a question
@@ -6601,7 +6601,7 @@ about what the truth implies.
 
 #### #266 — DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 6}`
 
 ```
 Found while giving `telemetry`'s `falsified` facet its instruments ([#256], c19cb959).
