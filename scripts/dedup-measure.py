@@ -96,14 +96,27 @@ SKIP_DIRS = {"extern", "test", "utility", "mod_uploader", "json_tool", "discord"
 #
 # So the gate is the FILE count: distinct source files outside ALLOWED_SHARED appearing in the
 # intersection. A file is named once, so template churn cannot move it; only a genuinely new
-# participant in the shared closure can. MEASURED 2026-08-08 at 73 -- game 38, frontend 17,
-# rendering 6, windowing 4, platform_pc 3, participant 2, gpu_opengl 2, host_sdl 1. It may only go down.
+# participant in the shared closure can. MEASURED at 74 -- game 38, frontend 17, rendering 6,
+# windowing 4, platform_pc 3, participant 2, gpu_opengl 2, host_sdl 1, telemetry 1. It may only go
+# down, and the note below says why the last of those is not a regression.
 #
 # STATED HONESTLY: THIS CEILING HAS NO HISTORY. 2026-08-01 recorded symbols and not files, so I cannot
 # show the file count was also 73 then and am not claiming it. What is PROVEN is that the symbol count
 # moves for reasons the design does not care about. The file count is chosen because it is structurally
 # immune to that, not because it was measured stable in the past.
-FILE_CEILING = 73
+#
+# RE-BASELINED TO 74, AND THE +1 IS ATTRIBUTION, NOT A NEW PARTICIPANT. `grant-sweep` learned to read
+# `telemetry` out of `source/core/` (its four files had no directory of their own and so mapped to
+# `core`, which is in ALLOWED_SHARED). This script reuses that mapping, so one file that was already
+# in the intersection stopped being scored under an allowed component and started being scored under
+# a leaking one. NULL CONTROL, off this script's own report: `telemetry` contributes exactly 1 file,
+# and 74 - 1 = 73 -- the same objects, the previous number. No object changed; the map did.
+#
+# `telemetry` is deliberately NOT added to ALLOWED_SHARED, which would have kept the number at 73 by
+# exempting the component instead of counting it. The set is foundations and contracts, `telemetry`
+# is a LIBRARY, and the register's own `owes` facet says the store still has to leave `core` -- a
+# component with an unpaid move should stay visible to the ratchet, not be excused by it.
+FILE_CEILING = 74
 
 # Kept as a REPORTED figure and no longer a gate: its value on 2026-08-01, carried so the report can
 # show the drift and name what the drift was made of.

@@ -55,8 +55,16 @@ CODE_EXT = (".hpp", ".cpp", ".h")
 # The one place this script restates the spec: which of today's files each target component takes.
 # The register's "assembled from" column says the same thing in prose; assert_register_counts()
 # below cross-checks the file counts so the two cannot drift silently.
+#
+# Keyed by TODAY'S DIRECTORY, because a directory that SPLITS is the only case a passthrough name
+# cannot express. `application` dissolves -- a file it does not claim belongs to no component. `core`
+# does not: it keeps every file the carve-out does not name, which is why DISSOLVES lists one and not
+# the other. `telemetry` read UNVERIFIABLE ("not in the tree and not declared future") until this map
+# grew its second key -- four files sitting in `source/core/` that a directory-keyed lookup had no
+# way to see. That is the third instance of the failure the paragraph below `PASSTHROUGH` describes,
+# and the first one that adding a directory would NOT have fixed.
 # ---------------------------------------------------------------------------------------------
-FROM_APPLICATION = {
+CARVED_OUT = {"application": {
     "gpu": {"StarRenderer.hpp", "StarRenderer.cpp",
             "StarTextureAtlas.hpp", "StarRenderDiagnostics.hpp"},
     "gpu_opengl": {"StarRenderer_opengl.hpp", "StarRenderer_opengl.cpp",
@@ -70,7 +78,12 @@ FROM_APPLICATION = {
                     "StarStatisticsService_pc_steam.hpp", "StarStatisticsService_pc_steam.cpp",
                     "StarUserGeneratedContentService_pc_steam.hpp",
                     "StarUserGeneratedContentService_pc_steam.cpp"},
-}
+},
+              "core": {"telemetry": {"StarTelemetry.hpp", "StarTelemetry.cpp",
+                                     "StarTelemetryReporter.hpp", "StarTelemetryReporter.cpp"}}}
+
+# Directories with no residue: every file they do not hand to a named component leaves the design.
+DISSOLVES = ("application",)
 
 # Target components that exist today under their own name and need no remapping.
 # `server` was missing here until 2026-08-01, so source/server/ mapped to None and the component
@@ -101,7 +114,8 @@ NOT_YET_BUILT = ("scene", "presentation", "transcript", "host_null", "gpu_sdl",
                  "interaction", "client_agent", "colocation", "net", "script", "content", "storage")
 
 # The register's own file counts, cross-checked against FROM_APPLICATION.
-REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10}
+REGISTER_COUNTS = {"gpu": 4, "gpu_opengl": 6, "host": 3, "host_sdl": 2, "platform_pc": 10,
+                   "telemetry": 4}
 
 # ---------------------------------------------------------------------------------------------
 # EDGES THE DESIGN EXISTS TO DELETE. These are not missing grants -- granting them would declare the
@@ -136,10 +150,10 @@ REMOVING = {
 def owner_of(path):
     """Target-state component that owns a file of today's tree, or None if it is out of scope."""
     top = path.parts[0]
-    if top == "application":
-        for component, names in FROM_APPLICATION.items():
-            if path.name in names:
-                return component
+    for component, names in CARVED_OUT.get(top, {}).items():
+        if path.name in names:
+            return component
+    if top in DISSOLVES:
         return None            # discord/ and anything unclaimed
     if top in RENAMED:
         return RENAMED[top]
@@ -213,8 +227,8 @@ def parse_grants():
 
 
 def assert_register_counts(files, out):
-    """The register states file counts for the components carved out of `application`. If those
-    disagree with FROM_APPLICATION, one of the two moved and the other did not."""
+    """The register states file counts for the components carved out of a splitting directory. If
+    those disagree with CARVED_OUT, one of the two moved and the other did not."""
     bad = 0
     for component, expected in sorted(REGISTER_COUNTS.items()):
         actual = files.get(component, 0)
@@ -223,6 +237,17 @@ def assert_register_counts(files, out):
                        % (component, expected, actual))
             bad += 1
     return bad
+
+
+def unverifiable_components(grants, files):
+    """Components whose grant row no instrument can check -- no files under their own name, either
+    because the component is declared future or because it has not been carved out of the directory
+    it sits in today.
+
+    Exposed rather than left inline in main() because Section 16's R4 states this count and names
+    THIS SCRIPT as where it comes from. It was written as "27 of the 41" and stood while the register
+    grew to 54 and the set to 38: a claim that names its instrument but is not read by it."""
+    return {c for c in grants if c in NOT_YET_BUILT or c not in files}
 
 
 def main(argv):
@@ -245,15 +270,15 @@ def main(argv):
         return 2
 
     out, removing, missing, unused, unverifiable = [], [], 0, 0, 0
+    unchecked = unverifiable_components(grants, files)
     for component in sorted(grants):
         listed = grants[component]
-        if component in NOT_YET_BUILT:
+        if component in unchecked:
             unverifiable += 1
-            out.append("  UNVERIFIABLE %-12s no files yet; grants %s" % (component, ", ".join(listed)))
-            continue
-        if component not in files:
-            unverifiable += 1
-            out.append("  UNVERIFIABLE %-12s not in the tree and not declared future" % component)
+            out.append("  UNVERIFIABLE %-12s %s" % (
+                component,
+                ("no files yet; grants %s" % ", ".join(listed)) if component in NOT_YET_BUILT
+                else "not in the tree and not declared future"))
             continue
         actual = needs.get(component, collections.Counter())
         for target, n in sorted(actual.items(), key=lambda kv: -kv[1]):

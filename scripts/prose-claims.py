@@ -53,6 +53,7 @@ HISTORICAL PASSAGES. A block wrapped in `<!-- HISTORICAL -->` ... `<!-- END HIST
 from STALE_ZONE, because explaining why a name was replaced requires naming it. Nothing else is exempt.
 """
 import argparse
+import collections
 import importlib.util
 import pathlib
 import re
@@ -571,6 +572,15 @@ _SUBJECT = re.compile(r'`([a-z_][a-z0-9_]*)`')
 # A number carrying that much argument should not be a number somebody typed.
 MODAL_ZONE_PHRASE = "components deviate from their KIND's modal ZONE"
 
+# The same sentence names the KIND whose modal zone is weakest, and states the split. It read "BACKEND
+# has no modal zone at all: it splits exactly six MACHINE to six DEVICE" while the register held nine
+# MACHINE, six DEVICE and two DOMAIN -- a claim about the axis's own weakest case, ungated, sitting
+# one clause after a claim that was gated. The verdict below reads all three figures AND re-derives
+# which KIND is weakest, because naming the wrong KIND would leave three correct numbers.
+BACKEND_SPREAD = re.compile(
+    r'BACKEND is where KIND predicts ZONE least: \*\*(\d+) of its (\d+) sit in the modal (\w+), '
+    r'the other (\d+) split (\d+) (\w+) and (\d+) (\w+)\*\*')
+
 
 def _closures(text):
     """-> {entrypoint: closure size}, computed by the module that owns the computation."""
@@ -765,6 +775,80 @@ def check_modal_zone(text, comp):
             for n, m in hits if (int(n), int(m)) != (want, len(comp))]
 
 
+def _zone_spread(comp):
+    """-> {kind: Counter(zone)}, and the kind whose modal zone covers the smallest share of it."""
+    by_kind = {}
+    for v in comp.values():
+        by_kind.setdefault(v["kind"], collections.Counter())[v["zone"]] += 1
+    weakest = min(by_kind, key=lambda k: max(by_kind[k].values()) / sum(by_kind[k].values()))
+    return by_kind, weakest
+
+
+def check_backend_spread(text, comp):
+    """The KIND whose ZONE is least predicted by it, and the split, measured rather than asserted."""
+    by_kind, weakest = _zone_spread(comp)
+    m = BACKEND_SPREAD.search(" ".join(text.split()))
+    if not m:
+        return [("ZONE_SPREAD",
+                 "no sentence states which KIND predicts ZONE least, but this verdict exists to "
+                 "check one -- either the claim was deleted and this check should go with it, or it "
+                 "was reworded out of the gate's reach, which is how the last one went wrong")]
+    n1, tot, z1, n2, n3, z3, n4, z4 = m.groups()
+    got = by_kind["BACKEND"]
+    want = [(int(n1), z1), (int(n3), z3), (int(n4), z4)]
+    bad = [(k, v) for v, k in want if got[k] != v]
+    out = []
+    if bad or int(tot) != sum(got.values()) or int(n2) != sum(got.values()) - int(n1):
+        out.append(("ZONE_SPREAD",
+                    "prose splits BACKEND %s of %s in %s, %s in %s and %s in %s; the register "
+                    "measures %s" % (n1, tot, z1, n3, z3, n4, z4, dict(sorted(got.items())))))
+    if weakest != "BACKEND":
+        out.append(("ZONE_SPREAD",
+                    "prose names BACKEND as the KIND whose modal ZONE covers least of it; the "
+                    "register makes that %s" % weakest))
+    return out
+
+
+# Section 16's R4 and the hard-constraint blockquote above it both say N of M components are not yet
+# their own directory and both name `grant_sweep` as the source. Neither was read by it: they said
+# "27 of the 41" while the register held 54 and the sweep reported 38 UNVERIFIABLE. Both phrasings are
+# matched, because correcting one and not the other is how the pair got out of step in the first place.
+UNVERIFIABLE_PHRASES = (
+    re.compile(r'\*\*(\d+) of the (\d+) components are not yet their own directory\*\*'),
+    re.compile(r'its own directory\.\*\* (\d+) of the (\d+) are not yet'),
+)
+
+
+def check_unverifiable(text, comp):
+    """How many components no instrument can check, measured by the instrument the prose names.
+
+    Measured over the REGISTER, not over the grant table. `core` and `base` grant nothing so they have
+    no grant row, and both are their own directory today -- counting them out of the denominator would
+    make the claim read 38 of 52 and put the prose one edit away from being wrong in the other
+    direction."""
+    spec = importlib.util.spec_from_file_location("grant_sweep", str(REPO / "scripts" / "grant-sweep.py"))
+    gs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gs)
+    _, _, _, files = gs.scan()
+    want = len(gs.unverifiable_components(comp, files))
+    flat = " ".join(text.split())
+    out, seen = [], 0
+    for pat in UNVERIFIABLE_PHRASES:
+        for n_, m_ in pat.findall(flat):
+            seen += 1
+            if (int(n_), int(m_)) != (want, len(comp)):
+                out.append(("UNVERIFIABLE_COUNT",
+                            "prose says %s of %s components are not yet their own directory; "
+                            "`grant_sweep` reports %d of %d" % (n_, m_, want, len(comp))))
+    if not seen:
+        out.append(("UNVERIFIABLE_COUNT",
+                    "no sentence states how many components are not yet their own directory, but "
+                    "R4's whole argument is that this number and the UNVERIFIABLE count are one "
+                    "number -- either the claim went, and this check goes with it, or it was "
+                    "reworded out of reach"))
+    return out
+
+
 def check_dead_kinds(text):
     """Uses of a retired KIND, ratcheting toward zero."""
     body = re.sub(r'<!-- HISTORICAL -->.*?<!-- END HISTORICAL -->', "", text, flags=re.S)
@@ -951,6 +1035,8 @@ def scan(text):
     findings.extend(check_closures(text))
     findings.extend(check_modal_zone(text, comp))
     findings.extend(check_subtraction(text, comp, grants))
+    findings.extend(check_backend_spread(text, comp))
+    findings.extend(check_unverifiable(text, comp))
     findings.extend(check_dead_kinds(text))
     findings.extend(check_no_dates(text))
     findings.extend(check_contract_grants(comp, grants))
@@ -1048,6 +1134,22 @@ def selftest(text):
              re.sub(r'\d+( of \d+ %s)' % re.escape(MODAL_ZONE_PHRASE), r'999\1', text), comp)),
         ("MODAL_ZONE", "the claim reworded out of reach",
          lambda: check_modal_zone(text.replace(MODAL_ZONE_PHRASE, "components sit oddly"), comp)),
+        # Same discipline as MODAL_ZONE: mutate the digits IN FRONT of a stable phrase, never a
+        # literal, so the drive keeps testing after the numbers move.
+        ("ZONE_SPREAD", "a wrong BACKEND zone split",
+         lambda: check_backend_spread(
+             re.sub(r'(BACKEND is where KIND predicts ZONE least: \*\*)\d+', r'\g<1>999', text), comp)),
+        ("ZONE_SPREAD", "the split reworded out of reach",
+         lambda: check_backend_spread(
+             text.replace("BACKEND is where KIND predicts ZONE least", "BACKEND is spread about"), comp)),
+        ("UNVERIFIABLE_COUNT", "a wrong count of components that are not yet directories",
+         lambda: check_unverifiable(
+             re.sub(r'\*\*\d+( of the \d+ components are not yet their own directory)',
+                    r'**999\1', text), comp)),
+        ("UNVERIFIABLE_COUNT", "the count reworded out of reach",
+         lambda: check_unverifiable(
+             text.replace("components are not yet their own directory", "components are unbuilt")
+                 .replace("its own directory.** ", "its own directory.** roughly "), comp)),
         ("SUBTRACTION", "a wrong grant count",
          lambda: check_subtraction(text.replace("minus five grants", "minus three grants"),
                                    comp, grants_now)),

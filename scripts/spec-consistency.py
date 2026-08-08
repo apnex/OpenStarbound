@@ -182,6 +182,10 @@ ELEMENT_FREE = {
     "script": "the Lua host runs inside whatever tick calls into it -- deliberately no clock",
     "storage": "reads and writes when asked; a store that ticked on its own would be deciding "
                "WHEN to save, which is the caller's business",
+    "telemetry": "records when its subject records. A store that held a clock would be choosing WHEN "
+                 "a fact is taken, which is the caller's business and nobody else's -- the same "
+                 "argument `storage` makes, one level down: the tick that calls into it IS the "
+                 "cadence",
     "metrics": "samples when asked. A measurement holding a clock of its own would be choosing WHEN "
                "the truth is taken, and a sampler that picks its own moments is exactly how a "
                "magnitude-correlated bias got in -- the defect this component exists to end, not "

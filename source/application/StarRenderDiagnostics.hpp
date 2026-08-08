@@ -3,7 +3,12 @@
 #include "StarImage.hpp"
 #include "StarMaybe.hpp"
 #include "StarString.hpp"
-#include "StarTelemetry.hpp"
+// `MetricDesc` ONLY, and deliberately not `StarTelemetry.hpp`. This is a CONTRACT header: the
+// target-state rule is that a contract names FOUNDATIONs and other contracts, and `MetricDesc`
+// is core vocabulary while `Telemetry` is a store. Nothing here records; `begin()` takes a
+// descriptor and hands it on. The wide include was found by `prose_claims` reporting the grant
+// it forced -- CONTRACT_GRANT, `gpu` naming a LIBRARY -- not by anything reading this file.
+#include "StarMetricDesc.hpp"
 #include "StarVector.hpp"
 
 namespace Star {
