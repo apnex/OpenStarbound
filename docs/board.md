@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**193 tasks** across 2 store(s): 3 in_progress, 34 pending, 156 completed
+**199 tasks** across 2 store(s): 2 in_progress, 36 pending, 161 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 192 tasks, ids 64–256
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 198 tasks, ids 64–262
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,14 +43,21 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | ready |
-| 2 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #254 |
-| 3 | 9 | `#256` | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-of… | ready |
-| 4 | 10 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
-| 5 | 11 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 6 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 7 | 13 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 8 | 14 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 6 | `#257` | DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it | ready |
+| 2 | 7 | `#258` | GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away | ready |
+| 3 | 8 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | ready |
+| 4 | 9 | `#259` | OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it | ready |
+| 5 | 10 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #254, #259 |
+| 6 | 11 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
+| 7 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 8 | 13 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 9 | 14 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 10 | 15 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 11 | 16 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 17 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 13 | 18 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+
+> **Ranking integrity:** #260 (rank 16) is blocked by #261 (rank 17) — a blocker ranked LATER than the thing it blocks
 
 ---
 
@@ -60,9 +67,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 192, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 203, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 24.** The task harness has, on these, appended its
+**Descriptions normalised on export: 28.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -88,7 +95,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 156.
+**Completed tasks citing no commit and no doc:** 86 of 161.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -107,12 +114,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#67](#c29c1332-67) | `c29c1332` | done | forEach v2 #4: stamp-based dedup (delete per-query std::sort) | — | — |
 | [#68](#c29c1332-68) | `c29c1332` | done | forEach v2 #3: skip box-test for fully-contained interior cells | — | — |
 | [#69](#c29c1332-69) | `c29c1332` | open | forEach v2 #7: EntityMapSpatialHashSectorSize granularity sweep | — | — |
-| [#70](#c29c1332-70) | `c29c1332` | done | UniqueEffect Lua-context churn optimization (~21% of exploring WST) | — | `board.md` |
+| [#70](#c29c1332-70) | `c29c1332` | done | UniqueEffect Lua-context churn optimization (~21% of exploring WST) | — | `board-audit-2026-08-08.md` `board.md` |
 | [#71](#c29c1332-71) | `c29c1332` | done | L1: reserve() callback maps before registerCallback storm | — | — |
 | [#72](#c29c1332-72) | `c29c1332` | done | L3: move-not-copy in addCallbacks | — | — |
 | [#73](#c29c1332-73) | `c29c1332` | done | StatusEffectChurnBench micro-bench (L1/L3 clean A/B) | — | — |
 | [#74](#c29c1332-74) | `c29c1332` | done | L2: Proto-cache engine + T1/T4 tests (core_tests) | — | — |
-| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | `matrix-prereq-ledger.md` |
+| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | `board-audit-2026-08-08.md` `matrix-prereq-ledger.md` |
 | [#76](#c29c1332-76) | `c29c1332` | done | Build-window: L2 default-on + C++ fallback consistency (flags KEPT) | — | — |
 | [#77](#c29c1332-77) | `c29c1332` | done | Move 1: Entity de-RTTI via entityCast virtual-accessor downcast | — | — |
 | [#78](#c29c1332-78) | `c29c1332` | done | Follow-up: extend entityCast to residual per-candidate cast sites | — | — |
@@ -236,14 +243,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | `matrix-prereq-ledger.md` |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
-| [#200](#c29c1332-200) | `c29c1332` | open | ARCH-1: whole-system boundary document + arch-graph generator + gate | `7d22d2bb` | — |
-| [#201](#c29c1332-201) | `c29c1332` | open | CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator | `e7368000` | — |
-| [#202](#c29c1332-202) | `c29c1332` | open | RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance | `52360eee` | — |
+| [#200](#c29c1332-200) | `c29c1332` | done | ARCH-1 DONE: boundary doc + arch-graph generator + arch_graph_fresh gate all in the tree and green | `7d22d2bb` | — |
+| [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
+| [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
 | [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
-| [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
+| [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
@@ -255,8 +262,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | `84fe2324` `7dbf8c98` | — |
 | [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `9e56c204` | — |
-| [#219](#c29c1332-219) | `c29c1332` | open | LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29 | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
-| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | — |
+| [#219](#c29c1332-219) | `c29c1332` | done | LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052) | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
+| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | `board-audit-2026-08-08.md` |
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
 | [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
@@ -286,13 +293,19 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
-| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
+| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | open | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | — | — |
 | [#255](#c29c1332-255) | `c29c1332` | open | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | — | — |
 | [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | `94f44d59` | — |
+| [#257](#c29c1332-257) | `c29c1332` | open | DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it | — | — |
+| [#258](#c29c1332-258) | `c29c1332` | open | GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away | — | — |
+| [#259](#c29c1332-259) | `c29c1332` | open | OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it | — | — |
+| [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
+| [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
+| [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -372,6 +385,7 @@ Sweep sector size 8/16/24/32 (measured, after #3/#4). Oracle is size-independent
 
 status: **completed**
 
+- cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/board.md`
 
 ```
@@ -424,6 +438,7 @@ L2 Proto cache implemented: engine (StarLua.cpp/.hpp: extern-C lua internals, pu
 
 status: **pending**
 
+- cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
@@ -3411,9 +3426,9 @@ decision can be revisited from data rather than from memory.
 
 <a id="c29c1332-200"></a>
 
-#### #200 — ARCH-1: whole-system boundary document + arch-graph generator + gate
+#### #200 — ARCH-1 DONE: boundary doc + arch-graph generator + arch_graph_fresh gate all in the tree and green
 
-status: **pending**
+status: **completed**
 
 - `7d22d2bb` docs(arch): the whole-system boundary map, generated and gated
 
@@ -3437,9 +3452,9 @@ VERIFICATION: gate proven to FIRE (tampered Root count -> STALE, exit 1); cwd-in
 
 <a id="c29c1332-201"></a>
 
-#### #201 — CI-5: boundary_fresh was RED on Windows from the day it landed -- native path separator
+#### #201 — CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109
 
-status: **pending**
+status: **completed**
 
 - `e7368000` fix(gates): boundary_fresh measured a different tree on Windows than on unix
 
@@ -3457,9 +3472,9 @@ THE LESSON, which is the same one as #192 and the oracle-vocabulary trap: a meas
 
 <a id="c29c1332-202"></a>
 
-#### #202 — RI-2: two L1 files were unclaimed by the layer table -- the #137 failure, second instance
+#### #202 — RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17
 
-status: **pending**
+status: **completed**
 
 - `52360eee` fix(render): claim the two L1 files the layer table never looked for
 
@@ -3711,9 +3726,9 @@ Director ratified 2026-08-02. Derived from four constraints rather than chosen: 
 
 <a id="c29c1332-207"></a>
 
-#### #207 — TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level
+#### #207 — TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real
 
-status: **in_progress** · blocked by: #206, #205 · blocks: #208
+status: **completed** · blocked by: #206, #205 · blocks: #208
 
 - `60a66f02` spec: P2P networking is a TRANSPORT -- stage 1 of dissolving `platform`
 - `bfe38c92` board: export -- celestial split, 48 components [#207]
@@ -4215,9 +4230,9 @@ FOLLOW-UPS NOT DONE:
 
 <a id="c29c1332-219"></a>
 
-#### #219 — LEDGER-B: PR-570 B-rows all 35 settled; dead LightTraits::multiply deleted; cap/cull folded into D29
+#### #219 — LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052)
 
-status: **pending**
+status: **completed**
 
 - `c363e052` ledger: D29 declined by Director decision; B08 closed with it
 - `9ccb57a8` ledger: sweep the 10 A-rows closed on one unchallenged verdict
@@ -4259,6 +4274,7 @@ status: **completed**
 - `a69c8888` E06: guard the multisample-to-sampler bind on the C++ path, where the exposure actually is [#220]
 - `4960f7e5` E10: derived, cross-checked provenance for source/extern, and it found two dead files [#220]
 - `4e4ced84` ledger: decide the last 15 rows; delete two dead vendored artefacts
+- cited in `docs/board-audit-2026-08-08.md`
 
 ```
 Five PR-570 ledger rows (D34, D59, D60, E10, E06), all discharged.
@@ -4903,7 +4919,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 14}`
+status: **pending** · metadata: `{"rank": 15}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5277,22 +5293,42 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 status: **pending** · blocked by: #243 · metadata: `{"rank": 12}`
 
 ```
-RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
+Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
 
 lever-matrix.sh emits raw legs and a manifest and explicitly does NOT attribute cost, because
 "the analysis half reads the telemetry vocabulary, and the vocabulary is being converged". This
 is that convergence, plus the analysis half it unblocks.
 
-COUPLED TO #235. Both change the snapshot schema -- #235 adds a second per-timer accumulator for
-thread-CPU alongside wall. Decide deliberately whether they land together or in sequence; do not
-discover the interaction halfway through.
+=== CORRECTED BY THE 2026-08-08 BOARD AUDIT: three of this task's four premises had rotted ===
 
-SEQUENCED AFTER #243. This sweep touches all 139 MetricDesc sites, which is the highest-risk
-moment for reintroducing the lazy-registration pattern that produced seven findings. The ratchet
-belongs in place first.
+THE SCHEMA STEP IS DONE; THIS IS NOT A 3->4 TASK ANY MORE. 9db54200 added the seven convergence
+fields to MetricDesc and to the wire and bumped the schema 3 -> 4, citing this task's own spec, and
+telemetry-window.py:148-158 already forwards the WHOLE descriptor rather than the hardcoded five.
+Per the spec §7, "the bump is not the migration". What remains under this task is SITE POPULATION,
+the unit-aware consumer arithmetic (the hardcoded microsecond assumption), the named-descriptor-
+factory resolution, and the cost-attribution half.
 
-Also folds in the unused descriptor fields: unit, clock, source, boundedness, measures, validWhen,
-whole exist in MetricDesc and ZERO production sites populate any of them (verified 2026-08-07).
+"ZERO PRODUCTION SITES POPULATE ANY OF THEM" IS NOW FALSE FOR TWO OF THE SEVEN. unit and clock are
+populated at 57 production sites across nine files (source/application/StarMainApplication_sdl.cpp,
+StarRenderer_opengl.cpp, source/client/StarClientApplication.cpp, source/core/StarTelemetryReporter.cpp,
+StarTelemetry.cpp, source/rendering/StarGpuLightmapPass.cpp, StarWorldPainter.cpp, StarBackdropPass.cpp,
+StarWorldPass.cpp), shipped by [#235] at e368f046 + eec79ca1, and the undeclared remainder is
+RATCHETED -- gate clock_ratchet, ceiling 109, slack 0.
+FIVE fields remain at zero production sites: source, boundedness, measures, validWhen, whole. (`whole`
+is set only at source/test/telemetry_test.cpp:66-69, and is inert: telemetry-window.py never reads a
+per-metric whole.)
+
+THE SITE COUNT IS 167, NOT 139. `python3 scripts/metric-desc-lint.py --check` reports "167 MetricDesc
+site(s)", of which 2 are test fixtures -> 165 production; the clock ratchet's own denominator is 166.
+
+BLOCKER CLEARED. #243 is done (d3650330); reg_ratchet is registered at gates.yml:253. The sequencing
+reason still holds and is worth keeping as a WARRANT rather than a blocker: this sweep touches every
+MetricDesc site, which is the highest-risk moment for reintroducing the lazy-registration pattern that
+produced nine findings -- the ratchet is in place, so the sweep may proceed.
+
+THE #235 COUPLING IS DISCHARGED. #235 completed without adding a second per-timer accumulator --
+MetricNode carries one `total` -- so the "decide deliberately whether they land together" paragraph
+has no live interaction to resolve.
 ```
 
 <a id="c29c1332-246"></a>
@@ -5497,22 +5533,27 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 11}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 13}`
+
+- cited in `docs/board-audit-2026-08-08.md`
+- cited in `docs/board.md`
 
 ```
 DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any performance impact later, but let's not restrict our design because of it." And: "as much of our sovereign observability and metrics system is in fact sovereign, under the metrics/ directory."
 
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 lists GM-3 as "exporters: OpenMetrics + IPC socket -> external tooling consumes without linking us", and §4.6 puts it explicitly out of scope for GM-1. GM-1 shipped; nothing carried GM-3 onto the board. This is that row.
 
+RUNNABLE NOW. Both blockers closed: #235 (ThreadBusyReader shipped 0eef793b) and #253 (the join, 2026-08-08). Nothing in this task's scope has shipped -- no reader base class, no library-side sample vocabulary, no socket, no OpenMetrics -- verified by the 2026-08-08 board audit.
+
 === WHAT THE STREAMING DIRECTIVE DECIDES, ARCHITECTURALLY ===
 
 Full streaming rules the FILE PATH out of the live axis. Measured 2026-08-07:
-  * TelemetryReporter::writeSnapshot serialises ~70KB of JSON for 143 keys and is called
-    SYNCHRONOUSLY on the client main thread (StarClientApplication.cpp:527-534, the
-    telemetryReportInterval path).
-  * There is NO retention policy anywhere in TelemetryReporter or ClientApplication.
-    dev/storage/telemetry already holds 54,364 files / 250MB, accumulated with nothing
-    ever deleting them.
+  * TelemetryReporter::writeSnapshot serialises ~70KB of JSON for 150 keys (was 143 when this was
+    filed) and is called SYNCHRONOUSLY on the client main thread (StarClientApplication.cpp:527-534,
+    the telemetryReportInterval path).
+  * There is NO retention policy anywhere in TelemetryReporter or ClientApplication. Re-verified at
+    HEAD 2026-08-08: dev/storage/telemetry still holds 54,364 files / 250MB, with nothing ever
+    deleting them.
 A file per snapshot was only ever tenable at a ~5s cadence. So the live path is a DIFFERENT
 path from the archive path: a lock-free ring the sovereign side drains out-of-process. Files
 remain for the harness and the archive, where cost does not matter. This is not a perf
@@ -5522,48 +5563,60 @@ with the sampling rate.
 === SCOPE ===
 
  1. HOIST THE CONVERGENCE POINT INTO THE LIBRARY. samplesFor() -- the one function that turns
-    a reader result into MetricSamples -- lives in metrics_main.cpp, i.e. in the EXECUTABLE.
-    A second consumer must reimplement it or shell out and parse JSON. Pure relocation into
-    star_metrics. This demotes the CLI from OWNER of the sample vocabulary to its first
-    consumer, which is the precondition for there ever being a second one.
- 2. ONE READER INTERFACE. main calls two readers by hand and they return DIFFERENT types
-    (BusyReading vs EngineBusyWindow -- deliberately, because the PMU cannot be bracketed).
-    A unified surface must absorb that difference rather than expose it:
+    a reader result into MetricSamples -- lives in metrics_main.cpp:74, i.e. in the EXECUTABLE, and
+    its own comment at :80 says "When this moves into the library (task #250)". A second consumer
+    must reimplement it or shell out and parse. THE PREDICTED COST HAS NOW BEEN PAID: [#253]'s
+    scripts/metrics-sample.py shells out to dist/metrics and parses its TSV, which is precisely the
+    "reimplement or shell out" this item was filed to prevent. Pure relocation into star_metrics.
+    This demotes the CLI from OWNER of the sample vocabulary to its first consumer.
+ 2. ONE READER INTERFACE. main calls TWO readers by hand -- ClientBusyReader and ThreadBusyReader --
+    and both return BusyReading. (CORRECTED 2026-08-08: this used to say they return DIFFERENT types,
+    BusyReading vs EngineBusyWindow. That was never true. `git log -S EngineBusyReader --
+    source/metrics/metrics_main.cpp` is EMPTY: main has never called EngineBusyReader, which is
+    exercised only by source/test/metrics_test.cpp:180-233. The type difference is real but lives
+    between the LIBRARY's readers, not at the call site.) A unified surface must absorb it:
         enumerate(pid, window) -> List<MetricSample>
-    with ClientBusyReader / EngineBusyReader / ThreadBusyReader (#235) / SnapshotReader
-    behind it. MetricDesc's MetricSource enum -- InProcess, ProcFs, SysFs, PerfEvent,
-    GlQuery -- is ALREADY the taxonomy for this.
- 3. THE SnapshotReader ARM IS THE POINT. It makes the game's own 143 in-process keys just
+    with ClientBusyReader / EngineBusyReader / ThreadBusyReader / SnapshotReader behind it.
+    MetricDesc's MetricSource enum -- InProcess, ProcFs, SysFs, PerfEvent, GlQuery -- is ALREADY the
+    taxonomy for this.
+ 3. THE SnapshotReader ARM IS THE POINT. It makes the game's own 150 in-process keys just
     another source behind the same surface. Two stores, one API. NEVER a merged store: the
     convergence spec §1 already refuted merging (Telemetry is a process-global singleton with
     no subject parameter; MetricSample holds five Strings and throws, so it cannot go on a
     per-call bracket). This is a PRESENTER over two stores.
  4. TRANSPORT. Socket + OpenMetrics. Shaped as REPEATED WINDOWS ON A COMMON CLOCK from day
     one -- a single-shot API retrofitted to stream is the expensive version.
- 5. BOTH CLOCKS ON THE SAMPLE. The C++ side is consistently CLOCK_MONOTONIC (MetricSample
-    .tMonotonicNs, and the snapshot FILENAME via Time::monotonicMilliseconds -- the snapshot
-    meta carries no timestamp at all, only {schema, vsync}). The Python side is consistently
-    UNIX epoch (windowStartEpoch, the PMU TSV). Carry monotonic for interval arithmetic
-    (immune to NTP steps) and epoch for the join and the x-axis. Picking one loses something.
+ 5. BOTH CLOCKS ON THE SAMPLE. HALF-BUILT SINCE THIS WAS FILED, and this item shrinks accordingly.
+    The SNAPSHOT meta already carries both: StarTelemetryReporter.cpp:82-83 writes tMonotonicNs and
+    tEpochNs (schema 4, shipped 3a8c530e under [#235]), and the live artefact confirms it. What
+    remains is carrying both on the SAMPLE. Carry monotonic for interval arithmetic (immune to NTP
+    steps) and epoch for the join and the x-axis. Picking one loses something.
  6. RESAMPLING RULE, and it is load-bearing: re-difference RAW CUMULATIVE COUNTERS onto a
     common grid, NEVER interpolate a rate. Interpolating a rate invents work the hardware
     never did -- the same rule busyDelta already encodes for counters that move backwards.
     MetricBoundedness decides whether a point is allowed to exist: a level and a rate are the
     same line on a plot, and differencing a HighWaterMark (lighting.gpu.spread
     .max_emission_x1000) yields a smooth, plausible, meaningless series.
+    [#253] has since IMPLEMENTED this rule in Python (scripts/obs-join.py rediff()), together with
+    two properties this item does not yet name and #256's T10/T11 now do: a stated METHOD per source
+    (a level, a difference, or a mean of differences) and a denominator that is the span actually
+    MEASURED rather than the interval requested. Both belong on the sample type.
 
 === THE UNOWNED HALF, STATED SO IT IS A DECISION AND NOT AN OMISSION ===
 
-The CONSUMER half of this system is 1,932 lines of Python in scripts/ with no component at
-all -- telemetry-window.py (661), gputimer-brackets.py (401), pmu-join.py (372),
-metric-desc-lint.py (313), pmu-engine-sample.py (185). By line count that is the largest
-sovereignty gap in the observability system, larger than the StarClient ride-in. Whether it
-becomes C++ under metrics/ or stays Python with a DECLARED boundary is a TSSA question and
-belongs with #200 (ARCH-1, whole-system boundary document). Naming it here so it is not
-discovered later as a surprise.
+The CONSUMER half of this system is Python in scripts/ with no component at all. RE-MEASURED
+2026-08-08: the five originally-named files are now 2,260 lines, not 1,932 -- telemetry-window.py
+813 (was 661), gputimer-brackets.py 401, pmu-join.py 372, metric-desc-lint.py 489 (was 313),
+pmu-engine-sample.py 185. [#253] then added two more consumers to the same unowned surface,
+obs-join.py 514 and metrics-sample.py 317, for a total of 3,091. The gap grew 60% while this row sat
+pending. By line count it remains the largest sovereignty gap in the observability system, larger
+than the StarClient ride-in. Whether it becomes C++ under metrics/ or stays Python with a DECLARED
+boundary is a TSSA question; #200 (ARCH-1) is now DONE, so the boundary machinery to answer it
+exists. #256's T7 records what the consumer must carry, derived from the join rather than guessed.
 
-DEPENDS ON #235 for ThreadBusyReader (the third reader is what earns the interface).
-CROSS-REF: #245 is GM-2. #237 would be a consumer. #200 owns the scripts/ boundary question.
+CROSS-REF: #245 is GM-2. #237 would be a consumer. #252 moves the projection code. #254 is the first
+consumer of the sample properties this task defines -- built first ON PURPOSE, per #256 T7: designing
+the interface before a consumer exists fits the diagram rather than the data.
 ```
 
 <a id="c29c1332-251"></a>
@@ -5576,7 +5629,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 13}`
+status: **pending** · metadata: `{"rank": 14}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
@@ -5627,7 +5680,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 10}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 11}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -5637,22 +5690,28 @@ DIRECTOR, 2026-08-07, two rulings:
       folder for now, and in future we can fold some of the python into the sovereign modules and
       interfaces yet to be built."
 
-Ruling (b) WIDENS THIS TASK from the ~60-line client ride-in it was filed as. Measured, not
-estimated:
+Ruling (b) WIDENS THIS TASK from the ~60-line client ride-in it was filed as. RE-MEASURED at HEAD
+2026-08-08 by the board audit, and the original accounting had a real error in it:
 
-  StarTelemetry.cpp                       587 lines
-    lines 342-484   naming tables + c_ownerSpecs      ~143   PROJECTION
-    lines 485-587   Telemetry::snapshot()             ~103   PROJECTION
-    remainder       lock-free registry, atomics,      ~341   STORE
+  StarTelemetry.cpp                       597 lines  (was 587 when filed)
+    lines 342-493   naming tables + spec tables       ~152   PROJECTION
+    lines 495-568   Telemetry::snapshot()              ~74   PROJECTION
+    lines 570-595   Telemetry::reset()                 ~26   STORE -- STAYS
+    remainder       lock-free registry, atomics,      ~345   STORE
                     histogram bucketing, applyDesc
-  StarTelemetryReporter.{cpp,hpp}          84 lines          PROJECTION (writes the file)
+  StarTelemetryReporter.{cpp,hpp}         120 lines          PROJECTION (writes the file)
   StarClientApplication + CommandProcessor ~60 lines          MECHANISM (5 sites)
                                           ------
-                                          ~390 lines to move
+                                          ~406 lines to move, of which ~226 is projection
 
-So ~42% of what is filed as "the core store" is projection: nine xName() tables rendering the
-descriptor vocabulary to strings, the OwnerSpec denominator/total table, and the JSON serialiser.
-None of that is the store. All of it is interpretation.
+THE ORIGINAL FIGURE COUNTED reset() AS PART OF snapshot() -- it said "485-587 Telemetry::snapshot()
+~103". snapshot() ends at 568; 570-595 is reset(), which is store code and does not move. Corrected
+above. ~38% of what is filed as "the core store" is projection: the naming tables rendering the
+descriptor vocabulary to strings, the owner denominator/total table, and the JSON serialiser. None of
+that is the store. All of it is interpretation.
+
+NOTHING HAS MOVED YET, verified 2026-08-08: all nine xName tables, both spec tables and
+Telemetry::snapshot() are still in source/core/StarTelemetry.cpp.
 
 === THE SEAM ===
 
@@ -5670,7 +5729,7 @@ They agree today BY COINCIDENCE. Nothing enforces it, and there is no test that 
 
 And `source` ALREADY DIVERGES:
   sourceName()          emits "procfs", "perf_event", "in_process", "sysfs", "gl_query"
-  MetricSample.source   carries "fdinfo:drm-engine", "i915-pmu:rcs0-busy"
+  MetricSample.source   carries "fdinfo:drm-engine", "i915-pmu:rcs0-busy", "procfs:task-stat"
 StarMetricDesc.hpp records the mapping in a COMMENT -- "the existing free-text values map onto
 these -- 'fdinfo:*' to ProcFs, 'i915-pmu:*' to PerfEvent" -- and nothing executes it. That is a
 rule held up by prose, which is the exact shape of the defect the designated-initializer lint was
@@ -5680,9 +5739,9 @@ one table in one place fixes it by construction.
 === RULING (a): THE SHIM'S THICKNESS IS A COVERAGE LIMITER ===
 
 Today a call site is `static auto x = Telemetry::timer("key", MetricDesc{...})` plus a
-TelemetryScope. MetricDesc now has ELEVEN fields, and #245 populates seven more across 166 sites.
-Left alone, the shim gets THICKER at exactly the moment the Director asked for it to be thinner --
-and an eleven-field brace-init per site is a disincentive to declare a metric at all, which caps
+TelemetryScope. MetricDesc now has eleven fields, and #245 populates the remaining five across 165
+production sites. Left alone, the shim gets THICKER at exactly the moment the Director asked for it to
+be thinner -- and a wide brace-init per site is a disincentive to declare a metric at all, which caps
 "useful metric atomic coverage" by friction rather than by judgement.
 
 Resolution, and it belongs in #245 rather than here: NAMED DESCRIPTOR FACTORIES at the call site.
@@ -5698,22 +5757,24 @@ WorldClient::lightingCalc belongs in WorldClient. R07-R16, the nine registration
 2026-08-05..07, were every one of them about keeping declaration at the call site. These stay,
 and the goal for them is THINNER, not elsewhere.
 
-Telemetry's lock-free registry (~341 lines) and MetricDesc (163) stay in core, per the boundary
-written at the top of StarMetricDesc.hpp: a vocabulary two components share belongs where both
-are granted; the duties differ and only the interpretation moves.
+Telemetry's lock-free registry and MetricDesc stay in core, per the boundary written at the top of
+StarMetricDesc.hpp: a vocabulary two components share belongs where both are granted; the duties
+differ and only the interpretation moves.
 
 === FUTURE, PER RULING (b) ===
 
-The 1,932 lines of Python in scripts/ -- telemetry-window (661), gputimer-brackets (401),
-pmu-join (372), metric-desc-lint (313), pmu-engine-sample (185) -- are consumers and fold into
-the sovereign modules "in future ... interfaces yet to be built". NOT this task. #250 builds the
-interface they would fold into; #200 owns declaring their boundary meanwhile.
+RE-MEASURED 2026-08-08: the Python in scripts/ is 2,260 lines across the five originally-named files,
+not 1,932 -- telemetry-window 813 (was 661), gputimer-brackets 401, pmu-join 372, metric-desc-lint 489
+(was 313), pmu-engine-sample 185. [#253] added two more consumers to the same unowned surface,
+obs-join 514 and metrics-sample 317, bringing it to 3,091. These are consumers and fold into the
+sovereign modules "in future ... interfaces yet to be built". NOT this task. #250 builds the interface
+they would fold into; #200 (now DONE) owns the machinery for declaring their boundary.
 
-CARRIES THE RETENTION POLICY: dev/storage/telemetry holds 54,364 files / 250MB with nothing that
-deletes them, and #235 is about to fill that directory deliberately. Retention belongs to whoever
-owns cadence, which after this move is metrics/.
+CARRIES THE RETENTION POLICY: dev/storage/telemetry still holds 54,364 files / 250MB with nothing that
+deletes them, re-verified 2026-08-08, and [#253] now writes a sovereign TSV per leg on top. Retention
+belongs to whoever owns cadence, which after this move is metrics/.
 
-CROSS-REF: #250 (GM-3 transport), #235, #245 (the factories), #204/#208 (TSSA boundary), #200.
+CROSS-REF: #250 (GM-3 transport), #245 (the factories), #204/#208 (TSSA boundary), #256 T7/T9.
 ```
 
 <a id="c29c1332-253"></a>
@@ -5801,12 +5862,27 @@ measured denominator, T12 signed residual).
 
 #### #254 — OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders
 
-status: **pending** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 7}`
+status: **pending** · blocked by: #253 · blocks: #255 · metadata: `{"rank": 8}`
 
 ```
-The series JSON exists after [#235]; nothing draws it. "Directly plotted" was in the Director's
-statement of the goal and is the clause that makes the rest legible -- a per-interval stream nobody
-looks at is a file, not an instrument.
+UNBLOCKED 2026-08-08: [#253] closed and produced exactly the input this was waiting for. The JOINED
+artefact now exists -- harness/profiles/obs-join-verify.joined.json, 11 intervals, both sovereign
+readers (cpu.owner.*.busy_cores, gpu.engine.*.busy_ratio) and the in-process series on one epoch axis
+-- and render-profile.sh:422 produces one per leg. Nothing still draws it.
+
+"Directly plotted" was in the Director's statement of the goal and is the clause that makes the rest
+legible -- a per-interval stream nobody looks at is a file, not an instrument.
+
+THIS IS A RENDERER OVER AN EXISTING FILE, NOT A PIPELINE. Four of the design rules below are already
+implemented in scripts/obs-join.py and must NOT be re-derived: re-differencing (rediff(), :112), the
+covered-span denominator (coveredS, :24-28), the one-core-per-owner normalisation (DERIVED, :63-65),
+and the counter-vs-gauge distinction (COUNTER_SUFFIX, :57). The joined artefact carries a per-interval
+`axis` dict holding exactly the dimensionless series a plot wants. Read that; do not recompute it.
+
+WHAT IS NOT IN THE FILE YET: the PMU. obs-join.py takes --pmu and render-profile.sh never passes it, so
+every per-leg artefact records `pmu.available: false`. That is [#259], and it should land first or
+alongside -- a plot that silently omits device-wide GPU busy while showing per-client GPU busy is
+exactly the "most convincing wrong picture" this task's own last line warns about.
 
 THE DESIGN IS ALREADY SETTLED, from the exchange on 2026-08-07:
   * SHARED X AXIS = the instant. Both series are cumulative counters differenced onto a common grid,
@@ -5820,24 +5896,30 @@ THE DESIGN IS ALREADY SETTLED, from the exchange on 2026-08-07:
     invents work the hardware never did -- the rule busyDelta already encodes for backwards counters.
   * MetricBoundedness decides whether a point may exist at all: a level and a rate are the same line,
     and differencing a HighWaterMark yields a smooth, plausible, meaningless series.
-  * The two sources may keep their NATIVE rates -- in-process ~4.85s, sovereign as fast as we like --
+  * The two sources may keep their NATIVE rates -- in-process ~4.85s, sovereign 0.5s as shipped --
     plotted on one axis rather than the fast one downsampled to the slow. The out-of-process reader can
     sample fast precisely because it does not perturb, which is the module boundary paying for itself.
+  * PLOT THE RESIDUAL TOO. cpu.attribution.residual_cores is on the axis and is SIGNED. A whole that
+    cannot be seen failing to match its parts is a whole nobody can falsify, and on the measured leg it
+    swings -0.0125 to +0.0150 -- which is what makes it visibly noise rather than a leak.
 
-WHAT IT SHOULD MAKE VISIBLE, from the one leg measured so far: 61.7 fps pinned while CPU work swings
-2.04x within a single leg (3,744 -> 7,646 us/frame) and neither resource is saturated. That is the
-regime finding the campaign has been inferring from three separately-measured numbers in three
-documents; on one axis it stops needing to be argued.
+WHAT IT SHOULD MAKE VISIBLE, now measured twice. The regime finding: the frame is PINNED while neither
+resource is saturated. Desert Town, 60s, [#253]: ~62 fps mean, main thread 0.2606 cores, sim 0.1617,
+process 0.4965, GPU render engine 0.2374 -- and CPU work swinging 3,505 -> 11,722 us/frame p50 to p99
+inside one leg. That is the finding the campaign has been inferring from separately-measured numbers in
+separate documents; on one axis it stops needing to be argued.
 
-Published as an artefact so the Director can read it without reading a log. BLOCKED BY the join: a plot
-of half the model would be the most convincing wrong picture available.
+THERE IS ALREADY A CHART IDIOM IN THE REPO: scripts/arch-graph.py emits mermaid xychart-beta (:965,
+:1118). Following it costs nothing and keeps one charting vocabulary.
+
+Published as an artefact so the Director can read it without reading a log.
 ```
 
 <a id="c29c1332-255"></a>
 
 #### #255 — MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever
 
-status: **pending** · blocked by: #253, #254 · blocks: #252 · metadata: `{"rank": 8}`
+status: **pending** · blocked by: #253, #254, #259 · blocks: #252 · metadata: `{"rank": 10}`
 
 ```
 NOT A LEVER HUNT. Director, 2026-08-07: "does our new sovereign observability system give us
@@ -5845,8 +5927,8 @@ measurement and insights into the wall, busy, work of CPU and GPU and with attri
 never previously had?" This run answers that question; any lever finding is a by-product, and the
 Director has ruled that no new render/engine optimisation is chased off the back of it yet.
 
-WHY A MATRIX AND NOT ANOTHER SINGLE LEG. Everything built in [#235] has been validated against ONE
-leg. Every defect this campaign has found surfaced the moment something ran at scale -- the
+WHY A MATRIX AND NOT ANOTHER SINGLE LEG. Everything built in [#235] and [#253] has been validated
+against ONE leg. Every defect this campaign has found surfaced the moment something ran at scale -- the
 mis-aligned PMU across 27 legs, the 4x fdinfo error, the 504-tick thread-sum gap. 28 legs across
 warps, load phases and lever toggles is a far harder test of the series retention, the stamps, the
 join and the CPU attribution than anything constructible by hand.
@@ -5857,29 +5939,51 @@ WHAT IT PRODUCES THAT HAS NEVER EXISTED
   * per-lever CPU BUSY per owner, from outside the process
   * per-lever GPU busy (re-confirms the existing table through the same instrument)
   * a per-interval series per leg, on one axis with the above
-  * the first real test of cpu.unattributed.busy_ns, which has only ever read 0.0 -- every leg crosses
-    a load phase, and load is exactly when threads exit and take their cost out of the live sum
+  * the first test AT SCALE of the attribution residual. REWRITTEN 2026-08-08: this bullet used to read
+    "the first real test of cpu.unattributed.busy_ns, which has only ever read 0.0". Both halves are
+    now dead. The key is cpu.attribution.residual_ns (renamed and UNCLAMPED at be2ceeee, [#253]), and
+    it has already read non-zero on both signs -- 11 live intervals gave -2,+5,0,-2,+6,-1,0,+2,-5,0,+2
+    clock ticks, which [#253] established is per-thread tick quantisation, not exited-thread time. So
+    the question the matrix answers is sharper than the old one: across 28 legs that each cross a LOAD
+    PHASE -- the one condition under which threads really do exit and take their cost out of the live
+    sum -- does an exited-thread term separate from the quantisation floor, or does the residual stay
+    inside +/- a few ticks throughout? A residual that never leaves the tick band would mean the
+    exited-thread term is real but negligible at these scenes, which is itself a result.
 
-BLOCKED BY #253 and #254. Running before the join gives three cells of four and a 47-minute re-run;
-running before the plot gives numbers nobody can read against each other.
+BLOCKED BY #254 (the plot) and #259 (the PMU wiring). [#253] is DONE, and its per-leg wiring is in the
+tree and gate-checked: render-profile.sh:184 starts the sovereign sampler at 0.5s per leg, :422 joins
+before the leg ends, lever-matrix.sh:592-593 carries <label>.joined.json and <label>.sovereign.tsv into
+the run directory. Running before the plot gives numbers nobody can read against each other; running
+before #259 banks 28 legs whose PMU column is empty, which is the two-artefacts-that-never-meet shape
+[#253] existed to end, surviving one level up.
 
 RUN IT BEFORE THE REFACTOR, NOT AFTER. #252 and #250 move and re-home this machinery. A completed
 matrix is the regression baseline those changes get compared against -- the same discipline as every
 byte-identical extraction on this fork. Refactoring first means having nothing to compare to.
 
-EXPECTATION, SET DELIBERATELY: the most likely headline is that no lever moves CPU meaningfully at
-these scenes either, given the frame is pinned at 61.7 fps with ~30% CPU and ~24% GPU utilised. A
-MEASURED null on CPU levers is a result this campaign has never been able to produce, and it is what
-would justify moving the target rather than the levers.
+GL_TIME_ELAPSED VALIDITY (#251) IS NO LONGER A SEQUENCING BLOCKER, and the reason is a [#253] result.
+The banked per-leg profiles contain per-pass gpu_us, which are GL_TIME_ELAPSED and therefore carry
+whatever #251 turns out to find. That used to argue for running #251 first. It no longer does: the
+joined artefact now carries SOVEREIGN GPU busy (fdinfo, per client) on the same epoch axis as those
+per-pass timers, so a disjoint problem would show up as a divergence between two independent
+instruments IN THE BANKED DATA, after the fact. Bank the matrix; let the cross-check decide whether
+#251 is urgent. Measuring beats sequencing defensively.
 
-Cost: ~47 minutes unattended for one scene at 3 repeats, per matrix-20260807-160513.
+EXPECTATION, SET DELIBERATELY: the most likely headline is that no lever moves CPU meaningfully at
+these scenes either, given the frame is pinned at ~62 fps with ~28% of one core on the main thread and
+~24% GPU engine busy (measured at Desert Town, [#253]). A MEASURED null on CPU levers is a result this
+campaign has never been able to produce, and it is what would justify moving the target rather than
+the levers.
+
+Cost: ~47 minutes unattended for one scene at 3 repeats, per matrix-20260807-160513. The 28-leg shape
+checks out against scripts/lever-table.json: 8 levers -> 3 repeats x (baseline + 8 off) + warmup = 28.
 ```
 
 <a id="c29c1332-256"></a>
 
 #### #256 — TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review
 
-status: **pending** · metadata: `{"rank": 9}`
+status: **pending**
 
 - `94f44d59` TSSA-OBS pass 1: the gate that could not see the component, and three positions the campaign paid for [#256]
 
@@ -5998,6 +6102,289 @@ T1. The document's side of the ambient-global violation (the `metrics` owes face
     has a shape.
 
 NOT A REVIEW TASK. Stays open across the observability arc, one entry per completed item.
+```
+
+<a id="c29c1332-257"></a>
+
+#### #257 — DEDUP-RATCHET: a registered ratchet is RED at 614 vs 596 and run-gates.sh cannot see it
+
+status: **pending** · metadata: `{"rank": 6}`
+
+```
+FOUND BY THE #253 BOARD AUDIT, 2026-08-08. Two defects, and the second is the one that matters.
+
+DEFECT 1 -- THE RATCHET IS BREACHED.
+    python3 scripts/dedup-measure.py --check   ->  exit 1
+    "LEAK = 614 symbols outside {base, core, host, platform, presentation, scene}"
+    "FAIL -- leak 614 exceeds ceiling 596"
+CEILING = 596 is declared at scripts/dedup-measure.py:79. The measurement is NOT stale: the script's own
+staleness guard (:194-199) did not fire, and only one build tree holds objects
+(build/linux-release-clang, 584 .o, mtime 2026-08-08 11:53, i.e. this session's build).
+
+DEFECT 2 -- THE RUNNER CANNOT SEE IT, AND THAT IS THE REAL FINDING.
+    grep -c "dedup-measure" .github/workflows/gates.yml  ->  0
+scripts/ci/run-gates.sh derives its entire set by parsing gates.yml. So dedup_measure is in NO gate
+run, and "55 green" is a tally taken over a set that excludes a red ratchet. The standing rule on this
+fork is "scripts/ci/run-gates.sh green IS the gate"; a ratchet that requires a BUILD falls through that
+rule silently, because the runner was designed around checks that need only the source tree.
+
+That is the same defect class as GATE-SKIP-1 (dc722dee) and as grant-sweep's PASSTHROUGH blindness
+(#256): AN INSTRUMENT THAT CANNOT SEE A COMPONENT IS INDISTINGUISHABLE FROM ONE THAT AGREES WITH IT.
+Third instance.
+
+WHAT THIS TASK OWES
+  1. Decide the breach: pay the 18 symbols down, or explain what grew and re-record the ceiling WITH A
+     REASON. A ceiling raised without a warrant is not a ratchet.
+  2. Establish WHEN it crossed 596. Requires rebuilds at older commits, which is expensive under the
+     E-core-pinned build rule -- so bound it by bisecting on the commits that touched the six zones
+     rather than by rebuilding everything.
+  3. Decide how a BUILD-REQUIRING gate joins the run-gates set. Options: a second declared list in
+     gates.yml gated on the build job; a `--with-build` flag on run-gates.sh that runs them and reports
+     them separately; or an explicit NOT-COVERED section in run-gates.sh's own output so the hole is
+     printed rather than absent. The third is the cheapest and matches the exit-77 precedent: an absent
+     verdict must be spelled differently from a passing one.
+
+NOT to be confused with metrics_mutual, which is honestly reported as SKIP by run-gates.sh. This one is
+not reported at all.
+```
+
+<a id="c29c1332-258"></a>
+
+#### #258 — GATE-SKIP-2: pr570_ledger's guard falls through to exit 0 — the exact hole dc722dee closed one step away
+
+status: **pending** · metadata: `{"rank": 7}`
+
+```
+FOUND BY THE #253 BOARD AUDIT, 2026-08-08. A one-line fix, filed because the sweep that fixed its twin
+walked past it.
+
+.github/workflows/gates.yml:314-320
+    - name: pr570_ledger -- the findings ledger matches its inputs and its decisions
+      run: |
+        if [ -d /root/analysis/osb-pr570/raw ]; then
+          python3 scripts/pr570-ledger.py --check
+        else
+          echo "pr570-ledger: SKIPPED -- raw outputs not present on this machine"
+        fi
+
+The else-branch echoes and EXITS 0. On any machine without /root/analysis/osb-pr570/raw -- which is
+every CI runner and every fresh clone -- run-gates.sh reads that 0 as OK and counts a check that
+compared nothing toward the green tally.
+
+THIS IS THE DEFECT dc722dee ALREADY FIXED, FOR metrics_mutual, IN THIS FILE. Compare gates.yml:406-411:
+        else
+          # 77, not a fall-through. This else-branch used to end here and exit 0, so run-gates.sh
+          # printed OK and counted a comparison that never happened toward the green tally.
+          exit 77
+        fi
+dc722dee's own message says "THE HOLE WAS IN THREE PLACES". It was in four. The pr570_ledger step was
+already in the file when that commit landed.
+
+THE FIX: `exit 77` in the else branch. One line.
+
+THE FIX THAT MATTERS MORE: a check that every guarded step in gates.yml ends its did-not-run path in 77
+rather than 0 -- because this is now the second time the same shape has been found by reading rather
+than by an instrument, and reading is not a mechanism. Cheapest form: a run-gates.sh selftest arm that
+greps gates.yml for `else` branches inside `run: |` blocks and asserts each reaches an `exit 77`. That
+arm must itself be proven to fire.
+
+NOTE this does NOT change the current local tally: /root/analysis/osb-pr570/raw IS present on this
+host, so pr570_ledger really ran and really passed (155 rows, 0 open) in the 55-green run at 849f97d2.
+The defect is about every machine where it does not.
+```
+
+<a id="c29c1332-259"></a>
+
+#### #259 — OBS-PMU-WIRE: the per-leg join has a PMU column and the harness never fills it
+
+status: **pending** · blocks: #255 · metadata: `{"rank": 9}`
+
+```
+A GAP IN #253's OWN WORK, found by the audit's adversarial pass and confirmed by hand.
+
+scripts/obs-join.py takes --pmu and joins the i915 engine series onto the same epoch axis as everything
+else. scripts/render-profile.sh:422 never passes it:
+
+    scripts/obs-join.py "harness/profiles/$LABEL.series.json" --sovereign "$SOVEREIGN_SERIES" || true
+
+So every per-leg artefact records, on every interval:
+    "pmu": {"available": false, "reason": "no PMU series supplied"}
+Confirmed against the live capture: harness/profiles/obs-join-verify.joined.json has sources.pmu = null.
+
+WHY IT HAPPENED, AND WHY IT IS NOT SIMPLY A MISSING FLAG. The two samplers live at different levels ON
+PURPOSE. The sovereign readers are procfs reads with no warmup, so render-profile.sh starts one PER LEG.
+The i915 PMU pays a warmup to open its counter and is therefore started ONCE PER RUN by
+lever-matrix.sh:523-526, and joined to legs afterwards by pmu-join.py using the window stamps. A
+standalone render-profile.sh run genuinely has no PMU series to pass -- there is no sampler above it.
+
+So the fix is at the matrix level, not in render-profile.sh: after the run, re-join each leg with
+--pmu "$PMU_SERIES". obs-join.py already resolves each interval against the PMU rows by epoch, so this
+is a second invocation, not new arithmetic.
+
+CORRECTION OWED TO #253's OWN RECORD. Its closing text says "ONE joined artefact per leg: in-process
+intervals, both sovereign readers, and the PMU on a single epoch axis." The first two are true and
+verified; the third describes the SCRIPT's capability, not the artefact the harness produces. The
+commit ce6c88a1 has the same overstatement. Both should be read as: the joiner supports three sources,
+the harness currently fills two.
+
+CONSEQUENCE FOR #255. A matrix run today would bank per-leg artefacts whose PMU column is empty, and
+the GPU engine busy would live only in the run-level pmu-join.py report -- i.e. exactly the two-artefacts
+-that-never-meet shape #253 existed to end, surviving one level up. Worth closing BEFORE the matrix, and
+it is small.
+
+BLOCKS #255 in the sense that running the matrix first means re-joining afterwards from retained files
+(possible -- the raw TSVs are retained per leg and at run level -- but it means the banked artefact is
+not the one anybody reads).
+```
+
+<a id="c29c1332-260"></a>
+
+#### #260 — TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task
+
+status: **pending** · blocked by: #261 · metadata: `{"rank": 16}`
+
+```
+FOUND BY THE #253 BOARD AUDIT's completeness critic, 2026-08-08, and verified: the word `ugc` appears
+ZERO times in the entire 454KB board.
+
+docs/superpowers/HANDOVER.md §3 carries a five-stage plan for dissolving the `platform` component --
+Director-ratified, with stages 1 and 2 shipped (60a66f02 "P2P networking is a TRANSPORT -- stage 1 of
+dissolving `platform`"). Stages 3, 4 and 5 are marked "not started":
+
+    stage 3   ugc
+    stage 4   desktop, plus the platform_pc -> vendor rename
+    stage 5   delete platform / platform_null
+
+None of them exists as a board task. #204's own block lists its sub-tasks exhaustively -- "#205 spine,
+#207 levelling pass, #208 aggregate review" -- and there is no fourth. #208 scopes register fields, the
+completeness stopping rule, the aggregate review and gate re-homing; not the dissolution.
+
+WHY THIS IS THE SHARP KIND OF GAP. The board exists so that a `[#NNN]` in a commit resolves and so that
+nothing ratified is carried only in someone's head. A half-finished, Director-ratified architecture
+thread whose ONLY pointer is a point-in-time handover note is the failure the board was built to
+prevent -- and that note is now 167 commits stale (see the sibling task on HANDOVER.md).
+
+WHAT TO FILE. Either one task or three, each pointing at HANDOVER §3.2's eight-item checklist as the
+template, and each ranked relative to #208. Three is probably right: the stages have different sizes and
+stage 4 carries a rename that touches the register, the grant table and every gate that names
+platform_pc.
+
+DO NOT START WITHOUT reading HANDOVER §3 first -- and refresh that document before trusting it, because
+every figure in its §2 state table currently reads wrong at HEAD.
+```
+
+<a id="c29c1332-261"></a>
+
+#### #261 — HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong
+
+status: **pending** · blocks: #260 · metadata: `{"rank": 17}`
+
+```
+FOUND BY THE #253 BOARD AUDIT, 2026-08-08.
+
+docs/superpowers/HANDOVER.md is the document the #204 memory explicitly says to READ FIRST -- it carries
+the live status of the TSSA and names the commit it describes so staleness is detectable. It names
+21ba119a. `git rev-list --count 21ba119a..HEAD` = 167.
+
+Every headline figure in its §2 state table has rotted:
+
+    §2 says                      HEAD says
+    gates      21 of 21 green    56 declared steps; run-gates.sh: 55 green, 1 SKIPPED (metrics_mutual)
+    components 52                53          (scripts/spec-model.py)
+    grant rows 50                51          (scripts/spec-model.py)
+    elements   24                24          (unchanged)
+    open owes  14 of 52          15 of 53    (generated ledger, TSSA line 6440)
+
+and §6's named component list omits `metrics` entirely -- the component this whole campaign has been
+building.
+
+WHY IT MATTERS MORE THAN A NORMAL DOC DRIFT. This file is the designated entry point for a fresh
+session on #204. A resume document whose numbers are wrong does not merely mislead; it teaches the
+reader that the numbers are decorative, which is how the register came to name two readers when the
+tree had three (#256 T2).
+
+IT IS ALSO THE ONLY WRITTEN HOME of the ratified platform-dissolution plan (see the sibling task), so
+it cannot simply be deleted.
+
+THE FIX IS A CHOICE, and it is the same one the board itself already made:
+  (a) GENERATE the §2 figures, as docs/board.md and system-boundaries.md already do, and gate them --
+      then staleness is impossible rather than merely detectable; or
+  (b) stamp it SUPERSEDED and move the live status into the board, leaving HANDOVER as narrative only.
+(a) is more work and is the answer consistent with every other generated-number decision on this fork
+(#179, #209, arch_graph_fresh). A figure a human retypes is a figure that will be wrong.
+```
+
+<a id="c29c1332-262"></a>
+
+#### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
+
+status: **pending** · metadata: `{"rank": 18}`
+
+```
+RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
+
+The 2026-08-08 board audit (15 read-only agents + adversarial verification, full record at
+docs/board-audit-2026-08-08.md) checked all 37 open/active tasks against the tree. The LIVE
+observability cluster was corrected in place the same day: #250, #252, #245, #254, #255, and five
+tasks were closed (#200, #201, #202, #207, #219). Five new defects were filed (#257-#261).
+
+WHAT REMAINS UNAPPLIED is the pointer rot in the DORMANT clusters -- render, sim-levers, and the
+older arch tasks. Every one of these was verified as STILL GENUINELY OPEN; what has rotted is the
+file:line references a reader would follow. Leaving them is safe for now precisely because the
+Director has ruled that no new render/engine optimisation is chased yet, so nobody is following
+these pointers this week. It is NOT safe indefinitely: a task whose pointers are dead reads as a
+task nobody can start.
+
+TASKS WITH CONFIRMED ROTTED POINTERS (corrections in the audit doc, one section each):
+  #135  parallax refresh state    hpp:99-119  -> hpp:191-221 ; cpp:266-320 -> cpp:483-534
+        (cpp:266-320 is now the ENV cache's drift/motion term from #177 -- a DIFFERENT gate)
+  #136  frameBufferGeneration is in StarRenderer.hpp:194, not StarGlRenderSurface.hpp
+  #138  both sequencing prerequisites SHIPPED; only the two feasibility spikes remain
+  #161  both counter line references wrong -- the ones the task calls "cheap because both
+        counters already exist"
+  #169  floatToHalf is StarWorldClient.cpp:65 not :32; "CMakeLists.txt:295-296" names a file that
+        does not exist (there is no repo-root CMakeLists.txt)
+  #191  WorldRenderData has 23 members, not 35 -- the slice is 5 of 23, and the "35 members"
+        framing overstates the target by 52%
+  #197  EIGHT switchEffectConfig("world") sites, not ten; none of the eight line numbers is right;
+        WorldPainter is not one of them. The CENTRAL claim (nothing asserts effect-parameter state)
+        is CONFIRMED at HEAD.
+  #198  "ZERO TRACE" verifies literally; the one line is StarRenderer_opengl.cpp:106, not :80
+  #171  every line reference dead; renumbered in the audit doc. The OBJECTION is unchanged (all six
+        costs are (Frame, Cpu), one pair, one whole) but its stated MECHANICS are stale: the owner
+        table is now keyed by (owner, domain), and MetricDesc.whole exists and is INERT.
+  #66   the cited integration SHA is on no branch; the "superseded by #70" redirect points at a
+        completed task
+  #90   SKIP-0 flag site drifted 122 lines; the closing sentence repeats a claim #84 retracted
+  #124  LEVER HUNT -- no code, but the design spec AND implementation plan both exist on disk and
+        the task cites neither, so it reads as not-yet-brainstormed when only the build remains
+  #75   NOT partially done -- fully open on both items; the toggle fix's same-session path has
+        never been exercised, and the ProtoCacheToggle tests cannot run in CI
+  #104  decision note lives at /root/kubebound/2026-06-26-fu-lua-offload-decision.md; /tmp/fulua/ is
+        gone. The DEFER holds and the reconsider-gate is NOT open.
+  #144  THREE items shipped (not four): viewport, shader-fallback dead code, process-trap script.
+        setEffectTextureHalf is PARTIAL. Several paths moved to StarGlRenderSurface.cpp.
+  #4    THE SECOND STORE's only task. THREE of four items shipped under [#160]; only the per-draw
+        glTexParameteri hoist remains. Every hpp:/cpp: reference is dead -- the code moved to
+        source/application/StarGlRenderSurface.{hpp,cpp}.
+  #130  live repo, dormant a month; the work after STAGE 0 was an undocumented by-reference
+        blueprint arc, not the hardening backlog the board says comes next
+  #203  every deliverable shipped, but do NOT close: it left a residual defect --
+        system-boundaries.md:1069-1070 still states a position §14 item 4 retracts
+  #204  every headline figure rotted, including "Part I is 312 lines of placeholder" which #205
+        superseded
+  #208  four of five register-field bullets genuinely open; the fifth (section 15's instrument
+        table rows) landed at c359fc30. Blocker #207 is now CLOSED.
+  #237  correctly filed and correctly worded -- the ONLY defensible edit is to drop or re-derive
+        "the fork is already ~83 commits behind"
+  #251  "933-2350MHz" should read "800-2350MHz" (sysfs gt_RPn/gt_RP0 on card1). The central claim
+        verifies literally: `git log --all -S DISJOINT -- source/` is EMPTY, so absent means
+        never-written, not renamed.
+
+DO NOT APPLY BLIND. Each correction in the audit doc survived an adversarial refutation pass, but
+twelve of the audit's original thirty-two findings were REFUTED and several of those refutations
+themselves carried corrections. Read the refutation column before editing a task, not just the
+finding.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
