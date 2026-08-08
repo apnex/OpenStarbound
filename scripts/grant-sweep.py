@@ -76,7 +76,14 @@ FROM_APPLICATION = {
 # `server` was missing here until 2026-08-01, so source/server/ mapped to None and the component
 # reported UNVERIFIABLE ("not in the tree") while four of its files sat in the tree. A component the
 # instrument cannot see is indistinguishable from one that agrees with the table.
-PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "server")
+# `metrics` was missing here until 2026-08-07 -- the SECOND instance, with the paragraph above it
+# describing the first. source/metrics/ has existed since GM-1 and holds eight files; the component
+# reported UNVERIFIABLE the whole time, so the only gate connecting the grant table to the tree was
+# blind to the component the entire observability campaign is about. A list that has to be edited by
+# hand for each new directory will keep doing this; the ratchet against it is that the sweep REPORTS
+# unverifiable rather than passing over, which is how both were eventually found.
+PASSTHROUGH = ("core", "base", "platform", "game", "windowing", "frontend", "rendering", "server",
+               "metrics")
 
 # Directories whose target-state component has a DIFFERENT NAME. `source/client/` holds
 # ClientApplication, which the target state calls `participant`: after `colocation` took the embedded

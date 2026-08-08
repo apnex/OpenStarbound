@@ -5852,54 +5852,60 @@ observability are now deeper-explored than any other area of the fork, so this c
 document rather than only conforming to it. Findings are appended as each board item completes, while
 the reasoning is still attached to the thing that produced it.
 
-First pass, from [#235] and [#236]. Three kinds, and the third is the one nothing goes red for.
+=== SETTLED IN THE FIRST PASS (commit follows this task) ===
 
-=== THE TREE VIOLATES A STATED POSITION ===
+T2 DONE. The `metrics` register row named MetricSample, ClientBusyReader, EngineBusyReader. A new
+    bidirectional check (scripts/register-artefacts.py) found FOUR unnamed types, not the one manual
+    reading caught: BusyReading, EngineBusyWindow, EngineOpenResult, ThreadBusyReader -- two of which
+    predated this campaign entirely. Row rewritten; check green at 7 named / 7 declared / 0 unnamed.
+    The instrument matters more than the row: nothing read the register's artefact names, which is why
+    it went stale, and the BACKWARD direction (declared but unnamed) is the one that caught it.
 
-T1. The observability section's forbidden column reads "telemetry as an ambient global that anything
-    may reach". `Telemetry::` is reachable from 410 sites across six components. That IS the forbidden
-    row, stated in our own document, and [#252] is the work that ends it -- which makes #252 compliance
-    with our architecture rather than housekeeping. The TSSA should say so explicitly, because right
-    now the violation is only visible to someone who counts.
+T3/T4/T6 DONE. Three rows added to the observability requires/forbids table, each with its warrant
+    written beside it because each was bought with a shipped defect: a metric must state its clock; a
+    whole must shrink when its parts do; an attribution must state its granularity.
 
-=== THE DOCUMENT IS STALE ===
+GATE-BLINDNESS DONE, and it was the sharpest find. grant-sweep.py's PASSTHROUGH list omitted
+    `metrics`, so the ONE instrument connecting the grant table to the tree reported the component
+    UNVERIFIABLE while eight of its files sat in the tree. Second instance -- the paragraph three lines
+    above the list describes the first (`server`, 2026-08-01) and says why it matters: "a component the
+    instrument cannot see is indistinguishable from one that agrees with the table." Now measured, and
+    the grant row verifies clean: source/metrics/ includes core (11) and itself (6), nothing else. The
+    spec's own coverage ledger moved 12 -> 13 anchored rows and 39 -> 38 unbuilt components.
 
-T2. The `metrics` register row names MetricSample, ClientBusyReader and EngineBusyReader. The tree has
-    ThreadBusyReader and ProcFs as well. One reader and one shared helper missing. (#208 owns the
-    register; recorded here with the reason.)
+=== OPEN: TWO CONFLICTS, WHICH ARE THE DIRECTOR'S CALL AND NOT MINE ===
 
-=== THE DOCUMENT IS INCOMPLETE -- WE LEARNED THIS AND IT IS NOT WRITTEN DOWN ===
+T8. THE FORBID COLUMN FORBIDS WHAT WE BUILT. The observability table pairs "the instrument's grants a
+    subset of its subject's" with "an instrument that sees what its subject may not name". The REQUIRES
+    half is about link grants and is right. The FORBIDS half, read literally, prohibits the sovereign
+    observer: ClientBusyReader and ThreadBusyReader see kernel accounting -- drm-engine ns, per-thread
+    utime -- that the subject cannot name about itself, and that is the entire value of an outsider.
+    The two halves are not the same statement, and the forbid is the one that drifted.
+    PROPOSED: "an instrument that must be LINKED INTO its subject to see it" -- which is the real
+    failure mode, and the one this fork lived: the only thing that could contradict the renderer's GPU
+    timers was inside the renderer.
 
-T3. A CLOCK IS PART OF A METRIC'S IDENTITY. The observability section covers identity across a seam and
-    the grant rule, and says nothing about the declared QUANTITY being part of the contract. Two
-    denominators survived for months because no metric could say whether it measured work or waiting.
-    Candidate position: an instrument that cannot state its clock cannot be closed against anything.
+T9. THE OWNERSHIP RULE HAS NO LAWFUL HOME FOR HALF THE SYSTEM. The table requires "every declared
+    instrument owned by a named component" and forbids "telemetry as an ambient global that anything
+    may reach". There is no `telemetry` component among the 53. So the in-process instrument -- 410
+    call sites across six components -- is the forbidden thing, and the register offers nowhere for it
+    to become the required thing. That is not a violation to fix in code alone; the register is short a
+    row, and what that row IS (a component? a facet of core? a vocabulary?) is an architecture decision.
+    [#252] moves the mechanism; this decides what it moves INTO.
 
-T4. A WHOLE MUST BE ABLE TO SHRINK. Both defects were the same shape -- a denominator that could not
-    move (a GPU timeline span reading the frame period; a CPU pacing period containing its own sleep as
-    a part). Falsifiability of the DENOMINATOR is a design constraint on any budget the target state
-    describes, and the document states no such rule.
+=== STILL DEFERRED, ON PURPOSE ===
 
-T5. THE INSTRUMENT MAY SAMPLE FASTER THAN ITS SUBJECT, BECAUSE IT DOES NOT PERTURB. The grant argument
-    justifies the boundary on correctness grounds ("never a peer of its subject"). It buys something
-    else the document does not claim: the out-of-process reader can poll at 100ms where the in-process
-    writer cannot, so regime and transient are separable ONLY across that boundary. That is a positive
-    property of the architecture and it should be an asserted consequence, not a coincidence.
+T5. The sovereign boundary buys sampling freedom, not only correctness -- the out-of-process reader can
+    poll fast BECAUSE it does not perturb. I have not measured the perturbation difference. Writing it
+    now would be a claim with no instrument, which is the failure this fork punishes hardest.
 
-T6. ATTRIBUTION HAS A GRANULARITY AND THE TARGET STATE DOES NOT NAME IT. Measured, and structural
-    rather than incidental: WALL resolves per scope (143 keys), BUSY resolves per owner (5) for CPU and
-    per process/engine-class for GPU. "Correctly attributed" without a granularity claim is
-    unfalsifiable. The document should state what the target state promises and what it does not.
+T7. The consumer half -- 1,932 lines of Python -- belongs to none of the 53 components. [#253] is what
+    tells us what the consumer must actually be; deciding its component first designs for the diagram.
 
-T7. THE CONSUMER HALF HAS NO COMPONENT. 1,932 lines of Python -- telemetry-window, pmu-join,
-    gputimer-brackets, the two lints, pmu-engine-sample -- and none of the 53 registered components
-    owns any of it. By line count that is the largest unowned surface in the observability system. The
-    register has a hole, not a stale row. Cross-ref #200.
+T1. The document's side of the ambient-global violation (the `metrics` owes facet) waits until [#252]
+    has a shape.
 
-NOT A REVIEW TASK. It stays open across the observability arc and takes an entry per completed item;
-[#253]/[#254]/[#255] will each add or settle rows. Folding the findings INTO the document is #207/#208's
-work and should not start until the arc's evidence is in -- writing an architecture position from one
-leg is how the two dead denominators got written in the first place.
+NOT A REVIEW TASK. Stays open across the observability arc, one entry per completed item.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

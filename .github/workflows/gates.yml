@@ -77,6 +77,16 @@ jobs:
       # The grant table is the one artifact in the headless-client design with no instrument behind
       # it, and two defects sat there -- both would have failed to compile. Transitive, because the
       # preprocessor is; plus a ratchet on the crossings the design exists to delete.
+      # The grant sweep checks EDGES and spec-derivations checks FACET SHAPE. Neither reads the
+      # register's artefact names, which is how the `metrics` row came to say two readers while the
+      # tree held five types it did not mention. Both directions: a named type that does not exist
+      # FAILS; types that exist and are unnamed are ratcheted, because a register cell summarises.
+      - name: register_artefacts -- the component register's named types match the tree
+        run: python3 scripts/register-artefacts.py
+
+      - name: register_artefacts_fires -- both directions see the real tree
+        run: python3 scripts/register-artefacts.py --selftest
+
       - name: grant_sweep -- the headless-client grant table matches the tree
         run: python3 scripts/grant-sweep.py --check
 

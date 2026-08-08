@@ -908,6 +908,26 @@ only be diagnosed in a tree that has already stopped being the target state.
 | one identity that survives a crossing | a trace that restarts at each process |
 | every declared instrument owned by a named component | telemetry as an ambient global that anything may reach |
 | the instrument's grants a subset of its subject's | an instrument that sees what its subject may not name |
+| a metric that states which clock it takes | a duration that cannot say whether it measured work or waiting |
+| a whole that shrinks when its parts do | a denominator held constant by the way it is constructed |
+| a stated granularity for every attribution | "correctly attributed" with no unit of attribution named |
+
+**The last three rows were bought, not reasoned.** Each cost a shipped defect that survived because
+the position was unstated:
+
+- **The clock.** Every duration in the tree was a wall span under a name that said work, and
+  `MetricClock` sat declared with zero call sites populating it. Two denominators survived months on
+  that silence. A metric that cannot state its clock cannot be closed against anything, because
+  nobody can say what the closure would mean.
+- **The shrinking whole.** Two wholes could not move. A GPU timeline span read ~16,200us — the frame
+  PERIOD — at 0.22%, 11.39%, 23.39% and 32.93% real engine busy alike; a CPU pacing period held its
+  own sleep as one of its parts, so the sum reached the whole whatever any part did. Both closures
+  ran, compared, and could not fail. Falsifiability is a property of the DENOMINATOR before it is a
+  property of the check.
+- **The granularity.** Measured and structural rather than incidental: wall resolves per scope,
+  busy resolves per owner for CPU and per process and engine class for GPU. The coarser one is a
+  property of the kernel interfaces, not of effort. "Correctly attributed" with no unit named cannot
+  be failed, so it cannot be satisfied either.
 
 The duty and its owner are named in the register; this section states only that the obligation exists
 and what shape it takes.
@@ -3130,7 +3150,7 @@ Every component in the diagram, in the same reading order.
 | **`net`** | VOCABULARY | DOMAIN | what a replicated field is | **D11** — a view is a prediction, so replication needs a vocabulary of its own | the 11 `NetElement*` headers — an abstract base domain types **derive from**, already domain-free and already in `core` |
 | **`content`** | INTERFACE | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
-| **`metrics`** | LIBRARY | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `ClientBusyReader` and `EngineBusyReader`, two kernel paths to one truth; the `metrics` CLI, which reads its subject without being linked into it |
+| **`metrics`** | LIBRARY | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `BusyReading`, whose `available` flag is the difference between measuring nothing and being unable to measure, and which no caller may conflate; `ClientBusyReader`, `EngineBusyReader` and `ThreadBusyReader` — three kernel paths, two to the GPU's busy time and one to the CPU's, each keyed by what IT attributes to; `EngineOpenResult` and `EngineBusyWindow`, which exist because the PMU's first read after open is not a measurement and a type with no field to put it in is the only version of that rule a caller cannot skip; the `metrics` CLI, which reads its subject without being linked into it |
 | **`presentation`** | INTERFACE | DEVICE | the presentation contract | **F1** — devices are optional, so the sink is an interface whose implementations need not own one | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | DOMAIN | the decisions no single world can make | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
@@ -5752,11 +5772,11 @@ than it is:
 | | what it establishes | coverage |
 |---|---|---|
 | **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 53 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
-| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **12 of 51 grant rows.** Gated as `grant_sweep` |
+| **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **13 of 51 grant rows.** Gated as `grant_sweep` |
 | **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 7 ENTRYPOINTs** — the ones that exist. **Measured by `link_sweep`, and deliberately not gated**: it reads a build tree, and a gate that reads a build tree passes or fails on what someone last compiled rather than on what the repository says. This is the one row here whose coverage cannot ratchet in CI, and saying so is the difference between a limit and a hole |
 | **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
 
-**39 of the 53 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
+**38 of the 53 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
 <!-- END GENERATED: spec-measures coverage -->
 
 <!-- HISTORICAL -->
