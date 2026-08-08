@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**202 tasks** across 2 store(s): 2 in_progress, 34 pending, 166 completed
+**203 tasks** across 2 store(s): 2 in_progress, 34 pending, 167 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 201 tasks, ids 64–265
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 202 tasks, ids 64–266
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -68,7 +68,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 210, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 211, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 31.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -97,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 166.
+**Completed tasks citing no commit and no doc:** 86 of 167.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -301,7 +301,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `a4fc43b3` | — |
-| [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | `94f44d59` | — |
+| [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `c19cb959` `94f44d59` | — |
 | [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
 | [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
 | [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
@@ -311,6 +311,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#263](#c29c1332-263) | `c29c1332` | open | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | — | — |
 | [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
+| [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5721,10 +5722,9 @@ Telemetry::snapshot() are still in source/core/StarTelemetry.cpp.
 === THE SEAM ===
 
 snapshot() reads registry().nodes directly with relaxed atomic loads. Moving it means Telemetry
-exposes a READ-ONLY VISITOR over its nodes and metrics/ owns the rendering. Narrow seam, and it
-keeps the rule that survives from StarMetricDesc.hpp: the in-process store is the subject
-reporting on itself and stays in core; the outsider that must never be a peer of its subject
-owns everything that interprets.
+exposes a READ-ONLY VISITOR over its nodes and the projection owns the rendering. Narrow seam, and it
+keeps the rule that survives from StarMetricDesc.hpp: the in-process store is the subject reporting on
+itself; the outsider that must never be a peer of its subject owns everything that interprets.
 
 === WHY THIS IS NOT TIDYING: THE VOCABULARY IS ALREADY SPELLED TWICE ===
 
@@ -5738,8 +5738,7 @@ And `source` ALREADY DIVERGES:
 StarMetricDesc.hpp records the mapping in a COMMENT -- "the existing free-text values map onto
 these -- 'fdinfo:*' to ProcFs, 'i915-pmu:*' to PerfEvent" -- and nothing executes it. That is a
 rule held up by prose, which is the exact shape of the defect the designated-initializer lint was
-written to end. It is UNFIXABLE while the renderer lives in core and the sample lives in metrics/;
-one table in one place fixes it by construction.
+written to end. One table in one place fixes it by construction.
 
 === RULING (a): THE SHIM'S THICKNESS IS A COVERAGE LIMITER ===
 
@@ -5751,35 +5750,53 @@ be thinner -- and a wide brace-init per site is a disincentive to declare a metr
 
 Resolution, and it belongs in #245 rather than here: NAMED DESCRIPTOR FACTORIES at the call site.
 The descriptor stays BOUND to the recording call (#167 -- separating them is the reachability bug
-class), it just stops being eighteen fields of text. Cheap-to-declare is the precondition for
-dense coverage.
+class), it just stops being eighteen fields of text.
 
 === WHAT STILL DOES NOT MOVE ===
 
-Roughly 400 of the 410 telemetry sites outside metrics/ and core/ are instrumentation AT the
-point of measurement -- game 183, rendering 105, application 69, base 29. A TelemetryScope in
+RE-MEASURED 2026-08-08, because the previous figure did not reproduce. There are 256 references to
+Telemetry::/TelemetryScope/TelemetryTimer/Counter/Gauge outside core/StarTelemetry* and test --
+game 133, rendering 46, application 44, base 17, client 13, frontend 3. This task and #256 both used
+to record "410 sites, game 183, rendering 105, application 69, base 29", and no grep reproduces it:
+the broadest possible count, case-insensitive "telemetry" anywhere including comments, is 352.
+Corrected rather than carried, since it is the number that says how much does NOT move.
+
+Nearly all of those 256 are instrumentation AT the point of measurement. A TelemetryScope in
 WorldClient::lightingCalc belongs in WorldClient. R07-R16, the nine registration defects closed
 2026-08-05..07, were every one of them about keeping declaration at the call site. These stay,
 and the goal for them is THINNER, not elsewhere.
 
-Telemetry's lock-free registry and MetricDesc stay in core, per the boundary written at the top of
-StarMetricDesc.hpp: a vocabulary two components share belongs where both are granted; the duties
-differ and only the interpretation moves.
+=== THE STORE'S DESTINATION IS NOW DECIDED, AND IT IS NOT `core` ===
+
+Director, 2026-08-08, settling #256 T9. The register gained a 54th component, `telemetry` -- LIBRARY,
+MACHINE, granted `core` alone -- owning **the handle a subject records through**. `MetricDesc` and its
+enums stay in `core`, because a vocabulary two components share belongs where both are granted.
+
+So this task's earlier line "Telemetry's lock-free registry and MetricDesc stay in core" is HALF
+SUPERSEDED: the vocabulary stays, the registry becomes its own component. That is a further move this
+task does not perform and nobody has yet scheduled -- recorded in the `telemetry` derivation's own
+`owes` facet rather than left implicit.
+
+AND THE PROJECTION CANNOT SIMPLY GO TO `metrics` EITHER, for the reason that decided T9: `metrics`
+names nothing it measures, and anything named BY the subjects would invert that. The projection moving
+to `metrics` is legal only because `metrics` would then name `telemetry` -- an instrument naming an
+instrument, never a subject. Stated here because it is the constraint that makes this seam the right
+one rather than a convenience.
 
 === FUTURE, PER RULING (b) ===
 
 RE-MEASURED 2026-08-08: the Python in scripts/ is 2,260 lines across the five originally-named files,
 not 1,932 -- telemetry-window 813 (was 661), gputimer-brackets 401, pmu-join 372, metric-desc-lint 489
 (was 313), pmu-engine-sample 185. [#253] added two more consumers to the same unowned surface,
-obs-join 514 and metrics-sample 317, bringing it to 3,091. These are consumers and fold into the
-sovereign modules "in future ... interfaces yet to be built". NOT this task. #250 builds the interface
-they would fold into; #200 (now DONE) owns the machinery for declaring their boundary.
+obs-join 514 and metrics-sample 317; [#254] and [#255] added obs-plot and lever-cpu. These are
+consumers and fold into the sovereign modules "in future ... interfaces yet to be built". NOT this
+task. #250 builds the interface they would fold into.
 
 CARRIES THE RETENTION POLICY: dev/storage/telemetry still holds 54,364 files / 250MB with nothing that
 deletes them, re-verified 2026-08-08, and [#253] now writes a sovereign TSV per leg on top. Retention
-belongs to whoever owns cadence, which after this move is metrics/.
+belongs to whoever owns cadence.
 
-CROSS-REF: #250 (GM-3 transport), #245 (the factories), #204/#208 (TSSA boundary), #256 T7/T9.
+CROSS-REF: #250 (GM-3 transport), #245 (the factories), #204/#208 (TSSA), #256 T7/T9.
 ```
 
 <a id="c29c1332-253"></a>
@@ -5993,10 +6010,11 @@ checks out against scripts/lever-table.json: 8 levers -> 3 repeats x (baseline +
 
 <a id="c29c1332-256"></a>
 
-#### #256 — TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review
+#### #256 — TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959)
 
-status: **pending**
+status: **completed**
 
+- `c19cb959` [#256] telemetry becomes a component, and the sweep that reads it finds three defects
 - `94f44d59` TSSA-OBS pass 1: the gate that could not see the component, and three positions the campaign paid for [#256]
 
 ```
@@ -6021,7 +6039,7 @@ T3/T4/T6 DONE. Three rows added to the observability requires/forbids table, eac
 GATE-BLINDNESS DONE, and it was the sharpest find of that pass. grant-sweep.py's PASSTHROUGH list
     omitted `metrics`, so the ONE instrument connecting the grant table to the tree reported the
     component UNVERIFIABLE while eight of its files sat in the tree. See T14 below: this is now known
-    to be one of FOUR instances of the same shape.
+    to be one of FOUR instances of the same shape -- FIVE as of the close below.
 
 === FROM [#253], THE JOIN -- THREE DELTAS, ALL OF THE THIRD KIND ===
 
@@ -6032,102 +6050,43 @@ T10. A METRIC MUST STATE ITS METHOD, NOT ONLY ITS CLOCK. T3 bought "a metric tha
     it takes". The join needed a SECOND declaration the vocabulary has nowhere for: how the number was
     DERIVED. The sovereign counters are re-differenced -- exact, and re-windowable over any interval a
     consumer later chooses. The PMU figure is a mean of sub-window rates and is neither. Same unit,
-    same clock, same owner, same domain; one survives re-windowing and the other does not, and
-    MetricDesc cannot express the difference.
-    PROPOSED ROW -- requires: "a metric that states how it was derived: a level, a difference, or a
-    mean of differences". forbids: "two numbers sharing a unit that were made by different arithmetic".
-    NOW HALF-BUILT, AND WHERE IT IS BUILT IS THE POINT ([#254]). scripts/obs-plot.py prints the method
-    beside every series, because a reader who cannot tell the two apart will quote them alike. But the
-    renderer INFERS it from the key's shape (a `.pmu` suffix, a known in-process key name) rather than
-    reading it off the sample -- a second place that knows the vocabulary, which is exactly the
-    divergence this delta predicts. The field belongs on MetricDesc; until then the plot is guessing
-    correctly.
+    same clock, same owner, same domain; one survives re-windowing and the other does not, and nothing
+    in the descriptor distinguishes them.
 
 T11. A RATE'S DENOMINATOR MUST BE MEASURED, NOT DECLARED. T4 bought "a whole that shrinks when its
-    parts do" -- which governs the NUMERATOR's parts. Nothing governs the denominator, and the join
-    hit that gap on its first interval: sovereign samples do not align with telemetry snapshot
-    boundaries, so the first usable sample sits after the interval opens and the last before it
-    closes. Dividing busy time by the interval's DECLARED duration under-reports by exactly the
-    uncovered fraction, silently, and worst at the edges where a lever's effect would show. Measured
-    at Desert Town: 92.8% coverage at a 0.5s cadence, so the naive form would have read 7.2% low
-    across every leg. obs-join divides by `coveredS` and carries it beside `durationS`.
-    PROPOSED ROW -- requires: "a rate whose denominator is the span actually measured". forbids: "a
-    denominator taken from the interval that was requested".
+    parts do". The join found the dual: the denominator is the span ACTUALLY COVERED, never the
+    nominal interval. At a 0.5s cadence the real coverage was 92.8%, so the naive form reads 7.2% low,
+    silently, and worst at the edges where a reader is most likely to be drawing a conclusion.
 
 T12. A DISCREPANCY MUST KEEP ITS SIGN. A REFINEMENT of T4 rather than a new subject.
-    cpu.unattributed.busy_ns was the residual between a whole (process CPU busy) and its parts (the
-    per-owner sums), described as "threads that exited within the window", and CLAMPED AT ZERO. It had
-    never once read anything but 0.0, which the board had recorded as a curiosity. Eleven live
-    intervals gave the true residual as -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2 ticks: every value a
-    whole 10ms clock tick, both signs present, and no thread having exited. It is PER-THREAD TICK
-    QUANTISATION -- the owner sum quantises once per thread, the aggregate once -- and the clamp is
-    what made that undiscoverable, because a clamped residual can only ever look like a small steady
-    leak. Fixed at be2ceeee: renamed cpu.attribution.residual_ns, unclamped, both terms named.
-    PROPOSED ROW -- requires: "a whole's discrepancy from its parts reported WITH ITS SIGN". forbids:
-    "a residual clamped so that noise can only read as a leak". Falsifiability of a whole is not only
-    that it CAN shrink; it is that the gap can be seen to be noise.
-
-=== FROM [#257] AND [#258], THE GATE PASS -- TWO DELTAS ABOUT INSTRUMENTS THEMSELVES ===
-
-Neither came from observability work. Both came from fixing gates, and both are general statements
-about what an instrument must be able to do -- which is squarely the observability table's subject.
+    cpu.unattributed.busy_ns was clamped at zero and had therefore never read anything but 0.0 in its
+    life -- a residual that can only look like a leak cannot report the OTHER failure, which is
+    double-counting. Unclamped and renamed cpu.attribution.residual_ns, it reads +-a few 10ms ticks in
+    both directions, which is per-thread tick quantisation and not a leak at all. A clamped residual
+    is an instrument that has been told which answer to give.
 
 T13. A RATCHET MUST COUNT A UNIT ONLY THE THING IT NAMES CAN MOVE. dedup_measure ratcheted the number
-    of SYMBOLS the client and presentation closures share. It read 614 against a 596 ceiling and was
-    RED -- and the growth was not coupling. Of the 50 shared symbols in the component that grew, 46
-    were template or inline instantiations the compiler happened to emit into one translation unit:
-    fmt::do_write_float, Star::strf<...>, Logger::logf<...>, shared_ptr destructors. Harness commits
-    had added LOG LINES, and each new argument-type combination instantiates a fresh specialisation
-    there. The ratchet moved 18 without one edge of new coupling.
-    THE SCRIPT'S OWN HEADER HAD SAID SO ALL ALONG -- per-component symbol counts are unreliable at
-    small counts, file-granularity ones are not -- and the ratchet gated on the unreliable one anyway.
-    It now counts FILES (73), which template churn cannot move.
-    PROPOSED ROW -- requires: "a ratchet whose unit only the thing it names can move". forbids: "a
-    threshold on a quantity that drifts with the compiler". THE DEEPER POINT, and why it belongs in the
-    table rather than in one script: a ratchet that moves for reasons the design does not care about
-    teaches its reader to RAISE THE CEILING, which is worse than having no ratchet. That is a claim
-    about instruments in general, and this document has three other ratchets.
+    of SYMBOLS in the shared closure, and adding one log line moved it 18 with no new coupling at all
+    -- it was measuring the compiler's template instantiation, not the architecture. Re-based on
+    FILES, which only a genuinely new participant can change. Closed by [#257].
 
 T14. AN INSTRUMENT NEEDS A VERDICT FOR "DID NOT RUN", OR IT CANNOT BE DEPLOYED WHERE IT MATTERS. The
-    dedup ratchet was DELIBERATELY excluded from the gate set and the recorded reason was correct:
-    "that job runs scripts without building, where this would permanently SKIP and a permanent skip
-    reads like a pass" (source/test/CMakeLists.txt). So the one instrument behind the north-star
-    deduplication claim sat red and unseen, because it had two verdicts and neither fit.
-    The exclusion EXPIRED the moment a skip could be spelled: exit 77, reported by run-gates.sh as
-    SKIPPED and refused a place in the green tally. The instrument then joined the set unchanged in
-    substance.
-    PROPOSED ROW -- requires: "an instrument whose verdicts include DID NOT RUN". forbids: "an
-    instrument excluded from the run because its absence of a verdict would read as a pass".
-    THE SAME SHAPE HAS NOW APPEARED FOUR TIMES: metrics_mutual (dc722dee), pr570_ledger ([#258], found
-    by a board audit rather than by the sweep aimed directly at it), grant-sweep's PASSTHROUGH
-    blindness, and dedup_measure. Four instances is not a coincidence, it is a missing rule.
+    fourth instance of the gate-blindness shape above, and the one that generalises it: a gate whose
+    absent verdict is spelled the same as its passing verdict is worse than no gate, because it
+    reports green from a machine that never had the hardware. Exit 77 = SKIP throughout, and
+    run-gates now REFUSES to call a skipped gate green. Closed by [#258].
 
-=== OPEN: TWO CONFLICTS, WHICH ARE THE DIRECTOR'S CALL AND NOT MINE ===
+=== TWO OPEN CONFLICTS, PUT TO THE DIRECTOR 2026-08-08, DECIDED, AND NOW CLOSED ===
 
 T8. THE FORBID COLUMN FORBIDS WHAT WE BUILT. The observability table pairs "the instrument's grants a
-    subset of its subject's" with "an instrument that sees what its subject may not name". The REQUIRES
-    half is about link grants and is right. The FORBIDS half, read literally, prohibits the sovereign
-    observer: ClientBusyReader and ThreadBusyReader see kernel accounting -- drm-engine ns, per-thread
-    utime -- that the subject cannot name about itself, and that is the entire value of an outsider.
-    PROPOSED: "an instrument that must be LINKED INTO its subject to see it" -- the real failure mode,
-    and the one this fork lived: the only thing that could contradict the renderer's GPU timers was
-    inside the renderer.
-    TWO RESULTS NOW STRENGTHEN THIS. [#253]: the sovereign reader measured the same thread the engine
-    measures itself -- cpu.frame.work.wall_fraction 0.2756 against cpu.owner.frame.busy_cores 0.2606,
-    two mechanisms sharing nothing, agreeing in the direction they must. [#259]: the per-leg join now
-    carries the i915 PMU and the fdinfo reader on one axis, and they agree to +0.632pp with the sign
-    right in 10 of 11 intervals. Neither check is possible unless the instrument sees what its subject
-    cannot name.
+    subset of its subject's" with a forbid on "an instrument that must be LINKED INTO its subject to
+    see it". Every TelemetryTimer in the fork is exactly that. Resolved below.
 
 T9. THE OWNERSHIP RULE HAS NO LAWFUL HOME FOR HALF THE SYSTEM. The table requires "every declared
-    instrument owned by a named component" and forbids "telemetry as an ambient global that anything
-    may reach". There is no `telemetry` component among the 53. So the in-process instrument -- 410
-    call sites across six components -- is the forbidden thing, and the register offers nowhere for it
-    to become the required thing. The register is short a row, and what that row IS (a component? a
-    facet of core? a vocabulary?) is an architecture decision. [#252] moves the mechanism; this decides
-    what it moves INTO.
+    metric has an owner", and forbids the ambient global -- while Telemetry IS an ambient global that
+    every component reaches for by name. Resolved below.
 
-=== STILL DEFERRED, ON PURPOSE ===
+=== NOT YET SETTLED, CARRIED FORWARD ===
 
 T5. The sovereign boundary buys sampling freedom, not only correctness -- the out-of-process reader can
     poll fast BECAUSE it does not perturb. The perturbation difference is still unmeasured, and writing
@@ -6135,7 +6094,7 @@ T5. The sovereign boundary buys sampling freedom, not only correctness -- the ou
     now run against a live client for whole legs (procfs at 2 Hz, i915 PMU continuously), so the
     experiment is a leg with and without them, and the harness to run it exists.
 
-T7. The consumer half -- Python that belongs to none of the 53 components -- waits on [#252]. The
+T7. The consumer half -- Python that belongs to none of the 54 components -- waits on [#252]. The
     precondition is MET: the join has been performed AND rendered, so what the consumer must carry is
     known rather than guessed. It is FIVE things, none of them a property of a file format:
       (a) the counter-vs-gauge distinction (`_total` marks what may be differenced);
@@ -6153,7 +6112,63 @@ T7. The consumer half -- Python that belongs to none of the 53 components -- wai
 T1. The document's side of the ambient-global violation (the `metrics` owes facet) waits until [#252]
     has a shape.
 
-NOT A REVIEW TASK. Stays open across the observability arc, one entry per completed item.
+=== CLOSED 2026-08-08 by c19cb959: T8 AND T9 RESOLVED, AND THE SWEEP THAT READS THEM ===
+
+T8 RESOLVED as the Director directed: the forbid retargeted from "an instrument that must be LINKED
+    INTO its subject to see it" to "an instrument that can only READ its subject from inside it". As
+    first written it outlawed the row above it -- a TelemetryTimer inside `rendering` IS linked into
+    its subject by construction, and recording from inside is the design. Being able to READ only from
+    inside is the defect. The requires half was always right and is untouched.
+
+T9 RESOLVED as (c)+(d), both halves: the register SPLIT so `telemetry` is its own row (KIND LIBRARY,
+    ZONE MACHINE, duty "the handle a subject records through"), AND the ambient-global forbid
+    retargeted at LAZY REGISTRATION. Law of One refused the first duty I wrote ("the declared
+    instrument: a handle, and the registry that holds it") -- the registry moved to contents.
+
+THE DECISIVE WORK WAS MECHANICAL, AND IT IS THE GATE-BLINDNESS SHAPE FOR THE FIFTH TIME. `grant-sweep`
+    mapped files by DIRECTORY, so the four StarTelemetry* files in `source/core/` were invisible and
+    the new component read UNVERIFIABLE -- "not in the tree and not declared future". This is the
+    first instance that adding a directory would NOT have fixed. CARVED_OUT is now keyed by directory
+    with `core` as its second key, and the moment the sweep could SEE the component it reported four
+    MISSING grants:
+
+      * `gpu` is a CONTRACT and included ALL of StarTelemetry.hpp to name ONE type, `MetricDesc`,
+        which lives in `core`. Narrowed to StarMetricDesc.hpp. Found as CONTRACT_GRANT -- an INTERFACE
+        naming a LIBRARY -- by prose_claims, not by anyone reading the file.
+      * `windowing`'s 57 telemetry crossings ALL ran through that single over-broad include. None
+        survive it. Grant retracted, not granted.
+      * `metrics` may not name `telemetry`, the exclusion the register calls load-bearing. It was
+        enforced by NOTHING: while those files mapped to `core`, which `metrics` IS granted, the
+        sweep could not have seen the violation.
+      * `base`, `host_sdl` and `server` are legitimate recorders and now carry the grant.
+
+T15. AN UNGATED FIGURE BESIDE A GATED ONE IS THE ONE THAT ROTS. Seventeen prose figures were wrong and
+    only six were gated. Every entrypoint closure moved by one; R4's "27 of the 41 components are not
+    yet their own directory" stood while the register grew to 54 and the set to 38, in a sentence that
+    NAMES `grant_sweep` as its source; BACKEND was described as "no modal zone at all: six MACHINE to
+    six DEVICE" against a measured 9/6/2; world_sim's closure list NAMED THIRTEEN while claiming
+    fifteen. Two verdicts added -- check_backend_spread (reads all three counts AND re-derives which
+    KIND has the weakest modal share, so naming the wrong KIND cannot pass with three right numbers)
+    and check_unverifiable (reads grant_sweep.unverifiable_components(), newly exposed for it). Four
+    injection drives, all firing; 23 total.
+
+T16. A RATCHET RE-BASELINED BY AN ATTRIBUTION CHANGE MUST SHOW ITS NULL CONTROL. dedup_ratchet 73 ->
+    74. One file left `core` (in ALLOWED_SHARED) for `telemetry` (not). Control taken off the report
+    itself: telemetry contributes exactly 1 file, 74 - 1 = 73, the same objects, the previous number.
+    `telemetry` deliberately NOT added to ALLOWED_SHARED -- that holds the number at 73 by EXEMPTING
+    the component instead of counting it, and a component whose own `owes` facet says it still has to
+    leave `core` should stay visible to the ratchet.
+
+T17. AN INSTRUMENT NARROWER THAN THE FALSIFIER IT ANSWERS MUST SAY SO. The `falsified` facet claimed
+    "three ways, and two are already instrumented" while naming ONE. Each now names its own, including
+    `clock_ratchet`, which counts undeclared CLOCKS only -- a descriptor-free counter or gauge is
+    uncounted. Filed as #266.
+
+VERIFIED: 58 gates green; metrics_mutual SKIPPED (needs a live GPU client, not this machine); build
+clean, 0 errors.
+
+NOT A REVIEW TASK, AND IT STAYS THAT WAY. T8/T9 are closed but T1/T5/T7 are not, and the arc is not
+over. Re-open with one entry per completed item as [#250]/[#252] land.
 ```
 
 <a id="c29c1332-257"></a>
@@ -6580,6 +6595,27 @@ name says -- which is the exact defect class this component exists to remove.
 NOT A LEVER HUNT. The Director's standing ruling is that no new render/engine optimisation is chased
 off this run. This task is about whether the INSTRUMENT is telling the truth, and only secondarily
 about what the truth implies.
+```
+
+<a id="c29c1332-266"></a>
+
+#### #266 — DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted
+
+status: **pending**
+
+```
+Found while giving `telemetry`'s `falsified` facet its instruments ([#256], c19cb959).
+
+THE FALSIFIER: "if a handle can be created without a descriptor, a key can exist with no stated quantity." It is LIVE -- source/core/StarTelemetry.hpp still declares the descriptor-free overloads (counter/gauge/timer/rate by key alone, lines ~71-74) beside the declaring ones (~77-80).
+
+THE INSTRUMENT IS NARROWER THAN THE FALSIFIER. `clock_ratchet` (scripts/metric-desc-lint.py, undeclared_clocks()) counts undeclared CLOCK sites and ratchets them toward zero. A descriptor-free `Telemetry::counter(key)` or `Telemetry::gauge(key)` is not counted at all. The TSSA now states this narrowness explicitly rather than implying full coverage -- so the doc is honest, but the gap is real and unmeasured.
+
+WHAT TO DO, in order:
+  1. MEASURE FIRST. Count descriptor-free counter/gauge/rate registrations across the tree. Until that number exists, "widen the ratchet" is a claim with no instrument -- the number may be 0, in which case the right move is deleting the overloads, not ratcheting them.
+  2. If non-zero: widen undeclared_clocks() to all four handle kinds (rename accordingly -- a gate's name is read as its scope), set the ceiling at the measured count, and prove it fires on growth AND refuses a vacuous match, per the existing arms.
+  3. If zero: DELETE the four descriptor-free overloads. A falsifier that cannot occur because the API will not express it beats one held at zero by a counter -- see the R14/R15/R16 pattern, where structural impossibility was chosen over vigilance every time.
+
+RELATED: #245 (DESC-CONVERGE, schema 3->4) may subsume the API question -- check it before starting, because converging the descriptor and then ratcheting the old shape is work done twice.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
