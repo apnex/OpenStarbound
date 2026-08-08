@@ -106,7 +106,16 @@ def read_legs(run_dir):
     """{lever: {repeat: (start, end)}} from each leg profile's stamped window."""
     legs, unstamped = collections.defaultdict(dict), []
     for path in sorted(glob.glob(os.path.join(run_dir, "*.json"))):
-        if os.path.basename(path) == "manifest.json":
+        base = os.path.basename(path)
+        # ONLY LEG PROFILES. A run directory now holds THREE JSON files per leg -- the windowed
+        # profile, the per-interval `.series.json` and the joined `.joined.json` -- and neither of the
+        # latter two carries a windowStartEpoch, so both landed in the "EXCLUDED, those profiles
+        # predate the stamp" warning: 54 spurious lines on a 27-leg run.
+        #
+        # THAT WARNING IS DESIGNED TO BE LOUD, because a silently omitted leg reads exactly like a
+        # lever with no effect. A loud warning that fires 54 times for a reason nobody needs to act on
+        # is worse than no warning -- it teaches its reader to skim past the one line that matters.
+        if base == "manifest.json" or base.endswith((".series.json", ".joined.json")):
             continue
         try:
             j = json.load(open(path))

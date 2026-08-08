@@ -759,7 +759,10 @@ PY
 
 echo
 echo "=== lever matrix: $RUN_ID ==="
-echo "  ${#OK[@]} legs OK, ${#VOID[@]} VOID, ${#FAILED[@]} failed  ->  $OUT/"
+# LEVER legs, not all legs. OK/VOID/FAILED are only appended in the per-lever loop, so the
+# REPEATS baseline legs are recorded OK in legs.tsv and counted nowhere here. "24 legs OK" on a
+# 27-leg run read as 24-of-28 until it was traced; the count was right and the noun was wrong.
+echo "  ${#OK[@]} lever legs OK (+$REPEATS baseline legs), ${#VOID[@]} VOID, ${#FAILED[@]} failed  ->  $OUT/"
 [ ${#VOID[@]}   -gt 0 ] && { echo "  VOID (the lever did not engage; do NOT quote a delta from these):"; printf '    %s\n' "${VOID[@]}"; }
 [ ${#FAILED[@]} -gt 0 ] && { echo "  FAILED:"; printf '    %s\n' "${FAILED[@]}"; }
 echo "  cost attribution NOT performed -- raw legs only, by design. See the header."

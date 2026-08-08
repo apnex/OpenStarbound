@@ -254,6 +254,16 @@ jobs:
       - name: obs_plot_fires -- a gap breaks the line, nothing is interpolated, the residual keeps zero
         run: python3 scripts/obs-plot.py --selftest
 
+      # The CPU half of the lever analysis, and it inherits every rule pmu-join paid for -- the floor
+      # is measured in THIS run from a declared null control, a delta inside it is UNRESOLVED rather
+      # than a number with a caveat, a delta smaller than the lever's own repeat spread is the mean of
+      # something that did not repeat, and a VOID leg is never quoted. One rule of its own: the CPU
+      # owners are PARTS OF A WHOLE that is measured independently, so the sum of the owner deltas is
+      # reported against the whole's delta -- a lever that moves the whole while the owners do not
+      # account for it has moved work somewhere the attribution cannot see.
+      - name: lever_cpu_fires -- the floor swallows the null control, an all-null run is a RESULT
+        run: python3 scripts/lever-cpu.py --selftest
+
       # A telemetry handle registered on a path that is not always taken makes the key ABSENT rather
       # than ZERO, and a consumer differencing two snapshots cannot tell that from "ran and found
       # nothing". NINE instances of that one pattern were found in two days (R07-R11, R13, R14, then
