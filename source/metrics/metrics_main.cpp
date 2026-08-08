@@ -420,21 +420,42 @@ namespace {
       samples.appendAll(cpuSamplesFor(cpuDelta, wallNs, t1));
 
       // ATTRIBUTED VS ACTUAL, because the two are not the same number and the difference is invisible
-      // otherwise. /proc/<pid>/stat is a thread-group aggregate that RETAINS the time of threads which
-      // have since exited, while /proc/<pid>/task lists only the living -- so a thread that finishes
-      // inside the window takes its cost out of the owner sums and leaves it here. Measured
-      // deterministically at 49 ticks appearing the instant four burning threads exited.
+      // otherwise. Emitted as a residual rather than folded into an owner: nobody can say which owner a
+      // departed thread belonged to, and inventing one would be worse than reporting the gap.
       //
-      // Emitted as a residual rather than folded into an owner: nobody can say WHICH owner the departed
-      // thread belonged to, and inventing one would be worse than reporting the gap.
+      // IT IS SIGNED, AND IT CARRIES TWO TERMS, NOT ONE. This was named cpu.unattributed.busy_ns,
+      // described as "threads that exited within the window", and clamped at zero. Two of those three
+      // were wrong, and the clamp is what hid it -- the metric had never once read anything but 0.0.
+      //
+      //   * EXITED THREADS. /proc/<pid>/stat is a thread-group aggregate that RETAINS the time of
+      //     threads which have since exited, while /proc/<pid>/task lists only the living, so a thread
+      //     finishing inside the window takes its cost out of the owner sums and leaves it here.
+      //     Measured deterministically at 49 ticks appearing the instant four burning threads exited.
+      //     This term is POSITIVE.
+      //   * TICK QUANTISATION. Both sides are whole clock ticks (10ms at CLK_TCK=100), but the owner
+      //     sum quantises ONCE PER THREAD and the aggregate quantises once. With 36 live threads the
+      //     sum can land either side of the aggregate. This term takes EITHER sign, and at ordinary
+      //     magnitudes it dominates.
+      //
+      // Measured against a live client over eleven ~4.5s intervals, 2026-08-08: the residual was
+      // -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2 ticks. Every value a whole number of ticks, both signs
+      // present, no thread exited. Clamping at zero would have reported five of those eleven as 0 and
+      // the rest as unattributed work, so the metric would read as a small monotone leak -- which is
+      // exactly how a quantisation artefact gets adopted as a finding.
+      //
+      // A NEGATIVE RESIDUAL IS EVIDENCE, and it is the only evidence available that this figure is
+      // noise-dominated rather than a real gap. That is why it is no longer clamped, and why the name
+      // is a RESIDUAL rather than busy time: negative busy time is a contradiction, a negative residual
+      // is a measurement.
       if (procBefore && procAfter && *procAfter >= *procBefore) {
         int64_t attributed = 0;
         for (auto const& o : cpuDelta.busyNs)
           attributed += o.second;
         int64_t residual = (*procAfter - *procBefore) - attributed;
-        samples.append(MetricSample("cpu.unattributed.busy_ns", (double)(residual > 0 ? residual : 0), "ns",
-                                    "CPU busy time the process spent that no LIVE thread still accounts "
-                                    "for -- threads that exited within the window",
+        samples.append(MetricSample("cpu.attribution.residual_ns", (double)residual, "ns",
+                                    "process CPU busy MINUS the sum over live-thread owners -- signed, "
+                                    "and carrying both exited-thread time and per-thread tick "
+                                    "quantisation, which is why it may be negative",
                                     "always", CpuSource, t1));
       }
     } else

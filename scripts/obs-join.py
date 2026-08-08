@@ -64,6 +64,11 @@ DERIVED = [("gpu.engine.", ".busy_ns_total", ".busy_ratio"),
            ("cpu.owner.", ".busy_ns_total", ".busy_cores"),
            ("cpu.process.", ".busy_ns_total", ".busy_cores")]
 
+# Which sovereign keys reach the SHARED AXIS -- the small dimensionless set a plot puts on one Y. The
+# residual is here on purpose and is the only signed member: a whole that cannot be seen failing to
+# match its parts is a whole nobody can falsify.
+AXIS_SUFFIXES = (".busy_ratio", ".busy_cores", ".residual_cores")
+
 
 def read_sovereign(path):
     """{key: [(epoch_s, pid, value)]} sorted, plus the count of UNAVAILABLE rows DROPPED not zeroed."""
@@ -166,6 +171,25 @@ def sovereign_for(by_key, t0, t1):
             if key.startswith(prefix) and key.endswith(suffix):
                 out["keys"][key[:-len(suffix)] + derived] = busy_ns / (covered * 1e9)
                 break
+
+    # THE ATTRIBUTION RESIDUAL, SIGNED. The process aggregate retains threads that have exited; the
+    # live-thread owner sum does not. The difference is therefore a real quantity -- and it is NOT only
+    # that, which is the whole reason it is carried per interval and with its sign.
+    #
+    # Both sides are whole clock ticks (10ms at CLK_TCK=100), but the owner sum quantises ONCE PER
+    # THREAD while the aggregate quantises once, so with 36 live threads the sum lands either side of
+    # the aggregate. Measured over eleven ~4.5s intervals of a live client, 2026-08-08: -2, +5, 0, -2,
+    # +6, -1, 0, +2, -5, 0, +2 ticks -- every value a whole number of ticks, both signs present, no
+    # thread having exited. A residual clamped at zero would have shown five zeroes and six small
+    # positives, i.e. a plausible steady leak, which is how a quantisation artefact becomes a finding.
+    owners = [v for k, v in out["keys"].items()
+              if k.startswith("cpu.owner.") and k.endswith(".busy_ns_total") and isinstance(v, dict)]
+    proc = out["keys"].get("cpu.process.busy_ns_total")
+    if owners and isinstance(proc, dict) and proc["coveredS"] > 0:
+        residual = proc["busyNs"] - sum(o["busyNs"] for o in owners)
+        out["keys"]["cpu.attribution.residual_ns"] = residual
+        out["keys"]["cpu.attribution.residual_cores"] = residual / (proc["coveredS"] * 1e9)
+
     out["available"] = bool(out["keys"])
     return out
 
@@ -215,7 +239,9 @@ def join_leg(series, by_key, sov_unavailable, by_engine, pmu_unavailable, source
 
         axis = in_process_axis(iv.get("metrics", {}), iv.get("durationS"))
         for key, value in sov.get("keys", {}).items():
-            if isinstance(value, float) and (key.endswith(".busy_ratio") or key.endswith(".busy_cores")):
+            # The residual belongs on the axis with the parts it is the residual OF: a whole that
+            # cannot be seen failing to match its parts is a whole nobody can falsify.
+            if isinstance(value, float) and key.endswith(AXIS_SUFFIXES):
                 axis[key] = value
         for key, value in pmu.get("keys", {}).items():
             if key.endswith(".busy_pct"):
@@ -391,7 +417,30 @@ def selftest():
     elif r2 != 0 or "unjoinable" not in j2["intervals"][0]:
         fails.append("an interval with no epoch stamps was joined anyway, or dropped without a word")
 
-    # 10. AN EMPTY JOIN MUST NOT PRINT A CHEERFUL SUMMARY. Captured, because a selftest that prints
+    # 10. THE ATTRIBUTION RESIDUAL IS SIGNED, and the NEGATIVE case is the one that matters. The owner
+    #     sum quantises once per thread and the process aggregate once, so the sum can exceed the
+    #     aggregate by a few 10ms ticks with nothing wrong. A residual clamped at zero reports that as
+    #     0 and reports the positive half as unattributed work -- a plausible steady leak assembled
+    #     entirely out of quantisation. This arm builds exactly that case: owners summing to MORE than
+    #     the process.
+    P = "cpu.process.busy_ns_total"
+    O1, O2 = "cpu.owner.frame.busy_ns_total", "cpu.owner.sim.busy_ns_total"
+    by_key, _ = sov_rows([(100.0, 7, P, 0), (101.0, 7, P, 1.00e9),
+                          (100.0, 7, O1, 0), (101.0, 7, O1, 0.60e9),
+                          (100.0, 7, O2, 0), (101.0, 7, O2, 0.42e9)])
+    got = sovereign_for(by_key, 100.0, 101.0)
+    if got["keys"].get("cpu.attribution.residual_ns") != -0.02e9:
+        fails.append(f"a negative attribution residual was not reported as negative "
+                     f"({got['keys'].get('cpu.attribution.residual_ns')})")
+    if abs(got["keys"].get("cpu.attribution.residual_cores", 0) + 0.02) > 1e-9:
+        fails.append("the residual did not reach the shared axis as a signed ratio")
+    series2 = {"label": "t", "intervals": [{"index": 0, "tStartEpoch": 99.0, "tEndEpoch": 102.0,
+                                            "durationS": 3.0, "metrics": {}}]}
+    j3, _ = join_leg(series2, by_key, 0, {}, 0, {})
+    if "cpu.attribution.residual_cores" not in j3["intervals"][0]["axis"]:
+        fails.append("the residual is absent from the axis, so the whole cannot be seen to fail")
+
+    # 11. AN EMPTY JOIN MUST NOT PRINT A CHEERFUL SUMMARY. Captured, because a selftest that prints
     #     its own FAIL-shaped lines while passing teaches its reader to skim past them.
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf):
@@ -403,10 +452,10 @@ def selftest():
         print(f"  FAIL: {f}")
     if fails:
         return 1
-    print("  obs_join selftest: 10/10 arms ok (re-differenced not averaged, the denominator is the "
+    print("  obs_join selftest: 11/11 arms ok (re-differenced not averaged, the denominator is the "
           "covered span, resets and pid changes are discarded and reported, one sample is not a "
           "measurement, UNAVAILABLE is not zero, the two methods and the two GPU vocabularies stay "
-          "apart, an unstamped interval says so, an empty join says so)")
+          "apart, an unstamped interval says so, the residual is SIGNED, an empty join says so)")
     return EXIT_OK
 
 
