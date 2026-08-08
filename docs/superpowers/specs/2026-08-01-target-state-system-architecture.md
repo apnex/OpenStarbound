@@ -1503,6 +1503,44 @@ flowchart TD
   storage --> script
   metrics --> core
   telemetry --> core
+  %% THE NINE SUBJECTS THAT NAME `telemetry`, drawn because the register grants them and a diagram
+  %% that omits an edge the grant table requires is not a projection of it. Their absence also had a
+  %% LAYOUT consequence: with nothing pointing at it, `telemetry` ranked at the very top, which pinned
+  %% the MACHINE cluster's box to rank 0 and forced the zone to sit BESIDE the other three rather than
+  %% below them. Correcting the omission is what lets the four zones stack.
+  rend --> telemetry
+  game --> telemetry
+  world --> telemetry
+  wview --> telemetry
+  front --> telemetry
+  shell --> telemetry
+  glb --> telemetry
+  hostsdl --> telemetry
+  srv --> telemetry
+  %% Same omission, same effect: `transport_p2p` is granted by both GPU clients and neither was drawn.
+  cgl --> transportp2p
+  csg --> transportp2p
+  %% THE SAME OMISSION, FOUR MORE TIMES. Each of these is granted by the entrypoints that compose it
+  %% and none of the edges was drawn, so each floated to rank 0 and widened the top row. After these,
+  %% the ONLY free roots in the diagram are the seven ENTRYPOINTs -- which is what a compile
+  %% projection should look like, because an entrypoint is by definition the thing nothing composes.
+  cgl --> audiosdl
+  csg --> audiosdl
+  cgl --> mixing
+  csg --> mixing
+  chl --> smauth
+  cgl --> smauth
+  csg --> smauth
+  srv --> smauth
+  cagent --> smpart
+  chl --> smpart
+  cgl --> smpart
+  csg --> smpart
+  %% LAYOUT ONLY, AND IT IS NOT A GRANT. `~~~` draws nothing; it exists so `metrics` -- which NOTHING
+  %% may name, and whose rootlessness is the architectural point of the component -- does not float to
+  %% rank 0 and re-pin the cluster the eleven edges above just released. Deleting this line changes no
+  %% claim, only the shape.
+  telemetry ~~~ metrics
   world --> storage
   auth --> storage
   shell --> storage
