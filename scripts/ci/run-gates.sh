@@ -40,8 +40,50 @@ if [ "${1:-}" = "--selftest" ]; then
   [ "$ok"  -eq 0            ] || { echo "  FAIL: a passing step did not read as 0"; fails=1; }
   [ "$sk"  -eq "$EXIT_SKIP" ] || { echo "  FAIL: a skipping step did not read as $EXIT_SKIP"; fails=1; }
   [ "$bad" -ne 0 ] && [ "$bad" -ne "$EXIT_SKIP" ] || { echo "  FAIL: a failing step was not distinguishable from pass or skip"; fails=1; }
+
+  # ARM 4: EVERY GUARDED STEP'S DID-NOT-RUN PATH MUST EXIT 77, and this is read out of gates.yml
+  # rather than remembered. dc722dee closed this hole for metrics_mutual and its own message said
+  # "THE HOLE WAS IN THREE PLACES" -- it was in four. pr570_ledger had the identical fall-through,
+  # sat in the same file through that sweep, and was found on 2026-08-08 by a board audit rather than
+  # by any instrument. A convention that survives a sweep aimed directly at it is not a convention,
+  # it is a coincidence.
+  #
+  # THE RULE: in any multi-line `run:` block containing a bare `else`, an `exit 77` must appear
+  # somewhere after that `else`. Exact for the single-level guards this file uses, and deliberately
+  # conservative rather than clever -- it cannot match `else` to its own `fi` through nesting, so a
+  # nested guard would need this arm strengthened rather than worked around.
+  guarded=$(python3 - <<'PY'
+import yaml, pathlib, re, sys
+wf = yaml.safe_load(pathlib.Path(".github/workflows/gates.yml").read_text())
+bad, checked = [], 0
+for job in wf["jobs"].values():
+    for s in job["steps"]:
+        run = s.get("run")
+        if not run or "\n" not in run.strip():
+            continue
+        name = s.get("name", "(unnamed)").split(" --")[0]
+        for m in re.finditer(r'^[ \t]*else[ \t]*$', run, re.M):
+            checked += 1
+            if "exit 77" not in run[m.end():]:
+                bad.append(name)
+            break
+print(f"{checked}\t{','.join(sorted(set(bad)))}")
+PY
+)
+  n_guarded=${guarded%%$'\t'*}
+  bad_guarded=${guarded#*$'\t'}
+  if [ "$n_guarded" -eq 0 ]; then
+    # REFUSES TO PASS ON AN EMPTY CORPUS. A rule that matched nothing would report green forever the
+    # day the parse breaks or the file is restructured -- the vacuous-pass defect this repo has met
+    # in every ratchet it owns.
+    echo "  FAIL: no guarded step was found in gates.yml at all -- this arm verified nothing"; fails=1
+  elif [ -n "$bad_guarded" ]; then
+    echo "  FAIL: guarded step(s) fall through to exit 0 instead of 77: $bad_guarded"; fails=1
+  fi
+
   [ $fails -eq 0 ] || exit 1
-  echo "  run-gates selftest: 3/3 arms ok -- pass, skip and fail are three distinct verdicts"
+  echo "  run-gates selftest: 4/4 arms ok -- pass, skip and fail are three distinct verdicts, and all"
+  echo "  $n_guarded guarded step(s) in gates.yml exit 77 on their did-not-run path"
   exit 0
 fi
 

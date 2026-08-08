@@ -310,13 +310,22 @@ jobs:
       # The PR-570 findings ledger is generated from three workflow outputs and a hand-written
       # decisions file. This asserts the two cannot drift, and hard-fails on a decision naming a row
       # that no longer exists -- the gate-vocabulary-outlives-document defect, fifth occurrence.
-      # NOTE: the raw outputs live outside the repo, so this is a no-op where they are absent.
+      # NOTE: the raw outputs live outside the repo, so this CANNOT RUN where they are absent -- which
+      # is every CI runner and every fresh clone. That is a SKIP, not a pass, and it must exit 77.
       - name: pr570_ledger -- the findings ledger matches its inputs and its decisions
         run: |
           if [ -d /root/analysis/osb-pr570/raw ]; then
             python3 scripts/pr570-ledger.py --check
           else
-            echo "pr570-ledger: SKIPPED -- raw outputs not present on this machine"
+            echo "pr570-ledger: DID NOT RUN -- raw outputs not present on this machine. Nothing was"
+            echo "pr570-ledger: compared and nothing was verified; this is NOT a pass."
+            # 77, not a fall-through. This else-branch ended at the echo and exited 0 until 2026-08-08,
+            # so run-gates.sh printed OK and counted a check that compared nothing toward the green
+            # tally. dc722dee fixed exactly this for metrics_mutual and said "THE HOLE WAS IN THREE
+            # PLACES"; it was in four, and this step was already in the file when that commit landed.
+            # The guarded_steps_exit_77 arm of run-gates.sh --selftest now reads this rule mechanically,
+            # because a convention I have to remember is how it survived one sweep already.
+            exit 77
           fi
 
       - name: host_api_neutral -- the SDL host must not know a graphics API
