@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**193 tasks** across 2 store(s): 3 in_progress, 35 pending, 155 completed
+**193 tasks** across 2 store(s): 3 in_progress, 34 pending, 156 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 192 tasks, ids 64–256
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,18 +43,14 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 6 | `#253` | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | ready |
-| 2 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | blocked by #253 |
-| 3 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #253, #254 |
-| 4 | 9 | `#256` | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-of… | ready |
-| 5 | 10 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
-| 6 | 11 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
-| 7 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 8 | 13 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 9 | 14 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-
-> **1 completed task(s) still carry a rank** (#235). A rank is a claim about
-> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
+| 1 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | ready |
+| 2 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #254 |
+| 3 | 9 | `#256` | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-of… | ready |
+| 4 | 10 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
+| 5 | 11 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 6 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 7 | 13 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 8 | 14 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
 ---
 
@@ -64,7 +60,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 185, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 192, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 24.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -92,7 +88,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 155.
+**Completed tasks citing no commit and no doc:** 86 of 156.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -248,7 +244,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | **active** | TSSA-2: review closed; levelling pass — §3 DONE, §§1/2/6 assessed level | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
-| [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | `board.md` |
+| [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
 | [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | `b18797e4` `b1e66be4` | — |
@@ -275,7 +271,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
-| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
+| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `7fa1d2ed` `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
 | [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
@@ -293,10 +289,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
-| [#253](#c29c1332-253) | `c29c1332` | open | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | — | — |
+| [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | open | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | — | — |
 | [#255](#c29c1332-255) | `c29c1332` | open | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | — | — |
-| [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | — | — |
+| [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | `94f44d59` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3792,8 +3788,6 @@ REMAINING under #207: `celestial`'s vocabulary/lookup split (blocked on dividing
 
 status: **pending** · blocked by: #207
 
-- cited in `docs/board.md`
-
 ```
 Blocked by #207.
 
@@ -4773,8 +4767,9 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and both unfalsifiable wholes are gone
 ```
 
-status: **completed** · blocks: #252, #250 · metadata: `{"rank": 6}`
+status: **completed** · blocks: #252, #250
 
+- `7fa1d2ed` OBS-JOIN: the sovereign readers get a harness consumer, and it re-points itself at each leg's client [#253]
 - `eec79ca1` C07 + CLOCK-RATCHET: the frame budget closed against a period that contains a sleep, so it could not fail [#235]
 - `e368f046` GPU-CLOCK: a timeline span is not work, so it may not be a budget or a whole -- and now it cannot become one [#235]
 - `0eef793b` THREAD-BUSY: CPU busy attributed to the declared owners, and the process keeps time no live thread can account for [#235]
@@ -5723,43 +5718,83 @@ CROSS-REF: #250 (GM-3 transport), #235, #245 (the factories), #204/#208 (TSSA bo
 
 <a id="c29c1332-253"></a>
 
-#### #253 — OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg
+#### #253 — OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live
 
-status: **pending** · blocks: #254, #255, #250 · metadata: `{"rank": 6}`
+status: **completed** · blocks: #254, #255, #250
+
+- `57d00526` OBS-JOIN: register both selftests as gates, and refresh the arch graph [#253]
+- `be2ceeee` FOLD: the attribution residual was clamped, so it could never show it was noise [#253]
+- `f5029bf3` OBS-JOIN: the harness runs the sovereign sampler per leg and joins before the leg is over [#253]
+- `ce6c88a1` OBS-JOIN: three artefacts, one epoch axis, one file per leg [#253]
+- `7fa1d2ed` OBS-JOIN: the sovereign readers get a harness consumer, and it re-points itself at each leg's client [#253]
+- `c1dfce7e` OBS-JOIN: the sovereign readers can be sampled as a series, because a rate cannot be re-windowed [#253]
 
 ```
-THE NORTH STAR'S CENTRAL CLAIM, AND IT DOES NOT EXIST YET. Director, 2026-08-07: "both GPU and CPU
-metrics, correctly attributed, as a stream of time series data that can be directly plotted and
-compared against every single lever."
+THE NORTH STAR'S CENTRAL CLAIM, AND IT NOW EXISTS. Director, 2026-08-07: "both GPU and CPU metrics,
+correctly attributed, as a stream of time series data that can be directly plotted and compared against
+every single lever." Three artefacts held three quarters of that and had never met in one file.
 
-After [#235] we have both halves and they are separate artefacts:
-  * IN-PROCESS  per-leg per-interval series, 143 keys, stamped tMonotonicNs + tEpochNs   (retained)
-  * SOVEREIGN   GPU engine busy via the i915 PMU, joined to legs by window stamp         (pmu-join.py)
-  * SOVEREIGN   CPU busy per OWNER, and per-client GPU busy via fdinfo                   (NO CONSUMER)
+SHIPPED, four commits:
 
-The third line is the gap. ThreadBusyReader and ClientBusyReader are reachable only by pointing
-`dist/metrics --pid N` at a running process BY HAND. lever-matrix.sh samples the PMU and nothing else,
-so a matrix run today would produce three of the four cells of the busy model and leave the CPU
-attribution -- the half #235 was built for -- empty.
+  c1dfce7e  `metrics --pid N --raw [--every S]` -- the sovereign readers emit CUMULATIVE counters as a
+            TSV stream instead of a delta over a window the tool chose. NOT a loop around the windowed
+            mode: that would produce a stream of RATES, and a rate cannot be re-windowed -- the mean of
+            ninety one-second busy ratios is not the busy fraction of ninety seconds. It would also have
+            HOLES between windows, and a hole in a busy series looks like idle time.
+  7fa1d2ed  scripts/metrics-sample.py -- supervises the reader against whichever client is alive,
+            re-discovering across the ~28 client restarts of a matrix run. Reads no /proc itself: every
+            counter comes from dist/metrics, so the fdinfo dedup, comm-parsing and lseek/EINVAL rules
+            keep ONE implementation.
+  ce6c88a1  scripts/obs-join.py -- one <label>.joined.json per leg: in-process intervals, both sovereign
+            readers, and the PMU on a single epoch axis.
+  f5029bf3  render-profile.sh runs the sampler per leg and joins before the leg is over; lever-matrix.sh
+            carries both artefacts into the run directory.
 
-SCOPE
- 1. A continuous out-of-process sampler for the sovereign readers, alongside the PMU one. Same shape
-    as scripts/pmu-engine-sample.py: started per run with an EXIT trap, discovers the client pid,
-    appends TSV on the epoch clock, writes UNAVAILABLE rather than 0.
- 2. Join it per leg on the window stamps #248 built -- the same mechanism pmu-join.py already proves,
-    including its rules: exclude VOID legs, never interpolate a rate, re-difference raw counters.
- 3. ONE joined artefact per leg: in-process intervals and both sovereign readers on a single epoch
-    axis. This has never been assembled once, and assembling it is what tells us what #250's interface
-    must actually carry. Designing the interface first would fit the diagram rather than the data.
+VERIFIED LIVE, 60s at Desert Town, sim running, 11 of 11 intervals joined:
 
-SEQUENCING, STATED SO IT IS A CHOICE. This lands in the harness scripts, which adds to the 1,932 lines
-of consumer Python that no component owns -- the thing [#252] exists to end. Deliberate: prove the join
-works end to end, then re-home it. The alternative is an API designed for a join nobody has performed.
+    cpu.frame.work.wall_fraction   0.2756     in-process, the engine's own view of its main thread
+    cpu.owner.frame.busy_cores     0.2606     sovereign, the SAME thread, a different mechanism
+    cpu.owner.sim.busy_cores       0.1617
+    cpu.owner.unknown.busy_cores   0.0576
+    cpu.owner.gl.busy_cores        0.0097
+    cpu.owner.lighting.busy_cores  0.0058
+    cpu.process.busy_cores         0.4965
+    gpu.engine.render.busy_ratio   0.2374     sovereign, per client, on the same axis
+    gpu.engine.{compute,copy,video,video-enhance}.busy_ratio  0.0000
 
-ALSO: the TSSA component register (docs/superpowers/specs/2026-08-01-target-state-system-architecture.md,
-the `metrics` row) names ClientBusyReader and EngineBusyReader and not ThreadBusyReader or ProcFs. One
-reader out of date as of [#235]. The register belongs to task #208; noted here because this is the task
-that makes the missing reader load-bearing.
+TWO CHECKS PASSED THAT NOTHING COULD RUN BEFORE. The engine's own wall fraction EXCEEDS the sovereign
+CPU busy of the same thread -- the relation that must hold, since one counts wall time not spent
+sleeping and the other counts CPU actually consumed, so the 0.015 gap is the main thread blocked or
+descheduled. And the owners track cpu.process.busy_cores to within a few clock ticks in all 11
+intervals: the whole shrinks to its parts.
+
+DESIGN DECISIONS THE ARTEFACT ENCODES
+  * TWO SOURCES, TWO METHODS, LABELLED. Sovereign counters are RE-DIFFERENCED (exact, re-windowable);
+    the PMU is a MEAN OF RATES (neither). Both carry a `method` field, because a reader who cannot tell
+    them apart will quote them as the same kind of number.
+  * THE DENOMINATOR IS THE SPAN COVERED, not the nominal interval. Measured 92.8% at a 0.5s cadence;
+    the naive form would have read 7.2% low on every leg, silently, worst at the edges.
+  * THREE WAYS A COUNTER STOPS BEING DIFFERENCEABLE, all reported: pid changed, counter fell (an
+    owner's live-thread sum drops when a thread exits), fewer than two samples. Each is a different
+    fact and none is reported as 0.
+  * THE TWO GPU VOCABULARIES ARE NOT MERGED. PMU says rcs0, the DRM reader says render. Putting one
+    under the other's name would ASSERT the agreement metrics-mutual-check exists to TEST.
+
+A DEFECT THE INSTRUMENT FOUND, folded as be2ceeee. cpu.unattributed.busy_ns was the residual between
+the process whole and the owner parts, described as exited-thread time and CLAMPED AT ZERO -- and had
+never read anything but 0.0. Eleven live intervals gave -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2 ticks:
+every value a whole 10ms tick, both signs, no thread having exited. It is per-thread tick quantisation,
+and the clamp is what made that undiscoverable. Renamed cpu.attribution.residual_ns, unclamped, both
+terms named, and put on the shared axis beside the parts it is the residual of.
+
+VERIFICATION. metrics-sample 7 arms, obs-join 11 arms, EVERY arm injection-proven to fail. The injection
+pass found the respawn defect rather than certifying the code: a fake reader that printed and exited was
+relaunched 500 times in 0.3 seconds. Both selftests registered as gates (57d00526). run-gates.sh: 55
+green, metrics_mutual SKIPPED as usual with no GPU client.
+
+FEEDS [#254] (the plot has its file), [#255] (the matrix now fills all four cells), [#250] (what the
+sample type must carry is known rather than guessed), [#256] (three TSSA deltas: T10 method, T11
+measured denominator, T12 signed residual).
 ```
 
 <a id="c29c1332-254"></a>
@@ -5846,13 +5881,15 @@ Cost: ~47 minutes unattended for one scene at 3 repeats, per matrix-20260807-160
 
 status: **pending** · metadata: `{"rank": 9}`
 
+- `94f44d59` TSSA-OBS pass 1: the gate that could not see the component, and three positions the campaign paid for [#256]
+
 ```
 DIRECTOR, 2026-08-07: the TSSA is a WIP and it is ours to shape toward our own north star. Metrics and
 observability are now deeper-explored than any other area of the fork, so this campaign FEEDS the
 document rather than only conforming to it. Findings are appended as each board item completes, while
 the reasoning is still attached to the thing that produced it.
 
-=== SETTLED IN THE FIRST PASS (commit follows this task) ===
+=== SETTLED IN THE FIRST PASS (94f44d59) ===
 
 T2 DONE. The `metrics` register row named MetricSample, ClientBusyReader, EngineBusyReader. A new
     bidirectional check (scripts/register-artefacts.py) found FOUR unnamed types, not the one manual
@@ -5873,6 +5910,48 @@ GATE-BLINDNESS DONE, and it was the sharpest find. grant-sweep.py's PASSTHROUGH 
     the grant row verifies clean: source/metrics/ includes core (11) and itself (6), nothing else. The
     spec's own coverage ledger moved 12 -> 13 anchored rows and 39 -> 38 unbuilt components.
 
+=== FROM [#253], THE JOIN -- THREE DELTAS, ALL OF THE THIRD KIND ===
+
+None of these are the tree violating a stated position, and none are the document lagging the tree.
+All three are things the campaign LEARNED that the document does not say, which is the kind nothing
+goes red for.
+
+T10. A METRIC MUST STATE ITS METHOD, NOT ONLY ITS CLOCK. T3 bought "a metric that states which clock
+    it takes". The join needed a SECOND declaration the vocabulary has nowhere for: how the number was
+    DERIVED. The sovereign counters are re-differenced -- exact, and re-windowable over any interval a
+    consumer later chooses. The PMU figure is a mean of sub-window rates and is neither. Same unit,
+    same clock, same owner, same domain; one survives re-windowing and the other does not, and
+    MetricDesc cannot express the difference. obs-join.py carries a free-text `method` string per
+    source precisely because the vocabulary had no field for it.
+    PROPOSED ROW -- requires: "a metric that states how it was derived: a level, a difference, or a
+    mean of differences". forbids: "two numbers sharing a unit that were made by different arithmetic".
+
+T11. A RATE'S DENOMINATOR MUST BE MEASURED, NOT DECLARED. T4 bought "a whole that shrinks when its
+    parts do" -- which governs the NUMERATOR's parts. Nothing governs the denominator, and the join
+    hit that gap on its first interval: sovereign samples do not align with telemetry snapshot
+    boundaries, so the first usable sample sits after the interval opens and the last before it
+    closes. Dividing busy time by the interval's DECLARED duration under-reports by exactly the
+    uncovered fraction, silently, and worst at the edges where a lever's effect would show. Measured
+    at Desert Town: 92.8% coverage at a 0.5s cadence, so the naive form would have read 7.2% low
+    across every leg. obs-join divides by `coveredS` and carries it beside `durationS` so the
+    shortfall is visible rather than absorbed.
+    PROPOSED ROW -- requires: "a rate whose denominator is the span actually measured". forbids: "a
+    denominator taken from the interval that was requested".
+
+T12. A DISCREPANCY MUST KEEP ITS SIGN. A REFINEMENT of T4 rather than a new subject, and the sharpest
+    find of this pass. cpu.unattributed.busy_ns was the residual between a whole (process CPU busy)
+    and its parts (the per-owner sums), described as "threads that exited within the window", and
+    CLAMPED AT ZERO. It had never once read anything but 0.0, which the board had recorded as a
+    curiosity. Eleven live intervals gave the true residual as -2, +5, 0, -2, +6, -1, 0, +2, -5, 0, +2
+    ticks: every value a whole 10ms clock tick, both signs present, and no thread having exited. It is
+    PER-THREAD TICK QUANTISATION -- the owner sum quantises once per thread, the aggregate once -- and
+    the clamp is what made that undiscoverable, because a clamped residual can only ever look like a
+    small steady leak. Fixed in be2ceeee: renamed cpu.attribution.residual_ns, unclamped, both terms
+    named in its description.
+    PROPOSED ROW -- requires: "a whole's discrepancy from its parts reported WITH ITS SIGN". forbids:
+    "a residual clamped so that noise can only read as a leak". Falsifiability of a whole is not only
+    that it CAN shrink; it is that the gap can be seen to be noise.
+
 === OPEN: TWO CONFLICTS, WHICH ARE THE DIRECTOR'S CALL AND NOT MINE ===
 
 T8. THE FORBID COLUMN FORBIDS WHAT WE BUILT. The observability table pairs "the instrument's grants a
@@ -5884,6 +5963,10 @@ T8. THE FORBID COLUMN FORBIDS WHAT WE BUILT. The observability table pairs "the 
     PROPOSED: "an instrument that must be LINKED INTO its subject to see it" -- which is the real
     failure mode, and the one this fork lived: the only thing that could contradict the renderer's GPU
     timers was inside the renderer.
+    [#253] STRENGTHENS THIS. The sovereign reader has now measured the same thread the engine measures
+    itself: cpu.frame.work.wall_fraction 0.2756 against cpu.owner.frame.busy_cores 0.2606, two
+    mechanisms sharing nothing, agreeing in the direction they must. That check is only possible
+    BECAUSE the instrument sees what its subject cannot name.
 
 T9. THE OWNERSHIP RULE HAS NO LAWFUL HOME FOR HALF THE SYSTEM. The table requires "every declared
     instrument owned by a named component" and forbids "telemetry as an ambient global that anything
@@ -5898,9 +5981,18 @@ T9. THE OWNERSHIP RULE HAS NO LAWFUL HOME FOR HALF THE SYSTEM. The table require
 T5. The sovereign boundary buys sampling freedom, not only correctness -- the out-of-process reader can
     poll fast BECAUSE it does not perturb. I have not measured the perturbation difference. Writing it
     now would be a claim with no instrument, which is the failure this fork punishes hardest.
+    [#253] narrows what must be measured: the sampler now runs at 2 Hz against a live client for whole
+    legs, so the experiment is a leg with and without it, and the harness to run it exists.
 
-T7. The consumer half -- 1,932 lines of Python -- belongs to none of the 53 components. [#253] is what
-    tells us what the consumer must actually be; deciding its component first designs for the diagram.
+T7. The consumer half -- Python that belongs to none of the 53 components -- waits on [#252]. The
+    precondition is now MET: the join has been performed, so what the consumer must carry is known
+    rather than guessed. It is four things, and none of them is a property of a file format:
+      (a) the counter-vs-gauge distinction (`_total` marks what may be differenced);
+      (b) THREE distinct unavailabilities, not one -- pid changed, counter fell, fewer than two
+          samples -- because each means something different about what happened;
+      (c) the covered-span denominator (T11);
+      (d) the method declaration (T10).
+    All four are properties of a SAMPLE TYPE, which is what [#250] is for. That is the shape.
 
 T1. The document's side of the ambient-global violation (the `metrics` owes facet) waits until [#252]
     has a shape.
