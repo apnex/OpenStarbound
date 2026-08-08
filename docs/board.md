@@ -67,7 +67,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 211, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 213, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 31.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -300,7 +300,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `a4fc43b3` | — |
-| [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `c19cb959` `94f44d59` | — |
+| [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `574879f3` `c19cb959` `94f44d59` | — |
 | [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
 | [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
 | [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
@@ -311,7 +311,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted | — | — |
-| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — subjects must be HANDED their instrument, not reach for it | — | — |
+| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6016,6 +6016,7 @@ checks out against scripts/lever-table.json: 8 levers -> 3 repeats x (baseline +
 
 status: **completed**
 
+- `574879f3` [#256] the Reporter was in the file map and out of the contents cell, both green
 - `c19cb959` [#256] telemetry becomes a component, and the sweep that reads it finds three defects
 - `94f44d59` TSSA-OBS pass 1: the gate that could not see the component, and three positions the campaign paid for [#256]
 
@@ -6622,29 +6623,59 @@ RELATED: #245 (DESC-CONVERGE, schema 3->4) may subsume the API question -- check
 
 <a id="c29c1332-267"></a>
 
-#### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — subjects must be HANDED their instrument, not reach for it
+#### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one
 
 status: **pending**
 
 ```
-RATIFIED BY THE DIRECTOR 2026-08-08 as D14: axioms A1 (Sovereign State Transparency) and A2 (Isomorphic Specification) bind this architecture. This task is the price of A1, named at the moment of ratification rather than discovered later.
+RATIFIED BY THE DIRECTOR as D14 (commit 3eed5ab8): axioms A1 (Sovereign State Transparency) and A2 (Isomorphic Specification) bind. This task is the price of A1.
 
-THE VIOLATION. `Telemetry` is a process-global registry that every component writes into by string key -- `Telemetry::counter("render.glstate.mismatches")` and friends, reached for by NAME rather than handed over at composition. A1 forbids "a process-global that some component mutates on another's behalf", and §14 of the TSSA already convicts `ServerGlobalTimestep` in exactly those words. The document was condemning one global and ratifying another.
+THE VIOLATION. `Telemetry` is a process-global registry every component writes into by string key, reached for by NAME rather than handed over at composition. A1 forbids "a process-global that some component mutates on another's behalf"; TSSA §14 convicts `ServerGlobalTimestep` in exactly those words. The defence "each subject records only about ITSELF" is refuted by our own R07-R16: nine occasions in two days where one component's registration habit changed what a READER saw. A shared registry is a shared fact.
 
-THE DEFENCE, AND WHY IT IS WEAKER THAN IT READS. The natural objection is that each subject records only about ITSELF, so no component mutates another's truth. This campaign is the counter-evidence: R07 through R16 are NINE occasions in two days where one component's registration habit changed what a READER saw -- a handle registered on a path not always taken made "ran and found nothing" indistinguishable from "never ran". A shared registry is a shared fact. The ABSENT-vs-ZERO defect class exists BECAUSE the registry is global.
+MEASURED SCOPE: 256 references across six components (game 133, rendering 46, application 44, base 17, client 13, frontend 3).
 
-THE REMEDY: handle ownership. A subject is GIVEN its instrument by whatever composed it. That is P2 (placement is wiring) applied to instruments, and it makes the ABSENT-vs-ZERO class structurally impossible rather than ratcheted -- the pattern this project has chosen every time it had the option (R14/R15/R16 all preferred structural impossibility to vigilance).
+=== THE DERIVED TARGET SHAPE (14-agent axiom derivation, wf_11f6ea68-b79) ===
+Four lenses derived independently (A3 Law of One / A1 state / A2+A4 declaration / A8+P1+P2 placement), four candidate shapes were proposed, each was attacked from two angles, and one synthesis survived. NOT YET DIRECTOR-APPROVED -- this is the design input, not a mandate.
 
-SCOPE, MEASURED NOT GUESSED: 256 references across six components (game 133, rendering 46, application 44, base 17, client 13, frontend 3), definition `Telemetry(Timer|Counter|Gauge|Rate|Scope)|Telemetry::` outside `core/StarTelemetry*` and `test/`.
+THE HEADLINE: the register is right about the DIRECTION of every arrow and wrong about the NUMBER of rows. A3 counted honestly finds FIVE concerns inside the `telemetry` row: the write cell, the vocabulary's wire spelling, the owner/budget model, the JSON projection, and artifact emission. 54 -> 58 components, two rows amended, NONE retired.
 
-DO NOT START THIS AS A SWEEP. Sequence:
-  1. DESIGN FIRST, and it is a real design -- who owns the registry, what a composition hands down, what happens to the ~165 static-scope registrations that currently run before any composition exists, and whether the HUD/console readers become a declared consumer or keep a global read. There is a running derivation workflow whose output should seed this.
-  2. THE INSTRUMENT BEFORE THE SWEEP. A1 currently has NO gate -- that is the honest gap D14 opens, and "a claim with no instrument" is this project's recurring defect. The gate must count reaches-for-the-global and ratchet it down. Without it, step 3 is unverifiable.
-  3. Only then convert, component by component, each landing green.
+  `metric`  VOCABULARY/MACHINE -- "what one number is". MetricDesc + its eight enums AND their wire
+            spellings, MetricSample, BusyReading, MetricSnapshot, the histogram layout, the owner
+            tables. Named by telemetry, metrics, report, series and the nine subjects.
+  `report`  LIBRARY/MACHINE -- "turns a measurement value into a run artifact". Today's
+            TelemetryReporter, taking a snapshot BY VALUE. NAMES NEITHER `telemetry` NOR `metrics`.
+  `series`  LIBRARY/MACHINE -- "turns measurement values into a series". Where the campaign's five
+            hard-won rules land in C++ where grant_sweep can read them: re-differencing, the covered
+            span as denominator, the signed residual, boundedness-respecting refusal, no
+            interpolation across a hole.
+  `measure` ENTRYPOINT/COMPOSITION -- metrics_main.cpp. ADD_EXECUTABLE is a placement decision and P2
+            gives placement to compositions alone.
 
-RELATED: #252 (TEL-EXTRACT) is largely SUBSUMED -- once handles are owned, which directory the projection sits in is a much smaller question, and the register contradiction I put to the Director dissolves. #245 (DESC-CONVERGE) should land first: converging the descriptor while the ownership model changes underneath would be doing the same call sites twice. #171 rides along.
+WHY `report` IS THE KEY MOVE, and why the Director's #252 ruling was right in direction and unexecutable in destination: the projection CANNOT go to `metrics` (reading a registry means naming `telemetry`, which is `metrics`'s ratified falsifier, now grant_sweep-enforced) and CANNOT stay in `telemetry` (it names six subject keys as string literals, which that row's excludes facet forbids). The destination must be a component that names NOTHING in the subject -- it takes a declared value and hands back an artifact. #252 is therefore SUBSUMED, and the contradiction put to the Director dissolves without amending either falsifier.
 
-A2's half is already largely satisfied -- the register, the injectors and the gate set ARE the machine-read declaration -- but D14 makes that a commitment rather than a habit, so any NEW rule about telemetry must ship with the instrument that reads it.
+THE ONE THING NEEDING DIRECTOR SIGHT: the derivation amends the KIND TABLE, which governs all 54 rows rather than these four. The VOCABULARY rule reads "no implementations and no ==> edge"; it would become "no BEHAVIOUR and no ==> edge", so a total function from a declared value to its spelling is allowed. Evidence: StarThreadBusyReader.cpp:15-26 HAND-COPIES the owner names with a comment saying so, because the spelling is TU-private elsewhere. Precedent: the document already records correcting "may name only FOUNDATION" as "not a tightening, it was false". If that amendment is refused, `metric` is not a VOCABULARY and the vocabulary stays in `core`.
+
+WHAT IT HONESTLY DOES NOT DO: A1 IS NOT SATISFIED by this shape. `Telemetry::` stays a static accessor on a process global at ~155 sites. The shape NARROWS it -- the duty gains "its OWN", and setEnabled/setDeepEnabled/reset leave the public surface so `frontend` stops mutating nine components' recording state -- but the ambient global survives and this task stays open. Anything claiming otherwise is relocating the defect.
+
+SEQUENCE (9 steps, each landable alone; full text in the workflow output):
+  1. Fix the two LIVE correspondence defects first -- (a) DONE at 574879f3, the Reporter was in the
+     file map and out of the contents cell, both green; (b) `metrics` is KIND LIBRARY while
+     source/metrics/CMakeLists.txt:32 is ADD_EXECUTABLE, and its row omits the `extern` it takes.
+  2. Split `measure` out as the eighth ENTRYPOINT.
+  3. Physically move StarTelemetry.{hpp,cpp} to source/telemetry/ -- 29 include lines. This is what
+     turns P1 from a convention into a compile error for this component.
+  4. Write `key_owner_sweep` REPORT-ONLY before anything structural depends on it. THIS IS THE A1
+     INSTRUMENT and it does not exist -- build it before the sweep.
+  5. Create `metric`; amend the VOCABULARY rule; land `vocabulary_pure`.
+  6. `Json snapshot()` -> `MetricSnapshot snapshot()`, making ABSENT-vs-ZERO a property of the VALUE
+     rather than a lint. SCHEMA BREAK: sequence after #242/#249 bank, not during.
+  7. Create `report`; thread the writer and the enable/deep control down from entrypoints. The
+     `/telemetry` verbs survive.
+  8. Create `series`; descend the five rules out of Python behind a DIFFERENTIAL harness. Retire a
+     Python script only when the harness agrees on real data.
+  9. Close #251 before any further GPU conclusion.
+
+STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 109, both slack zero) and A4 is strained on the 3,351-line Python tier, whose rules no register row admits to. Both are declared, not hidden.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
