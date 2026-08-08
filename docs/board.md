@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**199 tasks** across 2 store(s): 2 in_progress, 36 pending, 161 completed
+**200 tasks** across 2 store(s): 2 in_progress, 37 pending, 161 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 198 tasks, ids 64–262
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 199 tasks, ids 64–263
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -56,6 +56,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 11 | 16 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 12 | 17 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
 | 13 | 18 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 14 | 19 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
 
 > **Ranking integrity:** #260 (rank 16) is blocked by #261 (rank 17) — a blocker ranked LATER than the thing it blocks
 
@@ -67,9 +68,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 203, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 204, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 28.** The task harness has, on these, appended its
+**Descriptions normalised on export: 29.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -306,6 +307,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
+| [#263](#c29c1332-263) | `c29c1332` | open | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6385,6 +6387,51 @@ DO NOT APPLY BLIND. Each correction in the audit doc survived an adversarial ref
 twelve of the audit's original thirty-two findings were REFUTED and several of those refutations
 themselves carried corrections. Read the refutation column before editing a task, not just the
 finding.
+```
+
+<a id="c29c1332-263"></a>
+
+#### #263 — BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits
+
+status: **pending** · metadata: `{"rank": 19}`
+
+```
+A RULE I HAVE TO REMEMBER IS NOT A MECHANISM, and this one failed twice in a row on 2026-08-08.
+
+scripts/board-export.py matches `[#NNN]` ANYWHERE in a commit message to build the Commits column. The
+standing convention is that board-only commits carry no `[#NNN]` stamp -- but the convention is about
+the SUBJECT, and prose in the BODY matches just as well.
+
+  849f97d2  a board commit whose body read "...which is task 250." with brackets
+            -> listed under #250 as evidence, having done no work on it
+  07ad45e4  a board commit whose body discussed #253 twice with brackets
+            -> listed under #253 as evidence, having done no work on it
+
+Both were caught by regenerating and reading the diff, and both were fixed by amending. Neither was
+caught by an instrument. That is the whole problem: the board is the authority the project reads to
+resolve every `[#NNN]` in the history, and it now has a demonstrated way to accrue citations that
+resolve and mean nothing. THE FAILURE IS SILENT AND IT LOOKS EXACTLY LIKE A REAL CITATION.
+
+THE FIX BELONGS IN board-export.py, not in a hook and not in a habit. It already has the two facts it
+needs: the commit, and the files that commit touched. Proposed rule:
+
+    A commit whose ENTIRE diff is confined to the board's own artefacts
+    (docs/board.md, docs/board-anchors.json, docs/board-audit-*.md)
+    may not be counted as evidence for any task.
+
+Report the exclusions rather than dropping them silently -- the Integrity section is the right place,
+alongside "Unexplained ids" -- because an exclusion nobody can see is one nobody can notice is wrong.
+That is the same reasoning the "Descriptions normalised on export: 29" line already carries.
+
+PROVE IT FIRES. The two commits above are the fixture: run the rule against history and assert it would
+have excluded them in their pre-amend form. An injection arm that cannot be shown to fire is the defect
+this repo has now met five times.
+
+WORTH ALSO CONSIDERING, and it may be the better rule: match only a `[#NNN]` in the SUBJECT line, since
+that is what the convention has always actually meant. Cheaper, and it makes prose in a body free to
+cross-reference in whatever form reads best. The risk is the reverse error -- a real work commit that
+stamps only in its body would stop being counted -- so measure how many existing citations come from
+the body before choosing.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
