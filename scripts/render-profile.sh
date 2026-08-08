@@ -169,7 +169,37 @@ restore_cfg() {
   [ -s "$CFG_SNAPSHOT" ] && command cp "$CFG_SNAPSHOT" "$CFG" 2>/dev/null || true
   rm -f "$CFG_SNAPSHOT"
 }
-trap restore_cfg EXIT
+# THE SOVEREIGN SAMPLER RUNS FOR THE WHOLE LEG, and it starts BEFORE the client so no busy time exists
+# that it was not watching for. It writes UNAVAILABLE rows until the client appears, which is the point:
+# an absent target is a row, and only the file can say whether the sampler was late or the client was.
+#
+# PER LEG, unlike the PMU sampler, which lever-matrix runs once across the whole matrix. The PMU pays a
+# warmup to open its counter and must be joined to legs by window stamp; these readers are procfs reads
+# with no warmup at all, so each leg can own its own file and no cross-leg alignment can go wrong.
+#
+# NON-FATAL BY CONSTRUCTION, same as the PMU one. A missing dist/metrics costs the leg its sovereign
+# half and nothing else; the in-process telemetry is the measurement this script has always produced.
+SOVEREIGN_SERIES="$PWD/harness/profiles/$LABEL.sovereign.tsv"
+mkdir -p "$PWD/harness/profiles"
+python3 scripts/metrics-sample.py --out "$SOVEREIGN_SERIES" --every 0.5 \
+  --match sbinit-perf.config --for $(( SECONDS_TO_RUN * 4 + 400 )) >/dev/null 2>&1 &
+SOVEREIGN_PID=$!
+
+stop_sovereign() {
+  [ -n "${SOVEREIGN_PID:-}" ] || return 0
+  kill -TERM "$SOVEREIGN_PID" 2>/dev/null
+  wait "$SOVEREIGN_PID" 2>/dev/null
+  SOVEREIGN_PID=""
+}
+
+# ONE exit trap, because bash only has one and the config restore was already using it. A second
+# `trap ... EXIT` would have silently replaced the first, and the leg would inherit the previous leg's
+# config pins -- the exact defect the snapshot above exists to prevent, reintroduced by its own guard.
+on_exit() {
+  stop_sovereign
+  restore_cfg
+}
+trap on_exit EXIT
 
 if [ ${#SETS[@]} -gt 0 ]; then
   python3 - "$PWD/harness/storage-perf/starbound.config" "${SETS[@]}" <<'PY'
@@ -324,6 +354,10 @@ for _ in $(seq 1 20); do kill -0 $PID 2>/dev/null || break; sleep 1; done
 kill -KILL $PID 2>/dev/null || true
 wait $PID 2>/dev/null || true
 
+# AFTER the client is gone, so the sovereign series covers the whole leg including its last frames. The
+# sampler's own loop ends when the pid disappears; this is the belt to that braces.
+stop_sovereign
+
 # Keep this run's log under its own label before anything else can overwrite it.
 archive_log "$LABEL"
 
@@ -376,3 +410,16 @@ fi
 scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL" \
   --json "harness/profiles/$LABEL.json" \
   --series "harness/profiles/$LABEL.series.json"
+
+# THE JOIN, HERE, WHILE BOTH HALVES ARE ON DISK AND STILL BELONG TO THIS LEG. Both series are stamped on
+# the epoch clock -- the only one the measuring process and the measured process share -- so the
+# alignment is exact rather than inferred. Leaving it to be done later is what produced a per-lever GPU
+# table whose leg boundaries were guessed from file mtimes.
+#
+# NON-FATAL. A leg whose join fails still has both halves on disk under its own label and can be joined
+# by hand; a leg whose profile failed has nothing. The join is an addition to this script's output.
+if [ -s "$SOVEREIGN_SERIES" ]; then
+  scripts/obs-join.py "harness/profiles/$LABEL.series.json" --sovereign "$SOVEREIGN_SERIES" || true
+else
+  echo "  !! no sovereign series was written -- per-owner CPU and per-client GPU went unmeasured."
+fi

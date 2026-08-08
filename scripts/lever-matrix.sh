@@ -584,7 +584,14 @@ run_leg() { # run_leg <label> <extra --set args...>
   fi
   [ -f "harness/profiles/$label.series.json" ] &&
     command cp "harness/profiles/$label.series.json" "$OUT/$label.series.json"
-  return 0   # the two copies above are additive; neither absence makes a measured leg unmeasured
+  # The sovereign half travels with the leg too, and BOTH halves do: the raw TSV so the join stays
+  # re-derivable, and the joined artefact so nothing has to be re-derived to read the leg. Same rule the
+  # snapshots follow -- the derived thing is a convenience, the raw thing is the evidence.
+  [ -f "harness/profiles/$label.sovereign.tsv" ] &&
+    command cp "harness/profiles/$label.sovereign.tsv" "$OUT/$label.sovereign.tsv"
+  [ -f "harness/profiles/$label.joined.json" ] &&
+    command cp "harness/profiles/$label.joined.json" "$OUT/$label.joined.json"
+  return 0   # the copies above are additive; no absence makes a measured leg unmeasured
 }
 
 FAILED=(); VOID=(); OK=()
@@ -599,7 +606,8 @@ echo "############ warm-up (discarded) ############"
 if run_leg "$RUN_ID-warmup"; then
   rm -f "$OUT/$RUN_ID-warmup.json"
   rm -rf "$OUT/$RUN_ID-warmup.snapshots"   # discarded means discarded; its series is not evidence either
-  rm -f  "$OUT/$RUN_ID-warmup.series.json"
+  rm -f  "$OUT/$RUN_ID-warmup.series.json" "$OUT/$RUN_ID-warmup.sovereign.tsv" \
+         "$OUT/$RUN_ID-warmup.joined.json"
   echo "  warm-up complete and DISCARDED -- it exists to absorb cold-start cost, not to be reported"
 else
   echo "lever-matrix: the warm-up leg failed. Refusing to start: if the harness cannot complete one" >&2
