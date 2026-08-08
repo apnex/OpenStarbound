@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**192 tasks** across 2 store(s): 3 in_progress, 34 pending, 155 completed
+**193 tasks** across 2 store(s): 3 in_progress, 35 pending, 155 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 191 tasks, ids 64–255
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 192 tasks, ids 64–256
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -46,11 +46,12 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 1 | 6 | `#253` | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | ready |
 | 2 | 7 | `#254` | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | blocked by #253 |
 | 3 | 8 | `#255` | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | blocked by #253, #254 |
-| 4 | 9 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
-| 5 | 10 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
-| 6 | 11 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
-| 7 | 12 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 8 | 13 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 4 | 9 | `#256` | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-of… | ready |
+| 5 | 10 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | blocked by #255 |
+| 6 | 11 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | blocked by #253 |
+| 7 | 12 | `#245` | DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half | ready |
+| 8 | 13 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 9 | 14 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 
 > **1 completed task(s) still carry a rank** (#235). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -295,6 +296,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#253](#c29c1332-253) | `c29c1332` | open | OBS-JOIN: the two halves of the busy model have never been joined — one stream, one axis, per leg | — | — |
 | [#254](#c29c1332-254) | `c29c1332` | open | OBS-PLOT: "directly plotted" is a clause of the north star and nothing renders | — | — |
 | [#255](#c29c1332-255) | `c29c1332` | open | MATRIX-CPU: the observability system's acceptance test — 28 legs, all four cells, per lever | — | — |
+| [#256](#c29c1332-256) | `c29c1332` | open | TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -4906,7 +4908,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 13}`
+status: **pending** · metadata: `{"rank": 14}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 - `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
@@ -5277,7 +5279,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE: schema 3 to 4 descriptor convergence + the cost-attribution half
 
-status: **pending** · blocked by: #243 · metadata: `{"rank": 11}`
+status: **pending** · blocked by: #243 · metadata: `{"rank": 12}`
 
 ```
 RANK 6. Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
@@ -5500,7 +5502,7 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 10}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 11}`
 
 ```
 DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any performance impact later, but let's not restrict our design because of it." And: "as much of our sovereign observability and metrics system is in fact sovereign, under the metrics/ directory."
@@ -5579,7 +5581,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 12}`
+status: **pending** · metadata: `{"rank": 13}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
@@ -5630,7 +5632,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 9}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 10}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -5836,6 +5838,68 @@ MEASURED null on CPU levers is a result this campaign has never been able to pro
 would justify moving the target rather than the levers.
 
 Cost: ~47 minutes unattended for one scene at 3 repeats, per matrix-20260807-160513.
+```
+
+<a id="c29c1332-256"></a>
+
+#### #256 — TSSA-OBS: what the metrics campaign has taught the architecture — an accumulating triangulation, not a one-off review
+
+status: **pending** · metadata: `{"rank": 9}`
+
+```
+DIRECTOR, 2026-08-07: the TSSA is a WIP and it is ours to shape toward our own north star. Metrics and
+observability are now deeper-explored than any other area of the fork, so this campaign FEEDS the
+document rather than only conforming to it. Findings are appended as each board item completes, while
+the reasoning is still attached to the thing that produced it.
+
+First pass, from [#235] and [#236]. Three kinds, and the third is the one nothing goes red for.
+
+=== THE TREE VIOLATES A STATED POSITION ===
+
+T1. The observability section's forbidden column reads "telemetry as an ambient global that anything
+    may reach". `Telemetry::` is reachable from 410 sites across six components. That IS the forbidden
+    row, stated in our own document, and [#252] is the work that ends it -- which makes #252 compliance
+    with our architecture rather than housekeeping. The TSSA should say so explicitly, because right
+    now the violation is only visible to someone who counts.
+
+=== THE DOCUMENT IS STALE ===
+
+T2. The `metrics` register row names MetricSample, ClientBusyReader and EngineBusyReader. The tree has
+    ThreadBusyReader and ProcFs as well. One reader and one shared helper missing. (#208 owns the
+    register; recorded here with the reason.)
+
+=== THE DOCUMENT IS INCOMPLETE -- WE LEARNED THIS AND IT IS NOT WRITTEN DOWN ===
+
+T3. A CLOCK IS PART OF A METRIC'S IDENTITY. The observability section covers identity across a seam and
+    the grant rule, and says nothing about the declared QUANTITY being part of the contract. Two
+    denominators survived for months because no metric could say whether it measured work or waiting.
+    Candidate position: an instrument that cannot state its clock cannot be closed against anything.
+
+T4. A WHOLE MUST BE ABLE TO SHRINK. Both defects were the same shape -- a denominator that could not
+    move (a GPU timeline span reading the frame period; a CPU pacing period containing its own sleep as
+    a part). Falsifiability of the DENOMINATOR is a design constraint on any budget the target state
+    describes, and the document states no such rule.
+
+T5. THE INSTRUMENT MAY SAMPLE FASTER THAN ITS SUBJECT, BECAUSE IT DOES NOT PERTURB. The grant argument
+    justifies the boundary on correctness grounds ("never a peer of its subject"). It buys something
+    else the document does not claim: the out-of-process reader can poll at 100ms where the in-process
+    writer cannot, so regime and transient are separable ONLY across that boundary. That is a positive
+    property of the architecture and it should be an asserted consequence, not a coincidence.
+
+T6. ATTRIBUTION HAS A GRANULARITY AND THE TARGET STATE DOES NOT NAME IT. Measured, and structural
+    rather than incidental: WALL resolves per scope (143 keys), BUSY resolves per owner (5) for CPU and
+    per process/engine-class for GPU. "Correctly attributed" without a granularity claim is
+    unfalsifiable. The document should state what the target state promises and what it does not.
+
+T7. THE CONSUMER HALF HAS NO COMPONENT. 1,932 lines of Python -- telemetry-window, pmu-join,
+    gputimer-brackets, the two lints, pmu-engine-sample -- and none of the 53 registered components
+    owns any of it. By line count that is the largest unowned surface in the observability system. The
+    register has a hole, not a stale row. Cross-ref #200.
+
+NOT A REVIEW TASK. It stays open across the observability arc and takes an entry per completed item;
+[#253]/[#254]/[#255] will each add or settle rows. Folding the findings INTO the document is #207/#208's
+work and should not start until the arc's evidence is in -- writing an architecture position from one
+leg is how the two dead denominators got written in the first place.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
