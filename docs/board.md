@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**203 tasks** across 2 store(s): 2 in_progress, 34 pending, 167 completed
+**204 tasks** across 2 store(s): 2 in_progress, 35 pending, 167 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 202 tasks, ids 64–266
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 203 tasks, ids 64–267
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -248,7 +248,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `d4d07d9a` `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `3eed5ab8` `d4d07d9a` `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
 | [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
@@ -311,6 +311,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted | — | — |
+| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — subjects must be HANDED their instrument, not reach for it | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -3536,6 +3537,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 status: **in_progress** · metadata: `{"rank": 13}`
 
+- `3eed5ab8` [#204] D14: A1 and A2 bind, and `telemetry` is what A1 forbids
 - `d4d07d9a` [#204] the section-7 compile diagram was missing 24 edges its own grant table requires
 - `d65c9488` board: #224 closed on evidence -- 10-location emission sweep, cap 48 covers all, 1.7% margin with a loud breach [#204]
 - `a0ace793` board: #224 last open item closed -- 48 is a point fix, breach now detected [#204]
@@ -6616,6 +6618,33 @@ WHAT TO DO, in order:
   3. If zero: DELETE the four descriptor-free overloads. A falsifier that cannot occur because the API will not express it beats one held at zero by a counter -- see the R14/R15/R16 pattern, where structural impossibility was chosen over vigilance every time.
 
 RELATED: #245 (DESC-CONVERGE, schema 3->4) may subsume the API question -- check it before starting, because converging the descriptor and then ratcheting the old shape is work done twice.
+```
+
+<a id="c29c1332-267"></a>
+
+#### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — subjects must be HANDED their instrument, not reach for it
+
+status: **pending**
+
+```
+RATIFIED BY THE DIRECTOR 2026-08-08 as D14: axioms A1 (Sovereign State Transparency) and A2 (Isomorphic Specification) bind this architecture. This task is the price of A1, named at the moment of ratification rather than discovered later.
+
+THE VIOLATION. `Telemetry` is a process-global registry that every component writes into by string key -- `Telemetry::counter("render.glstate.mismatches")` and friends, reached for by NAME rather than handed over at composition. A1 forbids "a process-global that some component mutates on another's behalf", and §14 of the TSSA already convicts `ServerGlobalTimestep` in exactly those words. The document was condemning one global and ratifying another.
+
+THE DEFENCE, AND WHY IT IS WEAKER THAN IT READS. The natural objection is that each subject records only about ITSELF, so no component mutates another's truth. This campaign is the counter-evidence: R07 through R16 are NINE occasions in two days where one component's registration habit changed what a READER saw -- a handle registered on a path not always taken made "ran and found nothing" indistinguishable from "never ran". A shared registry is a shared fact. The ABSENT-vs-ZERO defect class exists BECAUSE the registry is global.
+
+THE REMEDY: handle ownership. A subject is GIVEN its instrument by whatever composed it. That is P2 (placement is wiring) applied to instruments, and it makes the ABSENT-vs-ZERO class structurally impossible rather than ratcheted -- the pattern this project has chosen every time it had the option (R14/R15/R16 all preferred structural impossibility to vigilance).
+
+SCOPE, MEASURED NOT GUESSED: 256 references across six components (game 133, rendering 46, application 44, base 17, client 13, frontend 3), definition `Telemetry(Timer|Counter|Gauge|Rate|Scope)|Telemetry::` outside `core/StarTelemetry*` and `test/`.
+
+DO NOT START THIS AS A SWEEP. Sequence:
+  1. DESIGN FIRST, and it is a real design -- who owns the registry, what a composition hands down, what happens to the ~165 static-scope registrations that currently run before any composition exists, and whether the HUD/console readers become a declared consumer or keep a global read. There is a running derivation workflow whose output should seed this.
+  2. THE INSTRUMENT BEFORE THE SWEEP. A1 currently has NO gate -- that is the honest gap D14 opens, and "a claim with no instrument" is this project's recurring defect. The gate must count reaches-for-the-global and ratchet it down. Without it, step 3 is unverifiable.
+  3. Only then convert, component by component, each landing green.
+
+RELATED: #252 (TEL-EXTRACT) is largely SUBSUMED -- once handles are owned, which directory the projection sits in is a much smaller question, and the register contradiction I put to the Director dissolves. #245 (DESC-CONVERGE) should land first: converging the descriptor while the ownership model changes underneath would be doing the same call sites twice. #171 rides along.
+
+A2's half is already largely satisfied -- the register, the injectors and the gate set ARE the machine-read declaration -- but D14 makes that a commitment rather than a habit, so any NEW rule about telemetry must ship with the instrument that reads it.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
