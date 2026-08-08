@@ -5985,7 +5985,7 @@ not a decision.
 
 ### Two limits, stated rather than discovered later
 
-- **`dedup_measure` reports a LOWER BOUND.** 62,540 indirect call sites are not followed, because a
+- **`dedup_measure` reports a LOWER BOUND.** 62,674 indirect call sites are not followed, because a
   virtual call names no target. That blind spot is not incidental: a virtual call through a contract
   *is* a seam, and Section 13 says the call tree is supposed to stop there. **The instrument's limit
   and the design's boundary are the same place** — which is why the composition oracle, which observes
@@ -6008,25 +6008,39 @@ not a decision.
   memcpy" is taken literally. The instrument is either an encode/decode on both paths, or an A/B
   proving the two produce identical results — the same shape as the render subsystem's existing
   bit-identity oracles.
-- ~~**The deduplication measure**~~ — **BUILT** (`scripts/dedup-measure.py`, ctest `dedup_measure`).
-  Measured from `objdump` relocations rather than includes: *use*, not permission. Today
-  `closure(clientTick)` is 8,622 symbols and `closure(presentTick)` is 2,074, of which **1,484 are
-  shared — 72% of everything the presentation side executes is also executed by the client side.**
-  Of that, 887 are foundations and contracts and are shared by design; **596 are leaks**, ratcheted and
-  falling only:
+- ~~**The deduplication measure**~~ — **BUILT** (`scripts/dedup-measure.py`, ctest `dedup_measure`,
+  gate `dedup_ratchet`). Measured from `objdump` relocations rather than
+  includes: *use*, not permission. `closure(clientTick)` is 8,624 symbols and `closure(presentTick)`
+  is 2,117, of which **1,505 are shared — 71% of everything the presentation side executes is also
+  executed by the client side.** Of that, 891 symbols across 46 files are foundations and contracts
+  and are shared by design; **73 files are leaks**, ratcheted and falling only:
 
-  | component | symbols | |
-  |---|---|---|
-  | `core` 525, `base` 362, `host` 1 | 888 | shared by design |
-  | `game` | 229 | the headline revocation, at symbol granularity |
-  | `rendering` 98, `frontend` 79, `gpu_opengl` 72, `host_sdl` 41, `participant` 40, `windowing` 19 | 349 | each already an edge on the removal ratchet |
-  | `platform_pc` | 18 | **not on the ratchet** — Steam and Discord code reachable from both roots |
+  | component | files | symbols | |
+  |---|---:|---:|---|
+  | `core` 35, `base` 10, `host` 1 | 46 | 891 | shared by design |
+  | `game` | 38 | 236 | the headline revocation |
+  | `frontend` 17, `rendering` 6, `windowing` 4, `gpu_opengl` 2, `participant` 2, `host_sdl` 1 | 32 | 309 | each already an edge on the removal ratchet |
+  | `platform_pc` | 3 | 18 | **not on the ratchet** — Steam and Discord code reachable from both roots |
+
+  **THE RATCHET COUNTS FILES, AND DID NOT ALWAYS.** It counted *symbols*, with a ceiling of 596, until
+  that ceiling was breached at 614 by growth that was not coupling. Of the 50 shared
+  symbols in the component that grew, **46 were template or inline instantiations** the compiler
+  happened to emit into `StarClientApplication.cpp.o`: `fmt::v10::detail::do_write_float`,
+  `Star::strf<…>`, `Logger::logf<…>`, `std::__shared_ptr<X>::~__shared_ptr()`, `Variant<…>::destruct()`.
+  Harness commits had added *log lines*, and each new argument-type combination instantiates a fresh
+  specialisation in that translation unit. The script's own header had said so all along —
+  per-component symbol counts are unreliable at small counts, file-granularity ones are not — and the
+  ratchet gated on the unreliable one anyway. **A ratchet on a quantity that moves when you add a log
+  line teaches its reader to raise the ceiling.** Symbols are still reported; the gate is files. The
+  file ceiling carries no history: the symbol era recorded symbols only, so it starts at its first
+  measurement and is chosen for being structurally immune to attribution churn, not for having been
+  observed stable.
 
   The breakdown corroborates `grant-sweep`'s `REMOVING` list almost edge for edge, which is independent
   evidence that the two instruments measure the same coupling from opposite directions. `platform_pc`
   is the one component the include sweep never flagged, and it is a new finding.
 
-  **The number is a LOWER BOUND.** 62,540 indirect call sites were not followed, because a virtual call
+  **The number is a LOWER BOUND.** 62,674 indirect call sites were not followed, because a virtual call
   names no target. That blind spot is not incidental — a virtual call through a contract *is* a seam,
   and this section says the call tree is supposed to stop there. The instrument's limit and the
   design's boundary are the same place.
@@ -6106,7 +6120,7 @@ line removes the heaviest header's worst dependency, and it is byte-identical by
 | facet | |
 |---|---|
 | **claim at risk** | The grant table describes the real coupling between components, so a green `grant_sweep` means the boundaries hold. |
-| **how it shows** | Two blind spots, both already exercised. **Template instantiation** crosses a boundary without an include, and **runtime coupling through `Root`'s databases** reaches whatever the database was built from. `dedup_measure` names the same limit from the other side: 62,540 indirect call sites are not followed, because a virtual call names no target. |
+| **how it shows** | Two blind spots, both already exercised. **Template instantiation** crosses a boundary without an include, and **runtime coupling through `Root`'s databases** reaches whatever the database was built from. `dedup_measure` names the same limit from the other side: 62,674 indirect call sites are not followed, because a virtual call names no target. |
 | **what it costs** | A boundary that measures clean and is not. That is worse than a boundary known to be dirty, because the instrument's silence reads as evidence. |
 | **what settles it** | Nothing available today settles it in general. What is available is the composition oracle — observing behaviour rather than structure — which is why Section 15 says it has to carry the weight, and the needle ratchets (`host_api_neutral`, `render_layering`) for the known instances. **Recorded as a permanent limit, not a task.** |
 

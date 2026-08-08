@@ -328,6 +328,27 @@ jobs:
             exit 77
           fi
 
+      # THE ONE NORTH-STAR CLAIM WITH AN INSTRUMENT BEHIND IT: closure(clientTick) INTERSECT
+      # closure(presentTick) is exactly the code both machines must ship once the two sides split.
+      #
+      # IT WAS DELIBERATELY EXCLUDED FROM THIS FILE UNTIL 2026-08-08, and the reason was sound: it reads
+      # compiled objects, so on a script-only runner it would permanently skip, and a permanent skip
+      # read like a pass. GATE-SKIP-2 removed that constraint -- a skip is now spelled 77 and
+      # run-gates.sh refuses to count it green -- so the exclusion no longer buys anything, and while it
+      # stood the ratchet sat RED at 614 against a 596 ceiling for an unknown number of days with no
+      # runner able to see it. An instrument nothing runs is indistinguishable from one that agrees.
+      #
+      # ~6 seconds on a built tree (objdump over ~450 objects, 8 workers).
+      - name: dedup_ratchet -- the two sides may not come to share one more file
+        run: |
+          if compgen -G "build/*/CMakeFiles" > /dev/null || compgen -G "build/*/*/CMakeFiles" > /dev/null; then
+            python3 scripts/dedup-measure.py --check
+          else
+            echo "dedup-measure: DID NOT RUN -- no build tree. This instrument reads compiled objects."
+            echo "dedup-measure: Nothing was measured; this is NOT a pass."
+            exit 77
+          fi
+
       - name: host_api_neutral -- the SDL host must not know a graphics API
         run: |
           python3 scripts/layering-lint.py --needle "re:SDL_GL|SDL_WINDOW_OPENGL" \

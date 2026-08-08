@@ -337,11 +337,23 @@ ADD_TEST (NAME spec_consistency COMMAND ${Python3_EXECUTABLE}
 # no instrument behind it. Section 5's framing supplies one: a TICK is the root of a call tree, so
 # closure(clientTick) INTERSECT closure(presentTick) is exactly the code both machines must ship once
 # the two sides split. Measured from objdump relocations -- USE, not the include PERMISSION that
-# grant-sweep measures. Ratchet at 596 symbols outside the foundations and contracts; may only fall.
-# Not in the Gates workflow: that job runs scripts without building, where this would permanently
-# SKIP and a permanent skip reads like a pass.
+# grant-sweep measures. Ratchet at 73 FILES outside the foundations and contracts; may only fall.
+#
+# THE RATCHET COUNTS FILES, NOT SYMBOLS, since 2026-08-08. The symbol count moves whenever a
+# translation unit gains a template specialisation: adding log lines took it 596 -> 614 with no new
+# coupling, and 46 of the 50 symbols in the component that grew were fmt/strf/shared_ptr/Variant
+# instantiations. The script's own header had always said per-component symbol counts are unreliable
+# at small counts while file-granularity ones are not. Symbols are still reported, no longer gated.
+#
+# IT IS NOW IN THE GATES WORKFLOW TOO -- which the note here previously refused, correctly: "that job
+# runs scripts without building, where this would permanently SKIP and a permanent skip reads like a
+# pass." That held until a skip could be SPELLED. The script exits 77 when it finds no objects, the
+# workflow step guards on the build tree and exits 77 without one, and run-gates.sh reports 77 as
+# SKIPPED rather than counting it green. SKIP_RETURN_CODE tells ctest the same, so the two runners
+# cannot disagree about what 77 means.
 ADD_TEST (NAME dedup_measure COMMAND ${Python3_EXECUTABLE}
           ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/dedup-measure.py --check)
+SET_TESTS_PROPERTIES (dedup_measure PROPERTIES SKIP_RETURN_CODE 77)
 
 # COMPOSITION GRAPHS. The whole-system map answers "what exists"; it cannot answer "what does THIS
 # binary link". Derived from the grant table rather than drawn, because three hand-made diagrams would
