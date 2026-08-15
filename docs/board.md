@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**205 tasks** across 2 store(s): 2 in_progress, 32 pending, 171 completed
+**205 tasks** across 2 store(s): 3 in_progress, 31 pending, 171 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 204 tasks, ids 64–268
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 2 | `#171` | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model chan… | ready |
+| 1 | 2 | `#171` | LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client | ready |
 | 2 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 3 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 4 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
@@ -66,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 222, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 223, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -214,8 +214,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | `board.md` |
-| [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
+| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | — |
+| [#171](#c29c1332-171) | `c29c1332` | **active** | LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client | `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -2454,7 +2454,6 @@ status: **completed**
 
 - `03cec1c0` lighting: adaptive calculation border -- 4.375x -&gt; 3.000x, -23.6% lighting CPU
 - `a9854185` lighting: measure how much of the 48-tile border is actually used (#170 probe)
-- cited in `docs/board.md`
 
 ```
 SHIPPED 03cec1c0 (2026-07-25). Calculation region = query region padded by borderCells()=48 (128x64 -> 224x160). Now computed per recompute from the lights present and clamped into [spreadBorderCells()=32, borderCells()=48]. Kill-switch lightingAdaptiveBorder, default ON. RETAINED ON -- Director's standing rationale 2026-08-04: correct + beats vanilla = stays on.
@@ -2484,23 +2483,66 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 <a id="c29c1332-171"></a>
 
-#### #171 — Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change
+#### #171 — LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client
 
-status: **pending** · metadata: `{"rank": 2}`
+status: **in_progress** · metadata: `{"rank": 2}`
+
+- `b1d8c3a0` [#171] five producer-side lighting costs get names; every lighting percentage has been excluding them
 
 ```
-FOUND during #168's closure work. Owner `lighting` now closes at 99.5-99.7%, but that whole is lighting.cpu.total.us, which covers only WorldClient::lightingCalc(). Real lighting CPU runs outside it, on the render thread, and lands in cpu.frame.render.us:
+Producer-side lighting CPU was billed to owner `frame` with no name of its own.
 
- 1. StarWorldClient.cpp:534-541 -- WorldClient::render() walks EVERY entity calling renderLightSources(). This is the entire light-source production pass and it is the direct producer of the light list lightingCalc consumes. Untimed by Telemetry (only a LogMap string at :502).
- 2. StarWorldClient.cpp:551 -- m_particles->lightSources() iterates every particle and builds a fresh List allocation per frame (StarParticleManager.cpp:106-113). Untimed.
- 3. The same block blocks on m_lightMapPrepMutex, which lightingCalc holds from :1990 through the whole gather. On a busy recompute the main thread's stall is charged to cpu.frame.render.us with no attribution to lighting at all.
- 4. StarWorldPainter.cpp:143-150 -- the maxEmission scan iterates the entire emission grid (width*height*3 floats) on the render thread, OUTSIDE processFull's cpuCostScope. Completely untimed, and it is O(calcCells) so it carries the same 4.375x border multiplier as task #170.
- 5. StarWorldPainter.cpp:233 adjustLighting -> StarTilePainter.cpp:38-55, a per-render-tile read-modify-write over the CPU lightmap. Untimed.
- 6. StarWorldClient.cpp:2211 -- LogMap::set on EVERY lighting-thread wakeup takes a GLOBAL mutex (StarLogging.cpp:100-103) and allocates a String via strf. Outside totalScope. Small but it is lighting cost on a global lock.
+=== INSTRUMENTATION HALF DONE 2026-08-15 at b1d8c3a0 ===
 
-WHY IT IS NOT A SIMPLE FIX: attributing these to owner=Lighting would break closure -- they sit outside lighting.cpu.total.us, so they would sum into `parts` without being in the `whole` and trip 'parts exceed the whole'. Doing it properly needs a SECOND Total per owner, which is not representable: StarTelemetry.cpp:445-450 keys the owner table by owner name (last row silently wins) and telemetry-window.py:207/265 unpacks `total` as a scalar and would TypeError on a list.
+THE DEFECT, CONFIRMED AT HEAD. Everything this project quotes as "lighting CPU" — #168's 99.5-99.7%
+closure and its 16.9% cut, #170/#217's border percentages — is denominated on `lighting.cpu.total.us`,
+which is `WorldClient::lightingCalc()` alone: the CONSUMER of light sources. The work that PRODUCES
+them was untimed. Five sites now named:
 
-So this is a telemetry MODEL change (multi-total owners, or a nested-budget concept), not a lighting change. Scope it as such. Until then these costs are real, measurable in aggregate as part of cpu.frame.render.us, and invisible individually.
+  lighting.produce.entities.us    the forAllEntities / renderLightSources walk
+  lighting.produce.prep.us        m_lightMapPrepMutex acquisition + the critical section
+  lighting.produce.particles.us   m_particles->lightSources(), nested inside prep
+  lighting.produce.adjust.us      WorldPainter -> WorldPass -> TilePainter::adjustLighting
+  lighting.gpu.spread_scan.us     spreadIterationsFor's O(cells) max-emission scan
+
+THE SURVEY SAID SIX; IT IS FIVE. lightingMain's LogMap outside totalScope is NOT a defect —
+lightingCalc's own comment says the scope opens after the early-out "so no-op wakeups are not timed".
+That is documented intent, and timing it would measure a deliberate exclusion.
+
+OWNER Frame, NOT Lighting. This work is paid for by the render thread; billing it to owner `lighting`
+would move the cost in the books without moving it in the machine, and would break the owner closure.
+Detail so it never joins a sum. `particles` nests inside `prep` and double-counts against it, which
+is what Detail exists to permit.
+
+TWO WRONG ATTEMPTS, BOTH CAUGHT BY THE PROJECT'S OWN MACHINERY:
+  * All five started as `static auto` in-function (the idiom already at those sites) and reg_ratchet
+    went red at 92 against a ceiling of 87. Ceiling NOT raised — its message says that "says one more
+    metric may lie about whether its code ran". Now 87, exactly at the ceiling, none added.
+  * They then became constructor members (the #181 shape), which is ALSO wrong here: GpuLightmapPass
+    is built only when lightingGpu is on, and a WorldPainter exists only while a world is loaded, so
+    a member reintroduces ABSENT for exactly the captures that matter. The eager block at the head of
+    StarGpuLightmapPass.cpp already documents this; I had read past it. All five are file-scope now.
+
+spread_scan is a NEW key rather than moving cpuCostScope up one line: lighting.gpu.cpu_cost.us is a
+published measured number (#168: 336 us/frame) and widening what it spans is a re-measurement, not a
+refactor. Folding them is a separate decision that must re-capture the corpus.
+
+All five declare unit AND clock — desc_facet_ratchet absorbed them with no ceiling change (161 -> 166
+sites, still 105 under-declared, slack 0).
+
+=== REMAINING ===
+
+1. THE NUMBERS. Nothing has been measured yet — there is still no figure for how much these five
+   cost, which is the question the task exists to answer. Needs a live client and an A-B-A replicate,
+   since cpu.frame.render.us replicates at 9.7% (docs/telemetry/architecture.md). Until then every
+   "lighting cost X%" statement remains denominated on an incomplete whole by an unknown amount.
+2. THE MODEL CHANGE, for a lighting-owned whole these close against. Three parts, not one:
+   production sites must SET `.whole` (no non-test site does); telemetry-window.py must group Budget
+   parts by their declared whole rather than by (owner, domain); and MetricRole must express a metric
+   that is simultaneously a Budget part of the frame and a Total for its own sub-parts — today a
+   second (Frame, Cpu) Total silently overwrites cpu.frame.work.us in Telemetry::snapshot.
+   The task text's old claim that `whole` does not exist is STALE: it exists and serialises, but is
+   INERT — telemetry-window reads only `totals`, and the sole setter is a test fixture.
 ```
 
 <a id="c29c1332-172"></a>
