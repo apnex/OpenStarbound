@@ -368,7 +368,21 @@ def fence_for(text):
     return "`" * max(3, longest + 1)
 
 
+def _ambiguous_ids(stores_data):
+    """-> {task id: store count} for ids that exist in more than one store.
+
+    A `[#NNN]` stamp names a number, never a store, so an id living in two stores makes every commit
+    carrying it unattributable. There are no such ids today; this is here so that the day there is
+    one, the board says so rather than handing the evidence to whichever store was written last."""
+    seen = {}
+    for _, tasks in stores_data:
+        for t in tasks:
+            seen[str(t["id"])] = seen.get(str(t["id"]), 0) + 1
+    return {k: v for k, v in seen.items() if v > 1}
+
+
 def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dead_all, anchors):
+    ambiguous_ids = _ambiguous_ids(stores_data)
     L = []
     A = L.append
 
@@ -592,11 +606,30 @@ def render(stores_data, commits, doccites, dangling, cited_total, noncommit, dea
                 meta.append("metadata: `" + cell(json.dumps(t["metadata"])) + "`")
             A(" · ".join(meta))
             A("")
-            if store is stores_data[0][0]:
+            # EVIDENCE RENDERS FOR EVERY STORE, AND AMBIGUITY REFUSES RATHER THAN GUESSES.
+            #
+            # This read `if store is stores_data[0][0]` -- evidence for the FIRST store only. Stores
+            # sort by mtime, newest first (find_stores), so which store that is depends on which one
+            # was touched last. Restoring a second store from this very file demoted the main one and
+            # silently stripped the evidence lines from 203 tasks: 95 records shrank, ~34k characters
+            # of citation vanished, and the board still said "204 tasks" and reported itself up to
+            # date. A board that quietly forgets what proves its own rows is worse than one that
+            # never claimed to.
+            #
+            # The guard was not baseless: a commit stamped `[#4]` cannot be attributed when two
+            # stores each hold a task 4, because the stamp carries no store. So the ambiguity is
+            # named instead of being resolved by an accident of mtime -- the same rule the metrics
+            # sampler follows when two clients match.
+            if tid in ambiguous_ids:
+                A(f"- evidence NOT ATTRIBUTED: id #{tid} exists in {ambiguous_ids[tid]} stores and a "
+                  f"`[#{tid}]` stamp names no store, so any commit carrying it could belong to "
+                  f"either. Disambiguate by renumbering, not by guessing.")
+            else:
                 for sha, subject in commits.get(tid, []):
                     A(f"- `{sha}` {cell(subject)}")
                 for c in doccites.get(tid, []):
                     A(f"- cited in `{c}`")
+            if not (tid in ambiguous_ids):
                 if commits.get(tid) or doccites.get(tid):
                     A("")
             # SAME normalisation as the page -- see clean_desc. If only one of the two
