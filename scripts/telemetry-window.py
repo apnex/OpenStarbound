@@ -205,7 +205,24 @@ def window(a, b, zeroed=None):
         elif mb.get("type") in ("counter", "gauge", "rate"):
             va, vb = ma.get("value", 0), mb.get("value", 0)
             # A gauge is a level, not an accumulation: its delta is meaningless, so carry the latest reading.
-            d["value"] = vb if mb.get("type") == "gauge" else vb - va
+            #
+            # EXCEPT WHEN IT IS A PEAK, AND THAT DISTINCTION IS WHY `boundedness` EXISTS. A
+            # HighWaterMark gauge is written `s = max(s, x)` and never falls, so its latest reading is
+            # the largest value seen since PROCESS START -- not since the window opened. Carrying it
+            # into `value` beside a counter's honest window delta invites exactly the reading it
+            # cannot support: "the peak during this leg". The header records this defect shipping
+            # twice (StarMetricDesc.hpp:95-101) and the histogram `max` field as a third instance.
+            #
+            # So a peak is emitted under its OWN key. A reader that wants it must ask for it by a name
+            # that says what it is, and a reader that sums or differences `value` cannot reach it by
+            # accident. Undeclared gauges keep the old behaviour unchanged -- 146 of 146 metrics in
+            # the banked corpus declare nothing, and rewriting their meaning retroactively would
+            # invalidate the only re-readable evidence this project has.
+            if mb.get("type") == "gauge" and mb.get("boundedness") == "high_water_mark":
+                d["runLongMax"] = vb
+                d["peakNotWindowed"] = True
+            else:
+                d["value"] = vb if mb.get("type") == "gauge" else vb - va
             if first_seen and mb.get("type") != "gauge":
                 d["firstSeenInWindow"] = True
         out[name] = d
@@ -481,7 +498,28 @@ def selftest():
     arm("an all-undeclared set is homogeneous with itself (the declared weakness)",
         unit_basis(["d", "e"], U) == (None, ["d", "e"], []))
 
-    # 26-29. THE SERIES. Two snapshots -> one interval; three -> two. The arithmetic arm matters most:
+    # 26-29. THE PEAK. A HighWaterMark gauge is written `s = max(s, x)` and never falls, so its
+    #        latest reading is the largest since PROCESS START. The banked corpus declares no
+    #        boundedness at all (146 of 146), so this behaviour is unreachable from real data and a
+    #        fixture is the only way to exercise it -- which is exactly why it needs one.
+    def _g(kind, boundedness, val):
+        m = {"type": "gauge", "owner": "lighting", "domain": "cpu", "value": val}
+        if boundedness:
+            m["boundedness"] = boundedness
+        return {"meta": {"schema": SCHEMA, "tMonotonicNs": 0, "tEpochNs": 0}, "metrics": {kind: m}}
+
+    peak = window(_g("p", "high_water_mark", 5), _g("p", "high_water_mark", 9))["p"]
+    arm("a HighWaterMark gauge does NOT carry a window `value`", "value" not in peak)
+    arm("...it carries runLongMax, named for what it is", peak.get("runLongMax") == 9)
+    arm("...and says so, so a reader cannot mistake it", peak.get("peakNotWindowed") is True)
+    lvl = window(_g("l", "level", 5), _g("l", "level", 9))["l"]
+    arm("a Level gauge still carries the latest reading as `value`",
+        lvl.get("value") == 9 and "runLongMax" not in lvl)
+    und = window(_g("u", None, 5), _g("u", None, 9))["u"]
+    arm("an UNDECLARED gauge is unchanged -- the banked corpus keeps its meaning",
+        und.get("value") == 9 and "runLongMax" not in und)
+
+    # 31-34. THE SERIES. Two snapshots -> one interval; three -> two. The arithmetic arm matters most:
     #        a cumulative counter differenced per interval must yield the PER-INTERVAL amount, and the
     #        way to get this wrong is to emit the cumulative value, which looks entirely plausible
     #        (monotonically rising, right units) and is the metric's whole life at every point.

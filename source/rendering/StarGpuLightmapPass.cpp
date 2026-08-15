@@ -49,9 +49,13 @@ GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
 // derived from brightnessLimit, or documented as a deliberate cost ceiling.
 unsigned GpuLightmapPass::spreadIterationsFor(ImageView const& emission, LightmapParams const& lp) {
   static auto maxEmissionGauge = Telemetry::gauge("lighting.gpu.spread.max_emission_x1000",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+               .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::HighWaterMark});
   static auto passesRequestedGauge = Telemetry::gauge("lighting.gpu.spread.passes_requested",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+               .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::HighWaterMark});
 
   float maxEmission = 0.0f;
   float const* ed = (float const*)emission.data;

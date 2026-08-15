@@ -791,7 +791,9 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
   LogMap::set("client_render_particle_count", renderData.particles->size());
   // Durable telemetry mirror (R-F gate): particle count in the snapshot, not just the /debug HUD.
   static auto particleCountGauge = Telemetry::gauge("render.particle.count",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::Level});
   particleCountGauge.set((int64_t)renderData.particles->size());
 
   renderData.skyRenderData = m_sky->renderData();
@@ -2540,9 +2542,13 @@ void WorldClient::lightingCalc() {
     //     d_i = Chebyshev distance from the query rect out to light i (0 when inside)
     //     i_i = that light's intensity
     static auto maxIntensityGauge = Telemetry::gauge("lighting.lights.max_intensity_x1000",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+      MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+                 .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+                 .boundedness = MetricBoundedness::HighWaterMark});
     static auto borderNeededGauge = Telemetry::gauge("lighting.border.needed",
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+      MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+                 .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+                 .boundedness = MetricBoundedness::HighWaterMark});
     float maxIntensity = 0.0f;
     int borderNeeded = 0;
     float const pointMaxAir = 48.0f;   // probe-local mirror of /lighting.config:lighting.pointMaxAir

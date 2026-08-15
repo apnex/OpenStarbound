@@ -105,9 +105,13 @@ void CellularLightingCalculator::begin(RectI const& queryRegion, Maybe<unsigned>
   // is the scene fingerprint used to prove two legs saw the same world, and a fingerprint with no declared
   // cadence cannot be checked for having been sampled the expected number of times.
   static auto cellsGauge = Telemetry::gauge("lighting.cells",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+               .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::Level});
   static auto calcCellsGauge = Telemetry::gauge("lighting.calc.cells",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+               .cadence = MetricCadence::Recompute, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::Level});
 
   m_queryRegion = queryRegion;
   // ADAPTIVE BORDER (#170). `full` is the historic unconditional padding, ceil(max(spreadMaxAir,

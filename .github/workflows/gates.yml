@@ -449,6 +449,12 @@ jobs:
       - name: lever_table -- the declared levers still match the harness config
         run: scripts/lever-matrix.sh --check-table
 
+      - name: boundedness_declared -- every gauge says whether it is a level or a peak
+        run: python3 scripts/metric-desc-lint.py --check-boundedness
+
+      - name: boundedness_declared_fires -- an undeclared gauge fires and an empty corpus skips
+        run: python3 scripts/metric-desc-lint.py --selftest-boundedness
+
       - name: banked_reread_fires -- the re-read comparison fires on a real difference
         run: python3 scripts/ci/banked-reread.py --selftest
 

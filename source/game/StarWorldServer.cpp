@@ -684,7 +684,9 @@ namespace {
   // holds its last value; that is honest here in a way it was not for `lighting.cells`, because a
   // world that is not ticking is not gaining or losing entities either.
   static TelemetryGauge gEntitiesLive = Telemetry::gauge("sim.entities.live",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Sim, MetricCadence::Tick, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Sim,
+               .cadence = MetricCadence::Tick, .role = MetricRole::Detail,
+               .boundedness = MetricBoundedness::Level});
 }
 
 void WorldServer::update(float dt) {

@@ -17,9 +17,9 @@ rather than hidden, because an unchecked row is not a checked one.
 
 | status | rows | meaning |
 |---|---:|---|
-| **open** | 20 | not started |
+| **open** | 19 | not started |
 | **doing** | 0 | in progress |
-| **done** | 37 | closed; `commit` says where |
+| **done** | 38 | closed; `commit` says where |
 | **declined** | 0 | we will not do this; `reason` is mandatory |
 | **deferred** | 0 | not now; `until` names the trigger, and is mandatory |
 
@@ -30,7 +30,6 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C04` | degrade | gputimer-brackets.py — the gate that exists to stop a GPU timer bracketing a gate it does not enter — fires only on one syntactic shape and never read | Extend violations() to treat any leading statements plus a body-spanning `if`/`for`/`while` as the gated shape, and add  |
 | `C05` | degrade | The engine emits descConflict/typeConflict on every metric and NOTHING in the tree reads them; the plan that specified the consumer assigned that orac | Have telemetry-window.py collect any metric with descConflict, typeConflict, or owner/domain "unknown" into `violations` |
 | `C06` | degrade | Finding #23's mechanism is contradicted by the tree: the main loop paces update() to WALL time, so snapshot cadence is not lever-correlated the way cl | Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds  |
-| `C07` | degrade | cpu.frame.total.us — the declared Total and the owner-frame denominator — is a wall-clock pacing period that deliberately contains a sleep, and the sl | Either exclude cpu.frame.idle.us from the Budget set and declare it Detail (making the unattributed remainder visible an |
 | `H05` | degrade | The load phase is FRAME-capped, not time-capped, and the nofreeze path has no settle phase — so the window opens on a world that is by construction st | Add an explicit post-load settle in wall time (or in ticks) before the window opens — e.g. sleep a fixed settle period a |
 | `H07` | degrade | World and player state persist and mutate across every leg, with no snapshot, restore or assertion — the matrix drifts monotonically with leg index | Snapshot harness/storage-perf/{universe,player} once at matrix start and restore both before every leg (same shape as th |
 | `H08` | degrade | The environment sidecar can silently emit invalid JSON, and even when valid nothing ever compares it between the two legs of a comparison | Make read_gpu_mhz/read_pkg_temp branch on captured output rather than on pipeline status (`v=$(cat ... | head -1); [ -n  |
@@ -55,6 +54,7 @@ rather than hidden, because an unchecked row is not a checked one.
 | `C01` | serverFidelity is left on "automatic" in the pinned harness config — a negative-feedback governor that changes the simulated WORKLOAD between legs, an | pending |
 | `C02` | The asset set — the measurement's content input — is 42 unrecorded paths outside the repo, one of them a live mod tree belonging to an in-progress tas | pending |
 | `C03` | Neither render-profile.sh nor lever-matrix.sh asserts the binary is newer than the sources — the check the repo already wrote for render-gate.sh — and | pending |
+| `C07` | cpu.frame.total.us — the declared Total and the owner-frame denominator — is a wall-clock pacing period that deliberately contains a sleep, and the sl | [#235] eec79ca1 -- cpu.frame.work.us is the owner-frame whole, measured at the t |
 | `D01` | All 13 GPU pass timers are declared MetricRole::Budget, but the code's own comment says they are NOT ADDITIVE and "do not budget" | 9db54200 |
 | `D02` | lighting.gpu.point.gpu_us declares Cadence::Recompute but its bracket sits inside `if (!lights.empty())` | pending |
 | `D03` | lighting.gpu.upscale.gpu_us declares Cadence::Recompute but its bracket is inside a config-gated arm that is off by default | [#238] cluster C -- a descriptor asserting one quantity while the code produces  |
@@ -158,7 +158,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Re-scope #23 to the maxFrameSkip clamp, and have each leg assert `cpu.frame.updates` delta against elapsed wall seconds × updateRate — a shortfall means the leg dropped sim time and its window is not the length it claims.
 
-### `C07` — DEGRADES_MATRIX — open
+### `C07` — DEGRADES_MATRIX — done
 
 **cpu.frame.total.us — the declared Total and the owner-frame denominator — is a wall-clock pacing period that deliberately contains a sleep, and the sleep is itself declared a Budget part**
 
@@ -274,7 +274,7 @@ rather than hidden, because an unchecked row is not a checked one.
 
 *Closes by.* Declare both MetricCadence::Recompute to match the phase they are set inside.
 
-*Signature.* `source/base/StarCellularLighting.cpp` matching `"lighting\.calc\.cells",\n\s*MetricDesc\{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute` — present while open. (the scene-fingerprint gauge declares the cadence of the phase it is set inside, so it can be checked for having been sampled the expected number of times)
+*Signature.* `source/base/StarCellularLighting.cpp` matching `"lighting\.calc\.cells",\s*MetricDesc\{[^}]*MetricCadence::Recompute` — present while open. (the scene-fingerprint gauge declares Recompute -- the cadence of the phase it is set inside -- in ANY initializer form. The signature originally pinned the positional spelling, so declaring boundedness at the same site (which requires designated initializers to reach field 8 safely) read as a REGRESSION of a fix that was still there.)
 
 ### `H01` — BLOCKS_MATRIX — done
 

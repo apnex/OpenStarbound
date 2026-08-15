@@ -478,6 +478,92 @@ def selftest_clocks():
     return 0
 
 
+GAUGE_SITE = re.compile(r'Telemetry::gauge\s*\(\s*"([^"]+)"\s*,\s*(MetricDesc\s*\{[^}]*\})', re.S)
+
+
+def undeclared_gauges(text):
+    """-> [key] for gauge registrations whose descriptor declares no MetricBoundedness."""
+    stripped = strip_comments(text)
+    return [m.group(1) for m in GAUGE_SITE.finditer(stripped)
+            if "MetricBoundedness::" not in m.group(2)]
+
+
+def check_boundedness(files=None):
+    """Every gauge must say whether it is a LEVEL or a PEAK. Not a ratchet -- a rule.
+
+    A ratchet is the right shape when a population is large and must be walked down. This population
+    is EIGHT, and it is at zero today, so a ceiling would only be a licence for the ninth gauge to
+    arrive undeclared. The rule is cheaper and it is the shape this project reaches for whenever the
+    option exists: structural impossibility over vigilance.
+
+    WHY IT MATTERS RATHER THAN BEING TIDINESS. `telemetry-window.py` used to window EVERY gauge as a
+    level -- "carry the latest reading" -- and a HighWaterMark gauge is written `s = max(s, x)` and
+    never falls, so its latest reading is the largest since PROCESS START, not since the window
+    opened. Carried into a window's `value` it reads as "the peak during this leg", which it is not.
+    StarMetricDesc.hpp:95-101 records that defect shipping twice, and the histogram `max` field as a
+    third instance. source/test/ is excluded so the count cannot be moved by deleting a fixture.
+    """
+    files = files if files is not None else sources()
+    bad = {}
+    corpus = 0
+    for path, text in sorted(files.items()):
+        if "/test/" in path.replace("\\", "/"):
+            continue
+        stripped = strip_comments(text)
+        corpus += len(GAUGE_SITE.findall(stripped))
+        u = undeclared_gauges(text)
+        if u:
+            bad[path] = u
+    for path, keys in bad.items():
+        for k in keys:
+            print(f"  {path}: gauge \"{k}\" declares no MetricBoundedness -- is it a LEVEL or a PEAK?")
+    total = sum(len(v) for v in bad.values())
+    print(f"boundedness_declared: {corpus} gauge site(s) outside source/test/, {total} undeclared")
+    if not corpus:
+        print("boundedness_declared: NOT RUN -- no gauge sites found. The pattern has drifted; "
+              "nothing was checked and this is NOT a pass.")
+        return 77
+    if total:
+        print(f"boundedness_declared: FAIL -- {total} gauge(s) undeclared. A consumer cannot tell a "
+              f"level from a peak, and windowing a peak as a level has shipped three times.")
+        return 1
+    print("boundedness_declared: OK -- every gauge says whether it is a level or a peak")
+    return 0
+
+
+def selftest_boundedness():
+    arms, bad = [], 0
+
+    def arm(name, ok):
+        nonlocal bad
+        arms.append((name, ok))
+        if not ok:
+            bad += 1
+
+    declared = ('static auto g = Telemetry::gauge("a.b", MetricDesc{.domain = MetricDomain::Cpu, '
+                '.boundedness = MetricBoundedness::Level});')
+    bare = 'static auto g = Telemetry::gauge("a.b", MetricDesc{MetricDomain::Cpu});'
+    arm("a declared gauge does not fire", undeclared_gauges(declared) == [])
+    arm("a bare gauge fires, naming its key", undeclared_gauges(bare) == ["a.b"])
+    arm("a commented-out site does not count", undeclared_gauges("// " + bare) == [])
+    arm("a counter is not a gauge and is out of scope",
+        undeclared_gauges('Telemetry::counter("a.b", MetricDesc{MetricDomain::Cpu});') == [])
+    arm("an undeclared gauge in a NON-test file FAILS the check",
+        check_boundedness({"source/x.cpp": bare}) == 1)
+    arm("...the same gauge under source/test/ does not, and the empty corpus SKIPS",
+        check_boundedness({"source/test/x.cpp": bare}) == 77)
+    arm("a declared gauge passes", check_boundedness({"source/x.cpp": declared}) == 0)
+
+    for name, ok in arms:
+        print("  %-62s %s" % (name, "ok" if ok else "FAILED"))
+    if bad:
+        print(f"boundedness_declared: SELFTEST FAIL -- {bad} arm(s)")
+        return 1
+    print(f"boundedness_declared selftest: {len(arms)}/{len(arms)} arms ok -- an undeclared gauge "
+          f"fires, source/test/ cannot move the count, and an empty corpus SKIPS rather than passes")
+    return 0
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
     sys.exit({"--selftest": selftest,
@@ -486,4 +572,6 @@ if __name__ == "__main__":
               "--check-timeline": check_timeline,
               "--check-clocks": check_clocks,
               "--selftest-clocks": selftest_clocks,
+              "--check-boundedness": check_boundedness,
+              "--selftest-boundedness": selftest_boundedness,
               "--selftest-timeline": selftest_timeline}.get(arg, check)())
