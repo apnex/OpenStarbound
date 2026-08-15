@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**204 tasks** across 2 store(s): 2 in_progress, 34 pending, 168 completed
+**204 tasks** across 2 store(s): 2 in_progress, 33 pending, 169 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 203 tasks, ids 64–267
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -55,10 +55,9 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 10 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 11 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 12 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 13 | 14 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
-| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 13 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
-> **1 completed task(s) still carry a rank** (#245). A rank is a claim about
+> **2 completed task(s) still carry a rank** (#245, #263). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -71,7 +70,7 @@ reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 220, of which **41 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 30.** The task harness has, on these, appended its
+**Descriptions normalised on export: 29.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -98,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 168.
+**Completed tasks citing no commit and no doc:** 86 of 169.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -309,7 +308,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
-| [#263](#c29c1332-263) | `c29c1332` | open | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | — | — |
+| [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
@@ -6475,47 +6474,42 @@ finding.
 
 <a id="c29c1332-263"></a>
 
-#### #263 — BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits
+#### #263 — BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point
 
-status: **pending** · metadata: `{"rank": 14}`
+status: **completed** · metadata: `{"rank": 14}`
+
+- `5d231c48` [#263] a board-only commit can no longer be cited as evidence, whatever its message says
 
 ```
-A RULE I HAVE TO REMEMBER IS NOT A MECHANISM, and this one failed twice in a row on 2026-08-08.
+A board-only commit that merely discusses a task was being cited as EVIDENCE for it.
 
-scripts/board-export.py matches `[#NNN]` ANYWHERE in a commit message to build the Commits column. The
-standing convention is that board-only commits carry no `[#NNN]` stamp -- but the convention is about
-the SUBJECT, and prose in the BODY matches just as well.
+=== CLOSED 2026-08-15 at 5d231c48 ===
 
-  849f97d2  a board commit whose body read "...which is task 250." with brackets
-            -> listed under #250 as evidence, having done no work on it
-  07ad45e4  a board commit whose body discussed #253 twice with brackets
-            -> listed under #253 as evidence, having done no work on it
+THE CONVENTION ALREADY EXISTED and was already written down at board-export.py:73-76: a commit that
+only regenerates the board carries NO stamp, and refers to tasks in prose instead. Nothing enforced
+it. I violated it myself while closing #245, and the very next regeneration surfaced it — the board
+grew an evidence row citing a commit whose entire content was the previous regeneration.
 
-Both were caught by regenerating and reading the diff, and both were fixed by amending. Neither was
-caught by an instrument. That is the whole problem: the board is the authority the project reads to
-resolve every `[#NNN]` in the history, and it now has a demonstrated way to accrue citations that
-resolve and mean nothing. THE FAILURE IS SILENT AND IT LOOKS EXACTLY LIKE A REAL CITATION.
+IT IS A LOOP, and that is what forced a structural fix rather than another correction. A stamped
+board commit produces a new evidence row, which dirties the board, which needs another commit, which
+produces another row. The board could never reach a fixed point.
 
-THE FIX BELONGS IN board-export.py, not in a hook and not in a habit. It already has the two facts it
-needs: the commit, and the files that commit touched. Proposed rule:
+THE SCALE WAS 23x WHAT THIS TASK RECORDED. This task said "twice in two commits". Measured across
+all branches: 47 phantom rows on 14 tasks — 11% of the board's 440 evidence rows. #204 alone
+credited THIRTY commits containing no work. #207 six, #177/#179/#242/#244 two each.
 
-    A commit whose ENTIRE diff is confined to the board's own artefacts
-    (docs/board.md, docs/board-anchors.json, docs/board-audit-*.md)
-    may not be counted as evidence for any task.
+THE FIX: commit_index() skips any commit touching nothing but BOARD_ARTEFACTS
+({docs/board.md, docs/board.html}) — a closed literal rather than a docs/ prefix, because a real
+finding written into docs/ must stay citable. The citation is now impossible regardless of what the
+message says.
 
-Report the exclusions rather than dropping them silently -- the Integrity section is the right place,
-alongside "Unexplained ids" -- because an exclusion nobody can see is one nobody can notice is wrong.
-That is the same reasoning the "Descriptions normalised on export: 29" line already carries.
+CAUGHT BY THE NULL CONTROL, NOT BY REVIEW: the first version put the record separator at the END of
+the git format string, but --name-only prints paths AFTER the format, so they fell into the next
+record and corrupted its sha. Diffing the evidence index before-vs-after reported 437 of 440 rows
+changed — nothing like "drop the board-only ones". Separator moved to the record start; corrected
+control reports 47 removed, 0 added, every one verified to touch only docs/board.md.
 
-PROVE IT FIRES. The two commits above are the fixture: run the rule against history and assert it would
-have excluded them in their pre-amend form. An injection arm that cannot be shown to fire is the defect
-this repo has now met five times.
-
-WORTH ALSO CONSIDERING, and it may be the better rule: match only a `[#NNN]` in the SUBJECT line, since
-that is what the convention has always actually meant. Cheaper, and it makes prose in a body free to
-cross-reference in whatever form reads best. The risk is the reverse error -- a real work commit that
-stamps only in its body would stop being counted -- so measure how many existing citations come from
-the body before choosing.
+Idempotence proven: two consecutive regenerations produce an identical md5.
 ```
 
 <a id="c29c1332-264"></a>
