@@ -1804,10 +1804,10 @@ void ClientApplication::renderTestMotionVerdict() {
   if (!m_renderTestWalk)
     return;
 
-  auto counter = [](char const* key) {
-    return Telemetry::counter(key,
-      MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail}).value();
-  };
+  // READS these three keys; BackdropPass's constructor owns them. Passing a MetricDesc here made
+  // this a second registration site for keys it does not own -- safe only while the hand-copy stayed
+  // identical. The one-argument overload asserts no descriptor, so there is nothing left to drift.
+  auto counter = [](char const* key) { return Telemetry::counter(key).value(); };
   uint64_t refreshed = counter("render.cache.parallax.refreshed");
   uint64_t skipped   = counter("render.cache.parallax.skipped");
   uint64_t bypassed  = counter("render.cache.parallax.bypassed_moving");

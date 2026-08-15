@@ -255,6 +255,27 @@ TEST(Telemetry, FirstDeclarationWinsAndMismatchIsRecorded) {
   EXPECT_TRUE(Telemetry::snapshot().getObject("metrics").get("test.desc.b").getBool("descConflict"));
 }
 
+// The mechanism ClientApplication::renderTestMotionVerdict now depends on. That lambda reads three
+// render.cache.parallax.* keys whose owner is BackdropPass's constructor, in another translation
+// unit; it used to pass a full MetricDesc, making it a second registration site for keys it does not
+// own -- safe only while the hand-copied descriptor stayed identical. It now uses the one-argument
+// overload, and the whole point is that a READ asserts no descriptor and so cannot disagree with one.
+//
+// Asserted rather than assumed, because "reading does not re-declare" is exactly the kind of claim
+// this project has repeatedly found to be false in the tree while true in a comment.
+TEST(Telemetry, ReadAfterDeclareDoesNotConflict) {
+  telemetrySetUp();
+  MetricDesc const owned{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Frame, MetricRole::Detail};
+  Telemetry::counter("test.desc.owned", owned).inc(3);
+  // The reader: no descriptor, just the value. This is the cross-TU read.
+  EXPECT_EQ(Telemetry::counter("test.desc.owned").value(), 3u);
+  Json m = Telemetry::snapshot().getObject("metrics").get("test.desc.owned");
+  EXPECT_FALSE(m.getBool("descConflict"));
+  EXPECT_FALSE(m.getBool("typeConflict"));
+  // ...and the read did not erase what the owner declared.
+  EXPECT_EQ(Telemetry::describe("test.desc.owned").owner, MetricOwner::Frame);
+}
+
 TEST(Telemetry, UndeclaredMetricIsOwnerUnknown) {
   telemetrySetUp();
   Telemetry::counter("test.desc.undeclared").inc();
