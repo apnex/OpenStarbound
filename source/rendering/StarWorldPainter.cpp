@@ -47,6 +47,14 @@ namespace {
   // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp.
   auto s_composePassNested = Telemetry::counter("render.pass.compose.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
+  // PRODUCER-SIDE LIGHTING (#171), here for the reason this whole block exists. adjustLighting runs
+  // on every frame a world is drawn, but a WorldPainter exists only while a world is LOADED -- so a
+  // constructor member would leave the key ABSENT on any capture taken outside one, which a consumer
+  // differencing two snapshots cannot tell from "ran and cost nothing".
+  auto s_adjustLightingTimer = Telemetry::timer("lighting.produce.adjust.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
@@ -379,6 +387,13 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
 }
 
 void WorldPainter::adjustLighting(WorldRenderData& renderData) {
+  // The last unnamed producer-side lighting cost on the render thread (#171). The chain below is
+  // pure delegation -- WorldPass::adjustLighting forwards straight to TilePainter::adjustLighting,
+  // where the per-tile work actually happens -- so the timer sits at the OUTERMOST call: it then
+  // covers the whole chain, including anything a future layer adds in between. Owner Frame, Detail,
+  // for the reason given at lighting.produce.entities.us in StarWorldClient. The handle is a member
+  // registered in the constructor, so the key is never ABSENT.
+  TelemetryScope s(s_adjustLightingTimer);
   m_worldPass->adjustLighting(renderData);
 }
 

@@ -27,6 +27,14 @@ namespace {
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   auto s_upscaleNested = Telemetry::counter("lighting.gpu.upscale.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
+  // CPU, not GPU, and here for the same reason as its four neighbours (#171). spreadIterationsFor is
+  // an O(cells) scan of the pass's own input that has never been inside lighting.gpu.cpu_cost.us --
+  // it runs before that scope opens. A constructor member would not do: this pass is built only when
+  // lightingGpu is on, so the key would be ABSENT on every GPU-lighting-off capture.
+  auto s_spreadScanTimer = Telemetry::timer("lighting.gpu.spread_scan.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}
@@ -115,7 +123,19 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   float const worldUpscale = lp.worldUpscale;
   // The pass now derives its own K from the emission it was handed, rather than being told by a caller
   // that had to scan the pass's input to work it out.
-  unsigned const spreadIterations = spreadIterationsFor(emission, lp);
+  //
+  // TIMED SEPARATELY RATHER THAN FOLDED INTO cpu_cost (#171). spreadIterationsFor scans the whole
+  // emission image for its maximum, and it runs BEFORE cpuCostScope opens below -- so the scan has
+  // never been inside lighting.gpu.cpu_cost.us. Moving cpuCostScope up would fix that in one line and
+  // is deliberately NOT done: cpu_cost is a published, measured number (#168 reports 336 us/frame),
+  // and silently widening what it spans is a re-measurement wearing a refactor's clothes. A new key
+  // leaves the old series comparable and names the gap; whether to fold them is a separate decision
+  // that has to re-capture the corpus.
+  unsigned spreadIterations;
+  {
+    TelemetryScope s(s_spreadScanTimer);
+    spreadIterations = spreadIterationsFor(emission, lp);
+  }
   // Cadence::Call, not Frame: processFull is reached only inside `if (lightMapUpdated)`
   // (StarWorldPainter.cpp), so it fires on lightmap-publish frames, not every frame. Declared Frame it
   // measured 1099 of 1500 frames -- 73% coverage -- and the consumer scaled the total UP by 1.36x,

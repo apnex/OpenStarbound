@@ -37,6 +37,42 @@ Star::Vec2I unpackVec2I(int64_t p) {
 
 namespace Star {
 
+namespace {
+  // PRODUCER-SIDE LIGHTING, REGISTERED EAGERLY (#171). Everything this project quotes as "lighting
+  // CPU" is denominated on lighting.cpu.total.us, which is WorldClient::lightingCalc() -- the
+  // CONSUMER. The three keys below name the work that PRODUCES what calc consumes: it runs on the
+  // render thread, lands inside cpu.frame.render.us, and has never had a name.
+  //
+  // OWNER Frame, NOT Lighting, and that is deliberate. This work is paid for by the render thread;
+  // billing it to owner `lighting` would move the cost in the books without moving it in the machine
+  // and would break the owner closure. Detail so it never joins a sum -- these are slices of
+  // cpu.frame.render.us, which is already Budget.
+  //
+  // FILE SCOPE, NOT function-local statics and not constructor members. A `static auto` inside
+  // render() registers on the first call, so a capture that opens and closes before one leaves the
+  // key ABSENT -- indistinguishable from "ran and cost nothing" to a consumer differencing two
+  // snapshots, which is the defect R13-R16 cost this project nine findings to learn. A member would
+  // be no better: a WorldClient exists only while a world is loaded.
+  auto s_entityLightsTimer = Telemetry::timer("lighting.produce.entities.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  // Declared before the MutexLocker at its use site so the span INCLUDES acquisition: if the lighting
+  // thread holds m_lightMapPrepMutex the render thread stalls there, and a stall the frame pays for
+  // but nothing names is exactly what this task exists to end.
+  auto s_prepHandoffTimer = Telemetry::timer("lighting.produce.prep.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  // Nested inside prep and therefore double-counted against it -- which is what Detail is for. The
+  // particle gather is the one part of the critical section that does real work rather than moving a
+  // list, so it is worth separating from the stall it sits behind.
+  auto s_particleLightsTimer = Telemetry::timer("lighting.produce.particles.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+}
+
 // IEEE-754 float32 -> float16 (half) with round-to-nearest. Used to pre-convert the GPU-lighting
 // emission grid on the lighting thread so the render thread uploads RGB16F (half the bytes). Lighting
 // values are non-negative and moderate, so the simple range handling (flush tiny to 0, clamp big to
@@ -575,13 +611,18 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
 
   renderData.geometry = m_geometry;
 
+  // The entity light-source walk: the first of the three producer-side costs (#171). See their
+  // registration block at the head of this file for why they are owner Frame and file-scope.
   ClientRenderCallback lightingRenderCallback;
-  m_entityMap->forAllEntities([&](EntityPtr const& entity) {
-    if (m_startupHiddenEntities.contains(entity->entityId()))
-      return;
+  {
+    TelemetryScope s(s_entityLightsTimer);
+    m_entityMap->forAllEntities([&](EntityPtr const& entity) {
+      if (m_startupHiddenEntities.contains(entity->entityId()))
+        return;
 
-    entity->renderLightSources(&lightingRenderCallback);
-  });
+      entity->renderLightSources(&lightingRenderCallback);
+    });
+  }
 
   renderLightSources = std::move(lightingRenderCallback.lightSources);
 
@@ -591,9 +632,15 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
 
   if (!m_fullBright) {
     {
+      // DECLARED BEFORE THE LOCKER ON PURPOSE, so the span INCLUDES acquisition. Destruction is
+      // reverse-order, so the locker releases first and this scope closes after it.
+      TelemetryScope prepScope(s_prepHandoffTimer);
       MutexLocker m_prepLocker(m_lightMapPrepMutex);
       m_pendingLights = std::move(renderLightSources);
-      m_pendingParticleLights = m_particles->lightSources();
+      {
+        TelemetryScope s(s_particleLightsTimer);
+        m_pendingParticleLights = m_particles->lightSources();
+      }
       // Stable lighting grid (#127): round the light-query size up to a bucket so the calc region --
       // and everything slaved to it (emission/obstacle grids, the lighting ping-pong FBOs, the upscale
       // FBO) -- holds a constant size across camera scroll instead of breathing +-1 tile. The breathe
