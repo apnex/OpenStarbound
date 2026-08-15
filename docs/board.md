@@ -131,7 +131,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `91cd1ef4` `9346f86a` `35808327` | — |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `91cd1ef4` `35808327` | — |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -184,7 +184,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
 | [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `d8f36de7` `404781e0` `0c27d76b` `a8196e52` `6e1e691f` `4e95c50c` | `matrix-prereq-ledger.md` |
-| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
+| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
@@ -222,10 +222,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
-| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
-| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
+| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
+| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `00f575ad` | — |
 | [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
-| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `e8d6860a` `7c0e8340` `c89be289` | — |
+| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `c89be289` | — |
 | [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | `6b6e8b72` | — |
 | [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | `472fd263` | — |
 | [#182](#c29c1332-182) | `c29c1332` | done | AX-A14 DONE: ContentKey's quantiser was UNDEFINED, not merely untested — fixed + 6 tests (13ed9399) | `13ed9399` | — |
@@ -242,7 +242,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
-| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `903f4ce0` `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
+| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | `matrix-prereq-ledger.md` |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
 | [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
@@ -250,10 +250,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
 | [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `3eed5ab8` `d4d07d9a` `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `3eed5ab8` `d4d07d9a` `84fe2324` `c8bf863b` `c363e052` `fa6f4d8f` `a0bbb0c1` `1899aa71` `02de4584` `e386d983` `46894dae` `466c19cc` `82170188` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
-| [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
+| [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `41b7adfd` `3ee6021d` `170a17cb` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
 | [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
@@ -283,14 +283,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
 | [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `7fa1d2ed` `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
 | [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
-| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
+| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
-| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` `7ec8a0bb` `c0238e96` | — |
+| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` | — |
 | [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
-| [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
+| [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `35bbb97c` `495682df` | — |
 | [#245](#c29c1332-245) | `c29c1332` | done | DESC-CONVERGE CLOSED: unit and boundedness are read, the ratchet counts only what it names, and two of my own claims we… | `da28b864` `a01c4a9c` `21adb941` `bc0305df` `7f222773` `fe20f87d` `bea29db1` `fa04b907` `aa484259` | — |
 | [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
 | [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
@@ -542,7 +542,6 @@ Per windLevel investigation (wjsdj5oez). Plant::update unconditionally computes 
 status: **pending**
 
 - `91cd1ef4` SCENE-FINGERPRINT (O01/#84): the matrix had none, and its own artefacts show the drift #84 was refused for
-- `9346f86a` docs(board): regenerate -- #84 revisited [#84]
 - `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
 
 ```
@@ -1380,7 +1379,6 @@ DESIGNED TO BE DELETED: if P-3 (#138) lands, the bypass and the whole parallax c
 
 status: **completed**
 
-- `3a30d7d8` docs(board): regenerate -- Air-Gap seam stages A/B/C closed, #191 filed [#137]
 - `a0f0089b` render(L3): WorldPass takes a sliced input that declares what it consumes
 - `b2cabd8d` render(L3): BackdropPass takes a sliced view -- contract (1), first pass
 - `e6edbe11` docs(render): file the axiom audit, so the guardrails commit messages cite actually exist
@@ -2620,7 +2618,6 @@ UNBLOCKS: #191 (WorldPass contract 1), the BackdropPass split, and large parts o
 
 status: **completed**
 
-- `90d8d236` docs(board): regenerate -- #175 closed, #176 filed [#175]
 - `4eb7b96c` sim: close the server-tick budget -- 27 phases, 99.76%
 
 ```
@@ -2659,9 +2656,7 @@ STILL OPEN elsewhere: SystemWorldServerThread has zero telemetry, so "sim closed
 
 status: **completed**
 
-- `1014c3b2` docs(board): regenerate -- #177 closed, confirmed in game [#177]
 - `82711412` render: write the three-term retained-cache contract where the next author will read it
-- `0a027243` docs(board): regenerate -- #177 deployed to dev, awaiting flight test [#177]
 - `00f575ad` render: give the env cache a motion term -- fixes choppy stars during ship flight and warp
 
 ```
@@ -2727,8 +2722,6 @@ mtime closes the actual observed hole -- a failed build leaving the binary untou
 status: **completed**
 
 - `2ef87860` render(tools): measure the two things the published artifacts quote, and claim the Renderer interface
-- `e8d6860a` docs(board): file the M7 audit deltas -- 11 new tasks, #174/#136/#170 corrected [#179]
-- `7c0e8340` docs(board): regenerate -- #178 and #179 closed, #137 corrected [#179]
 - `c89be289` docs(render): generate the Air-Gap counts into the doc, and gate them
 
 ```
@@ -3279,7 +3272,6 @@ status: **completed**
 
 status: **completed**
 
-- `903f4ce0` board: #196 closed -- overlay vendored, registered, pristine-clone verified [#196]
 - `f0b9fb1f` ledger: D55/E07/E08/E09 done -- the overlay is in-tree, registered, and verified from a clone
 - `1830ef31` build: make mimalloc a vcpkg manifest feature instead of an unconditional dependency
 - `18a8e5c0` build: vendor the vcpkg overlay ports and register them declaratively
@@ -3541,44 +3533,17 @@ status: **in_progress** · metadata: `{"rank": 13}`
 
 - `3eed5ab8` [#204] D14: A1 and A2 bind, and `telemetry` is what A1 forbids
 - `d4d07d9a` [#204] the section-7 compile diagram was missing 24 edges its own grant table requires
-- `d65c9488` board: #224 closed on evidence -- 10-location emission sweep, cap 48 covers all, 1.7% margin with a loud breach [#204]
-- `a0ace793` board: #224 last open item closed -- 48 is a point fix, breach now detected [#204]
-- `f6855fef` board: #224 CLOSED at 9f2aba93 -- cap 48 verified live, declarations reconciled, config pin caught [#204]
-- `bd139fc8` board: #224 MEASURED on hardware -- cap binds at the bases, 8.8% of pixels, 48 proven sufficient [#204]
-- `bd9e4f4d` board: #224 verified, narrowed and instrumented at 5f77683b; awaiting an in-game maxEmission read [#204]
 - `84fe2324` ledger: C08 and C16 done -- the PR-570 backlog is now fully settled
-- `2bcc88e1` board: #228 closed at 0fed2045 -- beam guard unified, bit-identical for all real content [#204]
 - `c8bf863b` ledger: C11/D31 done at 7879e0a2; the beam divergence they exposed is now #228
 - `c363e052` ledger: D29 declined by Director decision; B08 closed with it
-- `8366f2f6` board: ledger drift corrected (10 rows); #211 re-scoped to the ARB null-deref; #227 attribution gap filed [#204]
 - `fa6f4d8f` ledger: ten rows were done in the tree and still recorded as accepted
 - `a0bbb0c1` ledger: D11 done at a9ca6e26; D29's measurement trigger has fired and it now needs a decision [#204]
-- `87e92674` board: #220 CLOSED -- all 5 ledger rows (D34/D59/D60/E10/E06); 2 findings left for Director decision [#204]
-- `f53212d9` board: #225 FIXED at 8f322517 (hit 17.9%-&gt;80.7%, my not-viable close corrected); #226 H1+H2 done, H3 open [#204]
-- `a58a3499` board: #225 CLOSED measured-not-viable; #226 opened -- three untracked gather inputs [#204]
-- `cf59f083` board: #221 CLOSED -- E02/E01/E03/E04 all done as hardening, each injection-proven [#204]
-- `76d6cf2d` board: E02 done at fc81ae17; #225 opened -- the gather cache loses 76-86% of its hits to tile-epoch churn [#204]
-- `64ac2ab6` board: #221 reframed as hardening and reordered E02-&gt;E01-&gt;E03-&gt;E04; perf case measured near-null and set aside [#204]
-- `9224f07b` board: #223 closed -- paralloracle was never failing; the gate misread a bounded-diff oracle [#204]
-- `9c4527a1` board: #224 opened -- GPU spread iteration cap truncates its own derived count above maxEmission 1.0 [#204]
-- `62b6cc67` board: #222 closed -- 13.2% was the harness measuring its own sun rays; #223 opened for paralloracle [#204]
-- `b55cc5ce` board: #222 -- adaptive border costs 13.2% of pixels at Ocean Factory; cause is SPREAD boundary, point lights identical [#204]
 - `1899aa71` ledger: C05 done at 9429b14d; E01-E04 repointed to #221 -- closing #214 had orphaned two accepted rows [#204]
-- `eab2c181` board: #214 closed at 9429b14d; render-gate A/B fixed at cb17d323 [#204]
-- `d7cdce50` board: #170's -23.6% re-scoped; my 'work moved to GPU' explanation REFUTED by the CPU-solve A/B [#204]
-- `73277aaf` board: #217 measured at 04-Ocean Factory -- lever -27.8% region/-10.1% CPU; fix costs +5.3% region [#204]
-- `2d094c06` board: #211 closed at b1e66be4; #217 re-measured -- lever holds at -31.4% region, -11.2% lighting CPU [#204]
 - `02de4584` fix(spec-artifact): stamp the page's provenance, not HEAD
-- `471ec6c9` board: #218 closed at 9e56c204; comment standard + gate live [#204]
-- `a74351e4` board: #217 closed at 817e54e8; re-profile outstanding [#204]
 - `e386d983` ledger: A05/E05 done at 66ec860b -- the sector-unload UAF is closed [#204]
-- `32d3f76c` board: #210 closed at 66ec860b; ledger rows A05/E05 -&gt; done [#204]
 - `46894dae` board: #212 closed at f5088933; ledger row C17 -&gt; done [#204]
-- `31b534bf` board: #212 measured -- the lighting tests cost 0.00s and are excluded by target membership alone [#204]
 - `466c19cc` ledger: surface the challenge corrections, and file the three adoptable items [#204]
 - `82170188` ledger: status per row, in a decisions file the generator reads -- and the generator now exists [#204]
-- `32b6373d` board: export -- #213, and the beam epsilon that makes it not-mechanical [#204]
-- `2e9d964d` board: export -- three follow-ups filed off the PR 570 analysis, plus #161 and #196 rewritten [#204]
 - `0481bb82` docs: PR 570 findings ledger -- 155 rows, 33 open decisions, generated not transcribed [#204]
 - `566fce3d` docs: a durable handover for #204, and the board export that makes its ids resolve [#204]
 - `21ba119a` spec: `statistics` is not a platform service -- stage 2 of dissolving `platform` [#204]
@@ -3741,12 +3706,10 @@ Director ratified 2026-08-02. Derived from four constraints rather than chosen: 
 status: **completed** · blocked by: #206, #205 · blocks: #208
 
 - `60a66f02` spec: P2P networking is a TRANSPORT -- stage 1 of dissolving `platform`
-- `bfe38c92` board: export -- celestial split, 48 components [#207]
 - `706c7f4a` spec: split `celestial` -- 45 -&gt; 48 components, and the split was already in the tree
 - `890218ab` spec: symmetry decides the kind -- the rule three pairs already followed
 - `2920def1` gates: A3's Law of One, finally read -- and I nearly cheated it
 - `a64b21c7` spec: a target state has no date -- 7 dates, 6 removed, 1 declared
-- `1df6af1c` board: export -- CONTRACT ratchet at zero [#207]
 - `337f5494` spec: the CONTRACT sweep -- 25 sites read and decided, ratchet 25 -&gt; 0
 - `d2eadae4` spec: the KIND rules said "foundation types" -- two INTERFACEs already broke it
 - `9442b154` spec: two rules the gate already contradicted -- and the gate was right
@@ -3755,24 +3718,20 @@ status: **completed** · blocked by: #206, #205 · blocks: #208
 - `cdea71c1` gates: table_census -- because I answered "how many tables?" wrong three times
 - `de57756e` spec: F2's evidence clause described a policy, not the code -- and the code is better
 - `82955390` gates: N1.d is countable, and the metric was in the document the whole time
-- `ef074409` board: export -- Section 1 reuse rule, shared-words gate [#207]
 - `41b7adfd` spec: Section 1's rule was about REUSE, and now says so -- and is checked
 - `3ee6021d` docs: file the levelling analysis as a WORKLIST, not a findings register
 - `170a17cb` gates: BARE_GOAL read the shape of a citation, not its meaning
-- `a0e43c2c` board: export -- Section 3 levelled, three new prose-claims verdicts [#207]
 - `eab0b4da` gates: a warrant must name a clause, and the check found two I had missed
 - `5f2933ad` spec: repoint every N2 and N3 warrant at the clause it actually makes
 - `a96a3575` spec: level Section 3 -- N2 and N3 get clauses, because their citations already had them
 - `6d5100fb` gates: correct the containment row at its generator, and a false green
 - `78a8a4b5` gates: an instrument the document names must be one that runs
-- `c16a0f07` board: export — three decisions closed, 45 components, transport added [#207]
 - `51415bfe` gates: the UNANSWERED check existed and never ran
 - `f5faf4cf` spec: CONTRACT was two kinds, and the split found a missing component
 - `5db63949` spec: `platform_null`, and a contract granted 18 times and called by 4
 - `b1b34d9a` spec: RenderCallback is the EMIT surface, and the scene is what a painter READS
 - `550a3b5e` spec: a rate with a number, a reason and no element
 - `b976ae79` spec: Section 11 counted five clocks and then said four
-- `8bc6590e` board: export #207 closure state — 38 review findings closed, 3 tensions recorded as owed [#207]
 - `12f08312` gates: P2 had no instrument, and Section 4 said it did
 - `0c96063d` spec: Section 16 was blocking a register row it had already unblocked
 - `b86a1ad0` spec: the last two first-person passages become properties of the model
@@ -4934,7 +4893,6 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 status: **pending** · metadata: `{"rank": 3}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
-- `dd878dbe` MEASURE-CLIENT (#237): file the fifth entrypoint, and keep it distinct from #199
 
 ```
 PROPOSED 2026-08-06 by the Director, from evidence produced closing #136/O13. NOT STARTED, not queued.
@@ -5155,8 +5113,6 @@ Ledger row R14 (DEGRADES_MATRIX), signature is absent-sense and checked. Commit 
 status: **completed** · blocked by: #240 · blocks: #173, #246
 
 - `24bd4a51` BOARD: the board cannot cite the commit that creates it -- name the fixed point
-- `7ec8a0bb` MATRIX-RERUN done: both scenes quotable, and the GPU numbers were from the cheap location
-- `c0238e96` BOARD: #242 moves above #235 -- the rerun is the null control for #240 and #241
 
 ```
 DONE 2026-08-07. Two runs: matrix-20260807-112809 (Desert Town, 47m46s) and
@@ -5265,10 +5221,8 @@ status: **completed**
 
 - `bb29075c` BOARD: Next shows POSITION, which always starts at 1
 - `ce8a089d` BOARD: drop the rank contiguity check — it fired on progress
-- `361f9e8d` BOARD: #240 done, rank cleared — #242 now startable
 - `35bbb97c` BOARD-NEXT: a ranked Next list whose source is the task itself
 - `495682df` BOARD-HTML: a reading surface for the board, from the same generator — not a second authority
-- `543a2587` BACKLOG: the post-matrix ranked nine, logged durably
 
 ```
 CLOSED 2026-08-07 as superseded. This was the ranked-nine index written the morning the "GPU-bound"

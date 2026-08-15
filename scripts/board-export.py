@@ -158,19 +158,65 @@ def commit_index():
     that shape, and a subject-only scan silently dropped it from #131.
     """
     idx = {}
-    # \x1e ends the record, \x1f separates fields, so a multi-line body cannot be mistaken for the
-    # next commit.
-    out = git("log", "--all", "--no-merges", "--format=%h\x1f%s\x1f%b\x1e")
+    # \x1e BEGINS each record and \x1f separates fields, so a multi-line body cannot be mistaken for
+    # the next commit. The separator leads rather than trails because --name-only prints the touched
+    # paths AFTER the format string: with a trailing \x1e the paths fall into the NEXT record and
+    # corrupt its sha field. That is not hypothetical -- it is what the first version of this did,
+    # and the before/after null control caught it by reporting 437 of 440 evidence rows changed.
+    out = git("log", "--all", "--no-merges", "--name-only", "--format=%x1e%h\x1f%s\x1f%b")
     for record in out.split("\x1e"):
         record = record.strip("\n")
         if record.count("\x1f") < 2:
             continue
-        sha, subject, body = record.split("\x1f", 2)
+        sha, subject, rest = record.split("\x1f", 2)
+        # --name-only puts the paths after the body, separated by a blank line. Splitting on the
+        # LAST blank line would break a body that ends in one; instead take every trailing line that
+        # names an existing-looking path, which is what git emits and nothing else here does.
+        body, paths = _split_body_paths(rest)
+        if board_only(paths):
+            continue
         for tid in COMMIT_STAMP.findall(subject + "\n" + body):
             idx.setdefault(tid, [])
             if sha not in (s for s, _ in idx[tid]):
                 idx[tid].append((sha, subject))
     return idx
+
+
+def _split_body_paths(rest):
+    """-> (body, [path]). git --name-only emits the paths as the trailing block of the record."""
+    lines = rest.split("\n")
+    i = len(lines)
+    while i > 0 and (lines[i - 1].strip() == "" or _looks_like_path(lines[i - 1])):
+        i -= 1
+    return "\n".join(lines[:i]), [l.strip() for l in lines[i:] if l.strip()]
+
+
+def _looks_like_path(line):
+    """A --name-only path: no spaces, contains a separator or a suffix, not prose."""
+    s = line.strip()
+    return bool(s) and " " not in s and ("/" in s or "." in s)
+
+
+def board_only(paths):
+    """True when a commit touches nothing but the generated board.
+
+    WHY THIS IS STRUCTURAL AND NOT A CONVENTION. The rule above -- a commit that only regenerates the
+    board carries NO stamp -- was written down and then violated three times, most recently by me at
+    30c0ed8d while closing task 245. Each time the board grew an evidence row citing a commit that
+    contains no work, and a reader following that citation finds a regenerated table.
+
+    It is also a LOOP, which is what finally forced the fix: regenerating after a stamped board
+    commit produces a new evidence row, which dirties the board, which needs another commit. The
+    board could never reach a fixed point. A convention that has been broken three times and cannot
+    converge is not a convention; the exporter now cannot cite such a commit whatever its message
+    says.
+    """
+    return bool(paths) and all(p in BOARD_ARTEFACTS for p in paths)
+
+
+# The generated surfaces. A commit touching ONLY these carries no work to cite. Deliberately a
+# closed literal rather than a docs/ prefix: a real finding written into docs/ must stay citable.
+BOARD_ARTEFACTS = frozenset({"docs/board.md", "docs/board.html"})
 
 
 def strip_uuids(text):
