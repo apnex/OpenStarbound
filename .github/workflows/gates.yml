@@ -455,6 +455,12 @@ jobs:
       - name: boundedness_declared_fires -- an undeclared gauge fires and an empty corpus skips
         run: python3 scripts/metric-desc-lint.py --selftest-boundedness
 
+      - name: convergence_claims -- no runner claims a migration that has already landed
+        run: python3 scripts/metric-desc-lint.py --check-convergence-claims
+
+      - name: convergence_claims_fires -- the sentence that shipped fires, history survives
+        run: python3 scripts/metric-desc-lint.py --selftest-convergence-claims
+
       - name: banked_reread_fires -- the re-read comparison fires on a real difference
         run: python3 scripts/ci/banked-reread.py --selftest
 

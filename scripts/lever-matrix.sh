@@ -31,11 +31,21 @@
 #
 # WHAT THIS DOES NOT DO -- stated so the boundary is a decision, not an omission. It does not compute
 # cost deltas, per-pass attribution, or CPU-vs-GPU ratios. That half reads the telemetry vocabulary,
-# and the vocabulary is being converged (schema 3 -> 4, see docs/superpowers/specs/
-# 2026-08-06-metric-descriptor-convergence-design.md). Building the analysis against schema 3 would
-# mint a baseline in a vocabulary we are in the middle of replacing -- which is exactly the defective
-# baseline this campaign already paid for once. The runner therefore emits raw legs and a manifest,
-# and the analysis half lands when the descriptor does.
+# and that vocabulary is not ready -- but NOT for the reason this comment used to give. It said the
+# schema was mid-flight (3 -> 4); the bump landed at 9db54200 and this file was edited two days later
+# without noticing, so a stale claim rode into every manifest written since.
+#
+# THE REAL BLOCKER IS THE CAPTURE MODE, and it is worse than a vocabulary gap. All five Budget parts
+# of the frame closure -- cpu.frame.{input,update,render,finish,swap}.us -- are timed by
+# TelemetryScope, whose constructor reads `Telemetry::deepEnabled() ? now : -1`, so they record ONLY
+# under `telemetryDeepTracing`, which StarRootLoader defaults to FALSE. The whole they close against
+# (cpu.frame.work.us) and cpu.frame.total.us use a bare .record() and are unconditional.
+#
+# So a leg captured with deep tracing off hands an attributor a frame budget whose parts sum to ZERO
+# against a non-zero whole: 100% unattributed, which reads exactly like a finding and is an artefact
+# of how the leg was captured. Attributing cost before that is settled would mint precisely the
+# defective baseline this campaign already paid for once. The runner therefore emits raw legs and a
+# manifest, and the analysis half lands when the capture mode is declared per leg.
 #
 # The witness check is deliberately on the near side of that line. It asks "did the experiment
 # happen", not "what did it cost", and it needs one integer per leg. Deferring it would mean finding
@@ -751,8 +761,10 @@ json.dump({
     "sceneBoundPct": float(os.environ.get("SCENE_BOUND_PCT", "0")),
     "leverTable": json.load(open(table))["levers"],
     "legs": rows,
-    "analysis": "NOT PERFORMED -- this runner emits raw legs only. Cost attribution reads the "
-                "telemetry vocabulary, which is mid-convergence (schema 3 -> 4). See "
+    "analysis": "NOT PERFORMED -- this runner emits raw legs only. Cost attribution needs the five "
+                "Budget parts of cpu.frame.work.us, and they are timed by TelemetryScope, which "
+                "records only under telemetryDeepTracing (default false). A leg captured deep-off "
+                "yields a 100%-unattributed frame budget that reads like a finding. See "
                 "docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md.",
 }, open(manifest, "w"), indent=2)
 PY
@@ -769,7 +781,7 @@ echo "  cost attribution NOT performed -- raw legs only, by design. See the head
 
 # GPU attribution is the ONE cost question this runner does answer, because it does not read the
 # telemetry vocabulary at all -- it joins an out-of-process engine-busy series to each leg's stamped
-# window. The vocabulary is mid-convergence (schema 3 -> 4); a PMU percentage is not part of it.
+# window. It needs no Budget part, so the deep-tracing gate above does not reach it.
 #
 # It prints a RESOLUTION FLOOR and refuses to quote anything inside it. That is the whole point: the
 # first per-lever GPU table produced here was withdrawn by hand because the baseline's own spread was

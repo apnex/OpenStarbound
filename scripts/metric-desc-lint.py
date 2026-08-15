@@ -564,6 +564,156 @@ def selftest_boundedness():
     return 0
 
 
+REPO = pathlib.Path(__file__).resolve().parent.parent
+
+# A claim that something is IN FLIGHT, present tense. History ("the schema WAS mid-flight, the bump
+# landed at 9db54200") is warrant and is deliberately not matched -- see check_convergence_claims.
+IN_FLIGHT = re.compile(r"(?<!was )(?<!were )(?<!been )"
+                       r"(mid-convergence|mid-flight|being converged|being replaced|"
+                       r"in the middle of replacing)", re.I)
+# The destination such a claim must name.
+TRANSITION = re.compile(r"schema\s*(\d+)\s*->\s*(\d+)")
+# One writer for the live schema: telemetry-window.py declares it, this gate reads it.
+SCHEMA_DECL = re.compile(r"^SCHEMA\s*=\s*(\d+)", re.M)
+
+
+# The rule's own definition and fixtures necessarily contain the strings the rule forbids: the
+# regex spells them, and selftest_convergence_claims() asserts against the exact sentence that
+# shipped. This file is therefore the one place the scan cannot read literally. A closed literal of
+# ONE, not a pattern -- a self-exclusion that can grow is how a gate stops gating, and an arm below
+# asserts the set never widens. The cost is a declared blind spot: a genuinely stale claim in THIS
+# file's prose is not caught by this gate.
+SELF_EXCLUDED = frozenset({pathlib.Path(__file__).resolve()})
+
+
+def live_schema():
+    """-> int, read from the consumer that declares it. Raises if the declaration moves."""
+    src = (REPO / "scripts" / "telemetry-window.py").read_text()
+    m = SCHEMA_DECL.search(src)
+    if not m:
+        raise SystemExit("convergence_claims: telemetry-window.py no longer declares SCHEMA = N; "
+                         "this gate reads that declaration and cannot run without it")
+    return int(m.group(1))
+
+
+def stale_claims(text, live, path="<mem>"):
+    """-> [(lineno, why)] for present-tense in-flight claims that are unfalsifiable or already done.
+
+    THE RULE: a claim that something is mid-flight must name its destination, and that destination
+    must not already have been reached. Both halves are load-bearing. Without the first, "the
+    vocabulary is converging" is a claim no future reader can check and no gate can retire. Without
+    the second, the claim survives its own completion -- which is exactly what happened here.
+    """
+    lines = text.splitlines()
+    out = []
+    for i, line in enumerate(lines):
+        if not IN_FLIGHT.search(line):
+            continue
+        # The destination may wrap onto a neighbouring line in a comment block.
+        near = " ".join(lines[max(0, i - 2):i + 3])
+        dests = [int(m.group(2)) for m in TRANSITION.finditer(near)]
+        if not dests:
+            out.append((i + 1, "claims something is in flight but names no destination -- "
+                               "unfalsifiable, so nothing can ever retire it"))
+        elif min(dests) <= live:
+            out.append((i + 1, "claims in-flight to schema %d, but the live schema is already %d -- "
+                               "the transition landed and the claim did not" % (min(dests), live)))
+    return out
+
+
+def check_convergence_claims(files=None):
+    """No runner may claim a migration is in flight after it has landed.
+
+    WHY A GATE AND NOT A PROOFREAD. lever-matrix.sh did not merely CONTAIN a stale sentence, it
+    WROTE one: the string went into `manifest.json` for every leg, so the claim was copied into
+    banked evidence that nothing ever revisits. The schema bumped at 9db54200 and the runner was
+    edited two days later without anyone noticing, so stale manifests already exist.
+
+    WHY IT IS ANCHORED ON THE LIVE CONSTANT, NOT ON THE STRING "schema 3 -> 4". Three times in this
+    project a reference stayed GREEN while naming the wrong thing, because the gate's vocabulary
+    outlived the document's. A grep for the literal transition would pass the moment someone wrote
+    "4 -> 5" and would have to be re-taught at every bump. Reading SCHEMA from telemetry-window.py
+    means this gate retires each claim automatically, on the commit that lands the bump.
+    """
+    live = live_schema()
+    scan = files if files is not None else sorted(
+        f for f in (REPO / "scripts").rglob("*")
+        if f.suffix in (".sh", ".py") and f.is_file() and f.resolve() not in SELF_EXCLUDED)
+    bad, checked = [], 0
+    for f in scan:
+        path, text = (f, f.read_text()) if hasattr(f, "read_text") else f
+        checked += 1
+        for lineno, why in stale_claims(text, live, str(path)):
+            bad.append((path, lineno, why))
+    for path, lineno, why in bad:
+        rel = path.relative_to(REPO) if hasattr(path, "relative_to") else path
+        print("  %s:%d  %s" % (rel, lineno, why))
+    print("convergence_claims: %d file(s) scanned against live schema %d, %d stale claim(s)"
+          % (checked, live, len(bad)))
+    if bad:
+        print("convergence_claims: FAIL -- a runner states a migration is in flight that has "
+              "landed, or names no destination. Rewrite it in the past tense as warrant, or name a "
+              "destination beyond schema %d." % live)
+        return 1
+    print("convergence_claims: OK -- no runner claims an in-flight migration that has already "
+          "landed, and every in-flight claim names a destination")
+    return 0
+
+
+def selftest_convergence_claims():
+    """Prove the rule fires on the ACTUAL text that shipped, and does not fire on history."""
+    arms, bad = [], 0
+
+    def arm(name, ok):
+        nonlocal bad
+        arms.append((name, ok))
+        if not ok:
+            bad += 1
+
+    # The exact sentence lever-matrix.sh wrote into every manifest.json, at today's live schema.
+    shipped = ('"analysis": "NOT PERFORMED -- Cost attribution reads the telemetry vocabulary, '
+               'which is mid-convergence (schema 3 -> 4)."')
+    arm("the sentence that actually shipped FIRES", len(stale_claims(shipped, 4)) == 1)
+
+    # ... and would NOT have fired when it was written, which is why proofreading never caught it.
+    arm("the same sentence was CLEAN at schema 3", stale_claims(shipped, 3) == [])
+
+    arm("an in-flight claim naming no destination FIRES",
+        len(stale_claims("# the vocabulary is being converged", 4)) == 1)
+
+    arm("a still-future destination is CLEAN",
+        stale_claims("# mid-convergence (schema 4 -> 5)", 4) == [])
+
+    arm("past-tense history is CLEAN, not narration to strip",
+        stale_claims("# It said the schema was mid-flight (3 -> 4); the bump landed at 9db54200", 4)
+        == [])
+
+    arm("a bare transition with no in-flight claim is CLEAN (history is warrant)",
+        stale_claims("# the bump landed: schema 3 -> 4, at 9db54200", 4) == [])
+
+    arm("a destination wrapped onto the next line is still SEEN",
+        len(stale_claims("# the vocabulary is mid-convergence\n# (schema 3 -> 4). See the spec.",
+                         4)) == 1)
+
+    arm("the live schema is read, not assumed", live_schema() >= 4)
+
+    # The tree itself must be clean, or the gate is being registered over a known violation.
+    arm("the self-exclusion is exactly one file -- this one",
+        SELF_EXCLUDED == frozenset({pathlib.Path(__file__).resolve()}))
+
+    arm("the real scripts/ tree passes", check_convergence_claims() == 0)
+
+    for name, ok in arms:
+        print("  %-62s %s" % (name, "ok" if ok else "FAILED"))
+    if bad:
+        print(f"convergence_claims: SELFTEST FAIL -- {bad} arm(s)")
+        return 1
+    print(f"convergence_claims selftest: {len(arms)}/{len(arms)} arms ok -- the shipped sentence "
+          f"fires, it was clean when written, and past-tense history survives")
+    return 0
+
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
     sys.exit({"--selftest": selftest,
@@ -573,5 +723,7 @@ if __name__ == "__main__":
               "--check-clocks": check_clocks,
               "--selftest-clocks": selftest_clocks,
               "--check-boundedness": check_boundedness,
+              "--check-convergence-claims": check_convergence_claims,
+              "--selftest-convergence-claims": selftest_convergence_claims,
               "--selftest-boundedness": selftest_boundedness,
               "--selftest-timeline": selftest_timeline}.get(arg, check)())
