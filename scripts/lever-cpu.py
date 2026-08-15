@@ -206,6 +206,74 @@ def t_sf_two_sided(tstat, df):
     return betai(df / 2.0, 0.5, df / (df + tstat * tstat))
 
 
+# ---------------------------------------------------------------------------------------------
+# THE MINIMUM DETECTABLE EFFECT, and the third verdict it forces.
+#
+# WHY THIS OUTRANKS THE CORRECTION ARGUMENT. Choosing between an uncorrected alpha and a Bonferroni
+# one is choosing a threshold; it says nothing about whether the experiment can REACH that threshold.
+# At n=3 per arm it cannot. On matrix-20260808-140430 the smallest effect this design finds at 80%
+# power is 0.0668 cores on cpu.owner.sim (31% of that key's baseline) and 0.0859 on cpu.process
+# (16%) -- while the two deltas being argued over are 0.0666 and 0.0534, i.e. AT OR BELOW the MDE at
+# every correction including none. A p-value computed for a delta under the MDE is not evidence
+# about the lever; it is a draw from a distribution the run cannot resolve.
+#
+# THE RULE: a delta below the MDE is NEVER quotable as a cost, whatever its p. That is stricter than
+# any alpha argument and it does not require agreeing on one.
+#
+# HENCE THREE VERDICTS, because two could not express the state the data is actually in -- the same
+# reason ABSENT had to stop being spelled like ZERO, and the same reason run-gates needed exit 77
+# alongside pass and fail:
+#   CONFIRMED  above the MDE and past the declared correction -- quotable as a measured cost
+#   CANDIDATE  clears the floor and the omnibus but sits under the MDE -- quotable ONLY as "this
+#              lever deserves a dedicated A/B", never as a number. The matrix is a SCREEN; treating
+#              its output as a finding is what put four noise deltas on the board.
+#   NULL       inside the floor, or the key has no between-lever structure at all
+MDE_Z_POWER = {0.80: 0.8416, 0.90: 1.2816, 0.95: 1.6449}
+
+
+def t_critical(alpha, df):
+    """Two-sided critical t, by bisection on the CDF above. No table, no dependency."""
+    lo, hi = 0.0, 200.0
+    for _ in range(200):
+        mid = (lo + hi) / 2.0
+        if t_sf_two_sided(mid, df) > alpha:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2.0
+
+
+def mde(pooled_sd, n_lever, n_base, df, alpha, power):
+    """Smallest lever effect detectable at `power`, in the key's own units.
+
+    (t_crit + z_power) * SE(difference). The normal shift is the standard approximation to the
+    noncentral t and is well inside the precision this decides anything at.
+    """
+    if pooled_sd <= 0 or n_lever < 1 or n_base < 1 or df < 1:
+        return None
+    z = MDE_Z_POWER.get(round(power, 2))
+    if z is None:
+        return None
+    se = pooled_sd * math.sqrt(1.0 / n_lever + 1.0 / n_base)
+    return (t_critical(alpha, df) + z) * se
+
+
+def load_statistics(path=None):
+    """The declared family/alpha/power. DECLARED, never inferred -- see the lever table's comment.
+
+    A missing block is not a default: it is refused, because silently correcting against a family
+    this script chose for itself is the unfalsifiable version of the whole exercise.
+    """
+    path = path or os.path.join(os.path.dirname(os.path.abspath(__file__)), "lever-table.json")
+    try:
+        s = json.load(open(path)).get("statistics")
+    except (OSError, ValueError):
+        return None
+    if not s or "family" not in s or "alpha" not in s or "power" not in s:
+        return None
+    return s
+
+
 def corrected_p(delta, pooled_sd, n_lever, n_base, df, n_comparisons):
     """Bonferroni-corrected two-sided p for one lever against the baseline.
 
@@ -287,6 +355,9 @@ def verdicts_for(legs, key, null_control):
     # individual deltas look like. Fisher's protection: the omnibus comes first, always.
     resolves = omni is not None and omni[3] < OMNIBUS_ALPHA
 
+    stats = load_statistics()
+    n_base = len(base)
+
     rows = []
     for lever, reps in sorted(legs.items()):
         if lever == "baseline":
@@ -296,8 +367,22 @@ def verdicts_for(legs, key, null_control):
             continue
         d = st.mean(vals) - base_mean
         own = max(vals) - min(vals)
-        rows.append((lever, d, own, resolves and abs(d) > floor and abs(d) > own, len(vals)))
-    return base_mean, floor, why, rows, omni, len(base)
+        clears = resolves and abs(d) > floor and abs(d) > own
+        # THE THIRD VERDICT. Clearing the floor and the omnibus makes a lever a CANDIDATE for a
+        # dedicated A/B; only clearing the MDE as well makes its number a measured cost. A delta
+        # under the MDE is the largest draw from a distribution this design cannot resolve, and the
+        # matrix is a screen, not a confirmation.
+        m_val = (mde(omni[4], len(vals), n_base, omni[2],
+                     stats["alpha"] / max(1, stats["family"]), stats["power"])
+                 if (clears and omni and stats) else None)
+        if not clears:
+            verdict = "NULL"
+        elif m_val is None or abs(d) >= m_val:
+            verdict = "CONFIRMED"
+        else:
+            verdict = "CANDIDATE"
+        rows.append((lever, d, own, verdict, len(vals)))
+    return base_mean, floor, why, rows, omni, n_base
 
 
 def report(legs, null_control, voided, unreadable):
@@ -340,17 +425,35 @@ def report(legs, null_control, voided, unreadable):
                 if same and n_off > 2:
                     print(f"       all {n_off} levers move the same way (mean {off:+.4f} cores), "
                           f"including the null control -- the signature of drift, not of levers.")
-        res = [r for r in rows if r[3]]
-        unres = [r for r in rows if not r[3]]
+        stats = load_statistics()
+        if stats is None:
+            print("       !! NO `statistics` BLOCK IN lever-table.json -- family/alpha/power are "
+                  "undeclared, so no MDE can be computed and nothing here is quotable as a cost.")
+        elif omni is not None:
+            mv = mde(omni[4], 3, n_base, omni[2],
+                     stats["alpha"] / max(1, stats["family"]), stats["power"])
+            if mv:
+                pct = 100.0 * mv / abs(base_mean) if base_mean else float("nan")
+                print(f"       MDE {mv:.4f} cores ({pct:.1f}% of baseline) at {int(stats['power']*100)}% "
+                      f"power, alpha {stats['alpha']}/{stats['family']} ({stats['correction']}) -- "
+                      f"a smaller delta is NOT quotable as a cost")
+        res = [r for r in rows if r[3] == "CONFIRMED"]
+        cand = [r for r in rows if r[3] == "CANDIDATE"]
+        unres = [r for r in rows if r[3] == "NULL"]
         if res:
             for lever, d, own, _, nl in sorted(res, key=lambda r: -abs(r[1])):
                 cp = corrected_p(d, omni[4], nl, n_base, omni[2], len(rows)) if omni else None
-                cps = f", Bonferroni p={cp:.3f}" if cp is not None else ""
-                print(f"       RESOLVED    {lever:34s} {d:+8.4f} cores   "
+                cps = f", corrected p={cp:.3f}" if cp is not None else ""
+                print(f"       CONFIRMED   {lever:34s} {d:+8.4f} cores   "
                       f"(own spread {own:.4f}{cps})")
             any_resolved.append(key)
         else:
-            print("       RESOLVED    (none)")
+            print("       CONFIRMED   (none)")
+        for lever, d, own, _, nl in sorted(cand, key=lambda r: -abs(r[1])):
+            cp = corrected_p(d, omni[4], nl, n_base, omni[2], len(rows)) if omni else None
+            cps = f", corrected p={cp:.3f}" if cp is not None else ""
+            print(f"       CANDIDATE   {lever:34s} {d:+8.4f} cores   (under the MDE -- worth a "
+                  f"dedicated A/B, NOT a cost{cps})")
         for lever, d, own, _, _nl in sorted(unres, key=lambda r: -abs(r[1])):
             if omni is not None and omni[3] >= OMNIBUS_ALPHA:
                 why2 = "key resolves nothing"
@@ -391,7 +494,7 @@ def report(legs, null_control, voided, unreadable):
 
 # One per numbered check in selftest(). Asserted against the numbering itself below, so adding a
 # check without updating this is a FAILURE rather than a silently stale banner.
-ARMS = 11
+ARMS = 13
 
 
 def selftest():
@@ -409,10 +512,12 @@ def selftest():
     # 1. A LEVER WELL CLEAR OF THE FLOOR RESOLVES; ONE INSIDE IT DOES NOT.
     legs = mk([0.50, 0.52, 0.51], [0.80, 0.81, 0.80], [0.505, 0.515, 0.510])
     base_mean, floor, _why, rows, _omni, _nb = verdicts_for(legs, WHOLE, "nullctl")
-    got = {lever: resolved for lever, _d, _o, resolved, _n in rows}
-    if not got.get("off-big"):
+    # The verdict is a STRING now, and "NULL" is truthy -- comparing it as a boolean is how these
+    # three arms started passing junk. Compare the verdict, never its truthiness.
+    got = {lever: verdict for lever, _d, _o, verdict, _n in rows}
+    if got.get("off-big") == "NULL":
         fails.append("a +0.29-core lever did not clear the floor")
-    if got.get("off-nullctl"):
+    if got.get("off-nullctl") != "NULL":
         fails.append("the null control itself resolved -- the floor is not being applied")
 
     # 2. A LEVER CARRIED BY ONE OUTLIER REPEAT IS NOT A MEASUREMENT, even when its MEAN clears the
@@ -421,8 +526,8 @@ def selftest():
     legs2 = mk([0.500, 0.501, 0.502], [0.560, 0.502, 0.503], [0.500, 0.501, 0.502])
     _b, _f, _w, rows2, _o2, _nb2 = verdicts_for(legs2, WHOLE, "nullctl")
     got2 = {lever: r for lever, _d, _o, r, _n in rows2}
-    if got2.get("off-big"):
-        fails.append("a lever carried entirely by one outlier repeat was reported RESOLVED")
+    if got2.get("off-big") != "NULL":
+        fails.append("a lever carried entirely by one outlier repeat was not refused")
 
     # 4. THE OMNIBUS GATE, added because three sim numbers were published from a key with no
     #    between-lever structure at all. Two arms: it must SUPPRESS a key that resolves nothing, and
@@ -438,8 +543,8 @@ def selftest():
     _bm, _fl, _wy, rows4, omni4, _n4 = verdicts_for(drift, WHOLE, "nullctl")
     if omni4 is None or omni4[3] < OMNIBUS_ALPHA:
         fails.append("a common shift shared by every lever passed the omnibus")
-    if any(r for _l, _d, _o, r, _n in rows4):
-        fails.append("a lever RESOLVED on a key with no between-lever structure")
+    if any(r != "NULL" for _l, _d, _o, r, _n in rows4):
+        fails.append("a lever resolved on a key with no between-lever structure")
     off, n_off, same = common_offset(drift, WHOLE, _bm)
     if not same or n_off != 2:
         fails.append("the common-offset detector missed a shift shared by every lever")
@@ -450,7 +555,7 @@ def selftest():
     _bm5, _fl5, _wy5, rows5, omni5, _n5 = verdicts_for(real, WHOLE, "nullctl")
     if omni5 is None or omni5[3] >= OMNIBUS_ALPHA:
         fails.append("a large, clean lever effect was suppressed by the omnibus")
-    if not {l: r for l, _d, _o, r, _n in rows5}.get("off-big"):
+    if {l: r for l, _d, _o, r, _n in rows5}.get("off-big") == "NULL":
         fails.append("a large, clean lever effect did not resolve under the omnibus")
 
     # 5. THE DISTRIBUTIONS ARE THE ARITHMETIC EVERYTHING ELSE RESTS ON. Check against published
@@ -523,6 +628,56 @@ def selftest():
     if "MEASURED result" not in buf2.getvalue():
         fails.append("an all-null run was not named as a measured result")
 
+    # 8. THE MDE RULE AND THE THIRD VERDICT. A screen that reports its largest draw as a measured
+    #    cost is how four noise deltas reached the board; the MDE is the bar that makes the
+    #    distinction mechanical rather than editorial.
+    if abs(t_critical(0.05, 18) - 2.101) > 5e-4:
+        fails.append(f"t_critical(0.05,18) = {t_critical(0.05, 18):.4f}, published table says 2.101")
+    if abs(t_critical(0.01, 18) - 2.878) > 5e-3:
+        fails.append(f"t_critical(0.01,18) = {t_critical(0.01, 18):.4f}, published table says 2.878")
+
+    #    (a) CORRECTING FOR MORE COMPARISONS MUST RAISE THE BAR, and more repeats must lower it.
+    wide = mde(0.02, 3, 3, 18, 0.05, 0.80)
+    tight = mde(0.02, 3, 3, 18, 0.05 / 8, 0.80)
+    if not (tight > wide > 0):
+        fails.append("a stricter alpha did not raise the minimum detectable effect")
+    if not (mde(0.02, 10, 10, 81, 0.05 / 8, 0.80) < tight):
+        fails.append("more repeats did not lower the minimum detectable effect")
+    if mde(0.02, 3, 3, 18, 0.05, 0.99) is not None:
+        fails.append("an undeclared power target was silently accepted")
+
+    #    (b) A LEVER UNDER THE MDE IS A CANDIDATE, NOT A COST -- even though it clears the floor and
+    #        the omnibus. Built by scaling a clean, well-separated effect down until it is real but
+    #        unresolvable at n=3.
+    big = mk([0.5000, 0.5010, 0.5005], [0.6000, 0.6010, 0.6005], [0.5000, 0.5012, 0.5006])
+    _b8, _f8, _w8, rows8, _o8, _n8 = verdicts_for(big, WHOLE, "nullctl")
+    v8 = {l: v for l, _d, _o, v, _n in rows8}
+    if v8.get("off-big") != "CONFIRMED":
+        fails.append(f"a 0.10-core effect at sd~0.0005 was not CONFIRMED (got {v8.get('off-big')})")
+
+    small = mk([0.5000, 0.5300, 0.4700], [0.4600, 0.4900, 0.4300], [0.5010, 0.5310, 0.4710])
+    _b9, _f9, _w9, rows9, _o9, _n9 = verdicts_for(small, WHOLE, "nullctl")
+    v9 = {l: v for l, _d, _o, v, _n in rows9}
+    if v9.get("off-big") == "CONFIRMED":
+        fails.append("a delta below the MDE was reported CONFIRMED rather than CANDIDATE")
+
+    # 9. THE FAMILY IS DECLARED, NOT INFERRED. A missing block must refuse rather than default:
+    #    silently correcting against a family this script picked for itself is the unfalsifiable
+    #    version of the whole exercise.
+    import tempfile as _tf
+    with _tf.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        json.dump({"levers": []}, fh)
+        empty_table = fh.name
+    if load_statistics(empty_table) is not None:
+        fails.append("a lever table with no statistics block did not refuse")
+    if load_statistics() is None:
+        fails.append("the real lever table declares no statistics block")
+    else:
+        s = load_statistics()
+        if s["family"] < 1 or not (0 < s["alpha"] < 1) or not (0 < s["power"] < 1):
+            fails.append(f"the declared statistics block is out of range: {s}")
+    os.unlink(empty_table)
+
     # 7. THE ATTRIBUTION CHECK REPORTS THE UNACCOUNTED REMAINDER. Owners at 0.6/0.4 of the whole sum
     #    exactly, so the remainder must be ~0; a version that forgot an owner would show it.
     with contextlib.redirect_stdout(io.StringIO()) as buf3:
@@ -544,7 +699,9 @@ def selftest():
     print(f"  lever_cpu selftest: {ARMS}/{ARMS} arms ok (the floor swallows the null control, an "
           f"outlier repeat is refused, a shift shared by EVERY lever is suppressed by the omnibus, a "
           f"clean effect still resolves through it, F and t match published table values, the "
-          f"Bonferroni correction widens with the comparison count, VOID legs are excluded without "
+          f"correction widens with the comparison count, a delta under the MDE is a CANDIDATE and "
+          f"not a cost, the multiplicity family is declared rather than inferred, VOID legs are "
+          f"excluded without "
           f"dropping their siblings, an unjoinable interval is not a zero, a baseline-less run "
           f"fails, an all-null run is named a result, the attribution remainder is reported)")
     return EXIT_OK

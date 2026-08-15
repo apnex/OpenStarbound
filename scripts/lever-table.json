@@ -161,5 +161,13 @@
   ],
   "pinned": {
     "serverFidelity": "high"
+  },
+  "_statisticsComment": "THE MULTIPLICITY FAMILY AND THE POWER TARGET ARE DECLARED HERE, BEFORE THE RUN, because a correction chosen at analysis time is unfalsifiable: nothing in the data fixes the family, so any corrected p can be produced by choosing it after looking. Same rule that already puts the null control, sceneBoundPct and captureDeepTracing where a later reader can audit them. `family` is the number of simultaneous comparisons a verdict is corrected against -- one per lever tested against the shared baseline on a single key. `power` is the target for the minimum detectable effect that lever-cpu.py prints and enforces: a delta SMALLER than the MDE is not quotable as a cost no matter what its p-value says, because the design could not have found it reliably either way.",
+  "statistics": {
+    "family": 8,
+    "alpha": 0.05,
+    "power": 0.8,
+    "correction": "bonferroni",
+    "_correctionComment": "Bonferroni is a CONSERVATIVE BOUND, not the ideal test for this design. Eight treatments against one shared control is exactly Dunnett's case, and Dunnett accounts for the correlation the shared baseline induces; Bonferroni ignores it and over-corrects. At k=8, df=18 the two-sided critical values are ~3.10 (Bonferroni) against ~2.95 (Dunnett) -- a ~5% difference in MDE that flips no verdict in any run measured so far, which is why the harder routine is not built. Recorded as a named approximation rather than left as an unstated choice."
   }
 }
