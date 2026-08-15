@@ -30,22 +30,27 @@
 #   * every leg writes the FULL lever set explicitly, not just the key under test.
 #
 # WHAT THIS DOES NOT DO -- stated so the boundary is a decision, not an omission. It does not compute
-# cost deltas, per-pass attribution, or CPU-vs-GPU ratios. That half reads the telemetry vocabulary,
-# and that vocabulary is not ready -- but NOT for the reason this comment used to give. It said the
-# schema was mid-flight (3 -> 4); the bump landed at 9db54200 and this file was edited two days later
-# without noticing, so a stale claim rode into every manifest written since.
+# cost deltas, per-pass attribution, or CPU-vs-GPU ratios. That is a SEPARATION OF CONCERNS, not a
+# blocker, and this comment twice claimed otherwise. It first said the schema was mid-flight
+# (3 -> 4); the bump landed at 9db54200 and this file was edited two days later without noticing, so
+# a stale claim rode into every manifest written since. Correcting it, I then wrote that the capture
+# mode was "the real blocker" -- also wrong, and checked the wrong way round: every one of the 54
+# banked legs carries all five Budget parts at the same count as the whole.
 #
-# THE REAL BLOCKER IS THE CAPTURE MODE, and it is worse than a vocabulary gap. All five Budget parts
-# of the frame closure -- cpu.frame.{input,update,render,finish,swap}.us -- are timed by
-# TelemetryScope, whose constructor reads `Telemetry::deepEnabled() ? now : -1`, so they record ONLY
-# under `telemetryDeepTracing`, which StarRootLoader defaults to FALSE. The whole they close against
-# (cpu.frame.work.us) and cpu.frame.total.us use a bare .record() and are unconditional.
+# WHAT IS ACTUALLY TRUE, and it is a hazard rather than a blocker. The five Budget parts of the frame
+# closure -- cpu.frame.{input,update,render,finish,swap}.us -- are timed by TelemetryScope, whose
+# constructor reads `Telemetry::deepEnabled() ? now : -1`, so they record ONLY under
+# `telemetryDeepTracing`. The whole they close against (cpu.frame.work.us) and cpu.frame.total.us use
+# a bare .record() and are unconditional. StarRootLoader defaults the flag FALSE -- but this harness
+# does not run on that default: harness/storage-perf/starbound.config pins it TRUE, which is why the
+# parts are there.
 #
-# So a leg captured with deep tracing off hands an attributor a frame budget whose parts sum to ZERO
-# against a non-zero whole: 100% unattributed, which reads exactly like a finding and is an artefact
-# of how the leg was captured. Attributing cost before that is settled would mint precisely the
-# defective baseline this campaign already paid for once. The runner therefore emits raw legs and a
-# manifest, and the analysis half lands when the capture mode is declared per leg.
+# THE HAZARD IS THAT NOTHING RECORDED WHICH MODE A LEG RAN IN, and the pin lives in a gitignored
+# file. A deep-off leg carries a non-zero whole with ABSENT parts, and differencing it yields 100%
+# unattributed -- finding-shaped, and an artefact of capture. That is the same ABSENT-vs-ZERO defect
+# this campaign has now paid for eleven times, one level up: not a key that failed to register, but a
+# whole capture mode that nothing declared. The manifest now records `captureDeepTracing`, read from
+# the config the run actually used, so a leg says which mode produced it.
 #
 # The witness check is deliberately on the near side of that line. It asks "did the experiment
 # happen", not "what did it cost", and it needs one integer per leg. Deferring it would mean finding
@@ -734,9 +739,18 @@ for lv in json.load(open('$TABLE'))['levers']:
   done
 done
 
-ASSET_FP="$ASSET_FP" SCENE_BOUND_PCT="$SCENE_BOUND_PCT" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
+ASSET_FP="$ASSET_FP" SCENE_BOUND_PCT="$SCENE_BOUND_PCT" MATRIX_CFG="$CFG" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
 import json, sys, os
 manifest, run_id, warp, repeats, secs, table, legs = sys.argv[1:8]
+def _deep_tracing():
+    """-> True/False/None from the config this run used. None means it could not be read, which is
+    recorded as-is: a capture mode nobody can establish must not be reported as either setting."""
+    try:
+        return bool(json.load(open(os.environ["MATRIX_CFG"]))["telemetryDeepTracing"])
+    except Exception:
+        return None
+
+
 rows = []
 for line in open(legs):
     p = line.rstrip("\n").split("\t")
@@ -759,12 +773,22 @@ json.dump({
     # The bound legs were judged against, recorded so a reader never has to guess which one was in force
     # -- a tolerance that lives only in the script is a tolerance nobody can audit a past run against.
     "sceneBoundPct": float(os.environ.get("SCENE_BOUND_PCT", "0")),
+    # THE CAPTURE MODE, and it is load-bearing rather than trivia. The five Budget parts of
+    # cpu.frame.work.us are timed by TelemetryScope, which records only when deepEnabled(); the whole
+    # they close against does not. A deep-off leg therefore carries a non-zero whole and ABSENT parts,
+    # which an attributor reads as 100% unattributed -- a finding-shaped artefact of how the leg was
+    # captured. It is read from the config this run actually used, NOT from the shipped default: the
+    # default is false and every banked leg has the parts, because harness/storage-perf pins it true.
+    # That pin lives in a gitignored file, so without this field a leg cannot say which mode produced
+    # it and a reader on another machine would have no way to find out.
+    "captureDeepTracing": _deep_tracing(),
     "leverTable": json.load(open(table))["levers"],
     "legs": rows,
-    "analysis": "NOT PERFORMED -- this runner emits raw legs only. Cost attribution needs the five "
-                "Budget parts of cpu.frame.work.us, and they are timed by TelemetryScope, which "
-                "records only under telemetryDeepTracing (default false). A leg captured deep-off "
-                "yields a 100%-unattributed frame budget that reads like a finding. See "
+    "analysis": "NOT PERFORMED -- this runner emits raw legs only, by design; it is not blocked. "
+                "The five Budget parts of cpu.frame.work.us are present whenever captureDeepTracing "
+                "is true, which is the mode this harness runs in. Read that field before attributing "
+                "anything: deep-off legs carry a non-zero whole with ABSENT parts, and differencing "
+                "them yields 100% unattributed. See "
                 "docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md.",
 }, open(manifest, "w"), indent=2)
 PY
