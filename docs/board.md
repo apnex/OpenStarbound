@@ -66,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 221, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 222, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -298,7 +298,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
-| [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `a4fc43b3` | — |
+| [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
 | [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `574879f3` `c19cb959` `94f44d59` | — |
 | [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
 | [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
@@ -311,7 +311,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | — | — |
+| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | `35e049a1` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5957,6 +5957,7 @@ Published as an artefact so the Director can read it without reading a log.
 
 status: **completed** · blocked by: #253, #254, #259 · blocks: #252
 
+- `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
 - `a4fc43b3` MATRIX-CPU: the acceptance test ran, and the CPU half answered [#255]
 
 ```
@@ -6718,38 +6719,59 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 status: **pending**
 
+- `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
+
 ```
 Carries the residue of [#264] and [#265], both of which independently hit the same root cause: the
 per-lever floor methodology in scripts/lever-cpu.py, which governs EVERY future matrix run, not just
-the banked one. The omnibus test shipped at a686d95b fixed the promotion rule; these three fix the
-floor it sits beside.
+the banked one. The omnibus test shipped at a686d95b fixed the promotion rule.
+
+=== ITEM 5 SHIPPED FIRST, AT 35e049a1, BECAUSE IT OUTRANKED THE REST ===
+
+5. THE MDE RULE AND THE THIRD VERDICT — DONE. Asked what "perfection" means for the multiplicity
+   correction and the answer was that the correction argument sits below the noise floor. At n=3 the
+   minimum detectable effect at 80% power is 0.0668 cores on cpu.owner.sim (31% of baseline) and
+   0.0859 on cpu.process (16%), while the contested deltas are 0.0666 and 0.0534 — at or BELOW the
+   MDE at every correction including none. So: a delta under the MDE is never quotable as a cost,
+   whatever its p, and verdicts are now CONFIRMED / CANDIDATE / NULL because the matrix is a SCREEN
+   and its output was being quoted as a finding. The family, alpha and power are DECLARED in
+   lever-table.json before the run (a family chosen at analysis time can produce any corrected p);
+   a missing block refuses rather than defaulting. Bonferroni is recorded as a named conservative
+   approximation — Dunnett is the correct test for k-treatments-vs-one-control, and the ~5% MDE
+   difference flips no verdict measured so far, so the harder routine is deliberately not built.
+   RESULT ON THE BANKED RUN: cpu.process's two survivors become CANDIDATE, so the CPU half of
+   [#255]'s headline is no longer quotable as cost; the GPU half is untouched; and two effects DO
+   survive as CONFIRMED (lighting/off-lightingTemporalDecouple p=0.000, unknown/off-lightingGatherCache
+   p=0.002), which is the check that the rule is not merely mute.
+
+=== STILL OPEN ===
 
 1. THE CPU FLOOR IS BORROWED FROM A GPU NULL CONTROL. lever-cpu takes its control from the lever the
-   table flags `gpuNullControl` (scripts/lever-table.json, read via pmu-join.py). A lever that is
-   null for the GPU is not thereby null for the CPU, and in matrix-20260808-140430 the borrowed
-   control (off-scriptProtoCacheEnabled) moves cpu.process.busy_cores by -0.0299 cores — 63% of that
-   key's 0.0476 floor. It happened not to bind on owner sim (0.0176 < 0.0401), but nothing stops it
-   binding next time, and a control that is not CPU-null inflates every CPU floor and SUPPRESSES real
-   levers. Declare a separate `cpuNullControl` in the lever table and make lever-cpu read it; if no
-   lever qualifies, say so loudly rather than substituting.
+   table flags `gpuNullControl`. A lever null for the GPU is not thereby null for the CPU, and in
+   matrix-20260808-140430 the borrowed control moves cpu.process.busy_cores by -0.0299 cores — 63%
+   of that key's 0.0476 floor. It happened not to bind on owner sim, but nothing stops it next time,
+   and a control that is not CPU-null inflates every CPU floor and SUPPRESSES real levers. Declare a
+   separate `cpuNullControl`; if no lever qualifies, say so loudly rather than substituting.
 
 2. THE FLOOR IS A 3-SAMPLE RANGE (2 dof) against a pooled within-group sd of 0.0208 cores. A range
-   over three points is a poor scale estimate and it is used as a hard threshold. Report a
-   pooled-variance floor instead, now that omnibus() already computes the pooled sd.
+   over three points is a poor scale estimate used as a hard threshold. Report a pooled-variance
+   floor instead — omnibus() already computes the pooled sd, so the input exists.
 
-3. THE BASELINE NEVER ROTATES OUT OF SLOT 1. scripts/lever-matrix.sh runs the baseline first in every
-   pass, so every per-lever delta in every series shares one un-rotated reference, and any drift
-   across the run is charged entirely to the levers. This is the mechanism behind [#265]'s finding:
-   all eight levers shifted -0.0295 on owner sim, control included. Rotate or duplicate the baseline
-   within each pass. NOTE this changes the harness, so it cannot be validated against banked data —
-   it needs a fresh run.
+3. THE BASELINE NEVER ROTATES OUT OF SLOT 1. lever-matrix.sh runs it first in every pass, so every
+   delta shares one un-rotated reference and run drift is charged entirely to the levers. This is
+   the mechanism behind [#265]: all eight levers shifted -0.0295 on owner sim, control included.
+   NOTE this changes the harness, so it cannot be validated against banked data — it needs a re-run.
 
-4. THE FLOOR IS NEVER PERSISTED. manifest.json still says `"analysis": "NOT PERFORMED"` and the
-   evidence manifest contains no "floor" string, so the threshold a past run's verdicts were judged
-   against exists only in stdout. Write it into the manifest beside captureDeepTracing and
-   sceneBoundPct, which are there for the same reason.
+4. THE FLOOR IS NEVER PERSISTED. manifest.json still says `"analysis": "NOT PERFORMED"`, so the
+   threshold a past run's verdicts were judged against exists only in stdout. Write it into the
+   manifest beside captureDeepTracing and sceneBoundPct, which are there for the same reason.
 
-Items 1, 2 and 4 are validatable against matrix-20260808-140430 with no re-run. Item 3 is not.
+6. RAISE n ON THE NEXT RUN. This is the only item that moves the MDE, and it is cheap — legs are
+   ~5s. Corrected, 80% power, owner sim: n=3 gives 31% of baseline (~2 min of legs), n=10 gives
+   15.8% (~8 min), n=15 gives 12.8% (~11 min). The curve flattens because the baseline's own
+   across-repeat spread is 28-32%, so n and item 3 are complementary — neither alone is enough.
+
+Items 1, 2 and 4 are validatable against matrix-20260808-140430 with no re-run. Items 3 and 6 are not.
 
 DO NOT close this by making the floor stricter and calling it safer: [#264] measured that the
 weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
