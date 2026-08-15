@@ -86,6 +86,37 @@ def closure_verdict(owner, dom, parts, whole):
     return None
 
 
+def unit_basis(keys, w):
+    """-> (basis, assumed, declared) for a set of metrics that are about to be SUMMED together.
+
+    THE DEFECT THIS EXISTS FOR. A closure adds Budget parts and divides by a whole. Addition is only
+    meaningful between quantities in the same unit, and until now nothing checked: the arithmetic
+    assumed microseconds throughout, INDEPENDENTLY of the schema, so a nanosecond metric declared
+    correctly at its site would still be summed as microseconds and read 1000x wrong -- silently, with
+    the version check passing. The spec names this in its own risk table ("the seam drifts: one side
+    ns, the other us; a dimensionless check passes") and says the consumer change is part of the work
+    rather than a consequence of the version bump.
+
+    `basis` is the single declared unit the set agrees on, or None when nothing in the set declares
+    one. `assumed` lists the members that declare nothing and are therefore being TAKEN as the basis
+    -- named rather than absorbed, because an assumption nobody can see is the defect wearing a new
+    field. `declared` is the full set of distinct declared units: more than one means the sum is
+    meaningless and the caller must refuse rather than produce a number.
+
+    UNDECLARED IS HOMOGENEOUS WITH ITSELF, and that is a deliberate weakness rather than an oversight.
+    109 of the 146 metrics in the banked corpus declare no unit, so refusing every undeclared set would
+    refuse most of the evidence this project reasons with and make the instrument useless on its own
+    history. The residual hole -- a NEW nanosecond metric that also fails to declare joins the
+    undeclared set invisibly -- is closed from the other end, by ratcheting the undeclared count down,
+    not by a check here that would have to reject the past to protect the future.
+    """
+    declared = sorted({w[k]["unit"] for k in keys
+                       if k in w and w[k].get("unit") and w[k]["unit"] != "undeclared"})
+    assumed = sorted(k for k in keys
+                     if k in w and (not w[k].get("unit") or w[k]["unit"] == "undeclared"))
+    return (declared[0] if len(declared) == 1 else None), assumed, declared
+
+
 def bucket_bounds(i):
     """Lower and upper microsecond bound of histogram bucket i (see Telemetry::histogramBucket).
 
@@ -348,9 +379,11 @@ def selftest():
     a check crying wolf, so the risk it carries is the opposite one: silence mistaken for correctness.
     """
     fails = []
+    ran = []
 
     def arm(name, ok):
         print(f"  {'ok  ' if ok else 'FAIL'} {name}")
+        ran.append(name)
         if not ok:
             fails.append(name)
 
@@ -431,7 +464,24 @@ def selftest():
     arm("...and absence is a third answer, never a zero",
         stamp_of({}, None) == (None, "absent"))
 
-    # 17-20. THE SERIES. Two snapshots -> one interval; three -> two. The arithmetic arm matters most:
+    # 21-25. UNIT HOMOGENEITY. No nanosecond metric exists anywhere in the tree, so a fixture is the
+    #        ONLY way to exercise this -- which is the point rather than a weakness. The defect is that
+    #        a correctly-declared ns metric would have been summed as us, silently, at 1000x; a check
+    #        that could only be tested by first shipping such a metric would be a check nobody could
+    #        write until after it was needed.
+    U = {"a": {"unit": "us"}, "b": {"unit": "us"}, "c": {"unit": "ns"}, "d": {}, "e": {"unit": "undeclared"}}
+    arm("one declared unit across the set IS the basis",
+        unit_basis(["a", "b"], U) == ("us", [], ["us"]))
+    arm("two declared units yield NO basis and both are reported",
+        unit_basis(["a", "c"], U) == (None, [], ["ns", "us"]))
+    arm("an undeclared member is NAMED, not silently absorbed",
+        unit_basis(["a", "d"], U) == ("us", ["d"], ["us"]))
+    arm("an explicitly 'undeclared' unit counts as undeclared, not as a third unit",
+        unit_basis(["a", "e"], U) == ("us", ["e"], ["us"]))
+    arm("an all-undeclared set is homogeneous with itself (the declared weakness)",
+        unit_basis(["d", "e"], U) == (None, ["d", "e"], []))
+
+    # 26-29. THE SERIES. Two snapshots -> one interval; three -> two. The arithmetic arm matters most:
     #        a cumulative counter differenced per interval must yield the PER-INTERVAL amount, and the
     #        way to get this wrong is to emit the cumulative value, which looks entirely plausible
     #        (monotonically rising, right units) and is the metric's whole life at every point.
@@ -456,10 +506,16 @@ def selftest():
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
         return 1
-    print("telemetry-window selftest: 20/20 arms ok -- the bound fires, does not over-fire, its blind "
-          "spot is asserted, the rank case is distinguished from a broken budget, a timer that recorded "
-          "nothing is reported rather than silently dropped, every stamp names its own source, and the "
-          "series carries per-interval deltas rather than cumulative values")
+    # THE COUNT IS DERIVED, AND IT WAS NOT. This line read "20/20" as a literal while the arms above
+    # it were free to grow, so the first commit to add one shipped an instrument whose own summary was
+    # false -- the same shape as prose-claims.py's DANGLING_D drive, which named D14 as its
+    # certainly-absent decision and went silent the day D14 was ratified. A count that cannot drift is
+    # worth more than a count that reads tidily.
+    print(f"telemetry-window selftest: {len(ran)}/{len(ran)} arms ok -- the bound fires, does not "
+          "over-fire, its blind spot is asserted, the rank case is distinguished from a broken budget, "
+          "a timer that recorded nothing is reported rather than silently dropped, every stamp names "
+          "its own source, the series carries per-interval deltas rather than cumulative values, and a "
+          "closure whose parts declare different units is REFUSED rather than summed")
     return 0
 
 
@@ -653,8 +709,21 @@ def main():
         # per domain -- so a cpu-domain Budget metric under owner `gl` was divided by a GPU span and printed
         # as "cpu accounted: N us/tick of <gpu span>". Labelled by one domain, denominated by another.
         for dom in sorted({v["domain"] for _, v in rows}):
-            parts = sum(scaled[k][0] for k, v in rows if v["role"] == "budget" and v["domain"] == dom)
+            part_keys = [k for k, v in rows if v["role"] == "budget" and v["domain"] == dom]
             total_name = totals.get(dom)
+            # THE SUM MUST BE IN ONE UNIT. Checked before it is taken, because a number produced from
+            # mixed units cannot be un-produced by a warning printed after it.
+            basis, assumed, declared = unit_basis(
+                part_keys + ([total_name] if total_name else []), w)
+            if len(declared) > 1:
+                violations.append(
+                    f"{owner}/{dom}: closure REFUSED -- its parts and whole declare {len(declared)} "
+                    f"different units ({', '.join(declared)}), so their sum is not a quantity. "
+                    f"Reconcile the declarations at the registration sites; the consumer will not "
+                    f"guess a conversion.")
+                print(f"\n  {owner}/{dom}: closure refused, mixed units ({', '.join(declared)})")
+                continue
+            parts = sum(scaled[k][0] for k in part_keys)
             if not total_name or total_name not in w:
                 # LOUD, never silent. A domain carrying budget parts with no whole to close them against is
                 # unclosable, and an unclosable budget that prints nothing reads exactly like a closed one --
