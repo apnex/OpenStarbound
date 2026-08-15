@@ -969,8 +969,11 @@ by colliding with them.
   "ran and found nothing" from "never ran". Nine instances in two days; one of them stamped 28 of 28
   matrix legs not quotable. Reach is what makes instrumentation possible at the point of measurement,
   which is where it belongs; DECLARATION is what makes it readable. This is the SECOND row on the
-  table with a ratchet already behind it -- `clock_ratchet` carries the clock row -- and those two
-  are the only ones that do.
+  table with a ratchet already behind it -- `desc_facet_ratchet` carries the clock row AND the unit
+  row -- so three of the table's rows are ratcheted and no others are. The clock and unit rows share
+  ONE ceiling rather than taking one each because they were MEASURED to be one population: all 105
+  under-declaring sites lack both facets, and every site declaring either declares both, so a second
+  ratchet would have been a second name for one fact, with two ceilings free to drift apart.
 
 The duty and its owner are named in the register; this section states only that the obligation exists
 and what shape it takes.

@@ -406,45 +406,82 @@ def selftest_timeline():
 # A CEILING RATHER THAN A REQUIREMENT, because 165 sites cannot be migrated in one pass without becoming the
 # highest-risk moment for reintroducing every pattern this file already guards. The count may fall and may
 # not rise. Lower it when you lower it.
-CLOCK_CEILING = 109
+# 105 sites use a form that declares NEITHER a clock nor a unit. Measured over the repaired corpus
+# (production only, empty sentinels excluded) -- see check_desc_facets for why each exclusion exists.
+FACET_CEILING = 105
 
 METRIC_DESC_BLOCK = re.compile(r"MetricDesc\{.*?\}", re.S)
+# `MetricDesc{}` is not an under-declared descriptor, it is the deliberate absence of one: one site
+# passes it beside `/* hasDesc */ false`, the other returns it for "this metric has no descriptor".
+# Counting them as sites that failed to declare a clock made the ratchet count a unit that the thing
+# it names cannot move.
+EMPTY_DESC = re.compile(r"^MetricDesc\{\s*\}$")
 
 
-def undeclared_clocks(text):
-    """Count of MetricDesc sites with no MetricClock, comments stripped."""
-    stripped = strip_comments(text)
-    return sum(1 for m in METRIC_DESC_BLOCK.finditer(stripped) if "MetricClock::" not in m.group(0))
+def declaring_sites(text):
+    """-> [str] of MetricDesc blocks that actually declare something. Comments stripped."""
+    return [m.group(0) for m in METRIC_DESC_BLOCK.finditer(strip_comments(text))
+            if not EMPTY_DESC.match(m.group(0))]
 
 
-def check_clocks(files=None, ceiling=CLOCK_CEILING):
-    # sources() hands back {path: text}, the same shape check_registrations takes. Taking a list of paths
-    # instead cost a debugging round: the loop iterated the dict's KEYS, parsed filenames as if they were
-    # source, and reported that nothing matched -- which the "measuring nothing" arm caught, exactly as it
-    # was written to.
+def undeclared_facets(text):
+    """-> (no_clock, no_unit, sites) over the declaring sites in one file."""
+    sites = declaring_sites(text)
+    return (sum(1 for b in sites if "MetricClock::" not in b),
+            sum(1 for b in sites if "MetricUnit::" not in b),
+            len(sites))
+
+
+def check_desc_facets(files=None, ceiling=FACET_CEILING):
+    """The count of MetricDesc sites that under-declare may not grow.
+
+    TWO CORPUS REPAIRS, BOTH BECAUSE A RATCHET MUST COUNT A UNIT ONLY THE THING IT NAMES CAN MOVE.
+    It rglobbed all of source/ INCLUDING source/test/, where one fixture site was undeclared against
+    a slack of exactly one -- so deleting a test file was a legal way to buy headroom for a new
+    production violation. And it counted the two `MetricDesc{}` sentinels in StarTelemetry.cpp,
+    which are not under-declared descriptors but the deliberate absence of one. 108/165 was
+    therefore three parts wrong; the repaired corpus is 105/161.
+
+    WHY BOTH FACETS UNDER ONE CEILING RATHER THAN A SECOND `unit_ratchet`. The plan called for a
+    separate unit ratchet. Measured first: the two sets are IDENTICAL -- all 105 sites that declare
+    no clock also declare no unit, and every site declaring one declares the other, because the
+    population is exactly the sites still using the positional form. A second ratchet would be a
+    second name for one fact, with two ceilings free to drift apart while measuring one population.
+    One ceiling counts sites that under-declare; the per-facet numbers are still reported, so a
+    regression in EITHER facet alone moves the count and is named in the output.
+    """
     files = sources() if files is None else files
-    total, sites = 0, 0
-    for text in files.values():
-        total += undeclared_clocks(text)
-        sites += len(METRIC_DESC_BLOCK.findall(strip_comments(text)))
+    no_clock = no_unit = under = sites = 0
+    for path, text in sorted(files.items()):
+        if "/test/" in path.replace("\\", "/"):
+            continue
+        blocks = declaring_sites(text)
+        sites += len(blocks)
+        for b in blocks:
+            c = "MetricClock::" not in b
+            u = "MetricUnit::" not in b
+            no_clock += c
+            no_unit += u
+            under += (c or u)
     if sites == 0:
         # A ratchet that matched nothing has not been satisfied. reg_ratchet learned this the same way:
         # a pattern that stops matching reads exactly like a tree that stopped offending.
-        print("clock_ratchet: FAIL -- no MetricDesc sites matched at all. The pattern has drifted from "
-              "the tree, so this gate is measuring nothing.")
+        print("desc_facet_ratchet: FAIL -- no declaring MetricDesc sites matched at all. The pattern "
+              "has drifted from the tree, so this gate is measuring nothing.")
         return 1
-    if total > ceiling:
-        print(f"clock_ratchet: FAIL -- {total} MetricDesc site(s) declare no MetricClock, ceiling is "
-              f"{ceiling}. A metric that cannot say whether it measures work or waiting is the defect "
-              f"this field exists to end; declare the clock at the new site rather than raising the bar.")
+    if under > ceiling:
+        print(f"desc_facet_ratchet: FAIL -- {under} MetricDesc site(s) under-declare "
+              f"({no_clock} no clock, {no_unit} no unit), ceiling is {ceiling}. A metric that cannot "
+              f"say whether it measures work or waiting, or in what unit, is the defect these fields "
+              f"exist to end; declare them at the new site rather than raising the bar.")
         return 1
-    slack = ceiling - total
-    print(f"clock_ratchet: OK -- {total} of {sites} MetricDesc site(s) declare no MetricClock "
-          f"(ceiling {ceiling}, slack {slack}). {sites - total} DO declare one.")
+    print(f"desc_facet_ratchet: OK -- {under} of {sites} declaring MetricDesc site(s) under-declare "
+          f"({no_clock} no clock, {no_unit} no unit; ceiling {ceiling}, slack {ceiling - under}). "
+          f"{sites - under} declare both. source/test/ and empty MetricDesc{{}} are excluded.")
     return 0
 
 
-def selftest_clocks():
+def selftest_desc_facets():
     import contextlib, io
     fails = []
 
@@ -453,28 +490,43 @@ def selftest_clocks():
         if not ok:
             fails.append(name)
 
-    declared = "MetricDesc{MetricDomain::Cpu, MetricRole::Total, MetricClock::Wall}"
+    both = "MetricDesc{MetricDomain::Cpu, MetricClock::Wall, MetricUnit::Us}"
     bare = "MetricDesc{MetricDomain::Cpu, MetricRole::Total}"
-    arm("a site with no clock counts", undeclared_clocks(bare) == 1)
-    arm("a site with a clock does not", undeclared_clocks(declared) == 0)
-    arm("a commented-out site does not count", undeclared_clocks("// " + bare) == 0)
-    arm("both are seen when both are present", undeclared_clocks(bare + "\n" + declared) == 1)
+    unit_only = "MetricDesc{MetricDomain::Cpu, MetricUnit::Us}"
+    arm("a site declaring neither counts", undeclared_facets(bare)[:2] == (1, 1))
+    arm("a site declaring both does not", undeclared_facets(both)[:2] == (0, 0))
+    arm("a commented-out site does not count", undeclared_facets("// " + bare)[2] == 0)
+    arm("both are seen when both are present", undeclared_facets(bare + "\n" + both)[0] == 1)
 
-    # Both ends, per #194's rule. Silence has to be earned by being under the bar, not by matching nothing.
+    # The repairs, each proven to bite rather than merely described in the docstring.
+    arm("an empty MetricDesc{} is not a declaring site", undeclared_facets("MetricDesc{}")[2] == 0)
+    arm("...and does not inflate the undeclared count", undeclared_facets("MetricDesc{}")[:2] == (0, 0))
+
     with contextlib.redirect_stdout(io.StringIO()):
-        over = check_clocks({"a": bare + "\n" + bare}, ceiling=1)
-        under = check_clocks({"a": bare}, ceiling=1)
-        empty = check_clocks({"a": "int main(){}"}, ceiling=1)
+        prod_only = check_desc_facets({"source/core/a.cpp": bare, "source/test/t.cpp": bare},
+                                      ceiling=1)
+        # If source/test/ still counted, two undeclared against a ceiling of one would FAIL.
+    arm("a fixture under source/test/ cannot move the count", prod_only == 0)
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        over = check_desc_facets({"source/a.cpp": bare + "\n" + bare}, ceiling=1)
+        under = check_desc_facets({"source/a.cpp": bare}, ceiling=1)
+        empty = check_desc_facets({"source/a.cpp": "int main(){}"}, ceiling=1)
+        # A site that declares a unit but no clock must still be counted by the single ceiling --
+        # this is what a separate unit_ratchet would have caught, and why one ceiling suffices.
+        clock_regression = check_desc_facets({"source/a.cpp": both + "\n" + unit_only}, ceiling=0)
     arm("two undeclared against a ceiling of one FAILS", over == 1)
     arm("one undeclared against a ceiling of one passes", under == 0)
     arm("a corpus with NO MetricDesc at all fails rather than passing vacuously", empty == 1)
+    arm("a site missing ONLY the clock still moves the single ceiling", clock_regression == 1)
 
     print()
     if fails:
-        print(f"clock_ratchet selftest: FAILED -- {len(fails)}: {', '.join(fails)}")
+        print(f"desc_facet_ratchet selftest: FAILED -- {len(fails)}: {', '.join(fails)}")
         return 1
-    print("  clock_ratchet selftest: 7/7 arms ok -- counts the undeclared, ignores comments and declared "
-          "sites, fires on growth, and refuses to pass on an empty corpus")
+    print("  desc_facet_ratchet selftest: 11/11 arms ok -- counts the under-declared, ignores "
+          "comments, empty sentinels and test fixtures, fires on growth in EITHER facet, and "
+          "refuses to pass on an empty corpus")
     return 0
 
 
@@ -720,8 +772,8 @@ if __name__ == "__main__":
               "--check-registrations": check_registrations,
               "--selftest-registrations": selftest_registrations,
               "--check-timeline": check_timeline,
-              "--check-clocks": check_clocks,
-              "--selftest-clocks": selftest_clocks,
+              "--check-desc-facets": check_desc_facets,
+              "--selftest-desc-facets": selftest_desc_facets,
               "--check-boundedness": check_boundedness,
               "--check-convergence-claims": check_convergence_claims,
               "--selftest-convergence-claims": selftest_convergence_claims,

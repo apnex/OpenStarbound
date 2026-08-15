@@ -292,11 +292,11 @@ jobs:
       # is therefore the honest measure of how much of this model still cannot say work from waiting. It
       # may fall and may not rise -- 165 sites is too many to migrate in one pass, and a large mechanical
       # pass is exactly when the patterns this file guards come back.
-      - name: clock_ratchet -- the count of MetricDesc sites declaring no clock may not grow
-        run: python3 scripts/metric-desc-lint.py --check-clocks
+      - name: desc_facet_ratchet -- the count of MetricDesc sites under-declaring clock or unit may not grow
+        run: python3 scripts/metric-desc-lint.py --check-desc-facets
 
-      - name: clock_ratchet_fires -- the ratchet fires on growth and refuses to pass on an empty corpus
-        run: python3 scripts/metric-desc-lint.py --selftest-clocks
+      - name: desc_facet_ratchet_fires -- fires on growth in either facet, and on a fixture-deletion or empty corpus
+        run: python3 scripts/metric-desc-lint.py --selftest-desc-facets
 
       # The render harness lives inside UPSTREAM's client file rather than in a module of its own, and
       # that coupling produced three wrong measurements on 2026-08-06 -- the scene selecting itself from
