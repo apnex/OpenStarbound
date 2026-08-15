@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**204 tasks** across 2 store(s): 2 in_progress, 33 pending, 169 completed
+**205 tasks** across 2 store(s): 2 in_progress, 32 pending, 171 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 203 tasks, ids 64–267
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 204 tasks, ids 64–268
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -45,19 +45,17 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 |---:|---:|---|---|---|
 | 1 | 2 | `#171` | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model chan… | ready |
 | 2 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 3 | 4 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
-| 4 | 5 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
-| 5 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 6 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 7 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 8 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 9 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 11 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 13 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 3 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 4 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 5 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 6 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 7 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 8 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 9 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 10 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 11 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
-> **2 completed task(s) still carry a rank** (#245, #263). A rank is a claim about
+> **4 completed task(s) still carry a rank** (#245, #263, #264, #265). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -68,9 +66,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 220, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 221, of which **41 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 29.** The task harness has, on these, appended its
+**Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -97,7 +95,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 169.
+**Completed tasks citing no commit and no doc:** 87 of 171.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -309,10 +307,11 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
-| [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
-| [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
+| [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
+| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
+| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6514,93 +6513,97 @@ Idempotence proven: two consecutive regenerations produce an identical md5.
 
 <a id="c29c1332-264"></a>
 
-#### #264 — LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be
+#### #264 — LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint is elsewhere
 
-status: **pending** · metadata: `{"rank": 4}`
+status: **completed** · metadata: `{"rank": 4}`
 
 ```
-RECORDED DURING [#255] AND DELIBERATELY NOT FIXED THERE, because tuning an estimator after seeing
-which answer it gives is how a result gets manufactured.
+"The per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be."
 
-scripts/lever-cpu.py reduces each leg to the MEAN over its per-interval axis values, then compares
-lever means to baseline means. For the sovereign owner series that is defensible -- every interval
-carries a similar covered span. For anything derived from a windowed total it is the weaker estimator,
-and the run shows the cost:
+=== CLOSED 2026-08-15. MEASURED RATHER THAN ARGUED ===
 
-    cpu.frame.work.wall_fraction    floor 0.0793, NOTHING resolved
-    the same levers, from the windowed profile totals:
-        off-renderDrawableCache   4649 -> 5266 us/frame   (+13.3%)
-        off-parallaxRefreshInterval 4649 -> 4180          (-10.1%)
-        off-envRefreshInterval      4649 -> 4308          ( -7.3%)
+THE MECHANICAL CLAIM IS TRUE. `leg_means()` in scripts/lever-cpu.py returns `st.mean` over each
+leg's per-interval axis values and `verdicts_for()` takes `st.mean` across repeats — an unweighted
+mean of rates, not total/total. The intervals are genuinely unequal in the weight that matters:
+`durationS` is near-constant (CV 0.0010) but the actual rate denominator `coveredS` produced by
+`rediff()` spans 3.981–4.511 s (CV 0.0514, max/min 1.133). So the defect is real in principle.
 
-Those are clean, ordered, and consistent with the GPU deltas. The analyser cannot see them because an
-unweighted mean of per-interval rates gives a 4.5s interval the same vote as a 5.2s one and lets a p99
-spike in one interval move the leg's figure.
+IT IS IMMATERIAL IN FACT. The prescribed fix (sum busyNs / sum coveredS) was implemented over
+matrix-20260808-140430 and compared: it reproduces every published floor exactly, then yields
+ZERO verdict flips across all 48 lever-by-key cells. Largest movement on any published number is
+cpu.process / off-parallaxRefreshInterval, -0.06665 -> -0.06807 (2.1%). The three larger relative
+shifts all land on deltas already deep inside the floor — numbers never quoted.
 
-THIS IS T10's OWN WEAKNESS, APPLIED TO MY OWN ANALYSER. #256 T10 says a re-differenced counter and a
-mean of rates are different kinds of number and only one survives re-windowing. lever-cpu computes a
-mean of rates from data that was re-differenced -- it throws the property away one consumer later.
+THE BOARD'S NAMED PAYOFF FAILS OUTRIGHT. `cpu.frame.work.wall_fraction` is built by
+`in_process_axis()` as `(total/1e6)/duration_s`, so its denominator is `durationS`, NOT `coveredS`,
+and the prescribed fix does not apply to it. Computing its true total/total moves every lever by
+<=0.00004 against a floor of 0.0793; all eight stay unresolved. The closing suggestion that the
+weighted estimator is "the first thing to try" for owner `frame` is therefore refuted — the weighted
+floor for frame is 0.0840 vs 0.0841 unweighted.
 
-THE FIX: a span-weighted estimator. For each key, sum the busy over the leg and divide by the summed
-covered span -- which is exactly what obs-join already computes per interval and carries as `coveredS`.
-The joined artefacts hold everything needed; no re-run is required. Apply to the banked run
-matrix-20260808-140430 and compare against the unweighted table rather than replacing it, so the
-change is a measured improvement and not an assertion.
+WHAT THE REAL CONSTRAINT IS, and this task misdiagnosed it: for all four keys the floor is set by
+the BASELINE'S ACROSS-REPEAT SPREAD, never by the null control. wall_fraction baseline repeats are
+0.2416/0.2914/0.3208 — a spread 27.9% of the baseline value; cpu.owner.frame is 31.6%. Weighting
+intervals WITHIN a leg cannot reduce spread ACROSS legs.
 
-DO NOT quietly restate #255's conclusions afterwards. The resolved set there stands on the unweighted
-estimator; if the weighted one resolves MORE levers, that is a new and better measurement of the same
-banked run, and both should be recorded with the estimator named. The whole point of T10 is that two
-numbers made by different arithmetic are two numbers.
+NOT IMPLEMENTED, DELIBERATELY: shipping a rewrite that provably changes no verdict would add risk to
+the estimator every future run depends on, for no gain. The measurement is the deliverable.
 
-ALSO WORTH FOLDING IN: `cpu.owner.frame` resolved nothing at a floor of 0.0841 while the process whole
-resolved at 0.0476. The main thread is the noisiest owner, and the weighted estimator is the first
-thing to try before concluding anything about it.
+The two REAL defects this task surfaced en route are carried to the new estimator task, not dropped:
+lever-cpu borrows a control declared `gpuNullControl` as its CPU floor (in this run one lever moved
+cpu.process by 63% of that key's floor), and lever-matrix.sh never rotates the baseline out of
+slot 1. See also [#265], which found the same estimator promoting noise to RESOLVED.
 ```
 
 <a id="c29c1332-265"></a>
 
-#### #265 — SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it
+#### #265 — SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically
 
-status: **pending** · metadata: `{"rank": 5}`
+status: **completed** · metadata: `{"rank": 5}`
+
+- `a686d95b` [#265] four published lever effects were noise; the omnibus test now refuses them mechanically
 
 ```
-FOUND BY [#255], AND IT IS THE KIND OF FINDING THE WHOLE CAMPAIGN WAS BUILT TO PRODUCE: a question
-that could not previously be asked, because per-owner CPU busy did not exist.
+Owner `sim` moved on three render-side levers and nothing explained it.
 
-At Desert Town, matrix-20260808-140430, three RENDER-SIDE levers turned off moved the SIM owner's CPU
-busy by amounts that clear the run floor (0.0401 cores) and each lever's own repeat spread:
+=== CLOSED 2026-08-15 at a686d95b. IT IS NOISE, AND FOUR NUMBERS ARE WITHDRAWN ===
 
-    off-lightingGatherCache      -0.0489 cores   (own spread 0.0139)
-    off-envRefreshInterval       -0.0445 cores   (own spread 0.0303)
-    off-parallaxRefreshInterval  -0.0436 cores   (own spread 0.0276)
+THE ARITHMETIC WAS NOT STALE — the three deltas reproduce exactly from the banked run
+(off-lightingGatherCache -0.0489, off-envRefreshInterval -0.0445, off-parallaxRefreshInterval
+-0.0436). What was false is "nothing explains it". The run's own data explains it as drift.
 
-`sim` is the WorldServerThread. envRefreshInterval and parallaxRefreshInterval are retained-surface
-refresh policies on the render side. There is no call path from either to the world server, and the
-frame counts are identical across every leg (13,497-13,500), so it is not that fewer server ticks ran.
+RE-DERIVED INDEPENDENTLY from the raw joined legs before anything was changed, because withdrawing
+published numbers on a subagent's arithmetic would be the same defect one level up:
+  * one-way ANOVA on cpu.owner.sim.busy_cores: F(8,18) = 2.18, p = 0.081 — NO between-lever structure
+  * the same computation on the same 27 legs: cpu.process F = 3.77, p = 0.0092; GPU F = 1741
+    — the instrument resolves real lever effects, it just does not resolve them on sim
+  * ALL EIGHT levers move sim negative, mean -0.0295, including the DECLARED NULL CONTROL (-0.0168)
+    and off-renderVboOrphan (-0.0174), which cannot touch the world server
+  * after removing that common offset the three "resolved" levers sit at 1.14 / 0.88 / 0.83 SE
+    against a pooled within-group sd of 0.0208 — indistinguishable from the control at 0.75 SE
+  * a targeted Bonferroni test agrees: best corrected p on sim is 0.080
 
-CANDIDATE MECHANISMS, ALL UNVERIFIED -- listed so the next pass has hypotheses rather than a blank page:
-  1. E-CORE SCHEDULING PRESSURE. The whole process is pinned to cores 6-15. A render thread that
-     blocks longer on a busier GPU leaves more room, and the sim thread may complete the same work in
-     less BUSY time (fewer stalls, better residency). This predicts sim busy falls whenever GPU busy
-     rises, regardless of which lever caused it -- TESTABLE against the existing banked run by
-     correlating the sim delta against the GPU delta across all eight levers.
-  2. FREQUENCY. E-cores clock differently under different load mixes. render-profile samples
-     gt_cur_freq_mhz only at leg start and end; the in-window clock is unobserved (see #251's note).
-  3. SHARED-CACHE INTERFERENCE. A render thread touching a large retained surface every frame evicts
-     what the sim thread would otherwise keep resident. This predicts the OPPOSITE sign from what was
-     measured, so it is probably not the mechanism -- worth stating because it is the first guess most
-     readers will reach for.
-  4. ATTRIBUTION ERROR. A thread whose comm matches the sim rule but does render work, or vice versa.
-     ThreadBusyReader::ownerOfThread maps by comm PREFIX and the kernel truncates comm to 15 chars.
-     Cheapest to check first, and it would invalidate the finding rather than explain it.
+MIS-ATTRIBUTION IS DISCONFIRMED, so this is drift and not a tagging bug: the in-process timer
+`tick.server.total.us`, bracketed structurally around the WorldServerThread loop body, tracks the
+/proc-derived sim busy within ~4% across all nine groups. The one real render->sim coupling path in
+the tree (WorldServerThread's adaptive-fidelity governor) is pinned off for this run by
+`pinned: {"serverFidelity": "high"}`.
 
-CHECK 4 BEFORE 1. It is a two-minute grep of the live thread names against the mapping, and if the
-attribution is wrong then the other three hypotheses are about a number that does not mean what its
-name says -- which is the exact defect class this component exists to remove.
+THE FIX IS MECHANICAL, NOT A BOARD NOTE. verdicts_for() now applies Fisher's protection: a key whose
+between-lever ANOVA is not significant resolves NOTHING, whatever the individual deltas look like.
+That withdraws FOUR numbers — the three sim effects plus cpu.owner.gl / off-parallaxRefreshInterval
+(-0.0020, p = 0.168), which a Bonferroni test also rejects at 0.385. The per-lever floor is KEPT as
+a second, independent hurdle. Distributions are inline (no scipy anywhere in this repo), checked
+against published table values.
 
-NOT A LEVER HUNT. The Director's standing ruling is that no new render/engine optimisation is chased
-off this run. This task is about whether the INSTRUMENT is telling the truth, and only secondarily
-about what the truth implies.
+SURFACED, NOT DECIDED: on cpu.process the two methods disagree — omnibus p = 0.0092 passes it, but
+Bonferroni puts off-envRefreshInterval at 0.198 and off-parallaxRefreshInterval at 0.055. The
+corrected p now prints beside every verdict; whether to gate on it is the Director's call.
+
+#255's headline survives — it rests on cpu.process (F = 3.77) and the GPU series (F = 1741).
+
+RESIDUE MOVED TO A NEW TASK, not lost: declare a CPU null control instead of borrowing
+`gpuNullControl`; rotate the baseline out of slot 1; persist the floor into the run manifest.
 ```
 
 <a id="c29c1332-266"></a>
@@ -6707,6 +6710,51 @@ SEQUENCE (9 steps, each landable alone; full text in the workflow output):
   9. Close #251 before any further GPU conclusion.
 
 STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 109, both slack zero) and A4 is strained on the 3,351-line Python tier, whose rules no register row admits to. Both are declared, not hidden.
+```
+
+<a id="c29c1332-268"></a>
+
+#### #268 — LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates
+
+status: **pending**
+
+```
+Carries the residue of [#264] and [#265], both of which independently hit the same root cause: the
+per-lever floor methodology in scripts/lever-cpu.py, which governs EVERY future matrix run, not just
+the banked one. The omnibus test shipped at a686d95b fixed the promotion rule; these three fix the
+floor it sits beside.
+
+1. THE CPU FLOOR IS BORROWED FROM A GPU NULL CONTROL. lever-cpu takes its control from the lever the
+   table flags `gpuNullControl` (scripts/lever-table.json, read via pmu-join.py). A lever that is
+   null for the GPU is not thereby null for the CPU, and in matrix-20260808-140430 the borrowed
+   control (off-scriptProtoCacheEnabled) moves cpu.process.busy_cores by -0.0299 cores — 63% of that
+   key's 0.0476 floor. It happened not to bind on owner sim (0.0176 < 0.0401), but nothing stops it
+   binding next time, and a control that is not CPU-null inflates every CPU floor and SUPPRESSES real
+   levers. Declare a separate `cpuNullControl` in the lever table and make lever-cpu read it; if no
+   lever qualifies, say so loudly rather than substituting.
+
+2. THE FLOOR IS A 3-SAMPLE RANGE (2 dof) against a pooled within-group sd of 0.0208 cores. A range
+   over three points is a poor scale estimate and it is used as a hard threshold. Report a
+   pooled-variance floor instead, now that omnibus() already computes the pooled sd.
+
+3. THE BASELINE NEVER ROTATES OUT OF SLOT 1. scripts/lever-matrix.sh runs the baseline first in every
+   pass, so every per-lever delta in every series shares one un-rotated reference, and any drift
+   across the run is charged entirely to the levers. This is the mechanism behind [#265]'s finding:
+   all eight levers shifted -0.0295 on owner sim, control included. Rotate or duplicate the baseline
+   within each pass. NOTE this changes the harness, so it cannot be validated against banked data —
+   it needs a fresh run.
+
+4. THE FLOOR IS NEVER PERSISTED. manifest.json still says `"analysis": "NOT PERFORMED"` and the
+   evidence manifest contains no "floor" string, so the threshold a past run's verdicts were judged
+   against exists only in stdout. Write it into the manifest beside captureDeepTracing and
+   sceneBoundPct, which are there for the same reason.
+
+Items 1, 2 and 4 are validatable against matrix-20260808-140430 with no re-run. Item 3 is not.
+
+DO NOT close this by making the floor stricter and calling it safer: [#264] measured that the
+weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
+happily as it suppresses noise. Each change needs a null control showing what it does to the 48
+lever-by-key cells of the banked run.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
