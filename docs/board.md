@@ -28,10 +28,10 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**204 tasks** across 2 store(s): 3 in_progress, 34 pending, 167 completed
+**204 tasks** across 2 store(s): 2 in_progress, 34 pending, 168 completed
 
-- `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 203 tasks, ids 64–267
+- `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
 
@@ -43,21 +43,23 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#245` | DESC-CONVERGE: the vocabulary was built and nothing spoke it — unit and boundedness now read, banked evidence… | ready |
-| 2 | 2 | `#171` | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model chan… | ready |
-| 3 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 4 | 4 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
-| 5 | 5 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
-| 6 | 6 | `#266` | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is u… | ready |
-| 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 9 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 10 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 11 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 14 | 14 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
-| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 1 | 2 | `#171` | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model chan… | ready |
+| 2 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 3 | 4 | `#264` | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says… | ready |
+| 4 | 5 | `#265` | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | ready |
+| 5 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 6 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 7 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 8 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 9 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 11 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 13 | 14 | `#263` | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | ready |
+| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+
+> **1 completed task(s) still carry a rank** (#245). A rank is a claim about
+> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
 
@@ -67,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 217, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 220, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 30.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -96,7 +98,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 167.
+**Completed tasks citing no commit and no doc:** 86 of 168.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -109,19 +111,18 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 
 | Id | Store | Status | Subject | Commits | Cited in |
 |---:|:------|:-------|:--------|:--------|:---------|
-| [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | `6c75f4aa` | — |
 | [#64](#c29c1332-64) | `c29c1332` | done | forEach v1: template forEachEntity (#1) + const&amp; (#5) + EntityMap oracle | — | — |
 | [#65](#c29c1332-65) | `c29c1332` | done | forEach: deterministic micro-benchmark (clean A/B number) | — | — |
 | [#66](#c29c1332-66) | `c29c1332` | open | forEach v2 #2: zero-contributor collision/force broad-phase early-out | — | — |
 | [#67](#c29c1332-67) | `c29c1332` | done | forEach v2 #4: stamp-based dedup (delete per-query std::sort) | — | — |
 | [#68](#c29c1332-68) | `c29c1332` | done | forEach v2 #3: skip box-test for fully-contained interior cells | — | — |
 | [#69](#c29c1332-69) | `c29c1332` | open | forEach v2 #7: EntityMapSpatialHashSectorSize granularity sweep | — | — |
-| [#70](#c29c1332-70) | `c29c1332` | done | UniqueEffect Lua-context churn optimization (~21% of exploring WST) | — | — |
+| [#70](#c29c1332-70) | `c29c1332` | done | UniqueEffect Lua-context churn optimization (~21% of exploring WST) | — | `board-audit-2026-08-08.md` `board.md` |
 | [#71](#c29c1332-71) | `c29c1332` | done | L1: reserve() callback maps before registerCallback storm | — | — |
 | [#72](#c29c1332-72) | `c29c1332` | done | L3: move-not-copy in addCallbacks | — | — |
 | [#73](#c29c1332-73) | `c29c1332` | done | StatusEffectChurnBench micro-bench (L1/L3 clean A/B) | — | — |
 | [#74](#c29c1332-74) | `c29c1332` | done | L2: Proto-cache engine + T1/T4 tests (core_tests) | — | — |
-| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | — |
+| [#75](#c29c1332-75) | `c29c1332` | open | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | — | `board-audit-2026-08-08.md` `matrix-prereq-ledger.md` |
 | [#76](#c29c1332-76) | `c29c1332` | done | Build-window: L2 default-on + C++ fallback consistency (flags KEPT) | — | — |
 | [#77](#c29c1332-77) | `c29c1332` | done | Move 1: Entity de-RTTI via entityCast virtual-accessor downcast | — | — |
 | [#78](#c29c1332-78) | `c29c1332` | done | Follow-up: extend entityCast to residual per-candidate cast sites | — | — |
@@ -130,7 +131,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#81](#c29c1332-81) | `c29c1332` | done | L2 collision arena (~2.55%) — needs movement verification harness first | — | — |
 | [#82](#c29c1332-82) | `c29c1332` | open | L2 collision arena — optional live A/B confirmation + future terrain test-harness | — | — |
 | [#83](#c29c1332-83) | `c29c1332` | done | L-WIND-A: gate Plant wind computation to slave/render branch (~1.85% dead store) | — | — |
-| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | — | — |
+| [#84](#c29c1332-84) | `c29c1332` | open | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-proc… | `91cd1ef4` `9346f86a` `35808327` | — |
 | [#85](#c29c1332-85) | `c29c1332` | done | L4: column-amortized freshenCollision pass-1 dirty scan (~2.34%) — SHIPPED | — | — |
 | [#86](#c29c1332-86) | `c29c1332` | done | Liquid WorkingCell churn (~1.7%) — INVESTIGATED: determinism-locked, DEFER cluster | — | — |
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
@@ -155,7 +156,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#106](#c29c1332-106) | `c29c1332` | done | Point-pass GPU optimization — Part 1 BYTE-EQUIVALENT (authored on | — | — |
 | [#107](#c29c1332-107) | `c29c1332` | done | Dirty-REGION lighting — Stage 2 implemented+fixed, building; next: oracle-gated verify | — | — |
 | [#108](#c29c1332-108) | `c29c1332` | done | Propagate flicker fix (lightingPromoteMinIntensity, 4c45f1a) to gpu-lighting-standalone + dev | — | — |
-| [#109](#c29c1332-109) | `c29c1332` | done | Temporal lighting decoupling — brainstorm → design → plan → implement (flicker-robust GPU-load cut) | — | — |
+| [#109](#c29c1332-109) | `c29c1332` | done | Temporal lighting decoupling — brainstorm → design → plan → implement (flicker-robust GPU-load cut) | — | `board.md` |
 | [#110](#c29c1332-110) | `c29c1332` | done | GPU-render-ladder: mission design + spec (brainstorm) | — | — |
 | [#111](#c29c1332-111) | `c29c1332` | done | GPU-ladder Rung 0: per-pass GPU-timer telemetry + RAPL harness | — | — |
 | [#112](#c29c1332-112) | `c29c1332` | done | GPU-ladder Rung 1 (R-A): bicubic→bilinear lightmap sample | — | — |
@@ -176,23 +177,23 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#127](#c29c1332-127) | `c29c1332` | done | Texture-upload churn (#127) — stable-grid lever SHIPPED (91e3fca, cluster 7.09%→2.37%) | — | — |
 | [#128](#c29c1332-128) | `c29c1332` | done | Lighting GPU-pass dispatch CPU lever (~13% render-thread frame CPU) | — | — |
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
-| [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | — |
-| [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | — | — |
-| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | — |
-| [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | — | — |
+| [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | `matrix-prereq-ledger.md` |
+| [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
+| [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
+| [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
-| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | — | — |
-| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | — | — |
+| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `d8f36de7` `404781e0` `0c27d76b` `a8196e52` `6e1e691f` `4e95c50c` | `matrix-prereq-ledger.md` |
+| [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `3a30d7d8` `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
 | [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
-| [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | — | — |
+| [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
-| [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | — |
+| [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `matrix-prereq-ledger.md` `2026-07-25-unified-telemetry-model-design.md` |
 | [#142](#c29c1332-142) | `c29c1332` | done | FBO-1: FBO subsystem hardening — honour explicit size, gate oracle surfaces, diagnosable failures | — | — |
 | [#143](#c29c1332-143) | `c29c1332` | done | CM-1: merge the env + parallax composes into one full-screen pass (MEASURED: ~2ms/frame) | — | — |
-| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | — |
-| [#145](#c29c1332-145) | `c29c1332` | done | RS-0 DONE: the design gate passed 2026-07-14; spec approved, committed, and now implemented by L1/L2 | — | — |
-| [#146](#c29c1332-146) | `c29c1332` | done | GT-1: ItemTest.ItemComparison — exactMatch compares post-buildscript vs pre-buildscript parameters | — | — |
+| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | `matrix-prereq-ledger.md` |
+| [#145](#c29c1332-145) | `c29c1332` | done | RS-0 DONE: the design gate passed 2026-07-14; spec approved, committed, and now implemented by L1/L2 | — | `layer1-vs-vanilla-assessment.md` |
+| [#146](#c29c1332-146) | `c29c1332` | done | GT-1: ItemTest.ItemComparison — exactMatch compares post-buildscript vs pre-buildscript parameters | `abf6e2eb` | — |
 | [#147](#c29c1332-147) | `c29c1332` | done | J-2: obstacle flag in the lightmap's unused alpha (17 -&gt; 9 taps) — BLOCKED on a lighting bit-identity oracle | — | — |
 | [#148](#c29c1332-148) | `c29c1332` | done | RI-1: Renderer contract — delete the dead, exile the instrumentation | — | — |
 | [#149](#c29c1332-149) | `c29c1332` | done | ENV-1: RETRACTED — env oracle was run outside its contract (N=4); at N=1 it is 380 MATCH / 0 DIFF | — | — |
@@ -207,112 +208,113 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#158](#c29c1332-158) | `c29c1332` | done | RB-5a/b/c DONE (91bed0d2a, f46500f90): AA-toggle orphan samplers + last size-rule copy + dup uniform owner | — | — |
 | [#159](#c29c1332-159) | `c29c1332` | done | RB-6/RB-7 DONE (b74937721, d05f21682): texture internalFormat record + pass notified of target rebuild | — | — |
 | [#160](#c29c1332-160) | `c29c1332` | done | L1 FINISH (§9): steps 1-6 to bring Layer 1 to the Layer-2/3 bar — Director-approved | — | — |
-| [#161](#c29c1332-161) | `c29c1332` | open | Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all | — | — |
+| [#161](#c29c1332-161) | `c29c1332` | open | Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all | — | `2026-07-19-compose-merge-and-rs0-finish-design.md` |
 | [#162](#c29c1332-162) | `c29c1332` | done | CPU-1: explore context — what the frame loop times today, thread ownership, frame-skip | — | — |
 | [#163](#c29c1332-163) | `c29c1332` | done | CPU-2: clarifying questions + 2-3 approaches (brainstorm) | — | — |
 | [#164](#c29c1332-164) | `c29c1332` | done | CPU-3: present design + get Director approval | — | — |
 | [#165](#c29c1332-165) | `c29c1332` | done | CPU-4: transition to writing-plans (brainstorm terminal) | — | — |
-| [#166](#c29c1332-166) | `c29c1332` | done | CPU-5 DONE: unified telemetry model shipped; one verification step deliberately not run (see #172) | — | — |
-| [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | — | — |
-| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | — | — |
+| [#166](#c29c1332-166) | `c29c1332` | done | CPU-5 DONE: unified telemetry model shipped; one verification step deliberately not run (see #172) | `84ca718f` `1bfa935d` `5e8f66d3` `b3c88551` `497e398c` `313095f1` `5eb17518` `61531413` `39992d4b` `4797f33d` `e2966ad2` | — |
+| [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
+| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | — | — |
+| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | `board.md` |
 | [#171](#c29c1332-171) | `c29c1332` | open | Producer-side lighting CPU is billed to owner `frame` and cannot be attributed without a telemetry model change | — | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
-| [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | — | — |
-| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | — | — |
-| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | — | — |
-| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | — | — |
-| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | — | — |
-| [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | — | — |
-| [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | — | — |
-| [#182](#c29c1332-182) | `c29c1332` | done | AX-A14 DONE: ContentKey's quantiser was UNDEFINED, not merely untested — fixed + 6 tests (13ed9399) | — | — |
-| [#183](#c29c1332-183) | `c29c1332` | done | AX-A3-RATCHET DONE: all 17 singleton reads metered, relocation is no longer a route to green (8eddcb37) | — | — |
-| [#184](#c29c1332-184) | `c29c1332` | done | AX-A3-WORLDPASS DONE (declaration): four consumed inputs documented at the signature (252bed68) | — | — |
-| [#185](#c29c1332-185) | `c29c1332` | done | AX-A2-CONFIG DONE: getOrDefault + config_declared gate; newLighting declared, antiAliasing moved down (d46fee26) | — | — |
-| [#186](#c29c1332-186) | `c29c1332` | done | AX-A3-TIDY DONE: dead includes deleted, compose call site folded, false L2 build claim corrected (252bed68) | — | — |
-| [#187](#c29c1332-187) | `c29c1332` | done | AX-A6 DONE: label rule + preset filter asserted at configure time, both proven to fire (786d4342) | — | — |
-| [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | — | — |
-| [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | — | — |
-| [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | — | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | — | — |
-| [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | — | — |
-| [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | — | — |
-| [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | — | — |
-| [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | — | — |
-| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | — | — |
-| [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | — |
+| [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
+| [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `90d8d236` `4eb7b96c` | — |
+| [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `1014c3b2` `82711412` `0a027243` `00f575ad` | — |
+| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
+| [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `e8d6860a` `7c0e8340` `c89be289` | — |
+| [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | `6b6e8b72` | — |
+| [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | `472fd263` | — |
+| [#182](#c29c1332-182) | `c29c1332` | done | AX-A14 DONE: ContentKey's quantiser was UNDEFINED, not merely untested — fixed + 6 tests (13ed9399) | `13ed9399` | — |
+| [#183](#c29c1332-183) | `c29c1332` | done | AX-A3-RATCHET DONE: all 17 singleton reads metered, relocation is no longer a route to green (8eddcb37) | `8eddcb37` | — |
+| [#184](#c29c1332-184) | `c29c1332` | done | AX-A3-WORLDPASS DONE (declaration): four consumed inputs documented at the signature (252bed68) | `252bed68` | — |
+| [#185](#c29c1332-185) | `c29c1332` | done | AX-A2-CONFIG DONE: getOrDefault + config_declared gate; newLighting declared, antiAliasing moved down (d46fee26) | `d46fee26` | — |
+| [#186](#c29c1332-186) | `c29c1332` | done | AX-A3-TIDY DONE: dead includes deleted, compose call site folded, false L2 build claim corrected (252bed68) | `252bed68` | — |
+| [#187](#c29c1332-187) | `c29c1332` | done | AX-A6 DONE: label rule + preset filter asserted at configure time, both proven to fire (786d4342) | `786d4342` | — |
+| [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
+| [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
+| [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `matrix-prereq-ledger.md` `2026-08-01-target-state-system-architecture.md` |
+| [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
+| [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
+| [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
+| [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
+| [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `903f4ce0` `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
+| [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | `matrix-prereq-ledger.md` |
 | [#198](#c29c1332-198) | `c29c1332` | open | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | — | — |
-| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | — | — |
-| [#200](#c29c1332-200) | `c29c1332` | done | ARCH-1 DONE: boundary doc + arch-graph generator + arch_graph_fresh gate all in the tree and green | — | — |
-| [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | — | — |
-| [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | — | — |
-| [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | — | — |
-| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | — | — |
-| [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | — | — |
-| [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | — |
-| [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | — | — |
+| [#199](#c29c1332-199) | `c29c1332` | open | HEADLESS-1 DEFERRED: sink-gating landed (f7609bb7); a real headless client is its own engineering effort | `f7609bb7` | `2026-08-02-tssa-levelling-analysis.md` |
+| [#200](#c29c1332-200) | `c29c1332` | done | ARCH-1 DONE: boundary doc + arch-graph generator + arch_graph_fresh gate all in the tree and green | `7d22d2bb` | — |
+| [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
+| [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
+| [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
+| [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `3eed5ab8` `d4d07d9a` `d65c9488` `a0ace793` `f6855fef` `bd139fc8` `bd9e4f4d` `84fe2324` `2bcc88e1` `c8bf863b` `c363e052` `8366f2f6` `fa6f4d8f` `a0bbb0c1` `87e92674` `f53212d9` `a58a3499` `cf59f083` `76d6cf2d` `64ac2ab6` `9224f07b` `9c4527a1` `62b6cc67` `b55cc5ce` `1899aa71` `eab2c181` `d7cdce50` `73277aaf` `2d094c06` `02de4584` `471ec6c9` `a74351e4` `e386d983` `32d3f76c` `46894dae` `31b534bf` `466c19cc` `82170188` `32b6373d` `2e9d964d` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
+| [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
+| [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
+| [#207](#c29c1332-207) | `c29c1332` | done | TSSA-2 DONE: the levelling pass closed; its one "remaining" item shipped at 706c7f4a and its blocker was never real | `60a66f02` `bfe38c92` `706c7f4a` `890218ab` `2920def1` `a64b21c7` `1df6af1c` `337f5494` `d2eadae4` `9442b154` `248b9a74` `ed5e7125` `cdea71c1` `de57756e` `82955390` `ef074409` `41b7adfd` `3ee6021d` `170a17cb` `a0e43c2c` `eab0b4da` `5f2933ad` `a96a3575` `6d5100fb` `78a8a4b5` `c16a0f07` `51415bfe` `f5faf4cf` `5db63949` `b1b34d9a` `550a3b5e` `b976ae79` `8bc6590e` `12f08312` `0c96063d` `b86a1ad0` `4011f1af` `8e742ae7` `176d60be` `45af8da3` `a58ef402` `3f767902` `f6744d04` `6184248e` `7952fb50` `669dbc29` `fdad9c5d` `b8f61e9f` `b69cd406` `62fe4dbd` | — |
 | [#208](#c29c1332-208) | `c29c1332` | open | TSSA-3: register fields, aggregate review, re-home the anchoring gates | — | — |
 | [#209](#c29c1332-209) | `c29c1332` | done | TSSA-4: give the derivable numbers an owner — 2 live defects found, ZONE tally + closure numerators ungated | — | — |
-| [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | — | — |
-| [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | — | — |
-| [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | — | — |
-| [#213](#c29c1332-213) | `c29c1332` | done | LIGHT-DEDUP-1 CLOSED (7879e0a2): 140 lines -&gt; 70, byte-identical at instruction level; beam divergence declared and… | — | — |
-| [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | — | — |
-| [#215](#c29c1332-215) | `c29c1332` | done | ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected | — | — |
-| [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | — | — |
-| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | — | — |
-| [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | — | — |
-| [#219](#c29c1332-219) | `c29c1332` | done | LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052) | — | — |
-| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | — | — |
-| [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | — | — |
-| [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | — | — |
-| [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | — | — |
-| [#224](#c29c1332-224) | `c29c1332` | done | SPREAD-CAP-1 CLOSED: cap 48 covers 100% of measured content (10 locations); margin is 1.7% but a breach is now loud, no… | — | — |
-| [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | — | — |
-| [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | — | — |
-| [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | — | — |
-| [#228](#c29c1332-228) | `c29c1332` | done | BEAM-EPS-1 CLOSED (0fed2045): unified on 0; bit-identical for all real content, colored path provably untouched | — | — |
-| [#229](#c29c1332-229) | `c29c1332` | done | GPUTEL-B1: explore context for the sovereign GPU telemetry design | — | — |
+| [#210](#c29c1332-210) | `c29c1332` | done | RACE-1 DONE (66ec860b): sector unload now holds m_lightMapPrepMutex; TSan verification DEFERRED | `66ec860b` | — |
+| [#211](#c29c1332-211) | `c29c1332` | done | GL-GUARD-1 CLOSED: guard b1e66be4 + ARB arm now dispatches to glMinSampleShadingARB (b18797e4) | `b18797e4` `b1e66be4` | — |
+| [#212](#c29c1332-212) | `c29c1332` | done | TEST-CI-1 DONE (f5088933): 20 lighting assertions now run in CI; configure-time guard proven to fire | `f5088933` | — |
+| [#213](#c29c1332-213) | `c29c1332` | done | LIGHT-DEDUP-1 CLOSED (7879e0a2): 140 lines -&gt; 70, byte-identical at instruction level; beam divergence declared and… | `0fed2045` `c8bf863b` `7879e0a2` | — |
+| [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
+| [#215](#c29c1332-215) | `c29c1332` | done | ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected | `84fe2324` `c1a4433d` | — |
+| [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | `84fe2324` `7dbf8c98` | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
+| [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `bc0305df` `9e56c204` | — |
+| [#219](#c29c1332-219) | `c29c1332` | done | LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052) | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
+| [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | `board-audit-2026-08-08.md` |
+| [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
+| [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
+| [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
+| [#224](#c29c1332-224) | `c29c1332` | done | SPREAD-CAP-1 CLOSED: cap 48 covers 100% of measured content (10 locations); margin is 1.7% but a breach is now loud, no… | `f95abac2` `9f2aba93` `8b05254b` `bf6fa6bf` `5f77683b` | — |
+| [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
+| [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | `matrix-prereq-ledger.md` |
+| [#227](#c29c1332-227) | `c29c1332` | done | ATTRIB-1 CLOSED (122ca40a): all 7 artefacts attributed; imgui grant found upstream; the field is now gated on correspon… | `aa484259` `122ca40a` | — |
+| [#228](#c29c1332-228) | `c29c1332` | done | BEAM-EPS-1 CLOSED (0fed2045): unified on 0; bit-identical for all real content, colored path provably untouched | `0fed2045` | — |
+| [#229](#c29c1332-229) | `c29c1332` | done | GPUTEL-B1: explore context for the sovereign GPU telemetry design | `8a081d61` `dc722dee` `934afba9` `c3a92060` `8d5734f6` `fecf37f6` `320b67bc` `c3181e45` `e6bde922` `8ed374c4` `fb9c13bc` `db4e35d2` `60997cb8` `11ebce0c` `8261ce4e` `dcb7daf6` `9b3c9428` | — |
 | [#230](#c29c1332-230) | `c29c1332` | done | GPUTEL-B2: clarifying questions, one at a time | — | — |
 | [#231](#c29c1332-231) | `c29c1332` | done | GPUTEL-B3: propose 2-3 approaches with trade-offs | — | — |
 | [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
-| [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | — | — |
-| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | — | — |
-| [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | — | — |
-| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | — | — |
-| [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | — | — |
-| [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | — | — |
-| [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | — | — |
-| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | — | — |
-| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | — | — |
-| [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | — | — |
-| [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | — | — |
-| [#245](#c29c1332-245) | `c29c1332` | **active** | DESC-CONVERGE: the vocabulary was built and nothing spoke it — unit and boundedness now read, banked evidence preserved | — | — |
+| [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
+| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `7fa1d2ed` `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
+| [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
+| [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` `dd878dbe` | — |
+| [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
+| [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
+| [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
+| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
+| [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` `7ec8a0bb` `c0238e96` | — |
+| [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
+| [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `361f9e8d` `35bbb97c` `495682df` `543a2587` | — |
+| [#245](#c29c1332-245) | `c29c1332` | done | DESC-CONVERGE CLOSED: unit and boundedness are read, the ratchet counts only what it names, and two of my own claims we… | `da28b864` `a01c4a9c` `21adb941` `bc0305df` `7f222773` `fe20f87d` `bea29db1` `fa04b907` `aa484259` | — |
 | [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
-| [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | — | — |
-| [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | — | — |
-| [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | — | — |
-| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | — |
+| [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
+| [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
+| [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
+| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
-| [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | — | — |
-| [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | — | — |
-| [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | — | — |
-| [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | — | — |
-| [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | — | — |
-| [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | — | — |
-| [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | — | — |
+| [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
+| [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
+| [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `a4fc43b3` | — |
+| [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `574879f3` `c19cb959` `94f44d59` | — |
+| [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
+| [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
+| [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | open | BOARD-CITE: a board-only commit that discusses a task gets cited as evidence for it — twice in two commits | — | — |
 | [#264](#c29c1332-264) | `c29c1332` | open | LEVER-CPU-WEIGHTED: the per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | open | SIM-ON-RENDER-LEVERS: owner `sim` moved on three render-side levers and nothing explains it | — | — |
-| [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted | — | — |
+| [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
+| [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
 
@@ -322,55 +324,6 @@ The stored description of every task, verbatim. This is the part that makes a `[
 git history resolvable from the repo alone. Descriptions are fenced rather than inlined because
 some records contain literal markup from malformed task creation, and losing bytes to a
 renderer would defeat the purpose.
-
-### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
-
-<a id="6c8fc9cc-4"></a>
-
-#### #4 — L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist
-
-status: **pending**
-
-- `6c75f4aa` board: evidence rendered for every store, and #245's progress written back
-
-```
-From the hostile 58-agent architecture audit. Full brief: docs/render/architecture-assessment.md §6. Ranked; do B first.
-
-B (DO FIRST -- doc only, ~1hr, highest value per minute). FOUR FALSE COMMENTS IN THE SOURCE:
-  * hpp:443 states bindTarget "binds a TARGET and it writes an EFFECT-PROGRAM UNIFORM. That single fact is the
-    entire argument for this component." bindTarget issues ZERO glUniform calls -- the write was deleted in
-    F3b.1 as provably dead, the .cpp documents the deletion, and the header was never updated. The header
-    states the component's reason to exist and it is false.
-  * hpp:269, hpp:418, cpp:1034, cpp:2182 all name switchGlFrameBuffer -- a function that does not exist.
-  * hpp:303-306 "the enclosing renderer needs the raw faces to allocate, resize and clear them" -- it does
-    not; resize/clearFaces/makeDoubled are public.
-  * hpp:400 the friend's justification ("the oracle reads pixels back out of a target by name") -- the oracle
-    does that entirely through the public find(). A non-sequitur guarding a hole nobody takes.
-  The file currently teaches an architecture more confidently than it implements one. Fix that first.
-
-A (a REAL latent bug -- its own commit). makeDoubled() calls allocateFace, which glGenFramebuffers into
-  faces[1].id and THEN can throw on glCheckFramebufferStatus. On that throw faces[1] holds a live FBO and
-  texture while `doubled` is still false -- and the destructor loops `doubled ? 2u : 1u` and FORGETS IT. That
-  is upstream's altId leak, resurrected inside our own resolver, whose destructor comment says "the second
-  face cannot be forgotten." `bool doubled` is a biconditional the type does not enforce. Idiomatic fix:
-  Maybe<Face> secondFace -- a pattern this file already uses (Maybe<Vec2U> overrideSize). Then existence IS
-  the fact.
-
-C (pure-structural, ~30min). renderGlBuffer issues 6 GL calls per effect texture where upstream issues 2 --
-  four glTexParameteri we added, sitting INSIDE the vertex-buffer loop although their args depend only on
-  (effect, texture), never on vb. Re-issued per buffer, every frame. Hoisting above the vb loop is
-  byte-identical in GL state at every glDrawArrays. MEASURE IT; do not claim a win without a number.
-
-D (pure-structural, ~2hr; overlaps residuals item 2 -- do together or do the bind key first). GlPass has ZERO
-  `private:` keywords and takes 32 raw field pokes from the renderer, and hand-rolls the inverse of
-  bindTarget at two sites that DO NOT AGREE with each other. Give it a private section and a
-  GlPass::unbind(Vec2U). Until then it is a namespace with a bind() attached, not a component.
-
-E (upstream). Only postprocess-passes is genuinely liftable (one token). shader-compile-recovery's patch is
-  written against our ALREADY-REFACTORED loadEffectConfig -- its upstream form is unwritten work, not a
-  cherry-pick. Say so in the PR or write it against upstream first. AND FETCH UPSTREAM BEFORE FILING: our ref
-  is the fork point, ~83+ commits stale.
-```
 
 ### Store `c29c1332-648a-42c6-87f0-1a6f14884fb0`
 
@@ -4261,6 +4214,7 @@ STILL OUTSTANDING:
 
 status: **completed**
 
+- `bc0305df` [#245] the client reads three keys it does not own, instead of re-declaring them
 - `9e56c204` docs(comments): the comment standard, the sweep, and the one gate it earns
 
 ```
@@ -5346,133 +5300,98 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 <a id="c29c1332-245"></a>
 
-#### #245 — DESC-CONVERGE: the vocabulary was built and nothing spoke it — unit and boundedness now read, banked evidence preserved
+#### #245 — DESC-CONVERGE CLOSED: unit and boundedness are read, the ratchet counts only what it names, and two of my own claims were wrong
 
-status: **in_progress** · metadata: `{"rank": 1}`
+status: **completed** · metadata: `{"rank": 1}`
 
+- `da28b864` [#245] I called the capture mode "the real blocker" without checking the corpus; it is a hazard, and now it is recorded
+- `a01c4a9c` [#245] clock_ratchet counted three things it shouldn't, and one it couldn't move
+- `21adb941` [#245] the runner claimed a migration that had already landed, and wrote the claim into evidence
+- `bc0305df` [#245] the client reads three keys it does not own, instead of re-declaring them
+- `7f222773` [#245] descConflict finally has a reader outside a test
 - `fe20f87d` [#245] a gauge now says whether it is a level or a peak, and the consumer believes it
 - `bea29db1` [#245] the closure refuses to add quantities in different units
 - `fa04b907` [#245] the before-picture: the consumer's answers are now a thing a gate can check
 - `aa484259` evidence: hash the one matrix run that can still be re-windowed
 
 ```
-Spec exists: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
+Spec: docs/superpowers/specs/2026-08-06-metric-descriptor-convergence-design.md
 
-lever-matrix.sh emits raw legs and a manifest and explicitly does NOT attribute cost, because
-"the analysis half reads the telemetry vocabulary, and the vocabulary is being converged". This
-is that convergence, plus the analysis half it unblocks.
+lever-matrix.sh emitted raw legs and explicitly did NOT attribute cost because "the vocabulary is
+being converged". This was that convergence — and the closing pass established that the quoted
+reason had not been true for over a week.
 
-=== CORRECTED BY THE 2026-08-08 BOARD AUDIT: three of this task's four premises had rotted ===
+=== WHAT SHIPPED (8 commits) ===
 
-THE SCHEMA STEP IS DONE; THIS IS NOT A 3->4 TASK ANY MORE. 9db54200 added the seven convergence
-fields to MetricDesc and to the wire and bumped the schema 3 -> 4, citing this task's own spec, and
-telemetry-window.py:148-158 already forwards the WHOLE descriptor rather than the hardcoded five.
-Per the spec §7, "the bump is not the migration". What remains under this task is SITE POPULATION,
-the unit-aware consumer arithmetic (the hardcoded microsecond assumption), the named-descriptor-
-factory resolution, and the cost-attribution half.
+aa484259  EVIDENCE PRESERVED. harness/ is gitignored with ZERO tracked files, and NINE of ten banked
+matrix runs kept no .snapshots — they banked the consumer's OUTPUT and discarded its INPUT and can
+never be re-windowed. Only matrix-20260808-140430 kept its 486 snapshot files, and it is the basis
+of the 27-leg result. Read-only copy at /root/backups/openstarbound-evidence/ +
+docs/evidence/matrix-20260808-140430.manifest.md, verifying 599/599 files, 0 mismatches. The
+manifest is deliberately the only TRACKED half — the corpus carries a player save.
 
-"ZERO PRODUCTION SITES POPULATE ANY OF THEM" IS NOW FALSE FOR TWO OF THE SEVEN. unit and clock are
-populated at 57 production sites across nine files (source/application/StarMainApplication_sdl.cpp,
-StarRenderer_opengl.cpp, source/client/StarClientApplication.cpp, source/core/StarTelemetryReporter.cpp,
-StarTelemetry.cpp, source/rendering/StarGpuLightmapPass.cpp, StarWorldPainter.cpp, StarBackdropPass.cpp,
-StarWorldPass.cpp), shipped by [#235] at e368f046 + eec79ca1, and the undeclared remainder is
-RATCHETED -- gate clock_ratchet, ceiling 109, slack 0.
-FIVE fields remain at zero production sites: source, boundedness, measures, validWhen, whole. (`whole`
-is set only at source/test/telemetry_test.cpp:66-69, and is inert: telemetry-window.py never reads a
-per-metric whole.)
+fa04b907  THE BEFORE-PICTURE, BUILT FIRST. No gate could judge a consumer change: every other gate
+reads the SOURCE, this one reads the ANSWERS. banked_corpus_reread re-windows all 27 legs and diffs
+window/metrics/owners/zeroed/violations/label plus meta. Exclusion set is FOUR keys, a closed
+literal, with an arm proving a look-alike key still fires. Exits 77 in CI (untracked corpus).
 
-THE SITE COUNT IS 167, NOT 139. `python3 scripts/metric-desc-lint.py --check` reports "167 MetricDesc
-site(s)", of which 2 are test fixtures -> 165 production; the clock ratchet's own denominator is 166.
+bea29db1  THE LIVE DEFECT: THE CLOSURE ADDED QUANTITIES IN DIFFERENT UNITS. Schema 4 shipped `unit`
+at 58 sites and TRANSPORTED it; nothing read it. A correctly-declared nanosecond metric would have
+been summed as microseconds, 1000x, silently, version check passing. unit_basis() now runs BEFORE
+the sum. Mixed units REFUSE the closure; no conversion is guessed. Weakness declared: undeclared is
+homogeneous with itself, because refusing 109 of 146 banked metrics would refuse the evidence.
 
-BLOCKER CLEARED. #243 is done (d3650330); reg_ratchet is registered at gates.yml:253. The sequencing
-reason still holds and is worth keeping as a WARRANT rather than a blocker: this sweep touches every
-MetricDesc site, which is the highest-risk moment for reintroducing the lazy-registration pattern that
-produced nine findings -- the ratchet is in place, so the sweep may proceed.
+fe20f87d  A GAUGE SAYS WHETHER IT IS A LEVEL OR A PEAK. Four of eight gauges never fall — verified
+at the WRITE SITE (`s = max(s, x)`), not inferred from the name. The consumer windowed every gauge
+as a level, so a run-long peak arrived in `value` beside a counter's honest window delta. All eight
+declared; a peak emits runLongMax + peakNotWindowed. boundedness_declared is A RULE, NOT A RATCHET.
 
-THE #235 COUPLING IS DISCHARGED. #235 completed without adding a second per-timer accumulator --
-MetricNode carries one `total` -- so the "decide deliberately whether they land together" paragraph
-has no live interaction to resolve.
+bc0305df  The cross-TU re-declaration removed; the one-argument overload asserts no descriptor, so
+there is nothing left to drift. descConflict/typeConflict gained a real consumer reader + test —
+they had been a claim with no instrument in the very field this task was populating.
 
-=== IN PROGRESS 2026-08-15. FIVE COMMITS. THE SCOPE COLLAPSED FROM 165 SITE EDITS TO 9 ===
+21adb941  THE RUNNER CLAIMED A MIGRATION THAT HAD ALREADY LANDED, AND WROTE THE CLAIM INTO EVIDENCE.
+Three sites said "being converged (schema 3 -> 4)"; the bump landed at 9db54200 and the file was
+edited two days later, so the stale claim rode into banked manifests — one site is a string written
+into every manifest.json. New gate `convergence_claims` is anchored on the LIVE SCHEMA read from
+telemetry-window.py, not on the string "schema 3 -> 4", which would pass the moment someone wrote
+"4 -> 5". Rule: a claim that something is in flight must name its destination, and that destination
+must not already have been reached. Null control against the ORIGINAL file from git: 4 sites fire at
+schema 4, ZERO at schema 3 — it was correct when written, which is why reading it never caught it.
 
-A 8-agent survey (wf_f9fcd43d-f37) returned two adversarial FATALs and I adopted both after
-verifying them in the tree myself:
+a01c4a9c  THE RATCHET COUNTED THREE THINGS IT SHOULDN'T. clock_ratchet rglobbed source/test/, where
+one fixture site was undeclared against a slack of exactly one — deleting a test file was a legal
+way to buy headroom for a new production violation. It also counted the two `MetricDesc{}`
+sentinels, which are the deliberate ABSENCE of a descriptor. 108/165 was three parts wrong; repaired
+corpus is 105/161, ceiling 109 -> 105, slack 1 -> 0.
+  THE PLAN SAID ADD A `unit_ratchet`; I MEASURED FIRST AND IT WOULD HAVE BEEN A DUPLICATE. The two
+  sets are IDENTICAL — all 105 sites lacking a clock also lack a unit, because the population is
+  exactly the sites still using the positional form. One ceiling now counts either facet.
+  Renamed clock_ratchet -> desc_facet_ratchet, and the one live prose reference was remapped by
+  reading it.
 
-  * ALL ELEVEN PROPOSED `whole` PAIRINGS ARE A CATEGORY ERROR. Every one sat on a
-    `MetricRole::Detail`, and StarMetricDesc.hpp:57 defines Detail as "nested inside a Budget part;
-    NEVER SUMMED". A Detail metric closes against nothing. Deferred to #171, which owns the field's
-    earning defect and is the only case that needs it.
-  * THE ~110-SITE PROSE SWEEP IS OUT. Two proposed `validWhen` strings are FALSE at HEAD, and 27 of
-    the rest restate `MetricClock::GpuTimeline`, which is already declared at those sites AND already
-    enforced by `gpu_timeline_role`. Populating 165 sites with restatement is worse than leaving them
-    honest and empty. Deferred behind a `prose_no_restatement` gate that does not exist.
+da28b864  CORRECTION TO MY OWN 21adb941. Fixing the stale claim, I replaced it with a different
+wrong one: that attribution is blocked because the five Budget parts record only under
+telemetryDeepTracing (default false). The mechanism is real — TelemetryScope's constructor is
+`deepEnabled() ? now : -1` — but I reasoned from the DEFAULT to the CORPUS instead of reading the
+corpus. All 54 banked legs carry every Budget part at count=4498, the same count as the whole,
+because harness/storage-perf/starbound.config pins the flag TRUE. ATTRIBUTION IS NOT BLOCKED.
+  The real defect was one level up: nothing recorded which capture mode a leg ran in, and the pin
+  lives in a gitignored file — ABSENT-vs-ZERO promoted from a single key to a whole capture mode.
+  The manifest now records `captureDeepTracing`, read from the config the run actually used, and
+  records None rather than a guess when it cannot be read.
 
---- aa484259  EVIDENCE, AND IT IS NOT A #245 FINDING ---
-`harness/` is gitignored with ZERO tracked files, and NINE of the ten banked matrix runs retain no
-`.snapshots` at all -- they banked the consumer's OUTPUT and discarded its INPUT and can never be
-re-windowed. Only matrix-20260808-140430 kept its 486 snapshot files. That corpus is the basis of the
-27-leg result and was one `git clean -xdf` from gone. Now: a read-only copy at
-/root/backups/openstarbound-evidence/ and docs/evidence/matrix-20260808-140430.manifest.md, which
-verifies against it at 599/599 files, 0 mismatches. The manifest is deliberately the only TRACKED
-half -- the corpus carries a player save, and [#227]'s lesson was that our ignore rules are ours.
+=== SCOPE THAT WAS DELIBERATELY NOT DONE (survey wf_f9fcd43d-f37, two adversarial FATALs adopted) ===
+  * ALL ELEVEN PROPOSED `whole` PAIRINGS ARE A CATEGORY ERROR — every one sat on a MetricRole::Detail,
+    defined as "nested inside a Budget part; NEVER SUMMED". Deferred to #171.
+  * THE ~110-SITE PROSE SWEEP IS OUT. Two proposed validWhen strings are FALSE at HEAD, and 27 of the
+    rest restate MetricClock::GpuTimeline, already declared AND already enforced by gpu_timeline_role.
+    Populating sites with restatement is worse than leaving them honest and empty.
+  Four fields remain at zero production sites: source, measures, validWhen, whole.
 
---- fa04b907  THE BEFORE-PICTURE, BUILT FIRST ---
-Nothing in the gate set could judge a consumer change: every other gate reads the SOURCE, this one
-reads the ANSWERS. `banked_corpus_reread` re-windows all 27 legs with each leg's own meta.intervals
-and diffs window/metrics/owners/zeroed/violations/label plus meta. Green BEFORE any change: 27 legs,
-0 disagreements, 1.0s. Its exclusion set is FOUR keys (gpuClockMhzStart/End, packageTempCStart/End --
-hardware probes render-profile.sh writes AFTER the consumer ran, so they cannot round-trip) and it is
-a closed literal, not a prefix: an arm proves `gpuClockMhzMiddle` still fires. DEV-HOST; exits 77 in
-CI because harness/ is untracked, and `banked_reread_fires` runs everywhere so the pair is not
-unfalsifiable.
-
---- bea29db1  THE LIVE DEFECT: THE CLOSURE ADDED QUANTITIES IN DIFFERENT UNITS ---
-The spec's own risk table names it ("one side ns, the other us; a dimensionless check passes").
-Schema 4 shipped `unit` at 58 sites and TRANSPORTED it; nothing read it -- grep '"unit"' on the
-consumer returned zero. A correctly-declared nanosecond metric would still have been summed as
-microseconds, 1000x, silently, with the version check passing. `unit_basis()` now runs BEFORE the sum,
-because a number made from mixed units cannot be un-made by a warning printed after it. Mixed units
-REFUSE the closure and record a violation; no conversion is guessed. WEAKNESS DECLARED, NOT HIDDEN:
-undeclared is homogeneous with itself, because 109 of 146 banked metrics declare no unit and refusing
-them would refuse the evidence this project reasons with; the residual hole closes from the other end
-by ratcheting the undeclared count down, not by rejecting the past to protect the future.
-The selftest's "20/20" was a LITERAL while its arms were free to grow -- it now derives its own count.
-
---- fe20f87d  A GAUGE SAYS WHETHER IT IS A LEVEL OR A PEAK ---
-FOUR OF THE EIGHT GAUGES NEVER FALL -- verified at the WRITE SITE, not inferred from the name: each is
-`s = max(s, x)`, so its latest reading is the largest since PROCESS START. The consumer windowed every
-gauge as a level, so a run-long peak arrived in `value` beside a counter's honest window delta.
-StarMetricDesc.hpp:95-101 records that shipping twice, the histogram `max` field a third time.
-All eight declared: Level x4 (set to a CURRENT quantity), HighWaterMark x4. A peak is emitted as
-`runLongMax` + `peakNotWindowed`. Designated initializers at those eight sites because boundedness is
-field 8 and reaching it positionally means 8 bare enumerators in a row -- the transposition hazard
-positional init was replaced to avoid. `boundedness_declared` is A RULE, NOT A RATCHET: population 8,
-zero undeclared, so a ceiling would only license the ninth gauge to arrive undeclared.
-
-FOUND ON THE WAY: matrix_prereq_ledger's D09 signature pinned the POSITIONAL SPELLING of a descriptor
-rather than the property, so declaring boundedness read as a REGRESSION of a fix that was still there.
-Third instance of a gate outliving its vocabulary. Now matches the cadence in any initializer form.
-
-VERIFIED THROUGHOUT: banked_corpus_reread 27/27 byte-identical after EVERY change, so nothing above
-re-interpreted a single banked number. 62 gates green, metrics_mutual SKIPPED (needs a live GPU
-client). Build clean, 0 errors. Gate count 59 -> 63.
-
-=== STILL OPEN UNDER #245 ===
-  * `descConflict` has NO reader outside source/test/telemetry_test.cpp:255, while five renderer
-    comments state the design rests on it. A claim with no instrument, in the field this task is
-    populating. Make it a consumer violation.
-  * StarClientApplication.cpp:1808 re-declares three keys authoritatively declared in another TU
-    (StarBackdropPass.cpp:64-66). Harmless only while both descriptors stay enum-identical.
-  * `clock_ratchet`'s corpus INCLUDES source/test/, so its ceiling is partly satisfiable by deleting
-    a fixture -- the rule the file itself states three times. Plus two empty `MetricDesc{}` sentinels
-    that can never declare anything. Repair the corpus and lower the ceiling in the same edit.
-  * Two lever-matrix.sh strings still say the vocabulary "is being converged (schema 3 -> 4)"; the
-    bump landed at 9db54200 and the file was edited two days LATER, so a stale claim already rode
-    into banked manifests.
-  * The cost-attribution half is UNBLOCKED, not done -- and the blocker was never a missing field:
-    five of six Budget parts of cpu.frame.work.us record only under `telemetryDeepTracing` (default
-    false) while the whole records unconditionally, so a deep-off leg hands the attributor a
-    100%-unattributed frame budget that looks like a finding.
+VERIFIED THROUGHOUT: banked_corpus_reread 27/27 byte-identical after EVERY change — nothing above
+re-interpreted a single banked number. 64 gates green; metrics_mutual SKIP (needs a live GPU client,
+correctly not counted as a pass). Gate count 59 -> 66.
 ```
 
 <a id="c29c1332-246"></a>
@@ -6738,23 +6657,51 @@ about what the truth implies.
 
 <a id="c29c1332-266"></a>
 
-#### #266 — DESC-RATCHET-WIDTH: `clock_ratchet` counts undeclared CLOCKS only, so a descriptor-free counter or gauge is uncounted
+#### #266 — DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg READ can create one
 
 status: **pending** · metadata: `{"rank": 6}`
 
 ```
 Found while giving `telemetry`'s `falsified` facet its instruments ([#256], c19cb959).
 
-THE FALSIFIER: "if a handle can be created without a descriptor, a key can exist with no stated quantity." It is LIVE -- source/core/StarTelemetry.hpp still declares the descriptor-free overloads (counter/gauge/timer/rate by key alone, lines ~71-74) beside the declaring ones (~77-80).
+THE FALSIFIER: "if a handle can be created without a descriptor, a key can exist with no stated
+quantity." LIVE — source/core/StarTelemetry.hpp still declares the descriptor-free overloads
+(counter/gauge/timer/rate by key alone) beside the declaring ones.
 
-THE INSTRUMENT IS NARROWER THAN THE FALSIFIER. `clock_ratchet` (scripts/metric-desc-lint.py, undeclared_clocks()) counts undeclared CLOCK sites and ratchets them toward zero. A descriptor-free `Telemetry::counter(key)` or `Telemetry::gauge(key)` is not counted at all. The TSSA now states this narrowness explicitly rather than implying full coverage -- so the doc is honest, but the gap is real and unmeasured.
+=== STEP 1 (MEASURE FIRST) IS DONE, 2026-08-15. THE ANSWER IS NOT "0 OR N" ===
 
-WHAT TO DO, in order:
-  1. MEASURE FIRST. Count descriptor-free counter/gauge/rate registrations across the tree. Until that number exists, "widen the ratchet" is a claim with no instrument -- the number may be 0, in which case the right move is deleting the overloads, not ratcheting them.
-  2. If non-zero: widen undeclared_clocks() to all four handle kinds (rename accordingly -- a gate's name is read as its scope), set the ceiling at the measured count, and prove it fires on growth AND refuses a vacuous match, per the existing arms.
-  3. If zero: DELETE the four descriptor-free overloads. A falsifier that cannot occur because the API will not express it beats one held at zero by a counter -- see the R14/R15/R16 pattern, where structural impossibility was chosen over vigilance every time.
+Grepping `Telemetry::{counter,gauge,timer,rate}(` for one-argument forms returns 12 production hits,
+and reading them rather than counting them:
+  * 4 are inside COMMENTS (StarRenderDiagnostics.hpp, StarRenderer_opengl.cpp x2, StarWorldPass.cpp)
+  * 1 is a false positive — StarRenderer_opengl.cpp `ring.timer = Telemetry::timer(name, desc)` DOES
+    pass a descriptor
+  * 2 are the DEFINITIONS of the overloads themselves (StarTelemetry.cpp:270, :273)
+  * 5 are genuine, all in StarClientApplication.cpp (:674, :675, :679, :680, :1810)
+So descriptor-free REGISTRATIONS in production: effectively ZERO. All five genuine uses are READS of
+a key another TU owns and declares — and one of them (:1810) was introduced DELIBERATELY at bc0305df
+precisely because the one-argument overload asserts no descriptor, which is what makes it unable to
+drift from the owner's declaration. Deleting the overloads outright would remove the SAFE form.
 
-RELATED: #245 (DESC-CONVERGE, schema 3->4) may subsume the API question -- check it before starting, because converging the descriptor and then ratcheting the old shape is work done twice.
+=== THE REAL DEFECT THE MEASUREMENT FOUND, AND IT IS AN ORDERING HAZARD ===
+`Telemetry::counter(String const& key)` is `registry().getOrCreate(key, MetricType::Counter)`. It is
+getOrCreate, not get. So a one-argument READ CREATES the node when the key is absent — a
+descriptor-free key, produced by a reader, on a path where the owner has not registered yet. That is
+ABSENT-vs-ZERO with the polarity reversed: instead of a key missing because its owner never ran, a
+key PRESENT and undescribed because a reader ran first. Whether any of the five can actually lose
+that race is UNVERIFIED and is the next step — do not assume it from the code shape alone.
+
+=== WHAT TO DO, REVISED ===
+  1. DONE — see above.
+  2. Establish whether any of the five reads can execute before the owning registration. If none can,
+     the hazard is theoretical and the right move is a comment plus a test pinning the order.
+  3. If any can: the fix is a READ-ONLY accessor that does NOT create (returning an absent handle),
+     not a wider ratchet. Structural impossibility over vigilance, as with R14/R15/R16.
+  4. The ratchet itself is now `desc_facet_ratchet` (renamed from clock_ratchet at a01c4a9c; it
+     counts sites under-declaring clock OR unit, ceiling 105, slack 0, source/test/ and empty
+     `MetricDesc{}` sentinels excluded). It counts MetricDesc SITES, so a descriptor-free handle is
+     still outside its scope — the narrowness this task names is unchanged by the rename.
+
+RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, not the API shape.
 ```
 
 <a id="c29c1332-267"></a>
@@ -6812,5 +6759,54 @@ SEQUENCE (9 steps, each landable alone; full text in the workflow output):
   9. Close #251 before any further GPU conclusion.
 
 STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 109, both slack zero) and A4 is strained on the 3,351-line Python tier, whose rules no register row admits to. Both are declared, not hidden.
+```
+
+### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
+
+<a id="6c8fc9cc-4"></a>
+
+#### #4 — L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist
+
+status: **pending**
+
+- `6c75f4aa` board: evidence rendered for every store, and #245's progress written back
+
+```
+From the hostile 58-agent architecture audit. Full brief: docs/render/architecture-assessment.md §6. Ranked; do B first.
+
+B (DO FIRST -- doc only, ~1hr, highest value per minute). FOUR FALSE COMMENTS IN THE SOURCE:
+  * hpp:443 states bindTarget "binds a TARGET and it writes an EFFECT-PROGRAM UNIFORM. That single fact is the
+    entire argument for this component." bindTarget issues ZERO glUniform calls -- the write was deleted in
+    F3b.1 as provably dead, the .cpp documents the deletion, and the header was never updated. The header
+    states the component's reason to exist and it is false.
+  * hpp:269, hpp:418, cpp:1034, cpp:2182 all name switchGlFrameBuffer -- a function that does not exist.
+  * hpp:303-306 "the enclosing renderer needs the raw faces to allocate, resize and clear them" -- it does
+    not; resize/clearFaces/makeDoubled are public.
+  * hpp:400 the friend's justification ("the oracle reads pixels back out of a target by name") -- the oracle
+    does that entirely through the public find(). A non-sequitur guarding a hole nobody takes.
+  The file currently teaches an architecture more confidently than it implements one. Fix that first.
+
+A (a REAL latent bug -- its own commit). makeDoubled() calls allocateFace, which glGenFramebuffers into
+  faces[1].id and THEN can throw on glCheckFramebufferStatus. On that throw faces[1] holds a live FBO and
+  texture while `doubled` is still false -- and the destructor loops `doubled ? 2u : 1u` and FORGETS IT. That
+  is upstream's altId leak, resurrected inside our own resolver, whose destructor comment says "the second
+  face cannot be forgotten." `bool doubled` is a biconditional the type does not enforce. Idiomatic fix:
+  Maybe<Face> secondFace -- a pattern this file already uses (Maybe<Vec2U> overrideSize). Then existence IS
+  the fact.
+
+C (pure-structural, ~30min). renderGlBuffer issues 6 GL calls per effect texture where upstream issues 2 --
+  four glTexParameteri we added, sitting INSIDE the vertex-buffer loop although their args depend only on
+  (effect, texture), never on vb. Re-issued per buffer, every frame. Hoisting above the vb loop is
+  byte-identical in GL state at every glDrawArrays. MEASURE IT; do not claim a win without a number.
+
+D (pure-structural, ~2hr; overlaps residuals item 2 -- do together or do the bind key first). GlPass has ZERO
+  `private:` keywords and takes 32 raw field pokes from the renderer, and hand-rolls the inverse of
+  bindTarget at two sites that DO NOT AGREE with each other. Give it a private section and a
+  GlPass::unbind(Vec2U). Until then it is a namespace with a bind() attached, not a component.
+
+E (upstream). Only postprocess-passes is genuinely liftable (one token). shader-compile-recovery's patch is
+  written against our ALREADY-REFACTORED loadEffectConfig -- its upstream form is unwritten work, not a
+  cherry-pick. Say so in the PR or write it against upstream first. AND FETCH UPSTREAM BEFORE FILING: our ref
+  is the fork point, ~83+ commits stale.
 ```
 
