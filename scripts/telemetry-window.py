@@ -117,6 +117,28 @@ def unit_basis(keys, w):
     return (declared[0] if len(declared) == 1 else None), assumed, declared
 
 
+def conflict_violations(w):
+    """-> [str] for every windowed metric whose two registration sites disagreed.
+
+    Kept as a function rather than an inline loop so the self-test can drive it: the conflict it
+    reports has never occurred in 72,900 banked readings, so a fixture is the only way to exercise it,
+    and a check that can only be reached through a full window() run is a check nobody writes an arm
+    for."""
+    out = []
+    for k in sorted(w):
+        if w[k].get("descConflict"):
+            out.append(
+                f"{k}: descConflict -- two registration sites declared this key with DIFFERENT "
+                f"descriptors, so its domain/owner/cadence/role/unit depend on which site ran first. "
+                f"Every figure derived from this metric is attributed by a coin toss.")
+        if w[k].get("typeConflict"):
+            out.append(
+                f"{k}: typeConflict -- two registration sites disagree about this key's TYPE "
+                f"(counter/gauge/timer). The windowing rule differs per type, so one of the two "
+                f"readings is being differenced under the wrong rule.")
+    return out
+
+
 def bucket_bounds(i):
     """Lower and upper microsecond bound of histogram bucket i (see Telemetry::histogramBucket).
 
@@ -498,7 +520,19 @@ def selftest():
     arm("an all-undeclared set is homogeneous with itself (the declared weakness)",
         unit_basis(["d", "e"], U) == (None, ["d", "e"], []))
 
-    # 26-29. THE PEAK. A HighWaterMark gauge is written `s = max(s, x)` and never falls, so its
+    # 26-29. THE CONFLICT FLAGS. Never true in 72,900 banked readings, so a fixture is the only way
+    #        to reach them -- which is exactly why they had no reader for so long. A flag that only
+    #        fires in circumstances nobody has produced still has to be PROVEN to fire.
+    arm("a clean metric raises no conflict violation", conflict_violations({"a": {}}) == [])
+    arm("descConflict raises one, naming the key",
+        [v.split(":")[0] for v in conflict_violations({"a": {"descConflict": True}})] == ["a"])
+    arm("typeConflict raises one too", len(conflict_violations({"a": {"typeConflict": True}})) == 1)
+    arm("both flags on one key raise BOTH -- they are different defects",
+        len(conflict_violations({"a": {"descConflict": True, "typeConflict": True}})) == 2)
+    arm("a falsy flag is not a conflict (the banked corpus is all false)",
+        conflict_violations({"a": {"descConflict": False, "typeConflict": False}}) == [])
+
+    # 31-35. THE PEAK. A HighWaterMark gauge is written `s = max(s, x)` and never falls, so its
     #        latest reading is the largest since PROCESS START. The banked corpus declares no
     #        boundedness at all (146 of 146), so this behaviour is unreachable from real data and a
     #        fixture is the only way to exercise it -- which is exactly why it needs one.
@@ -553,7 +587,8 @@ def selftest():
           "over-fire, its blind spot is asserted, the rank case is distinguished from a broken budget, "
           "a timer that recorded nothing is reported rather than silently dropped, every stamp names "
           "its own source, the series carries per-interval deltas rather than cumulative values, and a "
-          "closure whose parts declare different units is REFUSED rather than summed")
+          "closure whose parts declare different units is REFUSED rather than summed, a run-long peak is "
+          "never presented as a window value, and a descriptor conflict finally reaches a reader")
     return 0
 
 
@@ -656,6 +691,28 @@ def main():
           f"pkgTempC={meta.get('packageTempCStart')}->{meta.get('packageTempCEnd')}\n")
 
     violations = []
+
+    # DESCCONFLICT GETS ITS FIRST READER OUTSIDE A TEST, and that gap is the reason this exists.
+    #
+    # `Telemetry` raises descConflict when two call sites register one key with DIFFERENT descriptors,
+    # and typeConflict when they disagree about the metric's TYPE. Five comments in the renderer state
+    # that the design rests on it -- StarRenderer_opengl.cpp:1085 calls it "the only thing co-location
+    # would have to give up", :1097 says a second site "must match the descriptor exactly or
+    # descConflict fires", StarBackdropPass.cpp:28 says the same. It is serialised into every snapshot
+    # at StarTelemetry.cpp:510.
+    #
+    # Nothing read it. `grep -rn descConflict source/ scripts/` finds exactly one assertion, at
+    # source/test/telemetry_test.cpp:255, on a fixture the test itself constructs. So the flag fired
+    # only where a test had already arranged for it to, and a real conflict in a real run reached the
+    # snapshot, was written to disk, and was read by nobody. A claim with no instrument -- in the very
+    # field [#245] is populating, which is when descriptor disagreement becomes likely rather than
+    # theoretical.
+    #
+    # MEASURED BEFORE SHIPPING: 72,900 metric readings across all 486 banked snapshots carry
+    # descConflict=false and typeConflict=false, so this refuses nothing on today's corpus and the
+    # banked legs re-read byte-identically. It is exercised by fixtures, which is the honest place for
+    # a check whose subject has never occurred.
+    violations.extend(conflict_violations(w))
     # UNDECLARED, SAID OUT LOUD. The owner loop below skips owner=="unknown", and skipping is all it did:
     # a metric registered with an empty MetricDesc left the tables with no mention, so "nobody declared
     # this" and "this owner has no metrics" were the same output. StarRenderDiagnostics.hpp cites this line

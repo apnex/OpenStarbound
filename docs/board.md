@@ -109,7 +109,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 
 | Id | Store | Status | Subject | Commits | Cited in |
 |---:|:------|:-------|:--------|:--------|:---------|
-| [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
+| [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | `6c75f4aa` | — |
 | [#64](#c29c1332-64) | `c29c1332` | done | forEach v1: template forEachEntity (#1) + const&amp; (#5) + EntityMap oracle | — | — |
 | [#65](#c29c1332-65) | `c29c1332` | done | forEach: deterministic micro-benchmark (clean A/B number) | — | — |
 | [#66](#c29c1332-66) | `c29c1332` | open | forEach v2 #2: zero-contributor collision/force broad-phase early-out | — | — |
@@ -330,6 +330,8 @@ renderer would defeat the purpose.
 #### #4 — L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist
 
 status: **pending**
+
+- `6c75f4aa` board: evidence rendered for every store, and #245's progress written back
 
 ```
 From the hostile 58-agent architecture audit. Full brief: docs/render/architecture-assessment.md §6. Ranked; do B first.
