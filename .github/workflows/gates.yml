@@ -449,6 +449,22 @@ jobs:
       - name: lever_table -- the declared levers still match the harness config
         run: scripts/lever-matrix.sh --check-table
 
+      - name: banked_reread_fires -- the re-read comparison fires on a real difference
+        run: python3 scripts/ci/banked-reread.py --selftest
+
+      - name: banked_corpus_reread -- the consumer still reproduces the banked evidence
+        # DEV-HOST BY CONSTRUCTION, and the skip is the honest verdict rather than a defect. The
+        # corpus lives under harness/, which is gitignored and holds ZERO tracked files, so a CI
+        # runner and a fresh clone have nothing to compare. The gate above it needs no corpus and
+        # runs everywhere, which is what stops this pair from being unfalsifiable in CI.
+        run: |
+          python3 scripts/ci/banked-reread.py
+          rc=$?
+          if [ "$rc" = "77" ]; then
+            echo "banked_corpus_reread: SKIPPED -- see above. Nothing was compared; NOT a pass."
+          fi
+          exit $rc
+
       - name: metrics_mutual -- the two kernel readers agree, or say why they could not compare
         run: |
           if pgrep -x starbound >/dev/null; then
