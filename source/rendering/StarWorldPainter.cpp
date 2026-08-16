@@ -47,13 +47,21 @@ namespace {
   // Its .nested rejection counter -- see the note at the head of StarBackdropPass.cpp.
   auto s_composePassNested = Telemetry::counter("render.pass.compose.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
-  // PRODUCER-SIDE LIGHTING (#171), here for the reason this whole block exists. adjustLighting runs
-  // on every frame a world is drawn, but a WorldPainter exists only while a world is LOADED -- so a
-  // constructor member would leave the key ABSENT on any capture taken outside one, which a consumer
-  // differencing two snapshots cannot tell from "ran and cost nothing".
+  // PRODUCER-SIDE LIGHTING (#171), here for the reason this whole block exists: a WorldPainter exists
+  // only while a world is LOADED, so a constructor member would leave the key ABSENT on any capture
+  // taken outside one, which a consumer differencing two snapshots cannot tell from "ran and cost
+  // nothing".
+  //
+  // CADENCE::CALL, NOT FRAME, AND THE FIRST READING OF THIS INSTRUMENT IS WHAT CORRECTED IT. render()
+  // calls adjustLighting inside `if (lightMapUpdated)`, so it fires on lightmap-publish frames only:
+  // the smoke capture recorded 347 samples against 900 frames, matching lighting.gpu.cpu_cost.us's
+  // count exactly. Declared Frame, telemetry-window would have scaled the total up by 900/347 = 2.59x
+  // and invented cost for 553 frames the pass never ran on -- the identical defect cpu_cost's own
+  // registration comment documents having already shipped once (1099 of 1500 frames, 1.36x, 458 us
+  // reported against 336 actual).
   auto s_adjustLightingTimer = Telemetry::timer("lighting.produce.adjust.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
-               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
                .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
