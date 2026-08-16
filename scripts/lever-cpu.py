@@ -67,6 +67,11 @@ SUBSYSTEM = [
     "lighting.gpu.drive.spread.wall_fraction", "lighting.gpu.drive.point.wall_fraction",
     "lighting.gpu.drive.compose.wall_fraction", "lighting.gpu.drive.upscale.wall_fraction",
     "lighting.gpu.drive.flush.wall_fraction", "lighting.gpu.spread_scan.wall_fraction",
+    # #272's residual keys. drive.point.switch and drive.point.gputimer are SUBSETS of
+    # drive.point -- analysed per lever like any other key, never summed with their parent.
+    "lighting.gpu.drive.switch.wall_fraction", "lighting.gpu.drive.quad.wall_fraction",
+    "lighting.gpu.drive.gputimer.wall_fraction", "lighting.gpu.drive.bind.wall_fraction",
+    "lighting.gpu.drive.point.switch.wall_fraction", "lighting.gpu.drive.point.gputimer.wall_fraction",
     "lighting.produce.entities.wall_fraction", "lighting.produce.prep.wall_fraction",
     "lighting.produce.particles.wall_fraction", "lighting.produce.adjust.wall_fraction",
     "lighting.gpu.cpu_cost.wall_fraction", "lighting.cpu.total.wall_fraction",

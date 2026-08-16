@@ -31,10 +31,13 @@ namespace {
   // an O(cells) scan of the pass's own input that has never been inside lighting.gpu.cpu_cost.us --
   // it runs before that scope opens. A constructor member would not do: this pass is built only when
   // lightingGpu is on, so the key would be ABSENT on every GPU-lighting-off capture.
+  // A UNION MEMBER IN ITS OWN RIGHT (#269), precisely because of the sentence above: it runs BEFORE
+  // cpu_cost's scope opens, so it is disjoint from that member rather than nested inside it.
   auto s_spreadScanTimer = Telemetry::timer("lighting.gpu.spread_scan.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.cpu.union.us"});
 
   // ============================================================================================
   // THE PARTS OF lighting.gpu.cpu_cost.us (#271). That key is 152-159 us/frame -- larger than the
@@ -67,11 +70,16 @@ namespace {
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
                .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
-  // INCLUDES ONE IMPLICIT FLUSH THAT THIS DECOMPOSITION CANNOT SEPARATE, and saying so is the point:
-  // switchEffectConfig("lightingPoint") flushes the final spread quad into lastTarget (its own
-  // comment says so). Bracketing it under the flush key instead would conflate an effect switch with
-  // a wait; leaving it silently inside `point` would corrupt the very work-vs-wait answer this task
-  // exists for. Declared, and separable only by a renderer change.
+  // INCLUDES ONE IMPLICIT FLUSH: switchEffectConfig("lightingPoint") flushes the final spread quad
+  // into lastTarget (its own comment says so). Bracketing it under the flush key would conflate an
+  // effect switch with a wait; leaving it unremarked inside `point` would corrupt the work-vs-wait
+  // answer this decomposition exists for.
+  //
+  // [#271] wrote that separating it needed a renderer change, not a telemetry one. THAT WAS TOO
+  // STRONG, and drive.point.switch.us (#272) is the correction: the switch CALL is bracketable here
+  // and now is, so how much of this key is effect-switch rather than per-light work is answered.
+  // What still needs a renderer change is separating the flush INSIDE the switch from the switch
+  // itself -- flushImmediatePrimitives() is switchEffectConfig's first statement and has no seam.
   auto s_drivePoint = Telemetry::timer("lighting.gpu.drive.point.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
@@ -88,6 +96,71 @@ namespace {
   // depending on whether the upscale path ran -- read the count before the total, since a flush that
   // never fired and a flush that cost nothing are different facts.
   auto s_driveFlush = Telemetry::timer("lighting.gpu.drive.flush.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+
+  // ============================================================================================
+  // THE RESIDUAL (#272). The seven parts above closed to 75.3%/76.4% of cpu_cost across two legs:
+  // ~24% sat in NO part, which is a hole in the decomposition, not a rounding error. These six name
+  // it. The rule that makes them readable is in the names:
+  //
+  //   drive.point.*  are SUBSETS of drive.gpu.drive.point.us -- probes inside an existing part,
+  //                  never added to it.
+  //   every other drive.* is DISJOINT from all seven parts and from each other, so
+  //                  cpu_cost - SUM(seven parts + switch + quad + gputimer + bind) is the closure.
+  //
+  // BRACKETED BY CAUSE, NOT BY REGION. A contiguous "setup"/"tail" span would need this function
+  // restructured (TelemetryScope is strictly RAII and the setup region declares variables the rest
+  // of the body uses), and it would answer "where" when the actionable question is "what".
+  //
+  // WHY switchEffectConfig IS THE PRIME SUSPECT AND NOT A GUESS: flushImmediatePrimitives() is its
+  // FIRST statement, unconditional, before it even looks up the effect. Every effect switch is a
+  // submit point. Four run per call -- lightingSpread, lightingPoint, lightingUpscale, world -- of
+  // which THREE are in the residual and ONE is inside `point`, which is why the switch cost needs
+  // two keys and not one. [#271] declared this separation impossible without a renderer change; it
+  // was wrong about that. Timing the call is telemetry. Only MOVING the submit is a renderer change.
+  //
+  // COUNT BEFORE TOTAL, on all four multi-site keys. `switch` records 2 or 3 (the lightingUpscale
+  // switch is gated on worldUpscale >= 1.5); `gputimer` records 4 or 6 on the same gate (the spread
+  // and compose pairs always, the upscale pair only on that path); `point.*` record 0 when the
+  // scene has no point lights, because
+  // their brackets are inside `if (!lights.empty())` -- the Cadence::Call rule this file already
+  // states twice. A key that reads 0 samples and a key that reads 0 microseconds are different facts.
+  auto s_driveSwitch = Telemetry::timer("lighting.gpu.drive.switch.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  auto s_drivePointSwitch = Telemetry::timer("lighting.gpu.drive.point.switch.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  // The persistent full-quad buffer. The bracket is OUTSIDE the size-change test, not inside it, so
+  // it tiles the residual rather than counting rebuilds: count == calls, and the TOTAL is the
+  // reading. Near-zero means L3's persistence is holding and this is a branch test; a total
+  // comparable to the other parts' means the buffer is being rebuilt and L3 is defeated.
+  auto s_driveQuad = Telemetry::timer("lighting.gpu.drive.quad.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  // OUR OWN INSTRUMENT, MEASURED. Four gpuTimer begin/end pairs issue GL query objects on this
+  // thread inside the very span they help decompose. Unmeasured, that is the observer paying for
+  // itself out of the budget it reports; measured, it is either negligible or a finding about the
+  // instrument. Split from `gputimer` for the same reason `point.switch` is split from `switch`.
+  auto s_driveGpuTimer = Telemetry::timer("lighting.gpu.drive.gputimer.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  auto s_drivePointGpuTimer = Telemetry::timer("lighting.gpu.drive.point.gputimer.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  // The tail rebind: unbinding the render target and handing the finished lightmap to the `world`
+  // effect. Records TWICE per call, once at each, and both branches of the upscale test do the same
+  // two things -- so a count other than 2 means the tail changed shape and this key stopped tiling.
+  // setRenderTarget is a second implicit submit point, so this and `switch` together are the whole
+  // "what does handing the result back cost" question.
+  auto s_driveBind = Telemetry::timer("lighting.gpu.drive.bind.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
                .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
@@ -196,8 +269,13 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // (StarWorldPainter.cpp), so it fires on lightmap-publish frames, not every frame. Declared Frame it
   // measured 1099 of 1500 frames -- 73% coverage -- and the consumer scaled the total UP by 1.36x,
   // inventing cost for frames the pass genuinely did not run on. Reported 458 us/frame; actual 336.
+  // THE UNION MEMBER THE DIRECTOR'S DECISION TURNS ON (#269, 2026-08-16): driving the GPU pass IS
+  // lighting CPU. At 152-159 us/frame it is larger than the other members combined, and the thirteen
+  // drive parts below it are NESTED, so they declare no .whole and this one carries them all.
   static auto cpuCostTimer = Telemetry::timer("lighting.gpu.cpu_cost.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .whole = "lighting.cpu.union.us"});
   static auto spreadPasses = Telemetry::counter("lighting.gpu.spread.passes",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Detail});
   static auto pointLightsDrawn = Telemetry::counter("lighting.gpu.point.lights",
@@ -208,17 +286,26 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   float w = (float)size[0], h = (float)size[1];
   if (size[0] == 0 || size[1] == 0 || spreadIterations == 0)
     return {};
-  if (!m_renderer->switchEffectConfig("lightingSpread"))
+  // Hoisted out of the `if` so the switch can be bracketed (#272); the condition is unchanged.
+  bool spreadEffectReady;
+  {
+    TelemetryScope s(s_driveSwitch);
+    spreadEffectReady = m_renderer->switchEffectConfig("lightingSpread");
+  }
+  if (!spreadEffectReady)
     return {};   // assets missing -> caller falls back to CPU
 
   // L3: (re)build the persistent full-quad buffer only when the lightmap size changes.
-  if (!m_fullQuadBuffer)
-    m_fullQuadBuffer = m_renderer->createRenderBuffer();
-  if (m_fullQuadSize != size) {
-    List<RenderPrimitive> fullQuadPrims;
-    fullQuadPrims.append(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f));
-    m_fullQuadBuffer->set(fullQuadPrims);
-    m_fullQuadSize = size;
+  {
+    TelemetryScope s(s_driveQuad);
+    if (!m_fullQuadBuffer)
+      m_fullQuadBuffer = m_renderer->createRenderBuffer();
+    if (m_fullQuadSize != size) {
+      List<RenderPrimitive> fullQuadPrims;
+      fullQuadPrims.append(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(size)), Vec4B::filled(255), 0.0f));
+      m_fullQuadBuffer->set(fullQuadPrims);
+      m_fullQuadSize = size;
+    }
   }
   char const* targets[2] = {"lightingGpu", "lightingGpuB"};
 
@@ -287,8 +374,11 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // What Call gives up is real and small: Recompute also prints a coverage column and asserts count <=
   // expectation. Both remain available by eye -- each bracket's count and lighting.temporal.recomputed are
   // adjacent rows in the same table.
-  m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+  {
+    TelemetryScope s(s_driveGpuTimer);
+    m_renderer->gpuTimer().begin("lighting.gpu.spread.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+  }
   // REPACK AND UPLOAD ARE TIMED APART (#271) because they are different kinds of cost with different
   // levers: the repack is an O(texels) CPU loop this thread runs, the upload hands bytes to the
   // driver. Lumping them would make "the CPU cost of driving the pass" un-actionable in the one place
@@ -389,18 +479,23 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   } else {
     lastTarget = runSpread(packedEmission);
   }
-  m_renderer->gpuTimer().end("lighting.gpu.spread.gpu_us");
+  {
+    TelemetryScope s(s_driveGpuTimer);
+    m_renderer->gpuTimer().end("lighting.gpu.spread.gpu_us");
+  }
 
   // --- Point: one blended per-light bbox quad on top of the spread result (in lastTarget). ---
   if (!lights.empty()) {
-    // THIS SPAN CONTAINS ONE IMPLICIT FLUSH AND CANNOT SEPARATE IT (#271). switchEffectConfig below
-    // flushes the final spread quad into lastTarget -- its own comment says so -- so part of
-    // lighting.gpu.drive.point.us is a wait on GL, not per-light work. Bracketing that one call under
-    // the flush key instead would conflate an effect switch with a wait, and leaving it unremarked
-    // would corrupt exactly the work-vs-wait answer this decomposition exists to give. Declared here;
-    // separating it needs a renderer change, not a telemetry one.
+    // THIS SPAN CONTAINS ONE IMPLICIT FLUSH: switchEffectConfig below flushes the final spread quad
+    // into lastTarget -- its own comment says so -- so part of lighting.gpu.drive.point.us is a wait
+    // on GL, not per-light work. point.switch.us (#272) now measures that call, so the split between
+    // effect switch and per-light work is readable; what it cannot split is the flush from the switch
+    // that contains it. NESTED, NEVER SUMMED: point.switch.us is a SUBSET of point.us.
     TelemetryScope pointScope(s_drivePoint);
-    m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
+    {
+      TelemetryScope s(s_drivePointSwitch);
+      m_renderer->switchEffectConfig("lightingPoint");   // flushes the final spread quad into lastTarget
+    }
     // Cadence::Call, NOT Recompute. THE BRACKET IS INSIDE THE GATE -- `if (!lights.empty())` above --
     // so on a recompute with no point lights this pass does not run and has no cost to report.
     // Declared Recompute it asserts one sample per recompute, coverage then reads below 1, and the
@@ -410,8 +505,13 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // time on cpu.frame.idle.us; this is the third site. It bites hardest on the
     // lightingTemporalDecouple leg, which moves the recompute count directly -- so baseline and off
     // leg would get different scale factors applied to the same physical work.
-    m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+    {
+      // point.gputimer.us, not gputimer.us: this pair is INSIDE pointScope, so recording it on the
+      // disjoint key would make that key partly nested and un-summable. NESTED, NEVER SUMMED.
+      TelemetryScope s(s_drivePointGpuTimer);
+      m_renderer->gpuTimer().begin("lighting.gpu.point.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+    }
     uploadObstacle();   // lightingPoint has its own "obstacle" sampler -> upload again (R8)
     m_renderer->setEffectParameter("pointObstacleBoost", params.pointObstacleBoost);
     m_renderer->setRenderTarget(String(lastTarget), size);   // accumulate onto the spread result
@@ -460,7 +560,10 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
       m_renderer->render(renderFlatRect(RectF(lxmin, lymin, lxmax, lymax), Vec4B::filled(255), 0.0f));
       ++drawn;
     }
-    m_renderer->gpuTimer().end("lighting.gpu.point.gpu_us");
+    {
+      TelemetryScope s(s_drivePointGpuTimer);
+      m_renderer->gpuTimer().end("lighting.gpu.point.gpu_us");
+    }
     pointLightsDrawn.inc(drawn);
   }
 
@@ -476,8 +579,11 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   // --- Compose: cap (brightnessLimit) the spread+point accumulation into the other buffer. ---
   char const* composeTarget = targets[spreadIterations % 2];   // != lastTarget
   // Cadence::Call for the same reason as the spread bracket above -- see the note there.
-  m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
-    MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+  {
+    TelemetryScope s(s_driveGpuTimer);
+    m_renderer->gpuTimer().begin("lighting.gpu.compose.gpu_us",
+      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+  }
   {
     // The compose DISPATCH only. The flush that follows is timed separately and deliberately: this
     // span is CPU work issuing a draw, the next is however long GL makes this thread wait for it.
@@ -486,7 +592,10 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
       {{"applyCap", true}, {"brightnessLimit", params.brightnessLimit},
        {"brightnessScale", brightnessScale}, {"tonemap", tonemap}, {"preserveAlpha", false}});
   }
-  m_renderer->gpuTimer().end("lighting.gpu.compose.gpu_us");
+  {
+    TelemetryScope s(s_driveGpuTimer);
+    m_renderer->gpuTimer().end("lighting.gpu.compose.gpu_us");
+  }
   {
     // THE WAIT (#271), and the reason this whole decomposition exists. If this dominates cpu_cost then
     // the 152-159 us/frame is the render thread blocked on GL, not CPU work anyone can optimise -- the
@@ -499,7 +608,15 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
   if (shadowCompare && gpuResult)
     *gpuResult = m_renderer->oracle().read(composeTarget);
 
-  if (worldUpscale >= 1.5f && m_renderer->switchEffectConfig("lightingUpscale")) {
+  // Hoisted out of the `&&` so the switch can be bracketed (#272). THE SHORT-CIRCUIT IS PRESERVED,
+  // and it is load-bearing: switchEffectConfig must not be called when worldUpscale is under the
+  // threshold, or the upscale effect gets bound on frames that never use it.
+  bool upscaleEffectReady = false;
+  if (worldUpscale >= 1.5f) {
+    TelemetryScope s(s_driveSwitch);
+    upscaleEffectReady = m_renderer->switchEffectConfig("lightingUpscale");
+  }
+  if (upscaleEffectReady) {
     // R-A Form 2: bicubic-upscale the composed lightmap once (<=30Hz) into a higher-res linear FBO;
     // the world pass then does a single bilinear tap of it (smooth, cheap). switchEffectConfig is
     // guarded in the condition: if the lightingUpscale effect is missing it returns false and we fall
@@ -512,8 +629,11 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
     // the pass does not run and has no cost to report. Declared Recompute it asserted one sample per
     // recompute for a pass gated on a config value, which is the parallax defect with a config gate in
     // place of a content one.
-    m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
-      MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+    {
+      TelemetryScope s(s_driveGpuTimer);
+      m_renderer->gpuTimer().begin("lighting.gpu.upscale.gpu_us",
+        MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
+    }
     {
       // Dispatch only; the flush below is timed under the wait key, as at the compose above.
       TelemetryScope s(s_driveUpscale);
@@ -521,7 +641,10 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
       m_renderer->setRenderTarget(String("lightingGpuUpscaled"), upSize);
       m_renderer->render(renderFlatRect(RectF::withSize(Vec2F(), Vec2F(upSize)), Vec4B::filled(255), 0.0f));
     }
-    m_renderer->gpuTimer().end("lighting.gpu.upscale.gpu_us");
+    {
+      TelemetryScope s(s_driveGpuTimer);
+      m_renderer->gpuTimer().end("lighting.gpu.upscale.gpu_us");
+    }
     {
       // The SECOND flush. This is why lighting.gpu.drive.flush.us must be read with its count: two
       // samples per call means this branch ran, one means worldUpscale was under the threshold (or the
@@ -529,13 +652,31 @@ LightmapResult GpuLightmapPass::processFull(ImageView const& emission, List<uint
       TelemetryScope s(s_driveFlush);
       m_renderer->flush();
     }
-    m_renderer->setRenderTarget({});
-    m_renderer->switchEffectConfig("world");
-    m_renderer->setEffectTextureFromTarget("lightMap", "lightingGpuUpscaled");
+    {
+      TelemetryScope s(s_driveBind);
+      m_renderer->setRenderTarget({});
+    }
+    {
+      TelemetryScope s(s_driveSwitch);
+      m_renderer->switchEffectConfig("world");
+    }
+    {
+      TelemetryScope s(s_driveBind);
+      m_renderer->setEffectTextureFromTarget("lightMap", "lightingGpuUpscaled");
+    }
   } else {
-    m_renderer->setRenderTarget({});
-    m_renderer->switchEffectConfig("world");
-    m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
+    {
+      TelemetryScope s(s_driveBind);
+      m_renderer->setRenderTarget({});
+    }
+    {
+      TelemetryScope s(s_driveSwitch);
+      m_renderer->switchEffectConfig("world");
+    }
+    {
+      TelemetryScope s(s_driveBind);
+      m_renderer->setEffectTextureFromTarget("lightMap", composeTarget);
+    }
   }
   // Report the K actually run alongside the border, for the same reason the border travels with `active`:
   // the caller's parity diagnostic must reference the exact iteration count this pass used, and deriving

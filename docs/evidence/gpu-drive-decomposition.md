@@ -60,3 +60,46 @@ the next question. That is 62% of cpu_cost whose internal split is still unknown
 That `flushImmediatePrimitives` does not block. The explicit flushes costing ~0.05 us each is strong
 evidence the pipeline is not stalling this thread, but it is evidence, not proof, and the submits
 inside switchEffectConfig were never separately timed.
+
+# What #272 instruments — NOT YET MEASURED
+
+Six keys added to `StarGpuLightmapPass.cpp` to close the residual above and split `point`. **No leg
+has been run against them.** Everything in this section is a question, not a reading; nothing here
+may be cited as evidence until the numbers exist.
+
+The count of switches in the residual is now exact, where §3 above could only say "at least two":
+**three** — `lightingSpread` at entry, `lightingUpscale` in the upscale guard, `world` in the tail.
+The fourth, `lightingPoint`, is the one inside `point`.
+
+| key | sites | count/call | answers |
+|---|---|---:|---|
+| `drive.switch.us` | the 3 residual `switchEffectConfig` calls | 2 or 3 | how much of the residual is effect-switch submit |
+| `drive.quad.us` | the persistent full-quad buffer | 1 | whether L3's persistence is holding |
+| `drive.gputimer.us` | the non-`point` `gpuTimer` begin/end calls | 4 or 6 | what our own instrument costs inside the span it decomposes |
+| `drive.bind.us` | tail `setRenderTarget({})` + `setEffectTextureFromTarget` | 2 | what handing the result back costs |
+| `drive.point.switch.us` | `switchEffectConfig("lightingPoint")` | 0 or 1 | **how much of `point`'s 38% is submit, not per-light work** |
+| `drive.point.gputimer.us` | the 2 `gpuTimer` calls inside `point` | 0 or 2 | the same instrument question, inside `point` |
+
+## The summation rule, which the names carry
+
+`drive.point.*` are **subsets** of `drive.point.us` — probes inside an existing part, never added to
+it. Every other `drive.*` key is **disjoint** from the seven parts and from each other. So the
+closure to check is
+
+```
+cpu_cost - SUM(seven parts + switch + quad + gputimer + bind)
+```
+
+and if that lands near zero, the residual is explained. `point.switch` and `point.gputimer` are read
+against `point`, not against `cpu_cost`.
+
+## Two corrections this makes to the text above
+
+1. §3 said separating the switch from `point` "needs a renderer change, not a telemetry one". **Too
+   strong.** Timing the switch CALL is telemetry, and now happens. What needs a renderer change is
+   separating the flush *inside* the switch from the switch itself: `flushImmediatePrimitives()` is
+   `switchEffectConfig`'s first statement and there is no seam between them.
+2. Two call sites were restructured so the switch could be bracketed — the `lightingSpread` test and
+   the `worldUpscale >= 1.5f && switchEffectConfig(...)` short-circuit. Both preserve the original
+   condition exactly; the short-circuit in particular is load-bearing, since binding the upscale
+   effect on frames that never use it would be a behaviour change, not a measurement one.

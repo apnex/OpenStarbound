@@ -74,6 +74,12 @@ SUBSYSTEM_KEYS = (
     "lighting.gpu.drive.repack.us", "lighting.gpu.drive.upload.us", "lighting.gpu.drive.spread.us",
     "lighting.gpu.drive.point.us", "lighting.gpu.drive.compose.us", "lighting.gpu.drive.upscale.us",
     "lighting.gpu.drive.flush.us", "lighting.gpu.spread_scan.us",
+    # #272's residual keys. `switch`, `quad`, `gputimer` and `bind` are DISJOINT from the seven parts
+    # above and sum with them; `point.switch` and `point.gputimer` are SUBSETS of drive.point.us and
+    # must never be added to it. The rule is in the names, and StarGpuLightmapPass.cpp states it.
+    "lighting.gpu.drive.switch.us", "lighting.gpu.drive.quad.us",
+    "lighting.gpu.drive.gputimer.us", "lighting.gpu.drive.bind.us",
+    "lighting.gpu.drive.point.switch.us", "lighting.gpu.drive.point.gputimer.us",
     "lighting.produce.entities.us", "lighting.produce.prep.us", "lighting.produce.particles.us",
     "lighting.produce.adjust.us",
     "lighting.gpu.cpu_cost.us", "lighting.cpu.total.us",
