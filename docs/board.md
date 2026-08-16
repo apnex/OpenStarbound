@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**205 tasks** across 2 store(s): 3 in_progress, 31 pending, 171 completed
+**205 tasks** across 2 store(s): 2 in_progress, 31 pending, 172 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 204 tasks, ids 64–268
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,19 +43,18 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 2 | `#171` | LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client | ready |
-| 2 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 3 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 4 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 5 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 6 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 7 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 8 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 9 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 10 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 11 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 1 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 2 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 3 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 4 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 5 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 6 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 7 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 8 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 9 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 10 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
-> **4 completed task(s) still carry a rank** (#245, #263, #264, #265). A rank is a claim about
+> **5 completed task(s) still carry a rank** (#171, #245, #263, #264, #265). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -66,7 +65,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 223, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 224, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -95,7 +94,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 87 of 171.
+**Completed tasks citing no commit and no doc:** 87 of 172.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,7 +214,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | **active** | LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client | `b1d8c3a0` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -2483,66 +2482,63 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 <a id="c29c1332-171"></a>
 
-#### #171 — LIGHTING-PRODUCE: the instrument is built and five costs have names; the numbers need a live client
+#### #171 — LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5% of the frame
 
-status: **in_progress** · metadata: `{"rank": 2}`
+status: **completed** · metadata: `{"rank": 2}`
 
+- `a1296a7d` [#171] the first reading of the instrument: the lighting denominator has been missing a third of itself
 - `b1d8c3a0` [#171] five producer-side lighting costs get names; every lighting percentage has been excluding them
 
 ```
 Producer-side lighting CPU was billed to owner `frame` with no name of its own.
 
-=== INSTRUMENTATION HALF DONE 2026-08-15 at b1d8c3a0 ===
+=== CLOSED 2026-08-15. INSTRUMENT BUILT (b1d8c3a0) AND READ (a1296a7d) ===
 
-THE DEFECT, CONFIRMED AT HEAD. Everything this project quotes as "lighting CPU" — #168's 99.5-99.7%
-closure and its 16.9% cut, #170/#217's border percentages — is denominated on `lighting.cpu.total.us`,
-which is `WorldClient::lightingCalc()` alone: the CONSUMER of light sources. The work that PRODUCES
-them was untimed. Five sites now named:
+THE ANSWER. Two 90-second legs at Desert Town, offscreen on the real GPU, sim running, deep tracing
+on. Producer-side lighting CPU is 47.3-57.5% of `lighting.cpu.total.us` — so that key, the
+denominator under every "lighting CPU" percentage this project has published, captures only
+**63.5-67.9%** of the CPU that is actually lighting work. About a third has never been counted.
 
-  lighting.produce.entities.us    the forAllEntities / renderLightSources walk
-  lighting.produce.prep.us        m_lightMapPrepMutex acquisition + the critical section
-  lighting.produce.particles.us   m_particles->lightSources(), nested inside prep
-  lighting.produce.adjust.us      WorldPainter -> WorldPass -> TilePainter::adjustLighting
-  lighting.gpu.spread_scan.us     spreadIterationsFor's O(cells) max-emission scan
+THE HONEST SECOND HALF, which must travel with the first: it is **~1.5% of the render frame**
+(35.6-39.8 us/frame against cpu.frame.render.us of 2356-2469). It materially changes the DENOMINATOR
+of lighting percentages; it does not reveal a large new slice of frame time.
 
-THE SURVEY SAID SIX; IT IS FIVE. lightingMain's LogMap outside totalScope is NOT a defect —
-lightingCalc's own comment says the scope opens after the early-out "so no-op wakeups are not timed".
-That is documented intent, and timing it would measure a deliberate exclusion.
+81% OF IT IS ONE CALL SITE — the forAllEntities / renderLightSources walk, 28.8-32.4 us/frame.
+prep 1.2-1.5, spread_scan 5.5-5.9, adjust 0.07-0.08. One place to point a lever, if it ever earns one.
 
-OWNER Frame, NOT Lighting. This work is paid for by the render thread; billing it to owner `lighting`
-would move the cost in the books without moving it in the machine, and would break the owner closure.
-Detail so it never joins a sum. `particles` nests inside `prep` and double-counts against it, which
-is what Detail exists to permit.
+FIVE KEYS SHIPPED (the survey said six; lightingMain's LogMap is documented intent, not a defect):
+  lighting.produce.entities.us / .prep.us / .particles.us / .adjust.us / lighting.gpu.spread_scan.us
+All owner Frame (the render thread genuinely pays), Detail (slices of cpu.frame.render.us, never
+summed), file-scope registered, unit and clock declared.
 
-TWO WRONG ATTEMPTS, BOTH CAUGHT BY THE PROJECT'S OWN MACHINERY:
-  * All five started as `static auto` in-function (the idiom already at those sites) and reg_ratchet
-    went red at 92 against a ceiling of 87. Ceiling NOT raised — its message says that "says one more
-    metric may lie about whether its code ran". Now 87, exactly at the ceiling, none added.
-  * They then became constructor members (the #181 shape), which is ALSO wrong here: GpuLightmapPass
-    is built only when lightingGpu is on, and a WorldPainter exists only while a world is loaded, so
-    a member reintroduces ABSENT for exactly the captures that matter. The eager block at the head of
-    StarGpuLightmapPass.cpp already documents this; I had read past it. All five are file-scope now.
+THREE DEFECTS THE PROJECT'S OWN MACHINERY CAUGHT IN MY WORK:
+  * reg_ratchet went red at 92/87 — all five began as function-local statics. Ceiling NOT raised;
+    all five moved to file scope. Back to 87, none added.
+  * Constructor members (the #181 shape) were ALSO wrong: GpuLightmapPass is built only when
+    lightingGpu is on and a WorldPainter exists only while a world is loaded, so a member is ABSENT
+    for exactly the captures that matter. The eager block in StarGpuLightmapPass.cpp documents this;
+    I had read past it.
+  * READING the instrument found a defect IN the instrument: adjust was declared Cadence::Frame but
+    fires only inside `if (lightMapUpdated)` — 347 of 900 frames on the smoke leg. Declared Frame the
+    consumer would have scaled it 2.59x and invented cost for 553 frames. Now Call; the 90s legs
+    confirm n=1742 of 4499, matching lighting.gpu.cpu_cost.us exactly.
 
-spread_scan is a NEW key rather than moving cpuCostScope up one line: lighting.gpu.cpu_cost.us is a
-published measured number (#168: 336 us/frame) and widening what it spans is a re-measurement, not a
-refactor. Folding them is a separate decision that must re-capture the corpus.
+METHOD LIMIT, STATED: two legs give a RANGE, not a confidence interval. n=2 supports no significance
+claim. Spreads are real (entities 11.0%, prep 18.8%, particles 26.7%) and the producer/consumer ratio
+swings 47.3-57.5% between legs, so the headline is an interval by construction.
 
-All five declare unit AND clock — desc_facet_ratchet absorbed them with no ceiling change (161 -> 166
-sites, still 105 under-declared, slack 0).
+Evidence: docs/evidence/lighting-produce-first-reading.md (tracked half; harness/profiles gitignored,
+same split as matrix-20260808-140430).
 
-=== REMAINING ===
-
-1. THE NUMBERS. Nothing has been measured yet — there is still no figure for how much these five
-   cost, which is the question the task exists to answer. Needs a live client and an A-B-A replicate,
-   since cpu.frame.render.us replicates at 9.7% (docs/telemetry/architecture.md). Until then every
-   "lighting cost X%" statement remains denominated on an incomplete whole by an unknown amount.
-2. THE MODEL CHANGE, for a lighting-owned whole these close against. Three parts, not one:
-   production sites must SET `.whole` (no non-test site does); telemetry-window.py must group Budget
-   parts by their declared whole rather than by (owner, domain); and MetricRole must express a metric
-   that is simultaneously a Budget part of the frame and a Total for its own sub-parts — today a
-   second (Frame, Cpu) Total silently overwrites cpu.frame.work.us in Telemetry::snapshot.
-   The task text's old claim that `whole` does not exist is STALE: it exists and serialises, but is
-   INERT — telemetry-window reads only `totals`, and the sole setter is a test fixture.
+=== WHAT THIS OPENS, deliberately not done here ===
+1. `lighting.gpu.cpu_cost.us` is 152-159 us/frame — LARGER than producer and consumer combined. It
+   was already named, so it was outside this task's scope (UNNAMED cost), but no lighting statement
+   today says whether it is included. That is now a live question instead of an invisible one.
+2. Whether #168's 99.6% closure / 16.9% cut and #170/#217's border percentages move against the
+   corrected denominator. Those were measured on their own scenes; re-deriving them is a separate
+   re-measurement, not a recomputation.
+3. The model change for a lighting-owned whole these five could close against (`.whole` exists and
+   serialises but is INERT — telemetry-window reads only `totals`, sole setter is a test fixture).
 ```
 
 <a id="c29c1332-172"></a>
