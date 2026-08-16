@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**205 tasks** across 2 store(s): 2 in_progress, 31 pending, 172 completed
+**207 tasks** across 2 store(s): 2 in_progress, 33 pending, 172 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 204 tasks, ids 64–268
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 206 tasks, ids 64–270
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -311,6 +311,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
 | [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | `35e049a1` | — |
+| [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | — | — |
+| [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2530,15 +2532,21 @@ swings 47.3-57.5% between legs, so the headline is an interval by construction.
 Evidence: docs/evidence/lighting-produce-first-reading.md (tracked half; harness/profiles gitignored,
 same split as matrix-20260808-140430).
 
-=== WHAT THIS OPENS, deliberately not done here ===
-1. `lighting.gpu.cpu_cost.us` is 152-159 us/frame — LARGER than producer and consumer combined. It
-   was already named, so it was outside this task's scope (UNNAMED cost), but no lighting statement
-   today says whether it is included. That is now a live question instead of an invisible one.
-2. Whether #168's 99.6% closure / 16.9% cut and #170/#217's border percentages move against the
-   corrected denominator. Those were measured on their own scenes; re-deriving them is a separate
-   re-measurement, not a recomputation.
-3. The model change for a lighting-owned whole these five could close against (`.whole` exists and
-   serialises but is INERT — telemetry-window reads only `totals`, sole setter is a test fixture).
+=== WHAT THIS OPENED — NOW ON THEIR OWN ROWS, NOT IN THIS CLOSED RECORD ===
+
+This section originally CARRIED the three open questions in prose. That was a defect: a live question
+inside a completed task never reaches the ready queue, which is the one thing the durable index
+exists to prevent. They now have rows, and this task cites them rather than restating them:
+
+  [#269] LIGHTING-WHOLE — "lighting CPU" is not any owner's total. Three keys under two owners each
+         hold part of it and nothing declares the union; `lighting.gpu.cpu_cost.us` (152-159 us/frame)
+         is larger than the other two combined. Needs a Director decision, then `.whole` made live.
+  [#270] LIGHTING-REDERIVE — #168's closure and #170/#217's border percentages are denominated on the
+         short key. Blocked by #269, because re-deriving against a denominator about to change is
+         paying twice.
+
+The third item — the model change for a lighting-owned whole — is not separate: it is [#269]'s
+item 2, and splitting it from the decision it implements would be two rows for one fact.
 ```
 
 <a id="c29c1332-172"></a>
@@ -6815,6 +6823,119 @@ DO NOT close this by making the floor stricter and calling it safer: [#264] meas
 weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
 happily as it suppresses noise. Each change needs a null control showing what it does to the 48
 lever-by-key cells of the banked run.
+```
+
+<a id="c29c1332-269"></a>
+
+#### #269 — LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing declares the union
+
+status: **pending** · blocks: #270
+
+```
+Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
+recorded inside a COMPLETED task's description does not appear in the ready queue. That is the durable
+index failing in the way it exists to prevent, and it was my error in closing #171.
+
+=== THE PROBLEM, MEASURED ===
+
+Three keys hold parts of what anyone would call "lighting CPU", under TWO different owners, and no
+declared quantity is their union. Per-frame figures from the two 90s Desert Town legs of 2026-08-15
+(docs/evidence/lighting-produce-first-reading.md):
+
+  lighting.cpu.total.us       69-75 us/frame   owner LIGHTING, role Total   the async calc thread
+  producer side (5 keys)      36-40 us/frame   owner FRAME,   role Detail   [#171], render thread
+  lighting.gpu.cpu_cost.us   152-159 us/frame  owner FRAME,   role Detail   driving the GPU pass
+
+`lighting.gpu.cpu_cost.us` is LARGER THAN THE OTHER TWO COMBINED. It is CPU time the process spends
+only because lighting exists, and no statement this project publishes says whether it counts.
+
+=== WHY THIS IS NOT MERELY A DEFINITION ===
+
+`lighting.cpu.total.us` is declared MetricRole::Total — "IS the owner's whole". It is the whole of
+owner `lighting`, and that is correct and will stay correct: the other two are paid for by the render
+thread and billing them to owner `lighting` would move cost in the books without moving it in the
+machine (the reasoning [#171] settled). So the union is NOT any owner's total, and cannot be made one
+without lying about which thread pays.
+
+That is exactly what MetricDesc's `whole` field is for, and `whole` is INERT end-to-end: it exists,
+it serialises via Telemetry::snapshot, and NOTHING reads it — scripts/telemetry-window.py's closure
+reads only `spec["totals"]` keyed by (owner, domain), and the sole setter in the tree is the
+test.desc.full fixture in source/test/telemetry_test.cpp. So the mechanism that would express "these
+three close against one named quantity" is shipped and unused.
+
+=== WHAT THIS TASK OWES ===
+
+1. A DIRECTOR DECISION, and it is genuinely a judgement rather than a measurement: is the CPU cost of
+   DRIVING the GPU lighting pass part of "lighting CPU"? Arguments both ways are real. For: it is
+   time spent solely because lighting exists, and excluding it lets a lever that moves work from the
+   lighting thread onto the render thread read as a win. Against: it is render-thread orchestration,
+   and folding it in makes "lighting CPU" a number no single subsystem owns or can be held to.
+2. IF INCLUDED: populate `.whole` at the production sites, teach telemetry-window.py to group Budget
+   parts by their declared whole rather than by (owner, domain) alone, and resolve the MetricRole
+   problem — a metric that is simultaneously a Budget part of the frame and a Total for its own
+   sub-parts. Today a second (Frame, Cpu) Total silently OVERWRITES cpu.frame.work.us in
+   Telemetry::snapshot's totals emitter, so this cannot be done by declaration alone.
+3. EITHER WAY: one sentence, in the telemetry architecture doc, saying what "lighting CPU" is the
+   total OF. Its absence is why three keys could each be partially quoted as it.
+
+=== CAVEAT ON THE NUMBERS ABOVE ===
+cpu_cost's own scope has history: [#171] found it excludes spreadIterationsFor's scan (now
+lighting.gpu.spread_scan.us, 5.5-5.9 us/frame), and its registration comment records a prior cadence
+defect that reported 458 us/frame against an actual 336. Treat its magnitude as approximately right
+and its boundary as not yet audited.
+
+Blocks nothing; blocked by nothing. Pure analysis + a decision — NO GPU required.
+```
+
+<a id="c29c1332-270"></a>
+
+#### #270 — LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to be ~a third short
+
+status: **pending** · blocked by: #269
+
+```
+Orphaned out of [#171]'s closure notes — recorded inside a COMPLETED task, therefore invisible to the
+ready queue. Same error as [#269]; both are being given real rows rather than left as prose in a
+closed record.
+
+=== WHAT IS AT STAKE ===
+
+[#171] measured that `lighting.cpu.total.us` captures only 63.5-67.9% of the CPU that is lighting
+work — the producer side (36-40 us/frame) was never in it. Several published percentages are
+denominated on that key:
+
+  [#168]  "lighting CPU budget closed 99.6% GPU-on / 100.0% GPU-off", then "cut 16.9% by four levers"
+  [#170]  adaptive border, re-measured 2026-08-04 at -10/-11%
+  [#217]  border lever -27.8% region / -10.1% lighting CPU; the fix costs +5.3% region
+
+THE CLOSURE FIGURE IS THE INTERESTING ONE. "99.6% closed" means the parts of lightingCalc summed to
+99.6% of lightingCalc — which is TRUE and is not what a reader takes from it. It says nothing about
+whether lightingCalc is all of lighting, and it is not. The closure was never wrong; its SCOPE was
+never stated.
+
+The percentage CUTS are a different case and may well survive: a lever that cuts X% of the gather is
+still cutting that work whatever the denominator is called. What changes is the claim's reach — "cut
+lighting CPU by 16.9%" becomes "cut the consumer half by 16.9%", which is roughly 11% of the whole if
+the producer side is unaffected by those levers. That inference is UNVERIFIED and is the work here.
+
+=== WHAT THIS TASK OWES ===
+
+1. For each of the three, determine whether the lever plausibly touches the producer side at all.
+   The four #168 levers act inside lightingCalc; the border levers act on the calc region. If none
+   touch production, the cuts stand and only their DENOMINATOR needs restating — a doc correction,
+   not a re-measurement.
+2. Where restating is enough, restate it in place with the scope named, per the standing rule that a
+   corrected claim is rewritten rather than annotated.
+3. Where it is NOT enough, re-measure on that lever's OWN scene. #170/#217 were measured at the scene
+   that exercises the border, not at Desert Town; a number re-derived at the wrong scene is a new
+   error, not a fix.
+
+=== SEQUENCING ===
+Do NOT start this before [#269] settles what "lighting CPU" is the total of. Re-deriving percentages
+against a denominator that is itself about to change would be paying twice, and the second answer
+would supersede the first — the shape [#170]'s own "-23.6% is SUPERSEDED, not wrong" already records.
+
+Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border scene.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
