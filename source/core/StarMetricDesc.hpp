@@ -143,6 +143,25 @@ struct MetricDesc {
   // lighting CPU -- six untimed costs billed to cpu.frame.render.us under owner Frame -- has no whole it
   // can name. The board records the requirement verbatim: "needs a SECOND Total per owner, which is not
   // representable".
+  //
+  // ITS FIRST PRODUCTION USE IS `lighting.cpu.union.us` (#269), and it is a CROSS-THREAD AGGREGATE
+  // rather than a budget. The distinction is the whole point:
+  //
+  //   A BUDGET answers WHO PAYS. Each part has exactly one, and its parts sum to a MEASURED whole,
+  //     so the sum can disagree with the measurement and that disagreement is the closure.
+  //   AN AGGREGATE answers WHAT FOR. It spans owners, its value IS the sum of its members, and so it
+  //     cannot fail a closure -- there is no independent measurement to close against.
+  //
+  // Declaring one therefore buys a DEFINITION, not a check, and the check that makes the definition
+  // real is a different one: membership must be exhaustive and non-overlapping. scripts/metric-desc-
+  // lint.py's union_membership gate holds both halves, because the arithmetic is only as good as the
+  // list. `lighting.produce.particles.us` is the standing example -- it is lighting CPU by any plain
+  // reading and it is NOT a member, because it is nested inside `lighting.produce.prep.us` which is.
+  //
+  // WHY THE UNION DOES NOT DISTURB ANY EXISTING CLOSURE: every member except one is MetricRole::Detail,
+  // which is never summed into a budget, and the exception (lighting.cpu.total.us) keeps its Total role
+  // for owner `lighting` unchanged. No cost moves in the books, because none moved in the machine --
+  // the reasoning #171 settled and the Director reaffirmed in deciding the union should exist at all.
   char const* whole = nullptr;
 };
 

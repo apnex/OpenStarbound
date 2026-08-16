@@ -56,17 +56,23 @@ namespace {
   auto s_entityLightsTimer = Telemetry::timer("lighting.produce.entities.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.cpu.union.us"});
   // Declared before the MutexLocker at its use site so the span INCLUDES acquisition: if the lighting
   // thread holds m_lightMapPrepMutex the render thread stalls there, and a stall the frame pays for
   // but nothing names is exactly what this task exists to end.
   auto s_prepHandoffTimer = Telemetry::timer("lighting.produce.prep.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.cpu.union.us"});
   // Nested inside prep and therefore double-counted against it -- which is what Detail is for. The
   // particle gather is the one part of the critical section that does real work rather than moving a
   // list, so it is worth separating from the stall it sits behind.
+  //
+  // AND THEREFORE NOT A UNION MEMBER (#269). It is inside prep, which IS one, so declaring .whole here
+  // would count these microseconds twice in the lighting-CPU union. The first draft of that membership
+  // list had it in; this comment is why it came out.
   auto s_particleLightsTimer = Telemetry::timer("lighting.produce.particles.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
@@ -2267,8 +2273,14 @@ void WorldClient::lightingCalc() {
   // per-recompute one. gatherTimer below stays Recompute: it sits inside the gate and only fires when a
   // recompute actually happens (confirmed 2026-07-25: its windowed count matched lighting.temporal.recomputed
   // exactly, while totalTimer's matched cpu.frame.total.us's frame count exactly).
+  // .whole: a MEMBER of the lighting-CPU union (#269), and simultaneously owner `lighting`'s own
+  // Total. Both are true and neither weakens the other -- Total says "IS the whole of owner
+  // lighting", .whole says "and that whole is itself one member of a larger cross-thread quantity".
+  // See the union's definition at MetricDesc::whole.
   static auto totalTimer = Telemetry::timer("lighting.cpu.total.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Frame, MetricRole::Total});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Lighting,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Total,
+               .whole = "lighting.cpu.union.us"});
   static auto gatherTimer = Telemetry::timer("lighting.cpu.gather.us",
     MetricDesc{MetricDomain::Cpu, MetricOwner::Lighting, MetricCadence::Recompute, MetricRole::Budget});
   // The phases below are CONTIGUOUS and EXHAUSTIVE across the body of this function: every microsecond

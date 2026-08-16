@@ -461,6 +461,12 @@ jobs:
       - name: convergence_claims_fires -- the sentence that shipped fires, history survives
         run: python3 scripts/metric-desc-lint.py --selftest-convergence-claims
 
+      - name: union_membership -- the lighting-CPU union is exhaustive and non-overlapping
+        run: python3 scripts/metric-desc-lint.py --check-union-membership
+
+      - name: union_membership_fires -- a dropped member, a double count and a blind pattern all fail
+        run: python3 scripts/metric-desc-lint.py --selftest-union-membership
+
       - name: banked_reread_fires -- the re-read comparison fires on a real difference
         run: python3 scripts/ci/banked-reread.py --selftest
 

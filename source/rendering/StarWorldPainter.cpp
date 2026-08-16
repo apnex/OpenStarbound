@@ -37,7 +37,9 @@ namespace {
   // Cadence::Call: doubly conditional -- inside `if (lightMapUpdated)` AND only on the CPU-lightMap
   // fallback path. Same defect as lighting.gpu.cpu_cost.us; see the note at its registration.
   auto s_uploadTimer = Telemetry::timer("lighting.upload.us",
-    MetricDesc{MetricDomain::Cpu, MetricOwner::Frame, MetricCadence::Call, MetricRole::Detail});
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .whole = "lighting.cpu.union.us"});
   // The dim overlay draws only when the world is dimmed, so this GPU key is the same defect one layer out --
   // see the note at the head of StarBackdropPass.cpp. It is not a hypothetical: this key is absent from ALL
   // 27 legs of matrix-20260807-071454, which is why it never showed up as a DIFFERENCE between legs and went
@@ -62,7 +64,8 @@ namespace {
   auto s_adjustLightingTimer = Telemetry::timer("lighting.produce.adjust.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.cpu.union.us"});
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +

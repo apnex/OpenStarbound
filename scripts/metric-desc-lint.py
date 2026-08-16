@@ -766,6 +766,165 @@ def selftest_convergence_claims():
 
 
 
+# ============================================================================================
+# THE LIGHTING-CPU UNION (#269). A cross-thread AGGREGATE, not a budget: its value IS the sum of its
+# members, so it cannot fail a closure and declaring it buys a DEFINITION rather than a check. This
+# gate is the check that makes the definition worth having, and it has exactly two jobs, because the
+# arithmetic is only ever as good as the membership list:
+#
+#   EXHAUSTIVE     -- every member declares it, so the union cannot silently lose a term.
+#   NON-OVERLAPPING -- nothing else declares it, so the union cannot silently count one twice.
+#
+# THE SECOND JOB IS THE ONE THAT NEARLY FAILED. `lighting.produce.particles.us` is lighting CPU by
+# any plain reading and belongs in no union: it is nested inside `lighting.produce.prep.us`, which is
+# a member. The first draft of this list had it in, and only reading the use site caught it -- the
+# registration comment says "nested inside prep" in as many words.
+UNION = "lighting.cpu.union.us"
+UNION_MEMBERS = {
+    "lighting.cpu.total.us",          # owner lighting's own Total; a member AND a whole, both true
+    "lighting.produce.entities.us",
+    "lighting.produce.prep.us",       # particles is INSIDE this -- see above
+    "lighting.produce.adjust.us",
+    "lighting.upload.us",
+    "lighting.gpu.spread_scan.us",    # runs BEFORE cpu_cost's scope opens, so disjoint from it
+    "lighting.gpu.cpu_cost.us",       # the thirteen drive parts are nested inside this one
+}
+
+# Cpu-domain `lighting.*` microsecond timers that are NOT members. Every one is nested inside a
+# member, and this ratchet is what makes that a DECISION rather than an oversight: a new lighting CPU
+# timer lands here and fails the gate until someone says which it is. A ceiling, not a target -- it
+# may fall freely. Measured 2026-08-16, and it accounts for itself exactly:
+#
+#   12  lighting.cpu.{prologue,params,begin,gather,lights,point,spread,export,convert,calculate,
+#                     publish,post}.us   -- inside lighting.cpu.total.us
+#   13  lighting.gpu.drive.*.us          -- inside lighting.gpu.cpu_cost.us
+#    1  lighting.produce.particles.us    -- inside lighting.produce.prep.us
+#
+# A ceiling whose composition is not written down is a number nobody can audit, which is how a
+# ratchet comes to permit the thing it was raised against.
+UNION_NONMEMBER_CEILING = 26
+
+REGISTRATION = re.compile(
+    r"Telemetry::(timer|counter|gauge|rate|declare)\(\s*\"([^\"]+)\"\s*,\s*(MetricDesc\{[^{}]*\})",
+    re.S)
+
+
+def union_sites(files):
+    """-> (declared, candidates) key sets, over production sources with comments stripped.
+
+    A CANDIDATE IS A Cpu-DOMAIN `lighting.*` TIMER WHOSE KEY ENDS `.us`, and each clause of that
+    excludes a population no arithmetic could ever include -- the rule being that a ratchet must
+    count only a unit the thing it names can move. Gpu-domain keys share the prefix
+    (lighting.gpu.point.gpu_us) and are not CPU. Counters and gauges (lighting.cells,
+    lighting.epoch.bump.*, lighting.temporal.recomputed) are COUNTS: a count cannot be a term in a
+    sum of microseconds, so admitting them would pad this ceiling with 20-odd keys that can never
+    offend, and pad it in a way that quietly buys headroom for one that can.
+    """
+    declared, candidates = set(), set()
+    for path, text in sorted(files.items()):
+        if "/test/" in path.replace("\\", "/"):
+            continue
+        for fn, key, block in REGISTRATION.findall(strip_comments(text)):
+            if UNION in block:
+                declared.add(key)
+            if (fn == "timer" and key.startswith("lighting.") and key.endswith(".us")
+                    and "MetricDomain::Cpu" in block):
+                candidates.add(key)
+    return declared, candidates
+
+
+def check_union_membership(files=None, ceiling=UNION_NONMEMBER_CEILING):
+    files = sources() if files is None else files
+    declared, cpu_lighting = union_sites(files)
+
+    if not cpu_lighting:
+        # A pattern that stopped matching reads exactly like a tree that stopped offending -- the
+        # lesson reg_ratchet and desc_facet_ratchet each learned once. Say so instead of passing.
+        print("union_membership: FAIL -- no Cpu-domain lighting.* registration matched at all. The "
+              "pattern has drifted from the tree, so this gate is measuring nothing.")
+        return 1
+
+    missing = UNION_MEMBERS - declared
+    extra = declared - UNION_MEMBERS
+    nonmembers = sorted(cpu_lighting - UNION_MEMBERS)
+
+    violations = 0
+    if missing:
+        print(f"union_membership: FAIL -- {len(missing)} declared member(s) do NOT carry .whole = "
+              f"\"{UNION}\", so the union is missing a term: {', '.join(sorted(missing))}")
+        violations += 1
+    if extra:
+        print(f"union_membership: FAIL -- {len(extra)} key(s) declare the union but are not members. "
+              f"Each is nested inside a member and would be counted twice: {', '.join(sorted(extra))}")
+        violations += 1
+    if len(nonmembers) > ceiling:
+        print(f"union_membership: FAIL -- {len(nonmembers)} Cpu-domain lighting.* non-member key(s), "
+              f"ceiling {ceiling}. A new one is not automatically outside the union; decide whether it "
+              f"is a MEMBER (add it to UNION_MEMBERS and declare .whole) or NESTED inside one (leave "
+              f"it, and raise this ceiling in the same commit): {', '.join(nonmembers)}")
+        violations += 1
+
+    if violations:
+        return 1
+    print(f"union_membership: {len(declared)}/{len(UNION_MEMBERS)} members declare {UNION}; "
+          f"{len(nonmembers)} non-member Cpu lighting key(s) <= ceiling {ceiling}; "
+          f"0 double-counted")
+    return 0
+
+
+def selftest_union_membership():
+    """Each arm INJECTS the defect and requires the gate to fail. A gate nobody has seen fail is a
+    claim with no instrument -- and this one guards arithmetic, where a silent pass is a wrong number
+    rather than a missing warning."""
+    ok = dict(sources())
+    arms = []
+
+    def fails(label, files, ceiling=UNION_NONMEMBER_CEILING):
+        arms.append((label, check_union_membership(files, ceiling) == 1))
+
+    # 1. The real tree passes. Without this the remaining arms prove only that the gate can fail.
+    arms.append(("the shipped tree passes", check_union_membership(ok) == 0))
+
+    # 2. A member drops its declaration -> the union silently loses a term.
+    dropped = dict(ok)
+    for path, text in ok.items():
+        if "lighting.gpu.cpu_cost.us" in text:
+            dropped[path] = text.replace(f'.whole = "{UNION}"', ".role = MetricRole::Detail", 1)
+    fails("a member that stops declaring is caught", dropped)
+
+    # 3. A NESTED key declares the union -> double count. This is the particles defect, injected.
+    doubled = dict(ok)
+    for path, text in ok.items():
+        if "lighting.produce.particles.us" in text:
+            doubled[path] = text.replace(
+                'Telemetry::timer("lighting.produce.particles.us",\n    MetricDesc{',
+                'Telemetry::timer("lighting.produce.particles.us",\n    MetricDesc{'
+                f'.whole = "{UNION}", ', 1)
+    fails("a nested key that declares the union is caught", doubled)
+
+    # 4. A brand-new Cpu lighting key that is neither declared nor accounted for.
+    grown = dict(ok)
+    for path, text in ok.items():
+        if "lighting.gpu.spread_scan.us" in text:
+            grown[path] = text + (
+                '\nnamespace { auto s_x = Telemetry::timer("lighting.invented.us",'
+                '\n  MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame}); }\n')
+    fails("a new Cpu lighting key forces a member-or-nested decision", grown)
+
+    # 5. The pattern going blind must read as FAIL, not as a clean tree.
+    fails("a corpus the pattern cannot match fails rather than passes", {"a.cpp": "int main(){}"})
+
+    bad = sum(1 for _, good in arms if not good)
+    for label, good in arms:
+        print(f"  [{'ok' if good else 'FAIL'}] {label}")
+    if bad:
+        print(f"union_membership: SELFTEST FAIL -- {bad} of {len(arms)} arm(s)")
+        return 1
+    print(f"union_membership selftest: {len(arms)}/{len(arms)} arms ok -- exhaustive and "
+          f"non-overlapping are both enforced, and a blind pattern fails loudly")
+    return 0
+
+
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
     sys.exit({"--selftest": selftest,
@@ -777,5 +936,7 @@ if __name__ == "__main__":
               "--check-boundedness": check_boundedness,
               "--check-convergence-claims": check_convergence_claims,
               "--selftest-convergence-claims": selftest_convergence_claims,
+              "--check-union-membership": check_union_membership,
+              "--selftest-union-membership": selftest_union_membership,
               "--selftest-boundedness": selftest_boundedness,
               "--selftest-timeline": selftest_timeline}.get(arg, check)())

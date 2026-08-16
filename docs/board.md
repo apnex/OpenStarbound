@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**210 tasks** across 2 store(s): 2 in_progress, 35 pending, 173 completed
+**210 tasks** across 2 store(s): 4 in_progress, 32 pending, 174 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 209 tasks, ids 64–273
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,10 +43,10 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#273` | AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can a… | ready |
+| 1 | 1 | `#272` | DRIVE-RESIDUAL: 6 keys WRITTEN (3 residual switches, quad, gputimer, bind + 2 nested in point) — build + meas… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
 | 3 | 3 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
-| 4 | 4 | `#272` | DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside an… | ready |
+| 4 | 4 | `#268` | LEVER-FLOOR: 1-5 DONE; item 6 (raise n) IS RUNNING as matrix-20260816-141032, n=6, 61 legs, ETA ~16:01 | ready |
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
@@ -56,11 +56,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 11 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 14 | 14 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | blocked by #273 |
-| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
-
-> **6 completed task(s) still carry a rank** (#171, #245, #263, #264, #265, #271). A rank is a claim about
-> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
+| 14 | 14 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
 ---
 
@@ -70,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 227, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 228, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -99,7 +95,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 173.
+**Completed tasks citing no commit and no doc:** 85 of 174.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -219,7 +215,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `7bede779` `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -312,15 +308,15 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
-| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `33d04e0e` `45a09f6d` `a686d95b` | — |
+| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | `33d04e0e` `45a09f6d` `35e049a1` | — |
+| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: 1-5 DONE; item 6 (raise n) IS RUNNING as matrix-20260816-141032, n=6, 61 legs, ETA ~16:01 | `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | `7bede779` | — |
-| [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
-| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `7bede779` `164163cc` | — |
-| [#272](#c29c1332-272) | `c29c1332` | open | DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside another 38% | `7bede779` | — |
-| [#273](#c29c1332-273) | `c29c1332` | open | AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can attribute t… | — | — |
+| [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | `1d367a57` | — |
+| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `1d367a57` `7bede779` `164163cc` | — |
+| [#272](#c29c1332-272) | `c29c1332` | **active** | DRIVE-RESIDUAL: 6 keys WRITTEN (3 residual switches, quad, gputimer, bind + 2 nested in point) — build + measure held u… | `7bede779` | — |
+| [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2495,8 +2491,9 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 #### #171 — LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5% of the frame
 
-status: **completed** · metadata: `{"rank": 2}`
+status: **completed**
 
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 - `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 - `a1296a7d` [#171] the first reading of the instrument: the lighting denominator has been missing a third of itself
@@ -5315,7 +5312,7 @@ Two items were added after it and are not in the nine: #248 (PMU attribution mac
 
 #### #245 — DESC-CONVERGE CLOSED: unit and boundedness are read, the ratchet counts only what it names, and two of my own claims were wrong
 
-status: **completed** · metadata: `{"rank": 1}`
+status: **completed**
 
 - `da28b864` [#245] I called the capture mode "the real blocker" without checking the corpus; it is a hazard, and now it is recorded
 - `a01c4a9c` [#245] clock_ratchet counted three things it shouldn't, and one it couldn't move
@@ -6467,7 +6464,7 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 #### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
 
-status: **pending** · metadata: `{"rank": 15}`
+status: **pending** · metadata: `{"rank": 14}`
 
 ```
 RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
@@ -6540,7 +6537,7 @@ finding.
 
 #### #263 — BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point
 
-status: **completed** · metadata: `{"rank": 14}`
+status: **completed**
 
 - `5d231c48` [#263] a board-only commit can no longer be cited as evidence, whatever its message says
 
@@ -6580,7 +6577,7 @@ Idempotence proven: two consecutive regenerations produce an identical md5.
 
 #### #264 — LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint is elsewhere
 
-status: **completed** · metadata: `{"rank": 4}`
+status: **completed**
 
 ```
 "The per-lever estimator is an unweighted mean of interval rates, and the whole model says not to be."
@@ -6624,8 +6621,9 @@ slot 1. See also [#265], which found the same estimator promoting noise to RESOL
 
 #### #265 — SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically
 
-status: **completed** · metadata: `{"rank": 5}`
+status: **completed**
 
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `a686d95b` [#265] four published lever effects were noise; the omnibus test now refuses them mechanically
@@ -6781,10 +6779,11 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 <a id="c29c1332-268"></a>
 
-#### #268 — LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote
+#### #268 — LEVER-FLOOR: 1-5 DONE; item 6 (raise n) IS RUNNING as matrix-20260816-141032, n=6, 61 legs, ETA ~16:01
 
-status: **pending** · blocked by: #273 · metadata: `{"rank": 14}`
+status: **in_progress** · blocked by: #273 · metadata: `{"rank": 4}`
 
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
@@ -6921,6 +6920,8 @@ Blocks nothing; blocked by nothing. Pure analysis + a decision — NO GPU requir
 
 status: **pending** · blocked by: #269 · metadata: `{"rank": 3}`
 
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
+
 ```
 Orphaned out of [#171]'s closure notes — recorded inside a COMPLETED task, therefore invisible to the
 ready queue. Same error as [#269]; both are being given real rows rather than left as prose in a
@@ -6970,8 +6971,9 @@ Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border
 
 #### #271 — GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it
 
-status: **completed** · metadata: `{"rank": 1}`
+status: **completed**
 
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 - `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
@@ -7023,9 +7025,15 @@ and the wait reading is off the table.
 
 <a id="c29c1332-272"></a>
 
-#### #272 — DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside another 38%
+#### #272 — DRIVE-RESIDUAL: 6 keys WRITTEN (3 residual switches, quad, gputimer, bind + 2 nested in point) — build + measure held until the matrix run…
 
-status: **pending** · metadata: `{"rank": 4}`
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+DRIVE-RESIDUAL: 6 keys WRITTEN (3 residual switches, quad, gputimer, bind + 2 nested in point) — build + measure held until the matrix run ends
+```
+
+status: **in_progress** · metadata: `{"rank": 1}`
 
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
@@ -7077,9 +7085,11 @@ NO GPU NEEDED to write the instrumentation; the reading needs a live client and 
 
 <a id="c29c1332-273"></a>
 
-#### #273 — AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can attribute them per lever
+#### #273 — AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live
 
-status: **pending** · blocks: #268 · metadata: `{"rank": 1}`
+status: **completed** · blocks: #268
+
+- `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 
 ```
 Found while the Director asked what would augment a 1.7-hour matrix re-run. The answer is this, and
