@@ -486,7 +486,9 @@ OUT="harness/matrix/$RUN_ID"
 # One leg costs the measurement window plus a full world load. The load is the part people forget,
 # and it is what turns "90 seconds times 27" into an afternoon.
 LOAD_EST=120
-TOTAL_LEGS=$(( (N_LEVERS + 1) * REPEATS ))
+# N_LEVERS + 2, not + 1: each pass runs a baseline at BOTH ends (#268 item 3). The head one gates the
+# pass, the tail one brackets within-pass drift, and both arrive at the analyser as baseline repeats.
+TOTAL_LEGS=$(( (N_LEVERS + 2) * REPEATS ))
 EST_MIN=$(( TOTAL_LEGS * (SECONDS_PER_LEG + LOAD_EST) / 60 ))
 
 echo
@@ -681,6 +683,23 @@ for r in $(seq 1 "$REPEATS"); do
   for ((i = 0; i < N_LEVERS; i++)); do
     ORDER+=("${LEVERS[$(( (i + r - 1) % N_LEVERS ))]}")
   done
+  # THE BASELINE IS MEASURED AT BOTH ENDS OF THE PASS (#268 item 3). The LEVERS already rotate -- see
+  # ORDER above -- but the baseline did not: it ran first in every pass, always in slot 0. Any
+  # within-pass drift (thermal ramp, cache state accumulating across ten legs) therefore lands as a
+  # SYSTEMATIC offset between the baseline and everything measured after it, and is charged to the
+  # levers. That is exactly [#265]'s signature: all eight levers shifted -0.0295 cores on owner sim,
+  # the declared control among them.
+  #
+  # A SECOND BASELINE AT THE END rather than rotating the first into the ring, because the first one
+  # is load-bearing before any lever runs: BASE_SCENE gates the pass, BASE_VIOLATED decides whether
+  # costs are quotable, and assert_witnesses_exist reads it. Moving it mid-pass would leave the legs
+  # before it with nothing to be compared against -- the failure the pass-skip guard above exists to
+  # prevent. Two baselines bracket the drift instead of chasing it.
+  #
+  # The label is `-r${r}b-baseline`, which scripts/lever-cpu.py's collect() parses as repeat "${r}b"
+  # of group "baseline" with no change: it splits on "-r" then partitions on "-". So this arrives as
+  # an extra baseline REPEAT, doubling the baseline's own n, which is the term the floor was binding
+  # on. Checked against the parser, not assumed.
   for row in "${ORDER[@]}"; do
     k=${row%%$'\t'*}; rest=${row#*$'\t'}; o=${rest##*$'\t'}
     label="$RUN_ID-r$r-off-$k"
@@ -737,6 +756,20 @@ for lv in json.load(open('$TABLE'))['levers']:
         VOID+=("$label"); printf '%s\t%s\t%s\tVOID\twitness-absent\t%s\t%s\t%s\n' "$label" "$k" "$o" "$quotable" "$scene" "$scene_pct" >> "$OUT/legs.tsv" ;;
     esac
   done
+
+  # The pass's SECOND baseline -- see the note above the lever loop. Failure here is recorded and the
+  # pass continues: the first baseline already gated everything, so losing the tail costs precision,
+  # not validity, and aborting a completed pass over it would discard nine good legs.
+  TAIL_LABEL="$RUN_ID-r${r}b-baseline"
+  if run_leg "$TAIL_LABEL"; then
+    TAIL_SCENE=$(scene_entities "$OUT/$TAIL_LABEL.json")
+    printf '%s\tbaseline\t-\tOK\t-\t%s\t%s\t+0.00\n' "$TAIL_LABEL" \
+      "$([ $LEG_VIOLATED -eq 0 ] && echo yes || echo no)" "$TAIL_SCENE" >> "$OUT/legs.tsv"
+    echo "  pass $r tail baseline: $TAIL_SCENE entities (head was $BASE_SCENE)"
+  else
+    FAILED+=("$TAIL_LABEL")
+    echo "  pass $r tail baseline FAILED -- the pass keeps its head baseline and its levers" >&2
+  fi
 done
 
 ASSET_FP="$ASSET_FP" SCENE_BOUND_PCT="$SCENE_BOUND_PCT" MATRIX_CFG="$CFG" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
