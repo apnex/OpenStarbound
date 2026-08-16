@@ -44,7 +44,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 1 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
-| 2 | 2 | `#268` | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both… | ready |
+| 2 | 2 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | ready |
 | 3 | 3 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
 | 4 | 4 | `#272` | DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside an… | ready |
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
@@ -69,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 226, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 227, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -311,10 +311,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
-| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `45a09f6d` `a686d95b` | — |
+| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a… | `45a09f6d` `35e049a1` | — |
+| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `7bede779` `164163cc` | — |
@@ -6624,6 +6624,7 @@ slot 1. See also [#265], which found the same estimator promoting noise to RESOL
 
 status: **completed** · metadata: `{"rank": 5}`
 
+- `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `a686d95b` [#265] four published lever effects were noise; the omnibus test now refuses them mechanically
 
@@ -6778,66 +6779,74 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 <a id="c29c1332-268"></a>
 
-#### #268 — LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a run
+#### #268 — LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote
 
 status: **pending** · metadata: `{"rank": 2}`
 
+- `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
 
 ```
 Carries the residue of [#264] and [#265], both of which independently hit the per-lever floor
-methodology in scripts/lever-cpu.py — which governs EVERY future matrix run, not just the banked one.
+methodology in scripts/lever-cpu.py — which governs EVERY future matrix run.
 
 === DONE ===
 
-5. THE MDE RULE AND THE THIRD VERDICT (35e049a1). Asked what "perfection" means for the multiplicity
-   correction; the answer was that the correction argument sits below the noise floor. At n=3 the MDE
-   at 80% power is 0.0668 cores on cpu.owner.sim (31% of baseline) and 0.0859 on cpu.process (16%),
-   while the contested deltas were 0.0666 and 0.0534 — at or BELOW the MDE at every correction
-   including none. So a delta under the MDE is never quotable as a cost, and verdicts are now
-   CONFIRMED / CANDIDATE / NULL because the matrix is a SCREEN whose output was being quoted as a
-   finding. Family, alpha and power are DECLARED in lever-table.json before the run; a missing block
-   refuses rather than defaulting. Bonferroni is recorded as a named conservative approximation
-   (Dunnett is correct for k-vs-one-control; the ~5% MDE difference flips no verdict measured so far).
+5. THE MDE RULE AND THE THIRD VERDICT (35e049a1). At n=3 the MDE at 80% power is 31% of baseline on
+   cpu.owner.sim and 16% on cpu.process, while the contested deltas were 0.0666 and 0.0534 — at or
+   below the MDE at every correction including none. So a delta under the MDE is never quotable as a
+   cost, and verdicts are CONFIRMED / CANDIDATE / NULL. Family, alpha and power DECLARED in
+   lever-table.json before the run; a missing block refuses rather than defaulting.
 
-1. NO CPU NULL CONTROL EXISTS, AND NONE CAN (45a09f6d). lever-cpu imported pmu-join's control, which
-   reads `gpuNullControl` — null for the GPU, and worth -0.0299 cores on cpu.process, 63% of that
-   key's floor. `gpuNullControl` works because some levers cannot reach the GPU; there is no
-   symmetric escape for the CPU, because every lever in this table IS a CPU code-path change. It now
-   reads `cpuNullControl`, no lever sets it, and the table states why none can. Returning None is the
-   correct answer, not a missing one. Deliberately NOT done: picking the lever with the smallest
-   measured delta — choosing a control by its outcome is the circularity a control exists to prevent.
+1. NO CPU NULL CONTROL EXISTS, AND NONE CAN (45a09f6d). lever-cpu imported pmu-join's, which reads
+   `gpuNullControl` — null for the GPU, worth -0.0299 cores on cpu.process, 63% of that key's floor.
+   Every lever in this table IS a CPU code-path change, so no symmetric control is possible. Now
+   reads `cpuNullControl`; no lever sets it; the table states why none can. Deliberately NOT done:
+   picking the smallest measured delta, which is the circularity a control exists to prevent.
 
-2. THE FLOOR IS max(baseline spread, pooled-sd LSD) (45a09f6d). The 3-point range is KEPT rather than
-   replaced: it is a poor scale estimate but the only term that sees DRIFT ACROSS LEGS, which is what
-   [#265] found. The LSD comes from the pooled within-group sd omnibus already computes. Strictly
-   below the MDE, so significance bar and detectability bar rather than the same test twice.
+2. THE FLOOR IS max(baseline spread, pooled-sd LSD) (45a09f6d). The 3-point range is KEPT — it is a
+   poor scale estimate but the only term that sees drift ACROSS legs. LSD added from the pooled
+   within-group sd. Strictly below the MDE, so significance bar and detectability bar, not the same
+   test twice.
 
-4. THE THRESHOLDS TRAVEL WITH THE RUN (45a09f6d). lever-cpu-thresholds.json, written beside the run —
-   the manifest is the RUNNER's record of what it did, this is the ANALYSER's record of how it judged.
+4. THE THRESHOLDS TRAVEL WITH THE RUN (45a09f6d). lever-cpu-thresholds.json, beside the run.
 
-NULL CONTROL FOR 1/2/4 TOGETHER: 2 of 64 lever-by-key cells move, both cpu.process (env and parallax,
-CANDIDATE -> unresolved). Parallax is a NEAR MISS — 0.0666 against a floor of 0.0675, 1.3% short —
-recorded as such, not as a clean rejection. Both CONFIRMED effects are UNCHANGED, which is the test
-that the floor improved rather than merely grew.
+3. THE BASELINE BRACKETS EACH PASS AT BOTH ENDS (33d04e0e). CORRECTION TO THIS TASK'S OWN PREMISE:
+   the LEVERS already rotate (ORDER spreads them by (i + r - 1) % N_LEVERS, with a comment saying
+   why); only the BASELINE was pinned to slot 0. Within-pass drift therefore landed as a systematic
+   baseline-vs-levers offset — [#265]'s signature exactly. A SECOND baseline now runs at the end of
+   each pass rather than rotating the first into the ring, because the head baseline is load-bearing
+   before any lever runs (BASE_SCENE gates the pass, BASE_VIOLATED decides quotability,
+   assert_witnesses_exist reads it). Label `-r${r}b-baseline` was CHECKED against lever-cpu's parser:
+   it arrives as an extra baseline REPEAT, doubling the n of the term the floor binds on, with no
+   analyser change. Tail failure is recorded and the pass continues.
 
-=== STILL OPEN — BOTH NEED A RUN, NEITHER IS VALIDATABLE AGAINST BANKED DATA ===
+NULL CONTROL FOR 1/2/4: 2 of 64 lever-by-key cells moved (cpu.process env and parallax, CANDIDATE ->
+unresolved; parallax a NEAR MISS at 0.0666 vs a 0.0675 floor). Both CONFIRMED effects UNCHANGED,
+which is the test that the floor improved rather than merely grew. Item 3 cannot be validated against
+banked data — it changes the harness.
 
-3. THE BASELINE NEVER ROTATES OUT OF SLOT 1. lever-matrix.sh runs it first in every pass, so every
-   delta shares one un-rotated reference and run drift is charged entirely to the levers — the
-   mechanism behind [#265]'s finding that all eight levers shifted -0.0295 on owner sim, control
-   included. Rotate or duplicate the baseline within each pass. Changes the harness, so it cannot be
-   checked against matrix-20260808-140430.
+=== STILL OPEN: ITEM 6, AND IT IS NOW A DIRECTOR CHOICE ===
 
-6. RAISE n. The only item that moves the MDE, and it is cheap — legs are ~5s. Corrected, 80% power,
-   owner sim: n=3 gives 31% of baseline (~2 min of legs), n=10 gives 15.8% (~8 min), n=15 gives 12.8%
-   (~11 min). The curve flattens because the baseline's own across-repeat spread is 28-32%, so n and
-   item 3 are complementary — neither alone is enough.
+6. RAISE n. THE COST FIGURE I ORIGINALLY WROTE HERE WAS WRONG BY ~20x. "n=10 gives 15.8% (~8 min of
+   legs)" counted LEGS-TIME ONLY (10 x 9 x 5s) and ignored that every leg boots a client, loads a
+   world and settles it. The banked 27-leg run spans 43.7 min of wall clock: **1.7 min/leg**. With the
+   tail baseline that is 10 legs per pass:
 
-DO NOT close the remainder by making the floor stricter and calling it safer: [#264] measured that
-the weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
-happily as it suppresses noise.
+     n=3  (today)   30 legs   ~51 min    MDE ~31% of baseline on owner sim
+     n=6            60 legs   ~1.7 h     MDE ~20%
+     n=10          100 legs   ~2.8 h     MDE ~15.8%
+     n=15          150 legs   ~4.3 h     MDE ~12.8%
+
+   The curve flattens because the baseline's own across-repeat spread is 28-32% — item 3 attacks that
+   directly, so the next run's MDE may beat these figures at the same n. THAT IS A REASON TO RUN AT
+   MODERATE n FIRST and re-measure the spread, rather than buying 4 hours against an estimate made
+   before the drift fix existed.
+
+   RECOMMENDATION: n=6 (~1.7 h). It doubles today's precision, gives 12 baseline samples against 6
+   per lever, and measures whether item 3 shrank the baseline spread — which decides whether n=10 or
+   n=15 is worth buying at all.
 ```
 
 <a id="c29c1332-269"></a>
