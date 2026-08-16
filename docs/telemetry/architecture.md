@@ -126,6 +126,69 @@ For `frame` they are one metric read two ways. For `gl` they are **different met
 *counted* per frame but its *whole* is the GPU frame span. An owner with no declared total reports its parts
 unclosed rather than inventing a whole. `process` and `unknown` are absent on purpose: not budget-bearing.
 
+### What "lighting CPU" is the total of
+
+**`lighting.cpu.total.us` is the whole of owner `lighting`. It is NOT all the CPU this process spends on
+lighting**, and the difference is most of it. Three costs sit under owner `frame`, on the render thread:
+producing the light sources, scanning for the spread iteration count, and driving the GPU pass. At Desert Town
+the last of those alone is **larger than the lighting thread and the producer side combined** (#171, #271).
+
+The union of the two is named **`lighting.cpu.union.us`** and declared with `MetricDesc::whole` at each member
+(#269). It is an **AGGREGATE, not a budget**, and the distinction decides how it may be read:
+
+| | answers | value | can it fail? |
+|---|---|---|---|
+| a **budget** | who pays | its parts close against a MEASURED whole | yes — the gap IS the closure |
+| an **aggregate** | what for | its value **is** the sum of its members | no — nothing independent to close against |
+
+So declaring the union buys a definition, not a check. The check that makes it real is **membership**, held by
+`scripts/metric-desc-lint.py --check-union-membership`: exhaustive (no member silently dropped) and
+non-overlapping (nothing counted twice). Seven members, and the seventh place is the instructive one —
+`lighting.produce.particles.us` is lighting CPU by any plain reading and is **not** a member, because it is
+nested inside `lighting.produce.prep.us`, which is.
+
+```
+lighting.cpu.total.us          owner lighting  — a member AND that owner's own Total; both are true
+lighting.produce.entities.us   owner frame     — the entity light-source walk
+lighting.produce.prep.us       owner frame     — the handoff, INCLUDING lock acquisition
+lighting.produce.adjust.us     owner frame
+lighting.upload.us             owner frame     — CPU-lightMap fallback path only
+lighting.gpu.spread_scan.us    owner frame     — runs BEFORE cpu_cost's scope, so disjoint from it
+lighting.gpu.cpu_cost.us       owner frame     — the thirteen lighting.gpu.drive.* parts nest inside it
+```
+
+**No owner total changed to express this**, which is why it is expressible at all. A second `(frame, cpu)` Total
+would silently overwrite `cpu.frame.work.us` in the owner table; the union spans owners and never becomes one.
+Every member but the first is `role=Detail`, which is never summed into a budget, so no closure on this page
+moves.
+
+Summed over #171's two banked Desert Town legs (`docs/evidence/lighting-produce-first-reading.md`), the union is
+**262.7–268.3 µs/frame**, of which `lighting.cpu.total.us` is **25.8–28.6%**. One member, `lighting.upload.us`,
+is **ABSENT rather than zero** on both legs: GPU lighting was on, so the CPU-lightMap fallback never executed.
+A member that did not run and a member that ran and cost nothing are different facts, and the union must be read
+with that distinction intact.
+
+#### Reading the published lighting percentages against it
+
+Every lighting percentage published before #269 is denominated on **`lighting.cpu.total.us`**, not on the union.
+None is wrong; each has a narrower reach than its summary sentence suggests.
+
+- **#168's "closed 99.6%"** is the closure of `lighting.cpu.total.us` against its own nine phases — the equation
+  in §7 below. It says nothing about whether that key is all of lighting, and it is not.
+- **#168's "cut 16.9% by four levers"** is a cut to `lighting.cpu.total.us` per recompute at `00-Ocean-Lab`.
+  The four levers (params cache, buffer ring, export order, branchless `floatToHalf`) act inside `lightingCalc`'s
+  `params`/`export`/`convert` phases and change how buffers are filled, not how many cells exist — so no other
+  union member can move, and **restating the denominator is the whole correction**. Its reach over the union is
+  smaller in proportion, but *that* number is not derived here: the −16.9% is per-recompute at `00-Ocean-Lab`
+  and the union's composition is per-frame at Desert Town. Dividing one by the other would be a cross-scene,
+  cross-cadence quotient — a new error wearing a fix's clothes.
+- **#170/#217's "−10.1% lighting CPU"** is `lighting.cpu.total.us` at `04-Ocean Factory`, and it is the one that
+  **restating cannot repair**. The border lever cuts `lighting.calc.cells` by 27.8%, and two union members scale
+  with cells — `spread_scan` (an O(cells) scan) and `cpu_cost` (repack is O(texels)). Both move with the lever
+  and neither is in that A/B, so the union-denominated figure cannot be derived from −10.1%; it must be measured.
+  The likely direction is that −10.1% **understates** the lever, since the largest member falls with it. That is
+  a hypothesis with a sign, not a result.
+
 ### The `sim` owner: what its total is, and what it is not
 
 `sim` had a denominator and **no total** until #175 — parts with no whole, so nothing it measured could be
@@ -196,6 +259,10 @@ parts = R·(recompute parts) + S·prologue        R = recomputes, S = gate skips
 `coverage_scale` scales each part against *its own* cadence, so the mixed-cadence parts list closes against the
 frame-cadence whole exactly. Measured: **99.6% accounted, 1.8 µs/recompute unattributed** (from 47.6% before
 the phases existed), with every part at 100% coverage.
+
+**This closes `lighting.cpu.total.us` against its own phases, and that is its entire scope.** It is not a
+statement about lighting CPU as a whole — that is `lighting.cpu.union.us`, of which this key is one of seven
+members and, at Desert Town, **25.8–28.6%**. See §3, "What lighting CPU is the total of".
 
 | phase | cadence | scaling law |
 |---|---|---|

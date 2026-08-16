@@ -32,12 +32,52 @@ what MetricRole::Detail permits and why it is declared Detail.
 | **fraction the denominator actually captures** | **63.5%** | **67.9%** |
 | producer as % of `cpu.frame.render.us` | 1.61% | 1.51% |
 
-**`lighting.cpu.total.us` captures roughly two thirds (63.5–67.9%) of the CPU that is lighting work.**
-About a third has never been counted by any lighting percentage this project has published.
+**`lighting.cpu.total.us` captures roughly two thirds (63.5–67.9%) of the CPU that is lighting work
+AS #171 SCOPED IT** — consumer plus producer, deliberately excluding `lighting.gpu.cpu_cost.us` as
+already-named cost (see "Two things this reading does NOT establish" below).
+
+**That scope is no longer the project's definition of lighting CPU, and the two thirds must not be
+quoted as though it were.** The Director decided on 2026-08-16 that driving the GPU pass IS lighting
+CPU ([#269]), which puts `cpu_cost` inside the denominator. Recomputed over the same two legs, the
+fraction `lighting.cpu.total.us` captures is **25.8–28.6%** — see the union table below. The
+uncounted share was never "about a third"; under the definition now in force it is about three
+quarters.
 
 **But it is ~1.5% of the render frame.** The producer side is 35.6–39.8 us/frame against a
 cpu.frame.render.us of 2356–2469 us/frame. It materially changes the DENOMINATOR of lighting
 percentages; it does not reveal a large new slice of frame time.
+
+## `lighting.cpu.union.us` — the denominator now in force (#269, #270)
+
+Derived from the same two legs, no new measurement. Seven declared members; `upload` is **ABSENT**
+rather than zero on both legs, because GPU lighting was on and the CPU-lightMap fallback never ran —
+a member that did not execute and one that executed for free are different facts.
+
+| member | A us/frame | B us/frame |
+|---|---:|---:|
+| `lighting.cpu.total.us` | 69.19 | 75.13 |
+| `lighting.produce.entities.us` | 32.37 | 28.79 |
+| `lighting.produce.prep.us` | 1.45 | 1.18 |
+| `lighting.produce.adjust.us` | 0.07 | 0.08 |
+| `lighting.gpu.spread_scan.us` | 5.89 | 5.50 |
+| `lighting.gpu.cpu_cost.us` | 159.30 | 152.03 |
+| `lighting.upload.us` | ABSENT | ABSENT |
+| **union** | **268.27** | **262.71** |
+
+| quantity | leg A | leg B |
+|---|---:|---:|
+| `lighting.cpu.total.us` as % of the union | **25.79%** | **28.60%** |
+| `lighting.gpu.cpu_cost.us` as % of the union | 59.38% | 57.87% |
+| union as % of `cpu.frame.render.us` | 10.86% | 11.15% |
+
+**Driving the GPU pass is the majority of lighting CPU — 57.9–59.4% of it.** Every lighting
+percentage published before #269 is denominated on the 25.8–28.6% slice.
+
+THIS IS AN AGGREGATE, NOT A CLOSURE. Its value IS the sum of its members, so the rows above cannot
+disagree with anything and no residual is meaningful. What can go wrong is MEMBERSHIP — a member
+dropped, or one counted twice — and that is held by `metric-desc-lint.py --check-union-membership`,
+not by this table. `lighting.produce.particles.us` is excluded here for the same reason it is
+excluded above: it nests inside `prep`.
 
 **81% of it is one call site**: the `forAllEntities` / `renderLightSources` walk, 28.8–32.4 us/frame.
 `prep` (1.2–1.5), `spread_scan` (5.5–5.9), `adjust` (0.07–0.08) are the rest.
