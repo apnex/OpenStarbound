@@ -61,15 +61,29 @@ EXTRA = ["cpu.frame.work.wall_fraction", "cpu.attribution.residual_cores"]
 
 
 def declared_null_control():
-    """The lever the TABLE declares cannot touch the quantity -- reused, not restated.
+    """The lever the table declares cannot touch THE CPU. Returns None when none does, which is today.
 
-    Imported from pmu-join rather than copied: two places knowing which lever is the control would
-    drift the moment the table changed, and the analyser that drifted would be the one nobody re-read.
+    IT USED TO IMPORT pmu-join's, AND THAT WAS THE DEFECT (#268). The reuse-not-restate reasoning was
+    right -- two places knowing the control would drift -- but it reused the wrong QUANTITY's control.
+    pmu-join reads `gpuNullControl`, which is null for the GPU and emphatically not for the CPU:
+    scriptProtoCacheEnabled swaps Lua chunk compilation for a cache lookup, and on
+    matrix-20260808-140430 it moves cpu.process.busy_cores by -0.0299 cores -- 63% of that key's floor.
+    A control that is not null for the measured quantity inflates every floor and SUPPRESSES real
+    levers, which is the opposite of what a control is for.
+
+    NO LEVER IN THE TABLE QUALIFIES, and the table says why: `gpuNullControl` exists because some
+    levers cannot reach the GPU, and there is no symmetric escape for the CPU -- every lever here IS a
+    CPU code-path change. Returning None is therefore the CORRECT answer, not a missing one, and the
+    caller must say so out loud rather than substituting.
     """
-    spec = importlib.util.spec_from_file_location("pj", os.path.join(HERE, "pmu-join.py"))
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod.declared_null_control()
+    try:
+        table = json.load(open(os.path.join(HERE, "lever-table.json")))
+    except (OSError, ValueError):
+        return None
+    for lever in table.get("levers", []):
+        if lever.get("cpuNullControl"):
+            return lever["key"]
+    return None
 
 
 def read_verdicts(run_dir):
@@ -340,17 +354,47 @@ def verdicts_for(legs, key, null_control):
     if len(base) < 2:
         return None
     base_mean = st.mean(base.values())
-    base_spread = max(base.values()) - min(base.values())
-
-    ctrl = legs.get(f"off-{null_control}") or legs.get(null_control) or {}
-    ctrl_vals = [m[key] for m in ctrl.values() if key in m]
-    if ctrl_vals:
-        ctrl_delta = abs(st.mean(ctrl_vals) - base_mean)
-        floor, why = max(ctrl_delta, base_spread), "max(null-control delta, baseline spread)"
-    else:
-        floor, why = base_spread, "baseline spread only -- NO NULL CONTROL IN THIS RUN"
 
     omni = omnibus(legs, key)
+
+    # THE FLOOR HAS TWO TERMS AND USED TO HAVE A THIRD THAT DID NOT BELONG (#268).
+    #
+    # GONE: the null-control term. It read the lever flagged `gpuNullControl`, which is null for the
+    # GPU and not for the CPU -- on matrix-20260808-140430 it moves cpu.process by -0.0299 cores, 63%
+    # of that key's floor. A control that is not null for the measured quantity does not bound noise,
+    # it ADDS a lever's real effect to the bar and suppresses smaller real levers. declared_null_control
+    # now reads `cpuNullControl`, no lever sets it, and the table explains why none can.
+    #
+    # KEPT: the baseline's own spread across repeats. It is a poor SCALE estimate -- a range over
+    # three points, 2 dof -- but it is the only term that sees DRIFT ACROSS LEGS, which is what [#265]
+    # found moving every lever including the control. Dropping it for a within-group statistic would
+    # lose exactly the signal that mattered.
+    #
+    # ADDED: the least significant difference from the POOLED within-group sd, which omnibus already
+    # computes over every group rather than over the baseline's three points. It is the smallest
+    # difference that would be significant at the declared alpha -- strictly below the MDE, which adds
+    # the power term on top, so the two are a significance bar and a detectability bar rather than the
+    # same test twice.
+    #
+    # max(), not sum: they bound the same quantity by different routes, and adding them would double-
+    # count noise that is already in both.
+    base_spread = max(base.values()) - min(base.values())
+    lsd = None
+    stats_for_floor = load_statistics()
+    if omni is not None and stats_for_floor:
+        se = omni[4] * math.sqrt(2.0 / max(2, len(base)))
+        lsd = t_critical(stats_for_floor["alpha"] / max(1, stats_for_floor["family"]), omni[2]) * se
+    if lsd is not None and lsd > base_spread:
+        floor, why = lsd, f"pooled-sd LSD (baseline spread {base_spread:.4f} is smaller)"
+    elif lsd is not None:
+        floor, why = base_spread, f"baseline spread (pooled-sd LSD {lsd:.4f} is smaller)"
+    else:
+        floor, why = base_spread, "baseline spread only -- no pooled sd available"
+    if null_control:
+        why += f"; CPU null control declared: {null_control}"
+    else:
+        why += "; NO CPU NULL CONTROL EXISTS -- see lever-table.json"
+
     # No between-lever structure => nothing on this key is attributable to any lever, whatever the
     # individual deltas look like. Fisher's protection: the omnibus comes first, always.
     resolves = omni is not None and omni[3] < OMNIBUS_ALPHA
@@ -385,7 +429,35 @@ def verdicts_for(legs, key, null_control):
     return base_mean, floor, why, rows, omni, n_base
 
 
-def report(legs, null_control, voided, unreadable):
+def persist_thresholds(run_dir, run_id, null_control, rows):
+    """Write the thresholds a run's verdicts were judged against, INTO the run (#268 item 4).
+
+    They existed only in stdout. manifest.json still says `"analysis": "NOT PERFORMED"` and the
+    evidence manifest contains no "floor" string, so a past run's verdicts could not be audited
+    against the bar that produced them -- the same defect that put sceneBoundPct and
+    captureDeepTracing into the manifest, one instrument along. A threshold that lives only in a
+    terminal is a threshold nobody can check a past conclusion against.
+
+    Written BESIDE the run rather than into manifest.json, because the manifest is the RUNNER's
+    record of what it did and this is the ANALYSER's record of how it judged -- one writer each.
+    """
+    out = os.path.join(run_dir, "lever-cpu-thresholds.json")
+    try:
+        with open(out, "w") as fh:
+            json.dump({"runId": run_id,
+                       "cpuNullControl": null_control,
+                       "_cpuNullControlNote":
+                           "null when no lever is CPU-null by construction, which is the case for the "
+                           "shipped table -- see lever-table.json. NOT a missing input.",
+                       "omnibusAlpha": OMNIBUS_ALPHA,
+                       "statistics": load_statistics(),
+                       "keys": rows}, fh, indent=2)
+        return out
+    except OSError:
+        return None
+
+
+def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
     if "baseline" not in legs:
         print("lever-cpu: FAIL -- no baseline leg resolved; every delta would be against nothing.")
         return EXIT_NOTHING
@@ -393,9 +465,15 @@ def report(legs, null_control, voided, unreadable):
     n = sum(len(r) for r in legs.values())
     print(f"  {n} leg(s) with a joined CPU axis, {len(legs)} lever group(s)")
     if null_control:
-        print(f"  null control declared by the lever table: {null_control}")
+        print(f"  CPU null control declared by the lever table: {null_control}")
     else:
-        print("  !! NO NULL CONTROL DECLARED -- the floor falls back to the baseline's spread alone.")
+        # STATED AS A STRUCTURAL FACT, not as a missing input (#268). `gpuNullControl` works because
+        # some levers cannot reach the GPU; every lever in this table is a CPU code-path change, so no
+        # symmetric control can exist. This used to silently borrow the GPU one, which is not null for
+        # the CPU and therefore ADDED a real lever effect to the bar.
+        print("  NO CPU NULL CONTROL EXISTS, and none can from this lever set -- every lever here is a")
+        print("  CPU code-path change. The floor is max(baseline spread, pooled-sd LSD); it does NOT")
+        print("  borrow gpuNullControl, which moves cpu.process by 63% of that key's own floor.")
     if unreadable:
         print(f"  !! {len(unreadable)} leg(s) had no readable joined axis and were EXCLUDED: "
               f"{', '.join(unreadable[:4])}{' ...' if len(unreadable) > 4 else ''}")
@@ -404,6 +482,7 @@ def report(legs, null_control, voided, unreadable):
               f"({len(voided)}): {', '.join(sorted(voided))}")
 
     any_resolved = []
+    threshold_rows = {}
     for key in [WHOLE] + OWNERS + EXTRA:
         v = verdicts_for(legs, key, null_control)
         if v is None:
@@ -437,6 +516,16 @@ def report(legs, null_control, voided, unreadable):
                 print(f"       MDE {mv:.4f} cores ({pct:.1f}% of baseline) at {int(stats['power']*100)}% "
                       f"power, alpha {stats['alpha']}/{stats['family']} ({stats['correction']}) -- "
                       f"a smaller delta is NOT quotable as a cost")
+        if omni is not None:
+            threshold_rows[key] = {
+                "baseline": round(base_mean, 6), "floor": round(floor, 6), "floorWhy": why,
+                "omnibusF": round(omni[0], 4), "omnibusP": round(omni[3], 6),
+                "pooledSd": round(omni[4], 6), "df1": omni[1], "df2": omni[2],
+                "mde": (round(mv, 6) if (stats and omni and (mv := mde(
+                    omni[4], 3, n_base, omni[2],
+                    stats["alpha"] / max(1, stats["family"]), stats["power"]))) else None),
+                "verdicts": {lever: v for lever, _d, _o, v, _n in rows},
+            }
         res = [r for r in rows if r[3] == "CONFIRMED"]
         cand = [r for r in rows if r[3] == "CANDIDATE"]
         unres = [r for r in rows if r[3] == "NULL"]
@@ -484,6 +573,12 @@ def report(legs, null_control, voided, unreadable):
     else:
         print("       not computable -- the whole did not resolve.")
 
+    if run_dir and run_id:
+        written = persist_thresholds(run_dir, run_id, null_control, threshold_rows)
+        if written:
+            print(f"\n  thresholds written to {os.path.basename(written)} -- the bar these verdicts were "
+                  f"judged against now travels with the run, not just this terminal")
+
     if not any_resolved:
         print("\n  NO CPU SERIES RESOLVED A SINGLE LEVER IN THIS RUN. That is a MEASURED result, not a")
         print("  failure: it says every lever's CPU effect at this scene is smaller than the run's own")
@@ -494,7 +589,7 @@ def report(legs, null_control, voided, unreadable):
 
 # One per numbered check in selftest(). Asserted against the numbering itself below, so adding a
 # check without updating this is a FAILURE rather than a silently stale banner.
-ARMS = 13
+ARMS = 15
 
 
 def selftest():
@@ -517,8 +612,12 @@ def selftest():
     got = {lever: verdict for lever, _d, _o, verdict, _n in rows}
     if got.get("off-big") == "NULL":
         fails.append("a +0.29-core lever did not clear the floor")
+    # RENAMED WITH THE RULE (#268). This arm used to be called "the floor swallows the null control",
+    # and after the CPU control was removed that name described a mechanism that no longer exists --
+    # the vocabulary outliving the rule, for the fourth time in this project. What it actually tests,
+    # and always did, is that a delta far below the floor does not resolve.
     if got.get("off-nullctl") != "NULL":
-        fails.append("the null control itself resolved -- the floor is not being applied")
+        fails.append("a delta far below the floor resolved anyway")
 
     # 2. A LEVER CARRIED BY ONE OUTLIER REPEAT IS NOT A MEASUREMENT, even when its MEAN clears the
     #    floor. Same rule pmu-join learned at Ark Ruins: the run floor comes from the BASELINE's
@@ -678,6 +777,38 @@ def selftest():
             fails.append(f"the declared statistics block is out of range: {s}")
     os.unlink(empty_table)
 
+    # 10. THE CPU NULL CONTROL IS ABSENT BY CONSTRUCTION, AND MUST NOT BE THE GPU ONE (#268).
+    #     lever-cpu used to import pmu-join's declared_null_control, which reads `gpuNullControl` --
+    #     null for the GPU, and worth 63% of cpu.process's floor. The two arms below are the ones that
+    #     would have caught that: the table's GPU control must not come back as the CPU answer.
+    table_path = os.path.join(HERE, "lever-table.json")
+    try:
+        table = json.load(open(table_path))
+    except (OSError, ValueError):
+        table = None
+    if table is None:
+        fails.append("lever-table.json is unreadable, so the control declaration cannot be checked")
+    else:
+        gpu_ctl = next((l["key"] for l in table.get("levers", []) if l.get("gpuNullControl")), None)
+        cpu_ctl = declared_null_control()
+        if gpu_ctl and cpu_ctl == gpu_ctl:
+            fails.append(f"the CPU null control resolved to the GPU one ({gpu_ctl}) -- #268 regressed")
+        declared = [l["key"] for l in table.get("levers", []) if l.get("cpuNullControl")]
+        if cpu_ctl != (declared[0] if declared else None):
+            fails.append(f"declared_null_control() = {cpu_ctl!r} but the table declares {declared!r}")
+
+    # 11. THE FLOOR TAKES THE POOLED LSD WHEN IT BINDS, and the baseline range when THAT binds. Both
+    #     directions, because a floor that only ever grows suppresses real levers as happily as noise.
+    import contextlib as _cl, io as _io
+    tight_base = mk([0.5000, 0.5001, 0.5002], [0.9000, 0.9001, 0.9002], [0.5000, 0.5002, 0.5001])
+    _b, floor_tight, why_tight, _r, _o, _n = verdicts_for(tight_base, WHOLE, None)
+    if "LSD" not in why_tight:
+        fails.append(f"a near-zero baseline range did not defer to the pooled LSD: {why_tight}")
+    wide_base = mk([0.30, 0.70, 0.50], [0.9000, 0.9001, 0.9002], [0.5000, 0.5002, 0.5001])
+    _b2, floor_wide, why_wide, _r2, _o2, _n2 = verdicts_for(wide_base, WHOLE, None)
+    if "baseline spread" not in why_wide or floor_wide <= floor_tight:
+        fails.append(f"a wide baseline range did not raise the floor above the LSD case: {why_wide}")
+
     # 7. THE ATTRIBUTION CHECK REPORTS THE UNACCOUNTED REMAINDER. Owners at 0.6/0.4 of the whole sum
     #    exactly, so the remainder must be ~0; a version that forgot an owner would show it.
     with contextlib.redirect_stdout(io.StringIO()) as buf3:
@@ -696,8 +827,10 @@ def selftest():
     # was a literal and the arms were free to grow past it, so four new checks were invisible in the
     # output that reports them. Same defect telemetry-window.py's selftest carried and for the same
     # reason; here the number cannot drift because nothing writes it down.
-    print(f"  lever_cpu selftest: {ARMS}/{ARMS} arms ok (the floor swallows the null control, an "
-          f"outlier repeat is refused, a shift shared by EVERY lever is suppressed by the omnibus, a "
+    print(f"  lever_cpu selftest: {ARMS}/{ARMS} arms ok (a delta far below the floor is refused, an "
+          f"outlier repeat is refused, the CPU null control is absent by construction and is never the "
+          f"GPU one, the floor takes the pooled LSD or the baseline range whichever binds, a shift "
+          f"shared by EVERY lever is suppressed by the omnibus, a "
           f"clean effect still resolves through it, F and t match published table values, the "
           f"correction widens with the comparison count, a delta under the MDE is a CANDIDATE and "
           f"not a cost, the multiplicity family is declared rather than inferred, VOID legs are "
@@ -729,7 +862,7 @@ def main(argv):
         print("lever-cpu: FAIL -- no leg carried a joined CPU axis. Either the run predates the join, "
               "or no sovereign sampler was running.")
         return EXIT_NOTHING
-    return report(legs, null_control, voided, unreadable)
+    return report(legs, null_control, voided, unreadable, args.run_dir, run_id)
 
 
 if __name__ == "__main__":
