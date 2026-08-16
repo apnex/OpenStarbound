@@ -43,16 +43,19 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 2 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 3 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 4 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 5 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 6 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 7 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 8 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 9 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 10 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 1 | 1 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 2 | 2 | `#268` | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline ne… | ready |
+| 3 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 4 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
+| 5 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 6 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 7 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 8 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 9 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 11 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 13 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
 > **5 completed task(s) still carry a rank** (#171, #245, #263, #264, #265). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -6763,7 +6766,7 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 #### #268 — LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 2}`
 
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
 
@@ -6829,7 +6832,7 @@ lever-by-key cells of the banked run.
 
 #### #269 — LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing declares the union
 
-status: **pending** · blocks: #270
+status: **pending** · blocks: #270 · metadata: `{"rank": 1}`
 
 ```
 Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
@@ -6891,7 +6894,7 @@ Blocks nothing; blocked by nothing. Pure analysis + a decision — NO GPU requir
 
 #### #270 — LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to be ~a third short
 
-status: **pending** · blocked by: #269
+status: **pending** · blocked by: #269 · metadata: `{"rank": 4}`
 
 ```
 Orphaned out of [#171]'s closure notes — recorded inside a COMPLETED task, therefore invisible to the
