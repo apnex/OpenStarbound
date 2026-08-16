@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**208 tasks** across 2 store(s): 2 in_progress, 34 pending, 172 completed
+**208 tasks** across 2 store(s): 3 in_progress, 33 pending, 172 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 207 tasks, ids 64–271
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,9 +43,9 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#271` | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() c… | ready |
-| 2 | 2 | `#268` | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both… | ready |
-| 3 | 3 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 1 | 1 | `#271` | GPU-DRIVE-DECOMPOSE: the seven parts are BUILT and unread — is the 152-159 us/frame a cost or a wait? | ready |
+| 2 | 2 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 3 | 3 | `#268` | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both… | ready |
 | 4 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
@@ -69,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 225, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 226, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -317,7 +317,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a… | `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | — | — |
 | [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
-| [#271](#c29c1332-271) | `c29c1332` | open | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean… | `164163cc` | — |
+| [#271](#c29c1332-271) | `c29c1332` | **active** | GPU-DRIVE-DECOMPOSE: the seven parts are BUILT and unread — is the 152-159 us/frame a cost or a wait? | `164163cc` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6776,7 +6776,7 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 #### #268 — LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a run
 
-status: **pending** · metadata: `{"rank": 2}`
+status: **pending** · metadata: `{"rank": 3}`
 
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
@@ -6840,7 +6840,7 @@ happily as it suppresses noise.
 
 #### #269 — LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing declares the union
 
-status: **pending** · blocks: #270 · metadata: `{"rank": 3}`
+status: **pending** · blocks: #270 · metadata: `{"rank": 2}`
 
 ```
 Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
@@ -6951,71 +6951,58 @@ Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border
 
 <a id="c29c1332-271"></a>
 
-#### #271 — GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean part of it may be wa…
+#### #271 — GPU-DRIVE-DECOMPOSE: the seven parts are BUILT and unread — is the 152-159 us/frame a cost or a wait?
 
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean part of it may be wait
-```
-
-status: **pending** · metadata: `{"rank": 1}`
+status: **in_progress** · metadata: `{"rank": 1}`
 
 - `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
 ```
 Raised by the Director after [#171]'s first reading showed `lighting.gpu.cpu_cost.us` at 152-159
 us/frame — LARGER than the lighting consumer (69-75) and the newly-named producer side (36-40)
-combined, and ~6.5% of cpu.frame.render.us.
+combined, and ~6.5% of cpu.frame.render.us, in ONE TelemetryScope wrapping all of processFull.
 
-=== IT IS AN UNATTRIBUTED WHOLE, WHICH IS THE REAL PROBLEM ===
+=== INSTRUMENT BUILT 2026-08-15 at 164163cc. NOT YET READ. ===
 
-`TelemetryScope cpuCostScope(cpuCostTimer)` wraps the entire body of GpuLightmapPass::processFull.
-That body has at least five phases, already banner-commented in the source, and NONE is separately
-timed on the CPU side:
+Seven Detail keys, cut along seams the source already banner-comments:
+  lighting.gpu.drive.repack.us    the O(texels) RGBA16F pack loop
+  lighting.gpu.drive.upload.us    emission upload + uploadObstacle
+  lighting.gpu.drive.spread.us    the Jacobi dispatch loop, timed INSIDE runSpread so all three call
+                                  sites are covered by construction
+  lighting.gpu.drive.point.us     the per-light quad section
+  lighting.gpu.drive.compose.us   compose dispatch
+  lighting.gpu.drive.upscale.us   upscale dispatch
+  lighting.gpu.drive.flush.us     BOTH explicit flush() calls — THE HEADLINE
 
-  emission repack to RGBA16F   `for (size_t i = 0; i < texels; ++i)` — an O(cells) CPU loop
-  uploads                      setEffectTextureHalf("emission"), uploadObstacle() — called TWICE,
-                               once for spread and again because lightingPoint has its own sampler
-  // --- Spread                `for (i < spreadIterations)`, up to 48 setRenderTarget+renderBuffer
-  // --- Point                 `for (auto const& light : lights)`, one blended bbox quad each
-  // --- Compose / Upscale     two `m_renderer->flush()` calls
+All file-scope (reg_ratchet still 87, none added) and declaring unit + clock (desc_facet_ratchet
+absorbed them with no ceiling raise: 105 of 173, slack 0). cpu_cost itself is UNTOUCHED — it is a
+published number ([#168]: 336 us/frame) and widening what it spans is a re-measurement, not a
+refactor. The parts sit beside it.
 
-A Budget with no parts is the shape [#235] removed twice ("both unfalsifiable wholes are gone"). This
-is the largest one left in the lighting path.
+=== WHAT REMAINS: READ IT ===
 
-=== THE HYPOTHESIS THAT MATTERS: SOME OF IT MAY BE WAIT, NOT WORK ===
+1. Two 90-second legs at Desert Town via scripts/render-profile.sh, same protocol as [#171]'s first
+   reading, so the numbers are comparable to that evidence.
+2. HEADLINE FIRST: what fraction is `drive.flush`? If it dominates, the 152-159 us/frame is the
+   render thread BLOCKED ON GL, there is no CPU lever here, and the honest verdict is that cpu_cost
+   is a span wearing a cost's name — the shape [#246] found (a GPU bracket read 2.5x the device's
+   whole busy time) and [#173] found (a lever proposed on a loop sleeping 72-84% of every frame).
+3. READ THE COUNTS BEFORE THE TOTALS. drive.flush fires at BOTH sites: 2 samples/call means the
+   upscale branch ran, 1 means it did not. drive.spread fires once normally and twice when the
+   bit-identity oracle is armed.
+4. CLOSURE: cpu_cost - SUM(parts) must be small, and the residual (setup, early-out guards, gpuTimer
+   begin/end) stated. A closure that does not close is the finding, not a rounding note.
 
-processFull calls `m_renderer->flush()` at the compose and upscale steps. If those block on GL, the
-render thread is WAITING inside a timer named cpu_cost, and this project has twice found exactly that
-shape: [#246], where a GPU-pass bracket read 2.5x the entire device's busy time and was a SPAN not a
-cost; and [#173], a CPU lever proposed on a loop that turned out to sleep 72-84% of every frame.
-`cpu.wait.lighting.us` exists in StarClientApplication for precisely this distinction — its comment
-says billing work and wait together is "correct for frame time and useless for choosing a lever".
+DECLARED LIMIT, NOT DISCOVERED LATER: `drive.point` CONTAINS an implicit flush that this decomposition
+cannot separate — switchEffectConfig("lightingPoint") flushes the final spread quad, per its own
+comment. Bracketing that call under the flush key would conflate an effect switch with a wait.
+Separating it needs a renderer change, not a telemetry one.
 
-WHETHER flush() ACTUALLY BLOCKS IS UNVERIFIED. Do not assume it; the point of the task is to find out.
+Also expect two legs to give a RANGE, not a confidence interval, exactly as [#171] recorded.
 
-=== WHAT THIS OWES ===
-
-1. Split cpu_cost into Detail sub-timers along the seams that already exist (repack, upload, spread
-   dispatch, point dispatch, compose, upscale), plus an explicit WAIT timer around each flush().
-   Detail, owner Frame — the same shape [#171]'s five keys use, and for the same reasons.
-2. Do NOT widen or move cpu_cost itself. It is a published number (#168 reports 336 us/frame) and
-   [#171] already declined to fold spread_scan into it on the grounds that silently changing what a
-   measured key spans is a re-measurement wearing a refactor's clothes. The parts go BESIDE it.
-3. Read it. The parts must sum to cpu_cost within a stated tolerance, or the decomposition is
-   incomplete and says so — a closure that does not close is the finding.
-4. Report work-vs-wait as the headline, because that is what decides whether any lever exists here.
-
-=== SEQUENCING, AND IT CUTS BOTH WAYS ===
-This does NOT block [#269]'s decision — "does driving the GPU count as lighting CPU?" is answerable
-with the lump figure. But the answer may CHANGE with the split: including a 152 us/frame cost and
-including a 152 us/frame wait are different propositions, and a Director deciding inclusion would
-reasonably want to know which it is. Recommend running this BEFORE [#269] is settled, while noting
-#269 can be decided without it if the Director prefers.
-
-Instrumentation is writable with no GPU (a build pinned to `taskset -c 6-15` leaves the P-cores free).
-The READING needs a live client and the machine quiet.
+=== SEQUENCING ===
+Does not block [#269]'s decision — that is answerable with the lump figure — but it may CHANGE it:
+including a 152 us/frame cost and including a 152 us/frame wait are different propositions.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
