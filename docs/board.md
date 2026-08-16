@@ -45,9 +45,9 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 |---:|---:|---|---|---|
 | 1 | 1 | `#271` | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() c… | ready |
 | 2 | 2 | `#268` | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline ne… | ready |
-| 3 | 2 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
-| 4 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 5 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
+| 3 | 3 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 4 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
+| 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
 | 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
@@ -57,8 +57,6 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 | 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
-
-> **Ranking integrity:** rank 2 is claimed by 2 tasks: #268, #269
 
 > **5 completed task(s) still carry a rank** (#171, #245, #263, #264, #265). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -4941,7 +4939,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **pending** · metadata: `{"rank": 5}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 
@@ -6836,7 +6834,7 @@ lever-by-key cells of the banked run.
 
 #### #269 — LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing declares the union
 
-status: **pending** · blocks: #270 · metadata: `{"rank": 2}`
+status: **pending** · blocks: #270 · metadata: `{"rank": 3}`
 
 ```
 Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
