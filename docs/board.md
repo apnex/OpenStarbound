@@ -50,8 +50,8 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 8 | 7 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | blocked by #273 |
-| 9 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 9 | 8 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | blocked by #273 |
 | 10 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
 | 11 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
 | 12 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
@@ -59,7 +59,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 14 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 | 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
-> **Ranking integrity:** rank 7 is claimed by 2 tasks: #252, #268
+> **Ranking integrity:** rank 8 is claimed by 2 tasks: #250, #268
 
 > **6 completed task(s) still carry a rank** (#171, #245, #263, #264, #265, #271). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -6785,7 +6785,7 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 #### #268 — LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote
 
-status: **pending** · blocked by: #273 · metadata: `{"rank": 7}`
+status: **pending** · blocked by: #273 · metadata: `{"rank": 8}`
 
 - `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
