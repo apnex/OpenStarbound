@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**209 tasks** across 2 store(s): 2 in_progress, 34 pending, 173 completed
+**210 tasks** across 2 store(s): 2 in_progress, 35 pending, 173 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 208 tasks, ids 64–272
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 209 tasks, ids 64–273
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -44,19 +44,24 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 1 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
-| 2 | 2 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | ready |
+| 2 | 1 | `#273` | AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can a… | ready |
 | 3 | 3 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
 | 4 | 4 | `#272` | DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside an… | ready |
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 9 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 10 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 11 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 7 | 6 | `#268` | LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote | blocked by #273 |
+| 8 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 9 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 10 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 11 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 12 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 13 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 14 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+
+> **Ranking integrity:** rank 1 is claimed by 2 tasks: #269, #273
+
+> **Ranking integrity:** rank 6 is claimed by 2 tasks: #266, #268
 
 > **6 completed task(s) still carry a rank** (#171, #245, #263, #264, #265, #271). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -319,6 +324,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | open | DRIVE-RESIDUAL: a quarter of cpu_cost is in none of the seven parts, and switchEffectConfig submits inside another 38% | `7bede779` | — |
+| [#273](#c29c1332-273) | `c29c1332` | open | AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can attribute t… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6781,7 +6787,7 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 #### #268 — LEVER-FLOOR: 1/2/3/4/5 DONE — only "raise n" remains, and it costs ~1.7h not the 8 min I first wrote
 
-status: **pending** · metadata: `{"rank": 2}`
+status: **pending** · blocked by: #273 · metadata: `{"rank": 6}`
 
 - `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
 - `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
@@ -7071,6 +7077,74 @@ the pipeline is not stalling this thread, but the submits inside switchEffectCon
 and "strong evidence" is not the same as measured.
 
 NO GPU NEEDED to write the instrumentation; the reading needs a live client and a quiet machine.
+```
+
+<a id="c29c1332-273"></a>
+
+#### #273 — AXIS-SUBSYSTEM: twelve in-process keys reach every leg and none reach the joined axis, so no matrix run can attribute them per lever
+
+status: **pending** · blocks: #268 · metadata: `{"rank": 1}`
+
+```
+Found while the Director asked what would augment a 1.7-hour matrix re-run. The answer is this, and
+it was not on the board.
+
+=== THE FACT ===
+
+scripts/lever-cpu.py analyses `iv["axis"]`, and obs-join builds that axis from exactly three sources:
+sovereign /proc-derived keys matching AXIS_SUFFIXES (".busy_ratio", ".busy_cores", ".residual_cores"),
+the i915 PMU engines, and ONE derived in-process value — `cpu.frame.work.wall_fraction`, built by
+in_process_axis() from cpu.frame.work.us alone.
+
+Verified on a leg captured AFTER [#171] and [#271] shipped (harness/profiles/drive271-a): the axis
+carries 14 keys, and NONE of these is among them —
+
+  lighting.produce.{entities,prep,particles,adjust}.us          [#171], 5 keys with spread_scan
+  lighting.gpu.drive.{repack,upload,spread,point,compose,upscale,flush}.us   [#271], 7 keys
+  lighting.gpu.cpu_cost.us, lighting.cpu.total.us               the two wholes they decompose
+
+All are present in every leg's `.json`. All are invisible to every per-lever verdict.
+
+=== WHY IT MULTIPLIES THE RUN ===
+
+Today a matrix run says "off-parallaxRefreshInterval moves cpu.process by 12.2%". With the subsystem
+keys on the axis it says WHICH OF TWELVE NAMED COSTS MOVED — i.e. where in the code the lever acts.
+That converts the run from validating levers already shipped into attributing lever effects to named
+call sites, which is the difference between retrospective confirmation and forward guidance.
+
+Concretely it would answer, for free, in the same 1.7 hours:
+  * Does ANY lever move `lighting.gpu.drive.point.us`? That is 38% of a 152-159 us/frame cost that
+    [#271] proved is real CPU work — the best lever target currently known, and nothing has tested
+    whether the existing eight touch it.
+  * Do the border/cache levers move the PRODUCER side ([#171]'s five keys)? That is exactly what
+    [#270] needs to know before deciding whether its percentages can be restated or must be re-measured.
+  * Does the drive cost move with the levers at all, or is it a fixed floor? Decides whether [#272]'s
+    residual hunt is chasing something a lever already controls.
+
+=== THE DESIGN POINT, WHICH IS NOT MECHANICAL ===
+
+The axis is documented as "the small dimensionless set a plot puts on one Y". These keys are
+microsecond TOTALS over an interval, so they cannot go on raw — they need normalising the way
+cpu.frame.work.wall_fraction already is. Two defensible choices:
+  (a) wall fraction: total / 1e6 / durationS -- same shape as the existing in-process axis entry,
+      directly comparable to the owner busy_cores beside it.
+  (b) per-frame microseconds: total / frame count -- the unit every reading in
+      docs/evidence/{lighting-produce-first-reading,gpu-drive-decomposition}.md is quoted in.
+(a) keeps the axis dimensionless and one-Y-plottable; (b) matches how the numbers are already
+discussed. Pick ONE and say why in the code, because a mixed axis is how a sum stops meaning anything.
+
+NOTE the cadence trap: several of these are MetricCadence::Call (spread_scan, adjust, and all seven
+drive keys), firing on lightmap-publish frames only — 1736 of 4499. Dividing by FRAMES would understate
+them by 2.6x. Divide by the key's own count, or by durationS, never by a frame count they do not share.
+
+=== SCOPE ===
+Touches scripts/obs-join.py (axis construction) and scripts/lever-cpu.py (the analysed key list).
+NO GPU required. Must be validated against the banked run + the four legs captured today, showing the
+new axis entries appear and the existing 14 are byte-identical — the same null-control discipline
+[#268] required.
+
+DO THIS BEFORE any matrix re-run. Every key on the axis when the run starts gets eight lever deltas
+for free; every key added afterwards costs another 1.7 hours to attribute.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
