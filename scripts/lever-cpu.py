@@ -59,6 +59,24 @@ OWNERS = ["cpu.owner.frame.busy_cores", "cpu.owner.sim.busy_cores", "cpu.owner.g
           "cpu.owner.lighting.busy_cores", "cpu.owner.unknown.busy_cores"]
 EXTRA = ["cpu.frame.work.wall_fraction", "cpu.attribution.residual_cores"]
 
+# THE SUBSYSTEM KEYS (#273), mirroring obs-join's declared list -- they arrive on the axis as
+# wall_fraction. Without these a matrix run analyses five owner-level aggregates and leaves every
+# named subsystem cost unattributed, which is what it would have done today.
+SUBSYSTEM = [
+    "lighting.gpu.drive.repack.wall_fraction", "lighting.gpu.drive.upload.wall_fraction",
+    "lighting.gpu.drive.spread.wall_fraction", "lighting.gpu.drive.point.wall_fraction",
+    "lighting.gpu.drive.compose.wall_fraction", "lighting.gpu.drive.upscale.wall_fraction",
+    "lighting.gpu.drive.flush.wall_fraction", "lighting.gpu.spread_scan.wall_fraction",
+    "lighting.produce.entities.wall_fraction", "lighting.produce.prep.wall_fraction",
+    "lighting.produce.particles.wall_fraction", "lighting.produce.adjust.wall_fraction",
+    "lighting.gpu.cpu_cost.wall_fraction", "lighting.cpu.total.wall_fraction",
+]
+
+# The full analysed set, in report order. One list so the omnibus family and the loop cannot disagree
+# -- a corrected alpha computed over a different set than the one tested is the shape of an
+# unfalsifiable threshold.
+ALL_KEYS = [WHOLE] + OWNERS + EXTRA + SUBSYSTEM
+
 
 def declared_null_control():
     """The lever the table declares cannot touch THE CPU. Returns None when none does, which is today.
@@ -156,7 +174,25 @@ def collect(run_dir, verdicts, run_id):
 # third-party dependency to run is a gate that silently stops running. The regularized incomplete
 # beta below is the standard continued-fraction evaluation; `selftest_omnibus` checks it against
 # published F-table critical values AND against the three real series.
-OMNIBUS_ALPHA = 0.05
+# WIDENED FOR THE NUMBER OF KEYS TESTED (#273), and this is the price of putting the subsystem keys
+# on the axis. The omnibus is the gate that OPENS a key: run it on 20 keys at a flat 0.05 and one key
+# in every twenty opens by chance, after which the per-lever floor and MDE are being applied inside a
+# key that resolves nothing. Fisher's protection is WITHIN a key; nothing was protecting the choice
+# BETWEEN keys.
+#
+# Corrected here rather than by tightening the per-lever family, because these are different
+# questions: "which keys resolve anything" is the omnibus's family, "which lever on this key" is the
+# lever table's declared family. Conflating them would pay the multiplicity twice.
+OMNIBUS_ALPHA_FAMILYWISE = 0.05
+
+
+def omnibus_alpha(n_keys):
+    """-> the per-key omnibus threshold once n_keys are being tested."""
+    return OMNIBUS_ALPHA_FAMILYWISE / max(1, n_keys)
+
+
+# Kept for the selftest arms that predate the correction and test a single key in isolation.
+OMNIBUS_ALPHA = OMNIBUS_ALPHA_FAMILYWISE
 
 
 def _betacf(a, b, x, itmax=200, eps=3e-16):
@@ -343,7 +379,7 @@ def common_offset(legs, key, base_mean):
     return st.mean(deltas), len(deltas), all(d < 0 for d in deltas) or all(d > 0 for d in deltas)
 
 
-def verdicts_for(legs, key, null_control):
+def verdicts_for(legs, key, null_control, n_keys=1):
     """-> (base_mean, floor, floor_why, [(lever, delta, own_spread, resolved)], omni) or None.
 
     A lever is RESOLVED only if the key passes the omnibus test FIRST -- see the block above. The
@@ -397,7 +433,8 @@ def verdicts_for(legs, key, null_control):
 
     # No between-lever structure => nothing on this key is attributable to any lever, whatever the
     # individual deltas look like. Fisher's protection: the omnibus comes first, always.
-    resolves = omni is not None and omni[3] < OMNIBUS_ALPHA
+    alpha_o = omnibus_alpha(n_keys)
+    resolves = omni is not None and omni[3] < alpha_o
 
     stats = load_statistics()
     n_base = len(base)
@@ -449,7 +486,9 @@ def persist_thresholds(run_dir, run_id, null_control, rows):
                        "_cpuNullControlNote":
                            "null when no lever is CPU-null by construction, which is the case for the "
                            "shipped table -- see lever-table.json. NOT a missing input.",
-                       "omnibusAlpha": OMNIBUS_ALPHA,
+                       "omnibusAlphaFamilywise": OMNIBUS_ALPHA_FAMILYWISE,
+                       "omnibusAlphaPerKey": omnibus_alpha(len(ALL_KEYS)),
+                       "keysTested": len(ALL_KEYS),
                        "statistics": load_statistics(),
                        "keys": rows}, fh, indent=2)
         return out
@@ -483,8 +522,18 @@ def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
 
     any_resolved = []
     threshold_rows = {}
-    for key in [WHOLE] + OWNERS + EXTRA:
-        v = verdicts_for(legs, key, null_control)
+    # COUNT THE KEYS THAT ACTUALLY HAVE DATA, not the keys in the list. A run predating [#171]/[#271]
+    # carries none of the subsystem keys, and dividing the omnibus alpha by keys that are ABSENT would
+    # tighten the threshold for the keys that are PRESENT -- punishing a run for instrumentation it
+    # could not have had. That is ABSENT-vs-ZERO wearing a multiplicity correction's clothes, and this
+    # project has paid for that shape eleven times. Caught by running the banked corpus through it: the
+    # 27-leg run has 6 of these 20 keys.
+    n_keys_tested = sum(1 for k in ALL_KEYS if verdicts_for(legs, k, null_control, 1) is not None)
+    if n_keys_tested != len(ALL_KEYS):
+        print(f"  {n_keys_tested} of {len(ALL_KEYS)} analysed keys carry data in this run; the omnibus "
+              f"family is the {n_keys_tested} PRESENT, not the {len(ALL_KEYS)} declared")
+    for key in ALL_KEYS:
+        v = verdicts_for(legs, key, null_control, n_keys_tested)
         if v is None:
             print(f"\n  {key}\n    NOT MEASURED -- fewer than two baseline repeats carry this key.")
             continue
@@ -494,7 +543,7 @@ def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
             print("       OMNIBUS not computable -- too few groups; NOTHING may be resolved here.")
         else:
             F, df1, df2, pval, pooled = omni
-            ok = pval < OMNIBUS_ALPHA
+            ok = pval < omnibus_alpha(n_keys_tested)
             print(f"       omnibus F({df1},{df2}) = {F:.2f}, p = {pval:.4f}, pooled sd {pooled:.4f}"
                   f"  -> {'the key resolves lever effects' if ok else 'NO between-lever structure'}")
             if not ok:
@@ -544,7 +593,7 @@ def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
             print(f"       CANDIDATE   {lever:34s} {d:+8.4f} cores   (under the MDE -- worth a "
                   f"dedicated A/B, NOT a cost{cps})")
         for lever, d, own, _, _nl in sorted(unres, key=lambda r: -abs(r[1])):
-            if omni is not None and omni[3] >= OMNIBUS_ALPHA:
+            if omni is not None and omni[3] >= omnibus_alpha(n_keys_tested):
                 why2 = "key resolves nothing"
             elif abs(d) <= floor:
                 why2 = "inside the floor"
@@ -557,12 +606,12 @@ def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
     # account for it has moved work somewhere the attribution cannot see, and that is a finding about
     # the INSTRUMENT rather than about the lever.
     print("\n  ATTRIBUTION CHECK -- does the sum of the owner deltas account for the whole's delta?")
-    wv = verdicts_for(legs, WHOLE, null_control)
+    wv = verdicts_for(legs, WHOLE, null_control, n_keys_tested)
     if wv:
         whole_rows = {lever: d for lever, d, _o, _r, _n in wv[3]}
         owner_sums = collections.defaultdict(float)
         for key in OWNERS:
-            ov = verdicts_for(legs, key, null_control)
+            ov = verdicts_for(legs, key, null_control, n_keys_tested)
             if ov:
                 for lever, d, _o, _r, _n in ov[3]:
                     owner_sums[lever] += d
@@ -589,7 +638,7 @@ def report(legs, null_control, voided, unreadable, run_dir=None, run_id=None):
 
 # One per numbered check in selftest(). Asserted against the numbering itself below, so adding a
 # check without updating this is a FAILURE rather than a silently stale banner.
-ARMS = 15
+ARMS = 17
 
 
 def selftest():
@@ -809,6 +858,33 @@ def selftest():
     if "baseline spread" not in why_wide or floor_wide <= floor_tight:
         fails.append(f"a wide baseline range did not raise the floor above the LSD case: {why_wide}")
 
+    # 12. THE OMNIBUS FAMILY COUNTS PRESENT KEYS, NOT DECLARED ONES (#273). Adding the subsystem keys
+    #     to the analysed set widens the family that gates which KEYS open -- but a run predating the
+    #     instrumentation carries none of them, and dividing alpha by ABSENT keys would tighten the
+    #     bar for the present ones. That is ABSENT-vs-ZERO wearing a correction's clothes, and it is
+    #     the bug this arm exists to keep out.
+    if omnibus_alpha(1) != OMNIBUS_ALPHA_FAMILYWISE:
+        fails.append("omnibus_alpha(1) must be the familywise alpha itself")
+    if not (omnibus_alpha(8) > omnibus_alpha(22) > 0):
+        fails.append("the omnibus alpha did not tighten as more keys are tested")
+    if abs(omnibus_alpha(8) - OMNIBUS_ALPHA_FAMILYWISE / 8) > 1e-12:
+        fails.append("omnibus_alpha is not the familywise alpha divided by the key count")
+
+    # 13. THE ANALYSED SET AND obs-join's DECLARED SET MUST NOT DRIFT. Two lists naming the same keys
+    #     is exactly the shape that rots; assert they agree rather than trusting they do.
+    import importlib.util as _iu
+    _s = _iu.spec_from_file_location("oj", os.path.join(HERE, "obs-join.py"))
+    _oj = _iu.module_from_spec(_s)
+    try:
+        _s.loader.exec_module(_oj)
+        joined = {k[:-len(".us")] + ".wall_fraction" for k in _oj.SUBSYSTEM_KEYS}
+        if joined != set(SUBSYSTEM):
+            missing = sorted(joined - set(SUBSYSTEM)); extra = sorted(set(SUBSYSTEM) - joined)
+            fails.append(f"obs-join and lever-cpu disagree on the subsystem set: "
+                         f"only-in-join {missing}, only-in-lever-cpu {extra}")
+    except Exception as e:
+        fails.append(f"could not cross-check obs-join's SUBSYSTEM_KEYS: {e}")
+
     # 7. THE ATTRIBUTION CHECK REPORTS THE UNACCOUNTED REMAINDER. Owners at 0.6/0.4 of the whole sum
     #    exactly, so the remainder must be ~0; a version that forgot an owner would show it.
     with contextlib.redirect_stdout(io.StringIO()) as buf3:
@@ -833,7 +909,9 @@ def selftest():
           f"shared by EVERY lever is suppressed by the omnibus, a "
           f"clean effect still resolves through it, F and t match published table values, the "
           f"correction widens with the comparison count, a delta under the MDE is a CANDIDATE and "
-          f"not a cost, the multiplicity family is declared rather than inferred, VOID legs are "
+          f"not a cost, the multiplicity family is declared rather than inferred, the omnibus family "
+          f"counts PRESENT keys not declared ones, obs-join and lever-cpu agree on the subsystem "
+          f"set, VOID legs are "
           f"excluded without "
           f"dropping their siblings, an unjoinable interval is not a zero, a baseline-less run "
           f"fails, an all-null run is named a result, the attribution remainder is reported)")

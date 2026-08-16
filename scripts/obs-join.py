@@ -69,6 +69,16 @@ DERIVED = [("gpu.engine.", ".busy_ns_total", ".busy_ratio"),
 # match its parts is a whole nobody can falsify.
 AXIS_SUFFIXES = (".busy_ratio", ".busy_cores", ".residual_cores")
 
+# Declared, not inferred -- see in_process_axis for why a prefix rule would be wrong here.
+SUBSYSTEM_KEYS = (
+    "lighting.gpu.drive.repack.us", "lighting.gpu.drive.upload.us", "lighting.gpu.drive.spread.us",
+    "lighting.gpu.drive.point.us", "lighting.gpu.drive.compose.us", "lighting.gpu.drive.upscale.us",
+    "lighting.gpu.drive.flush.us", "lighting.gpu.spread_scan.us",
+    "lighting.produce.entities.us", "lighting.produce.prep.us", "lighting.produce.particles.us",
+    "lighting.produce.adjust.us",
+    "lighting.gpu.cpu_cost.us", "lighting.cpu.total.us",
+)
+
 
 def read_sovereign(path):
     """{key: [(epoch_s, pid, value)]} sorted, plus the count of UNAVAILABLE rows DROPPED not zeroed."""
@@ -214,13 +224,39 @@ def in_process_axis(metrics, duration_s):
     relation that should hold is work_wall_fraction >= owner frame busy_cores, and having both on one
     axis is what makes that checkable at all -- two instruments, one thread, different mechanisms.
     """
+    if not duration_s:
+        return {}
+    axis = {}
     m = metrics.get("cpu.frame.work.us")
-    if not isinstance(m, dict) or not duration_s:
-        return {}
-    total = m.get("total")
-    if not isinstance(total, (int, float)):
-        return {}
-    return {"cpu.frame.work.wall_fraction": (total / 1e6) / duration_s}
+    if isinstance(m, dict) and isinstance(m.get("total"), (int, float)):
+        axis["cpu.frame.work.wall_fraction"] = (m["total"] / 1e6) / duration_s
+
+    # THE SUBSYSTEM KEYS (#273). Until now the axis carried the sovereign per-owner aggregates and
+    # exactly ONE in-process value, so the twelve keys [#171] and [#271] shipped reached every leg and
+    # were attributable in none of them: a matrix run would have captured them and analysed nothing.
+    #
+    # A DECLARED LIST, NOT A PREFIX RULE, AND THE REASON IS MULTIPLICITY. A leg carries 69 CPU-domain
+    # `.us` keys. Sweeping them all onto the axis would put 69 x 8 = 552 lever tests behind a declared
+    # family of 8, which manufactures false positives -- the defect [#265] and the MDE work spent this
+    # whole campaign removing. Adding a key to the axis is not free; it costs multiplicity, and the
+    # cost is paid by every OTHER key's threshold. So the set below is the keys that answer the
+    # currently-open questions, and nothing else:
+    #   the seven drive parts   -- does any lever move `point`, the 38% [#271] identified?
+    #   the producer keys       -- do the cache/border levers touch production? ([#270] needs this)
+    #   the two wholes          -- so the parts can be read against what they decompose
+    # A key earns its place here by being the subject of an open question, and loses it when that
+    # question closes.
+    #
+    # WALL FRACTION, NOT PER-FRAME MICROSECONDS, and that choice avoids a trap. Seven of these are
+    # MetricCadence::Call and fire on lightmap-publish frames only -- 1736 of 4499 on the measured
+    # legs -- so dividing by a FRAME count would understate them by 2.6x. Dividing by durationS
+    # involves no frame count at all and is immune. It also keeps the axis dimensionless, which is
+    # what it is documented to be, and directly comparable to the busy_cores beside it.
+    for key in SUBSYSTEM_KEYS:
+        s = metrics.get(key)
+        if isinstance(s, dict) and isinstance(s.get("total"), (int, float)):
+            axis[key[:-len(".us")] + ".wall_fraction"] = (s["total"] / 1e6) / duration_s
+    return axis
 
 
 def join_leg(series, by_key, sov_unavailable, by_engine, pmu_unavailable, sources):
