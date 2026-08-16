@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**207 tasks** across 2 store(s): 2 in_progress, 33 pending, 172 completed
+**208 tasks** across 2 store(s): 2 in_progress, 34 pending, 172 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 206 tasks, ids 64–270
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 207 tasks, ids 64–271
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,19 +43,22 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 1 | 1 | `#271` | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() c… | ready |
 | 2 | 2 | `#268` | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline ne… | ready |
-| 3 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 4 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
-| 5 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 6 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 7 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 8 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 9 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 11 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 13 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 3 | 2 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
+| 4 | 3 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
+| 6 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 7 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 8 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 9 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 10 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 11 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 12 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 13 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+
+> **Ranking integrity:** rank 2 is claimed by 2 tasks: #268, #269
 
 > **5 completed task(s) still carry a rank** (#171, #245, #263, #264, #265). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
@@ -316,6 +319,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | — | — |
 | [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
+| [#271](#c29c1332-271) | `c29c1332` | open | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6832,7 +6836,7 @@ lever-by-key cells of the banked run.
 
 #### #269 — LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing declares the union
 
-status: **pending** · blocks: #270 · metadata: `{"rank": 1}`
+status: **pending** · blocks: #270 · metadata: `{"rank": 2}`
 
 ```
 Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
@@ -6939,6 +6943,73 @@ against a denominator that is itself about to change would be paying twice, and 
 would supersede the first — the shape [#170]'s own "-23.6% is SUPERSEDED, not wrong" already records.
 
 Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border scene.
+```
+
+<a id="c29c1332-271"></a>
+
+#### #271 — GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean part of it may be wa…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean part of it may be wait
+```
+
+status: **pending** · metadata: `{"rank": 1}`
+
+```
+Raised by the Director after [#171]'s first reading showed `lighting.gpu.cpu_cost.us` at 152-159
+us/frame — LARGER than the lighting consumer (69-75) and the newly-named producer side (36-40)
+combined, and ~6.5% of cpu.frame.render.us.
+
+=== IT IS AN UNATTRIBUTED WHOLE, WHICH IS THE REAL PROBLEM ===
+
+`TelemetryScope cpuCostScope(cpuCostTimer)` wraps the entire body of GpuLightmapPass::processFull.
+That body has at least five phases, already banner-commented in the source, and NONE is separately
+timed on the CPU side:
+
+  emission repack to RGBA16F   `for (size_t i = 0; i < texels; ++i)` — an O(cells) CPU loop
+  uploads                      setEffectTextureHalf("emission"), uploadObstacle() — called TWICE,
+                               once for spread and again because lightingPoint has its own sampler
+  // --- Spread                `for (i < spreadIterations)`, up to 48 setRenderTarget+renderBuffer
+  // --- Point                 `for (auto const& light : lights)`, one blended bbox quad each
+  // --- Compose / Upscale     two `m_renderer->flush()` calls
+
+A Budget with no parts is the shape [#235] removed twice ("both unfalsifiable wholes are gone"). This
+is the largest one left in the lighting path.
+
+=== THE HYPOTHESIS THAT MATTERS: SOME OF IT MAY BE WAIT, NOT WORK ===
+
+processFull calls `m_renderer->flush()` at the compose and upscale steps. If those block on GL, the
+render thread is WAITING inside a timer named cpu_cost, and this project has twice found exactly that
+shape: [#246], where a GPU-pass bracket read 2.5x the entire device's busy time and was a SPAN not a
+cost; and [#173], a CPU lever proposed on a loop that turned out to sleep 72-84% of every frame.
+`cpu.wait.lighting.us` exists in StarClientApplication for precisely this distinction — its comment
+says billing work and wait together is "correct for frame time and useless for choosing a lever".
+
+WHETHER flush() ACTUALLY BLOCKS IS UNVERIFIED. Do not assume it; the point of the task is to find out.
+
+=== WHAT THIS OWES ===
+
+1. Split cpu_cost into Detail sub-timers along the seams that already exist (repack, upload, spread
+   dispatch, point dispatch, compose, upscale), plus an explicit WAIT timer around each flush().
+   Detail, owner Frame — the same shape [#171]'s five keys use, and for the same reasons.
+2. Do NOT widen or move cpu_cost itself. It is a published number (#168 reports 336 us/frame) and
+   [#171] already declined to fold spread_scan into it on the grounds that silently changing what a
+   measured key spans is a re-measurement wearing a refactor's clothes. The parts go BESIDE it.
+3. Read it. The parts must sum to cpu_cost within a stated tolerance, or the decomposition is
+   incomplete and says so — a closure that does not close is the finding.
+4. Report work-vs-wait as the headline, because that is what decides whether any lever exists here.
+
+=== SEQUENCING, AND IT CUTS BOTH WAYS ===
+This does NOT block [#269]'s decision — "does driving the GPU count as lighting CPU?" is answerable
+with the lump figure. But the answer may CHANGE with the split: including a 152 us/frame cost and
+including a 152 us/frame wait are different propositions, and a Director deciding inclusion would
+reasonably want to know which it is. Recommend running this BEFORE [#269] is settled, while noting
+#269 can be decided without it if the Director prefers.
+
+Instrumentation is writable with no GPU (a build pinned to `taskset -c 6-15` leaves the P-cores free).
+The READING needs a live client and the machine quiet.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
