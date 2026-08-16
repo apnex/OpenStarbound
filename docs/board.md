@@ -44,7 +44,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 1 | `#271` | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() c… | ready |
-| 2 | 2 | `#268` | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline ne… | ready |
+| 2 | 2 | `#268` | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both… | ready |
 | 3 | 3 | `#269` | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, a… | ready |
 | 4 | 4 | `#270` | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now… | blocked by #269 |
 | 5 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
@@ -69,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 224, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 225, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -98,7 +98,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 87 of 172.
+**Completed tasks citing no commit and no doc:** 85 of 172.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,12 +215,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#165](#c29c1332-165) | `c29c1332` | done | CPU-4: transition to writing-plans (brainstorm terminal) | — | — |
 | [#166](#c29c1332-166) | `c29c1332` | done | CPU-5 DONE: unified telemetry model shipped; one verification step deliberately not run (see #172) | `84ca718f` `1bfa935d` `5e8f66d3` `b3c88551` `497e398c` `313095f1` `5eb17518` `61531413` `39992d4b` `4797f33d` `e2966ad2` | — |
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
-| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
+| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `a1296a7d` `b1d8c3a0` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
-| [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | — | — |
+| [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `00f575ad` | — |
@@ -281,7 +281,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#232](#c29c1332-232) | `c29c1332` | done | GPUTEL-B4: present design, get approval per section | — | — |
 | [#233](#c29c1332-233) | `c29c1332` | done | GPUTEL-B5: write + self-review + Director-review the spec, then writing-plans | — | — |
 | [#234](#c29c1332-234) | `c29c1332` | done | GM-1b: EngineBusyReader must poll, not bracket — the PMU publishes lazily | `9505dd92` | — |
-| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `7fa1d2ed` `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
+| [#235](#c29c1332-235) | `c29c1332` | done | BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the clock is declared and ratcheted, and b… | `164163cc` `7fa1d2ed` `eec79ca1` `e368f046` `0eef793b` `11a28ba0` `3a8c530e` `72ad0000` `50d57866` | — |
 | [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
@@ -292,7 +292,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
 | [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `35bbb97c` `495682df` | — |
 | [#245](#c29c1332-245) | `c29c1332` | done | DESC-CONVERGE CLOSED: unit and boundedness are read, the ratchet counts only what it names, and two of my own claims we… | `da28b864` `a01c4a9c` `21adb941` `bc0305df` `7f222773` `fe20f87d` `bea29db1` `fa04b907` `aa484259` | — |
-| [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | — | — |
+| [#246](#c29c1332-246) | `c29c1332` | done | WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost | `164163cc` | — |
 | [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
@@ -311,13 +311,13 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
-| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `a686d95b` | — |
+| [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates | `35e049a1` | — |
+| [#268](#c29c1332-268) | `c29c1332` | open | LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a… | `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | open | LIGHTING-WHOLE: "lighting CPU" is not any owner's total — three keys under two owners each hold part of it, and nothing… | — | — |
 | [#270](#c29c1332-270) | `c29c1332` | open | LIGHTING-REDERIVE: #168's closure and #170/#217's border percentages were measured against a denominator now known to b… | — | — |
-| [#271](#c29c1332-271) | `c29c1332` | open | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean… | — | — |
+| [#271](#c29c1332-271) | `c29c1332` | open | GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattributed lump, and two flush() calls mean… | `164163cc` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2355,6 +2355,7 @@ SCOPE NOTE: this touches the GpuTimer contract in StarRenderDiagnostics.hpp, so 
 
 status: **completed**
 
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 - `2e9c514e` docs(telemetry): calc.cells is not a scene fingerprint -- lights.sources is [#168]
 - `f7521455` docs(telemetry): the lighting owner's phase budget + three new traps [#168]
 - `4eb4e1c3` lighting: branchless floatToHalf -- kill the range-branch mispredicts [#168]
@@ -2493,6 +2494,7 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 status: **completed** · metadata: `{"rank": 2}`
 
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 - `a1296a7d` [#171] the first reading of the instrument: the lighting denominator has been missing a third of itself
 - `b1d8c3a0` [#171] five producer-side lighting costs get names; every lighting percentage has been excluding them
 
@@ -2584,6 +2586,8 @@ CONFIRMED BEHAVIOUR worth keeping: a deep-off capture ALWAYS trips the closure o
 #### #173 — RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes
 
 status: **completed** · blocked by: #242
+
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
 ```
 CLOSED 2026-08-07, NOT DONE, and closed the way this task asked to be: "EXPECTED SIZE: unknown and
@@ -4805,6 +4809,7 @@ BUSY-VS-WALL DONE: the series is retained, CPU busy is attributed per owner, the
 
 status: **completed** · blocks: #252, #250
 
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 - `7fa1d2ed` OBS-JOIN: the sovereign readers get a harness consumer, and it re-points itself at each leg's client [#253]
 - `eec79ca1` C07 + CLOCK-RATCHET: the frame budget closed against a period that contains a sleep, so it could not fail [#235]
 - `e368f046` GPU-CLOCK: a timeline span is not work, so it may not be a budget or a whole -- and now it cannot become one [#235]
@@ -5402,6 +5407,8 @@ correctly not counted as a pass). Gate count 59 -> 66.
 #### #246 — WORLD-PASS: CLOSED — the bracket is 2.5x the entire GPU's busy time, so it is a span, not a cost
 
 status: **completed** · blocked by: #242
+
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
 ```
 CLOSED 2026-08-07, NOT DONE, on the exact criterion this task set for itself: "DO NOT START until
@@ -6613,6 +6620,7 @@ slot 1. See also [#265], which found the same estimator promoting noise to RESOL
 
 status: **completed** · metadata: `{"rank": 5}`
 
+- `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `a686d95b` [#265] four published lever effects were noise; the omnibus test now refuses them mechanically
 
 ```
@@ -6766,68 +6774,66 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 <a id="c29c1332-268"></a>
 
-#### #268 — LEVER-FLOOR: the estimator's floor is a 3-sample range, its CPU control is a GPU control, and the baseline never rotates
+#### #268 — LEVER-FLOOR: items 1/2/4/5 DONE — the CPU floor no longer borrows a GPU control; rotation and n remain, both needing a run
 
 status: **pending** · metadata: `{"rank": 2}`
 
+- `45a09f6d` [#268] the CPU floor was built from a GPU control, a 3-point range, and a number that lived only in stdout
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
 
 ```
-Carries the residue of [#264] and [#265], both of which independently hit the same root cause: the
-per-lever floor methodology in scripts/lever-cpu.py, which governs EVERY future matrix run, not just
-the banked one. The omnibus test shipped at a686d95b fixed the promotion rule.
+Carries the residue of [#264] and [#265], both of which independently hit the per-lever floor
+methodology in scripts/lever-cpu.py — which governs EVERY future matrix run, not just the banked one.
 
-=== ITEM 5 SHIPPED FIRST, AT 35e049a1, BECAUSE IT OUTRANKED THE REST ===
+=== DONE ===
 
-5. THE MDE RULE AND THE THIRD VERDICT — DONE. Asked what "perfection" means for the multiplicity
-   correction and the answer was that the correction argument sits below the noise floor. At n=3 the
-   minimum detectable effect at 80% power is 0.0668 cores on cpu.owner.sim (31% of baseline) and
-   0.0859 on cpu.process (16%), while the contested deltas are 0.0666 and 0.0534 — at or BELOW the
-   MDE at every correction including none. So: a delta under the MDE is never quotable as a cost,
-   whatever its p, and verdicts are now CONFIRMED / CANDIDATE / NULL because the matrix is a SCREEN
-   and its output was being quoted as a finding. The family, alpha and power are DECLARED in
-   lever-table.json before the run (a family chosen at analysis time can produce any corrected p);
-   a missing block refuses rather than defaulting. Bonferroni is recorded as a named conservative
-   approximation — Dunnett is the correct test for k-treatments-vs-one-control, and the ~5% MDE
-   difference flips no verdict measured so far, so the harder routine is deliberately not built.
-   RESULT ON THE BANKED RUN: cpu.process's two survivors become CANDIDATE, so the CPU half of
-   [#255]'s headline is no longer quotable as cost; the GPU half is untouched; and two effects DO
-   survive as CONFIRMED (lighting/off-lightingTemporalDecouple p=0.000, unknown/off-lightingGatherCache
-   p=0.002), which is the check that the rule is not merely mute.
+5. THE MDE RULE AND THE THIRD VERDICT (35e049a1). Asked what "perfection" means for the multiplicity
+   correction; the answer was that the correction argument sits below the noise floor. At n=3 the MDE
+   at 80% power is 0.0668 cores on cpu.owner.sim (31% of baseline) and 0.0859 on cpu.process (16%),
+   while the contested deltas were 0.0666 and 0.0534 — at or BELOW the MDE at every correction
+   including none. So a delta under the MDE is never quotable as a cost, and verdicts are now
+   CONFIRMED / CANDIDATE / NULL because the matrix is a SCREEN whose output was being quoted as a
+   finding. Family, alpha and power are DECLARED in lever-table.json before the run; a missing block
+   refuses rather than defaulting. Bonferroni is recorded as a named conservative approximation
+   (Dunnett is correct for k-vs-one-control; the ~5% MDE difference flips no verdict measured so far).
 
-=== STILL OPEN ===
+1. NO CPU NULL CONTROL EXISTS, AND NONE CAN (45a09f6d). lever-cpu imported pmu-join's control, which
+   reads `gpuNullControl` — null for the GPU, and worth -0.0299 cores on cpu.process, 63% of that
+   key's floor. `gpuNullControl` works because some levers cannot reach the GPU; there is no
+   symmetric escape for the CPU, because every lever in this table IS a CPU code-path change. It now
+   reads `cpuNullControl`, no lever sets it, and the table states why none can. Returning None is the
+   correct answer, not a missing one. Deliberately NOT done: picking the lever with the smallest
+   measured delta — choosing a control by its outcome is the circularity a control exists to prevent.
 
-1. THE CPU FLOOR IS BORROWED FROM A GPU NULL CONTROL. lever-cpu takes its control from the lever the
-   table flags `gpuNullControl`. A lever null for the GPU is not thereby null for the CPU, and in
-   matrix-20260808-140430 the borrowed control moves cpu.process.busy_cores by -0.0299 cores — 63%
-   of that key's 0.0476 floor. It happened not to bind on owner sim, but nothing stops it next time,
-   and a control that is not CPU-null inflates every CPU floor and SUPPRESSES real levers. Declare a
-   separate `cpuNullControl`; if no lever qualifies, say so loudly rather than substituting.
+2. THE FLOOR IS max(baseline spread, pooled-sd LSD) (45a09f6d). The 3-point range is KEPT rather than
+   replaced: it is a poor scale estimate but the only term that sees DRIFT ACROSS LEGS, which is what
+   [#265] found. The LSD comes from the pooled within-group sd omnibus already computes. Strictly
+   below the MDE, so significance bar and detectability bar rather than the same test twice.
 
-2. THE FLOOR IS A 3-SAMPLE RANGE (2 dof) against a pooled within-group sd of 0.0208 cores. A range
-   over three points is a poor scale estimate used as a hard threshold. Report a pooled-variance
-   floor instead — omnibus() already computes the pooled sd, so the input exists.
+4. THE THRESHOLDS TRAVEL WITH THE RUN (45a09f6d). lever-cpu-thresholds.json, written beside the run —
+   the manifest is the RUNNER's record of what it did, this is the ANALYSER's record of how it judged.
+
+NULL CONTROL FOR 1/2/4 TOGETHER: 2 of 64 lever-by-key cells move, both cpu.process (env and parallax,
+CANDIDATE -> unresolved). Parallax is a NEAR MISS — 0.0666 against a floor of 0.0675, 1.3% short —
+recorded as such, not as a clean rejection. Both CONFIRMED effects are UNCHANGED, which is the test
+that the floor improved rather than merely grew.
+
+=== STILL OPEN — BOTH NEED A RUN, NEITHER IS VALIDATABLE AGAINST BANKED DATA ===
 
 3. THE BASELINE NEVER ROTATES OUT OF SLOT 1. lever-matrix.sh runs it first in every pass, so every
-   delta shares one un-rotated reference and run drift is charged entirely to the levers. This is
-   the mechanism behind [#265]: all eight levers shifted -0.0295 on owner sim, control included.
-   NOTE this changes the harness, so it cannot be validated against banked data — it needs a re-run.
+   delta shares one un-rotated reference and run drift is charged entirely to the levers — the
+   mechanism behind [#265]'s finding that all eight levers shifted -0.0295 on owner sim, control
+   included. Rotate or duplicate the baseline within each pass. Changes the harness, so it cannot be
+   checked against matrix-20260808-140430.
 
-4. THE FLOOR IS NEVER PERSISTED. manifest.json still says `"analysis": "NOT PERFORMED"`, so the
-   threshold a past run's verdicts were judged against exists only in stdout. Write it into the
-   manifest beside captureDeepTracing and sceneBoundPct, which are there for the same reason.
+6. RAISE n. The only item that moves the MDE, and it is cheap — legs are ~5s. Corrected, 80% power,
+   owner sim: n=3 gives 31% of baseline (~2 min of legs), n=10 gives 15.8% (~8 min), n=15 gives 12.8%
+   (~11 min). The curve flattens because the baseline's own across-repeat spread is 28-32%, so n and
+   item 3 are complementary — neither alone is enough.
 
-6. RAISE n ON THE NEXT RUN. This is the only item that moves the MDE, and it is cheap — legs are
-   ~5s. Corrected, 80% power, owner sim: n=3 gives 31% of baseline (~2 min of legs), n=10 gives
-   15.8% (~8 min), n=15 gives 12.8% (~11 min). The curve flattens because the baseline's own
-   across-repeat spread is 28-32%, so n and item 3 are complementary — neither alone is enough.
-
-Items 1, 2 and 4 are validatable against matrix-20260808-140430 with no re-run. Items 3 and 6 are not.
-
-DO NOT close this by making the floor stricter and calling it safer: [#264] measured that the
-weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
-happily as it suppresses noise. Each change needs a null control showing what it does to the 48
-lever-by-key cells of the banked run.
+DO NOT close the remainder by making the floor stricter and calling it safer: [#264] measured that
+the weighted estimator changes no verdict, and a floor that only ever grows suppresses real levers as
+happily as it suppresses noise.
 ```
 
 <a id="c29c1332-269"></a>
@@ -6954,6 +6960,8 @@ GPU-DRIVE-DECOMPOSE: lighting.gpu.cpu_cost.us is 152-159 us/frame in one unattri
 ```
 
 status: **pending** · metadata: `{"rank": 1}`
+
+- `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
 ```
 Raised by the Director after [#171]'s first reading showed `lighting.gpu.cpu_cost.us` at 152-159
