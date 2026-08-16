@@ -12,6 +12,21 @@
 # run here on the next invocation with no second edit. That is the same one-declaration rule the
 # workflow already applies to the ratchet ceilings via --from-cmake.
 #
+# SOME GATES ARE NOT SAFE TO RUN WHILE A HARNESS RUN IS LIVE (#275), and the runner says so at the
+# top rather than leaving it to be rediscovered from a confusing red. A matrix run MUTATES the harness
+# config once per leg, so a gate that reads it reports which leg is executing, not what the tree says.
+# Audited 2026-08-16 across all 68 steps; exactly one had the defect and it is now guarded:
+#
+#   lever_table          READS THE LIVE CONFIG. Guarded: skips 77 via scripts/harness-active.sh.
+#                        Went red 2026-08-16 mid-leg on off-renderDrawableCache with nothing wrong --
+#                        and would have read GREEN if sampled between legs, which is the worse half.
+#   metrics_mutual       READS THE LIVE GPU. Already correct: prints DID NOT COMPARE and skips.
+#   banked_corpus_reread reads harness/, but PINS one historical run id, so a live run cannot reach it.
+#   *_verdicts, *_fires  parse script text or use fixtures. No live state. Safe.
+#
+# The rule for a new gate: if it reads storage/, dist/ or harness/ WITHOUT pinning, it must consult
+# harness-active.sh and skip, never guess.
+#
 #   scripts/ci/run-gates.sh          # run all, summarise
 #   scripts/ci/run-gates.sh -v       # show each gate's output
 set -uo pipefail

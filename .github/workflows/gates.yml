@@ -446,8 +446,27 @@ jobs:
       # value, and every later matrix run measures a baseline nobody declared -- internal consistency
       # is not correspondence. Exits 77 while the table is still empty, which is an ABSENT verdict:
       # run-gates.sh will say so rather than count it green.
+      - name: harness_active_fires -- clean, present, empty and stale locks all read correctly
+        run: scripts/harness-active.sh --selftest
+
       - name: lever_table -- the declared levers still match the harness config
-        run: scripts/lever-matrix.sh --check-table
+        # A RUNNING MATRIX OWNS THIS CONFIG (#275). lever-matrix.sh sets exactly one lever off per
+        # leg, so mid-run this gate reports which leg is executing rather than anything about the
+        # tree. It went red on 2026-08-16 for that reason with nothing wrong -- and it reads GREEN if
+        # sampled between legs, which is the half that matters, since that green certifies nothing
+        # and is indistinguishable from a real one. Skip is the only honest verdict here.
+        # Written guard-last so the `exit 77` FOLLOWS the bare `else`, which is the shape
+        # run-gates.sh --selftest ARM 4 polices. Inverted (guard first, real check in the else) the
+        # step still behaves correctly but slips past that arm -- an unpoliced guard, in the runner
+        # whose whole job is refusing to let a did-not-run look like a pass.
+        run: |
+          if ! run=$(scripts/harness-active.sh); then
+            scripts/lever-matrix.sh --check-table
+          else
+            echo "lever_table: NOT RUN -- harness run $run owns the config (or exited without"
+            echo "  clearing its lock). Nothing was compared. THIS IS NOT A PASS."
+            exit 77
+          fi
 
       - name: boundedness_declared -- every gauge says whether it is a level or a peak
         run: python3 scripts/metric-desc-lint.py --check-boundedness
