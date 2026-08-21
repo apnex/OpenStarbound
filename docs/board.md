@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**215 tasks** across 2 store(s): 5 in_progress, 32 pending, 178 completed
+**216 tasks** across 2 store(s): 5 in_progress, 32 pending, 179 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 214 tasks, ids 64–278
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#278` | SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source… | ready |
+| 1 | 1 | `#279` | PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
 | 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
@@ -67,7 +67,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 234, of which **44 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 234, of which **46 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -83,7 +83,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **3** — dead, with no live equivalent that could be defended
 - **7** — NOT YET INVESTIGATED
 
-**Unexplained ids: 7.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 9.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
@@ -92,13 +92,14 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 | [#214](#c29c1332-214) | `471488eed310861f` |
 | [#254](#c29c1332-254) | `14904c73` |
 | [#277](#c29c1332-277) | `6f763c36bbb38e08` `276059e356eb74ad` |
-| [#278](#c29c1332-278) | `82514b4583a94c9b` |
+| [#278](#c29c1332-278) | `82514b4583a94c9b` `6f763c36bbb38e08` |
+| [#279](#c29c1332-279) | `6f763c36bbb38e08` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 178.
+**Completed tasks citing no commit and no doc:** 86 of 179.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -324,7 +325,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `29516d61` | — |
-| [#278](#c29c1332-278) | `c29c1332` | open | SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and… | — | — |
+| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | — | — |
+| [#279](#c29c1332-279) | `c29c1332` | open | PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing s… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -7441,66 +7443,139 @@ No GPU required. Items 1-3 are scripts + a file copy.
 
 <a id="c29c1332-278"></a>
 
-#### #278 — SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and nothing in a leg le…
+#### #278 — SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired cross-run comparison,…
 
 _Stored subject exceeds the heading; reproduced verbatim:_
 
 ```
-SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and nothing in a leg lets a reader normalise for it
+SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired cross-run comparison, not scene choice
+```
+
+status: **completed**
+
+```
+Found 2026-08-22. Two IDENTICAL legs -- same binary, same asset chain (82514b4583a94c9b), same
+bookmark, minutes apart -- differ 13.6% on lighting.produce.entities.us (177,291 vs 153,198 us).
+Against that, no unpaired cross-run comparison at Desert Town means anything.
+
+=== THE MECHANISM, AND IT IS THE DIRECTOR'S ===
+
+"Desert Town is a dynamic village with NPCs" (2026-08-22). lighting.produce.entities.us is the
+forAllEntities/renderLightSources walk: O(light-emitting entities in view). NPCs wander in and out of
+that set between runs, and the harness player's position PERSISTS between runs so the camera does not
+even settle identically. [#168] hit the same class once already -- an A/B that measured a 30-light
+scene against an 83-light baseline, where gather fell 73% on untouched code.
+
+[#217]'s survey already contained the tell, unread at the time:
+
+  00-Ocean-Lab       19,392 point of 19,392 sources   <- EVERY source is a fixed point light
+  04-Ocean Factory   16,950 point of 16,950
+  01-Lava Refinery   41,520 point of 58,062
+  03-Surface Outpost 21,411 point of 21,909
+  explore            12,660 point of 35,865           <- mostly spread, i.e. dynamic
+
+The machine bases are static installations. A village is not.
+
+=== THE PROBE, AND ITS DECISION RULE, WRITTEN BEFORE THE DATA ===
+
+12 legs: 4 scenes x 3 passes, INTERLEAVED BY PASS (all four scenes in pass 1, then pass 2, then
+pass 3) so thermal drift lands on every scene equally instead of being confounded with the scene.
+Scenes: Desert Town (the incumbent, for like-for-like), 00-Ocean-Lab, 01-Lava Refinery,
+03-Surface Outpost. All on chain 6f763c36bbb38e08, all recorded in the leg json per [#277].
+
+  PRIMARY:   coefficient of variation (sd/mean) of lighting.produce.entities.us per frame across a
+             scene's 3 legs. This is the key that exposed the defect; it is the one that must be
+             stable.
+  SECONDARY: CV of cpu.frame.render.us and lighting.gpu.cpu_cost.us.
+  CHOOSE:    lowest primary CV, PROVIDED the scene's render cost is non-trivial. A scene that is
+             cheap on every key tests nothing and would give a stable fixture that cannot detect a
+             lever -- stability bought by measuring nothing is the failure this project calls a
+             check that cannot fail.
+  EXPECT:    Desert Town has the highest CV. If it does NOT, the NPC explanation is wrong and that
+             is the finding -- the variance would then be something the harness itself is doing, and
+             changing scene would fix nothing.
+
+HONEST LIMIT, STATED IN ADVANCE: n=3 gives a very rough CV. This probe RANKS scenes; it does not
+certify one. A chosen scene still needs its own repeat count established before anything is published
+against it.
+
+=== WHAT THIS OWES BEYOND THE PROBE ===
+
+1. Record scene population INTO the leg json beside meta.assetFingerprint. lever-matrix.sh prints
+   "scene N entities vs baseline M" per leg so the quantity exists in the runner; render-profile.sh
+   neither records nor bounds it. Same asymmetry [#277] just closed for the asset chain.
+2. Flag, do not refuse, a leg whose population differs from the run's first leg beyond a stated
+   percentage. Unlike a mid-leg asset change this is a difference BETWEEN legs; the right response is
+   to make it visible so the consumer can widen its floor or decline to attribute.
+3. RE-EXAMINE matrix-20260816-160346. Its rotation and n=5 repetition SHOULD average scene drift out
+   -- that is what interleaving is for -- but "should" is not "did". Per-leg populations are
+   recoverable from its legs.tsv witness lines; check whether any lever's draws ran systematically
+   hotter or colder than baseline's.
+
+NOT A REASON TO DISTRUST [#276]. That A/B was internally paired (on1-off1, on2-off2) and the paired
+differences agreed to 0.2%. Pairing survives scene drift by construction. The exposed comparisons are
+the UNPAIRED cross-run ones.
+```
+
+<a id="c29c1332-279"></a>
+
+#### #279 — PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing stops one being publi…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing stops one being published
 ```
 
 status: **pending** · metadata: `{"rank": 1}`
 
 ```
-Found 2026-08-22 while trying to answer whether syncing the harness 39 -> 47 mods moved the baseline.
-The answer is UNRESOLVED and this is why.
+Split from [#278], which set out to find a better fixture and found the fixture was never the problem.
 
-=== THE OBSERVATION ===
+=== THE MEASUREMENT (docs/evidence/scene-stability.md) ===
 
-  gputax-on1   lighting.produce.entities.us  177,291 us
-  gputax-on2   lighting.produce.entities.us  153,198 us     -13.6%
+12 legs, 4 scenes x 3 interleaved passes, chain 6f763c36bbb38e08. Leg-to-leg CV of
+lighting.produce.entities.us: Desert Town 6.58%, 00-Ocean-Lab 17.47%, 01-Lava Refinery 24.03%,
+03-Surface Outpost 26.78%. The BEST scene available carries ~6.6%.
 
-Those two legs are IDENTICAL by every control the harness has: same binary, same asset chain
-(82514b4583a94c9b), same bookmark, same 90s window, minutes apart, timers on in both. The key still
-moved 13.6%. Against that, the epoch0-verify leg's 115,441 us on the 47-mod chain says nothing at
-all -- and a naive read of the whole leg says content ADDITION made the frame 18.9% FASTER, which is
-not credible and is exactly the shape that gets published when nobody checks the control.
+Most lever effects this project has CONFIRMED are smaller than that.
 
-=== WHY THE HARNESS CANNOT CURRENTLY SEE IT ===
+=== WHY THAT IS NOT A SCENE PROBLEM ===
 
-lighting.produce.entities.us is the forAllEntities/renderLightSources walk: O(light-emitting entities
-in view). The harness player's POSITION PERSISTS BETWEEN RUNS -- [#168] already found this the
-expensive way, when an A/B measured a 30-light scene against an 83-light baseline and gather fell 73%
-on untouched code. The bookmark pins the WORLD, not where the camera settles in it.
+Same afternoon, two comparisons on the same hardware:
 
-And a leg cannot report its own scene: sim.entities.live and lighting.lights.sources both read ABSENT
-in the leg json. lever-matrix.sh does print "scene N entities vs baseline M (+X%)" per leg, so the
-quantity exists somewhere in the runner -- but render-profile.sh, the entrypoint every A/B uses,
-neither records it nor bounds it. Same asymmetry [#277] just closed for the asset chain, one input
-over.
+  [#276], PAIRED   (on1-off1, on2-off2)   paired differences 80,725 and 80,548 -- agree to 0.2%,
+                                          against within-arm drift of 4.4-4.8%
+  epoch-0, UNPAIRED (n=1 vs n=2, cross-run) "content addition made the frame 18.9% FASTER"
+
+The second is not a result, it is the noise floor wearing a percentage sign. Pairing is what makes
+measurement work here; scene choice is second-order. lever-matrix.sh already embodies this -- rotation,
+interleaving, a discarded warm-up, n repeats -- which is why its numbers survive. render-profile.sh
+does not, and a two-leg A/B through it looks exactly like a paired one in the artifact.
 
 === WHAT THIS OWES ===
 
-1. Record scene population INTO the leg json, beside meta.assetFingerprint. Whatever lever-matrix.sh
-   compares for its "scene N entities" line is the quantity; use the SAME one, not a second count
-   that will drift from it.
-2. Bound it: a leg whose population differs from the run's first leg by more than a stated percentage
-   is flagged in the artifact. Not refused -- unlike a mid-leg asset change this is a difference
-   between legs, and the right response is to make it VISIBLE to the consumer, which can then widen
-   its floor or decline to attribute.
-3. Then decide, with data rather than assertion, whether Desert Town is a good fixture at all. A 13.6%
-   swing on an O(entities) key is larger than most levers this project has confirmed -- which would
-   mean the scene, not the lever, sets the detection floor for anything entity-shaped.
-4. RE-EXAMINE WHAT THIS MEANS FOR matrix-20260816-160346. Its rotation and n=5 repetition should
-   average scene drift out rather than bake it in -- that is what interleaving is for -- but "should"
-   is not "did". The per-leg populations are recoverable from its legs.tsv witness lines; check
-   whether any lever's six draws were systematically hotter or colder than baseline's.
+1. A leg cannot know it is half of a pair, so the DESIGN must be expressible. Give render-profile.sh
+   (or a thin wrapper) an A/B mode that runs both arms interleaved and emits ONE artifact carrying
+   both, rather than two legs a human later decides to subtract. A subtraction nobody recorded is a
+   subtraction nobody can audit.
+2. Make the unpaired case REFUSE ITSELF. A consumer differencing two independent leg jsons should
+   have to state the pairing -- or be told the difference is uninterpretable below the scene floor.
+   The floor is now measured per scene, so the threshold is available rather than invented.
+3. Publish the per-scene floor where a reader will hit it: any lever claim below its scene's CV is
+   NOT QUOTABLE without pairing. Desert Town 6.6%; the bases 17-27%.
+4. DISCARD A WARM-UP LEG at any base scene. 03-Surface Outpost's cpu_cost ran 611 -> 560 -> 216 us/f
+   across three visits, ~3x monotonic. lever-matrix.sh already discards one; render-profile.sh does
+   not, and every ad-hoc probe through it eats the transient.
 
-NOT A REASON TO DISTRUST [#276]. That A/B was internally paired (on1-off1, on2-off2) and the paired
-differences agreed to 0.2%, which is precisely the design that survives this. The vulnerable
-comparisons are the UNPAIRED cross-run ones.
+=== SECOND SCENE, SEPARATELY ===
 
-No GPU required for items 1-2 and 4.
+[#242] wanted a second scene banked and never got one. 00-Ocean-Lab is the candidate: post-transient
+its cpu_cost spread is 0.90% and render 5.25%, both better than Desert Town's -- it is only `entities`
+where it is worse (15.53% vs 7.80%). A second scene is worth having for cross-scene confirmation, and
+this is the one, but it needs its warm-up discarded and its own repeat count established first.
+
+No GPU required for items 2-3.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
