@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#277` | FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness m… | ready |
+| 1 | 1 | `#277` | FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles t… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
 | 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
@@ -97,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 86 of 177.
+**Completed tasks citing no commit and no doc:** 85 of 177.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -217,7 +217,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `f4d311fd` `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `f4d311fd` `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `29516d61` `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `7bede779` `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -315,14 +315,14 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfiable at n=5… | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax;… | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
-| [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `1d367a57` | — |
-| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
-| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `7bede779` | — |
+| [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
+| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
+| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
-| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | — | — |
-| [#277](#c29c1332-277) | `c29c1332` | open | FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness mods mid-ex… | — | — |
+| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `29516d61` | — |
+| [#277](#c29c1332-277) | `c29c1332` | open | FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin que… | `29516d61` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2501,6 +2501,7 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 status: **completed**
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
@@ -6949,6 +6950,7 @@ LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs har
 
 status: **completed** · blocked by: #269
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 
 ```
@@ -7002,6 +7004,7 @@ Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border
 
 status: **completed**
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
@@ -7060,6 +7063,7 @@ and the wait reading is off the table.
 
 status: **completed**
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
 ```
@@ -7292,6 +7296,8 @@ GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets 
 
 status: **completed**
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
+
 ```
 Found by [#272]'s drive.gputimer / drive.point.gputimer keys on matrix-20260816-160346, 6 baseline legs.
 
@@ -7358,65 +7364,75 @@ Needs a live client at Desert Town. ~5 minutes of GPU.
 
 <a id="c29c1332-277"></a>
 
-#### #277 — FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness mods mid-experiment today
+#### #277 — FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin question: OWN the fixtu…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin question: OWN the fixture
+```
 
 status: **pending** · metadata: `{"rank": 1}`
 
+- `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
+
 ```
-Found 2026-08-22 while checking, rather than assuming, that the observability investment makes analysis
-content-independent. It mostly does. This is the seam where it does not.
-
-=== WHAT HAPPENED ===
-
-Steam updated three Workshop mods at 08:34 today: 1397217904 (Project Redemption), 3412659718,
-3476076418. ALL THREE ARE IN harness/sbinit-perf.config -- the chain scripts/render-profile.sh boots.
-So the harness's content changed between matrix-20260816-160346 (yesterday) and the four gputax legs
-of [#276] (today). Nobody chose that; Steam did.
+Found 2026-08-22. Steam updated three Workshop mods at 08:34 -- 1397217904, 3412659718, 3476076418 --
+ALL of which are in harness/sbinit-perf.config, the chain scripts/render-profile.sh boots. So the
+harness's content moved between matrix-20260816-160346 and [#276]'s legs. Nobody chose that.
 
 === THE ASYMMETRY ===
 
-  scripts/lever-matrix.sh   computes ASSET_FP (asset_fingerprint(), :466) and writes it into
-                            manifest.json. Yesterday's run recorded 276059e356eb74ad.
-  scripts/render-profile.sh mentions "fingerprint" exactly ONCE, inside a comment about --warp. It
-                            computes nothing and records nothing.
-  a profile leg's .json     top-level keys are label, window, meta, owners, metrics, zeroed,
-                            violations. No asset key, no fingerprint key.
+  lever-matrix.sh    computes ASSET_FP (asset_fingerprint(), :466), writes it to manifest.json.
+                     Yesterday's run recorded 276059e356eb74ad.
+  render-profile.sh  mentions "fingerprint" ONCE, in a comment about --warp. Computes nothing.
+  a leg's .json      keys: label, window, meta, owners, metrics, zeroed, violations. No chain, no
+                     fingerprint.
 
-The single-leg profiler is the entrypoint we reach for most -- every [#276]/[#274]-shaped A/B uses it
--- and it is the one that cannot say what content it measured.
+The profiler is the entrypoint every A/B uses -- [#276], [#274], every future one -- and it is the
+one that cannot say what content it measured. It does not corrupt an A/B (both arms share a chain
+minutes apart); it destroys comparability ACROSS TIME, silently, which is the [#178]/[#241]/[#275]
+shape: the artifact looks complete and the missing field is the one that would say not to trust it.
 
-=== WHY THIS IS THE INTERESTING KIND OF GAP ===
+=== THE PIN QUESTION IS ANSWERED, BY SCOPE ===
 
-It does not corrupt an A/B. Both arms of a profile A/B run minutes apart on one chain, so the
-COMPARISON survives; [#276]'s four legs are internally valid. What it destroys is COMPARABILITY ACROSS
-TIME, silently. A leg taken today and a leg taken last month are indistinguishable in the artifact,
-and the only thing that would have flagged the difference is a number the profiler never wrote.
+Director, 2026-08-22: "I'm not specifically looking to performance test mods -- their individual
+surface is out of scope... Primary focus is OpenStarbound code."
 
-That is the same shape as [#178] (a run that did not rebuild), [#275] (a gate reading live state) and
-[#241] (ABSENT vs zero): the artifact looks complete, and the missing field is the one that would
-have told you not to trust it.
+So the mod chain is a CONTROL VARIABLE, not a subject. It exists to make the workload realistic. A
+fixture that changes is not a fixture, and Steam re-basing it on its own schedule is noise against
+the only thing under study. PIN IT.
+
+And the stronger form is already the project's own principle: [#237] requires an entrypoint that
+"owns its fixture and its storage". The existing harness does not -- it reads 39 paks out of a
+directory another process mutates at will. Recording the fingerprint DETECTS drift; owning the
+fixture PREVENTS it. Do both; they are not alternatives.
+
+  measured: 39 paks, 2.41 GB, against 1.5 TB free. 0.16% of headroom. Cost is not the obstacle.
+  largest: 729492703 (920 MB), 729480149 (741 MB), 1563376005 (499 MB).
 
 === WHAT THIS OWES ===
 
-1. render-profile.sh computes the same asset_fingerprint() the matrix does and writes it into each
-   leg's .json -- SAME function, not a second implementation, or the two drift and the comparison
-   between a matrix leg and a profile leg becomes a comparison of two different hashes.
-2. Extract asset_fingerprint() to one place both scripts source. It currently lives in
-   lever-matrix.sh; a copy-paste is the defect this task is about, one level up.
-3. A gate: any leg .json under harness/profiles/ must carry a non-empty fingerprint. Prove it fires
-   by injection on a leg with the field stripped.
-4. DECIDE, and it is a Director call rather than a measurement: should the harness chain be PINNED
-   against Steam auto-update at all? Pinning gives stable longitudinal comparison but measures a
-   world the Director no longer plays. Not pinning tracks reality but re-bases the baseline whenever
-   Valve feels like it. Recording the fingerprint is necessary either way and is the cheap half; the
-   pin/no-pin choice can follow it.
+1. Copy the 39 paks to a harness-owned directory (harness/fixture/, gitignored like the rest of
+   harness/) and repoint sbinit-perf.config at it.
+   VERIFICATION THAT MAKES THIS SAFE: the copy is byte-identical, so asset_fingerprint() MUST return
+   276059e356eb74ad unchanged. If it changes, the fingerprint is path-sensitive rather than
+   content-sensitive -- which would mean it can never compare two machines or two layouts, and that
+   is a bigger defect than this task. Check before and after; do not assume.
+2. render-profile.sh computes the SAME asset_fingerprint() and writes it into each leg's .json.
+   Extract the function to one file both scripts source -- a copy-paste is this task's own defect one
+   level up, and two implementations drift into two different hashes.
+3. A gate: every leg .json under harness/profiles/ carries a non-empty fingerprint. Prove it fires by
+   injection on a leg with the field stripped.
+4. The dev/ and dev-feat/ instances stay on the LIVE Steam chain. They are what the Director plays;
+   they should track reality. Only the harness pins. State that where sbinit-perf.config is defined,
+   or someone will later "fix" the divergence.
 
-BACKFILL, HONESTLY: legs already banked cannot have their chain recovered. They can be labelled with
-the fingerprint of the chain AS IT IS NOW only if that is stated as an assumption, which for anything
-taken before 08:34 today is known to be false. Better to mark pre-2026-08-22 profile legs
-"chain unrecorded" than to stamp them with a hash nobody verified.
+BACKFILL, HONESTLY: legs banked before today cannot have their chain recovered, and stamping them
+with the current fingerprint would assert something known to be false for anything before 08:34.
+Mark them "chain unrecorded" instead.
 
-No GPU required for items 1-3.
+No GPU required. Items 1-3 are scripts + a file copy.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

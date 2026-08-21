@@ -95,6 +95,14 @@ done
 
 BIN=dist/starbound
 BOOT="$PWD/harness/sbinit-perf.config"
+# Shared with lever-matrix.sh so both entrypoints hash the chain identically (#277).
+. "$(dirname "$0")/asset-fingerprint.sh"
+# CAPTURED BEFORE THE CLIENT LAUNCHES, compared against a second reading after it exits. Steam
+# updates Workshop mods on its own schedule and several of them are in this boot chain -- on
+# 2026-08-22 three moved at 08:34, between a matrix run and its follow-up legs. A leg whose content
+# changed underneath it is not slightly wrong, it is unattributable, and the only moment that fact is
+# cheap to establish is while both readings exist.
+ASSET_FP_PRE=$(asset_fingerprint "$BOOT") || ASSET_FP_PRE="MISSING"
 SNAPDIR="$PWD/harness/storage-perf/telemetry"
 # The game writes here unconditionally (logDirectory in sbinit-perf.config), so the live name is fixed. Each
 # run's log is ARCHIVED under its label on the way out -- see archive_log. Overwriting it in place cost a real
@@ -440,8 +448,32 @@ fi
 # it to be re-derived later is what makes it directly plottable, which is the whole ask -- and the raw
 # snapshots are archived above regardless, so the series stays RE-DERIVABLE rather than becoming the only
 # copy of anything.
+# WHICH CONTENT THIS LEG MEASURED (#277). Computed AFTER the run, from the same chain the client
+# booted, using the SAME function lever-matrix.sh uses -- a second implementation would drift into a
+# second hash and make a matrix leg and a profile leg incomparable even on identical content.
+#
+# THIS WAS MISSING AND IT COST US. On 2026-08-22 Steam updated three Workshop mods inside
+# harness/sbinit-perf.config at 08:34, between a matrix run and its follow-up legs. The matrix
+# recorded 276059e356eb74ad and the same chain now reads 82514b4583a94c9b; the profile legs recorded
+# nothing at all, so nothing in their artifacts distinguishes them from legs taken before the update.
+# A failure to record is not a failure to notice later -- it is a leg that can never be placed.
+ASSET_FP=$(asset_fingerprint "$BOOT") || ASSET_FP="MISSING"
+# REFUSE RATHER THAN BANK A LEG NOBODY CAN PLACE. If the chain moved while the client was running,
+# the window spans two contents and no part of it is attributable to either. Refusing here costs one
+# leg; writing it costs a number that looks exactly like every other number in harness/profiles/ and
+# is quietly wrong -- which is the [#178] shape (a run whose binary was stale) one input over.
+if [ "$ASSET_FP" != "$ASSET_FP_PRE" ]; then
+  echo "REFUSING TO RECORD: the asset chain CHANGED while this leg was measuring." >&2
+  echo "    before: $ASSET_FP_PRE" >&2
+  echo "    after:  $ASSET_FP" >&2
+  echo "  Steam updates Workshop mods in $BOOT on its own schedule. This window spans two different" >&2
+  echo "  contents, so nothing in it is attributable. Re-run the leg; the snapshots are still on" >&2
+  echo "  disk under $SNAPDIR if you want to inspect what was captured." >&2
+  exit 1
+fi
 scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL" \
   --json "harness/profiles/$LABEL.json" \
+  --asset-fingerprint "$ASSET_FP" \
   --series "harness/profiles/$LABEL.series.json"
 
 # THE JOIN, HERE, WHILE BOTH HALVES ARE ON DISK AND STILL BELONG TO THIS LEG. Both series are stamped on

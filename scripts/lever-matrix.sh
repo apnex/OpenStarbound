@@ -114,40 +114,11 @@ SCENEPY
 # quotable. Measured, not chosen: see the note at the comparison site.
 SCENE_BOUND_PCT=${SCENE_BOUND_PCT:-5}
 
-asset_fingerprint() {
-  python3 - "$BOOT" <<'ASSETPY'
-import json, os, sys, hashlib
-cfg = json.load(open(sys.argv[1]))
-h = hashlib.sha256()
-missing = []
-for src in cfg.get("assetSources", []):
-    if not os.path.exists(src):
-        missing.append(src)
-        continue
-    if os.path.isdir(src):
-        # A directory source is a TREE. A mod being edited changes files inside it without touching
-        # the directory's own mtime, so stat'ing the directory would report "unchanged" while the
-        # content under measurement moved.
-        entries = []
-        for root, _, files in os.walk(src):
-            for f in files:
-                fp = os.path.join(root, f)
-                try:
-                    st = os.stat(fp)
-                    entries.append("%s:%d:%d" % (fp, st.st_size, int(st.st_mtime)))
-                except OSError:
-                    entries.append("%s:UNREADABLE" % fp)
-        for e in sorted(entries):
-            h.update(e.encode())
-    else:
-        st = os.stat(src)
-        h.update(("%s:%d:%d" % (src, st.st_size, int(st.st_mtime))).encode())
-if missing:
-    print("MISSING:" + ",".join(missing))
-    sys.exit(1)
-print(h.hexdigest()[:16])
-ASSETPY
-}
+# MOVED TO scripts/asset-fingerprint.sh (#277), unchanged, and proven so: the extracted function
+# returns 82514b4583a94c9b on this chain, byte-identical to the inline version it replaced.
+# render-profile.sh needs the same hash, and a second copy of it would be the very defect #277 is
+# about -- two implementations drifting into two hashes that cannot be compared.
+. "$(dirname "$0")/asset-fingerprint.sh"
 
 # Read the lever table and refuse anything under-declared. Prints one "key<TAB>baseline<TAB>off" line
 # per lever on success.
@@ -463,7 +434,7 @@ echo "  $N_LEVERS levers declared in $TABLE"
 assert_baseline "$TABLE" "$CFG" || exit 1
 echo "  harness config matches the declared baseline for all $N_LEVERS keys"
 
-ASSET_FP=$(asset_fingerprint) || {
+ASSET_FP=$(asset_fingerprint "$BOOT") || {
   echo "lever-matrix: an asset source named in $BOOT does not exist: $ASSET_FP" >&2
   echo "  The content under measurement is not what the harness says it is. Refusing to start." >&2
   exit 1
@@ -583,7 +554,7 @@ run_leg() { # run_leg <label> <extra --set args...>
   # the in-progress mod tree partway through would otherwise land as whichever lever happened to be
   # under test at that moment.
   local fp
-  fp=$(asset_fingerprint) || fp="MISSING"
+  fp=$(asset_fingerprint "$BOOT") || fp="MISSING"
   if [ "$fp" != "$ASSET_FP" ]; then
     echo "lever-matrix: THE ASSETS CHANGED MID-RUN ($ASSET_FP -> $fp) before leg $label." >&2
     echo "  Every leg from here measures different content. Aborting rather than reporting it." >&2

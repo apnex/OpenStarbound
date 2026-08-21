@@ -187,9 +187,9 @@ mindmap
       13 declared binaries
     Instruments
       scripts/ + tests
-      50 scripts
+      51 scripts
       23 ctest gates
-      69 CI gates
+      71 CI gates
     Governance
       docs/
       52 markdown documents

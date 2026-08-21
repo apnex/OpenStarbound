@@ -582,10 +582,11 @@
       "impact": "Each leg is a fresh process that re-reads the asset chain at startup, so any edit to any of the 42 sources between leg N and leg N+1 silently changes the world content, the entity set and the material render profiles the next leg measures \u2014 and one of those sources is a directory somebody is actively developing in. digestIgnore \".*\" plus checkAssetsDigest:false remove the one mechanism that would have noticed. Because nothing records what the assets WERE, a 94-minute matrix produces numbers that cannot be reproduced, cannot be compared to any future run, and cannot be retro-attributed to a content state. This is the #226-H3 hazard (\"if the material database's render profiles change under a running client\") arriving through the front door, and no sweep touched the assets dimension at all.",
       "fixShape": "Hash the resolved asset chain (path + size + mtime, or the real digest) once in the matrix preflight, write it into the manifest, and re-assert it before every leg so a mid-run content change aborts instead of landing as a delta.",
       "signature": {
-        "glob": "scripts/lever-matrix.sh",
+        "glob": "scripts/asset-fingerprint.sh",
         "re": "asset_fingerprint\\(\\) \\{",
         "absent": true,
-        "desc": "the asset chain is not fingerprinted"
+        "desc": "the asset chain is not fingerprinted",
+        "_remapped": "2026-08-22 (#277). The glob was scripts/lever-matrix.sh, where the function was DEFINED until render-profile.sh needed the identical hash and it was extracted to its own file. That move made this row report the defect had RETURNED. It had not -- the gate's vocabulary outlived the tree's, which is the failure this project has now hit four times. Remapped by reading, in the same commit as the move. The regex is untouched because the thing it names is untouched, and the extraction was proven byte-faithful: both versions return 82514b4583a94c9b on the perf chain."
       }
     },
     {

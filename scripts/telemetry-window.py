@@ -601,6 +601,11 @@ def main():
     ap.add_argument("--first", type=int, default=None)
     ap.add_argument("--last", type=int, default=None)
     ap.add_argument("--json", default=None)
+    ap.add_argument("--asset-fingerprint", default=None,
+                    help="hash of the asset chain this leg ran against, from "
+                         "scripts/asset-fingerprint.sh. Recorded into meta so a leg can say WHICH "
+                         "content it measured; without it two legs from different content chains "
+                         "are indistinguishable in the artifact (#277).")
     # Declared, not inferred. A window whose length depends on how many files happened to exist is a
     # window nobody chose.
     ap.add_argument("--intervals", type=int, default=1,
@@ -945,9 +950,14 @@ def main():
     if args.json:
         with open(args.json, "w") as f:
             json.dump({"label": args.label, "window": [files[lo], files[hi]],
+                       # assetFingerprint: WHICH CONTENT THIS LEG MEASURED (#277). Absent means the
+                       # caller did not pass one -- recorded as None rather than omitted, so "the
+                       # runner did not know" and "an older schema" are different shapes on the wire,
+                       # the ABSENT-vs-ZERO rule this file already applies to metrics.
                        "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi],
                                     windowStartEpoch=window_start, windowEndEpoch=window_end,
-                                    windowStampSource=[ws_src, we_src]),
+                                    windowStampSource=[ws_src, we_src],
+                                    assetFingerprint=args.asset_fingerprint),
                        "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")

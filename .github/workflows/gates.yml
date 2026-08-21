@@ -486,6 +486,22 @@ jobs:
       - name: union_membership_fires -- a dropped member, a double count and a blind pattern all fail
         run: python3 scripts/metric-desc-lint.py --selftest-union-membership
 
+      - name: leg_fingerprint_fires -- empty skips, unrecorded trips, MISSING is not an identity
+        run: python3 scripts/ci/leg-fingerprint.py --selftest
+
+      - name: leg_fingerprint -- every new profile leg records which asset chain it measured
+        # RATCHET, not a requirement: 472 legs are banked without the field and their chain cannot be
+        # recovered. Back-stamping them with today's hash would fabricate provenance -- Steam moved
+        # three mods in the perf chain at 08:34 on 2026-08-22, so it is known false. The count may not
+        # grow; a new leg written without a fingerprint turns this red.
+        run: |
+          python3 scripts/ci/leg-fingerprint.py
+          rc=$?
+          if [ "$rc" = "77" ]; then
+            echo "leg_fingerprint: SKIPPED -- no legs on disk. Nothing was compared; NOT a pass."
+          fi
+          exit $rc
+
       - name: banked_reread_fires -- the re-read comparison fires on a real difference
         run: python3 scripts/ci/banked-reread.py --selftest
 
