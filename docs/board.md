@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**212 tasks** across 2 store(s): 5 in_progress, 32 pending, 175 completed
+**214 tasks** across 2 store(s): 5 in_progress, 32 pending, 177 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 211 tasks, ids 64–275
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 213 tasks, ids 64–277
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,23 +43,21 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#272` | DRIVE-RESIDUAL: 6 keys SHIPPED (1d796664) — closure + point split await matrix-20260816-160346 | ready |
-| 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) — 7 members, particles excluded as nested, union_membership gate gre… | ready |
+| 1 | 1 | `#277` | FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness m… | ready |
+| 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
-| 4 | 4 | `#268` | LEVER-FLOOR: n=6 run DIED at leg 16 of 61 — my source edit tripped the #178 mtime staleness guard; 12 lever +… | ready |
-| 5 | 4 | `#275` | GATE-LIVESTATE: lever_table reads harness config a running matrix owns — red mid-lever, GREEN between legs, i… | ready |
-| 6 | 5 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 7 | 6 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 8 | 7 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 9 | 8 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 10 | 9 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 11 | 10 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 12 | 11 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 13 | 12 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 14 | 13 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 15 | 14 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
-
-> **Ranking integrity:** rank 4 is claimed by 2 tasks: #268, #275
+| 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
+| 5 | 5 | `#275` | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must st… | ready |
+| 6 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 8 | 8 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 9 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 10 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 11 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 12 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 13 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 14 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
 ---
 
@@ -69,7 +67,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 230, of which **41 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 231, of which **42 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -83,9 +81,9 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **4** — NOT YET INVESTIGATED
+- **5** — NOT YET INVESTIGATED
 
-**Unexplained ids: 4.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 5.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
@@ -93,12 +91,13 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 | [#207](#c29c1332-207) | `66b9715a` |
 | [#214](#c29c1332-214) | `471488eed310861f` |
 | [#254](#c29c1332-254) | `14904c73` |
+| [#277](#c29c1332-277) | `276059e356eb74ad` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 175.
+**Completed tasks citing no commit and no doc:** 86 of 177.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -215,10 +214,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#165](#c29c1332-165) | `c29c1332` | done | CPU-4: transition to writing-plans (brainstorm terminal) | — | — |
 | [#166](#c29c1332-166) | `c29c1332` | done | CPU-5 DONE: unified telemetry model shipped; one verification step deliberately not run (see #172) | `84ca718f` `1bfa935d` `5e8f66d3` `b3c88551` `497e398c` `313095f1` `5eb17518` `61531413` `39992d4b` `4797f33d` `e2966ad2` | — |
 | [#167](#c29c1332-167) | `c29c1332` | done | CPU-6: bind the GPU descriptor to the recording call — delete the reachability bug class | `a94a7a8c` | `2026-07-25-unified-telemetry-model.md` |
-| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
+| [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `f4d311fd` `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
-| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
+| [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `f4d311fd` `03cec1c0` `a9854185` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `7bede779` `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -263,7 +262,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
 | [#215](#c29c1332-215) | `c29c1332` | done | ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected | `84fe2324` `c1a4433d` | — |
 | [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | `84fe2324` `7dbf8c98` | — |
-| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `817e54e8` | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `f4d311fd` `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `bc0305df` `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | done | LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052) | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | `board-audit-2026-08-08.md` |
@@ -314,14 +313,16 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=6 run DIED at leg 16 of 61 — my source edit tripped the #178 mtime staleness guard; 12 lever + 6 baselin… | `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
-| [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: union SHIPPED (4518341f) — 7 members, particles excluded as nested, union_membership gate green; the NU… | `4518341f` `1d796664` `7bede779` | — |
+| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfiable at n=5… | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
+| [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax;… | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `1d367a57` | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
-| [#272](#c29c1332-272) | `c29c1332` | **active** | DRIVE-RESIDUAL: 6 keys SHIPPED (1d796664) — closure + point split await matrix-20260816-160346 | `7bede779` | — |
+| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | — | — |
-| [#275](#c29c1332-275) | `c29c1332` | open | GATE-LIVESTATE: lever_table reads harness config a running matrix owns — red mid-lever, GREEN between legs, informative… | — | — |
+| [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | `f4d311fd` | — |
+| [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
+| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | — | — |
+| [#277](#c29c1332-277) | `c29c1332` | open | FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness mods mid-ex… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2359,6 +2360,7 @@ SCOPE NOTE: this touches the GpuTimer contract in StarRenderDiagnostics.hpp, so 
 
 status: **completed**
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 - `2e9c514e` docs(telemetry): calc.cells is not a scene fingerprint -- lights.sources is [#168]
 - `f7521455` docs(telemetry): the lighting owner's phase budget + three new traps [#168]
@@ -2463,6 +2465,7 @@ Evidence: docs/superpowers/specs/2026-07-25-lighting-cpu-budget-closure-design.m
 
 status: **completed**
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `03cec1c0` lighting: adaptive calculation border -- 4.375x -&gt; 3.000x, -23.6% lighting CPU
 - `a9854185` lighting: measure how much of the 48-tile border is actually used (#170 probe)
 
@@ -2498,6 +2501,7 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 status: **completed**
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
@@ -3591,7 +3595,7 @@ VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 
 
 #### #204 — TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work
 
-status: **in_progress** · metadata: `{"rank": 13}`
+status: **in_progress** · metadata: `{"rank": 14}`
 
 - `3eed5ab8` [#204] D14: A1 and A2 bind, and `telemetry` is what A1 forbids
 - `d4d07d9a` [#204] the section-7 compile diagram was missing 24 edges its own grant table requires
@@ -3832,7 +3836,7 @@ REMAINING under #207: `celestial`'s vocabulary/lookup split (blocked on dividing
 
 #### #208 — TSSA-3: register fields, aggregate review, re-home the anchoring gates
 
-status: **pending** · blocked by: #207 · metadata: `{"rank": 11}`
+status: **pending** · blocked by: #207 · metadata: `{"rank": 12}`
 
 ```
 Blocked by #207.
@@ -4194,6 +4198,7 @@ core_tests 289 -> 294 all green, game_tests 72/72, run-gates 27/27. They run in 
 
 status: **completed**
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `817e54e8` fix(lighting): adaptive border under-sized coloured lights, dropping them
 
 ```
@@ -4953,7 +4958,7 @@ only to own the hazard until it does. It is NOT in progress and nothing should b
 
 #### #237 — MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage
 
-status: **pending** · metadata: `{"rank": 5}`
+status: **pending** · metadata: `{"rank": 6}`
 
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 
@@ -5616,7 +5621,7 @@ number is a MARGINAL cost given every other lever is on.
 
 #### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
 
-status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 8}`
+status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 9}`
 
 - cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/board.md`
@@ -5712,7 +5717,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
 ```
 
-status: **pending** · metadata: `{"rank": 9}`
+status: **pending** · metadata: `{"rank": 10}`
 
 ```
 NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
@@ -5763,7 +5768,7 @@ _Stored subject exceeds the heading; reproduced verbatim:_
 TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
 ```
 
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 7}`
+status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 8}`
 
 ```
 DIRECTOR, 2026-08-07, two rulings:
@@ -6394,7 +6399,7 @@ not the one anybody reads).
 
 #### #260 — TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task
 
-status: **pending** · blocked by: #261 · metadata: `{"rank": 12}`
+status: **pending** · blocked by: #261 · metadata: `{"rank": 13}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT's completeness critic, 2026-08-08, and verified: the word `ugc` appears
@@ -6430,7 +6435,7 @@ every figure in its §2 state table currently reads wrong at HEAD.
 
 #### #261 — HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong
 
-status: **pending** · blocks: #260 · metadata: `{"rank": 10}`
+status: **pending** · blocks: #260 · metadata: `{"rank": 11}`
 
 ```
 FOUND BY THE #253 BOARD AUDIT, 2026-08-08.
@@ -6471,7 +6476,7 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 #### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
 
-status: **pending** · metadata: `{"rank": 14}`
+status: **pending** · metadata: `{"rank": 15}`
 
 ```
 RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
@@ -6682,7 +6687,7 @@ RESIDUE MOVED TO A NEW TASK, not lost: declare a CPU null control instead of bor
 
 #### #266 — DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg READ can create one
 
-status: **pending** · metadata: `{"rank": 6}`
+status: **pending** · metadata: `{"rank": 7}`
 
 ```
 Found while giving `telemetry`'s `falsified` facet its instruments ([#256], c19cb959).
@@ -6786,16 +6791,11 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 <a id="c29c1332-268"></a>
 
-#### #268 — LEVER-FLOOR: n=6 run DIED at leg 16 of 61 — my source edit tripped the #178 mtime staleness guard; 12 lever + 6 baseline legs banked, re-ru…
-
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-LEVER-FLOOR: n=6 run DIED at leg 16 of 61 — my source edit tripped the #178 mtime staleness guard; 12 lever + 6 baseline legs banked, re-run required
-```
+#### #268 — LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfiable at n=5, analysis pending
 
 status: **in_progress** · blocked by: #273 · metadata: `{"rank": 4}`
 
+- `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 - `33d04e0e` [#268] the baseline now brackets each pass at both ends -- and the run's real cost is 20x what I wrote
@@ -6866,10 +6866,17 @@ banked data — it changes the harness.
 
 <a id="c29c1332-269"></a>
 
-#### #269 — LIGHTING-WHOLE: union SHIPPED (4518341f) — 7 members, particles excluded as nested, union_membership gate green; the NUMBER awaits the run
+#### #269 — LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax; hold the split unti…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax; hold the split until #276 lands
+```
 
 status: **in_progress** · blocks: #270 · metadata: `{"rank": 2}`
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
@@ -7049,9 +7056,9 @@ and the wait reading is off the table.
 
 <a id="c29c1332-272"></a>
 
-#### #272 — DRIVE-RESIDUAL: 6 keys SHIPPED (1d796664) — closure + point split await matrix-20260816-160346
+#### #272 — DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #276
 
-status: **in_progress** · metadata: `{"rank": 1}`
+status: **completed**
 
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
@@ -7177,6 +7184,8 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 status: **pending** · metadata: `{"rank": 3}`
 
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
+
 ```
 Split out of [#270] item 3, which explicitly reserved a GPU re-measurement it could not perform. [#270]
 items 1 and 2 are DONE (restatement in docs/telemetry/architecture.md §3 and the union table in
@@ -7228,58 +7237,186 @@ Needs a live client at 04-Ocean Factory. No other blocker.
 
 <a id="c29c1332-275"></a>
 
-#### #275 — GATE-LIVESTATE: lever_table reads harness config a running matrix owns — red mid-lever, GREEN between legs, informative in neither case
+#### #275 — GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE the lock
 
-status: **pending** · metadata: `{"rank": 4}`
+status: **in_progress** · metadata: `{"rank": 5}`
+
+- `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
+- `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 
 ```
-Found 2026-08-16 while running the full gate set during matrix-20260816-160346.
+Items 1-4 of the original defect are shipped in ae90fe7b: scripts/harness-active.sh (4-arm selftest),
+the guarded lever_table step, the 68-step audit, and the warning in run-gates.sh's header.
+
+=== WHAT REMAINS, AND IT IS THE HALF THAT MAKES IT AUTOMATIC ===
+
+scripts/lever-matrix.sh must WRITE the lock at run start and REMOVE it on clean exit. Until it does,
+the mechanism only works when a lock is placed by hand, which is not a mechanism.
+
+  write:  harness/matrix/.active  containing "<run_id> pid=$$"   -- immediately after OUT/run id exist
+  remove: on the EXIT trap's clean path ONLY. A crash must leave it, which is the whole design:
+          "died with the config mutated" is a real state and must not read as clean.
+
+NOT DONE TODAY BECAUSE THE RUN WAS EXECUTING. bash reads a script incrementally by byte offset, so
+editing lever-matrix.sh in place while it runs can send the shell into garbage -- and destroying a
+second matrix run in one day to save 90 minutes is not a trade worth making. See the harness-run
+memory; the same day's mtime incident is the cheaper version of the same lesson.
+
+=== A HAZARD I CREATED, WHICH MUST BE CLEARED ===
+
+harness/matrix/.active EXISTS RIGHT NOW, written by hand at ~16:20 to prove both gate arms against
+matrix-20260816-160346. It is truthful while that run is in flight. It is NOT self-clearing, because
+nothing in lever-matrix.sh knows about it yet.
+
+  => WHEN matrix-20260816-160346 FINISHES, `rm harness/matrix/.active` BEFORE RUNNING THE GATE SET.
+
+A lock left behind makes lever_table skip for ever, which is the "check that cannot fail" this task
+exists to prevent -- reintroduced by the fix for it. The file is under harness/ and therefore
+gitignored, so it is invisible to git status and nothing but this note will surface it.
+
+=== VERIFY AFTER WIRING ===
+Start a short run, confirm the lock appears with the right id and lever_table skips 77; let it finish,
+confirm the lock is gone and lever_table runs the real check; kill a run mid-leg, confirm the lock
+SURVIVES and the gate keeps skipping until cleared by hand.
+```
+
+<a id="c29c1332-276"></a>
+
+#### #276 — GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload absorbs +53% when they…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload absorbs +53% when they go
+```
+
+status: **completed**
+
+```
+Found by [#272]'s drive.gputimer / drive.point.gputimer keys on matrix-20260816-160346, 6 baseline legs.
+
+=== THE MEASUREMENT ===
+
+  drive.gputimer         154,535 us  = 19.80% of cpu_cost   (6 non-point sites)
+  drive.point.gputimer   134,899 us  = 44.63% of drive.point (2 sites, NESTED in point)
+  together               289,434 us  = 37.1% of lighting.gpu.cpu_cost.us
+
+Per call the two point sites cost ~38.9 us against ~14.8 us at the other six. The asymmetry is
+explained by the mechanism, not by noise.
+
+=== THE MECHANISM, READ NOT GUESSED (StarRenderer_opengl.cpp:1134-1231) ===
+
+GlGpuTimer::begin() calls m_flushPending() at :1190 and end() calls it again at :1225 -- "submit any
+pending primitives first so the query measures only the work that follows". So every bracket is TWO
+submit points, eight per lighting recompute. end() at the point pass flushes the entire accumulated
+batch of per-light quads, which is why that pair is ~2.6x the others. begin() additionally builds a
+Star::String from a literal for the m_rings map key and re-resolves Telemetry::timer() every call.
+
+=== WHAT IT IS NOT, AND THIS MATTERS ===
+
+NOT A SHIPPED COST. begin() returns at :1136 when !Telemetry::deepEnabled(), so normal play pays
+none of it. Do NOT report this as the game being 37% slower than believed. It is not.
+
+=== WHAT IT IS: EVERY PUBLISHED cpu_cost NUMBER IS INFLATED ===
+
+lighting.gpu.cpu_cost.us is a TelemetryScope, which ALSO records only under deepEnabled. So that key
+has only ever been measurable under the exact condition that inflates it by ~37%. Its published
+value (152-159 us/frame, [#171]/[#271]) is an instrumented-condition number that has always been
+quoted as if it were the game's.
+
+DOWNSTREAM, AND ALREADY PUBLISHED:
+  [#270] put cpu_cost at 57.9-59.4% of lighting.cpu.union.us and lighting.cpu.total.us at
+  25.8-28.6%. Both shares are biased by whatever fraction of cpu_cost is instrument. A naive
+  subtraction moves them to roughly 48% and 33%, but naive subtraction is NOT the answer -- removing
+  the forced flushes changes WHEN the surrounding work happens, so the real figure must be measured.
+  [#271]'s part shares are affected the same way, though relative shares among the non-gputimer
+  parts should largely survive.
+
+=== THE EXPERIMENT, WHICH NEEDS NO NEW CODE ===
+
+STAR_NO_PERPASS_GPU_TIMERS=1 (StarRenderer_opengl.cpp:1138-1149) already suppresses the per-pass
+GL_TIME_ELAPSED brackets while leaving the whole-frame GL_TIMESTAMP span running. It was built for
+exactly this question on the GPU side -- its own comment says an adversarial analysis put the cost
+"as high as 50-90% of what the compose timers report" and that running with and without makes it
+"DIRECTLY MEASURABLE instead of a modelled guess". It has never been pointed at the CPU side.
+
+  1. Two adjacent live-profile legs at Desert Town, identical but for the env var, deep tracing on.
+  2. Read lighting.gpu.cpu_cost.us on both. The delta IS the tax.
+  3. NULL CONTROL IS BUILT IN and must be checked: with the var set, drive.gputimer and
+     drive.point.gputimer must read ~0 (begin returns before m_flushPending). If they do not, the
+     var is not doing what its comment says and the whole experiment is void.
+  4. Also read drive.point per CALL on both arms. If point's per-call cost falls when the timers are
+     off, part of what [#271] and [#272] attributed to `point` is the flush at its end() boundary.
+
+=== THEN ===
+Restate cpu_cost, [#270]'s union shares and [#271]'s part table against the un-instrumented number,
+marking the instrumented one SUPERSEDED rather than wrong -- it was correct for the condition it was
+measured under, and that condition was never stated.
+
+Needs a live client at Desert Town. ~5 minutes of GPU.
+```
+
+<a id="c29c1332-277"></a>
+
+#### #277 — FP-COVERAGE: the matrix fingerprints its asset chain, the profiler does not — and Steam moved three harness mods mid-experiment today
+
+status: **pending** · metadata: `{"rank": 1}`
+
+```
+Found 2026-08-22 while checking, rather than assuming, that the observability investment makes analysis
+content-independent. It mostly does. This is the seam where it does not.
 
 === WHAT HAPPENED ===
 
-`scripts/ci/run-gates.sh` reported `lever_table` RED:
+Steam updated three Workshop mods at 08:34 today: 1397217904 (Project Redemption), 3412659718,
+3476076418. ALL THREE ARE IN harness/sbinit-perf.config -- the chain scripts/render-profile.sh boots.
+So the harness's content changed between matrix-20260816-160346 (yesterday) and the four gputax legs
+of [#276] (today). Nobody chose that; Steam did.
 
-  lever-matrix: HARNESS CONFIG DOES NOT MATCH THE DECLARED BASELINE
-    renderDrawableCache: config has False, table declares baseline True
+=== THE ASYMMETRY ===
 
-Nothing in the tree was wrong. The matrix run was on leg `r1-off-renderDrawableCache`, which sets
-that key False by design. The gate read a value another process legitimately owned and mid-flight.
+  scripts/lever-matrix.sh   computes ASSET_FP (asset_fingerprint(), :466) and writes it into
+                            manifest.json. Yesterday's run recorded 276059e356eb74ad.
+  scripts/render-profile.sh mentions "fingerprint" exactly ONCE, inside a comment about --warp. It
+                            computes nothing and records nothing.
+  a profile leg's .json     top-level keys are label, window, meta, owners, metrics, zeroed,
+                            violations. No asset key, no fingerprint key.
 
-=== WHY THIS IS WORSE THAN A FLAKY GATE ===
+The single-leg profiler is the entrypoint we reach for most -- every [#276]/[#274]-shaped A/B uses it
+-- and it is the one that cannot say what content it measured.
 
-It is non-deterministic in BOTH directions, and only one of them is visible:
+=== WHY THIS IS THE INTERESTING KIND OF GAP ===
 
-  sampled mid-lever   -> RED    (looks like a defect; costs a diagnosis, as it just did)
-  sampled on a baseline leg, or between legs, or before the run starts -> GREEN
+It does not corrupt an A/B. Both arms of a profile A/B run minutes apart on one chain, so the
+COMPARISON survives; [#276]'s four legs are internally valid. What it destroys is COMPARABILITY ACROSS
+TIME, silently. A leg taken today and a leg taken last month are indistinguishable in the artifact,
+and the only thing that would have flagged the difference is a number the profiler never wrote.
 
-The GREEN is the dangerous half. `lever_table` exists to assert that the declared levers match the
-harness config, which is a claim about the TREE. During a run it is instead reporting which leg
-happens to be executing. A green sampled at the right moment therefore certifies nothing, and it is
-indistinguishable from a real green -- the exact shape [#258]/[#178] were raised against, where an
-absent verdict must be spelled differently from a passing one.
-
-This is also a live counterexample to "run the whole gate set before reporting green": the gate set
-is not currently safe to run concurrently with a harness run, and nothing says so.
+That is the same shape as [#178] (a run that did not rebuild), [#275] (a gate reading live state) and
+[#241] (ABSENT vs zero): the artifact looks complete, and the missing field is the one that would
+have told you not to trust it.
 
 === WHAT THIS OWES ===
 
-1. Make the gate REFUSE rather than guess when a run is in flight. It must exit 77 (SKIP) with a
-   message naming the run id, not exit 0 and not exit red. `harness/matrix/<id>/` with no final
-   summary, or a lockfile the runner takes, are both sufficient detectors; a lockfile is stronger
-   because it is written by the act it describes.
-2. Prove BOTH arms by injection, per the house rule that a gate nobody has seen fail is a claim with
-   no instrument: a doctored config must go red, and a simulated in-flight run must go 77 -- and the
-   77 must NOT be reachable by simply having a stale directory lying around, or the skip becomes a
-   way to buy silence.
-3. Audit the other 66 for the same shape. Any gate reading `storage/starbound.config`, `dist/`,
-   `harness/`, or anything else a run mutates has the same defect. `metrics_mutual` already handles
-   it correctly -- it printed "DID NOT COMPARE ... Quiesce the desktop and re-run. THIS IS NOT A
-   PASS." during this same run -- so the pattern to copy already exists in the tree.
-4. Say it in scripts/ci/run-gates.sh's own banner: which gates are unsafe while a harness run is
-   live, so the operator is not left to discover it from a confusing red.
+1. render-profile.sh computes the same asset_fingerprint() the matrix does and writes it into each
+   leg's .json -- SAME function, not a second implementation, or the two drift and the comparison
+   between a matrix leg and a profile leg becomes a comparison of two different hashes.
+2. Extract asset_fingerprint() to one place both scripts source. It currently lives in
+   lever-matrix.sh; a copy-paste is the defect this task is about, one level up.
+3. A gate: any leg .json under harness/profiles/ must carry a non-empty fingerprint. Prove it fires
+   by injection on a leg with the field stripped.
+4. DECIDE, and it is a Director call rather than a measurement: should the harness chain be PINNED
+   against Steam auto-update at all? Pinning gives stable longitudinal comparison but measures a
+   world the Director no longer plays. Not pinning tracks reality but re-bases the baseline whenever
+   Valve feels like it. Recording the fingerprint is necessary either way and is the cheap half; the
+   pin/no-pin choice can follow it.
 
-No GPU required. Do NOT do item 1's detection by checking for a running process by name; the runner
-can die and leave the config mutated, which is a different state that must still read as unsafe.
+BACKFILL, HONESTLY: legs already banked cannot have their chain recovered. They can be labelled with
+the fingerprint of the chain AS IT IS NOW only if that is stated as an assumption, which for anything
+taken before 08:34 today is known to be false. Better to mark pre-2026-08-22 profile legs
+"chain unrecorded" than to stamp them with a hash nobody verified.
+
+No GPU required for items 1-3.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
