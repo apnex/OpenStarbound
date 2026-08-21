@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**214 tasks** across 2 store(s): 5 in_progress, 32 pending, 177 completed
+**215 tasks** across 2 store(s): 5 in_progress, 32 pending, 178 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 213 tasks, ids 64–277
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 214 tasks, ids 64–278
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#277` | FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles t… | ready |
+| 1 | 1 | `#278` | SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
 | 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
@@ -67,7 +67,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 231, of which **42 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 234, of which **44 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -81,9 +81,9 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **9** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
-- **5** — NOT YET INVESTIGATED
+- **7** — NOT YET INVESTIGATED
 
-**Unexplained ids: 5.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 7.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
@@ -91,13 +91,14 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 | [#207](#c29c1332-207) | `66b9715a` |
 | [#214](#c29c1332-214) | `471488eed310861f` |
 | [#254](#c29c1332-254) | `14904c73` |
-| [#277](#c29c1332-277) | `276059e356eb74ad` |
+| [#277](#c29c1332-277) | `6f763c36bbb38e08` `276059e356eb74ad` |
+| [#278](#c29c1332-278) | `82514b4583a94c9b` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 177.
+**Completed tasks citing no commit and no doc:** 85 of 178.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -223,7 +224,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `00f575ad` | — |
-| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `2643b1ce` | — |
+| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `4dbb2000` `2643b1ce` | — |
 | [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `c89be289` | — |
 | [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | `6b6e8b72` | — |
 | [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | `472fd263` | — |
@@ -308,7 +309,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
 | [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
-| [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `5d231c48` | — |
+| [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `4dbb2000` `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
@@ -322,7 +323,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `29516d61` | — |
-| [#277](#c29c1332-277) | `c29c1332` | open | FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin que… | `29516d61` | — |
+| [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `29516d61` | — |
+| [#278](#c29c1332-278) | `c29c1332` | open | SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2755,6 +2757,7 @@ MY FIRST DIAGNOSIS WAS WRONG: I blamed the parallax cache's adaptive N. A shipwo
 
 status: **completed**
 
+- `4dbb2000` #277 FP-COVERAGE: the profiler records which content it measured, and refuses when that changes mid-leg
 - `2643b1ce` render: the gate can no longer certify a binary that was never built
 
 ```
@@ -6552,6 +6555,7 @@ finding.
 
 status: **completed**
 
+- `4dbb2000` #277 FP-COVERAGE: the profiler records which content it measured, and refuses when that changes mid-leg
 - `5d231c48` [#263] a board-only commit can no longer be cited as evidence, whatever its message says
 
 ```
@@ -7364,15 +7368,15 @@ Needs a live client at Desert Town. ~5 minutes of GPU.
 
 <a id="c29c1332-277"></a>
 
-#### #277 — FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin question: OWN the fixtu…
+#### #277 — FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synced 39→47, epoch 6f763…
 
 _Stored subject exceeds the heading; reproduced verbatim:_
 
 ```
-FP-COVERAGE: the profiler records no asset chain — and the Director's scope (engine code, not mods) settles the pin question: OWN the fixture
+FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synced 39→47, epoch 6f763c36bbb38e08
 ```
 
-status: **pending** · metadata: `{"rank": 1}`
+status: **completed**
 
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 
@@ -7433,6 +7437,70 @@ with the current fingerprint would assert something known to be false for anythi
 Mark them "chain unrecorded" instead.
 
 No GPU required. Items 1-3 are scripts + a file copy.
+```
+
+<a id="c29c1332-278"></a>
+
+#### #278 — SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and nothing in a leg le…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+SCENE-VARIANCE: Desert Town is not a controlled fixture — two identical legs differ 13.6% on the light-source walk, and nothing in a leg lets a reader normalise for it
+```
+
+status: **pending** · metadata: `{"rank": 1}`
+
+```
+Found 2026-08-22 while trying to answer whether syncing the harness 39 -> 47 mods moved the baseline.
+The answer is UNRESOLVED and this is why.
+
+=== THE OBSERVATION ===
+
+  gputax-on1   lighting.produce.entities.us  177,291 us
+  gputax-on2   lighting.produce.entities.us  153,198 us     -13.6%
+
+Those two legs are IDENTICAL by every control the harness has: same binary, same asset chain
+(82514b4583a94c9b), same bookmark, same 90s window, minutes apart, timers on in both. The key still
+moved 13.6%. Against that, the epoch0-verify leg's 115,441 us on the 47-mod chain says nothing at
+all -- and a naive read of the whole leg says content ADDITION made the frame 18.9% FASTER, which is
+not credible and is exactly the shape that gets published when nobody checks the control.
+
+=== WHY THE HARNESS CANNOT CURRENTLY SEE IT ===
+
+lighting.produce.entities.us is the forAllEntities/renderLightSources walk: O(light-emitting entities
+in view). The harness player's POSITION PERSISTS BETWEEN RUNS -- [#168] already found this the
+expensive way, when an A/B measured a 30-light scene against an 83-light baseline and gather fell 73%
+on untouched code. The bookmark pins the WORLD, not where the camera settles in it.
+
+And a leg cannot report its own scene: sim.entities.live and lighting.lights.sources both read ABSENT
+in the leg json. lever-matrix.sh does print "scene N entities vs baseline M (+X%)" per leg, so the
+quantity exists somewhere in the runner -- but render-profile.sh, the entrypoint every A/B uses,
+neither records it nor bounds it. Same asymmetry [#277] just closed for the asset chain, one input
+over.
+
+=== WHAT THIS OWES ===
+
+1. Record scene population INTO the leg json, beside meta.assetFingerprint. Whatever lever-matrix.sh
+   compares for its "scene N entities" line is the quantity; use the SAME one, not a second count
+   that will drift from it.
+2. Bound it: a leg whose population differs from the run's first leg by more than a stated percentage
+   is flagged in the artifact. Not refused -- unlike a mid-leg asset change this is a difference
+   between legs, and the right response is to make it VISIBLE to the consumer, which can then widen
+   its floor or decline to attribute.
+3. Then decide, with data rather than assertion, whether Desert Town is a good fixture at all. A 13.6%
+   swing on an O(entities) key is larger than most levers this project has confirmed -- which would
+   mean the scene, not the lever, sets the detection floor for anything entity-shaped.
+4. RE-EXAMINE WHAT THIS MEANS FOR matrix-20260816-160346. Its rotation and n=5 repetition should
+   average scene drift out rather than bake it in -- that is what interleaving is for -- but "should"
+   is not "did". The per-leg populations are recoverable from its legs.tsv witness lines; check
+   whether any lever's six draws were systematically hotter or colder than baseline's.
+
+NOT A REASON TO DISTRUST [#276]. That A/B was internally paired (on1-off1, on2-off2) and the paired
+differences agreed to 0.2%, which is precisely the design that survives this. The vulnerable
+comparisons are the UNPAIRED cross-run ones.
+
+No GPU required for items 1-2 and 4.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
