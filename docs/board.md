@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**217 tasks** across 2 store(s): 3 in_progress, 28 pending, 186 completed
+**219 tasks** across 2 store(s): 2 in_progress, 30 pending, 187 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 216 tasks, ids 64–280
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 218 tasks, ids 64–282
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,20 +43,18 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 2 | `#269` | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | ready |
+| 1 | 3 | `#281` | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | ready |
 | 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 3 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 4 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 5 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
-| 6 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 7 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 8 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 9 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 10 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 11 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-
-> **3 completed task(s) still carry a rank** (#262, #274, #275). A rank is a claim about
-> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
+| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 6 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
+| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
 ---
 
@@ -66,9 +64,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 223, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 227, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 46.** The task harness has, on these, appended its
+**Descriptions normalised on export: 45.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -97,7 +95,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 88 of 186.
+**Completed tasks citing no commit and no doc:** 88 of 187.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -268,7 +266,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | `board-audit-2026-08-08.md` |
 | [#221](#c29c1332-221) | `c29c1332` | done | GATHER-2 CLOSED: all four done as hardening -- E02 fc81ae17, E01 13cd3784, E03 c572e875, E04 a9ca6e26 | `a9ca6e26` `c572e875` `13cd3784` `fc81ae17` | — |
 | [#222](#c29c1332-222) | `c29c1332` | done | BORDER-2 CLOSED: the 13.2% was the HARNESS, not the border. True cost = 0.168% of pixels at one fp16 LSB | `c9f7f524` `6e66f36e` | — |
-| [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `f048adc4` `0c6184bf` | — |
+| [#223](#c29c1332-223) | `c29c1332` | done | GATE-TOLERANCE-1 DONE: paralloracle was never failing -- the gate read a BOUNDED-diff oracle as a zero-diff one | `8e6cdec0` `906aca3d` `f048adc4` `0c6184bf` | — |
 | [#224](#c29c1332-224) | `c29c1332` | done | SPREAD-CAP-1 CLOSED: cap 48 covers 100% of measured content (10 locations); margin is 1.7% but a breach is now loud, no… | `f95abac2` `9f2aba93` `8b05254b` `bf6fa6bf` `5f77683b` | — |
 | [#225](#c29c1332-225) | `c29c1332` | done | EPOCH-1 FIXED (8f322517): hit rate 17.9% -&gt; 80.7%. My "not viable" close was WRONG -- see the correction | `8f322517` `5af987a2` `e572e1ab` | — |
 | [#226](#c29c1332-226) | `c29c1332` | done | EPOCH-2: H1 undergroundLevel + H2 loadDefaultSector FIXED (8f322517); H3 asset-reload flags left open, severity unverif… | `8f322517` | `matrix-prereq-ledger.md` |
@@ -286,7 +284,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `747b93ea` `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
-| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
+| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `906aca3d` `cd0b5175` `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` | — |
 | [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
 | [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `35bbb97c` `495682df` | — |
@@ -303,7 +301,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
 | [#256](#c29c1332-256) | `c29c1332` | done | TSSA-OBS DONE: `telemetry` is a component, and teaching the sweep to SEE it found three defects (c19cb959) | `574879f3` `c19cb959` `94f44d59` | — |
 | [#257](#c29c1332-257) | `c29c1332` | done | DEDUP-RATCHET DONE: gated on FILES not symbols, and the gate set can now see it — 56 green (8ef7e573) | `8ef7e573` | — |
-| [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8ef7e573` `7e9815a4` | — |
+| [#258](#c29c1332-258) | `c29c1332` | done | GATE-SKIP-2 DONE: pr570_ledger exits 77, and run-gates --selftest now reads the rule out of gates.yml (7e9815a4) | `8e6cdec0` `8ef7e573` `7e9815a4` | — |
 | [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
@@ -314,18 +312,20 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `9f466723` | — |
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
-| [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
-| [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
+| [#269](#c29c1332-269) | `c29c1332` | done | LIGHTING-WHOLE CLOSED (906aca3d): the union is analyser-computed from the gated list, and it corroborates #270 at 26.5% | `8e6cdec0` `906aca3d` `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
+| [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `906aca3d` `29516d61` `1d367a57` | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `85741414` `841494c3` `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
 | [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
+| [#281](#c29c1332-281) | `c29c1332` | open | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | — | — |
+| [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -4564,6 +4564,8 @@ SUPERSEDES the spread-boundary hypothesis in this ticket's original body in full
 
 status: **completed**
 
+- `8e6cdec0` [#269] an unknown flag to metric-desc-lint ran a DIFFERENT check and exited 0
+- `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `f048adc4` gate: register render_gate_verdicts -- the render gate's own tolerance arms are now in the standing set [#223]
 - `0c6184bf` gate: paralloracle is a BOUNDED-diff oracle and the gate read it as a zero-diff one [#223]
 
@@ -5233,6 +5235,7 @@ Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 
 status: **completed**
 
+- `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `cd0b5175` LEDGER: file R15 and R16 -- the two registrations R14 did not reach
 - `775176ff` R14-FIX: a pass that never runs now reads ZERO, not ABSENT -- and the leg file says so
 
@@ -6327,6 +6330,7 @@ not reported at all.
 
 status: **completed**
 
+- `8e6cdec0` [#269] an unknown flag to metric-desc-lint ran a DIFFERENT check and exited 0
 - `8ef7e573` DEDUP-RATCHET: the ratchet was counting a quantity that moves when you add a log line [#257]
 - `7e9815a4` GATE-SKIP-2: pr570_ledger exits 77, and the rule is now read out of the file rather than remembered [#258]
 
@@ -6496,7 +6500,7 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 #### #262 — BOARD-TAIL CLOSED 2026-08-22: superseded — its own correction list had re-rotted, and the replacement pass shipped
 
-status: **completed** · metadata: `{"rank": 15}`
+status: **completed**
 
 ```
 CLOSED AS SUPERSEDED, 2026-08-22.
@@ -6879,45 +6883,86 @@ design change with a predicted magnitude is testable; one without is a preferenc
 
 <a id="c29c1332-269"></a>
 
-#### #269 — LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed
+#### #269 — LIGHTING-WHOLE CLOSED (906aca3d): the union is analyser-computed from the gated list, and it corroborates #270 at 26.5%
 
-status: **in_progress** · blocks: #270 · metadata: `{"rank": 2}`
+status: **completed** · blocks: #270
 
+- `8e6cdec0` [#269] an unknown flag to metric-desc-lint ran a DIFFERENT check and exited 0
+- `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
 ```
-TEXT CORRECTED 2026-08-22. The description's central premise had become FALSE and its blocking
-condition had cleared, so the row was arguing against a tree that no longer exists.
+CLOSED 2026-08-22. The one owed item shipped: telemetry-window.py computes the lighting-CPU
+union instead of it being summed by hand into a markdown table.
 
-=== WHAT WAS WRONG ===
+=== WHAT SHIPPED (906aca3d) ===
 
-  "the sole setter in the tree is the test.desc.full fixture in telemetry_test.cpp"  -- FALSE.
-      There are SEVEN production setters.
-  "NOTHING reads it"                                                                 -- FALSE.
-      scripts/metric-desc-lint.py --check-union-membership reads it, and is a registered gate.
-  "hold the split until #276 lands"                                                  -- CLEARED.
-      #276 is completed: the GPU-timer tax is measured at 10.2% (not the 37% I first claimed --
-      the brackets are BILLED 37% but CAUSE 10.2%; upload absorbs +53% when they go). The
-      de-biased split it was waiting for is already published.
+  [aggregate: lighting.cpu.union.us]  6/7 members present, 5100 ticks (cpu.frame.total.us)
+       lighting.gpu.cpu_cost.us          185.9   60.7%
+       lighting.cpu.total.us              81.3   26.5%
+       lighting.produce.entities.us       32.2   10.5%
+       lighting.gpu.spread_scan.us         5.9    1.9%
+       lighting.produce.prep.us            1.1    0.3%
+       lighting.produce.adjust.us          0.1    0.0%
+       LOWER BOUND                       306.4  100.0%
+       ABSENT: lighting.upload.us
 
-Items 1 and 3 are SHIPPED. So the row read as blocked-and-inert when it was unblocked with one
-concrete thing left.
+Four design decisions, each earned by a defect this campaign has already paid for:
 
-=== THE ONE THING ACTUALLY OWED (item 2, one half of it) ===
+ 1. AN AGGREGATE IS NOT A BUDGET, so it does not reuse the closure path. A budget has an
+    independently measured whole and its parts can DISAGREE with it -- that disagreement is a
+    check that can fail. An aggregate's value IS the sum, so a closure line would print 100.0%
+    every capture and read as verification. MetricDesc::whole drew this line at the declaration
+    site; the consumer now honours it.
 
-Teach scripts/telemetry-window.py to group Budget parts by their declared `whole` and compute the
-union itself. Telemetry::snapshot already serialises it as m["whole"]; the seam is
-closure_verdict(owner, dom, parts, whole).
+ 2. MEMBERSHIP IS IMPORTED FROM metric-desc-lint.py, NOT RESTATED. That file owns UNION_MEMBERS
+    and gates it EXHAUSTIVE + NON-OVERLAPPING against the tree (7/7, 0 double-counted). A second
+    copy in the consumer would drift, and the copy that drifted would be the one printing the
+    number while the gate stayed green. Costs an importlib call (hyphenated filename); buys a sum
+    that cannot disagree with its own gate.
 
-WHY IT IS WORTH DOING rather than dropping: today the lighting union is computed BY HAND into a
-markdown table. A hand-summed whole is a claim; an analyser-computed one is an instrument. This is
-squarely a make-a-number-believable change, it is verifiable against banked artefacts, and it needs
-no GPU -- so it is run-window work.
+ 3. A MISSING MEMBER MAKES THE TOTAL A LOWER BOUND. Absent is not zero -- a member can be missing
+    because the cost did not occur OR because its registration never ran ([#241] found exactly
+    that), and a window cannot tell those apart.
 
-Not blocked by anything. Not urgent.
+ 4. NO VIOLATION FOR AN ABSENT MEMBER, deliberately. lighting.upload.us is legitimately absent
+    whenever no upload happened, so flagging it would fire on correct data on most captures and
+    train the reader to scroll past violations -- what [#223] cost weeks to. The LABEL carries the
+    warning, on the number. Violations are reserved for a sum that is not a quantity (mixed units)
+    and for an instrument that produced nothing at all.
+
+=== VERIFICATION: TWO INDEPENDENT CORROBORATIONS, NEITHER FED BY THE OTHER ===
+
+  Hand arithmetic over border-p0a's full span: lighting.cpu.total.us = 81.3 us/frame.
+  The analyser prints 81.3. Exact.
+
+  The union puts that key at 26.5% of the whole. [#270] derived 25.8-28.6% by hand from a
+  DIFFERENT capture. Corroboration, not restatement.
+
+Selftest 40 -> 49 arms, including one that proves the IMPORT returns the named list rather than
+merely not throwing -- an empty set would make every aggregate NOT REPORTABLE while looking wired.
+The selftest's summary sentence was narrowed in the same commit rather than left naming an older
+set ([#218]'s rule).
+
+=== A SECOND DEFECT FOUND WHILE WIRING IT (8e6cdec0) ===
+
+`metric-desc-lint.py --union` printed the MetricDesc-site tally and exited 0. There is no --union
+flag: the dispatch ended in `.get(arg, check)()`, so any unrecognised argument silently ran the
+DEFAULT check and reported its green on behalf of the one requested. No gate was actually
+mis-wired -- all four registered arms name their flags correctly and are green -- but the exposure
+was one rename away, and every one of the fourteen is invoked BY NAME from a shell script. Now
+refuses with exit 2 and prints the known set.
+
+=== STILL OWED, NOT DROPPED ===
+
+leg-diff.py reads keys from the artefacts, so the union is STILL not available to a paired A/B.
+That is why [#274] pre-registered both denominators and could deliver only one. This closes the
+printer, not the differ. Filed as its own item rather than left implied.
+
+Gates: 73 green, metrics_mutual SKIP (needs a GPU client).
 ```
 
 <a id="c29c1332-270"></a>
@@ -6932,6 +6977,7 @@ LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs har
 
 status: **completed** · blocked by: #269
 
+- `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
 
@@ -7168,8 +7214,10 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 #### #274 — BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever
 
-status: **completed** · metadata: `{"rank": 1}`
+status: **completed**
 
+- `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
+- `9b40339a` [#274] CLOSED: the border lever is CONFIRMED, and it is the OFF arm that moved
 - `85741414` [#274] The floor settles the METHOD before the measurement: 10.1% &lt; a 13.95% unpaired floor
 - `841494c3` [#274] PREREQ: the scene it names was never in the fixture set
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
@@ -7241,7 +7289,7 @@ unwrapped-position fix, no pixel confirmation, derived give-back) are untouched 
 
 #### #275 — GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live
 
-status: **completed** · metadata: `{"rank": 5}`
+status: **completed**
 
 - `5e22945d` [#275] CLOSED: all three arms proven -- and the run that proved them was mislabelled a failure
 - `508707f2` [#275] LIVESTATE: give the detector a writer -- it has been inert since it shipped
@@ -7647,6 +7695,139 @@ Either the scene is stabilised so skipped is consistent across legs (and its flo
 it is REPLACED in scripts/scene-table.json by a surface fixture that is stable -- and if replaced,
 say plainly that the five-scene cartesian's Surface-Outpost column is void, rather than leaving it in
 the table looking measured.
+```
+
+<a id="c29c1332-281"></a>
+
+#### #281 — UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one
+
+status: **pending** · metadata: `{"rank": 3}`
+
+```
+The other half of [#269]'s item 2, filed rather than left implied when #269 closed 2026-08-22.
+
+=== THE GAP ===
+
+[#269] shipped `lighting.cpu.union.us` as an ANALYSER-COMPUTED figure in telemetry-window.py's
+report. But leg-diff.py -- the consumer that does every paired A/B -- reads metric keys straight
+out of the leg artefacts (harness/profiles/*.json), and no metric of that name is ever registered.
+It is a derived quantity that exists only in a printed table.
+
+CONSEQUENCE, ALREADY PAID ONCE: [#274] pre-registered reporting the border lever against BOTH
+lighting.cpu.total.us and lighting.cpu.union.us, and could deliver only the first. The
+pre-registration recorded that as a commitment unmet rather than quietly dropping it, which is the
+right handling, but the gap is still open and the next lever measurement will hit it identically.
+
+=== WHY IT MATTERS BEYOND ONE MISSED ROW ===
+
+[#171] is the reason the union exists: the denominator under every lighting percentage was a third
+short, because the (owner, domain) table permits exactly ONE whole per pair. Until the union is
+diffable, every paired result is still quoted against lighting.cpu.total.us -- which the union
+itself now shows is only 26.5% of lighting's real CPU cost. The percentages are not wrong, but
+they are denominated against a part rather than the whole, and that is precisely the defect [#171]
+closed at the declaration site and this leaves open at the measurement site.
+
+=== TWO ROUTES, NOT YET CHOSEN ===
+
+  A. DERIVE IN THE CONSUMER. Teach leg-diff.py the same aggregate logic -- import the gated
+     membership list, coverage-scale, sum. Cheap, no engine change, no new registration. Risk: a
+     SECOND implementation of the arithmetic, so telemetry-window and leg-diff could disagree.
+     Mitigate by extracting the shared function rather than copying it -- which is the same
+     one-writer argument that made #269 import the list instead of restating it.
+
+  B. REGISTER IT IN THE ENGINE as a real metric that the members feed. Makes it a first-class key
+     available to every consumer forever, including the joined axis and the plots. But it means a
+     metric whose value is a sum of other metrics, which is exactly the AGGREGATE-vs-BUDGET
+     distinction MetricDesc::whole was written to keep out of the register, and it would need a
+     writer on some thread. Almost certainly wrong, and recorded so the decision is visible rather
+     than made by default.
+
+Lean is A-with-extraction. Not urgent; NOT blocked on anything. No GPU needed -- desk work,
+verifiable against the banked border-p* legs, where the expected answer is already known from
+#269's own output (306.4 us/frame lower bound at p0a).
+
+DO NOT close this by making leg-diff PRINT the union. The requirement is that a paired A/B can be
+computed ON it, with a floor and a verdict, like any other key.
+```
+
+<a id="c29c1332-282"></a>
+
+#### #282 — OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail
+
+status: **pending** · metadata: `{"rank": 5}`
+
+```
+Split out of [#274] on 2026-08-22, where it was explicitly scoped OUT and named the
+highest-value follow-up. [#274] closed on the lever; this is about the BASELINE it is measured
+against.
+
+=== THE OBSERVATION ===
+
+[#217] and [#274] measured the SAME key (lighting.cpu.total.us) at the SAME scene
+(04-Ocean-Factory). Denominators are directly comparable; [#171]'s correction does not apply.
+
+  ON  arm   #217 77.8   #274 mean 80.7, range [67.7,  91.5]   REPRODUCES (+3.7%)
+  OFF arm   #217 86.5   #274 mean 118.4, range [94.3, 144.0]  +36.8%, OUTSIDE the range
+
+The shipped default is stable across eighteen days. The COUNTERFACTUAL moved. So the border
+lever's measured value (+48.19% when off) is partly a statement about a baseline that itself got
+more expensive, and the honest question is why.
+
+=== FIRST PASS DONE: 30 COMMITS, MOSTLY INSTRUMENTATION ===
+
+git log 817e54e8..HEAD over StarWorldClient / StarGpuLightmapPass / StarWorldPainter /
+StarLightingCalculator = 30 commits. The bulk are TELEMETRY, not lighting logic:
+b1d8c3a0 (#171, five producer-side timers), 164163cc (#271, seven parts on the cpu_cost lump),
+1d796664 (#272), plus the counter/gauge/descriptor clusters. Real lighting changes are the epoch
+work (8f322517, 5af987a2, e572e1ab), the gather-cache work (fc81ae17, 13cd3784, c572e875,
+a9ca6e26) and the oracle split (c1a4433d, 9429b14d).
+
+"We instrumented the thing we were measuring" is therefore the obvious hypothesis, and it is
+reinforced by [#276]: the GPU-timer brackets are BILLED 37% but CAUSE 10.2%.
+
+=== BUT BOTH SIMPLE INSTRUMENT MODELS FAIL THE ARITHMETIC ===
+
+  CONSTANT overhead c added to both arms: ON = 77.8+c, OFF = 86.5+c. That SHRINKS the ratio.
+    Observed ON drift implies c ~= 3 us; that predicts OFF ~= 89.5, not 118.4. Refuted.
+
+  WORK-PROPORTIONAL overhead: both arms inflate by a similar PERCENTAGE. Observed is +3.7% ON
+    against +36.8% OFF -- a tenfold difference in relative inflation, where the arms' work differs
+    by roughly 1.28x ([#217]'s -27.8% of region). Does not fit either.
+
+So the drift is NOT explained by uniform instrument tax, and it is concentrated almost entirely in
+the arm that does MORE lighting work. That is the finding, and it is why this is worth a task
+rather than a footnote.
+
+=== LEADING HYPOTHESIS (UNTESTED, DO NOT QUOTE) ===
+
+Something whose cost is SUPERLINEAR in region size, or whose cache degrades as the region grows.
+fc81ae17 is the suggestive one: the gather cache "loses 76-86% of its hits to the tile epoch". If
+hit rate falls with a larger or less stable dirty region, the no-border arm would pay
+disproportionately -- which is exactly the observed shape. The epoch commits (8f322517 et al.)
+changed invalidation and are in the same family.
+
+An equally live possibility is that [#217]'s 86.5 was simply a LOW SAMPLE: it was n=1, a single
+adjacent pair with no spread at all, and today's lowest OFF leg is 94.3. That alone would account
+for a chunk of the gap and must be ruled out before any regression is claimed.
+
+=== THE DECISIVE TEST ===
+
+Build at 817e54e8 (or just before the instrumentation cluster) and run the SAME paired A/B at
+04-Ocean-Factory: scripts/render-ab.sh 90 border --warp 04-Ocean-Factory --repeats 5 --warmup 1.
+Paired, because [#274] established this scene's unpaired floor on this key is 13.95% and an
+unpaired design cannot adjudicate it. Needs the GPU and a clean build; not run-window work.
+
+CHEAPER FIRST STEP, worth doing before the bisect: re-run the paired A/B with telemetry deep-gating
+OFF ([#172] measured arming at +2.16%). If the OFF arm's excess survives with the instrument
+disarmed, instrumentation is exonerated and the search moves to the gather cache and the epoch.
+
+=== WHY IT MATTERS ===
+
+If the no-border path really regressed, then some shipped change made the engine slower in a
+configuration nobody runs -- harmless in itself, but it means our most-quoted lever number is
+inflated by it, and every future lever measured against a moving baseline inherits the same
+problem. This is the [#274] caveat that could flip a verdict, which is the definition of the open
+question.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
