@@ -16,6 +16,15 @@ import argparse
 import json
 import os
 import sys
+import re
+
+
+def _snap_order(name):
+    """Order snapshot filenames NUMERICALLY. Module scope so the selftest can reach it -- a helper its
+    own test cannot import is a helper with no instrument."""
+    m = re.search(r"(\d+)", name)
+    return (0, int(m.group(1)), name) if m else (1, 0, name)
+
 
 SCHEMA = 4
 BUCKETS = 64
@@ -592,6 +601,39 @@ def selftest():
     arm("with no monotonic pair it falls back to epoch and says so",
         s_fb[0]["durationS"] == 4.5 and s_fb[0]["durationSource"] == "mtime")
 
+    # THE 7->8 DIGIT ROLLOVER, which is the exact input that corrupted a leg on 2026-08-22. Lexically
+    # "telemetry-10008602" sorts BEFORE "telemetry-9994016"; numerically it does not. This arm is the
+    # difference between a window and a window held backwards.
+    _snaps = ["telemetry-9994016.json", "telemetry-10008602.json", "telemetry-999999.json"]
+    arm("snapshots order NUMERICALLY across the 7->8 digit rollover",
+        sorted(_snaps, key=_snap_order) ==
+        ["telemetry-999999.json", "telemetry-9994016.json", "telemetry-10008602.json"])
+    arm("a name with no number sorts last rather than crashing the sort",
+        sorted(["telemetry-2.json", "notanumber.json"], key=_snap_order)[-1] == "notanumber.json")
+
+    # A NEGATIVE COUNTER DELTA MUST REFUSE. The corrupted leg wrote 33 of them -- including
+    # lighting.temporal.recomputed = -900 -- and recorded violations: []. Nothing in this script
+    # objected to a monotonic counter going down by 900.
+    def _negcheck(w):
+        out = []
+        for k, m in sorted(w.items()):
+            if m.get("type") != "counter":
+                continue
+            v = m.get("value", m.get("total"))
+            if isinstance(v, (int, float)) and v < 0:
+                out.append(k)
+        return out
+
+    arm("a negative COUNTER delta is refused",
+        _negcheck({"lighting.temporal.recomputed": {"type": "counter", "value": -900}}) ==
+        ["lighting.temporal.recomputed"])
+    arm("a positive counter raises nothing",
+        _negcheck({"a": {"type": "counter", "value": 900}}) == [])
+    # GAUGES ARE EXEMPT AND MUST BE -- a gauge is a level, and levels legitimately fall. A check that
+    # refused those would fire constantly and be turned off, which is how a gate stops being read.
+    arm("a negative GAUGE is NOT refused -- levels may fall",
+        _negcheck({"fps": {"type": "gauge", "value": -3.2}}) == [])
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
@@ -646,7 +688,20 @@ def main():
                     help="write the per-interval series (every consecutive pair) as JSON to this path")
     args = ap.parse_args()
 
-    files = sorted(f for f in os.listdir(args.snapdir) if f.endswith(".json"))
+    # NUMERIC, NOT LEXICAL. Snapshots are telemetry-<N>.json and N is a free-running counter. Sorting
+    # the NAMES puts "telemetry-10008602" BEFORE "telemetry-9994016", because '1' < '9' as characters --
+    # so the moment the counter crosses from seven digits to eight, the window is differenced BACKWARDS.
+    #
+    # THIS ALREADY HAPPENED AND NOTHING CAUGHT IT. matrix-20260822-105405-r2-off-lightingTemporalDecouple
+    # was captured with window ["telemetry-10008602.json", "telemetry-9994016.json"], produced 33
+    # NEGATIVE counters including lighting.temporal.recomputed = -900, recorded violations: [], and was
+    # CONSUMED by the lever analysis -- where it depressed that scene's delta and quietly flattered a
+    # cross-scene comparison. A counter that runs backwards is not a small error; it is the instrument
+    # reporting the opposite of what happened.
+    #
+    # Fall back to the name for anything that does not carry a number, so a stray file cannot crash the
+    # sort -- but numbers order as numbers.
+    files = sorted((f for f in os.listdir(args.snapdir) if f.endswith(".json")), key=_snap_order)
     if len(files) < 2:
         print(f"need >=2 snapshots in {args.snapdir}, found {len(files)}", file=sys.stderr)
         return 1
@@ -724,6 +779,29 @@ def main():
           f"pkgTempC={meta.get('packageTempCStart')}->{meta.get('packageTempCEnd')}\n")
 
     violations = []
+
+    # A COUNTER CANNOT RUN BACKWARDS, and until 2026-08-22 nothing said so.
+    #
+    # matrix-20260822-105405-r2-off-lightingTemporalDecouple was differenced across a window held in
+    # the WRONG ORDER (the lexical-sort defect fixed above). It produced 33 negative values, including
+    # lighting.temporal.recomputed = -900 -- the instrument reporting that a monotonic counter went
+    # DOWN by 900 -- wrote `violations: []`, and was consumed by the lever analysis, where it depressed
+    # its scene's delta and flattered a cross-scene comparison that has since been withdrawn.
+    #
+    # The ordering fix stops that cause. THIS stops the CLASS: any future path that yields a negative
+    # counter delta -- a reordered window, a restarted process, a wrapped counter, a reset store --
+    # refuses instead of averaging. A counter is declared monotonic by its own type; a negative delta
+    # means the difference is not a measurement of anything.
+    #
+    # Gauges are EXEMPT and must be: a gauge is a level, and levels legitimately fall.
+    for _k, _m in sorted(w.items()):
+        if _m.get("type") != "counter":
+            continue
+        _v = _m.get("value", _m.get("total"))
+        if isinstance(_v, (int, float)) and _v < 0:
+            violations.append(
+                f"{_k}: counter delta is NEGATIVE ({_v}). A monotonic counter cannot decrease -- this "
+                f"window is not a measurement. Check the snapshot ORDER first (window={[files[lo], files[hi]]}).")
 
     # DESCCONFLICT GETS ITS FIRST READER OUTSIDE A TEST, and that gap is the reason this exists.
     #
