@@ -171,7 +171,7 @@ if [ -z "$PID" ] || [ ! -d "/proc/$PID" ]; then
   # script was asked to compare two readings of a process that is not there. Distinguishing this
   # from "compared and agreed" is the entire contract.
   echo "metrics-mutual-check: no target process. Pass a pid, or start the game:"
-  echo "  taskset -c 6-15 nice -n 19 scripts/render-profile.sh 420 mutual --warp '03-Surface Outpost'"
+  echo "  taskset -c 6-15 nice -n 19 scripts/render-profile.sh 420 mutual --warp '03-Surface-Outpost'"
   exit 2
 fi
 [ -x dist/metrics ] || {

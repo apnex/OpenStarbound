@@ -1,12 +1,14 @@
 {
   "_what": "Measured leg-to-leg coefficient of variation, per scene, per key, in PERCENT. This is the noise a comparison must clear before it means anything. Consumed by scripts/leg-diff.py.",
   "_provenance": "docs/evidence/scene-stability.md -- 12 legs, 4 scenes x 3 passes interleaved by pass, 90s each, asset chain 6f763c36bbb38e08, 2026-08-22. Derived from three legs per scene: these RANK scenes and size a floor, they do not certify one. Re-measure with more legs before treating any figure as precise.",
+  "_renamed_2026_08_22": "Scene keys are now the HYPHENATED bookmark names, which is what the harness records and what leg-diff looks up. Two of them were previously keyed with SPACES ('01 Lava Refinery', '03 Surface Outpost') while the bookmarks, the logs and the evidence doc all used hyphens -- so both floors were correctly measured and NEITHER COULD EVER BE FOUND, and leg-diff would have refused at those scenes citing 'no measured floor' while the measurement sat here. The bookmarks in the harness save were themselves standardised to hyphens in the same change, so there is now one spelling rather than a convention. THESE ARE RELABELS, NOT RE-MEASUREMENTS: every number above is the same number, from the same legs, for the same physical place.",
+
   "_how_to_use": "For an UNPAIRED comparison of na vs nb legs the difference has sd = cv*sqrt(1/na + 1/nb); a two-sided 95% bar is 1.96x that. leg-diff.py applies it. A PAIRED comparison removes the between-leg component and is not bound by this floor -- which is the whole reason to pair.",
   "_insensitive": {
     "cpu.frame.total.us": "PACING-BOUND, NOT PRECISE. Its CV reads 0.004-0.098%, which is not stability -- the key is largely vsync sleep, so it barely moves however the engine performs. A floor that small would let any difference clear it, which is a check that cannot fail. leg-diff.py REFUSES to attribute on keys listed here regardless of their measured floor. The trap is already recorded at scripts/telemetry-window.py's cpu.frame.total.us note and in [#173]: a total that is 65% sleep reports no change for a real regression."
   },
   "scenes": {
-    "Desert Town": {
+    "Desert-Town": {
       "lighting.produce.entities.us": 6.582,
       "cpu.frame.render.us": 6.553,
       "lighting.gpu.cpu_cost.us": 5.845,
@@ -22,7 +24,7 @@
       "lighting.gpu.drive.point.us": 5.807,
       "cpu.frame.total.us": 0.037
     },
-    "01 Lava Refinery": {
+    "01-Lava-Refinery": {
       "lighting.produce.entities.us": 24.032,
       "cpu.frame.render.us": 14.224,
       "lighting.gpu.cpu_cost.us": 12.422,
@@ -30,19 +32,28 @@
       "lighting.gpu.drive.point.us": 10.817,
       "cpu.frame.total.us": 0.058
     },
-    "03 Surface Outpost": {
+    "03-Surface-Outpost": {
       "lighting.produce.entities.us": 26.781,
       "cpu.frame.render.us": 22.304,
       "lighting.gpu.cpu_cost.us": 46.446,
       "lighting.cpu.total.us": 24.004,
       "lighting.gpu.drive.point.us": 47.187,
       "cpu.frame.total.us": 0.098
+    },
+    "ship": {
+      "lighting.produce.entities.us": 12.104,
+      "cpu.frame.render.us": 6.489,
+      "lighting.gpu.cpu_cost.us": 7.427,
+      "lighting.cpu.total.us": 3.712,
+      "lighting.gpu.drive.point.us": 7.086,
+      "cpu.frame.total.us": 0.022
     }
   },
   "_warmup": {
-    "03 Surface Outpost": "cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. Its floors above INCLUDE that transient and are therefore pessimistic. Discard a warm-up leg at this scene.",
-    "00-Ocean-Lab": "p1 high then settles; post-transient its cpu_cost spread falls to 0.90% and render to 5.25%, both better than Desert Town. The candidate second scene ([#242]), once its warm-up is discarded and its own repeat count established.",
-    "Desert Town": "no transient observed across three passes."
+    "03-Surface-Outpost": "cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. Its floors above INCLUDE that transient and are therefore pessimistic. Discard a warm-up leg at this scene.",
+    "00-Ocean-Lab": "p1 high then settles; post-transient its cpu_cost spread falls to 0.90% and render to 5.25%, both better than Desert-Town. The candidate second scene ([#242]), once its warm-up is discarded and its own repeat count established.",
+    "Desert-Town": "no transient observed across three passes.",
+    "ship": "ONE DISCARDED WARM-UP LEG WAS NOT ENOUGH HERE. The three legs behind the floor above still fall monotonically -- render 1951.8 -> 1778.9 -> 1726.2, cpu_cost 477.5 -> 433.9 -> 413.2 -- so a residual settling trend is being counted as noise and every ship floor above is PESSIMISTIC by an unmeasured amount. It is a usable refusal threshold, which is what a floor is for, but it is not the ship's true leg-to-leg spread and must not be quoted as one. Re-derive from the cartesian's ship baselines, which have more legs after a longer settle."
   },
   "_absent_is_not_zero": "A key or scene NOT listed here has NO MEASURED FLOOR. leg-diff.py refuses to attribute rather than assuming zero, because an unmeasured floor and a floor of zero produce opposite verdicts from the same data."
 }

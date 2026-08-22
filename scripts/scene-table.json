@@ -1,0 +1,42 @@
+{
+  "_what": "The measurement fixture set. Every scene the lever matrix runs against, declared once, with the EXACT string that must be passed to --warp. Read by scripts/scene-matrix.sh and checked against scripts/scene-floor.json.",
+
+  "_why_the_warp_string_is_the_identity": "render-profile.sh records meta.scene as the --warp string VERBATIM, and scripts/leg-diff.py looks the floor up with scenes.get(scene) -- an exact match, no normalisation. So the warp string is not a convenience label, it is the join key between a measurement and the floor that decides whether the measurement means anything. Two spellings of one scene are two scenes, one of which has no floor.",
+
+  "_this_file_exists_because_that_bit": "scene-floor.json keyed two scenes '01 Lava Refinery' and '03 Surface Outpost' with SPACES while the bookmarks, the harness logs and docs/evidence/scene-stability.md all use HYPHENS. Both floors were correctly measured and neither could ever be found: leg-diff would have refused to attribute anything at either scene, and refused for the one reason that is hardest to doubt -- 'no measured floor' -- while the measurement sat in the file. Found 2026-08-22 while declaring the five-scene cartesian.",
+
+  "_matching": "--warp does a lowercased substring match against teleport bookmark names, so a wrong string FAILS the leg loudly rather than measuring the wrong place. 'ship' is not a bookmark at all; it is the engine alias WarpAlias::OwnShip.",
+
+  "scenes": [
+    {
+      "warp": "Desert-Town",
+      "kind": "bookmark",
+      "validates": "A dynamic village: NPCs live here, so the sim load is entity-driven rather than static.",
+      "measured": "The MOST stable of the four surface scenes, not the least -- the NPC-noise hypothesis was tested and refuted (#278). Worst-key floor 6.58%."
+    },
+    {
+      "warp": "00-Ocean-Lab",
+      "kind": "bookmark",
+      "validates": "Underwater interior.",
+      "measured": "Worst-key floor 17.47%. Carries a first-visit warm-up transient (see scene-floor.json _warmup)."
+    },
+    {
+      "warp": "01-Lava-Refinery",
+      "kind": "bookmark",
+      "validates": "The lava scene. This is what the Director's 'Lava Factory' names -- it is the only Lava fixture; '04-Ocean-Factory' is a different, unrelated bookmark and is #274's scene, not this one.",
+      "measured": "Worst-key floor 24.03%."
+    },
+    {
+      "warp": "03-Surface-Outpost",
+      "kind": "bookmark",
+      "validates": "Surface outpost, and the scene with by far the strongest first-visit transient -- cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. It is the reason the runner discards a warm-up leg at all.",
+      "measured": "Worst-key floor 47.19%, and that floor INCLUDES the transient, so it is pessimistic."
+    },
+    {
+      "warp": "ship",
+      "kind": "engine-alias",
+      "validates": "The one fixture where render.pass.parallax.gpu_us is exactly 0.0 us/frame -- measured, not assumed. No other scene exercises that zero, so no other scene can catch a regression that puts work back into the parallax pass on a world with no parallax.",
+      "measured": "Reachable by name only since #277; before that the harness could measure here but not ASK to."
+    }
+  ]
+}

@@ -9,6 +9,13 @@ on asset chain `6f763c36bbb38e08`, recorded in every leg per [#277]. Raw legs:
 The decision rule and the expectation below were **written to the board before the data existed**, so
 neither could be fitted to the result. Both are quoted here unchanged.
 
+> **Scene names below are the pre-2026-08-22 spellings.** The bookmarks were later standardised to
+> hyphens — `Desert Town` → `Desert-Town`, `01-Lava Refinery` → `01-Lava-Refinery`,
+> `03-Surface Outpost` → `03-Surface-Outpost` — because the warp string is the join key between a leg
+> and its floor, and two spellings of one scene are two scenes, one of which has no floor. The numbers
+> here are untouched: same legs, same places, renamed labels. `scripts/scene-table.json` is now the
+> canonical list and `scripts/bookmark-mirror.sh` keeps it honest against the save.
+
 ## The rule, as pre-registered
 
 > PRIMARY: coefficient of variation of `lighting.produce.entities.us` per frame across a scene's 3

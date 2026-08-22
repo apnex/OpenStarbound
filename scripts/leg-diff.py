@@ -16,7 +16,7 @@ BEING WRITTEN DOWN -- I wrote it down, in a report, before checking the control.
 by hand look exactly like a designed A/B once they reach prose.
 
 THE FLOOR IS MEASURED, NOT INVENTED. scripts/scene-floor.json carries per-scene per-key leg-to-leg CV
-from a 12-leg probe (docs/evidence/scene-stability.md). Even the best scene, Desert Town, sits at
+from a 12-leg probe (docs/evidence/scene-stability.md). Even the best scene, Desert-Town, sits at
 ~6.6% on lighting.produce.entities.us -- larger than most lever effects this project has confirmed.
 
 PAIRING IS THE POINT, NOT A NICETY. An unpaired comparison must clear cv*sqrt(1/na + 1/nb) scaled by

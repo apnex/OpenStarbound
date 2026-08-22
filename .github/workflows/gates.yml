@@ -508,6 +508,18 @@ jobs:
           fi
           exit $rc
 
+      - name: bookmark_mirror_fires -- drift, binary saves and an absent save are told apart
+        run: scripts/bookmark-mirror.sh --selftest
+
+      - name: bookmark_mirror -- the --warp pre-flight's name list still matches the save
+        # THE PRE-FLIGHT WAS CONSULTING A MEMORY, NOT THE BOOKMARKS. harness/logs-perf/bookmarks.txt
+        # is what render-profile.sh refuses against, quoting "the real list", and NOTHING IN THIS TREE
+        # EVER WROTE IT. On 2026-08-22 the bookmarks were standardised to hyphens, the save was
+        # correct, and the pre-flight rejected every renamed scene in milliseconds while printing an
+        # authoritative list of names that no longer existed. Skips (77) where there is no save, which
+        # is CI and every fresh clone -- the script decides that itself and says nothing was compared.
+        run: scripts/bookmark-mirror.sh
+
       - name: banked_reread_fires -- the re-read comparison fires on a real difference
         run: python3 scripts/ci/banked-reread.py --selftest
 
