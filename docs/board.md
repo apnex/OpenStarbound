@@ -52,12 +52,25 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 7 | 6 | `#285` | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied r… | ready |
 | 8 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 9 | 7 | `#280` | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not… | ready |
-| 10 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 11 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 12 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 13 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 14 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 15 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 10 | 8 | `#197` | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | ready |
+| 11 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 12 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 13 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 14 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 15 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 16 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 17 | 20 | `#144` | UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22) | ready |
+| 18 | 21 | `#138` | P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (co… | ready |
+| 19 | 22 | `#135` | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | ready |
+| 20 | 23 | `#136` | P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-2… | ready |
+| 21 | 24 | `#90` | SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE… | ready |
+| 22 | 25 | `#161` | Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all | ready |
+| 23 | 26 | `#84` | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs… | ready |
+| 24 | 27 | `#191` | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the ga… | ready |
+| 25 | 28 | `#198` | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | ready |
+| 26 | 29 | `#124` | Brainstorm LuaEngine marshalling-efficiency lever (combat/exploring Lua tax) | ready |
+| 27 | 30 | `#75` | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | ready |
+| 28 | 31 | `#82` | L2 collision arena — optional live A/B confirmation + future terrain test-harness | ready |
 
 > **Ranking integrity:** rank 4 is claimed by 2 tasks: #267, #268
 
@@ -515,7 +528,7 @@ L2 Proto cache implemented: engine (StarLua.cpp/.hpp: extern-C lua internals, pu
 
 #### #75 — L2 dense-workload magnitude + verify toggle fix live (opportunistic)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 30, "gate": "needs Director in-game"}`
 
 - cited in `docs/board-audit-2026-08-08.md`
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
@@ -590,7 +603,7 @@ From #79 design. In-place arena for m_workingCollisions (replace queryCollisions
 
 #### #82 — L2 collision arena — optional live A/B confirmation + future terrain test-harness
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 31, "gate": "needs Director in-game"}`
 
 ```
 L2 shipped 69bcaaf (default-ON), verified byte-identical by perspective-diverse adversarial review. Runtime verification gap: the offline test WorldServer (size+storage ctor) has no terrain generator and foreground placement needs support, so a bit-exact unit A/B wasn't achievable. Optional belt-and-suspenders: (a) live dev A/B — flip collisionArenaEnabled OFF vs ON in dev play, confirm movement/feel identical (the flag enables this); (b) a future proper-terrain test harness (TestUniverse-based, or a WorldServer built from a real WorldTemplate with a biome) to add a bit-exact movement A/B + a validate-shadow, reusable for any future MovementController lever. Low priority — the review is the gate; this is extra confidence on a desync-critical path.
@@ -610,7 +623,7 @@ Per windLevel investigation (wjsdj5oez). Plant::update unconditionally computes 
 
 #### #84 — L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs an in-process A/B
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 26}`
 
 - `91cd1ef4` SCENE-FINGERPRINT (O01/#84): the matrix had none, and its own artefacts show the drift #84 was refused for
 - `35808327` sim: add sim.entities.live -- the scene fingerprint an A/B needs, and it worked immediately
@@ -707,7 +720,7 @@ DEFERRED (flagged, real obligations) → see #90: L-OBJ-3 damageSources touch-so
 
 #### #90 — SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE (corrected 08-22)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 24}`
 
 ```
 TEXT CORRECTED 2026-08-22. The substance stands and the row stays open: all six sub-levers
@@ -1111,7 +1124,7 @@ User wants a combat perf call-graph captured next time they're in a fight, to op
 
 #### #124 — Brainstorm LuaEngine marshalling-efficiency lever (combat/exploring Lua tax)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 29}`
 
 ```
 Combat call-graph (2026-07-05, 2 captures) → no dominant native lever; the concentrated actionable cost is the engine-side C++↔Lua marshalling layer: createWrappedFunction (0.42%), Variant<Lua> destruct/doCall/assign churn (0.33%+), jsonContainerToTable, callback-registry FlatHashTable dispatch, LuaHandle dtor. Engine-only, behavior-preserving, benefits ALL FU Lua (combat+exploring). Distinct from #104 (invasive native-offload of FU logic). Brainstorm→design→build when user wants to push the campaign. Findings: /root/kubebound/2026-07-05-combat-callgraph-findings.md
@@ -1411,7 +1424,7 @@ DONE: brainstorm→spec→plan complete. Root-caused the probe failure (surface-
 
 #### #135 — SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 22}`
 
 ```
 STATUS CORRECTED 2026-07-25 by content audit. This was parked as "ON HOLD (likely obsoleted by P-3 #138)".
@@ -1443,7 +1456,7 @@ Related: #136 (the P-1 bugs in this same gate, code merged, awaiting the Directo
 
 #### #136 — P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-22)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 23}`
 
 - `d8f36de7` O13: the harness measured wherever the player happened to be, and quiescence fired on the world it was leaving
 - `404781e0` ORACLE-136d: the golden reproduces to ONE LSB with no world body and 19% of pixels with one -- #191 was right
@@ -1544,7 +1557,7 @@ harness cannot execute.
 
 #### #138 — P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (corrected 08-22)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 21}`
 
 ```
 TEXT CORRECTED 2026-08-22. Every NOT-STARTED assertion reproduces at HEAD -- the row is genuinely
@@ -1764,7 +1777,7 @@ DONE 2026-07-20. CM-1 shipped on render/decomposition (752bc251 effect + e214ce4
 
 #### #144 — UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22)
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 20}`
 
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
@@ -2277,7 +2290,7 @@ DONE. §9 step 6 complete: all 7 residuals shipped byte-identical. 1 (createEmpt
 
 #### #161 — Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 25}`
 
 - cited in `docs/superpowers/specs/2026-07-19-compose-merge-and-rs0-finish-design.md`
 
@@ -3323,7 +3336,7 @@ Costs one full build. Worth batching with the next build window rather than run 
 
 #### #191 — DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 27}`
 
 - `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
 - `334bc38d` tools: measure the game&lt;-&gt;render boundary before anyone moves it
@@ -3460,7 +3473,7 @@ run-gates 27/27 green. Bookkeeping f0b9fb1f.
 
 #### #197 — FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 8}`
 
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
@@ -3507,7 +3520,7 @@ seam, and they should be one instrument rather than two.
 
 #### #198 — P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 28}`
 
 ```
 SPLIT OUT of #139 on 2026-07-26 when its Phase 1 completed. These phases were never part of Phase 1's
