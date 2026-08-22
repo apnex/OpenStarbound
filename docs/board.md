@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**221 tasks** across 2 store(s): 2 in_progress, 30 pending, 189 completed
+**222 tasks** across 2 store(s): 2 in_progress, 31 pending, 189 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 220 tasks, ids 64–284
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 221 tasks, ids 64–285
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -48,17 +48,18 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
 | 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
-| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 6 | 6 | `#285` | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied r… | ready |
+| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
 > **Ranking integrity:** rank 4 is claimed by 2 tasks: #268, #284
 
-> **Ranking integrity:** rank 6 is claimed by 2 tasks: #237, #252
+> **Ranking integrity:** rank 6 is claimed by 3 tasks: #237, #252, #285
 
 ---
 
@@ -68,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 233, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 234, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -219,7 +220,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#168](#c29c1332-168) | `c29c1332` | done | CPU-7 DONE: lighting CPU budget closed (99.6% GPU-on / 100.0% GPU-off), then cut 16.9% by four levers | `f4d311fd` `164163cc` `2e9c514e` `f7521455` `4eb4e1c3` `bf9d0fb4` `0c8d5e7c` `419b0f63` `73beb625` `165f07b3` `83c16487` `25a7605f` `065d462b` `53ad8da0` `34ffb7bd` `0571b2c9` `9422b768` `582991af` | `board.md` `2026-07-25-lighting-cpu-budget-closure.md` |
 | [#169](#c29c1332-169) | `c29c1332` | open | L3b: F16C vcvtps2ph for the fp16 emission convert — needs Director sign-off (output changes) | — | — |
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `f4d311fd` `03cec1c0` `a9854185` | — |
-| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `29516d61` `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
+| [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `4fcba71b` `29516d61` `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `aa9e37c7` `7bede779` `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
@@ -321,17 +322,18 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `bb9742f6` `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `bb9742f6` `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `e678eda5` `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `4fcba71b` `e678eda5` `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
 | [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
-| [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `48a4f61e` | — |
+| [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `4fcba71b` `48a4f61e` | — |
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
 | [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
 | [#284](#c29c1332-284) | `c29c1332` | open | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every tim… | — | — |
+| [#285](#c29c1332-285) | `c29c1332` | open | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2582,6 +2584,7 @@ DO NOT QUOTE -23.6% BARE. It is "at 00-Ocean-Lab on 2026-07-25, when the static-
 
 status: **completed**
 
+- `4fcba71b` [#274][#281] the union gets a floor, and the border lever is +20.45% of lighting CPU -- not +48%
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
@@ -7189,6 +7192,7 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 status: **completed**
 
+- `4fcba71b` [#274][#281] the union gets a floor, and the border lever is +20.45% of lighting CPU -- not +48%
 - `e678eda5` [#283] CORRECTION: the union's 7th member was never missing -- this consumer was not reading `zeroed`
 - `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 - `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
@@ -7678,6 +7682,7 @@ the table looking measured.
 
 status: **completed**
 
+- `4fcba71b` [#274][#281] the union gets a floor, and the border lever is +20.45% of lighting CPU -- not +48%
 - `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 
 ```
@@ -7935,6 +7940,66 @@ measured rather than assumed small.
 Needs the GPU free and respects the [#178] mtime guard. The Director has flagged this as a future
 retargeting mission -- the point of the brackets is to make that mission's highest-cost areas
 choosable from evidence rather than guessed.
+```
+
+<a id="c29c1332-285"></a>
+
+#### #285 — FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw
+
+status: **pending** · metadata: `{"rank": 6}`
+
+```
+Found 2026-08-22 while deriving the union's floor (4fcba71b), by reproducing the RECORDED floors
+before taking a new number.
+
+=== THE MEASUREMENT ===
+
+Recomputing 04-Ocean-Factory's floors from the legs scene-floor.json names for them
+(oceanfactoryfloor-{1,2,3}, warm-up discarded), using leg-diff's own loader:
+
+  lighting.produce.entities.us   7.368   recorded 7.368    EXACT
+  cpu.frame.render.us            8.947   recorded 8.947    EXACT
+  lighting.cpu.total.us         13.952   recorded 13.952   EXACT
+  cpu.frame.total.us             0.016   recorded 0.016    EXACT
+  lighting.gpu.cpu_cost.us       3.735   recorded 3.613    +3.4%
+  lighting.gpu.drive.point.us    3.912   recorded 3.814    +2.6%
+
+=== THE HYPOTHESIS, AND WHY IT IS ONLY THAT ===
+
+The four that reproduce are frame- or tick-cadence. The two that do not are THE ONLY CADENCE=CALL
+KEYS in the set. A call-cadence key has coverage below 100%, so telemetry-window's coverage-scaled
+value differs from the raw total/frames that leg-diff computes -- and leg-diff is what APPLIES these
+floors. So the likely story is: derived on the analyser's coverage-scaled basis, applied against the
+consumer's raw basis.
+
+4-for-4 and 2-for-2 is a suggestive correlation, not a proof. NOBODY HAS RE-DERIVED THEM BOTH WAYS,
+and until someone does this is a hypothesis with good evidence, not a finding. Do that first; it is
+cheap, the legs are banked, and it either confirms the cause or kills it outright.
+
+=== WHY IT MATTERS, AND HOW MUCH ===
+
+A floor is the bar a difference must clear before leg-diff will attribute. If the bar is derived on a
+different basis than the values compared against it, the bar is wrong -- here by ~3%, which is small
+but is exactly the kind of quiet mismatch this campaign exists to find. It also means the floor file
+is not internally consistent about which basis it records, and nothing says which.
+
+NOT URGENT. 3% on a floor changes no verdict currently on the board: the border lever clears its
+floor by an order of magnitude either way. It is filed because an instrument whose calibration cannot
+be reproduced from its own inputs is a calibration nobody can check.
+
+=== WHAT IS ALREADY CORRECT AND MUST NOT BE "FIXED" ===
+
+lighting.cpu.union.us (2.751%) was measured on leg-diff's basis DELIBERATELY, using leg-diff's own
+leg() loader, precisely so the floor and its consumer agree. Do not re-derive it coverage-scaled to
+match the other two -- that would move it to the wrong basis. If anything, the other two should come
+to this one.
+
+=== THE SECOND-ORDER QUESTION ===
+
+If the basis differs for call-cadence keys, every OTHER scene's call-cadence floors have the same
+issue -- 00-Ocean-Lab, 01-Lava-Refinery, 03-Surface-Outpost, Desert-Town and ship all list
+lighting.gpu.cpu_cost.us and lighting.gpu.drive.point.us. Six scenes x 2 keys. Re-derive them
+together, in one pass, from banked legs; do not do it one scene at a time.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
