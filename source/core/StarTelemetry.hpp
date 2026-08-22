@@ -96,6 +96,22 @@ public:
 
   static void markTick(String const& threadTag); // bumps tick.<threadTag>.seq
 
+  // Advances cpu.process.total_us to the process's cumulative CPU time (getrusage utime+stime). A
+  // PRODUCER, deliberately: it lives here, next to markTick, and not in the reporter that reads the
+  // snapshot. TelemetryReporter used to do this itself under a header claiming "Pure read-only
+  // consumer" -- an instrument writing into its own subject ([#252] step 1, found by [#267]).
+  //
+  // A CALLER MUST INVOKE THIS BEFORE snapshot() IF IT WANTS A FRESH FIGURE. That is the cost of the
+  // split and it is the right cost: the alternative is a reader with a side effect, which is how the
+  // defect existed unnoticed. The counter is cumulative, so a snapshot taken without a preceding
+  // sample reports the last sampled value rather than a wrong one -- stale, never invented.
+  //
+  // ONE THREAD ONLY. value() and inc() are each atomic but the read-compare-advance between them is
+  // not: two concurrent callers would both observe the same prior and the second would overcount.
+  // Both production callers reach it on the client's main thread. A caller on any other thread --
+  // a server-side writer being the obvious one -- REQUIRES a compare-exchange or fetch-max first.
+  static void sampleProcessCpu();
+
   // Timers carry a histogram so the TAIL is visible, not just the mean. Every hard bug in this project has
   // been episodic -- flicker, hitching -- and a lever that improves mean frame time while doubling p99 reads
   // as a clean win against means alone. Buckets are cumulative counters, so differencing two snapshots windows

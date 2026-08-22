@@ -6,6 +6,10 @@
 #include <atomic>
 #include <limits>
 
+#ifndef STAR_SYSTEM_WINDOWS
+#include <sys/resource.h>  // getrusage, for sampleProcessCpu
+#endif
+
 namespace Star {
 
 enum class MetricType { Counter, Gauge, Timer, Rate };
@@ -309,6 +313,37 @@ void Telemetry::setEnabled(bool e) { registry().enabled.store(e, std::memory_ord
 
 bool Telemetry::deepEnabled() { return registry().deepEnabled.load(std::memory_order_relaxed); }
 void Telemetry::setDeepEnabled(bool e) { registry().deepEnabled.store(e, std::memory_order_relaxed); }
+
+void Telemetry::sampleProcessCpu() {
+  // The core-contention blind spot a single-thread budget cannot see: if the server thread saturates a core, a
+  // CPU-cheaper render path frees nothing, and the frame budget alone would never say so. Recorded as a
+  // COUNTER rather than a meta field so the generic differencing path windows it with no special case.
+  //
+  // MOVED HERE FROM TelemetryReporter::writeSnapshot ([#252] step 1). It is unchanged in every respect
+  // except its address: same key, same descriptor, same advance-not-add arithmetic, same guard. What
+  // changed is who performs it -- a producer on the telemetry component, rather than the JSON reporter
+  // whose header called itself a "Pure read-only consumer" while doing this. See the header for why the
+  // caller must now invoke it explicitly, and for the one-thread constraint that still binds.
+  #ifndef STAR_SYSTEM_WINDOWS
+  struct rusage ru;
+  if (getrusage(RUSAGE_SELF, &ru) == 0) {
+    uint64_t us = (uint64_t)ru.ru_utime.tv_sec * 1000000u + (uint64_t)ru.ru_utime.tv_usec
+                + (uint64_t)ru.ru_stime.tv_sec * 1000000u + (uint64_t)ru.ru_stime.tv_usec;
+    // ProcessCpu, AND IT IS THE ONLY METRIC IN THE TREE THAT COULD HONESTLY SAY SO. getrusage returns
+    // utime+stime -- CPU actually burned, with every sleep, lock wait and preemption excluded. Every
+    // other duration here is a WALL span under a name that sounds like work; this one is the exception,
+    // and until the field existed there was no way for it to say which of the two it was.
+    auto c = Telemetry::counter("cpu.process.total_us",
+      MetricDesc{MetricDomain::Cpu, MetricOwner::Process, MetricCadence::Call, MetricRole::Total,
+                 MetricUnit::Microseconds, MetricClock::ProcessCpu});
+    // getrusage is already cumulative; advance the counter to it rather than adding, so repeated samples
+    // do not compound. Guarded because the counter is monotonic and a clock that went backwards would wrap.
+    uint64_t prior = c.value();
+    if (us > prior)
+      c.inc(us - prior);
+  }
+  #endif
+}
 
 void Telemetry::markTick(String const& threadTag) {
   // A tick thread always passes a stable tag, so cache the seq-counter handle thread-locally:

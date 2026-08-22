@@ -529,7 +529,8 @@ void ClientApplication::update() {
     m_telemetryReportTimer += dt;
     if (m_telemetryReportTimer >= (float)interval) {
       m_telemetryReportTimer = 0.0f;
-      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""), JsonObject{
+      Telemetry::sampleProcessCpu();  // before snapshot(), or the artifact mixes intervals ([#252])
+      TelemetryReporter::writeSnapshot(m_root->toStoragePath(""), Telemetry::snapshot(), JsonObject{
         {"vsync", Json(m_root->configuration()->get("vsync", true).optBool().value(true))}
       });
     }

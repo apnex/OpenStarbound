@@ -51,8 +51,22 @@ MARKERS = re.compile(r"renderTest|RenderTest|rendertest|walkoracle")
 # the five-scene matrix could not run without it. Recorded rather than absorbed: this is the second time
 # #237 has been deferred, and the trade bought a whole scene for one line because the same commit made
 # the two warp paths share one load-phase reset instead of keeping two copies of it.
+#
+# TOTAL RAISED 2270 -> 2271 for [#252] step 1, and this one is NOT harness growth -- the harness-line
+# ceiling of 186 is untouched and the gate's own MARKERS match nothing in the added line. It is a CALL
+# SITE forced by a correctness fix in core: TelemetryReporter::writeSnapshot used to sample process CPU
+# itself, from a header claiming to be a pure read-only consumer, so the sampling moved to
+# Telemetry::sampleProcessCpu() and every caller must now invoke it. One line, and there is no design
+# that avoids it -- folding the sample back into snapshot() would restore a read with a side effect,
+# which is the defect being removed.
+#
+# THE GATE STILL FIRED CORRECTLY AND THE CEILING STILL RISES DELIBERATELY. It cannot distinguish a call
+# site from harness creep, which is the right conservative default; the judgement is recorded here
+# instead. The comment that would have explained the call at the site was moved to StarTelemetry.hpp,
+# where the API it explains actually lives -- so this cost one line rather than five, and the warrant
+# ended up nearer the thing it warrants.
 BUDGET = {
-    "source/client/StarClientApplication.cpp": (186, 2270),
+    "source/client/StarClientApplication.cpp": (186, 2271),
     "source/client/StarClientApplication.hpp": (40, 310),
 }
 

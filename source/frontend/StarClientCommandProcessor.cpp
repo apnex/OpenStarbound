@@ -644,7 +644,10 @@ String ClientCommandProcessor::telemetry(String const& argumentsString) {
     return strf("telemetry interval={}", s);
   }
   if (sub == "snapshot") {
-    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""), JsonObject{
+    // Sample before projecting, so cpu.process.total_us is of the same instant as everything else in
+    // the artifact. The writer no longer does this on its callers' behalf ([#252] step 1).
+    Telemetry::sampleProcessCpu();
+    String p = TelemetryReporter::writeSnapshot(Root::singleton().toStoragePath(""), Telemetry::snapshot(), JsonObject{
       {"vsync", Json(Root::singleton().configuration()->get("vsync", true).optBool().value(true))}
     });
     return strf("wrote {}", p);

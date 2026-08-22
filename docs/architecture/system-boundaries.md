@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      240988 lines
+      241021 lines
       6 tiers
     Content
       assets/
@@ -217,7 +217,7 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   217 files    56,428 lines
+├── core/            T1   217 files    56,457 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,472 lines
 │   └── scripting/          2 files        55 lines
@@ -233,12 +233,12 @@ source/
 │   └── terrain/           26 files       980 lines
 ├── rendering/       T4    23 files     5,008 lines
 ├── windowing/       T4    61 files     9,646 lines
-├── frontend/        T4   102 files    16,863 lines
-├── client/          T5     4 files     2,628 lines
+├── frontend/        T4   102 files    16,866 lines
+├── client/          T5     4 files     2,629 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    14,327 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    14,357 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -276,7 +276,7 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>217 files · 56,428 lines · Root×0</small>"]
+    core["core<br/><small>217 files · 56,457 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
@@ -293,11 +293,11 @@ flowchart TD
     direction LR
     rendering["rendering<br/><small>23 files · 5,008 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
-    frontend["frontend<br/><small>102 files · 16,863 lines · Root×200</small>"]
+    frontend["frontend<br/><small>102 files · 16,866 lines · Root×200</small>"]
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,628 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,629 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -595,7 +595,7 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56428
+        "core": 56457
     "T2 services"
         "application": 7677
         "base": 7472
@@ -604,11 +604,11 @@ treemap-beta
     "T3 simulation"
         "game": 115725
     "T4 presentation"
-        "frontend": 16863
+        "frontend": 16866
         "windowing": 9646
         "rendering": 5008
     "T5 shells"
-        "client": 2628
+        "client": 2629
         "server": 783
 ```
 
@@ -617,7 +617,7 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.1% |
-| T1 language | `core` | 217 | 56,428 | 23.4% |
+| T1 language | `core` | 217 | 56,457 | 23.4% |
 | T2 services | `base` | 32 | 7,472 | 3.1% |
 | T2 services | `metrics` | 11 | 1,423 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
@@ -625,8 +625,8 @@ treemap-beta
 | T3 simulation | `game` | 500 | 115,725 | 48.0% |
 | T4 presentation | `rendering` | 23 | 5,008 | 2.1% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
-| T4 presentation | `frontend` | 102 | 16,863 | 7.0% |
-| T5 shells | `client` | 4 | 2,628 | 1.1% |
+| T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
+| T5 shells | `client` | 4 | 2,629 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
@@ -672,7 +672,7 @@ xychart-beta
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
-| `core` | 155 | 474 | 5 | 3% | 1 | yes, freely |
+| `core` | 155 | 473 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
 | `metrics` | 7 | 10 | 1 | 14% | 1 | yes, freely |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
@@ -815,7 +815,6 @@ flowchart TB
   X2 -.->|5| game
   X2 -.->|4| rendering
   X2 -.->|3| base
-  X2 -.->|2| core
   X2 -.->|2| application
   X3{{"Assets"}}
   X3 -.->|46| game
@@ -827,13 +826,13 @@ flowchart TB
   class X0,X1,X2,X3 cc
 ```
 
-Edge labels are files naming the concern. Single-file touches are elided (4 of them) to keep the picture legible.
+Edge labels are files naming the concern. Single-file touches are elided (5 of them) to keep the picture legible.
 
 | concern | files | directories | tiers | why it has no home |
 |:--------|------:|------------:|------:|:-------------------|
 | **Scripting** | 128 | 6 | 5 of 6 | Lua VM is 4 files in core; the binding surface is spread across six directories |
 | **Protocol** | 187 | 6 | 5 of 6 | wire format and save format, versioned independently of the code that reads them |
-| **Telemetry** | 17 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
+| **Telemetry** | 16 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
 | **Assets** | 66 | 7 | 5 of 6 | loader in base, consumed everywhere, content lives outside the tree entirely |
 <!-- END GENERATED: crosscut -->
 
@@ -853,7 +852,7 @@ difference is not written down anywhere else in this repository.
 |:----------|------:|------:|:-----|-------------:|
 | `rendering` | 23 | 5,008 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
-| `frontend` | 102 | 16,863 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
+| `frontend` | 102 | 16,866 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 
 **Two draw paths, not one.** `windowing/StarGuiContext.hpp` holds its own `RendererPtr` alongside a `TextPainterPtr`, `DrawablePainterPtr` and `AssetTextureGroupPtr`. So the frame reaches the GPU twice over: the world through `WorldPainter` and the L3 passes, and the interface through `GuiContext` and the painters. That single file is the entire `windowing → rendering` edge.
 

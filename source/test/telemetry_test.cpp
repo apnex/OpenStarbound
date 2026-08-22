@@ -183,10 +183,40 @@ TEST(Telemetry, ReporterWritesSnapshotJsonFile) {
   telemetrySetUp();
   Telemetry::counter("test.report.c").inc(5);
   String dir = File::temporaryDirectory();
-  String path = TelemetryReporter::writeSnapshot(dir); // returns the file path written
+  String path = TelemetryReporter::writeSnapshot(dir, Telemetry::snapshot()); // returns the file path written
   ASSERT_TRUE(File::exists(path));
   Json read = Json::parse(File::readFileString(path));
   EXPECT_EQ(read.getObject("metrics").get("test.report.c").getUInt("value"), 5u);
+  File::remove(path);
+  File::removeDirectoryRecursive(dir);
+}
+
+TEST(Telemetry, ReporterDoesNotWriteIntoItsSubject) {
+  // [#252] step 1, and the arm that makes the header's "Pure read-only consumer" a CHECKED claim
+  // rather than a sentence. It was false for as long as it stood there: writeSnapshot advanced
+  // cpu.process.total_us off getrusage while calling itself read-only -- an instrument mutating the
+  // store it reports on, which [#267] found and this splits out to Telemetry::sampleProcessCpu().
+  telemetrySetUp();
+  String dir = File::temporaryDirectory();
+
+  Telemetry::sampleProcessCpu();
+  uint64_t before = Telemetry::counter("cpu.process.total_us").value();
+
+  // NULL CONTROL FIRST, and the test is worthless without it. "The counter did not move" is
+  // satisfied trivially by a counter that was never written, by a sampler that silently failed, and
+  // by a key that does not exist -- so proving the SAMPLER works is what turns the assertion below
+  // from a tautology into evidence. Skipped on Windows because sampleProcessCpu is a documented
+  // no-op there (no getrusage); the equality arm still runs, and still means something weaker.
+  #ifndef STAR_SYSTEM_WINDOWS
+  ASSERT_GT(before, 0u) << "sampleProcessCpu produced nothing, so the arm below proves nothing";
+  #endif
+
+  String path = TelemetryReporter::writeSnapshot(dir, Telemetry::snapshot());
+  ASSERT_TRUE(File::exists(path));
+
+  EXPECT_EQ(Telemetry::counter("cpu.process.total_us").value(), before)
+      << "writeSnapshot advanced a counter -- the reporter is writing into its own subject again";
+
   File::remove(path);
   File::removeDirectoryRecursive(dir);
 }
@@ -209,7 +239,7 @@ TEST(Telemetry, SnapshotIsStampedOnBothClocks) {
   // real clocks regardless, which is the property under test.
   telemetrySetUp();
   String dir = File::temporaryDirectory();
-  String path = TelemetryReporter::writeSnapshot(dir, {}, 1);
+  String path = TelemetryReporter::writeSnapshot(dir, Telemetry::snapshot(), {}, 1);
   Json meta = Json::parse(File::readFileString(path)).getObject("meta");
 
   // Bounded below by a date already in the past when this was written, so the arm fails on a zero, an
@@ -222,7 +252,7 @@ TEST(Telemetry, SnapshotIsStampedOnBothClocks) {
 
   // AND THE CALLER CANNOT SHADOW THEM. They are stamped after the caller's meta merges, precisely so a
   // joiner can trust them; without this arm that ordering is a comment rather than a property.
-  String path2 = TelemetryReporter::writeSnapshot(dir, JsonObject{{"tEpochNs", Json(1)}}, 2);
+  String path2 = TelemetryReporter::writeSnapshot(dir, Telemetry::snapshot(), JsonObject{{"tEpochNs", Json(1)}}, 2);
   Json meta2 = Json::parse(File::readFileString(path2)).getObject("meta");
   EXPECT_GT(meta2.getInt("tEpochNs"), 1700000000000000000LL);
 
