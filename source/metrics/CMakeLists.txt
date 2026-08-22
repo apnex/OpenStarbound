@@ -10,6 +10,7 @@ SET (star_metrics_HEADERS
     StarEngineBusyReader.hpp
     StarMetricSample.hpp
     StarProcFs.hpp
+    StarTelemetryReporter.hpp
     StarThreadBusyReader.hpp
   )
 
@@ -17,6 +18,7 @@ SET (star_metrics_SOURCES
     StarClientBusyReader.cpp
     StarEngineBusyReader.cpp
     StarProcFs.cpp
+    StarTelemetryReporter.cpp
     StarThreadBusyReader.cpp
   )
 

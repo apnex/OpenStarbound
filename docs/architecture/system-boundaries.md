@@ -217,11 +217,11 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   217 files    56,488 lines
+├── core/            T1   215 files    56,390 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,472 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2    11 files     1,421 lines
+├── metrics/         T2    13 files     1,519 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,677 lines
 │   └── discord/         vendored — excluded from every count here
@@ -276,12 +276,12 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>217 files · 56,488 lines · Root×0</small>"]
+    core["core<br/><small>215 files · 56,390 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,472 lines · Root×0</small>"]
-    metrics["metrics<br/><small>11 files · 1,421 lines · Root×0</small>"]
+    metrics["metrics<br/><small>13 files · 1,519 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,677 lines · Root×0</small>"]
   end
@@ -310,6 +310,7 @@ flowchart TD
   rendering --> application
   rendering --> game
   windowing --> rendering
+  frontend --> metrics
   frontend --> windowing
   client --> frontend
   server --> game
@@ -377,7 +378,7 @@ flowchart TD
     core_tests(["core_tests"])
   end
   S3 -.->|adds metrics| S4
-  subgraph S5["shell 5 — application + base + core + extern + frontend + game + rendering + windowing"]
+  subgraph S5["shell 5 — application + base + core + extern + frontend + game + metrics + rendering + windowing"]
     direction LR
     starbound(["starbound"])
   end
@@ -406,7 +407,7 @@ The sharpest diagram here, and the one to act on. Three edge states, three nativ
 ```mermaid
 flowchart LR
   base ==>|94 in 28| core
-  metrics -->|19 in 9| core
+  metrics ==>|24 in 11| core
   platform -->|5 in 2| core
   application ==>|49 in 16| core
   application -->|8 in 2| platform
@@ -426,16 +427,18 @@ flowchart LR
   windowing -->|3 in 1| rendering
   frontend -->|4 in 4| application
   frontend ==>|54 in 45| base
-  frontend ==>|96 in 54| core
+  frontend ==>|95 in 54| core
   frontend ==>|271 in 79| game
+  frontend -->|1 in 1| metrics
   frontend -.->|0| platform
   frontend -->|9 in 9| rendering
   frontend ==>|217 in 67| windowing
   client -->|2 in 2| application
   client -->|2 in 1| base
-  client -->|14 in 3| core
+  client -->|13 in 3| core
   client -->|11 in 2| frontend
   client -->|18 in 2| game
+  client -->|1 in 1| metrics
   client -.->|0| platform
   client -->|1 in 1| rendering
   client -->|1 in 1| windowing
@@ -445,7 +448,7 @@ flowchart LR
   server -.->|0| platform
 ```
 
-Edge labels are `includes in files`. **Dotted** is a granted permission spent zero times -- 5 of them, free to revoke. **Solid** is thin: used in 9 files or fewer, a bounded cut. **Thick** is load-bearing. Counts: 5 unused, 20 thin, 13 load-bearing. Grants of `extern` are omitted -- all are unused, because `extern` is reached through `core`.
+Edge labels are `includes in files`. **Dotted** is a granted permission spent zero times -- 5 of them, free to revoke. **Solid** is thin: used in 9 files or fewer, a bounded cut. **Thick** is load-bearing. Counts: 5 unused, 21 thin, 14 load-bearing. Grants of `extern` are omitted -- all are unused, because `extern` is reached through `core`.
 
 | edge | includes | files | state |
 |:-----|---------:|------:|:------|
@@ -454,8 +457,10 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `rendering → platform` | 0 | 0 | UNUSED -- revocable |
 | `server → platform` | 0 | 0 | UNUSED -- revocable |
 | `windowing → platform` | 0 | 0 | UNUSED -- revocable |
+| `client → metrics` | 1 | 1 | thin |
 | `client → rendering` | 1 | 1 | thin |
 | `client → windowing` | 1 | 1 | thin |
+| `frontend → metrics` | 1 | 1 | thin |
 | `client → base` | 2 | 1 | thin |
 | `windowing → application` | 2 | 1 | thin |
 | `windowing → rendering` | 3 | 1 | thin |
@@ -465,7 +470,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → frontend` | 11 | 2 | thin |
 | `client → game` | 18 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
-| `client → core` | 14 | 3 | thin |
+| `client → core` | 13 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
 | `server → base` | 4 | 4 | thin |
 | `server → game` | 8 | 4 | thin |
@@ -473,7 +478,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `server → core` | 25 | 7 | thin |
 | `frontend → rendering` | 9 | 9 | thin |
 | `rendering → application` | 9 | 9 | thin |
-| `metrics → core` | 19 | 9 | thin |
+| `metrics → core` | 24 | 11 | load-bearing |
 | `rendering → game` | 24 | 12 | load-bearing |
 | `application → core` | 49 | 16 | load-bearing |
 | `windowing → base` | 19 | 17 | load-bearing |
@@ -482,7 +487,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `windowing → game` | 41 | 25 | load-bearing |
 | `base → core` | 94 | 28 | load-bearing |
 | `frontend → base` | 54 | 45 | load-bearing |
-| `frontend → core` | 96 | 54 | load-bearing |
+| `frontend → core` | 95 | 54 | load-bearing |
 | `frontend → windowing` | 217 | 67 | load-bearing |
 | `frontend → game` | 271 | 79 | load-bearing |
 | `game → base` | 158 | 137 | load-bearing |
@@ -549,7 +554,7 @@ game,core,841
 frontend,game,271
 frontend,windowing,217
 game,base,158
-frontend,core,96
+frontend,core,95
 base,core,94
 frontend,base,54
 application,core,49
@@ -557,11 +562,11 @@ rendering,core,45
 windowing,game,41
 windowing,core,38
 server,core,25
+metrics,core,24
 rendering,game,24
-metrics,core,19
 windowing,base,19
 client,game,18
-client,core,14
+client,core,13
 client,frontend,11
 rendering,application,9
 frontend,rendering,9
@@ -577,6 +582,8 @@ windowing,rendering,3
 windowing,application,2
 client,base,2
 client,application,2
+frontend,metrics,1
+client,metrics,1
 client,rendering,1
 client,windowing,1
 ```
@@ -595,11 +602,11 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56488
+        "core": 56390
     "T2 services"
         "application": 7677
         "base": 7472
-        "metrics": 1421
+        "metrics": 1519
         "platform": 142
     "T3 simulation"
         "game": 115725
@@ -617,9 +624,9 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.1% |
-| T1 language | `core` | 217 | 56,488 | 23.4% |
+| T1 language | `core` | 215 | 56,390 | 23.4% |
 | T2 services | `base` | 32 | 7,472 | 3.1% |
-| T2 services | `metrics` | 11 | 1,421 | 0.6% |
+| T2 services | `metrics` | 13 | 1,519 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
 | T3 simulation | `game` | 500 | 115,725 | 48.0% |
@@ -666,15 +673,15 @@ xychart-beta
     title "Largest strongly-connected component, as % of the directory"
     x-axis [extern, core, base, metrics, platform, application, game, rendering, windowing, frontend, client, server]
     y-axis "percent of translation units" 0 --> 100
-    bar [27, 3, 17, 14, 25, 33, 86, 8, 84, 12, 100, 50]
+    bar [27, 3, 17, 12, 25, 33, 86, 8, 84, 12, 100, 50]
 ```
 
 | directory | units | edges | cycle: all edges | share | cycle: headers only | can it be split? |
 |:----------|------:|------:|-----------------:|------:|--------------------:|:-----------------|
 | `extern` | 11 | 11 | 3 | 27% | 3 | **type-level entanglement** |
-| `core` | 155 | 473 | 5 | 3% | 1 | yes, freely |
+| `core` | 154 | 469 | 5 | 3% | 1 | yes, freely |
 | `base` | 18 | 12 | 3 | 17% | 1 | partly, as it stands |
-| `metrics` | 7 | 10 | 1 | 14% | 1 | yes, freely |
+| `metrics` | 8 | 10 | 1 | 12% | 1 | yes, freely |
 | `platform` | 4 | 0 | 1 | 25% | 1 | n/a — too small |
 | `application` | 15 | 23 | 5 | 33% | 1 | partly, as it stands |
 | `game` | 264 | 1562 | 226 | 86% | 1 | **not by moving files** — see below |

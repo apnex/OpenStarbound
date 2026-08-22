@@ -81,13 +81,27 @@ CARVED_OUT = {"application": {
 },
               "core": {"telemetry": {"StarTelemetry.hpp", "StarTelemetry.cpp"}}}
 
-# `StarTelemetryReporter.{hpp,cpp}` ARE DELIBERATELY ABSENT FROM THE CARVE-OUT ABOVE, and this comment
-# is the whole reason. They were assigned to `telemetry` when the second key was added, in the SAME
-# commit that removed `TelemetryReporter` from that component's contents cell -- so the register said
-# "not here" while this file said "here, and there are four of them", both machine-read, both green.
-# The Reporter is PROJECTION, not the handle: it turns a snapshot into a run artifact, which is a
-# second duty and therefore a second component under the Law of One. Until that component is declared
-# these two files map to `core`, which is honest about where they sit and dishonest about nothing.
+# `StarTelemetryReporter.{hpp,cpp}` NEED NO CARVE-OUT ENTRY: since [#252] step 3 they live in
+# source/metrics/, so the directory-keyed lookup finds them without help.
+#
+# THIS PARAGRAPH USED TO ASSERT THE OPPOSITE, AND IT CONTRADICTED THE RATIFIED REGISTER. It read: "The
+# Reporter is PROJECTION, not the handle ... which is a second duty and therefore a second component
+# under the Law of One. Until that component is declared these two files map to `core`." That
+# conclusion was never the register's. `telemetry`'s contents cell says "`TelemetryReporter` is NOT
+# here -- it serialises a snapshot, which is INTERPRETation, and the boundary facet gives
+# interpretation to `metrics`", and `metrics`'s boundary facet says "Everything that INTERPRETS what
+# those handles hold ... is `metrics`". Interpretation is not a second component; it is half of what
+# `metrics` was declared to be.
+#
+# So a machine-read script carried a design ruling the ratified spec had already decided the other way,
+# and the only thing keeping the file in `core` was this paragraph. That is the shape this whole
+# instrument exists to catch -- internally consistent, and not corresponding -- which is why the
+# correction is written out rather than quietly deleted.
+#
+# THE LAW OF ONE DOES NOT FIRE. `metrics`'s duty is "names nothing it measures", and the Reporter
+# satisfies it: [#252] step 1 removed its write into the store and dropped its StarTelemetry.hpp
+# include, so it names no registry and takes the snapshot BY VALUE. The duty string is untouched, per
+# the ruling's binding carry-forward, and check_law_of_one stays at its ceiling.
 
 # Directories with no residue: every file they do not hand to a named component leaves the design.
 DISSOLVES = ("application",)

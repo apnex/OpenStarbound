@@ -2033,6 +2033,7 @@ flowchart TD
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
       host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
+    metrics["<b>metrics</b><br/>LIBRARY"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -2127,6 +2128,7 @@ flowchart TD
   frontend --> game
   frontend --> host
   frontend --> interaction
+  frontend --> metrics
   frontend --> platform
   frontend --> scene
   frontend --> telemetry
@@ -2160,6 +2162,7 @@ flowchart TD
   interaction --> game
   interaction --> universe_view
   interaction --> world_view
+  metrics --> core
   mixing --> audio
   mixing --> base
   mixing --> core
@@ -2171,6 +2174,7 @@ flowchart TD
   participant --> game
   participant --> host
   participant --> interaction
+  participant --> metrics
   participant --> net
   participant --> presentation
   participant --> scene
@@ -2280,12 +2284,12 @@ flowchart TD
   class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
-  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_opengl kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_opengl links 42 of 54 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `metrics`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
+**client_opengl links 43 of 54 components.** Not linked: `client_agent`, `client_headless`, `client_sdl_gpu`, `gpu_sdl`, `host_null`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_opengl -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_sdl_gpu -->
@@ -2301,6 +2305,7 @@ flowchart TD
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
       host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
+    metrics["<b>metrics</b><br/>LIBRARY"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -2395,6 +2400,7 @@ flowchart TD
   frontend --> game
   frontend --> host
   frontend --> interaction
+  frontend --> metrics
   frontend --> platform
   frontend --> scene
   frontend --> telemetry
@@ -2427,6 +2433,7 @@ flowchart TD
   interaction --> game
   interaction --> universe_view
   interaction --> world_view
+  metrics --> core
   mixing --> audio
   mixing --> base
   mixing --> core
@@ -2438,6 +2445,7 @@ flowchart TD
   participant --> game
   participant --> host
   participant --> interaction
+  participant --> metrics
   participant --> net
   participant --> presentation
   participant --> scene
@@ -2547,12 +2555,12 @@ flowchart TD
   class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
-  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_sdl_gpu kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_sdl_gpu links 42 of 54 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `metrics`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
+**client_sdl_gpu links 43 of 54 components.** Not linked: `client_agent`, `client_headless`, `client_opengl`, `gpu_opengl`, `host_null`, `platform_null`, `server`, `statistics_null`, `transcript`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_sdl_gpu -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#world_gen -->
@@ -2876,6 +2884,7 @@ flowchart TD
     subgraph host_null ["<b>host_null</b> · BACKEND"]
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
+    metrics["<b>metrics</b><br/>LIBRARY"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -2942,12 +2951,14 @@ flowchart TD
   interaction --> game
   interaction --> universe_view
   interaction --> world_view
+  metrics --> core
   net --> core
   participant --> base
   participant --> core
   participant --> game
   participant --> host
   participant --> interaction
+  participant --> metrics
   participant --> net
   participant --> presentation
   participant --> scene
@@ -3012,12 +3023,12 @@ flowchart TD
   class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class host_null,platform_null,starmap_participant,statistics_null,transport_tcp kBackend
-  class game,interaction,participant,script,storage,telemetry,universe_view,world_view kLibrary
+  class game,interaction,metrics,participant,script,storage,telemetry,universe_view,world_view kLibrary
   class client_agent kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick kElement
 ```
 
-**client_agent links 27 of 54 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `metrics`, `mixing`, `platform_pc`, `rendering`, `server`, `starmap_authority`, `statistics_steam`, `transcript`, `transport_local`, `transport_p2p`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
+**client_agent links 28 of 54 components.** Not linked: `audio`, `audio_sdl`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `starmap_authority`, `statistics_steam`, `transcript`, `transport_local`, `transport_p2p`, `universe`, `windowing`, `world`, `world_gen`, `world_sim`, `worldgen`
 <!-- END GENERATED: client_agent -->
 
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_headless -->
@@ -3032,6 +3043,7 @@ flowchart TD
     subgraph host_null ["<b>host_null</b> · BACKEND"]
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
+    metrics["<b>metrics</b><br/>LIBRARY"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -3109,6 +3121,7 @@ flowchart TD
   frontend --> game
   frontend --> host
   frontend --> interaction
+  frontend --> metrics
   frontend --> platform
   frontend --> scene
   frontend --> telemetry
@@ -3137,12 +3150,14 @@ flowchart TD
   interaction --> game
   interaction --> universe_view
   interaction --> world_view
+  metrics --> core
   net --> core
   participant --> base
   participant --> core
   participant --> game
   participant --> host
   participant --> interaction
+  participant --> metrics
   participant --> net
   participant --> presentation
   participant --> scene
@@ -3246,12 +3261,12 @@ flowchart TD
   class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class host_null,platform_null,starmap_authority,starmap_participant,statistics_null,transcript,transport_local,transport_tcp kBackend
-  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
   class client_headless kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick,transcript_recordTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
-**client_headless links 36 of 54 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `metrics`, `mixing`, `platform_pc`, `rendering`, `server`, `statistics_steam`, `transport_p2p`, `world_gen`, `world_sim`
+**client_headless links 37 of 54 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_opengl`, `client_sdl_gpu`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host_sdl`, `mixing`, `platform_pc`, `rendering`, `server`, `statistics_steam`, `transport_p2p`, `world_gen`, `world_sim`
 <!-- END GENERATED: client_headless -->
 
 ### The register — one row per box
@@ -3282,7 +3297,7 @@ Every component in the diagram, in the same reading order.
 | **`content`** | INTERFACE | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
 | **`telemetry`** | LIBRARY | MACHINE | the handle a subject records through | **N3.b** — a subject records about itself at the point of measurement, so this is named by many components and names none of them; what makes that safe is not scarcity of callers but that every grant is ENUMERATED below and every handle is DECLARED | `Telemetry` — the lock-free registry, one writer per fact; `TelemetryTimer`, `TelemetryCounter` and `TelemetryGauge`, each a handle that cannot exist without the `MetricDesc` that says what it measures; `TelemetryRate`, the fourth handle kind; `TelemetryScope`, which binds the descriptor to the recording call so the two cannot drift apart. `TelemetryReporter` is NOT here -- it serialises a snapshot, which is INTERPRETation, and the boundary facet gives interpretation to `metrics`. `MetricDesc` and its enums are NOT here either — they stay in `core`, because a vocabulary two components share belongs where both are granted |
-| **`metrics`** | LIBRARY | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `BusyReading`, whose `available` flag is the difference between measuring nothing and being unable to measure, and which no caller may conflate; `ClientBusyReader`, `EngineBusyReader` and `ThreadBusyReader` — three kernel paths, two to the GPU's busy time and one to the CPU's, each keyed by what IT attributes to; `EngineOpenResult` and `EngineBusyWindow`, which exist because the PMU's first read after open is not a measurement and a type with no field to put it in is the only version of that rule a caller cannot skip; the `metrics` CLI, which reads its subject without being linked into it |
+| **`metrics`** | LIBRARY | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `BusyReading`, whose `available` flag is the difference between measuring nothing and being unable to measure, and which no caller may conflate; `ClientBusyReader`, `EngineBusyReader` and `ThreadBusyReader` — three kernel paths, two to the GPU's busy time and one to the CPU's, each keyed by what IT attributes to; `EngineOpenResult` and `EngineBusyWindow`, which exist because the PMU's first read after open is not a measurement and a type with no field to put it in is the only version of that rule a caller cannot skip; `TelemetryReporter`, which turns a snapshot into a run artifact -- INTERPRETation, which this component's boundary facet already claims, and which [#252] step 3 moved here from `core`; it takes the projection BY VALUE and names no registry, so it reads its subject without becoming a peer of it; the `metrics` CLI, which reads its subject without being linked into it |
 | **`presentation`** | INTERFACE | DEVICE | the presentation contract | **F1** — devices are optional, so the sink is an interface whose implementations need not own one | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | DOMAIN | the decisions no single world can make | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
@@ -3502,8 +3517,8 @@ is actually established today.
 | `script` | core, base, content | **names no `game`.** Measured: `LuaRoot`'s only tie to `game` is `Root::singleton()` used as a service locator — configuration, a storage path, a reload listener and `assets()`. Not one domain type, and all four are `content`'s job |
 | `interaction` | core, base, game, world_view, universe_view | **names no `windowing` and no `frontend`** — acting on the world is not a UI concern |
 | `colocation` | core, base, game, world, universe, universe_view, transport_local | **the only component that names both an authority and a view**; it exists to join them in one process, and D8 governs it |
-| `frontend` | core, base, platform, game, windowing, scene, host, interaction, content, telemetry | this game's screens; does not draw, and drives the verbs rather than owning them |
-| `participant` | core, base, game, world_view, universe_view, interaction, net, presentation, scene, sound, host, storage, transport, telemetry | **a participant, and nothing else.** Names no backend, no UI, and — now — **no `world` and no `universe`**: a client that cannot name an authority cannot accidentally embed one |
+| `frontend` | core, base, platform, game, windowing, scene, host, interaction, content, telemetry, metrics | this game's screens; does not draw, and drives the verbs rather than owning them |
+| `participant` | core, base, game, world_view, universe_view, interaction, net, presentation, scene, sound, host, storage, transport, telemetry, metrics | **a participant, and nothing else.** Names no backend, no UI, and — now — **no `world` and no `universe`**: a client that cannot name an authority cannot accidentally embed one |
 | `client_opengl` | core, participant, colocation, host_sdl, windowing, frontend, rendering, gpu_opengl, mixing, audio_sdl, transport_tcp, transport_p2p, starmap_participant, starmap_authority | the only place GL and SDL are named together; composes in the authority, the UI, the pixels and the sound |
 | `client_headless` | core, participant, colocation, host_null, windowing, frontend, transcript, transport_tcp, starmap_participant, starmap_authority | the only place the recorder is named; it keeps the UI **because it records what the UI produces**, and `colocation` so it can record a single-player session |
 | `client_agent` | core, participant, host_null, transport_tcp, starmap_participant | the smallest participant that can still play: no UI, no recorder, no sound — and **no authority**, so it must connect to one over the wire |
@@ -3855,7 +3870,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around **this game's** panes, menus and screens — the specific, not the general. The line between a toolkit and a product built with one. |
 | **rejected** | Screens as part of `windowing`, or as part of the participant. Both rejected by N3.b: a participant that links its screens cannot be composed without them, which forecloses the agent and headless compositions this design exists to make possible. |
-| **excludes** | Names `base`, `content`, `core`, `game`, `host`, `interaction`, `platform`, `scene`, `telemetry`, `windowing`. May not name `world`, `universe` or any authority: a screen shows a view, never the truth behind it. |
+| **excludes** | Names `base`, `content`, `core`, `game`, `host`, `interaction`, `metrics`, `platform`, `scene`, `telemetry`, `windowing`. May not name `world`, `universe` or any authority: a screen shows a view, never the truth behind it. |
 | **falsified** | If a composition omits `frontend` and fails to build. Its entire warrant is that a participant may link none. |
 | **history** | none. |
 | **owes** | nothing. |
@@ -4055,7 +4070,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | An entry point that constructs and coordinates. Rejected by P2: placement and composition are wiring decisions, and the moment an entry point contains behaviour, that behaviour cannot be reused by any other composition. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_opengl`, `host_sdl`, `mixing`, `participant`, `rendering`, `starmap_authority`, `starmap_participant`, `transport_p2p`, `transport_tcp` and `windowing`. It names the peer transport DIRECTLY, where the register used to reach it through `host_sdl` and a "platform service" — a transport is named by the composition that wants it, like the other two. Both star-map backends, because `colocation` means it may host as well as join. May not contain a duty of its own. |
 | **falsified** | **If it contains a line that is not a construction or a connection.** |
-| **history** | It links 42 of 54 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
+| **history** | It links 43 of 54 components — the largest composition, and the one whose grant closure the generated diagram exists to make checkable rather than assumed. |
 | **owes** | nothing. |
 
 ### `client_sdl_gpu` — the same participant, a different BACKEND
@@ -4066,7 +4081,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A build flag selecting the backend inside one entry point. Rejected because a flag hides the substitution inside a component, whereas two entry points make it a *composition* — which is the claim N3.a actually makes. |
 | **excludes** | Names `audio_sdl`, `colocation`, `core`, `frontend`, `gpu_sdl`, `host_sdl`, `mixing`, `participant`, `rendering`, `starmap_authority`, `starmap_participant`, `transport_p2p`, `transport_tcp` and `windowing`. The two lists differ in exactly one entry, `gpu_sdl` for `gpu_opengl`, and that is the machine-checkable form of "the backend is swappable". |
 | **falsified** | **If the two grant lists ever differ by more than the backend.** Any second difference means something above the GPU contract knows which backend it has. |
-| **history** | Also 42 of 54 components — same count, as it must be. |
+| **history** | Also 43 of 54 components — same count, as it must be. |
 | **owes** | nothing. |
 
 ### `client_headless` — a participant that records instead of drawing
@@ -4077,7 +4092,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | A graphical client with rendering disabled at runtime. Rejected because the device stays linked and the dependency stays satisfied — the composition would prove nothing about whether a display is optional. |
 | **excludes** | Names `colocation`, `core`, `frontend`, `host_null`, `participant`, `starmap_authority`, `starmap_participant`, `transcript`, `transport_tcp` and `windowing`. It names BOTH star-map backends because `colocation` lets it embed an authority: the same binary answers as the authority when it hosts and as the participant when it joins. May not name `rendering`, `gpu_opengl`, `gpu_sdl` or `host_sdl` — its whole value is what it *cannot* name. |
 | **falsified** | If it links a GPU. Checkable by construction from the grant closure. |
-| **history** | 36 of 54 components — the gap to `client_opengl`'s 42 is the measured size of "what a display costs". |
+| **history** | 37 of 54 components — the gap to `client_opengl`'s 42 is the measured size of "what a display costs". |
 | **owes** | nothing. |
 
 ### `participant` — the view's clock, and the thing every composition is built around
@@ -4086,7 +4101,7 @@ claim. **Ratification requires every cell to read yes.**
 |---|---|
 | **boundary** | Around **one participant: its clock and the parts it composes**. `clientLoop`, `clientTick`, `fixedTick`, and `resizeSignal` — and deliberately **no audio tick**, because the device pulls `mixing` on its own clock rather than being driven from here. It holds no UI, no authority and no backend. **`resizeSignal` is here for the reason the other three are not**: it is not part of a participant's cadence, it is a routing between two parts a participant composes. `host` may not name `presentation` and `presentation` may not name `host`; `participant` grants both, so it is the only component that can carry *the window changed* from one to the other without either learning the other exists. |
 | **rejected** | The arrangement this design started from: one `ClientApplication` owning the loop, the window, the renderer, the UI and an embedded server. Rejected because a composition-of-everything cannot be composed — every variant becomes a fork, and "headless" becomes a build configuration rather than a wiring choice. |
-| **excludes** | Names `base`, `core`, `game`, `host`, `interaction`, `net`, `presentation`, `scene`, `sound`, `storage`, `telemetry`, `transport`, `universe_view` and `world_view`. **May not name `rendering`, `gpu`, `frontend`, `windowing`, `world` or `universe`** — it names the presentation *contract* and never an implementation of it, which is exactly what lets the same participant serve a graphical client, a recorder and an agent unchanged. |
+| **excludes** | Names `base`, `core`, `game`, `host`, `interaction`, `metrics`, `net`, `presentation`, `scene`, `sound`, `storage`, `telemetry`, `transport`, `universe_view` and `world_view`. **May not name `rendering`, `gpu`, `frontend`, `windowing`, `world` or `universe`** — it names the presentation *contract* and never an implementation of it, which is exactly what lets the same participant serve a graphical client, a recorder and an agent unchanged. |
 | **falsified** | **If any composition needs a different participant.** One participant serving every entry point is the claim; a `participant_headless` appearing anywhere would mean the boundary failed and the variants are forks after all. |
 | **history** | The absence of an audio tick is a derived result, not an omission: a device that pulls on its own clock cannot be driven by a simulation's, so a tick here would join two clocks that F2 says are separate. Recorded because it looks like a gap and is a conclusion. |
 | **owes** | nothing. |
@@ -4110,7 +4125,7 @@ claim. **Ratification requires every cell to read yes.**
 | **rejected** | Reusing `client_headless` and ignoring its output. Rejected because a transcript nobody reads is still *produced* — the file is written, the deltas are assembled, and the composition would demonstrate only that output can be thrown away, not that a device is composed in. |
 | **excludes** | Names `core`, `host_null`, `participant`, `starmap_participant` and `transport_tcp`. **The shortest grant list of any entry point, and that is its entire argument.** It names only the participant side of the star map because it has no `colocation`: it cannot host, so it can only ask. |
 | **falsified** | **If it needs a device to run**, or if `participant` has to test whether it has one. The first would falsify F1; the second would mean the discard is at the seam rather than at the emit sink, which is the arrangement Section 10's tier-2 subsection shows to be wrong. |
-| **history** | 27 of 54 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 15, `world_sim` 16 and `server` 21, none of which carry a participant. The 15 between 27 and `client_opengl`'s 42 are what **devices** cost — a gap that has held at 15 across every closure change since it was first measured. |
+| **history** | 28 of 54 components — the floor **among participant-bearing compositions**, not the floor outright: `world_gen` links 15, `world_sim` 16 and `server` 21, none of which carry a participant. The 15 between 27 and `client_opengl`'s 42 are what **devices** cost — a gap that has held at 15 across every closure change since it was first measured. |
 | **owes** | nothing. |
 
 ### The T2 vocabulary
@@ -4445,9 +4460,9 @@ Half the inversion is already done, which is why the split is cheap: `previewQue
 
 | entrypoint | links | what it is |
 |---|---|---|
-| `client_opengl` | **42 of 54** | plays, draws, sounds |
-| `client_headless` | **36 of 54** | plays and **records** — keeps the UI because it records what the UI produces |
-| `client_agent` | **27 of 54** | plays. No UI, no recorder, no sound |
+| `client_opengl` | **43 of 54** | plays, draws, sounds |
+| `client_headless` | **37 of 54** | plays and **records** — keeps the UI because it records what the UI produces |
+| `client_agent` | **28 of 54** | plays. No UI, no recorder, no sound |
 | *(`participant` itself)* | — | grants none of `windowing`, `frontend`, `rendering`, `mixing` |
 
 `client_agent` is exactly `client_headless` minus five grants — `windowing`, `frontend`, `transcript`,
@@ -4497,12 +4512,12 @@ and a view — which is precisely why it is the one that owes the proof.
 
 | entrypoint | links | authority? |
 |---|---|---|
-| `client_opengl` / `client_sdl_gpu` | 42 of 54 | **yes** — the desktop game hosts single-player |
-| `client_headless` | 36 of 54 | **yes** — so it can record a single-player session |
-| `client_agent` | **27 of 54** | **no** — it must connect to one over the wire |
+| `client_opengl` / `client_sdl_gpu` | 43 of 54 | **yes** — the desktop game hosts single-player |
+| `client_headless` | 37 of 54 | **yes** — so it can record a single-player session |
+| `client_agent` | **28 of 54** | **no** — it must connect to one over the wire |
 
 `client_agent` now links no `world`, no `universe`, no `worldgen`, no `colocation`. An agent that
-cannot name an authority cannot accidentally embed one, and the composition is 27 of 54 components against
+cannot name an authority cannot accidentally embed one, and the composition is 28 of 54 components against
 the graphical client's 39.
 
 **Why `colocation` and not `hosting`.** `host`, `host_sdl` and `host_null` already mean the *driver
