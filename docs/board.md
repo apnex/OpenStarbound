@@ -43,8 +43,8 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 2 | 4 | `#284` | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites,… | ready |
+| 1 | 3 | `#284` | RENDER-UPLOAD-BRACKETS: parent identified (cpu.frame.render.us, 53% of frame CPU) — and TilePainter has ZERO… | ready |
+| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
 | 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
 | 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
@@ -56,8 +56,6 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-
-> **Ranking integrity:** rank 4 is claimed by 2 tasks: #268, #284
 
 > **Ranking integrity:** rank 6 is claimed by 3 tasks: #237, #252, #285
 
@@ -332,7 +330,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `4fcba71b` `48a4f61e` | — |
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
 | [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
-| [#284](#c29c1332-284) | `c29c1332` | open | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every tim… | — | — |
+| [#284](#c29c1332-284) | `c29c1332` | open | RENDER-UPLOAD-BRACKETS: parent identified (cpu.frame.render.us, 53% of frame CPU) — and TilePainter has ZERO timers, wh… | — | — |
 | [#285](#c29c1332-285) | `c29c1332` | open | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
@@ -7877,69 +7875,68 @@ things. [[absent-is-not-zero]] applies to the reader as well as the writer.
 
 <a id="c29c1332-284"></a>
 
-#### #284 — RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every timer in that file is a…
+#### #284 — RENDER-UPLOAD-BRACKETS: parent identified (cpu.frame.render.us, 53% of frame CPU) — and TilePainter has ZERO timers, which is the bigger gap
 
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every timer in that file is a GPU one
-```
-
-status: **pending** · metadata: `{"rank": 4}`
+status: **pending** · metadata: `{"rank": 3, "investigation": "done 2026-08-22, no source change yet"}`
 
 ```
-Filed 2026-08-22 at the Director's request, from the intuition that "CPU spends cycles uploading
-buffers to GPU, and that is a cost that needs to be measured." Correct, and it is measured in one
-place and not the other.
+Filed 2026-08-22 from the Director's intuition that "CPU spends cycles uploading buffers to GPU, and
+that is a cost that needs to be measured." THE GATING INVESTIGATION IS NOW DONE -- the task said find
+the parent before writing a timer, and that is what this update records. No source change yet.
 
-=== WHERE IT IS MEASURED ===
+=== WHERE THE UPLOAD CALLS ACTUALLY ARE ===
 
-Lighting times its own GPU-path uploads. As of bb9742f6 the decomposition is gated and printed every
-capture:
+Nineteen GL upload calls in StarRenderer_opengl.cpp, in FIVE functions -- not scattered:
 
-  lighting.gpu.drive.upload.us    26.3 us/frame   14.1% of lighting.gpu.cpu_cost.us
-  lighting.gpu.drive.repack.us     8.4 us/frame    4.5%   (fp16 conversion done TO upload)
+  GlRenderBuffer::set(List<RenderPrimitive>&)   4 calls  glBufferData x3 + glBufferSubData
+                                                        THE per-frame vertex path; [#125]'s orphaning
+  uploadLoneStorage                            2        glTexSubImage2D + glTexImage2D
+  uploadTextureImage                           1        glTexImage2D
+  GlTextureAtlasSet::copyAtlasPixels           1        glTexSubImage2D
+  GlRenderOracle::read                         1        glTexImage2D -- oracle path, not production
 
-~35 us/frame of buffer marshalling, named and attributed.
+=== THE PARENT IS cpu.frame.render.us, AND IT IS HALF THE FRAME ===
 
-=== WHERE IT IS NOT ===
+TilePainter is owned by WorldPass (m_tilePainter, StarWorldPass.cpp:43), which runs inside the render
+path. Owner `frame` has exactly five budget parts and the uploads fall in one of them:
 
-source/application/StarRenderer_opengl.cpp has NINETEEN glBufferData / glBufferSubData /
-glMapBuffer / glTexSubImage / glTexImage2D call sites. Every Telemetry timer in that file is a
-`.gpu_us` GPU timer -- render.frame.clear, render.frame.blit, render.pass.interface,
-render.frame.gpu_span. There is NO CPU-side bracket around the renderer's own vertex-buffer and
-texture uploads: the world, parallax and tile geometry pushed every frame, and the path [#125]'s VBO
-orphaning worked on (which cut the GPU frame 74-81% and never timed its CPU side).
+  cpu.frame.render.us   1953.4 us/frame   53.0% of work   <-- contains TilePainter and every upload
+  cpu.frame.update.us   1686.1            45.7%
+  input/finish/swap       45.5             1.3%
+  cpu.frame.work.us     3686.4
 
-=== IT IS NOT MISSING FROM THE BUDGET -- IT IS UNSEPARATED WITHIN IT ===
+So brackets must nest inside cpu.frame.render.us, and declare `.whole = "cpu.frame.render.us"` --
+the mechanism now has two working consumers and a gate pattern to copy (drive_membership, bb9742f6).
 
-Verified before filing, because "unmeasured" and "unattributed" are different claims and only one of
-them is true here. owner `frame` closes at 100.0%: 3684.9 of 3686.4 us/tick accounted, unattributed
-1.5. So this cost is INSIDE a named parent, not in a hole.
+=== TWO CORRECTIONS TO MY OWN FILING ===
 
-That makes it [#171]'s shape rather than [#141]'s: not absent, just indistinguishable from everything
-else in its bucket -- so no lever can be aimed at it, no A/B can attribute to it, and a change that
-made uploads cheaper would show up only as a small move in a large parent.
+1. "the world, parallax and tile geometry pushed EVERY FRAME" -- WRONG. The rb->set() calls sit
+   inside chunk-cache lambdas (m_liquidChunkCache.get and its sibling), so they fire on cache MISS,
+   not per frame. That is what [#127]'s stable-grid lever and [#125]'s VBO orphaning both worked on.
+   The cost model is chunk-rebuild-driven, not frame-driven, and a bracket that assumes otherwise
+   will read as noise on a static scene and spike on movement. MEASURE ON A MOVING FIXTURE, or the
+   number will be an artefact of standing still.
 
-=== WHAT TO DO ===
+2. The framing "upload has no CPU timer" understates it. StarTilePainter.cpp has ZERO telemetry
+   timers of any kind. The whole subsystem is dark -- not just its uploads. Bracketing only the GL
+   calls would name the smallest part of an unmeasured whole and leave the rest of the 53% just as
+   unattributed.
 
-Bracket the renderer's upload calls with CPU timers, declared and disjoint, the way the lighting
-drive parts now are. Then declare them against whichever parent actually contains them, using
-`.whole` -- the mechanism now has two working consumers (telemetry-window closure mode, leg-diff
-synthesis) and a gate pattern to copy (drive_membership).
+=== SO THE WORK IS BIGGER AND BETTER THAN "ADD UPLOAD BRACKETS" ===
 
-FIRST QUESTION, WHICH IS NOT A FORMALITY: which parent DOES contain them? The brackets must nest
-inside exactly one named part or the closure they join will start reading over 100%. Find that before
-writing a timer, not after -- that is the mistake this task exists downstream of.
+The honest shape is a TilePainter CPU decomposition -- chunk build, geometry generation, buffer
+upload, cache hit/miss -- declared against cpu.frame.render.us and gated the way the drive parts now
+are. Upload is then one named part of it rather than a lone probe in the dark.
 
-SECOND: watch the instrument's own cost. [#276] measured the GPU-timer brackets at 10.2% caused
-(37% billed), and the drive decomposition shows drive.gputimer.us at 19.8% of lighting's CPU. Upload
-sites are hot and numerous; nineteen new brackets on a per-frame path is a real tax, and it must be
-measured rather than assumed small.
+That is a real piece of work, not a patch, and it is the Director's stated retargeting mission: the
+point of the decomposition is to make the next mission's highest-cost areas choosable from evidence.
 
-Needs the GPU free and respects the [#178] mtime guard. The Director has flagged this as a future
-retargeting mission -- the point of the brackets is to make that mission's highest-cost areas
-choosable from evidence rather than guessed.
+=== STILL BINDING ===
+
+- Watch the instrument's own cost. [#276] measured GPU-timer brackets at 10.2% caused (37% billed),
+  and drive.gputimer.us is 19.8% of lighting's CPU. Measure the tax, do not assume it.
+- Needs the GPU free and respects [#178]'s mtime guard.
+- A cache-miss-driven cost needs a fixture that MOVES. The existing scene fixtures stand still.
 ```
 
 <a id="c29c1332-285"></a>
