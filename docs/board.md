@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**217 tasks** across 2 store(s): 3 in_progress, 29 pending, 185 completed
+**217 tasks** across 2 store(s): 3 in_progress, 28 pending, 186 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 216 tasks, ids 64–280
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,20 +43,19 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#274` | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, pai… | ready |
-| 2 | 2 | `#269` | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | ready |
-| 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 5 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 6 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
-| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 1 | 2 | `#269` | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | ready |
+| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
+| 3 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 4 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 5 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
+| 6 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 7 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 8 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 9 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 10 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 11 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
-> **2 completed task(s) still carry a rank** (#262, #275). A rank is a claim about
+> **3 completed task(s) still carry a rank** (#262, #274, #275). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -69,7 +68,7 @@ reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 223, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 45.** The task harness has, on these, appended its
+**Descriptions normalised on export: 46.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -98,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 88 of 185.
+**Completed tasks citing no commit and no doc:** 88 of 186.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -263,7 +262,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#214](#c29c1332-214) | `c29c1332` | done | GATHER-1 DONE (9429b14d): one gatherColumns + two sinks, byte-identical; E01/E04 unblocked. Gate's own A/B fixed (cb17d… | `cb17d323` | — |
 | [#215](#c29c1332-215) | `c29c1332` | done | ORACLE-MOVE-1 CLOSED (c1a4433d): oracles split to their own TU; kernel object proven unchanged; task's split corrected | `84fe2324` `c1a4433d` | — |
 | [#216](#c29c1332-216) | `c29c1332` | done | ORACLE-TRUTH-1 CLOSED (7dbf8c98): 5 closed-form assertions + an experiment proving differential tests are blind to a sh… | `84fe2324` `7dbf8c98` | — |
-| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `7102f21c` `f4d311fd` `817e54e8` | — |
+| [#217](#c29c1332-217) | `c29c1332` | done | BORDER-1 DONE (817e54e8) + MEASURED at the scene that exercises it: lever -27.8% region / -10.1% lighting CPU; fix cost… | `841494c3` `7102f21c` `f4d311fd` `817e54e8` | — |
 | [#218](#c29c1332-218) | `c29c1332` | done | COMMENT-1 DONE (9e56c204): rule written + 6 wrong comments swept + all 9 line-refs converted + comment_claims gate at z… | `bc0305df` `9e56c204` | — |
 | [#219](#c29c1332-219) | `c29c1332` | done | LEDGER-B DONE: pr570-ledger reports 155 rows / 0 open; D29 declined by the Director 2026-08-05 (c363e052) | `c363e052` `9ccb57a8` `e93cefd5` `3b0214db` `e3682234` `0a8fff9d` | — |
 | [#220](#c29c1332-220) | `c29c1332` | done | EXTERN-1 CLOSED: all 5 ledger rows done -- deletions 4e4ced84, E10 provenance 4960f7e5, E06 guard a69c8888 | `8862dca7` `6e0f6117` `a69c8888` `4960f7e5` `4e4ced84` | `board-audit-2026-08-08.md` |
@@ -320,7 +319,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and fl… | `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
@@ -4304,6 +4303,7 @@ core_tests 289 -> 294 all green, game_tests 72/72, run-gates 27/27. They run in 
 
 status: **completed**
 
+- `841494c3` [#274] PREREQ: the scene it names was never in the fixture set
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 - `817e54e8` fix(lighting): adaptive border under-sized coloured lights, dropping them
@@ -7166,59 +7166,75 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 <a id="c29c1332-274"></a>
 
-#### #274 — BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and floor-checked
+#### #274 — BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever
 
-status: **pending** · metadata: `{"rank": 1}`
+status: **completed** · metadata: `{"rank": 1}`
 
+- `85741414` [#274] The floor settles the METHOD before the measurement: 10.1% &lt; a 13.95% unpaired floor
+- `841494c3` [#274] PREREQ: the scene it names was never in the fixture set
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 
 ```
-Split out of [#270] item 3, which explicitly reserved a GPU re-measurement it could not perform. [#270]
-items 1 and 2 are DONE (restatement in docs/telemetry/architecture.md §3 and the union table in
-docs/evidence/lighting-produce-first-reading.md); this is the residue that needs hardware.
+CLOSED 2026-08-22. Evidence: docs/evidence/border-rederive.md. Pre-registration committed at
+85741414 BEFORE the run; the decision rule below is the one written in advance.
 
-=== WHY RESTATING IS NOT ENOUGH HERE, AND WAS ENOUGH FOR #168 ===
+=== RESULT: CONFIRMED ===
 
-[#168]'s four levers (L0 params cache, L1 buffer ring, L2 export order, L3a branchless floatToHalf) act
-inside lightingCalc's params/export/convert phases. They change HOW buffers are filled, not how many
-cells exist, so no union member outside lighting.cpu.total.us can move. Its -16.9% therefore needs only
-its denominator named. [#168]'s own A/B confirms the shape: gather was the untouched control and stayed
-in noise while every touched phase moved.
+render-ab.sh, 5 interleaved pairs + 1 discarded warm-up, at 04-Ocean-Factory.
 
-The border lever is the opposite. [#217] measured, at 04-Ocean Factory:
+  lighting.cpu.total.us      +48.19% when OFF   sd 26.74   95% CI [+15.0, +81.4]   CONFIRMED
+  lighting.gpu.cpu_cost.us    +9.10%            sd  7.58   95% CI [-0.30, +18.50]  UNRESOLVED
+  lighting.cpu.union.us       ABSENT from every leg
 
-  lighting.calc.cells        25872 vs 35840   -27.8%
-  lighting.cpu.total.us       77.8 vs  86.5   -10.1%
-  lighting.gpu.spread.gpu_us 574.3 vs 655.5   -12.4%   (GPU, not CPU)
-  lighting.cpu.export.us      50.9 vs  60.9   -16.6%
+All five pairs positive (+72.6, +57.6, +47.7, +59.9, +3.1), so the direction is unanimous and the
+paired interval excludes zero. [#217]'s direction stands.
 
-Cells fall 27.8%. TWO UNION MEMBERS SCALE WITH CELLS AND ARE IN NEITHER ARM OF THAT TABLE:
+=== THE FINDING IS WHICH ARM MOVED ===
 
-  lighting.gpu.spread_scan.us   an O(cells) scan of the pass's own input
-  lighting.gpu.cpu_cost.us      repack is O(texels), texels == cells; and it is the LARGEST member,
-                                57.9-59.4% of the union at Desert Town
+[#217] measured the SAME KEY at the SAME SCENE: 77.8 on vs 86.5 off. Denominators are directly
+comparable and [#171]'s correction does not apply here -- checked before quoting any ratio.
 
-Both move in the SAME direction as the lever. So -10.1% is not merely narrow, it is BIASED LOW as a
-statement about lighting CPU: the biggest member falls with the lever and was never counted. The
-union-denominated figure cannot be derived from -10.1% by any arithmetic on banked data.
+  ON  arm:  #217 = 77.8   today mean 80.7, range [67.7, 91.5]   -> REPRODUCES
+  OFF arm:  #217 = 86.5   today mean 118.4, range [94.3, 144.0] -> +36.8%, OUTSIDE the range
 
-=== WHAT THIS OWES ===
+The shipped default is stable across eighteen days. What moved is the COUNTERFACTUAL. So this is not
+"the lever got 3x better" -- it is that the lever's value is measured against a baseline that has
+itself become more expensive.
 
-1. Re-run the [#217] A/B at 04-Ocean Factory -- NOT Desert Town. [#217] established that the border is
-   genuinely adaptive only there (border 34, clearing the 32 floor); explore sits pinned at the floor
-   and Desert Town was never characterised for border. A number re-derived at the wrong scene is a new
-   error, not a fix, and [#270] says so in as many words.
-2. Capture all seven union members per arm, with deep tracing on so the drive parts record.
-   matrix-20260816-160346 does NOT satisfy this: it is Desert Town, and it is a lever matrix rather
-   than a border A/B.
-3. State the result BOTH ways -- against lighting.cpu.total.us (comparable to the published -10.1%)
-   and against lighting.cpu.union.us (the definition now in force). Replacing one with the other
-   silently is how [#170]'s -23.6% came to look wrong when it was only superseded.
-4. PREDICTION TO FALSIFY, recorded before the run so it cannot be fitted afterwards: the union-
-   denominated cut is LARGER in magnitude than 10.1%. If it comes back smaller, the O(cells) reasoning
-   above is wrong and that is the finding.
+NOT A REFUTATION OF #217. Its ON arm reproduces exactly, which is the half a wrong measurement gets
+wrong; and its A/B was a SINGLE adjacent pair (n=1, no spread), so 86.5 has unknown uncertainty and
+today's lowest OFF leg is 94.3, not far off.
 
-Needs a live client at 04-Ocean Factory. No other blocker.
+=== REPORTED AS NOT DELIVERED ===
+
+lighting.cpu.union.us is absent from every leg, so the SECOND DENOMINATOR I pre-registered could not
+be reported. The union is still hand-summed into a markdown table rather than computed by the
+analyser -- [#269]'s open item. Recorded as a commitment unmet rather than quietly dropped.
+
+lighting.gpu.cpu_cost.us is UNRESOLVED and stays that way; the rule forbids backfilling it with the
+prior figure.
+
+=== WHY PAIR 4 WAS NOT CHASED ===
+
++3.07% against +47..+73%. It drives sd 26.74 and the wide CI. INCLUDING it makes the result more
+conservative; removing it would tighten the interval and enlarge the effect. So it cannot change the
+verdict, only refine a magnitude -- which is why the close-out was the arm-comparison instead. Note
+its OFF leg (94.3) is also the nearest to #217's 86.5; possibly the same phenomenon twice.
+
+=== METHOD, VINDICATED ===
+
+The scene's UNPAIRED floor on this key is 13.95%, measured as this task's prerequisite. #217's 10.1%
+is SMALLER THAN THAT, so no repeat count would let an unpaired A/B adjudicate it in either direction.
+The effect proved large enough that unpaired might have caught it by luck -- unknowable in advance --
+and lighting.gpu.cpu_cost.us at +9.10% is exactly the case where unpaired fails and paired still
+cannot resolve.
+
+=== SPLIT OUT ===
+
+The OFF-arm shift is the highest-value follow-up and is NOT part of this task: a git log over the
+lighting path between 817e54e8 and HEAD, or a pre-#217 binary at this scene, would settle whether it
+is a real regression in the no-border path or sampling. #217's own three outstanding items (untested
+unwrapped-position fix, no pixel confirmation, derived give-back) are untouched by this run.
 ```
 
 <a id="c29c1332-275"></a>
