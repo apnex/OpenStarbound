@@ -927,7 +927,15 @@ def selftest_union_membership():
 
 if __name__ == "__main__":
     arg = sys.argv[1] if len(sys.argv) > 1 else "--check"
-    sys.exit({"--selftest": selftest,
+    # AN UNKNOWN FLAG MUST NOT RUN A DIFFERENT CHECK. This dispatch used `.get(arg, check)`, so any
+    # typo, any renamed flag, any stale caller asking for a gate that has moved silently ran the
+    # DEFAULT check instead -- and exited 0 on its behalf. `--union` printed the MetricDesc-site
+    # tally and reported OK, which is a green from a check nobody requested standing in for one
+    # nobody ran. That is this project's most expensive recurring defect (see [#223], [#258]), and
+    # the ONE place it is guaranteed to bite is a gate wired by name from a shell script.
+    # Bare invocation still means --check; an unrecognised argument now refuses.
+    table = {"--check": check,
+             "--selftest": selftest,
               "--check-registrations": check_registrations,
               "--selftest-registrations": selftest_registrations,
               "--check-timeline": check_timeline,
@@ -939,4 +947,9 @@ if __name__ == "__main__":
               "--check-union-membership": check_union_membership,
               "--selftest-union-membership": selftest_union_membership,
               "--selftest-boundedness": selftest_boundedness,
-              "--selftest-timeline": selftest_timeline}.get(arg, check)())
+              "--selftest-timeline": selftest_timeline}
+    if arg not in table:
+        print(f"metric-desc-lint: REFUSED -- unknown argument '{arg}'. NOTHING WAS CHECKED; this is "
+              f"not a pass. Known arguments: {', '.join(sorted(table))}", file=sys.stderr)
+        sys.exit(2)
+    sys.exit(table[arg]())
