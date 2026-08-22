@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**216 tasks** across 2 store(s): 4 in_progress, 28 pending, 184 completed
+**216 tasks** across 2 store(s): 3 in_progress, 28 pending, 185 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -46,18 +46,17 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 1 | 1 | `#274` | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, pai… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | ready |
 | 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 4 | 5 | `#275` | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | ready |
-| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
-| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 6 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
+| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
-> **1 completed task(s) still carry a rank** (#262). A rank is a claim about
+> **2 completed task(s) still carry a rank** (#262, #275). A rank is a claim about
 > what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
@@ -99,7 +98,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 88 of 184.
+**Completed tasks citing no commit and no doc:** 88 of 185.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -322,7 +321,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and fl… | `f4d311fd` | — |
-| [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | `508707f2` `ae90fe7b` `f4d311fd` | — |
+| [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
 | [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
@@ -7222,56 +7221,71 @@ Needs a live client at 04-Ocean Factory. No other blocker.
 
 <a id="c29c1332-275"></a>
 
-#### #275 — GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain
+#### #275 — GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live
 
-status: **in_progress** · metadata: `{"rank": 5}`
+status: **completed** · metadata: `{"rank": 5}`
 
 - `508707f2` [#275] LIVESTATE: give the detector a writer -- it has been inert since it shipped
 - `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 
 ```
-Items 1-4 shipped in ae90fe7b (scripts/harness-active.sh + 4-arm selftest, the guarded lever_table
-step, the 68-step audit, the run-gates.sh header warning).
+CLOSED. Items 1-4 shipped in ae90fe7b; the WRITER shipped in 508707f2; and all three arms of this
+task's own acceptance text are now proven against real runs rather than fixtures.
 
-=== THE WRITER IS NOW WIRED (508707f2, 2026-08-22) ===
+=== WHAT THE WIRING EXPOSED ===
 
-lever-matrix.sh acquires the lock after `mkdir "$OUT"` and BEFORE the first leg mutates the config,
-and releases it after the LAST LEG RETURNS -- not at `exit 0`, because everything below that only
-reads artefacts and a failing summariser must not leave the tree looking owned. Deliberately NOT in
-the EXIT trap: a crash must LEAVE the lock, which is the whole design.
+The detector had shipped, had a 4-arm selftest, and was read by the gate -- and NOTHING HAD EVER
+WRITTEN THE FILE. It could only ever answer "no run active", so `lever_table` went on reading a
+per-leg-mutated config as though it were the tree: the exact false green this task exists to prevent,
+live for six days behind a green ratchet. A reader with no writer is a claim with no instrument
+wearing the other hat. Two selftests could not see it between them, because each was complete against
+its own fixtures and the missing edge was the one neither owned.
 
---dry-run returns before the acquire, so it claims nothing. Verified: a dry run leaves the detector
-reading rc=1.
+=== ARM 1 -- lock appears, gate SKIPS. PROVEN, in production ===
 
-WHAT THE WIRING EXPOSED. The detector had shipped, had a 4-arm selftest, and was read by the gate --
-and NOTHING HAD EVER WRITTEN THE FILE. So it could only ever answer "no run active", and lever_table
-went on reading a per-leg-mutated config as though it were the tree. That is the exact false green
-this task exists to prevent, live for six days behind a green ratchet. A reader with no writer is a
-claim with no instrument wearing the other hat. Two selftests could not see it between them: each was
-complete against its own fixtures and the missing edge was the one neither owned. Two new arms in
-lever-matrix.sh's selftest now drive the real writer and let the real detector answer.
+Against the live 5-scene cartesian: harness/matrix/.active read "matrix-20260822-105405 pid=136437",
+harness-active.sh exited 0 with that id, and executing THE GATE'S OWN GUARD TEXT took the SKIP branch
+and named the run. Note the correction that mattered: I first verified the DETECTOR and called the arm
+done. The detector and the gate are different claims. Running the guard is what closed it.
 
-Also fixed in passing: that selftest's banner read "15/15" as a literal. Deriving the count exposed
-two arms that print their own ok/FAIL and never reach the helper -- they DO set fails, so no false
-green, but they were uncounted. Routed through arm(): 17/17, and 17 is what prints.
+=== ARM 2 -- clean finish clears the lock and the gate RUNS THE REAL CHECK. PROVEN ===
 
-=== VERIFICATION: 1 OF 3 ARMS DONE ===
+Captured in the moments after the cartesian exited, because this evidence does not persist:
 
-[DONE 2026-08-22, in production] Lock appears with the right id and lever_table SKIPS. Proven against
-the live 5-scene cartesian: harness/matrix/.active reads "matrix-20260822-105405 pid=136437",
-harness-active.sh exits 0 with that id, and executing the gate's own guard takes the SKIP branch and
-names the run. End-to-end through the real gate text, not a fixture.
+  lock ABSENT, harness-active.sh rc=1
+  the guard took the real-check path and lever_table RAN:
+    "8 lever baselines + 1 pinned value(s) all match harness/storage-perf/starbound.config"
 
-[OPEN] Let a run FINISH: confirm the lock is gone and lever_table runs the real check. Satisfiable as
-soon as the cartesian (matrix-20260822-105405) completes -- do it before the next gate sweep, and note
-that a PASS here is only meaningful if the same sweep shows lever_table actually RAN rather than
-skipped. Do not accept a green that skipped.
+A green here only counts if the gate actually RAN rather than skipped -- a skip and a pass looked the
+same once, which is why this task exists. It ran. Independently valuable: it proves the per-leg config
+restore held across five scenes and ~150 legs.
 
-[OPEN] Kill a run mid-leg: confirm the lock SURVIVES and the gate keeps skipping until cleared by
-hand. Cannot be tested against the live cartesian without destroying it. Use a throwaway 1-leg run.
+=== ARM 3 -- a crash LEAVES the lock. PROVEN ===
 
-The 2026-08-16 hand-written lock hazard is CLEARED.
+Throwaway 1-leg run, killed with SIGKILL mid-leg:
+
+  lock SURVIVED:            matrix-20260822-152023 pid=513941
+  harness-active.sh rc=0    still reads ACTIVE
+  the guard kept SKIPPING and named the dead run
+
+THE NUANCE WORTH KEEPING: at the moment of that kill the config happened to be CLEAN -- lever_table
+matched -- because the kill landed after a per-leg restore. The lock surviving is STILL correct. The
+lock is not a claim that the config IS dirty; it is a refusal to assert that it is clean. A detector
+that cleared itself on crash would be guessing, and would guess wrong exactly when it matters.
+
+Cleared afterwards the way the design requires: an operator checks the config, then removes the lock
+by hand. Verified clean first, then removed; throwaway run directory deleted; the five banked
+cartesian runs untouched.
+
+=== A DEFECT THIS TESTING FOUND IN THE DRIVER ===
+
+scripts/scene-matrix.sh reported "2 of 5 scenes FAILED" over a run in which ZERO legs failed -- both
+non-zero exits were VOID legs, and at the ship the VOIDs were the CORRECT answer
+(render.cache.parallax.skipped is 0 and 0 because a world with no parallax has none to skip). Fixed:
+scene_outcome() reads the manifest's per-leg verdicts and tells clean / void-only / failed apart, with
+5 selftest arms including the VOID+FAILED case that must not read as void-only. Same distinction this
+task is about -- one integer cannot carry three outcomes.
 ```
 
 <a id="c29c1332-276"></a>

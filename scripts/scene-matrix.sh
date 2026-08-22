@@ -29,6 +29,28 @@ REPEATS=3
 SECONDS_PER_LEG=90
 DRY=0
 
+# A LEVER THAT DID NOT ENGAGE IS NOT A SCENE THAT FAILED. On 2026-08-22 this script printed
+# "2 of 5 scenes FAILED" over a run in which ZERO legs failed: both non-zero exits were VOID legs --
+# lever-matrix refusing to quote a lever whose witness did not move. At the ship those VOIDs were the
+# CORRECT ANSWER, because render.cache.parallax.skipped reads 0 and 0 on a world with no parallax to
+# skip, which is the property the ship was added to the fixture set to exercise. The instrument
+# reported itself working and the driver called it a failure.
+#
+# Same distinction this project enforces everywhere else: ABSENT is not ZERO, SKIP is not PASS. Read
+# from the manifest's per-leg verdict rather than from the exit code, because the exit code cannot
+# carry the difference -- one integer, three outcomes.
+scene_outcome() {
+  python3 - "$1" <<'PY' 2>/dev/null || echo unknown
+import json, sys, collections
+try:
+    legs = json.load(open(sys.argv[1] + "/manifest.json"))["legs"]
+except Exception:
+    print("unknown"); raise SystemExit
+c = collections.Counter(l.get("verdict", "?") for l in legs)
+print("failed" if c.get("FAILED") or c.get("?") else "void-only" if c.get("VOID") else "clean")
+PY
+}
+
 scenes_from_table() { python3 -c '
 import json,sys
 for s in json.load(open(sys.argv[1]))["scenes"]: print(s["warp"])
@@ -68,6 +90,28 @@ if [ "${1:-}" = "--selftest" ]; then
   [ "$planned" -eq "$n" ] && ok "the plan names all $n scenes" \
                           || bad "the plan names $planned of $n scenes"
 
+  # THE THREE OUTCOMES MUST BE TOLD APART. This is the arm that would have stopped the 2026-08-22
+  # mislabelling, where a run with ZERO failed legs was reported as "2 of 5 scenes FAILED". The
+  # failed case has no real example on disk yet -- which is exactly why it is synthesised here rather
+  # than waited for.
+  t=$(mktemp -d); trap 'rm -rf "$t"' EXIT
+  mk() { mkdir -p "$t/$1"; printf '{"legs":%s}' "$2" > "$t/$1/manifest.json"; }
+  mk clean '[{"verdict":"OK"},{"verdict":"OK"}]'
+  mk voidy '[{"verdict":"OK"},{"verdict":"VOID"}]'
+  mk bad   '[{"verdict":"OK"},{"verdict":"FAILED"}]'
+  mk mixed '[{"verdict":"VOID"},{"verdict":"FAILED"}]'
+
+  [ "$(scene_outcome "$t/clean")" = clean ]     && ok "all-OK reads clean" || bad "all-OK misread"
+  [ "$(scene_outcome "$t/voidy")" = void-only ] && ok "a VOID leg reads void-only, NOT failed" \
+                                                || bad "a VOID leg was read as a failure -- the 08-22 defect"
+  [ "$(scene_outcome "$t/bad")"   = failed ]    && ok "a FAILED leg reads failed" || bad "a FAILED leg was not caught"
+  # VOID AND FAILED TOGETHER MUST READ FAILED. Reporting "void-only" for a run that also lost legs
+  # would hide a real failure behind an expected one -- the worst of the three confusions.
+  [ "$(scene_outcome "$t/mixed")" = failed ]    && ok "VOID+FAILED reads failed, not void-only" \
+                                                || bad "a failure hid behind a VOID"
+  [ "$(scene_outcome "$t/nosuch")" = unknown ]  && ok "an unreadable run reads unknown, not clean" \
+                                                || bad "a missing manifest read as clean"
+
   # DERIVED, NEVER RESTATED -- the ninth instance of this defect in this tree was a hardcoded arm count
   # in lever-matrix.sh's own selftest banner.
   [ $fails -eq 0 ] || { echo "scene-matrix selftest: FAILED"; exit 1; }
@@ -105,7 +149,7 @@ echo
 INDEX="harness/matrix/cartesian-index.tsv"
 [ "$DRY" = 1 ] || { mkdir -p harness/matrix; : > "$INDEX"; }
 
-failed=(); ran=0
+failed=(); voided=(); ran=0
 for s in "${SCENES[@]}"; do
   echo "=== scene $((ran+1))/${#SCENES[@]}: $s ==="
   if [ "$DRY" = 1 ]; then
@@ -118,7 +162,24 @@ for s in "${SCENES[@]}"; do
   # The run id is whatever directory the runner just created -- ASKED FOR, not predicted. Deriving it
   # from a timestamp we compute here would be a second clock, and a second clock is a second answer.
   [ "$after" != "$before" ] && printf '%s\t%s\t%s\n' "$s" "$(basename "$after")" "$rc" >> "$INDEX"
-  [ $rc -eq 0 ] || { echo "  !! scene '$s' exited $rc"; failed+=("$s"); }
+
+  # A LEVER THAT DID NOT ENGAGE IS NOT A SCENE THAT FAILED, and this script spelled them the same
+  # way on 2026-08-22: it printed "2 of 5 scenes FAILED" over a run in which ZERO legs failed. Both
+  # non-zero exits were VOID legs -- the runner refusing to quote a lever whose witness did not move
+  # -- and at the ship those VOIDs were the CORRECT ANSWER: render.cache.parallax.skipped reads 0
+  # and 0 because a world with no parallax has no parallax work to skip. That is the property the
+  # ship was added to the fixture set to exercise, reporting itself, and it was labelled a failure.
+  #
+  # Same distinction this project enforces everywhere else: ABSENT is not ZERO, SKIP is not PASS.
+  # A VOID-only scene is BANKED AND USABLE for every lever that did engage.
+  if [ $rc -eq 0 ]; then :
+  elif [ "$(scene_outcome "$after")" = "void-only" ]; then
+    echo "  -- scene '$s': VOID leg(s) only -- a lever did not engage here. BANKED AND USABLE."
+    voided+=("$s")
+  else
+    echo "  !! scene '$s' exited $rc with legs that FAILED, not merely VOID"
+    failed+=("$s")
+  fi
   ran=$((ran+1))
 done
 
@@ -126,10 +187,21 @@ done
 echo
 echo "=== cartesian complete: $ran scene(s) run, index at $INDEX ==="
 cat "$INDEX" 2>/dev/null
+if [ ${#voided[@]} -gt 0 ]; then
+  echo
+  echo "scene-matrix: ${#voided[@]} of $ran scene(s) have VOID leg(s): ${voided[*]}"
+  echo "  NOT A FAILURE. A VOID means the runner refused to quote a lever whose witness did not move --"
+  echo "  the lever did not engage AT THAT SCENE. Every other lever there measured normally and the"
+  echo "  scene is fully quotable for them. At the ship this is the EXPECTED answer for the parallax"
+  echo "  cache: a world with no parallax has no parallax work to skip."
+fi
 if [ ${#failed[@]} -gt 0 ]; then
   echo
   echo "scene-matrix: ${#failed[@]} of $ran scene(s) FAILED: ${failed[*]}"
   echo "  The other $((ran - ${#failed[@]})) are banked and usable. This is a PARTIAL cartesian -- say so when quoting it."
   exit 1
 fi
-echo "scene-matrix: all $ran scenes completed"
+# VOID-only exits non-zero so a caller cannot mistake it for an all-engaged run, but it is spelled
+# differently from failure above, and it is NOT a partial cartesian.
+[ ${#voided[@]} -gt 0 ] && { echo "scene-matrix: all $ran scenes completed, ${#voided[@]} with VOID leg(s). Nothing failed."; exit 3; }
+echo "scene-matrix: all $ran scenes completed, every lever engaged at every scene"
