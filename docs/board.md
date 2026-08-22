@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**220 tasks** across 2 store(s): 2 in_progress, 30 pending, 188 completed
+**221 tasks** across 2 store(s): 2 in_progress, 31 pending, 188 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 219 tasks, ids 64–283
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 220 tasks, ids 64–284
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -45,16 +45,19 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 |---:|---:|---|---|---|
 | 1 | 3 | `#283` | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable i… | ready |
 | 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
-| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
-| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 3 | 4 | `#284` | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites,… | ready |
+| 4 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 6 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
+| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+
+> **Ranking integrity:** rank 4 is claimed by 2 tasks: #268, #284
 
 > **Ranking integrity:** rank 6 is claimed by 2 tasks: #237, #252
 
@@ -66,7 +69,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 231, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 232, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -316,8 +319,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | done | LIGHTING-WHOLE CLOSED (906aca3d): the union is analyser-computed from the gated list, and it corroborates #270 at 26.5% | `8e6cdec0` `906aca3d` `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `906aca3d` `29516d61` `1d367a57` | — |
-| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
-| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
+| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `bb9742f6` `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
+| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `bb9742f6` `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
@@ -329,6 +332,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `48a4f61e` | — |
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
 | [#283](#c29c1332-283) | `c29c1332` | open | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable in the ship… | — | — |
+| [#284](#c29c1332-284) | `c29c1332` | open | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every tim… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -7000,6 +7004,7 @@ Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border
 
 status: **completed**
 
+- `bb9742f6` [#271][#272] the GPU-lighting CPU decomposition becomes a declaration the harness checks
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
@@ -7059,6 +7064,7 @@ and the wait reading is off the table.
 
 status: **completed**
 
+- `bb9742f6` [#271][#272] the GPU-lighting CPU decomposition becomes a declaration the harness checks
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
@@ -7863,6 +7869,73 @@ mtime guard respected ([#178]).
 list and WITHHOLDS the key entirely from any leg missing a member, so a short sum can never be
 differenced. That refusal is what made this defect visible instead of letting a six-member sum be
 quoted as the whole. Do not "fix" it by relaxing the rule.
+```
+
+<a id="c29c1332-284"></a>
+
+#### #284 — RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every timer in that file is a…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every timer in that file is a GPU one
+```
+
+status: **pending** · metadata: `{"rank": 4}`
+
+```
+Filed 2026-08-22 at the Director's request, from the intuition that "CPU spends cycles uploading
+buffers to GPU, and that is a cost that needs to be measured." Correct, and it is measured in one
+place and not the other.
+
+=== WHERE IT IS MEASURED ===
+
+Lighting times its own GPU-path uploads. As of bb9742f6 the decomposition is gated and printed every
+capture:
+
+  lighting.gpu.drive.upload.us    26.3 us/frame   14.1% of lighting.gpu.cpu_cost.us
+  lighting.gpu.drive.repack.us     8.4 us/frame    4.5%   (fp16 conversion done TO upload)
+
+~35 us/frame of buffer marshalling, named and attributed.
+
+=== WHERE IT IS NOT ===
+
+source/application/StarRenderer_opengl.cpp has NINETEEN glBufferData / glBufferSubData /
+glMapBuffer / glTexSubImage / glTexImage2D call sites. Every Telemetry timer in that file is a
+`.gpu_us` GPU timer -- render.frame.clear, render.frame.blit, render.pass.interface,
+render.frame.gpu_span. There is NO CPU-side bracket around the renderer's own vertex-buffer and
+texture uploads: the world, parallax and tile geometry pushed every frame, and the path [#125]'s VBO
+orphaning worked on (which cut the GPU frame 74-81% and never timed its CPU side).
+
+=== IT IS NOT MISSING FROM THE BUDGET -- IT IS UNSEPARATED WITHIN IT ===
+
+Verified before filing, because "unmeasured" and "unattributed" are different claims and only one of
+them is true here. owner `frame` closes at 100.0%: 3684.9 of 3686.4 us/tick accounted, unattributed
+1.5. So this cost is INSIDE a named parent, not in a hole.
+
+That makes it [#171]'s shape rather than [#141]'s: not absent, just indistinguishable from everything
+else in its bucket -- so no lever can be aimed at it, no A/B can attribute to it, and a change that
+made uploads cheaper would show up only as a small move in a large parent.
+
+=== WHAT TO DO ===
+
+Bracket the renderer's upload calls with CPU timers, declared and disjoint, the way the lighting
+drive parts now are. Then declare them against whichever parent actually contains them, using
+`.whole` -- the mechanism now has two working consumers (telemetry-window closure mode, leg-diff
+synthesis) and a gate pattern to copy (drive_membership).
+
+FIRST QUESTION, WHICH IS NOT A FORMALITY: which parent DOES contain them? The brackets must nest
+inside exactly one named part or the closure they join will start reading over 100%. Find that before
+writing a timer, not after -- that is the mistake this task exists downstream of.
+
+SECOND: watch the instrument's own cost. [#276] measured the GPU-timer brackets at 10.2% caused
+(37% billed), and the drive decomposition shows drive.gputimer.us at 19.8% of lighting's CPU. Upload
+sites are hot and numerous; nineteen new brackets on a per-frame path is a real tax, and it must be
+measured rather than assumed small.
+
+Needs the GPU free and respects the [#178] mtime guard. The Director has flagged this as a future
+retargeting mission -- the point of the brackets is to make that mission's highest-cost areas
+choosable from evidence rather than guessed.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
