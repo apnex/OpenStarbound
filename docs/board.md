@@ -44,20 +44,26 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 3 | `#286` | TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one… | ready |
-| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
-| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
-| 6 | 6 | `#285` | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied r… | ready |
-| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 2 | 4 | `#267` | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 def… | ready |
+| 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
+| 4 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 6 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
+| 7 | 6 | `#285` | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied r… | ready |
+| 8 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 9 | 7 | `#280` | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not… | ready |
+| 10 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 11 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 12 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 13 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 14 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 15 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+
+> **Ranking integrity:** rank 4 is claimed by 2 tasks: #267, #268
 
 > **Ranking integrity:** rank 6 is claimed by 3 tasks: #237, #252, #285
+
+> **Ranking integrity:** rank 7 is claimed by 2 tasks: #266, #280
 
 ---
 
@@ -221,10 +227,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `4fcba71b` `29516d61` `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
 | [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `aa9e37c7` `7bede779` `164163cc` | — |
-| [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
+| [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `465812fd` `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `00f575ad` | — |
-| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `4dbb2000` `2643b1ce` | — |
+| [#178](#c29c1332-178) | `c29c1332` | done | GATE-STALE DONE: render-gate.sh now asserts the build happened, not just the run (2643b1ce) | `465812fd` `4dbb2000` `2643b1ce` | — |
 | [#179](#c29c1332-179) | `c29c1332` | done | DOC-DRIFT DONE: Air-Gap counts generated into the doc and gated by render_docs_fresh (c89be289) | `2ef87860` `c89be289` | — |
 | [#180](#c29c1332-180) | `c29c1332` | done | AX-A7 DONE: the clause-2 recovery now recovers, and can be executed (6b6e8b72) | `6b6e8b72` | — |
 | [#181](#c29c1332-181) | `c29c1332` | done | AX-A1-COUNTERS DONE: gate reads the contract violation; counters registered at construction (472fd263) | `472fd263` | — |
@@ -237,7 +243,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#188](#c29c1332-188) | `c29c1332` | done | AX-A4-SPEC DONE: constructor injection retracted in place, per G10 (8781759c) | `8781759c` | — |
 | [#189](#c29c1332-189) | `c29c1332` | done | AX-A12 DONE: docs/render/README.md index + both chains cross-link (8781759c) | `8781759c` | — |
 | [#190](#c29c1332-190) | `c29c1332` | done | AX-A8-PRISTINE DONE: G1 closed via six-platform CI from actions/checkout; local clone blocked by #196 (704199ef) | `704199ef` | — |
-| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `matrix-prereq-ledger.md` `2026-08-01-target-state-system-architecture.md` |
+| [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `465812fd` `334bc38d` `b2ac6c27` | `matrix-prereq-ledger.md` `2026-08-01-target-state-system-architecture.md` |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
 | [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `74db1a7a` `45da57fc` `f87a6848` | — |
@@ -331,8 +337,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
 | [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
 | [#284](#c29c1332-284) | `c29c1332` | done | RENDER-UPLOAD-BRACKETS SUBSUMED by #286: the investigation found the gap is the whole subsystem, not its uploads | — | — |
-| [#285](#c29c1332-285) | `c29c1332` | open | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw | — | — |
-| [#286](#c29c1332-286) | `c29c1332` | open | TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one line from… | — | — |
+| [#285](#c29c1332-285) | `c29c1332` | open | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw | `bdff5012` `465812fd` | — |
+| [#286](#c29c1332-286) | `c29c1332` | open | TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one line from… | `bdff5012` `465812fd` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2721,6 +2727,7 @@ they are not used here.
 
 status: **completed**
 
+- `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
 - `7ce03361` harness: the motion gate -- a scripted walk, and a counters oracle that reads it
 
 ```
@@ -2839,6 +2846,7 @@ MY FIRST DIAGNOSIS WAS WRONG: I blamed the parallax cache's adaptive N. A shipwo
 
 status: **completed**
 
+- `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
 - `4dbb2000` #277 FP-COVERAGE: the profiler records which content it measured, and refuses when that changes mid-leg
 - `2643b1ce` render: the gate can no longer certify a binary that was never built
 
@@ -3317,6 +3325,7 @@ Costs one full build. Worth batching with the next build window rather than run 
 
 status: **pending**
 
+- `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
 - `334bc38d` tools: measure the game&lt;-&gt;render boundary before anyone moves it
 - `b2ac6c27` render: EntityDrawables moves out of the header the slice exists to avoid
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
@@ -6701,7 +6710,7 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 
 #### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands
 
-status: **pending** · blocks: #252 · metadata: `{"kindTableAmendment": "declined-2026-08-22-reopen-on-MetricSnapshot"}`
+status: **pending** · blocks: #252 · metadata: `{"kindTableAmendment": "declined-2026-08-22-reopen-on-MetricSnapshot", "rank": 4}`
 
 - `74db1a7a` [#252] step 1: the reporter stops writing into the store it reports on
 - `9f466723` [#267] The kind-table amendment is DECLINED, and two figures were wrong in two places
@@ -7622,7 +7631,7 @@ No GPU required for item 1's scaffolding; item 4 needs legs to verify.
 
 #### #280 — SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever
 
-status: **pending**
+status: **pending** · metadata: `{"rank": 7}`
 
 ```
 FOUND 2026-08-22 by the adversarial verification of the 5-scene cartesian. Not a lever result, a
@@ -7918,6 +7927,9 @@ renderer's own equivalent is simply unmeasured, which is what #286 exists to fix
 
 status: **pending** · metadata: `{"rank": 6}`
 
+- `bdff5012` [#286] the walking fixture measures, and motion costs 23% of render CPU that no standing leg sees
+- `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
+
 ```
 Found 2026-08-22 while deriving the union's floor (4fcba71b), by reproducing the RECORDED floors
 before taking a new number.
@@ -7978,6 +7990,9 @@ together, in one pass, from banked legs; do not do it one scene at a time.
 
 status: **pending** · metadata: `{"rank": 3}`
 
+- `bdff5012` [#286] the walking fixture measures, and motion costs 23% of render CPU that no standing leg sees
+- `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
+
 ```
 Filed 2026-08-22. Subsumes [#284], whose investigation established the scope. Originated in the
 Director's intuition that CPU cycles spent uploading buffers to the GPU need measuring -- correct,
@@ -7994,45 +8009,54 @@ owner `frame` closes at 100.0% (unattributed 1.5 us/tick), so this is NOT missin
 [#171]'s shape: present, named, indistinguishable inside its bucket. StarTilePainter.cpp has ZERO
 telemetry timers of any kind. It is the largest genuinely unlit area left in the frame.
 
-=== THE FIXTURE RISK IS RETIRED -- CORRECTING THIS TASK'S OWN FILING ===
+=== THE FIXTURE EXISTS -- CORRECTING THIS TASK'S OWN FILING ===
 
-I wrote: "EVERY EXISTING SCENE FIXTURE STANDS STILL ... this needs a MOVING fixture, and building one
-is part of the work, not a preliminary." THAT IS WRONG. The motion fixture shipped with [#174]:
+I wrote: "building one is part of the work, not a preliminary." WRONG. The motion fixture shipped
+with [#174]:
 
-  STAR_RENDERTEST_WALK        parsed StarClientApplication.cpp:206, frames-per-leg
-  renderTestDriveMotion()     :1727 -- a 4-leg walk cycle, (t / walk) % 4
-  implies NOFREEZE            :1354, :1386 -- the sim stays live so the player can move
-  renderTestMotionVerdict()   reads render.cache.parallax.{refreshed,skipped,bypassed_moving}
-  scripts/render-motion.sh    sets it, default 45
+  STAR_RENDERTEST_WALK        StarClientApplication.cpp:206, frames-per-leg
+  renderTestDriveMotion()     :1727 -- four legs: RIGHT, pause, LEFT, pause
+  implies NOFREEZE            :1354 -- the sim stays live so the player can move
+  renderTestMotionVerdict()   asserts render.cache.parallax.bypassed_moving actually engaged
+  scripts/render-motion.sh    sets it, default 45 -- but is a COUNTER GATE that banks NO legs
 
-AND render-profile.sh ALREADY RUNS UNFROZEN -- STAR_RENDERTEST_NOFREEZE=1 at line 295 -- passing env
-in a block at :291-298. It simply does not pass WALK. So exposing motion to the PROFILER is a
-pass-through line beside the existing WARP one, not a build.
+render-profile.sh has always run unfrozen (STAR_RENDERTEST_NOFREEZE=1); the knob simply was not
+forwarded. Now it is, unset-by-default, so a standing leg stays standing.
 
-WHY THEY ARE SEPARATE TODAY, and it is deliberate: render-motion.sh is a GATE. It asserts a COUNTER
-invariant (the moving-camera bypass engages) and banks ZERO legs -- no telemetry-window call, no
-profiles/ output. It also runs on sbinit-perf.config because the byte-identity gate's config pins
-parallaxOracle=true, which makes bypassed_moving=0 forever. That config choice carries over.
+IT DRIVES THE REAL PLAYER, not the camera: m_player->moveRight()/moveLeft() are the same calls the
+input binding handlers make, so the movement controller, collision and camera see an ordinary walk.
+It logs player position per leg specifically so "issued moves the world ignored" can be told apart
+from "renderer stopped bypassing".
 
-=== WHAT IS ACTUALLY UNKNOWN, AND IT IS A MEASUREMENT QUESTION ===
+=== TWO CAVEATS ON THE FIXTURE, BOTH LOAD-BEARING FOR ANY NUMBER IT PRODUCES ===
 
-Not "can we move" but "is a moving leg DIFFERENCEABLE":
+1. IT WALKS BUT DOES NOT INTERACT. No mining, placing, item use, combat or inventory. That gap is
+   SPECIFICALLY RELEVANT HERE: StarMaterialItem's placement preview is what drives TileDrawer's
+   scratch WorldRenderData -- the by-value copy [#191] identified as its real blocker -- and that is
+   an INTERACTION path. No fixture we own exercises it, so any TilePainter figure measured on this
+   fixture EXCLUDES the placement-preview cost. State that wherever the number is quoted.
 
-  1. NO FLOOR EXISTS FOR A WALKING LEG. Every scene-floor.json figure is a standing-still CV. A
-     walking leg traverses different terrain as it goes, so its leg-to-leg spread is an open number.
-     Measure it the way [#278] measured the standing floors -- several legs, one scene, warm-up
-     discarded -- BEFORE differencing anything on it. A derived key got no floor for free ([#274]);
-     neither does a derived FIXTURE.
-  2. IS THE WALK REPEATABLE? [#174] shipped it as a gate on COUNTERS, not on values. Counter
-     invariance is a much weaker property than value repeatability, so its passing says nothing about
-     whether two walking legs produce comparable microseconds.
-  3. DOES THE WALK STAY ON LOADED TERRAIN at each bookmark? A leg that walks off the loaded region
-     measures chunk LOADING, not chunk rebuild.
+2. IT OSCILLATES RATHER THAN TRAVELS. Right for N frames, then left for N -- net displacement per
+   cycle is about zero, so it re-treads chunks that are cached after the first pass. That is IDEAL
+   for the still<->moving transition (which is why [#174] built it that way) and potentially POOR
+   for sustained chunk-rebuild churn, which is the cost this task wants to size. A figure from this
+   fixture is plausibly a FLOOR on rebuild cost, not a representative one. If the oscillating number
+   reads small, that is not evidence the cost is small -- it is evidence the fixture returns to
+   warm chunks, and a TRAVELLING variant is needed before concluding anything.
 
-FIRST STEP, and it is cheap: pass WALK through render-profile.sh, bank 4 legs at one scene, and
-compute the CV. That answers (1) and (2) together and costs one unattended run. If the spread is
-wide, the decomposition still proceeds -- it just cannot be A/B'd on a moving fixture, and the
-brackets get read as a composition rather than a difference.
+=== WHAT IS BEING MEASURED RIGHT NOW ===
+
+Four walking legs at 04-Ocean-Factory, STAR_RENDERTEST_WALK=45, 90s each -- the scene whose STANDING
+floors were reproduced exactly today (4 of 6 to three decimals, 4fcba71b), so the two fixtures are
+directly comparable. Answers together:
+  (a) the walking CV -- no floor exists for a moving leg; every scene-floor.json figure is standing.
+  (b) whether a walking leg is repeatable at all. [#174] shipped the walk as a gate on COUNTERS,
+      which says nothing about value repeatability.
+Warm-up discarded, as for every other floor.
+
+STILL UNKNOWN AND NOT ANSWERED BY THIS RUN: whether the walk stays on already-loaded terrain at each
+bookmark. A leg that walks off the loaded region measures chunk LOADING, not chunk rebuild -- a
+different cost wearing the same name. The per-leg position lines in the log are what to read for it.
 
 === WHAT THE DECOMPOSITION IS ===
 
@@ -8054,15 +8078,14 @@ path, exclude from production accounting).
 1. MEASURE THE INSTRUMENT'S OWN TAX. [#276]: GPU-timer brackets BILLED 37%, CAUSE 10.2%;
    drive.gputimer.us is 19.8% of lighting's CPU. [#172]'s deep-gate arming measurement is the pattern.
 2. EXHAUSTIVE AND NON-OVERLAPPING or the closure is fiction. The drive decomposition's first hand
-   reading summed to 117% because two nested probes were listed as siblings. Decide member-or-nested
-   for every timer, and gate it.
+   reading summed to 117% because two nested probes were listed as siblings.
 3. Needs the GPU free; respects [#178]'s mtime guard.
 
 === NOT THIS TASK ===
 
 [#191] also concerns TilePainter and is a DIFFERENT CONCERN: `TilePainter : public TileDrawer`
 crossing the rendering/game boundary, a 5-of-35-member DTO extraction needing a world-body oracle
-that does NOT EXIST (the golden frame hash is non-deterministic across runs, and not from ASLR). This
+that DOES NOT EXIST (the golden frame hash is non-deterministic across runs, and not from ASLR). This
 task needs no such oracle -- adding timers cannot change pixels -- which is exactly why it is
 startable and #191 is not. Sequence them; do not merge them.
 ```
