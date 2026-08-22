@@ -44,17 +44,19 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 3 | `#281` | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | ready |
-| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
-| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 5 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 6 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
+| 2 | 4 | `#252` | TEL-EXTRACT: step 1 SHIPPED (74db1a7a) — the reporter is genuinely read-only now; steps 2-4 remain | blocked by #267 |
+| 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
+| 4 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
 | 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
 | 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
 | 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+
+> **Ranking integrity:** rank 4 is claimed by 2 tasks: #252, #268
 
 ---
 
@@ -64,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 227, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 228, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 45.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -237,7 +239,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#191](#c29c1332-191) | `c29c1332` | open | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the game layer | `334bc38d` `b2ac6c27` | `matrix-prereq-ledger.md` `2026-08-01-target-state-system-architecture.md` |
 | [#192](#c29c1332-192) | `c29c1332` | done | CI-1 DONE: lint ported to Python, all three gates registered via ${Python3_EXECUTABLE} (786d4342) | `45da57fc` `786d4342` | — |
 | [#193](#c29c1332-193) | `c29c1332` | done | CI-2 DONE: STAR_EXT_GUI_LIBS_CORE split + CMake assertion; test no longer links Steam (786d4342) | `786d4342` | — |
-| [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `45da57fc` `f87a6848` | — |
+| [#194](#c29c1332-194) | `c29c1332` | done | CI-3 DONE: absolute 15us bound -&gt; 4x ratio; both ends measured, injection proves it fires (f87a6848) | `74db1a7a` `45da57fc` `f87a6848` | — |
 | [#195](#c29c1332-195) | `c29c1332` | done | CI-4 DONE: Gates workflow runs the 4 script gates on every push; ceilings read via --from-cmake (1328b3f5) | `1328b3f5` | — |
 | [#196](#c29c1332-196) | `c29c1332` | done | BUILD-1 CLOSED: overlay vendored + registered declaratively; pristine clone bootstraps (18a8e5c0, 1830ef31) | `f0b9fb1f` `1830ef31` `18a8e5c0` | — |
 | [#197](#c29c1332-197) | `c29c1332` | open | FBO-3: effect-parameter state persists per effect and nothing asserts it -- the `world` effect is the exposure | — | `matrix-prereq-ledger.md` |
@@ -295,7 +297,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | — | `board-audit-2026-08-08.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08-22) | — | — |
-| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows | — | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: step 1 SHIPPED (74db1a7a) — the reporter is genuinely read-only now; steps 2-4 remain | `74db1a7a` | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
@@ -310,7 +312,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
-| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `9f466723` | — |
+| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `74db1a7a` `9f466723` | — |
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | done | LIGHTING-WHOLE CLOSED (906aca3d): the union is analyser-computed from the gated list, and it corroborates #270 at 26.5% | `8e6cdec0` `906aca3d` `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `906aca3d` `29516d61` `1d367a57` | — |
@@ -3391,6 +3393,7 @@ dyld: Library not loaded: @loader_path/libsteam_api.dylib -- render_surface_test
 
 status: **completed**
 
+- `74db1a7a` [#252] step 1: the reporter stops writing into the store it reports on
 - `45da57fc` ci: two Windows-only failures, both real, neither what the message said
 - `f87a6848` test: the exception perf guard measured the machine, not the property
 
@@ -5801,9 +5804,11 @@ which is why the #252 ruling's step list and #268's analysis both stayed on the 
 
 <a id="c29c1332-252"></a>
 
-#### #252 — TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows
+#### #252 — TEL-EXTRACT: step 1 SHIPPED (74db1a7a) — the reporter is genuinely read-only now; steps 2-4 remain
 
-status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 8}`
+status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 4, "step1": "done 74db1a7a"}`
+
+- `74db1a7a` [#252] step 1: the reporter stops writing into the store it reports on
 
 ```
 DESTINATION RULED 2026-08-22, delegated by the Director. #252 STANDS. Unblocked.
@@ -6731,6 +6736,7 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 
 status: **pending** · blocks: #252 · metadata: `{"kindTableAmendment": "declined-2026-08-22-reopen-on-MetricSnapshot"}`
 
+- `74db1a7a` [#252] step 1: the reporter stops writing into the store it reports on
 - `9f466723` [#267] The kind-table amendment is DECLINED, and two figures were wrong in two places
 
 ```
