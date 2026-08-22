@@ -43,11 +43,11 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#252` | TEL-EXTRACT: steps 1+2 SHIPPED (74db1a7a, 0166b0f0); step 3 is UNBLOCKED and grant-sweep's comment contradict… | blocked by #267 |
-| 2 | 3 | `#281` | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | ready |
-| 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 4 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
-| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 1 | 3 | `#281` | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | ready |
+| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
+| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
 | 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
@@ -56,7 +56,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
-> **Ranking integrity:** rank 3 is claimed by 2 tasks: #252, #281
+> **Ranking integrity:** rank 6 is claimed by 2 tasks: #237, #252
 
 ---
 
@@ -66,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 229, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 230, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -297,7 +297,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | — | `board-audit-2026-08-08.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08-22) | — | — |
-| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: steps 1+2 SHIPPED (74db1a7a, 0166b0f0); step 3 is UNBLOCKED and grant-sweep's comment contradicts the rati… | `0166b0f0` `74db1a7a` | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives in metrics/… | `12b62837` `0166b0f0` `74db1a7a` | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
@@ -5805,76 +5805,68 @@ which is why the #252 ruling's step list and #268's analysis both stayed on the 
 
 <a id="c29c1332-252"></a>
 
-#### #252 — TEL-EXTRACT: steps 1+2 SHIPPED (74db1a7a, 0166b0f0); step 3 is UNBLOCKED and grant-sweep's comment contradicts the ratified spec
+#### #252 — TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives in metrics/. Step 4 gated on Me…
 
-status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 3, "step1": "done 74db1a7a", "step2": "done 0166b0f0"}`
+_Stored subject exceeds the heading; reproduced verbatim:_
 
+```
+TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives in metrics/. Step 4 gated on MetricSnapshot
+```
+
+status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 6, "step1": "done 74db1a7a", "step2": "done 0166b0f0", "step3": "done 12b62837"}`
+
+- `12b62837` [#252] step 3: the Reporter moves to metrics/, where the ratified register always said it belonged
 - `0166b0f0` [#252] step 2: one definition of the owner spellings, so a rename is a compile error
 - `74db1a7a` [#252] step 1: the reporter stops writing into the store it reports on
 
 ```
-RULED 2026-08-22. Steps 1 and 2 shipped the same day. Step 3 scoped and found unblocked; step 4
-remains gated on MetricSnapshot as the ruling says.
+RULED 2026-08-22 and STEPS 1-3 SHIPPED THE SAME DAY. Only step 4 remains, and it is gated exactly
+as the ruling says.
 
-=== STEP 1 DONE (74db1a7a) ===
-writeSnapshot took the snapshot BY VALUE; the getrusage read-modify-write moved to
-Telemetry::sampleProcessCpu(), a producer next to markTick; StarTelemetry.hpp include DROPPED, which is
-what makes the "pure read-only consumer" claim checkable and step 3 possible without a
-`metrics -> telemetry` include edge. Proven by injection: re-adding the sample makes the new arm fail
-2152 -> 2187. client_residency fired and the ceiling rose 2270 -> 2271 deliberately, recorded there.
+=== STEP 1 (74db1a7a) — the reporter stopped writing into its own subject ===
+writeSnapshot took the projection BY VALUE; the getrusage read-modify-write moved to
+Telemetry::sampleProcessCpu(), a producer beside markTick; the StarTelemetry.hpp include DROPPED.
+That last part is what made step 3 possible without a `metrics -> telemetry` edge. Proven by
+injection: re-adding the sample makes the new arm fail 2152 -> 2187. Its null control asserts the
+sampler produced something FIRST, because "the counter did not move" is free for a counter nobody
+wrote. client_residency fired; ceiling 2270 -> 2271, recorded at the ceiling with the reason.
 
-=== STEP 2 DONE (0166b0f0) ===
-Eight namers + c_ownerNames moved to StarMetricDesc.hpp as inline metric*Name; ThreadBusyReader's
-hand-copied ownerKey() DELETED. Both copies had asserted COMPLETENESS and neither checked AGREEMENT, so
-a rename would have compiled clean on both sides and silently broken every join. Proven by propagation:
-"gl" -> "GPU_X" in the header now reaches the metrics reader's output. New arm pins MetricOwner -> WORD,
-the half that was unasserted.
+=== STEP 2 (0166b0f0) — one definition of the owner spellings ===
+Eight namers + the owner table moved to StarMetricDesc.hpp as inline metric*Name; ThreadBusyReader's
+hand-copied ownerKey() DELETED. Both copies had asserted COMPLETENESS and NEITHER checked AGREEMENT,
+so a rename would have compiled clean on both sides and silently broken every join -- a join on a
+word that no longer matches finds nothing and reports zero, which reads like work that did not
+happen. Proven by propagation: "gl" -> "GPU_X" in the header now reaches the metrics reader's output.
+typeName stayed (MetricType is core-private); names prefixed metric* (typeName had 242 other refs).
 
-TWO SCOPE ADJUSTMENTS, both recorded rather than absorbed:
-  - typeName did NOT move. MetricType is declared in StarTelemetry.cpp, describes the REGISTRY's
-    storage kind rather than a descriptor facet, and is core-private -- nothing outside core can name
-    its parameter type.
-  - The names are PREFIXED metric*. In an anonymous namespace `typeName` and `sourceName` were free;
-    in namespace Star `typeName` has 242 other references and `sourceName` 41.
+=== STEP 3 (12b62837) — the move, and what it exposed ===
+The files are in source/metrics/. Two grant cells declared and wired as REAL link/include edges.
 
-=== STEP 3: UNBLOCKED, AND THE RULING'S FALSIFIER DOES NOT FIRE ===
+THE ONLY BLOCKER WAS A GATE SCRIPT CONTRADICTING THE REGISTER. grant-sweep.py asserted the Reporter
+was "a second duty and therefore a SECOND COMPONENT under the Law of One ... these two files map to
+`core`". The ratified spec had decided the opposite twice -- `telemetry`'s contents cell and
+`metrics`'s boundary facet both give INTERPRETation to `metrics`. Nothing compared the two. Corrected
+in place, with the correction written out.
 
-The ruling's most likely failure mode was LAW_OF_ONE: if `metrics`'s honest duty needs an "and" once
-projection is resident, split, and #267 was right. IT DOES NOT.
+THE RULING'S NAMED FALSIFIER WAS TESTED AND DID NOT FIRE. LAW_OF_ONE was "the most likely way this
+ruling is wrong". `metrics`'s duty -- "names nothing it measures" -- is satisfied by the Reporter
+BECAUSE OF STEP 1. Duty string untouched; check_law_of_one at ceiling; the grant runs the safe way
+round (participant names the instrument, never the reverse).
 
-The ratified TSSA already assigns interpretation to `metrics`, in two places:
+FIVE GATES WENT RED AND ALL FIVE WERE RIGHT: register_artefacts (contents cell), composition_graphs
+(4 stale blocks), spec_derivations (2 excludes rows), prose_claims (11 closure figures, each +1),
+prose_claims_fires. A grant is not a local edit. One of my own edits was wrong -- I first updated an
+excludes row check_grants does not read -- and the gate staying red is how I found it; reverted in
+the same commit.
 
-  telemetry's contents cell: "`TelemetryReporter` is NOT here -- it serialises a snapshot, which is
-    INTERPRETation, and the boundary facet gives interpretation to `metrics`."
-  metrics' boundary facet: "Everything that INTERPRETS what those handles hold, and everything that
-    measures the same machine from outside the process, is `metrics`."
+=== STEP 4: STILL GATED, DO NOT FOLD IN ===
+The owner/budget tables and snapshot()'s node walk (~185 lines) stay in `core` until snapshot()
+returns a declared value (MetricSnapshot). Moving them first forces `core` to name `metrics`, an
+upward edge. The ruling is explicit that any plan moving all ~406 lines in three steps is wrong.
 
-So the destination was ratified before the ruling was written, and `metrics`'s duty -- "names nothing it
-measures" -- is satisfied by the Reporter as of step 1: it no longer writes, and it names no registry.
-
-=== BUT ONE GATE SCRIPT DISAGREES WITH THE RATIFIED SPEC, AND IT IS THE BLOCKER ===
-
-scripts/grant-sweep.py carries a paragraph asserting the opposite:
-
-  "`StarTelemetryReporter.{hpp,cpp}` ARE DELIBERATELY ABSENT FROM THE CARVE-OUT ABOVE ... The Reporter
-   is PROJECTION, not the handle: it turns a snapshot into a run artifact, which is a second duty and
-   therefore a SECOND COMPONENT under the Law of One. Until that component is declared these two files
-   map to `core`."
-
-That is a machine-read file stating a design conclusion the ratified spec contradicts -- interpretation
-is not a second component, it is `metrics`'s declared half. This is the same shape as the defects this
-campaign keeps finding: an internally consistent claim that does not correspond. It must be corrected
-in the same commit that does the move, not left to argue with the register.
-
-DIRECTOR CALL WANTED BEFORE EXECUTING, because the fix edits a gate script's stated reasoning and adds
-grant cells to the architecture register -- neither is a mechanical move, and the ruling explicitly
-warns that granting `metrics -> telemetry` IS its own reversal. The mechanical parts (git mv, CMake,
-the two grant cells participant->metrics and frontend->metrics, the `extern` gap on the metrics grant
-row, grant-sweep --check MISSING=0) are all straightforward once that paragraph is settled.
-
-=== STEP 4 STILL GATED, PER THE RULING ===
-The owner/budget tables and snapshot()'s node walk stay in core until snapshot() returns a declared
-value (MetricSnapshot). ~185 lines. Do not fold into step 3.
+Remaining from the ruling, untouched: the ~3,798 lines of consumer Python still have no owner, and
+the row's own line figures (~406 gross, and the "256 references" that returns 308) still need the
+correction pass the ruling asked for.
 ```
 
 <a id="c29c1332-253"></a>
