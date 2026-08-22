@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**216 tasks** across 2 store(s): 4 in_progress, 29 pending, 183 completed
+**216 tasks** across 2 store(s): 4 in_progress, 28 pending, 184 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -50,13 +50,15 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
-| 8 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
 | 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
 | 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
 | 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+
+> **1 completed task(s) still carry a rank** (#262). A rank is a claim about
+> what comes next, so a finished item holding one is stale — clear it with `{"rank": null}`.
 
 ---
 
@@ -66,9 +68,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 230, of which **43 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 223, of which **40 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 41.** The task harness has, on these, appended its
+**Descriptions normalised on export: 45.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -76,8 +78,8 @@ laundered silently: a normalisation nobody can see is one nobody can notice is w
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
-- **21** — re-anchored to a live commit
-- **8** — a deployed-binary MD5, never a commit
+- **20** — re-anchored to a live commit
+- **6** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
 - **7** — NOT YET INVESTIGATED
@@ -97,7 +99,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 87 of 183.
+**Completed tasks citing no commit and no doc:** 88 of 184.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -190,7 +192,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `matrix-prereq-ledger.md` `2026-07-25-unified-telemetry-model-design.md` |
 | [#142](#c29c1332-142) | `c29c1332` | done | FBO-1: FBO subsystem hardening — honour explicit size, gate oracle surfaces, diagnosable failures | — | — |
 | [#143](#c29c1332-143) | `c29c1332` | done | CM-1: merge the env + parallax composes into one full-screen pass (MEASURED: ~2ms/frame) | — | — |
-| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge landed — remaining audit findings (27 confirmed) | — | `matrix-prereq-ledger.md` |
+| [#144](#c29c1332-144) | `c29c1332` | open | UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22) | — | `matrix-prereq-ledger.md` |
 | [#145](#c29c1332-145) | `c29c1332` | done | RS-0 DONE: the design gate passed 2026-07-14; spec approved, committed, and now implemented by L1/L2 | — | `layer1-vs-vanilla-assessment.md` |
 | [#146](#c29c1332-146) | `c29c1332` | done | GT-1: ItemTest.ItemComparison — exactMatch compares post-buildscript vs pre-buildscript parameters | `abf6e2eb` | — |
 | [#147](#c29c1332-147) | `c29c1332` | done | J-2: obstacle flag in the lightmap's unused alpha (17 -&gt; 9 taps) — BLOCKED on a lighting bit-identity oracle | — | — |
@@ -295,7 +297,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#247](#c29c1332-247) | `c29c1332` | done | R15+R16-FIX: the .nested counters and owner gl's TOTAL are the two registrations R14 did not reach | `cb59fc50` | — |
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
-| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
+| [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | — | `board-audit-2026-08-08.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08-22) | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
@@ -307,12 +309,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#259](#c29c1332-259) | `c29c1332` | done | OBS-PMU-WIRE DONE: all three sources on one axis per leg — and the two GPU instruments now cross-check every interval (… | `5fcc401c` | — |
 | [#260](#c29c1332-260) | `c29c1332` | open | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | — | — |
 | [#261](#c29c1332-261) | `c29c1332` | open | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | — | — |
-| [#262](#c29c1332-262) | `c29c1332` | open | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | — | — |
+| [#262](#c29c1332-262) | `c29c1332` | done | BOARD-TAIL CLOSED 2026-08-22: superseded — its own correction list had re-rotted, and the replacement pass shipped | — | — |
 | [#263](#c29c1332-263) | `c29c1332` | done | BOARD-CITE CLOSED: it was 47 phantom rows on 14 tasks, not two, and the board had no fixed point | `4dbb2000` `5d231c48` | — |
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
-| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | — | — |
+| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `9f466723` | — |
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
@@ -1748,60 +1750,45 @@ DONE 2026-07-20. CM-1 shipped on render/decomposition (752bc251 effect + e214ce4
 
 <a id="c29c1332-144"></a>
 
-#### #144 — UM-1: upstream merge landed — remaining audit findings (27 confirmed)
+#### #144 — UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22)
 
 status: **pending**
 
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
-DONE 2026-07-14: dev/upstream-merge @ 854b4b7f. Merged 83 upstream commits (fc3d55e..2c7f972b) + shader unification.
-Deployed to dev-feat (f5f8b76c); dev left on the pre-merge binary (3b01c4ca) as the fallback. Safety tag: pre-upstream-merge.
-Gates: build clean, core_tests 226/226, env oracle 60 MATCH/0 DIFF, parallax oracle 60 EXACT/0 DIFF, zero shader errors.
+TEXT CORRECTED 2026-08-22. The row is open but its headline overstates the remainder by an order of
+magnitude, which makes it unreadable as a work item.
 
-CONFIRMED FINDINGS NOT YET ACTIONED (from the 5-lens audit, 27 survived adversarial challenge):
+=== TWO CITED SYMBOLS ARE GONE FROM source/ ===
 
-CORRECTION TO AN EARLIER CLAIM: upstream's #542 double-buffering does NOT subsume our lightmap ping-pong.
-switchEffectConfig early-returns when the effect is already current, so N consecutive draws get ONE swap, not N.
-#542 expresses a SINGLE-PASS feedback shader; our Jacobi spread loop needs N-ITERATION ping-pong
-(StarGpuLightmapPass.cpp:34 `targets[2] = {"lightingGpu","lightingGpuB"}`). Ours is strictly more expressive. KEEP IT.
+  readFrameBuffer   0 hits
+  altTexture        0 hits
 
-HIGH VALUE:
- - SYNTHESIS (the real prize, moderate): build ONE swap-aware name->face resolver that serves BOTH the declarative
-   Effect::doubleBuffered path AND our imperative setRenderTarget/setEffectTextureFromTarget/readFrameBuffer.
-   Today a "double" FBO is invisible to our imperative API. BLOCKER: setRenderTarget reallocs `texture` but never
-   `altTexture` -- the moment lightingGpu gains "double":true they desync in size. Symmetric allocation must land
-   with it.
- - switchEffectConfig NEVER sets the viewport (latent bug on BOTH sides, moderate). An effect declaring
-   frameBuffer + sizeDiv renders into a smaller FBO with a stale full-screen viewport. Our consumers are immune
-   only by accident (setRenderTarget always overrides and DOES set the viewport). Blocks #542 on non-screen-sized
-   surfaces.
- - Effect framebuffer-textures go STALE across loadConfig (trivial, latent both sides): Effect::textures[].textureValue
-   caches a RefPtr to a GlLoneTexture that loadConfig destroys -- the effect samples an orphaned GL texture.
-   Minimal fix: drop the `undefined ||` guard in switchEffectConfig's frameBufferTextures loop so it always re-resolves.
+Findings that name them are discharged by deletion, not outstanding. The headline "27 confirmed"
+counts findings against a tree that no longer exists; the surviving remainder is roughly (d), (e)
+and the residual of (a). Rewrite the headline to that, and stop quoting 27.
 
-UPSTREAM CONTRIBUTION (beyond the diagnostics PR on upstream/fbo-diagnostics):
- - OUR per-FBO `multisampled` opt-in is a PREREQUISITE for upstream's own #542 to work at all. Upstream forces
-   m_multiSampling onto EVERY framebuffer; a GL_TEXTURE_2D_MULTISAMPLE bound to a plain sampler2D reads ZERO. They
-   never notice because they ship only "main" (blit-resolved, never sampled) -- but #542 exists precisely to let an
-   effect SAMPLE an FBO it writes. Turn AA on + add a "double" FBO upstream and it reads black. This is the bug that
-   made OUR entire world render black. Worth a PR.
- - Upstream ships ZERO "double" framebuffers and zero frameBufferTextures consumers -- #542 is a mod-facing API with
-   no in-tree exercise, untested by their own render path. (Hence its defects: leaked altId, dead blitted, no viewport.)
+=== A THIRD SYMBOL WAS RENAMED, AND A COMMENT STILL NAMES THE OLD ONE ===
 
-OUR OWN DEBT (audit was asked to judge us honestly):
- - NoVboOrphan is a mutable file-scope global written by an instance method, not thread-safe, and per our own
-   "default-on or remove" rule should be made unconditional and the A/B apparatus DELETED.
- - setEffectTextureHalfRGB / setEffectTextureR8 are 45 lines of near-identical copy-paste differing only in
-   (internalFormat, format, type). Unify at uploadTextureImage, carrying the #127 same-size TexSubImage fast path
-   down to every caller.
- - Shader-compile fallback is DEAD CODE: the catch block passes raw GLSL source where a map KEY is expected, so a
-   compile failure yields an empty program, not the default shader.
+setEffectTextureHalfRGB no longer exists as a symbol. The real signature is:
 
-PROCESS TRAP (worth a script): the harness reads assets from the REPO (harness/sbinit.config points opensb at
-assets/opensb) while the live game reads ONLY dev/opensb + dev-feat/opensb. So the harness and the live game can run
-DIFFERENT SHADERS and the harness is the one that's right. A repo-only asset edit is a silent no-op in game. Want
-scripts/deploy-install.sh <install> --verify as the single sanctioned repo->install path.
+  virtual void setEffectTextureHalf(String const&, Vec2U, uint16_t const*, unsigned channels)
+
+But the OLD NAME SURVIVES IN A COMMENT in source/application/StarRenderer_opengl.cpp, which reads
+"Same-size re-upload goes through TexSubImage (see setEffectTextureHalfRGB above)". It points a
+reader at a function that is not there under that name.
+
+That is a live #218 violation -- a comment making a false claim -- and it is NOT caught by the
+comment_claims gate, which bans file:line citations and does not verify that a named symbol resolves.
+Worth noting as a possible widening of that gate: a comment naming a symbol should have to name one
+that exists.
+
+FIX IS A source/ EDIT, so it is BLOCKED until the cartesian lands. One word: drop the RGB.
+
+=== FIGURE ===
+
+"5 of 35" in the sibling #191 row is likewise stale; that one is 5 of 23.
 ```
 
 <a id="c29c1332-145"></a>
@@ -3808,13 +3795,42 @@ status: **in_progress** · metadata: `{"rank": 14}`
 - `8fc507c0` docs(spec): sovereign headless client -- WIP design, section 1 approved
 
 ```
-Branch integration, pushed through ca7e0011. Spec at docs/superpowers/specs/2026-08-01-target-state-system-architecture.md, 4607 lines, 18 sections / 4 parts, 41 components, 17 gates green.
+Branch integration. Spec at docs/superpowers/specs/2026-08-01-target-state-system-architecture.md.
 
-SETTLED: purpose (survey envelope surveys/tssa-purpose-survey.md) — the TSSA is the ratified upper layer of an A8 Sovereign Onion; design specs conform to it, not source; primary consumer is agentic technical designers producing implementation plans; seals without freezing; exhaustive completeness in machine-parseable structure; compression closed permanently. mission-kit/axioms canonical, any-system in force for both architecture and architect. TOC ratified and implemented.
+=== FIGURES CORRECTED 2026-08-22, AND ONE DELIBERATELY LEFT UNCORRECTED ===
 
-REMAINING: content. Part I is 312 lines of placeholder against section 10's 1691. Section 10 is the DEPTH STANDARD per Director — everything else is under-written, not section 10 over-written.
+  spec length   4607 -> 6707 lines. Measured, unambiguous.
+  "Part I is 312 lines of placeholder"  -- FALSE. #205 wrote Part I (312 -> 735) and is completed.
+                                           The row's named remaining item is DONE; the real
+                                           remainder is ratification, not authoring.
+  "section 10's 1691" / "41 components" / "17 gates"
+                -- NOT CORRECTED HERE, ON PURPOSE. I could not reproduce these with a defensible
+                   command: a naive row-count over the component tables returns 151, which is
+                   obviously counting rows that are not components. Substituting a number I cannot
+                   defend is exactly the error the 2026-08-22 audit made on #237, where it read
+                   scripts/client-residency.py's CEILING column as the measurement and "corrected"
+                   a figure that was already right.
 
-Sub-tasks: #205 spine, #207 levelling pass, #208 aggregate review.
+                   THE FIX IS A GENERATOR, NOT A RECOUNT. These are derivable quantities with no
+                   owner -- the same defect #209 closed for the ZONE tally and the closure
+                   numerators. Whatever produced 41 and 17 should produce them again, into the doc,
+                   gated. Until then the honest state is UNKNOWN, and UNKNOWN is not 41.
+
+=== WHAT IS ACTUALLY LEFT ===
+
+Authoring and ratification, not engineering: the owed component items, the ungated §15 rules, and
+#208's residual (two register facets, the UNWARRANTED three-part gate, gate re-homing). Perfect
+run-window work -- no GPU, no build, no source/.
+
+Correct the figures FIRST. They are what make the row unreadable, and a reader who checks one and
+finds it wrong stops trusting the rest of the block -- which is how #263's 47 phantom citations went
+unnoticed for so long.
+
+=== RELATED RULINGS LANDED 2026-08-22 ===
+
+#252 ruled (projection -> metrics/, `report` refused) and the VOCABULARY kind-table amendment was
+DECLINED with a mechanical reopen condition. Neither changes this spec's structure; both are recorded
+against #252/#267 rather than here.
 ```
 
 <a id="c29c1332-205"></a>
@@ -5054,57 +5070,37 @@ status: **pending** · metadata: `{"rank": 6}`
 - `20027817` RESIDENCY-RATCHET (#237): a parked decision with no instrument gets made by accretion
 
 ```
-PROPOSED 2026-08-06 by the Director, from evidence produced closing #136/O13. NOT STARTED, not queued.
+PROPOSED 2026-08-06 by the Director from evidence produced closing #136/O13. NOT STARTED.
 
-WHAT IT IS. A fifth ENTRYPOINT in the TSSA's existing composition scheme (participant + presentation
-backend + driver, chosen independently). The spec already states the relation outright: "swap `rendering`
-for `transcript` and the same chain ends in `recordTick`". So this is not a new KIND of thing.
+=== RESIDENCY FIGURES, CORRECTED 2026-08-22 — AND THE AUDIT THAT CORRECTED THEM WAS ALSO WRONG ===
 
-    client_opengl     frameLoop     rendering  -> GPU     window, GUI, human
-    client_headless   headlessLoop  transcript -> file    none
-    PROPOSED          headlessLoop  rendering  -> GPU     none
+Read live from scripts/client-residency.py:
 
-It is a REAL CLIENT and behaves as a real player: real WorldClient, real player entity, logs in, warps,
-walks, streams worlds. "Headless" here means no window, no GUI, no human input -- NOT no rendering.
+  source/client/StarClientApplication.cpp    harness 186/186   total 2270/2270
+  source/client/StarClientApplication.hpp    harness  36/40    total  296/310
 
-IT IS NOT #199, and conflating them would be the mistake. #199 is presentation-NULL: "no GL context at
-all", linking star_extern + star_core + star_base + star_game only, the way starbound_server does, for
-throughput and agents. This one KEEPS the renderer, because golden frames and GL_TIME_ELAPSED are the
-entire point -- a transcript backend is useless to a render-measurement instrument. The link delta is
-therefore precise and checkable: drop star_windowing and star_frontend, KEEP star_rendering and
-star_application. #199 stays deferred on its own terms; the boundary_ratchet keeps it warm.
+The board block said 177/2233 and 36/296. So:
 
-WHY -- three defects, all one cause, all measured 2026-08-06. The harness is ~8% resident in stock
-StarClientApplication (177 of 2233 lines in the .cpp, 36 of 296 in the .hpp) and therefore INHERITS state
-it never asked for:
-  * THE SCENE SELECTED ITSELF. No notion of a target scene; it inherits the player save's persisted
-    position. Every early determinism run landed at 03-Surface Outpost, which fails both preconditions
-    (never settles, dayLevel=0 so the terms under test draw nothing). Nobody chose it.
-  * QUIESCENCE FIRED ON THE DEPARTURE WORLD. The settle criterion is written against the client's
-    world-load lifecycle and knows nothing about a pending warp; the ship holds still, so the counter
-    reached 90 mid-transition. Warp issued t+0.1s, load "ended" 2.8s later still aboard the ship.
-  * IT REWRITES ITS OWN INVENTORY. Runs go through the real save path; the bookmark list went 27 -> 23
-    across one evening, and an instance world's population went 47 -> 1.
-Fixes for all three shipped (d8f36de7) as ASSERTIONS. That is the tell: I had to DETECT being in the
-wrong world because nothing prevented it. A peer module makes all three impossible by construction.
+  .cpp  177 -> 186 harness, 2233 -> 2270 total. GENUINELY DRIFTED, and I caused today's part of
+        it: the ship-warp hook (#277) pushed harness lines from 185 to 186, which was RAISED
+        DELIBERATELY as a recorded #237 deferral rather than absorbed. The .cpp is now AT its
+        ceiling in both columns -- zero headroom, which is the point of a ratchet.
+  .hpp  36/296 WAS ALREADY CORRECT. The 2026-08-22 correspondence audit "corrected" it to 40/310
+        and that is WRONG: 40 and 310 are the CEILINGS in scripts/client-residency.py's BUDGET
+        table, not the counts. The audit read the budget column as the measurement.
 
-WHAT IT OWNS THAT TODAY'S HARNESS CANNOT:
-  1. ITS FIXTURE -- which world, which spawn, which motion, when to capture: declared, not inherited.
-  2. ITS STORAGE -- read-only or restored per run, so a run cannot mutate the inventory it measures.
-  3. ITS LOOP -- no title-screen state machine, no GUI, no input path to inherit ordering from.
+RECORDED BECAUSE IT IS THE SAME DEFECT CLASS THIS TASK EXISTS TO END: an instrument's output has
+two columns and a reader took the wrong one. A correction pass that introduces a wrong number is
+worse than the staleness it fixed, because it arrives wearing the authority of having been checked.
 
-SECOND COST, independent of correctness: StarClientApplication is STOCK upstream (origin/main has its own
-commits on it, e.g. 4427a49b). Every upstream merge negotiates around our scaffolding, and the fork is
-already ~83 commits behind.
+=== WHY THE TASK STILL STANDS ===
 
-INSTRUMENT ALREADY EXISTS. scripts/grant-sweep.py checks the TSSA grant table against the tree and reports
-UNVERIFIABLE for target components with no files yet -- rather than passing over what it cannot see. A new
-entrypoint starts as UNVERIFIABLE rows and earns each grant back, so the module boundary is enforced from
-day one instead of asserted.
+The .cpp is at 186/186 and 2270/2270 with no headroom. The next harness line in that file is a
+Director decision, not a formality -- which is exactly what the gate says when it fires. That is
+sustainable only while the harness's residence in a stock upstream file stays small; this task is
+the way out.
 
-SEQUENCING. Behind the TSSA (#204/#207) -- that is where the grant table and the entrypoint set live, and
-this adds a row to both. Cross-refs: #199 (the presentation-null sibling), #200/#203 (boundary work),
-O13 in docs/superpowers/drafts/matrix-prereq-ledger.md (the three defects, with measurements).
+Stale: "behind #204/#207" no longer orders anything -- #207 is completed.
 ```
 
 <a id="c29c1332-238"></a>
@@ -5711,92 +5707,50 @@ number is a MARGINAL cost given every other lever is on.
 
 <a id="c29c1332-250"></a>
 
-#### #250 — GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not files
+#### #250 — GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number
 
 status: **pending** · blocked by: #235, #253 · metadata: `{"rank": 9}`
 
 - cited in `docs/board-audit-2026-08-08.md`
-- cited in `docs/board.md`
 
 ```
-DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any performance impact later, but let's not restrict our design because of it." And: "as much of our sovereign observability and metrics system is in fact sovereign, under the metrics/ directory."
+DIRECTOR, 2026-08-07: "I want the option for full streaming while I play - we can evaluate any
+performance impact later, but let's not restrict our design." SUBSTANCE UNCHANGED AND OPEN.
 
-NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 lists GM-3 as "exporters: OpenMetrics + IPC socket -> external tooling consumes without linking us", and §4.6 puts it explicitly out of scope for GM-1. GM-1 shipped; nothing carried GM-3 onto the board. This is that row.
+=== THE CONSUMER-TIER FIGURE IS UNVERIFIABLE AS WRITTEN, AND A NEW NUMBER WOULD NOT FIX IT ===
 
-RUNNABLE NOW. Both blockers closed: #235 (ThreadBusyReader shipped 0eef793b) and #253 (the join, 2026-08-08). Nothing in this task's scope has shipped -- no reader base class, no library-side sample vocabulary, no socket, no OpenMetrics -- verified by the 2026-08-08 board audit.
+The row says 3,091 lines. The 2026-08-22 audit said 3,798. Counting the five obvious consumers
+(telemetry-window, obs-join, metric-desc-lint, metrics-sample, obs-plot) gives 3,417.
 
-=== WHAT THE STREAMING DIRECTIVE DECIDES, ARCHITECTURALLY ===
+THREE NUMBERS, NO DEFINING COMMAND -- and that is the actual defect, not any one of them being
+wrong. Nobody can say which scripts are "the consumer tier", so nobody can reproduce any figure, so
+each recount invents a fourth.
 
-Full streaming rules the FILE PATH out of the live axis. Measured 2026-08-07:
-  * TelemetryReporter::writeSnapshot serialises ~70KB of JSON for 150 keys (was 143 when this was
-    filed) and is called SYNCHRONOUSLY on the client main thread (StarClientApplication.cpp:527-534,
-    the telemetryReportInterval path).
-  * There is NO retention policy anywhere in TelemetryReporter or ClientApplication. Re-verified at
-    HEAD 2026-08-08: dev/storage/telemetry still holds 54,364 files / 250MB, with nothing ever
-    deleting them.
-A file per snapshot was only ever tenable at a ~5s cadence. So the live path is a DIFFERENT
-path from the archive path: a lock-free ring the sovereign side drains out-of-process. Files
-remain for the harness and the archive, where cost does not matter. This is not a perf
-compromise -- it is what "streaming" means, and it makes the retention problem stop scaling
-with the sampling rate.
+THE FIX IS THE ONE #267's `telemetry` owes cell already models: state the command beside the number.
+That cell reads "counting Telemetry(Timer|Counter|Gauge|Rate|Scope)|Telemetry:: outside
+core/StarTelemetry* and test/, stated because a bare count is a figure nobody can reproduce" -- and
+because it states its command, re-running it TODAY reproduces the audit's figure exactly (308). That
+is what a durable figure looks like.
 
-=== SCOPE ===
+So: DO NOT replace 3,091 with 3,417 or 3,798. Define the set, state the command, then quote what it
+returns. Until then treat the number as absent rather than stale -- absent and wrong are different,
+which is this campaign's founding distinction.
 
- 1. HOIST THE CONVERGENCE POINT INTO THE LIBRARY. samplesFor() -- the one function that turns
-    a reader result into MetricSamples -- lives in metrics_main.cpp:74, i.e. in the EXECUTABLE, and
-    its own comment at :80 says "When this moves into the library (task #250)". A second consumer
-    must reimplement it or shell out and parse. THE PREDICTED COST HAS NOW BEEN PAID: [#253]'s
-    scripts/metrics-sample.py shells out to dist/metrics and parses its TSV, which is precisely the
-    "reimplement or shell out" this item was filed to prevent. Pure relocation into star_metrics.
-    This demotes the CLI from OWNER of the sample vocabulary to its first consumer.
- 2. ONE READER INTERFACE. main calls TWO readers by hand -- ClientBusyReader and ThreadBusyReader --
-    and both return BusyReading. (CORRECTED 2026-08-08: this used to say they return DIFFERENT types,
-    BusyReading vs EngineBusyWindow. That was never true. `git log -S EngineBusyReader --
-    source/metrics/metrics_main.cpp` is EMPTY: main has never called EngineBusyReader, which is
-    exercised only by source/test/metrics_test.cpp:180-233. The type difference is real but lives
-    between the LIBRARY's readers, not at the call site.) A unified surface must absorb it:
-        enumerate(pid, window) -> List<MetricSample>
-    with ClientBusyReader / EngineBusyReader / ThreadBusyReader / SnapshotReader behind it.
-    MetricDesc's MetricSource enum -- InProcess, ProcFs, SysFs, PerfEvent, GlQuery -- is ALREADY the
-    taxonomy for this.
- 3. THE SnapshotReader ARM IS THE POINT. It makes the game's own 150 in-process keys just
-    another source behind the same surface. Two stores, one API. NEVER a merged store: the
-    convergence spec §1 already refuted merging (Telemetry is a process-global singleton with
-    no subject parameter; MetricSample holds five Strings and throws, so it cannot go on a
-    per-call bracket). This is a PRESENTER over two stores.
- 4. TRANSPORT. Socket + OpenMetrics. Shaped as REPEATED WINDOWS ON A COMMON CLOCK from day
-    one -- a single-shot API retrofitted to stream is the expensive version.
- 5. BOTH CLOCKS ON THE SAMPLE. HALF-BUILT SINCE THIS WAS FILED, and this item shrinks accordingly.
-    The SNAPSHOT meta already carries both: StarTelemetryReporter.cpp:82-83 writes tMonotonicNs and
-    tEpochNs (schema 4, shipped 3a8c530e under [#235]), and the live artefact confirms it. What
-    remains is carrying both on the SAMPLE. Carry monotonic for interval arithmetic (immune to NTP
-    steps) and epoch for the join and the x-axis. Picking one loses something.
- 6. RESAMPLING RULE, and it is load-bearing: re-difference RAW CUMULATIVE COUNTERS onto a
-    common grid, NEVER interpolate a rate. Interpolating a rate invents work the hardware
-    never did -- the same rule busyDelta already encodes for counters that move backwards.
-    MetricBoundedness decides whether a point is allowed to exist: a level and a rate are the
-    same line on a plot, and differencing a HighWaterMark (lighting.gpu.spread
-    .max_emission_x1000) yields a smooth, plausible, meaningless series.
-    [#253] has since IMPLEMENTED this rule in Python (scripts/obs-join.py rediff()), together with
-    two properties this item does not yet name and #256's T10/T11 now do: a stated METHOD per source
-    (a level, a difference, or a mean of differences) and a denominator that is the span actually
-    MEASURED rather than the interval requested. Both belong on the sample type.
+THE CLAIM THE FIGURE SUPPORTS SURVIVES INDEPENDENTLY: there is no retention policy anywhere. grep for
+retention/prune/unlink/delete over StarTelemetryReporter.cpp and StarClientApplication.cpp returns
+zero sites, whatever the tier's line count is.
 
-=== THE UNOWNED HALF, STATED SO IT IS A DECISION AND NOT AN OMISSION ===
+=== ALSO STALE ===
 
-The CONSUMER half of this system is Python in scripts/ with no component at all. RE-MEASURED
-2026-08-08: the five originally-named files are now 2,260 lines, not 1,932 -- telemetry-window.py
-813 (was 661), gputimer-brackets.py 401, pmu-join.py 372, metric-desc-lint.py 489 (was 313),
-pmu-engine-sample.py 185. [#253] then added two more consumers to the same unowned surface,
-obs-join.py 514 and metrics-sample.py 317, for a total of 3,091. The gap grew 60% while this row sat
-pending. By line count it remains the largest sovereignty gap in the observability system, larger
-than the StarClient ride-in. Whether it becomes C++ under metrics/ or stays Python with a DECLARED
-boundary is a TSSA question; #200 (ARCH-1) is now DONE, so the boundary machinery to answer it
-exists. #256's T7 records what the consumer must carry, derived from the join rather than guessed.
+dev/storage/telemetry does not exist in this tree, so the "54,364 files / 250M" observation cannot be
+checked from here. It was true where it was taken; it is not a fact about this repository.
 
-CROSS-REF: #245 is GM-2. #237 would be a consumer. #252 moves the projection code. #254 is the first
-consumer of the sample properties this task defines -- built first ON PURPOSE, per #256 T7: designing
-the interface before a consumer exists fits the diagram rather than the data.
+=== SANCTIONED SHAPE, per the #252 ruling ===
+
+The registry read goes in a `measure` ENTRYPOINT (composition), NOT in star_metrics. If a streaming
+reader inside the library needs Telemetry.hpp, grant-sweep fires on every push -- and the fix is to
+hoist the read into the composition, NOT to grant metrics -> telemetry. That grant IS the reversal of
+the #252 ruling and is explicitly its falsifier 3.
 ```
 
 <a id="c29c1332-251"></a>
@@ -6540,75 +6494,43 @@ THE FIX IS A CHOICE, and it is the same one the board itself already made:
 
 <a id="c29c1332-262"></a>
 
-#### #262 — BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks
+#### #262 — BOARD-TAIL CLOSED 2026-08-22: superseded — its own correction list had re-rotted, and the replacement pass shipped
 
-status: **pending** · metadata: `{"rank": 15}`
+status: **completed** · metadata: `{"rank": 15}`
 
 ```
-RECORDED, NOT YET APPLIED -- said plainly so the gap is a decision rather than a discovery.
+CLOSED AS SUPERSEDED, 2026-08-22.
 
-The 2026-08-08 board audit (15 read-only agents + adversarial verification, full record at
-docs/board-audit-2026-08-08.md) checked all 37 open/active tasks against the tree. The LIVE
-observability cluster was corrected in place the same day: #250, #252, #245, #254, #255, and five
-tasks were closed (#200, #201, #202, #207, #219). Five new defects were filed (#257-#261).
+This row ordered the 2026-08-08 audit's pointer corrections applied to 21 dormant tasks. It was never
+executed, and by the time it was picked up THE CORRECTION LIST ITSELF HAD ROTTED -- verified by the
+2026-08-22 correspondence audit:
 
-WHAT REMAINS UNAPPLIED is the pointer rot in the DORMANT clusters -- render, sim-levers, and the
-older arch tasks. Every one of these was verified as STILL GENUINELY OPEN; what has rotted is the
-file:line references a reader would follow. Leaving them is safe for now precisely because the
-Director has ruled that no new render/engine optimisation is chased yet, so nobody is following
-these pointers this week. It is NOT safe indefinitely: a task whose pointers are dead reads as a
-task nobody can start.
+  - its replacement pointer for #169 (StarWorldClient.cpp) is already dead;
+  - its line "the #66 SHA is on no branch" is wrong -- 373f9b3b resolves as an object, it is simply
+    not an ancestor of integration after the reorg squash. Different fact, different remedy.
 
-TASKS WITH CONFIRMED ROTTED POINTERS (corrections in the audit doc, one section each):
-  #135  parallax refresh state    hpp:99-119  -> hpp:191-221 ; cpp:266-320 -> cpp:483-534
-        (cpp:266-320 is now the ENV cache's drift/motion term from #177 -- a DIFFERENT gate)
-  #136  frameBufferGeneration is in StarRenderer.hpp:194, not StarGlRenderSurface.hpp
-  #138  both sequencing prerequisites SHIPPED; only the two feasibility spikes remain
-  #161  both counter line references wrong -- the ones the task calls "cheap because both
-        counters already exist"
-  #169  floatToHalf is StarWorldClient.cpp:65 not :32; "CMakeLists.txt:295-296" names a file that
-        does not exist (there is no repo-root CMakeLists.txt)
-  #191  WorldRenderData has 23 members, not 35 -- the slice is 5 of 23, and the "35 members"
-        framing overstates the target by 52%
-  #197  EIGHT switchEffectConfig("world") sites, not ten; none of the eight line numbers is right;
-        WorldPainter is not one of them. The CENTRAL claim (nothing asserts effect-parameter state)
-        is CONFIRMED at HEAD.
-  #198  "ZERO TRACE" verifies literally; the one line is StarRenderer_opengl.cpp:106, not :80
-  #171  every line reference dead; renumbered in the audit doc. The OBJECTION is unchanged (all six
-        costs are (Frame, Cpu), one pair, one whole) but its stated MECHANICS are stale: the owner
-        table is now keyed by (owner, domain), and MetricDesc.whole exists and is INERT.
-  #66   the cited integration SHA is on no branch; the "superseded by #70" redirect points at a
-        completed task
-  #90   SKIP-0 flag site drifted 122 lines; the closing sentence repeats a claim #84 retracted
-  #124  LEVER HUNT -- no code, but the design spec AND implementation plan both exist on disk and
-        the task cites neither, so it reads as not-yet-brainstormed when only the build remains
-  #75   NOT partially done -- fully open on both items; the toggle fix's same-session path has
-        never been exercised, and the ProtoCacheToggle tests cannot run in CI
-  #104  decision note lives at /root/kubebound/2026-06-26-fu-lua-offload-decision.md; /tmp/fulua/ is
-        gone. The DEFER holds and the reconsider-gate is NOT open.
-  #144  THREE items shipped (not four): viewport, shader-fallback dead code, process-trap script.
-        setEffectTextureHalf is PARTIAL. Several paths moved to StarGlRenderSurface.cpp.
-  #4    THE SECOND STORE's only task. THREE of four items shipped under [#160]; only the per-draw
-        glTexParameteri hoist remains. Every hpp:/cpp: reference is dead -- the code moved to
-        source/application/StarGlRenderSurface.{hpp,cpp}.
-  #130  live repo, dormant a month; the work after STAGE 0 was an undocumented by-reference
-        blueprint arc, not the hardening backlog the board says comes next
-  #203  every deliverable shipped, but do NOT close: it left a residual defect --
-        system-boundaries.md:1069-1070 still states a position §14 item 4 retracts
-  #204  every headline figure rotted, including "Part I is 312 lines of placeholder" which #205
-        superseded
-  #208  four of five register-field bullets genuinely open; the fifth (section 15's instrument
-        table rows) landed at c359fc30. Blocker #207 is now CLOSED.
-  #237  correctly filed and correctly worded -- the ONLY defensible edit is to drop or re-derive
-        "the fork is already ~83 commits behind"
-  #251  "933-2350MHz" should read "800-2350MHz" (sysfs gt_RPn/gt_RP0 on card1). The central claim
-        verifies literally: `git log --all -S DISJOINT -- source/` is EMPTY, so absent means
-        never-written, not renamed.
+A CORRECTION LIST WITH A SHELF LIFE IS THE DEFECT IT DESCRIBES. Applying it verbatim would have
+written two fresh errors into the board while wearing the authority of a fix.
 
-DO NOT APPLY BLIND. Each correction in the audit doc survived an adversarial refutation pass, but
-twelve of the audit's original thirty-two findings were REFUTED and several of those refutations
-themselves carried corrections. Read the refutation column before editing a task, not just the
-finding.
+=== WHAT SHIPPED INSTEAD (db46a67b and follow-ups) ===
+
+A fresh correspondence audit of all 35 open rows, each claim re-verified against the tree and every
+claimed status change adversarially attacked. Result: 9 of 11 claimed changes REFUTED; one row
+genuinely mislabelled (#203, closed); four rows asserting things that were FALSE, all corrected
+(#136, #90, #269, #138). Then figure corrections across #251, #267, #237, #144, #250, #204, and
+Director rulings recorded on #66, #69, #104, #130, #252, #267.
+
+=== THE PART OF THIS ROW THAT IS STILL OWED, AND WHERE IT WENT ===
+
+Line-number rot on #169, #191, #197, #161, #198, #135 -- all six still cite file:line, which #218
+bans. NOT done here. It is mechanical, it is desk work, and it should be swept in one pass with a
+checker rather than by hand, because a hand sweep is how this row came to exist. Whoever takes it:
+symbols resolve, only the numbers are wrong, so it is a re-point not a re-derive.
+
+Also still owed: #124's three marshalling artefacts under /root/kubebound/ are uncited.
+
+LESSON WORTH KEEPING: do not bank a correction list for later. Corrections are perishable -- the tree
+moves under them. Either apply them in the same pass that finds them, or re-derive when you act.
 ```
 
 <a id="c29c1332-263"></a>
@@ -6804,6 +6726,8 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 #### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands
 
 status: **pending** · blocks: #252 · metadata: `{"kindTableAmendment": "declined-2026-08-22-reopen-on-MetricSnapshot"}`
+
+- `9f466723` [#267] The kind-table amendment is DECLINED, and two figures were wrong in two places
 
 ```
 RATIFIED AS D14 (3eed5ab8): axioms A1 and A2 bind, and this task is the price of A1. THAT PART IS
