@@ -13,6 +13,7 @@ discriminated GPU metrics by a filename suffix and hard-coded which metric count
   telemetry-window.py <snapshot-dir> [--label NAME] [--first N] [--last N] [--json OUT]
 """
 import argparse
+import importlib.util
 import json
 import os
 import sys
@@ -437,6 +438,96 @@ def no_whole_report(owner, dom, total_name, parts, denom):
             f"owner/domain; read the absence as an instrument gap, not as an empty budget.", None)
 
 
+def load_union_membership():
+    """-> (union_name, {members}) read from scripts/metric-desc-lint.py.
+
+    THE LIST HAS EXACTLY ONE WRITER AND IT IS NOT THIS FILE. metric-desc-lint.py owns UNION_MEMBERS
+    and gates it against the tree: `union_membership` proves the set is EXHAUSTIVE (every member
+    declares the union, so no term can go missing) and NON-OVERLAPPING (nothing else declares it, so
+    no term is counted twice -- `lighting.produce.particles.us` is the standing example, lighting CPU
+    by any plain reading and correctly excluded because it is nested inside a member).
+
+    Restating those seven names here would create a second writer, and the copy that drifted would be
+    this one: the gate would stay green against the source while the number printed below quietly lost
+    or doubled a term. That is the defect this campaign keeps finding, so the arithmetic reads the
+    gated list instead of paraphrasing it. The awkward importlib call is the price of the hyphen in
+    the filename, and it is worth paying for a sum that cannot disagree with its own gate.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metric-desc-lint.py")
+    spec = importlib.util.spec_from_file_location("metric_desc_lint", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.UNION, set(mod.UNION_MEMBERS)
+
+
+def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
+    """-> (lines, violations) for a declared cross-owner AGGREGATE.
+
+    AN AGGREGATE IS NOT A BUDGET, and that difference decides what may be printed. A budget has an
+    INDEPENDENTLY MEASURED whole, so its parts can disagree with it and that disagreement is the
+    closure -- a check that can actually fail. An aggregate's value IS the sum of its members, so
+    there is nothing to close against, and a "closure" line here would print 100.0% on every capture
+    and read as verification. MetricDesc::whole draws the same line at the declaration site.
+
+    What this buys is therefore a DEFINITION computed from a gated membership list, replacing a figure
+    that until now was summed BY HAND into a markdown table ([#269]). A hand-summed whole is a claim;
+    this is an instrument.
+
+    ONE DENOMINATOR, AND IT IS STATED. The members span owner `lighting` (denominated in RECOMPUTES)
+    and owner `frame` (in FRAMES), and their cadences mix frame and call, so NEITHER owner's us/tick
+    column is a valid basis for the sum. Each member is coverage-scaled against its OWN cadence into
+    absolute microseconds first, and the total is divided by FRAMES -- the question the union exists to
+    answer is what lighting costs per frame. The figures below are consequently NOT comparable to the
+    us/tick column of the [owner: lighting] table above, which is per recompute. That is why the header
+    prints its own denominator rather than inheriting one.
+
+    A MISSING MEMBER MAKES THE TOTAL A LOWER BOUND, NEVER A TOTAL. Absent is not zero: a member can be
+    missing because the cost genuinely did not occur, or because its registration never ran -- which is
+    exactly what [#241] found and fixed -- and a window cannot tell those apart. Summing the members
+    that happen to be present and labelling it "the union" would erase that distinction silently.
+
+    NO VIOLATION IS RAISED FOR AN ABSENT MEMBER, deliberately. `lighting.upload.us` is legitimately
+    absent from windows where no upload occurred, so flagging it would fire on correct data on most
+    captures and train the reader to scroll past violations -- the failure mode [#223] cost weeks to.
+    The LOWER BOUND label carries the warning instead, on the number itself, where it cannot be missed.
+    A violation is raised only when the sum is not a quantity (mixed units) or when the instrument
+    produced nothing at all (no member present).
+    """
+    present = sorted(m for m in members if m in w)
+    missing = sorted(m for m in members if m not in w)
+
+    if not present:
+        return ([f"  [aggregate: {name}]  NOT REPORTABLE -- none of its {len(members)} declared "
+                 f"members are in this window, so there is nothing to sum."],
+                [f"{name}: aggregate declared but NONE of its {len(members)} members are in the "
+                 f"window. Read that as an instrument gap, not as a lighting cost of zero"])
+
+    basis, assumed, declared = unit_basis(present, w)
+    if len(declared) > 1:
+        return ([f"  [aggregate: {name}]  REFUSED -- its members declare {len(declared)} different "
+                 f"units ({', '.join(declared)}), so their sum is not a quantity."],
+                [f"{name}: aggregate REFUSED, mixed units ({', '.join(declared)}). Reconcile the "
+                 f"declarations at the registration sites; the consumer will not guess a conversion"])
+
+    parts = {m: coverage_scale(w[m], cadence_ticks, w)[0] for m in present}
+    total = sum(parts.values())
+
+    lines = [f"  [aggregate: {name}]  {len(present)}/{len(members)} members present, {denom} ticks "
+             f"({denom_name}), unit {basis}{' (assumed)' if assumed else ''}",
+             f"       {'member':<40} {'us/tick':>9} {'share':>7}",
+             f"       {'-'*40} {'-'*9} {'-'*7}"]
+    for m in sorted(present, key=lambda k: -parts[k]):
+        share = 100.0 * parts[m] / total if total else 0.0
+        lines.append(f"       {m:<40} {parts[m]/denom:9.1f} {share:6.1f}%")
+    lines.append(f"       {'-'*40} {'-'*9} {'-'*7}")
+    lines.append(f"       {('LOWER BOUND' if missing else 'union total'):<40} {total/denom:9.1f} "
+                 f"{100.0:6.1f}%")
+    for m in missing:
+        lines.append(f"       ABSENT: {m} -- the figure above is a LOWER BOUND on the union, not the "
+                     f"union. Absent is not zero.")
+    return lines, []
+
+
 def selftest():
     """Prove the closure bound fires AND that it does not over-fire. Both ends measured (#194's rule).
 
@@ -634,6 +725,59 @@ def selftest():
     arm("a negative GAUGE is NOT refused -- levels may fall",
         _negcheck({"fps": {"type": "gauge", "value": -3.2}}) == [])
 
+    # AGGREGATE ARMS (#269). The union is a DEFINITION, not a closure, so none of these assert a
+    # percentage -- they assert that the sum is taken over the gated list, that an incomplete sum is
+    # labelled as one, and that the two ways of producing no honest number both say so out loud.
+    def _tm(total, count, cadence="frame", unit=None):
+        m = {"type": "timer", "total": total, "count": count, "cadence": cadence,
+             "domain": "cpu", "owner": "frame", "role": "detail"}
+        if unit:
+            m["unit"] = unit
+        return m
+
+    _ct = {"frame": 100}
+    _full = {"a.us": _tm(1000, 100), "b.us": _tm(3000, 100)}
+
+    lines, viol = aggregate_report("u.us", {"a.us", "b.us"}, _full, _ct, 100, "frames")
+    body = "\n".join(lines)
+    arm("a COMPLETE aggregate says 'union total', not 'LOWER BOUND'",
+        "union total" in body and "LOWER BOUND" not in body and not viol)
+    arm("the aggregate sums its members and divides by the stated denominator",
+        "      40.0" in body)  # (1000+3000)/100
+    arm("member shares are of the aggregate, and the members carry them",
+        "25.0%" in body and "75.0%" in body)
+
+    # THE ARM THAT MATTERS MOST. A member that is not in the window must degrade the TOTAL to a bound,
+    # because absent and zero are the same integer and only one of them is a cost of nothing.
+    lines_m, viol_m = aggregate_report("u.us", {"a.us", "b.us", "gone.us"}, _full, _ct, 100, "frames")
+    body_m = "\n".join(lines_m)
+    arm("a MISSING member makes the total a LOWER BOUND and names what is missing",
+        "LOWER BOUND" in body_m and "gone.us" in body_m and "union total" not in body_m)
+    arm("a missing member raises NO violation -- the label carries it, so the check cannot cry wolf",
+        viol_m == [])
+    arm("the sum does not silently change when a member is merely absent",
+        "      40.0" in body_m)
+
+    lines_n, viol_n = aggregate_report("u.us", {"x.us"}, _full, _ct, 100, "frames")
+    arm("an aggregate with NO member present is NOT REPORTABLE and violates",
+        "NOT REPORTABLE" in "\n".join(lines_n) and len(viol_n) == 1)
+
+    _mixed = {"a.us": _tm(1000, 100, unit="us"), "b.ns": _tm(3000, 100, unit="ns")}
+    lines_u, viol_u = aggregate_report("u.us", {"a.us", "b.ns"}, _mixed, _ct, 100, "frames")
+    arm("mixed units are REFUSED rather than summed",
+        "REFUSED" in "\n".join(lines_u) and len(viol_u) == 1)
+
+    # CORRESPONDENCE, NOT MERELY 'IT DID NOT THROW'. The import exists to make this file and the gate
+    # share one membership list; an arm that only proved the call returned would pass just as happily
+    # against an empty set, and an empty set makes every aggregate NOT REPORTABLE while looking wired.
+    try:
+        _u_name, _u_members = load_union_membership()
+        arm("the membership list is IMPORTED from the gate, and arrives non-empty and named",
+            _u_name == "lighting.cpu.union.us" and len(_u_members) >= 2
+            and "lighting.cpu.total.us" in _u_members)
+    except Exception as _exc:
+        arm(f"the membership list is IMPORTED from the gate ({_exc})", False)
+
     print()
     if fails:
         print(f"telemetry-window selftest: FAILED -- {len(fails)} arm(s): {', '.join(fails)}")
@@ -648,7 +792,9 @@ def selftest():
           "a timer that recorded nothing is reported rather than silently dropped, every stamp names "
           "its own source, the series carries per-interval deltas rather than cumulative values, and a "
           "closure whose parts declare different units is REFUSED rather than summed, a run-long peak is "
-          "never presented as a window value, and a descriptor conflict finally reaches a reader")
+          "never presented as a window value, a descriptor conflict finally reaches a reader, and an "
+          "AGGREGATE sums the gated membership list -- degrading to a LOWER BOUND when a member is "
+          "absent, rather than quietly summing the ones that happened to be there")
     return 0
 
 
@@ -965,6 +1111,34 @@ def main():
             if v:
                 violations.append(v)
         print()
+
+    # AGGREGATES ARE REPORTED AFTER THE OWNER LOOP BECAUSE THEY SPAN OWNERS. The lighting-CPU union
+    # draws from owner `lighting` and owner `frame` both, so it belongs to neither block above and
+    # would have to be summed by hand -- which is precisely what it was, in a markdown table, until
+    # [#269]. Denominated in FRAMES for every aggregate: see aggregate_report for why one denominator
+    # has to be chosen and why this is the right one.
+    #
+    # A FAILED IMPORT REFUSES RATHER THAN SKIPS. If the membership list cannot be read there is no
+    # honest number to print, and printing nothing would leave the section silently absent -- the same
+    # shape as a gate that skips and reports OK, which is the failure this whole file is built against.
+    frame_spec = owners.get("frame", {})
+    frame_denom_name = frame_spec.get("denominator")
+    frame_denom = tick_count(w.get(frame_denom_name)) if frame_denom_name else 0
+    if frame_denom:
+        try:
+            union_name, union_members = load_union_membership()
+        except Exception as exc:
+            print(f"  [aggregate]  REFUSED -- cannot read the gated membership list from "
+                  f"metric-desc-lint.py ({exc}). No aggregate is reported; this is a missing "
+                  f"instrument, not an absence of cost.\n")
+            violations.append(f"aggregate membership unreadable: {exc}")
+        else:
+            lines, viol = aggregate_report(union_name, union_members, w, cadence_ticks,
+                                           frame_denom, frame_denom_name)
+            for line in lines:
+                print(line)
+            violations.extend(viol)
+            print()
 
     # THE HEADLINE CPU NUMBER IS BUSY, NOT TOTAL.
     #
