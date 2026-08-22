@@ -474,6 +474,7 @@ fi
 scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL" \
   --json "harness/profiles/$LABEL.json" \
   --asset-fingerprint "$ASSET_FP" \
+  --scene "${WARP:-<unpinned>}" \
   --series "harness/profiles/$LABEL.series.json"
 
 # THE JOIN, HERE, WHILE BOTH HALVES ARE ON DISK AND STILL BELONG TO THIS LEG. Both series are stamped on

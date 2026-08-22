@@ -601,6 +601,11 @@ def main():
     ap.add_argument("--first", type=int, default=None)
     ap.add_argument("--last", type=int, default=None)
     ap.add_argument("--json", default=None)
+    ap.add_argument("--scene", default=None,
+                    help="the --warp bookmark this leg measured. Recorded into meta so a consumer "
+                         "can select the right noise floor: scene-floor.json shows Desert Town at "
+                         "6.6%% CV and 03 Surface Outpost at 46%%, so the same delta means opposite "
+                         "things at the two (#279).")
     ap.add_argument("--asset-fingerprint", default=None,
                     help="hash of the asset chain this leg ran against, from "
                          "scripts/asset-fingerprint.sh. Recorded into meta so a leg can say WHICH "
@@ -957,7 +962,8 @@ def main():
                        "meta": dict(meta, intervals=hi - lo, windowIndices=[lo, hi],
                                     windowStartEpoch=window_start, windowEndEpoch=window_end,
                                     windowStampSource=[ws_src, we_src],
-                                    assetFingerprint=args.asset_fingerprint),
+                                    assetFingerprint=args.asset_fingerprint,
+                                    scene=args.scene),
                        "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")
