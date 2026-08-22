@@ -251,14 +251,31 @@ print("MOVED %s %s" % (b, o) if b != o else "IDENTICAL %s %s" % (b, o))
 PY
 }
 
+# THE LOCK IS WRITTEN BY THE ACT IT DESCRIBES (#275). scripts/harness-active.sh has been the reader
+# since ae90fe7b and `lever_table` has been skipping on it -- but NOTHING EVER WROTE THE FILE, so the
+# detector could only ever report "no run active" and the gate went on reading a config this script
+# mutates once per leg as though it were the tree. A reader with no writer is the same defect as a
+# claim with no instrument, and it sat live while the ratchet showed green.
+MATRIX_LOCK=${HARNESS_LOCK:-harness/matrix/.active}
+lock_acquire() { mkdir -p "$(dirname "$MATRIX_LOCK")"; printf '%s pid=%s\n' "$1" "$$" > "$MATRIX_LOCK"; }
+# RELEASED ONLY ON A CLEAN FINISH, and deliberately NOT from the EXIT trap. A crash must LEAVE the
+# lock behind: the config is still mutated, which is dirtier than a running matrix rather than
+# cleaner. An operator clears it after looking at the config; a script clearing it would be guessing.
+lock_release() { rm -f "$MATRIX_LOCK"; }
+
 # ---------------------------------------------------------------------------------------------
 # Selftest. Every check above is itself a claim, and an unwatched checker is the defect it exists to
 # prevent. Each arm proves one check FIRES -- not merely that it is present.
 # ---------------------------------------------------------------------------------------------
 selftest() {
   tmp=$(mktemp -d); trap 'rm -rf "$tmp"' RETURN
-  fails=0
+  fails=0; arms=0
+  # COUNTED, NOT RESTATED. This banner read "15/15" as a literal while the arms below were free to
+  # change underneath it -- the same defect that has now been found eight times in this tree, where a
+  # summary keeps a number the thing it summarises has outgrown. A count that can disagree with what
+  # ran is worse than no count, because it is trusted.
   arm() { # arm <name> <expected-rc> <actual-rc>
+    arms=$((arms+1))
     if [ "$2" -eq "$3" ]; then echo "  ok   $1"; else echo "  FAIL $1 (expected rc $2, got $3)"; fails=1; fi
   }
 
@@ -303,13 +320,15 @@ EOF
   echo '{"metrics":{"w":{"count":1000}}}' > "$tmp/a.json"
   echo '{"metrics":{"w":{"count":1000}}}' > "$tmp/b.json"
   v=$(witness_moved "$tmp/a.json" "$tmp/b.json" w)
-  case "$v" in IDENTICAL*) echo "  ok   identical witness reads VOID";; *) echo "  FAIL identical witness read as '$v'"; fails=1;; esac
+  case "$v" in IDENTICAL*) rc=0;; *) rc=1;; esac
+  arm "identical witness reads VOID (read '$v')" 0 $rc
 
   # 7. ...and a witness that DID move reads as moved. Arm 6 alone would pass if the checker always
   #    said IDENTICAL, which would void every real result instead of none.
   echo '{"metrics":{"w":{"count":2000}}}' > "$tmp/c.json"
   v=$(witness_moved "$tmp/a.json" "$tmp/c.json" w)
-  case "$v" in MOVED*) echo "  ok   moved witness reads as moved";; *) echo "  FAIL moved witness read as '$v'"; fails=1;; esac
+  case "$v" in MOVED*) rc=0;; *) rc=1;; esac
+  arm "moved witness reads as moved (read '$v')" 0 $rc
 
   # 8. A drifted config is caught against the declared baseline.
   echo '{"k": false}' > "$tmp/drifted.cfg"
@@ -346,9 +365,20 @@ EOF
   under=$(python3 -c "print(1 if abs(100.0*(430-418)/418) > $SCENE_BOUND_PCT else 0)")
   [ "$under" = "0" ]; arm "population inside the bound is accepted" 0 $?
 
+  # THE LOCK ROUND-TRIP, against the REAL reader. harness-active.sh had a full selftest of its own and
+  # was still inert in production, because both halves were only ever tested against fixtures this
+  # script does not write. So these two arms drive the writer this runner actually calls and let the
+  # actual detector answer -- the one property neither selftest could see on its own.
+  ( MATRIX_LOCK="$tmp/.active"; lock_acquire "matrix-selftest-000000"
+    HARNESS_LOCK="$tmp/.active" scripts/harness-active.sh >/dev/null 2>&1 )
+  arm "the runner's own lock reads ACTIVE to harness-active.sh" 0 $?
+  ( MATRIX_LOCK="$tmp/.active"; lock_release
+    HARNESS_LOCK="$tmp/.active" scripts/harness-active.sh >/dev/null 2>&1 )
+  arm "after a clean release the tree reads as its own again" 1 $?
+
   echo
   [ $fails -eq 0 ] || { echo "lever-matrix selftest: FAILED"; return 1; }
-  echo "lever-matrix selftest: 15/15 arms ok -- every check proven to fire AND to pass"
+  echo "lever-matrix selftest: $arms/$arms arms ok -- every check proven to fire AND to pass"
   return 0
 }
 
@@ -492,6 +522,11 @@ if [ "$DRY_RUN" = 1 ]; then
 fi
 
 mkdir -p "$OUT"
+# CLAIM THE MUTABLE STATE BEFORE TOUCHING IT. Every leg below writes one lever into $CFG, so from
+# here until the clean exit the config describes a leg rather than the tree, and any gate reading it
+# is reporting on this run. --dry-run returns above without reaching this line: it mutates nothing,
+# so it must not claim anything either.
+lock_acquire "$RUN_ID"
 MANIFEST="$OUT/manifest.json"
 : > "$OUT/legs.tsv"
 
@@ -742,6 +777,12 @@ for lv in json.load(open('$TABLE'))['levers']:
     echo "  pass $r tail baseline FAILED -- the pass keeps its head baseline and its levers" >&2
   fi
 done
+
+# THE LAST LEG HAS RETURNED, so $CFG is back to baseline -- render-profile.sh snapshots and restores
+# it on every exit path, and the next-leg integrity check above is what proves that keeps happening.
+# Released HERE rather than at `exit 0` because everything below only READS the run's artefacts: a
+# summariser that fails must not leave the tree looking like a matrix is still mutating it.
+lock_release
 
 ASSET_FP="$ASSET_FP" SCENE_BOUND_PCT="$SCENE_BOUND_PCT" MATRIX_CFG="$CFG" python3 - "$MANIFEST" "$RUN_ID" "$WARP" "$REPEATS" "$SECONDS_PER_LEG" "$TABLE" "$OUT/legs.tsv" <<'PY'
 import json, sys, os
