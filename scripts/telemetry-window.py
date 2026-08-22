@@ -460,6 +460,20 @@ def load_union_membership():
     return mod.UNION, set(mod.UNION_MEMBERS)
 
 
+def load_declared_wholes():
+    """-> {whole: {members}} for EVERY declared whole, from the lint that gates each one.
+
+    One call rather than a per-whole function, so adding a third whole is a line in metric-desc-lint
+    and nothing here. The union is an AGGREGATE and the drive decomposition is a CLOSURE; both arrive
+    the same way and aggregate_report tells them apart by whether the whole is itself measured.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metric-desc-lint.py")
+    spec = importlib.util.spec_from_file_location("metric_desc_lint", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return {name: set(members) for name, members in mod.WHOLES.items()}
+
+
 def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
     """-> (lines, violations) for a declared cross-owner AGGREGATE.
 
@@ -493,14 +507,41 @@ def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
     A violation is raised only when the sum is not a quantity (mixed units) or when the instrument
     produced nothing at all (no member present).
     """
+    # CLOSURE OR AGGREGATE, decided by whether the declared whole IS ITSELF MEASURED. Both arrive
+    # through `.whole`, and they are not the same claim:
+    #
+    #   the whole is a REGISTERED METRIC   -> CLOSURE. It was bracketed independently, so the parts can
+    #     DISAGREE with it and the residual is a real number about the world -- the hole [#272] found
+    #     at 24% and closed to 1.27%. Report it every capture, because a decomposition nobody re-checks
+    #     drifts silently as parts are added.
+    #   the whole is NOT in the register   -> AGGREGATE. Its value IS the sum; there is nothing to
+    #     disagree with, and printing a percentage would print 100.0% forever.
+    #
+    # Deciding by presence rather than by a second declaration is deliberate: the register already
+    # answers the question, and a flag saying which mode to use would be a second place to get it wrong.
     present = sorted(m for m in members if m in w)
     missing = sorted(m for m in members if m not in w)
 
     if not present:
-        return ([f"  [aggregate: {name}]  NOT REPORTABLE -- none of its {len(members)} declared "
-                 f"members are in this window, so there is nothing to sum."],
-                [f"{name}: aggregate declared but NONE of its {len(members)} members are in the "
-                 f"window. Read that as an instrument gap, not as a lighting cost of zero"])
+        # AN EMPTY DECOMPOSITION IS REPORTED, NOT VIOLATED, and the reason is that this function
+        # CANNOT TELL THE TWO CAUSES APART:
+        #
+        #   the decomposition is declared and NOT RUNNING  -- a real gap, [#241]'s shape
+        #   the capture PREDATES the declaration           -- banked evidence, nothing wrong with it
+        #
+        # Both look identical in the window: members absent. Nothing in a snapshot dates a key against
+        # a source declaration. I tried to separate them by whether the WHOLE was present and that is
+        # NOT the distinction -- matrix-20260808 has cpu_cost but not the drive parts, because the
+        # whole shipped months before its decomposition did. Violating on that shape made 27 banked
+        # legs unquotable, which is a worse error than the one it was trying to catch.
+        #
+        # So: say plainly what is and is not here and let the reader judge. The check that DOES survive
+        # is the partial case below -- some members present, some absent -- which is unambiguous, and
+        # the drive_membership/union_membership gates, which check the declarations against the tree
+        # where the question is actually answerable.
+        state = "the whole is measured" if name in w else "the whole is absent too"
+        return ([f"  [aggregate: {name}]  NOT DECOMPOSED -- {state}, and none of its {len(members)} "
+                 f"declared members are in this window."], [])
 
     basis, assumed, declared = unit_basis(present, w)
     if len(declared) > 1:
@@ -520,11 +561,31 @@ def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
         share = 100.0 * parts[m] / total if total else 0.0
         lines.append(f"       {m:<40} {parts[m]/denom:9.1f} {share:6.1f}%")
     lines.append(f"       {'-'*40} {'-'*9} {'-'*7}")
-    lines.append(f"       {('LOWER BOUND' if missing else 'union total'):<40} {total/denom:9.1f} "
+    lines.append(f"       {('LOWER BOUND' if missing else 'sum of parts'):<40} {total/denom:9.1f} "
                  f"{100.0:6.1f}%")
+
+    if name in w:
+        # CLOSURE. The whole was measured; say how much of it the parts actually account for, and name
+        # the residual as a QUANTITY rather than leaving it to be eyeballed off two printed numbers.
+        whole = coverage_scale(w[name], cadence_ticks, w)[0]
+        un = whole - total
+        pct = 100.0 * total / whole if whole else 0.0
+        lines.append(f"       {name + ' (MEASURED)':<40} {whole/denom:9.1f}")
+        lines.append(f"       parts account for {pct:.1f}% of the measured whole -- residual "
+                     f"{un/denom:+.1f} us/tick")
+        if missing:
+            lines.append(f"       THE RESIDUAL IS NOT INTERPRETABLE while a member is absent: it "
+                         f"mixes real unattributed cost with the missing part.")
+        elif un < 0:
+            # PARTS EXCEEDING A MEASURED WHOLE IS AN OVERLAP, NOT NOISE, and it is the exact defect
+            # that made the first reading of this decomposition wrong: two probes nested inside a third
+            # were listed as its siblings, and the 13 rows summed to 117% of the whole.
+            lines.append(f"       PARTS EXCEED THE MEASURED WHOLE by {-un/denom:.1f} us/tick -- the "
+                         f"membership is OVERLAPPING, not exhaustive-and-disjoint as declared.")
+
     for m in missing:
-        lines.append(f"       ABSENT: {m} -- the figure above is a LOWER BOUND on the union, not the "
-                     f"union. Absent is not zero.")
+        lines.append(f"       ABSENT: {m} -- the figure above is a LOWER BOUND, not the whole. "
+                     f"Absent is not zero.")
     return lines, []
 
 
@@ -740,8 +801,8 @@ def selftest():
 
     lines, viol = aggregate_report("u.us", {"a.us", "b.us"}, _full, _ct, 100, "frames")
     body = "\n".join(lines)
-    arm("a COMPLETE aggregate says 'union total', not 'LOWER BOUND'",
-        "union total" in body and "LOWER BOUND" not in body and not viol)
+    arm("a COMPLETE aggregate says 'sum of parts', not 'LOWER BOUND'",
+        "sum of parts" in body and "LOWER BOUND" not in body and not viol)
     arm("the aggregate sums its members and divides by the stated denominator",
         "      40.0" in body)  # (1000+3000)/100
     arm("member shares are of the aggregate, and the members carry them",
@@ -758,14 +819,44 @@ def selftest():
     arm("the sum does not silently change when a member is merely absent",
         "      40.0" in body_m)
 
+    # THE TWO EMPTY CASES ARE NOT THE SAME, and conflating them made 27 banked matrix legs unquotable
+    # the moment a second whole was declared: they were captured before the instrument existed.
     lines_n, viol_n = aggregate_report("u.us", {"x.us"}, _full, _ct, 100, "frames")
-    arm("an aggregate with NO member present is NOT REPORTABLE and violates",
-        "NOT REPORTABLE" in "\n".join(lines_n) and len(viol_n) == 1)
+    _wonly = {"a.us": _tm(1000, 100), "w.us": _tm(5000, 100)}
+    lines_w, viol_w = aggregate_report("w.us", {"x.us"}, _wonly, _ct, 100, "frames")
+    arm("NO member present is REPORTED, never violated -- the cause is not knowable from a window",
+        "NOT DECOMPOSED" in "\n".join(lines_n) and viol_n == []
+        and "NOT DECOMPOSED" in "\n".join(lines_w) and viol_w == [])
+    arm("and it says which of the whole/members is present, so the reader can judge",
+        "the whole is measured" in "\n".join(lines_w)
+        and "the whole is absent too" in "\n".join(lines_n))
 
     _mixed = {"a.us": _tm(1000, 100, unit="us"), "b.ns": _tm(3000, 100, unit="ns")}
     lines_u, viol_u = aggregate_report("u.us", {"a.us", "b.ns"}, _mixed, _ct, 100, "frames")
     arm("mixed units are REFUSED rather than summed",
         "REFUSED" in "\n".join(lines_u) and len(viol_u) == 1)
+
+    # CLOSURE MODE ARMS. The same `.whole` field carries two different claims, and reading one as the
+    # other is how a 100.0%-by-construction number gets mistaken for a check that passed.
+    _wm = {"a.us": _tm(1000, 100), "b.us": _tm(3000, 100), "w.us": _tm(5000, 100)}
+    body_c = "\n".join(aggregate_report("w.us", {"a.us", "b.us"}, _wm, _ct, 100, "frames")[0])
+    arm("a MEASURED whole switches from aggregate to CLOSURE and prints its residual",
+        "MEASURED" in body_c and "residual" in body_c and "80.0%" in body_c)
+    arm("the closure names the measured whole as a quantity, not just a percentage",
+        "      50.0" in body_c)  # 5000/100
+    arm("an UNMEASURED whole stays an aggregate -- no closure, no invented residual",
+        "MEASURED" not in "\n".join(aggregate_report("u.us", {"a.us", "b.us"}, _full, _ct, 100,
+                                                     "frames")[0]))
+    # PARTS EXCEEDING A MEASURED WHOLE IS THE OVERLAP THIS GATE EXISTS FOR -- the first hand reading of
+    # the drive decomposition listed two nested probes as siblings and summed to 117% of the whole.
+    _over = {"a.us": _tm(4000, 100), "b.us": _tm(3000, 100), "w.us": _tm(5000, 100)}
+    arm("parts EXCEEDING a measured whole are called an OVERLAP, not noise",
+        "OVERLAPPING" in "\n".join(aggregate_report("w.us", {"a.us", "b.us"}, _over, _ct, 100,
+                                                    "frames")[0]))
+    _partial = {"a.us": _tm(1000, 100), "w.us": _tm(5000, 100)}
+    arm("a residual computed over a missing member is declared NOT INTERPRETABLE",
+        "NOT INTERPRETABLE" in "\n".join(aggregate_report("w.us", {"a.us", "b.us"}, _partial, _ct,
+                                                          100, "frames")[0]))
 
     # CORRESPONDENCE, NOT MERELY 'IT DID NOT THROW'. The import exists to make this file and the gate
     # share one membership list; an arm that only proved the call returned would pass just as happily
@@ -1126,19 +1217,20 @@ def main():
     frame_denom = tick_count(w.get(frame_denom_name)) if frame_denom_name else 0
     if frame_denom:
         try:
-            union_name, union_members = load_union_membership()
+            wholes = load_declared_wholes()
         except Exception as exc:
-            print(f"  [aggregate]  REFUSED -- cannot read the gated membership list from "
-                  f"metric-desc-lint.py ({exc}). No aggregate is reported; this is a missing "
+            print(f"  [aggregate]  REFUSED -- cannot read the gated membership lists from "
+                  f"metric-desc-lint.py ({exc}). Nothing is reported; this is a missing "
                   f"instrument, not an absence of cost.\n")
             violations.append(f"aggregate membership unreadable: {exc}")
         else:
-            lines, viol = aggregate_report(union_name, union_members, w, cadence_ticks,
-                                           frame_denom, frame_denom_name)
-            for line in lines:
-                print(line)
-            violations.extend(viol)
-            print()
+            for whole_name in sorted(wholes):
+                lines, viol = aggregate_report(whole_name, wholes[whole_name], w, cadence_ticks,
+                                               frame_denom, frame_denom_name)
+                for line in lines:
+                    print(line)
+                violations.extend(viol)
+                print()
 
     # THE HEADLINE CPU NUMBER IS BUSY, NOT TOTAL.
     #

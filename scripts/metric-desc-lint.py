@@ -787,8 +787,48 @@ UNION_MEMBERS = {
     "lighting.produce.adjust.us",
     "lighting.upload.us",
     "lighting.gpu.spread_scan.us",    # runs BEFORE cpu_cost's scope opens, so disjoint from it
-    "lighting.gpu.cpu_cost.us",       # the thirteen drive parts are nested inside this one
+    "lighting.gpu.cpu_cost.us",       # the drive parts are nested inside this one -- see DRIVE below
 }
+
+# THE SECOND WHOLE, AND THE FIRST ONE THAT IS A REAL CLOSURE. `lighting.cpu.union.us` is an AGGREGATE:
+# nothing measures it, so its value is the sum by definition. `lighting.gpu.cpu_cost.us` is BRACKETED
+# -- an independent measurement -- so its parts can disagree with it, and the disagreement is the
+# residual [#272] drove from 24% to 1.27%.
+#
+# WHY THIS LIST EXISTS AT ALL: the rule was written in prose at StarGpuLightmapPass.cpp and nothing
+# read it. "every other drive.* is DISJOINT from all seven parts and from each other, so
+# cpu_cost - SUM(...) is the closure" -- true, unenforced, and I got it wrong on first reading: I
+# listed all thirteen drive.* keys as siblings and produced a table summing to 117% of the whole.
+# A partition stated only in a comment is a partition nobody can check.
+#
+# THE TWO EXCLUSIONS ARE THE WHOLE POINT. drive.point.gputimer.us and drive.point.switch.us are
+# PROBES INSIDE drive.point.us -- the file says so in as many words -- so declaring them would
+# double-count 33.2 of 185.9 us/frame. They are the `lighting.produce.particles.us` of this list.
+DRIVE = "lighting.gpu.cpu_cost.us"
+DRIVE_MEMBERS = {
+    "lighting.gpu.drive.bind.us",
+    "lighting.gpu.drive.compose.us",
+    "lighting.gpu.drive.flush.us",
+    "lighting.gpu.drive.gputimer.us",
+    "lighting.gpu.drive.point.us",      # point.gputimer / point.switch are INSIDE this -- see above
+    "lighting.gpu.drive.quad.us",
+    "lighting.gpu.drive.repack.us",
+    "lighting.gpu.drive.spread.us",
+    "lighting.gpu.drive.switch.us",
+    "lighting.gpu.drive.upload.us",
+    "lighting.gpu.drive.upscale.us",
+}
+
+# Nested probes that must NEVER declare DRIVE. Named rather than merely omitted, so that adding one
+# is a decision the gate can see rather than an absence nobody notices.
+DRIVE_NESTED = {
+    "lighting.gpu.drive.point.gputimer.us",
+    "lighting.gpu.drive.point.switch.us",
+}
+
+# Every declared whole in the tree, for consumers that report them. One place, so a third whole is
+# added here and picked up everywhere rather than in each script that happens to know about it.
+WHOLES = {UNION: UNION_MEMBERS, DRIVE: DRIVE_MEMBERS}
 
 # Cpu-domain `lighting.*` microsecond timers that are NOT members. Every one is nested inside a
 # member, and this ratchet is what makes that a DECISION rather than an oversight: a new lighting CPU
@@ -872,6 +912,107 @@ def check_union_membership(files=None, ceiling=UNION_NONMEMBER_CEILING):
     return 0
 
 
+def drive_sites(files):
+    """-> (declared, candidates): keys declaring the DRIVE whole, and every drive.* CPU timer.
+
+    Mirrors union_sites deliberately. `candidates` is what makes the second half checkable: a new
+    lighting.gpu.drive.* timer that declares nothing is a key in NO list, and the gate should force
+    the member-or-nested decision rather than let it sit unclassified.
+    """
+    declared, candidates = set(), set()
+    for path, text in sorted(files.items()):
+        if "/test/" in path.replace("\\", "/"):
+            continue
+        for fn, key, block in REGISTRATION.findall(strip_comments(text)):
+            if DRIVE in block:
+                declared.add(key)
+            if fn == "timer" and key.startswith("lighting.gpu.drive.") and key.endswith(".us"):
+                candidates.add(key)
+    return declared, candidates
+
+
+def check_drive_membership(files=None):
+    """The DRIVE closure: exhaustive, non-overlapping, and the nested probes proven excluded.
+
+    Same two halves as union_membership, plus a third this one needs and the union does not: the
+    nested probes must be shown ABSENT from the declaration. drive.point.gputimer.us and
+    drive.point.switch.us sit INSIDE drive.point.us, so declaring either double-counts 33.2 of the
+    185.9 us/frame -- and against a whole that IS independently measured, that turns a real +1.0%
+    residual into a fictitious negative one. A closure that reads negative gets dismissed as noise.
+    """
+    files = sources() if files is None else files
+    declared, candidates = drive_sites(files)
+
+    if not candidates:
+        print("drive_membership: FAIL -- no lighting.gpu.drive.* timer matched at all. The pattern "
+              "has drifted from the tree, so this gate is measuring nothing.")
+        return 1
+
+    missing = DRIVE_MEMBERS - declared
+    nested = declared & DRIVE_NESTED
+    extra = declared - DRIVE_MEMBERS - DRIVE_NESTED
+    unclassified = candidates - DRIVE_MEMBERS - DRIVE_NESTED
+
+    bad = 0
+    if missing:
+        print("drive_membership: FAIL -- %d declared member(s) do NOT carry .whole = %s: %s"
+              % (len(missing), DRIVE, ", ".join(sorted(missing))))
+        bad = 1
+    if nested:
+        print("drive_membership: FAIL -- %d NESTED probe(s) declare the whole they sit inside, which "
+              "counts them twice: %s. They are probes within drive.point.us, not siblings of it"
+              % (len(nested), ", ".join(sorted(nested))))
+        bad = 1
+    if extra:
+        print("drive_membership: FAIL -- %d key(s) declare %s but are in no list: %s"
+              % (len(extra), DRIVE, ", ".join(sorted(extra))))
+        bad = 1
+    if unclassified:
+        print("drive_membership: FAIL -- %d drive.* timer(s) belong to neither list. Decide: a "
+              "DISJOINT member, or a probe NESTED inside one: %s"
+              % (len(unclassified), ", ".join(sorted(unclassified))))
+        bad = 1
+    if bad:
+        return 1
+    print("drive_membership: %d/%d members declare %s; %d nested probe(s) correctly withheld; "
+          "%d drive.* timer(s) all classified"
+          % (len(declared), len(DRIVE_MEMBERS), DRIVE, len(DRIVE_NESTED), len(candidates)))
+    return 0
+
+
+def selftest_drive_membership():
+    """Both ends: the shipped tree passes, and each way of breaking the partition fails."""
+    arms = []
+
+    def corpus(text):
+        return {"source/rendering/fake.cpp": text}
+
+    def site(key, whole=True):
+        w = ', .whole = "%s"' % DRIVE if whole else ""
+        return ('  auto t = Telemetry::timer("%s",\n'
+                '    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame%s});\n' % (key, w))
+
+    full = "".join(site(k) for k in sorted(DRIVE_MEMBERS))
+    arms.append(("a complete, disjoint declaration passes", check_drive_membership(corpus(full)) == 0))
+    arms.append(("a MISSING member fails",
+                 check_drive_membership(corpus("".join(site(k) for k in sorted(DRIVE_MEMBERS)[1:]))) == 1))
+    arms.append(("a NESTED probe declaring the whole fails -- it would be counted twice",
+                 check_drive_membership(corpus(full + site("lighting.gpu.drive.point.gputimer.us"))) == 1))
+    arms.append(("an unlisted key declaring the whole forces a decision",
+                 check_drive_membership(corpus(full + site("lighting.gpu.drive.newthing.us"))) == 1))
+    arms.append(("the shipped tree passes", check_drive_membership() == 0))
+
+    bad = sum(1 for _, ok in arms if not ok)
+    for label, ok in arms:
+        print("  [%s] %s" % ("ok" if ok else "FAIL", label))
+    if bad:
+        print("drive_membership: SELFTEST FAIL -- %d of %d arm(s)" % (bad, len(arms)))
+        return 1
+    print("drive_membership selftest: %d/%d arms ok -- exhaustive, non-overlapping, and a nested "
+          "probe cannot smuggle itself in as a sibling" % (len(arms), len(arms)))
+    return 0
+
+
 def selftest_union_membership():
     """Each arm INJECTS the defect and requires the gate to fail. A gate nobody has seen fail is a
     claim with no instrument -- and this one guards arithmetic, where a silent pass is a wrong number
@@ -945,6 +1086,8 @@ if __name__ == "__main__":
               "--check-convergence-claims": check_convergence_claims,
               "--selftest-convergence-claims": selftest_convergence_claims,
               "--check-union-membership": check_union_membership,
+              "--check-drive-membership": check_drive_membership,
+              "--selftest-drive-membership": selftest_drive_membership,
               "--selftest-union-membership": selftest_union_membership,
               "--selftest-boundedness": selftest_boundedness,
               "--selftest-timeline": selftest_timeline}

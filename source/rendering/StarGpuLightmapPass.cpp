@@ -61,15 +61,18 @@ namespace {
   auto s_driveRepack = Telemetry::timer("lighting.gpu.drive.repack.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_driveUpload = Telemetry::timer("lighting.gpu.drive.upload.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_driveSpread = Telemetry::timer("lighting.gpu.drive.spread.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   // INCLUDES ONE IMPLICIT FLUSH: switchEffectConfig("lightingPoint") flushes the final spread quad
   // into lastTarget (its own comment says so). Bracketing it under the flush key would conflate an
   // effect switch with a wait; leaving it unremarked inside `point` would corrupt the work-vs-wait
@@ -83,22 +86,26 @@ namespace {
   auto s_drivePoint = Telemetry::timer("lighting.gpu.drive.point.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_driveCompose = Telemetry::timer("lighting.gpu.drive.compose.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_driveUpscale = Telemetry::timer("lighting.gpu.drive.upscale.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   // THE HEADLINE KEY. Both explicit flush() calls record here, so its COUNT is 1 or 2 per call
   // depending on whether the upscale path ran -- read the count before the total, since a flush that
   // never fired and a flush that cost nothing are different facts.
   auto s_driveFlush = Telemetry::timer("lighting.gpu.drive.flush.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
 
   // ============================================================================================
   // THE RESIDUAL (#272). The seven parts above closed to 75.3%/76.4% of cpu_cost across two legs:
@@ -130,7 +137,8 @@ namespace {
   auto s_driveSwitch = Telemetry::timer("lighting.gpu.drive.switch.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_drivePointSwitch = Telemetry::timer("lighting.gpu.drive.point.switch.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
@@ -142,7 +150,8 @@ namespace {
   auto s_driveQuad = Telemetry::timer("lighting.gpu.drive.quad.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   // OUR OWN INSTRUMENT, MEASURED. Four gpuTimer begin/end pairs issue GL query objects on this
   // thread inside the very span they help decompose. Unmeasured, that is the observer paying for
   // itself out of the budget it reports; measured, it is either negligible or a finding about the
@@ -150,7 +159,8 @@ namespace {
   auto s_driveGpuTimer = Telemetry::timer("lighting.gpu.drive.gputimer.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
   auto s_drivePointGpuTimer = Telemetry::timer("lighting.gpu.drive.point.gputimer.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
@@ -163,7 +173,8 @@ namespace {
   auto s_driveBind = Telemetry::timer("lighting.gpu.drive.bind.us",
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
-               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "lighting.gpu.cpu_cost.us"});
 }
 
 GpuLightmapPass::GpuLightmapPass(Renderer* renderer) : m_renderer(renderer) {}

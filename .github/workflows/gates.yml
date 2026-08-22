@@ -486,6 +486,12 @@ jobs:
       - name: union_membership_fires -- a dropped member, a double count and a blind pattern all fail
         run: python3 scripts/metric-desc-lint.py --selftest-union-membership
 
+      - name: drive_membership -- the GPU-lighting CPU closure partitions cpu_cost, probes excluded
+        run: python3 scripts/metric-desc-lint.py --check-drive-membership
+
+      - name: drive_membership_fires -- a missing member, a nested probe and an unclassified key all fail
+        run: python3 scripts/metric-desc-lint.py --selftest-drive-membership
+
       - name: render_ab_fires -- warm-up untagged, arms interleave, a bad spec aborts
         run: scripts/render-ab.sh --selftest
 
