@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**216 tasks** across 2 store(s): 3 in_progress, 28 pending, 185 completed
+**217 tasks** across 2 store(s): 3 in_progress, 29 pending, 185 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 216 tasks, ids 64–280
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -314,18 +314,19 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `9f466723` | — |
-| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
+| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and fl… | `f4d311fd` | — |
-| [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `508707f2` `ae90fe7b` `f4d311fd` | — |
-| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
+| [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
+| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
 | [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
+| [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6809,6 +6810,7 @@ reproduced -- so regenerate it there too, do not just correct it here.
 
 status: **in_progress** · blocked by: #273 · metadata: `{"rank": 4}`
 
+- `71d79761` [#268] A counter ran backwards by 900 and the instrument said nothing
 - `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
 - `1d796664` #272 DRIVE-RESIDUAL: name the 24% of cpu_cost that was in no part, and split point's 38%
 - `1d367a57` [#273] fourteen subsystem keys reach the axis, and adding them cost a multiplicity correction
@@ -7225,6 +7227,7 @@ Needs a live client at 04-Ocean Factory. No other blocker.
 
 status: **completed** · metadata: `{"rank": 5}`
 
+- `5e22945d` [#275] CLOSED: all three arms proven -- and the run that proved them was mislabelled a failure
 - `508707f2` [#275] LIVESTATE: give the detector a writer -- it has been inert since it shipped
 - `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
@@ -7300,6 +7303,7 @@ GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets 
 
 status: **completed**
 
+- `71d79761` [#268] A counter ran backwards by 900 and the instrument said nothing
 - `747b93ea` #279 items 1+4: pairing is now the default path, and the warm-up leg is discarded
 - `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
@@ -7570,6 +7574,63 @@ spread is 0.90% and render 5.25%, both better than Desert Town; only `entities` 
 floors can be trusted -- the ones in scene-floor.json today include its transient.
 
 No GPU required for item 1's scaffolding; item 4 needs legs to verify.
+```
+
+<a id="c29c1332-280"></a>
+
+#### #280 — SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever
+
+status: **pending**
+
+```
+FOUND 2026-08-22 by the adversarial verification of the 5-scene cartesian. Not a lever result, a
+FIXTURE DEFECT, and it silently produced a number that was nearly published.
+
+=== THE EVIDENCE ===
+
+In matrix-20260822-133301 (03-Surface-Outpost), the per-leg witness for lightingTemporalDecouple
+reads across the six baseline legs:
+
+    lighting.temporal.skipped = 761, 1, 1, 1, 529, 443
+
+THREE OF SIX BASELINE LEGS FIRED THE DECOUPLER EXACTLY ONCE. The lever is nominally ON in all six.
+So in half the baseline legs there is effectively NO CONTRAST to measure against the off arm.
+
+Consistent with it: that scene's lever-cpu.txt reports on cpu.owner.lighting.busy_cores
+"omnibus F(8,21) = 3.68, p = 0.0079 -> NO between-lever structure ... NOTHING IS ATTRIBUTABLE ON THIS
+KEY IN THIS RUN", with the largest MDE of the five scenes (49.5% of baseline).
+
+=== WHY IT MATTERS BEYOND ONE SCENE ===
+
+Its +0.0019 reading was about to be published as "the scene where temporal decoupling costs least",
+and as the DENOMINATOR of a 5.5x cross-scene ratio. It is neither. It is a scene where the
+measurement did not happen. "Costs least here" and "the contrast does not exist here" are different
+statements and the run could not tell them apart -- the ABSENT-vs-ZERO confusion, in the fixture
+rather than in a key.
+
+  RULE UNTIL FIXED: 03-Surface-Outpost must not appear in any lever table. Its legs bank; they are
+  not quotable for lever attribution.
+
+=== WHAT TO INVESTIGATE ===
+
+The decoupler skips a lighting recompute when the scene is unchanged. Firing ONCE per 90s leg means
+something is dirtying the lightmap almost every frame at this scene, or the skip precondition is not
+being reached. Candidates, none verified:
+  - a light source with continuous animation in view (the scene is an outpost; check for beacons,
+    flickering signs, a moving NPC or vehicle);
+  - a camera that is not actually still -- scene-floor.json already records this scene has the
+    STRONGEST first-visit transient of the five (cpu_cost 611 -> 560 -> 216 across three visits);
+  - sector streaming still settling at the capture point.
+
+Read lighting.temporal.recomputed alongside skipped per leg; the ratio is the diagnostic. Compare
+against 01-Lava-Refinery, which is also a built interior and does NOT show this.
+
+=== ACCEPTANCE ===
+
+Either the scene is stabilised so skipped is consistent across legs (and its floor re-measured), or
+it is REPLACED in scripts/scene-table.json by a surface fixture that is stable -- and if replaced,
+say plainly that the five-scene cartesian's Surface-Outpost column is void, rather than leaving it in
+the table looking measured.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

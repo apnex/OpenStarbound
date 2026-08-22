@@ -4,7 +4,7 @@
 #
 #   scripts/render-ab.sh 90 gputax --warp "Desert Town" --repeats 2 \
 #       --a "" --b "env:STAR_NO_PERPASS_GPU_TIMERS=1"
-#   scripts/render-ab.sh 90 border --warp "04 Ocean Factory" --repeats 3 \
+#   scripts/render-ab.sh 90 border --warp "04-Ocean-Factory" --repeats 3 \
 #       --a "set:lightingAdaptiveBorder=true" --b "set:lightingAdaptiveBorder=false"
 #   scripts/render-ab.sh ... --dry-run          # print the plan, launch nothing
 #   scripts/render-ab.sh --selftest             # prove the plan's shape without a GPU

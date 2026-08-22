@@ -1,5 +1,7 @@
 {
-  "_what": "The measurement fixture set. Every scene the lever matrix runs against, declared once, with the EXACT string that must be passed to --warp. Read by scripts/scene-matrix.sh and checked against scripts/scene-floor.json.",
+  "_what": "The measurement fixture set: every scene the harness knows how to reach, declared once, with the EXACT string that must be passed to --warp. Read by scripts/scene-matrix.sh and checked against scripts/scene-floor.json.",
+
+  "_inCartesian": "A scene is in the lever cartesian UNLESS it sets inCartesian:false. Absent means true, so the five original fixtures need no field. A scene can be a registered, floored, reachable fixture WITHOUT being swept by every matrix run -- the sweep costs ~50 minutes per scene and answers a question ('does this lever's cost differ by scene') that a single-lever fixture is not being asked.",
 
   "_why_the_warp_string_is_the_identity": "render-profile.sh records meta.scene as the --warp string VERBATIM, and scripts/leg-diff.py looks the floor up with scenes.get(scene) -- an exact match, no normalisation. So the warp string is not a convenience label, it is the join key between a measurement and the floor that decides whether the measurement means anything. Two spellings of one scene are two scenes, one of which has no floor.",
 
@@ -31,6 +33,14 @@
       "kind": "bookmark",
       "validates": "Surface outpost, and the scene with by far the strongest first-visit transient -- cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. It is the reason the runner discards a warm-up leg at all.",
       "measured": "Worst-key floor 47.19%, and that floor INCLUDES the transient, so it is pessimistic."
+    },
+    {
+      "warp": "04-Ocean-Factory",
+      "kind": "bookmark",
+      "validates": "The scene that EXERCISES THE ADAPTIVE LIGHTING BORDER. [#217] measured the border lever at -10.1% of lighting CPU here and nowhere else, which makes this the fixture behind one of the campaign's most-quoted numbers -- and [#274] exists to re-derive it under the paired, floor-checked discipline [#279] made default.",
+      "measured": "NO FLOOR YET. Registered 2026-08-22 when [#274] was found to name a scene the fixture set did not contain: reachable (harness/profiles/renamecheck-04-Ocean-Factory.*) but unregistered and unfloored, so scripts/leg-diff.py would have REFUSED every comparison here citing 'no measured floor'. The floor is the prerequisite, not the measurement.",
+      "inCartesian": false,
+      "_why_not_in_cartesian": "The 5-scene lever cartesian answers 'does a lever's cost differ by scene'. This scene exists for ONE lever's re-derivation and carries no baseline history, so adding it to the sweep would spend an hour of GPU on seven levers nobody is asking about here. Promote it if that changes."
     },
     {
       "warp": "ship",

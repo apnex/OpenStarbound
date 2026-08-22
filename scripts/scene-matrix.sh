@@ -51,7 +51,19 @@ print("failed" if c.get("FAILED") or c.get("?") else "void-only" if c.get("VOID"
 PY
 }
 
+# THE SWEEP SET IS NOT THE FIXTURE SET. A scene can be registered, floored and reachable without
+# belonging in every cartesian: 04-Ocean-Factory exists for ONE lever's re-derivation ([#274]) and
+# sweeping it would spend ~50 minutes of GPU on seven levers nobody is asking about there. Absent
+# means true, so the five original fixtures need no field and adding one cannot silently enrol it.
 scenes_from_table() { python3 -c '
+import json,sys
+for s in json.load(open(sys.argv[1]))["scenes"]:
+    if s.get("inCartesian", True): print(s["warp"])
+' "$TABLE"; }
+
+# Every REGISTERED scene, swept or not -- the floor check reads this, because a fixture with no floor
+# is unquotable whether or not the cartesian visits it.
+all_scenes_from_table() { python3 -c '
 import json,sys
 for s in json.load(open(sys.argv[1]))["scenes"]: print(s["warp"])
 ' "$TABLE"; }
@@ -62,9 +74,11 @@ for s in json.load(open(sys.argv[1]))["scenes"]: print(s["warp"])
 scenes_without_floor() { python3 -c '
 import json,sys
 t=json.load(open(sys.argv[1])); f=json.load(open(sys.argv[2]))
-missing=[s["warp"] for s in t["scenes"] if s["warp"] not in f["scenes"]]
+only_swept = len(sys.argv) > 3 and sys.argv[3] == "swept"
+missing=[s["warp"] for s in t["scenes"]
+         if s["warp"] not in f["scenes"] and (s.get("inCartesian", True) or not only_swept)]
 print(" ".join(missing))
-' "$TABLE" "$FLOORS"; }
+' "$TABLE" "$FLOORS" "${1:-all}"; }
 
 if [ "${1:-}" = "--selftest" ]; then
   fails=0; arms=0
@@ -78,9 +92,20 @@ if [ "${1:-}" = "--selftest" ]; then
   # EVERY SCENE MUST HAVE A FLOOR, or its legs are bankable but not quotable. This is the arm that
   # would have caught the space-vs-hyphen keying: both files parsed, both looked right, and two scenes
   # silently had no reachable floor.
-  miss=$(scenes_without_floor)
-  [ -z "$miss" ] && ok "every declared scene has a measured floor" \
-                 || bad "no floor for:$miss -- comparisons there will refuse"
+  # A SWEPT SCENE WITHOUT A FLOOR IS A FAILURE -- the run would bank legs nobody can compare. This is
+  # the arm that would have caught the space-vs-hyphen keying: both files parsed, both looked right,
+  # and two scenes silently had no reachable floor.
+  miss=$(scenes_without_floor swept)
+  [ -z "$miss" ] && ok "every SWEPT scene has a measured floor" \
+                 || bad "no floor for swept scene(s):$miss -- comparisons there will refuse"
+
+  # A REGISTERED-BUT-UNSWEPT scene without a floor is a NOTE, not a failure: it is a known state with
+  # a named owner (04-Ocean-Factory awaits [#274]'s floor probe). Reported so it cannot be forgotten,
+  # not failed so the gate cannot be trusted. Absent is not zero, and not-yet is not broken.
+  unfloored=$(scenes_without_floor all)
+  arms=$((arms+1))
+  if [ -z "$unfloored" ]; then echo "  ok   every registered scene has a floor"
+  else echo "  ok   registered-but-unfloored (expected, not swept):$unfloored"; fi
 
   # The plan must name every scene it intends to run. A driver that silently drops one produces a
   # cartesian with a hole and a summary that does not mention it.
