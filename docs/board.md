@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**219 tasks** across 2 store(s): 2 in_progress, 30 pending, 187 completed
+**220 tasks** across 2 store(s): 2 in_progress, 30 pending, 188 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 218 tasks, ids 64–282
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 219 tasks, ids 64–283
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#281` | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | ready |
+| 1 | 3 | `#283` | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable i… | ready |
 | 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
 | 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
 | 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
@@ -66,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 230, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 231, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -97,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 88 of 187.
+**Completed tasks citing no commit and no doc:** 88 of 188.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -286,7 +286,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
 | [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `747b93ea` `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
-| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `906aca3d` `cd0b5175` `775176ff` | — |
+| [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `48a4f61e` `906aca3d` `cd0b5175` `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` | — |
 | [#243](#c29c1332-243) | `c29c1332` | done | REG-RATCHET: pin the count of lazily-registered telemetry handles so there is no eighth instance | `d3650330` | — |
 | [#244](#c29c1332-244) | `c29c1332` | done | POST-MATRIX ORDER: SUPERSEDED — the board is the order now, and five of the nine have since resolved | `bb29075c` `ce8a089d` `35bbb97c` `495682df` | — |
@@ -319,15 +319,16 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
 | [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
-| [#281](#c29c1332-281) | `c29c1332` | open | UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one | — | — |
+| [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `48a4f61e` | — |
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
+| [#283](#c29c1332-283) | `c29c1332` | open | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable in the ship… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5239,6 +5240,7 @@ Gate: scripts/ci/run-gates.sh + core_tests + game_tests. Commit ends [#240].
 
 status: **completed**
 
+- `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 - `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `cd0b5175` LEDGER: file R15 and R16 -- the two registrations R14 did not reach
 - `775176ff` R14-FIX: a pass that never runs now reads ZERO, not ABSENT -- and the leg file says so
@@ -7182,6 +7184,7 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 status: **completed**
 
+- `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 - `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `9b40339a` [#274] CLOSED: the border lever is CONFIRMED, and it is the OFF arm that moved
 - `85741414` [#274] The floor settles the METHOD before the measurement: 10.1% &lt; a 13.95% unpaired floor
@@ -7665,55 +7668,51 @@ the table looking measured.
 
 <a id="c29c1332-281"></a>
 
-#### #281 — UNION-TO-DIFF: the union is printed but not diffable — leg-diff reads artefact keys, and the union is not one
+#### #281 — UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive control found #283
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **completed**
+
+- `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 
 ```
-The other half of [#269]'s item 2, filed rather than left implied when #269 closed 2026-08-22.
+CLOSED 2026-08-22 (48a4f61e). The consumer side is done; the reason it still yields ABSENT on real
+data is a separate, now-quantified defect split to [#283].
 
-=== THE GAP ===
+=== SHIPPED ===
 
-[#269] shipped `lighting.cpu.union.us` as an ANALYSER-COMPUTED figure in telemetry-window.py's
-report. But leg-diff.py -- the consumer that does every paired A/B -- reads metric keys straight
-out of the leg artefacts (harness/profiles/*.json), and no metric of that name is ever registered.
-It is a derived quantity that exists only in a printed table.
+leg-diff.py synthesises `lighting.cpu.union.us` per leg, so a paired A/B can be computed ON it.
+Route A with extraction, as the lean said -- but the extraction is the LIST and the ABSENCE RULE, not
+the arithmetic:
 
-CONSEQUENCE, ALREADY PAID ONCE: [#274] pre-registered reporting the border lever against BOTH
-lighting.cpu.total.us and lighting.cpu.union.us, and could deliver only the first. The
-pre-registration recorded that as a commitment unmet rather than quietly dropping it, which is the
-right handling, but the gap is still open and the next lever measurement will hit it identically.
+  MEMBERSHIP imported from metric-desc-lint.py, the same gated owner telemetry-window uses. One
+  writer; a divergence is something `union_membership` can see.
 
-=== WHY IT MATTERS BEYOND ONE MISSED ROW ===
+  ARITHMETIC deliberately NOT shared. telemetry-window coverage-scales each member against its own
+  cadence; leg-diff divides by frames and nothing else, its convention for all ~500 keys. A sum
+  shared across two denominators would belong to neither.
 
-[#171] is the reason the union exists: the denominator under every lighting percentage was a third
-short, because the (owner, domain) table permits exactly ONE whole per pair. Until the union is
-diffable, every paired result is still quoted against lighting.cpu.total.us -- which the union
-itself now shows is only 26.5% of lighting's real CPU cost. The percentages are not wrong, but
-they are denominated against a part rather than the whole, and that is precisely the defect [#171]
-closed at the declaration site and this leaves open at the measurement site.
+  ALL MEMBERS OR NO KEY -- stricter than telemetry-window's LOWER BOUND, and necessarily so. A bound
+  is fine to PRINT and wrong to SUBTRACT: the difference of two lower bounds is not a bound on the
+  difference. An incomplete leg yields nothing and the existing ABSENT path refuses.
 
-=== TWO ROUTES, NOT YET CHOSEN ===
+Selftest 11 -> 16 arms, including that a missing member yields no key, that the short leg is
+otherwise untouched, and that a genuinely registered union would outrank the derived one.
 
-  A. DERIVE IN THE CONSUMER. Teach leg-diff.py the same aggregate logic -- import the gated
-     membership list, coverage-scale, sum. Cheap, no engine change, no new registration. Risk: a
-     SECOND implementation of the arithmetic, so telemetry-window and leg-diff could disagree.
-     Mitigate by extracting the shared function rather than copying it -- which is the same
-     one-writer argument that made #269 import the list instead of restating it.
+=== THE POSITIVE CONTROL IS WHY THIS WAS WORTH DOING PROPERLY ===
 
-  B. REGISTER IT IN THE ENGINE as a real metric that the members feed. Makes it a first-class key
-     available to every consumer forever, including the joined axis and the plots. But it means a
-     metric whose value is a sum of other metrics, which is exactly the AGGREGATE-vs-BUDGET
-     distinction MetricDesc::whole was written to keep out of the register, and it would need a
-     writer on some thread. Almost certainly wrong, and recorded so the decision is visible rather
-     than made by default.
+On [#274]'s five banked pairs the union reads ABSENT ("not present in every leg") -- correct, and
+exactly why #274 could deliver only one of its two pre-registered denominators. But ABSENT is also
+what a dead code path prints, so I went looking for a leg where all seven ARE present.
 
-Lean is A-with-extraction. Not urgent; NOT blocked on anything. No GPU needed -- desk work,
-verifiable against the banked border-p* legs, where the expected answer is already known from
-#269's own output (306.4 us/frame lower bound at p0a).
+THERE IS NOT ONE, in 664 banked legs. `lighting.upload.us` appears in 3, all of them GPU-lighting-OFF
+legs, because its timer sits on the CPU-lightmap fallback path that the shipped default never takes.
 
-DO NOT close this by making leg-diff PRINT the union. The requirement is that a paired A/B can be
-computed ON it, with a floor and a verdict, like any other key.
+So the union is not computable in the configuration the game ships -- which is [#283], filed with the
+measurement, the tree's own warning about the same key fabricating a number when it appears
+mid-window, and the design choice (eager registration per [#241] versus a conditional membership).
+
+The withholding rule is what made that visible rather than letting a six-member sum be quoted as the
+whole. It must not be relaxed to make the union "work".
 ```
 
 <a id="c29c1332-282"></a>
@@ -7794,6 +7793,76 @@ configuration nobody runs -- harmless in itself, but it means our most-quoted le
 inflated by it, and every future lever measured against a moving baseline inherits the same
 problem. This is the [#274] caveat that could flip a verdict, which is the definition of the open
 question.
+```
+
+<a id="c29c1332-283"></a>
+
+#### #283 — UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable in the shipped default
+
+status: **pending** · metadata: `{"rank": 3}`
+
+```
+Found by [#281] 2026-08-22, while building the positive control for the union's diff path. This is
+the reason the union has never produced a number, and it is a membership defect rather than a
+consumer one.
+
+=== THE MEASUREMENT ===
+
+Across 664 banked legs, counting how many of the union's 7 declared members are present:
+
+    0 members -> 16 legs      2 members -> 379 legs
+    6 members -> 269 legs     7 members -> ZERO LEGS
+
+  lighting.cpu.total.us         648        lighting.produce.prep.us       269
+  lighting.gpu.cpu_cost.us      645        lighting.produce.adjust.us     269
+  lighting.produce.entities.us  269        lighting.gpu.spread_scan.us    269
+  lighting.upload.us              3
+
+The three legs that hold it are cpu-false, cpu-true and crit3-gpuoff -- every one a GPU-lighting-OFF
+leg.
+
+=== WHY, IN THE TREE'S OWN WORDS ===
+
+StarWorldPainter.cpp's registration comment: "Cadence::Call: doubly conditional -- inside
+`if (lightMapUpdated)` AND only on the CPU-lightMap fallback path." With GPU lighting ON -- the
+shipped default -- that path never executes, so the timer never registers and the key is ABSENT
+rather than zero.
+
+NOT a co-registration story: its block-siblings lighting.gpu.point.{mismatch,compared} appear in 458
+legs against upload's 3, so they demonstrably do not register together and the "registered at
+static-init" note does not cover this one.
+
+CONSEQUENCE: `lighting.cpu.union.us` -- the denominator [#171] created to replace a whole that was a
+third short, and the one [#274] pre-registered against -- cannot be computed for the configuration
+the game actually ships. Every lighting percentage is therefore still quoted against
+lighting.cpu.total.us, which the union's own printed decomposition shows is about 26.5% of it.
+
+=== THE CHOICE, WHICH IS REAL AND NOT MECHANICAL ===
+
+  A. REGISTER IT EAGERLY, per [#241]'s precedent ("a pass that never runs now reads ZERO, not
+     ABSENT"). Then a GPU-lighting-on leg reports 0 honestly, all seven members are present, and the
+     union computes. This ALSO fixes a second defect the same comment names: when the GPU pass fails
+     transiently the key currently appears MID-WINDOW, and telemetry-window differences it against an
+     absent entry -- reporting a whole process-lifetime total, world load included, as that window's
+     cost. "A fabricated number, not an absent one, and silent by construction." Eager registration
+     makes the key present from window start, so the difference is honest.
+     Verify by construction: is the upload cost genuinely zero when GPU lighting is on, or merely
+     unmeasured? If some upload work happens on another path, zero would be a NEW false claim, and
+     that must be checked before shipping this.
+
+  B. DECLARE THE MEMBER CONFIGURATION-CONDITIONAL and define the union over the members that apply.
+     Honest, but it makes the union's value depend on configuration in a way no consumer currently
+     reads, and `union_membership` would need to gate a conditional set. Almost certainly worse.
+
+LEAN IS A, gated on the verification named inside it. Source change; needs the GPU free and the
+mtime guard respected ([#178]).
+
+=== WHAT IS ALREADY DONE AND MUST NOT BE REDONE ===
+
+[#281] shipped the consumer side (48a4f61e): leg-diff synthesises the union from the gated membership
+list and WITHHOLDS the key entirely from any leg missing a member, so a short sum can never be
+differenced. That refusal is what made this defect visible instead of letting a six-member sum be
+quoted as the whole. Do not "fix" it by relaxing the rule.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
