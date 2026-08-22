@@ -64,14 +64,45 @@ about this fixture before it is evidence about the engine.
 "likely" is not measured, and a leg that walked off the loaded region would measure chunk LOADING
 rather than chunk REBUILD.
 
-## THE FLOOR IS NOT RECORDED, AND THAT IS DELIBERATE
+## THE FLOOR IS NOW RECORDED, BECAUSE THE PREREQUISITE WAS MET
 
-`scene-floor.json` has no entry for these numbers. **A walking leg and a standing leg are
-indistinguishable in the artefact**: both record `meta.scene = "04-Ocean-Factory"` and neither
-records the fixture. So writing a walking CV under that scene key would hand a moving bar to
-standing comparisons and a standing bar to moving ones — which is [#285]'s basis mismatch,
-manufactured rather than found.
+This section previously said the floor was deliberately absent: **a walking leg and a standing leg
+were indistinguishable in the artefact**, both recording `meta.scene = "04-Ocean-Factory"` and
+neither recording the fixture, so a walking CV under that scene key would have handed a moving bar
+to standing comparisons — [#285]'s basis mismatch, manufactured rather than found.
 
-The prerequisite is that the leg records its fixture: `meta.walk` written by `render-profile.sh`,
-and floors keyed on scene AND fixture. Until then these figures live here, cited, and are not
-loaded by any consumer.
+The prerequisite it named has been met. `render-profile.sh` passes `--walk` to the analyser, the
+analyser writes `meta.walk`, `leg-diff.py` derives `fixture` from it, refuses to compare across
+fixtures, and looks floors up under `fixtures.<name>.<scene>` with **no fallback** to the still
+entry. The walk floor for 04-Ocean-Factory is recorded in `scene-floor.json` and re-derived by
+`scripts/ci/floor-reproduces.py` on every gate run.
+
+**The four legs behind these figures were re-run, not relabelled.** The original bank predated the
+wiring and self-reported `still`. Backfilling `meta.walk` by hand would have made my say-so the
+evidence rather than the artefact, so the legs were measured again with the profiler writing the
+field. Each of the four now asserts `walk=45` itself.
+
+### Walking is the STEADIER fixture here, which was not the expected direction
+
+| key | still CV | walk CV |
+|---|---|---|
+| `lighting.cpu.total.us` | 13.952% | **6.372%** |
+| `cpu.frame.render.us` | 8.947% | **5.736%** |
+| `lighting.gpu.drive.point.us` | 3.912% | **2.881%** |
+| `lighting.gpu.cpu_cost.us` | 3.735% | **3.530%** |
+| `lighting.cpu.union.us` | 2.751% | 4.745% |
+| `lighting.produce.entities.us` | 7.368% | 10.157% |
+
+Only the two keys whose *content* genuinely moves get noisier. So the moving fixture is not a
+noisier instrument than the standing one — at this scene it is a better one. That matters for
+[#274]: the border lever is unresolvable standing, because its effect is smaller than the still
+fixture's own 13.95% noise on the key it moves. At 6.37% it may be resolvable here unpaired.
+
+### And two n=3 banks of the same thing do not agree on the noise
+
+The discarded pre-wiring bank was the same binary, scene, fixture and asset chain. Its CVs disagree
+with the recorded ones by up to 3.8× — `produce.entities` 19.60 vs 10.16, `drive.point` 11.03 vs
+2.88, `cpu_cost` 10.72 vs 3.53. **Three legs do not pin a CV.** A floor derived from three is a
+usable refusal threshold, which is all `leg-diff` asks of it, and is not a precise figure — here or
+in the `scenes` table, which is derived the same way. This is [#268] arriving from a second
+direction: a between-bank component exists that a within-bank spread cannot see.

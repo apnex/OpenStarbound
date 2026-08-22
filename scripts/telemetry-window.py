@@ -908,6 +908,15 @@ def main():
                          "can select the right noise floor: scene-floor.json shows Desert Town at "
                          "6.6%% CV and 03 Surface Outpost at 46%%, so the same delta means opposite "
                          "things at the two (#279).")
+    ap.add_argument("--walk", default=None, type=int, metavar="FRAMES_PER_LEG",
+                    help="STAR_RENDERTEST_WALK, if this leg was driven by the motion fixture "
+                         "(#174). Recorded into meta as the FIXTURE this leg measured, because a "
+                         "walking leg and a standing one are otherwise indistinguishable in the "
+                         "artifact -- both record the same scene -- and their noise floors differ by "
+                         "5x on cpu.frame.render.us (1.59%% walking vs 8.95%% standing, measured "
+                         "2026-08-22). A consumer that cannot tell them apart applies a bar measured "
+                         "on the wrong fixture, which is [#285]'s defect one level out. Absent means "
+                         "STANDING, which is what every leg banked before 2026-08-22 was.")
     ap.add_argument("--asset-fingerprint", default=None,
                     help="hash of the asset chain this leg ran against, from "
                          "scripts/asset-fingerprint.sh. Recorded into meta so a leg can say WHICH "
@@ -1330,6 +1339,12 @@ def main():
                                     windowStartEpoch=window_start, windowEndEpoch=window_end,
                                     windowStampSource=[ws_src, we_src],
                                     assetFingerprint=args.asset_fingerprint,
+                                    # walk: FRAMES-PER-LEG when the motion fixture drove this leg,
+                                    # None when it stood still. Recorded as None rather than omitted,
+                                    # so "the runner did not say" and "an older schema" stay
+                                    # different shapes on the wire -- the same rule this file applies
+                                    # to assetFingerprint above and to metrics throughout.
+                                    walk=args.walk,
                                     scene=args.scene, pair=_pair(args.pair)),
                        "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)

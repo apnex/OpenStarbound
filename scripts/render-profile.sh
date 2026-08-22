@@ -513,6 +513,7 @@ scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL"
   --json "harness/profiles/$LABEL.json" \
   --asset-fingerprint "$ASSET_FP" \
   --scene "${WARP:-<unpinned>}" \
+  ${STAR_RENDERTEST_WALK:+--walk "$STAR_RENDERTEST_WALK"} \
   ${PAIR:+--pair "$PAIR"} \
   --series "harness/profiles/$LABEL.series.json"
 

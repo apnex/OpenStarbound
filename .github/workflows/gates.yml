@@ -542,6 +542,25 @@ jobs:
           fi
           exit $rc
 
+      - name: floor_reproduces_fires -- a wrong floor and an unbanked one are both refused
+        run: python3 scripts/ci/floor-reproduces.py --selftest
+
+      - name: floor_reproduces -- every noise floor re-derives from the legs it names
+        # THE THRESHOLD EVERY A/B VERDICT CLEARS, checked against its own evidence. [#285]: four
+        # floors were derived per CALL while leg-diff applies them per FRAME, and because CV does not
+        # survive that change of denominator, four bars sat 2-3% too permissive with nothing able to
+        # see it -- the file recorded a number and a sentence of prose, and prose does not get re-run.
+        # DEV-HOST BY CONSTRUCTION, same shape as banked_corpus_reread: harness/ is gitignored, so CI
+        # and fresh clones have no legs and the gate says so with 77. The _fires arm above needs the
+        # legs too and skips with it, which is why the pair is honest rather than merely quiet.
+        run: |
+          python3 scripts/ci/floor-reproduces.py
+          rc=$?
+          if [ "$rc" = "77" ]; then
+            echo "floor_reproduces: SKIPPED -- see above. Nothing was re-derived; NOT a pass."
+          fi
+          exit $rc
+
       - name: metrics_mutual -- the two kernel readers agree, or say why they could not compare
         run: |
           if pgrep -x starbound >/dev/null; then

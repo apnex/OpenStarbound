@@ -43,20 +43,39 @@
     "04-Ocean-Factory": {
       "lighting.produce.entities.us": 7.368,
       "cpu.frame.render.us": 8.947,
-      "lighting.gpu.cpu_cost.us": 3.613,
+      "lighting.gpu.cpu_cost.us": 3.735,
       "lighting.cpu.total.us": 13.952,
-      "lighting.gpu.drive.point.us": 3.814,
+      "lighting.gpu.drive.point.us": 3.912,
       "lighting.cpu.union.us": 2.751,
       "cpu.frame.total.us": 0.016
     },
     "ship": {
       "lighting.produce.entities.us": 12.104,
       "cpu.frame.render.us": 6.489,
-      "lighting.gpu.cpu_cost.us": 7.427,
+      "lighting.gpu.cpu_cost.us": 7.561,
       "lighting.cpu.total.us": 3.712,
-      "lighting.gpu.drive.point.us": 7.086,
+      "lighting.gpu.drive.point.us": 7.211,
       "cpu.frame.total.us": 0.022
     }
+  },
+  "_fixtures_what": "A floor is keyed on WHERE **and WHAT THE PLAYER IS DOING**. `scenes` above holds the STILL floors -- the player standing motionless -- and that is the default a leg gets when its artefact records no motion fixture. A leg driven by STAR_RENDERTEST_WALK ([#174]) is a DIFFERENT MEASUREMENT of the same place: walking costs ~23% more render CPU than standing at 04-Ocean-Factory (docs/evidence/walking-fixture.md), so a standing bar applied to a moving leg is the same basis mismatch as [#285]. leg-diff.py therefore reads meta.walk off each leg, REFUSES to compare across fixtures, and looks the floor up under `fixtures.<name>.<scene>` with NO FALLBACK to the still entry -- a fixture without its own measured floor refuses rather than borrowing a wrong one.",
+  "fixtures": {
+    "walk": {
+      "04-Ocean-Factory": {
+        "lighting.produce.entities.us": 10.157,
+        "cpu.frame.render.us": 5.736,
+        "lighting.gpu.cpu_cost.us": 3.530,
+        "lighting.cpu.total.us": 6.372,
+        "lighting.gpu.drive.point.us": 2.881,
+        "lighting.cpu.union.us": 4.745,
+        "cpu.frame.total.us": 0.040
+      }
+    }
+  },
+  "_fixtures_provenance": {
+    "walk/04-Ocean-Factory": "MEASURED 2026-08-22 for [#286]: STAR_RENDERTEST_WALK=45, 4 legs of 90s, warm-up discarded, n=3, asset chain 6f763c36bbb38e08. Derived through leg-diff's OWN loader, so the basis that applies these floors is the basis that produced them -- which is the [#285] discipline applied at the point of measurement rather than discovered afterwards. THE LEGS ASSERT THEIR OWN FIXTURE: each artefact carries meta.walk=45, written by the profiler. An EARLIER bank of four walking legs existed but predated that wiring, so it self-reported `still`; rather than backfill the field by hand -- which would make my say-so, not the artefact, the evidence -- the four legs were re-run. WALKING IS STEADIER THAN STANDING HERE, which was not the expected direction: lighting.cpu.total.us 6.37% against the still 13.95%, cpu.frame.render.us 5.74% against 8.95%, cpu_cost 3.53% against 3.61%. Only lighting.produce.entities.us is worse (10.16% against 7.37%), which is the one key whose content genuinely moves. So the moving fixture is not a noisier instrument than the standing one; at this scene it is a better one, and [#274]'s border lever -- unresolvable standing, because its effect is smaller than the still fixture's own 13.95% noise -- may be resolvable unpaired here.",
+    "_n3_DOES_NOT_PIN_A_CV": "AND THE DISCARDED BANK IS EVIDENCE, NOT WASTE. The earlier four legs were the same binary at the same scene on the same fixture, and their CVs disagree with the recorded ones by up to 3.8x: produce.entities 19.60 vs 10.16, drive.point 11.03 vs 2.88, cpu_cost 10.72 vs 3.53, union 7.27 vs 4.75, and lighting.cpu.total moves the other way at 5.44 vs 6.37. TWO INDEPENDENT n=3 BANKS OF THE SAME THING DO NOT AGREE ON THE NOISE. A floor derived from three legs is a usable REFUSAL THRESHOLD -- which is all leg-diff asks of it -- but it is not a precise figure and must never be quoted as one, here or in the `scenes` table above, which is derived the same way. This is [#268]'s finding arriving from a second direction: the whole-CPU keys are drift-bound, and a between-bank component exists that a within-bank spread cannot see.",
+    "_still_settling_is_present_here_too": "cpu.frame.render.us falls 2562.4 -> 2369.4 -> 2294.6 across the three legs, the same monotonic settle the still floors carry at this scene and the ship. A residual trend is being counted as noise, so every figure above is PESSIMISTIC by an unmeasured amount."
   },
   "_warmup": {
     "03-Surface-Outpost": "cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. Its floors above INCLUDE that transient and are therefore pessimistic. Discard a warm-up leg at this scene.",
@@ -67,7 +86,27 @@
   },
   "_derived_key_floors": "lighting.cpu.union.us is DERIVED, not registered -- leg-diff synthesises it per leg from the gated membership ([#281], [#283]). A derived key gets no floor for free, so this one was measured 2026-08-22 from the SAME banked legs behind every other 04-Ocean-Factory figure here (oceanfactoryfloor-{1,2,3}, warm-up discarded), using leg-diff's OWN loader -- the basis that will apply it. CV 2.751%, mean 307.0 us/frame, n=3. THE METHOD WAS VALIDATED BEFORE THE NEW NUMBER WAS TAKEN: recomputing the recorded floors from those legs reproduces lighting.produce.entities.us, cpu.frame.render.us, lighting.cpu.total.us and cpu.frame.total.us to three decimals. THE UNION IS FAR STEADIER THAN ITS LARGEST MEMBER -- 2.751% against lighting.cpu.total.us's 13.952% -- which is expected and is an argument for using it as the denominator: summing seven members averages away per-member variance that a single part carries alone.",
 
-  "_two_floors_did_not_reproduce": "AND THAT IS A FINDING, RECORDED RATHER THAN ROUNDED PAST. Recomputing from the named legs gives lighting.gpu.cpu_cost.us 3.735 (recorded 3.613) and lighting.gpu.drive.point.us 3.912 (recorded 3.814) -- both ~3% high, while the other four reproduce EXACTLY. The four that match are all frame- or tick-cadence; the two that do not are the only CADENCE=CALL keys in the set, whose coverage is below 100% and whose coverage-scaled value therefore differs from the raw total/frames that leg-diff uses. So the likely cause is that these two floors were derived on telemetry-window's coverage-scaled basis while leg-diff applies them to raw per-frame values. HYPOTHESIS, NOT ESTABLISHED: the cadence correlation is 4-for-4 and 2-for-2, which is suggestive and not proof, and no one has re-derived them both ways to confirm. The union figure above is unaffected -- it was measured on leg-diff's basis deliberately -- but the two call-cadence floors should be re-derived on the consumer's basis before either is quoted precisely.",
+  "_basis": "EVERY FIGURE IN THIS FILE IS THE COEFFICIENT OF VARIATION, ACROSS LEGS, OF total/frames -- the metric's summed microseconds divided by the leg's frame count, where frames is cpu.frame.total.us's count. THAT IS THE CONSUMER'S BASIS: leg-diff.py computes exactly this per leg and compares the results, so a floor derived any other way is a bar from a different measurement. The alternative that actually bit us is per-CALL (total/count), which for a key whose count is not the frame count is a DIFFERENT QUANTITY, not a rescaling -- and CV does not survive it. scripts/ci/floor-reproduces.py re-derives every entry below from its own banked legs on this basis and fails if any disagrees, so this declaration is enforced rather than asserted.",
+
+  "_four_floors_did_not_reproduce": "AND MY FILED EXPLANATION FOR IT WAS WRONG. [#285] recorded that two 04-Ocean-Factory floors did not reproduce and blamed telemetry-window's COVERAGE-SCALED basis, on a cadence correlation of 4-for-4 and 2-for-2 at one scene. Re-deriving all six scenes refutes that twice over. (1) CADENCE IS NOT THE DISCRIMINATOR: the same two call-cadence keys reproduce EXACTLY at Desert-Town, 00-Ocean-Lab, 01-Lava-Refinery and 03-Surface-Outpost, so the pattern is 2-for-12, not 2-for-2. (2) COVERAGE VARIATION IS NOT THE DISCRIMINATOR EITHER, and points the wrong way: the two scenes that fail have the STEADIEST coverage of all six (0.185% and 0.155%), while 03-Surface-Outpost swings 91.84/99.96/39.81% -- 42% -- and reproduces to three decimals. THE ACTUAL CAUSE, established 4-for-4 by trying each candidate basis against the recorded number: those floors were derived PER CALL (total/count) while leg-diff applies them PER FRAME (total/frames). Confirmed in the other direction too, 8-for-8: at the four scenes that reproduce, per-frame matches the record and per-call does not -- at 03-Surface-Outpost by a factor of four (46.446 vs 11.259). So this table was populated by TWO DIFFERENT DERIVATIONS and recorded neither. It was never a property of the keys; it was two people-shaped passes over one file, which is why no rule about cadence or coverage could predict it. FIXED HERE: 04-Ocean-Factory cpu_cost 3.613 -> 3.735 and drive.point 3.814 -> 3.912; ship cpu_cost 7.427 -> 7.561 and drive.point 7.086 -> 7.211. All four move UP, so every verdict they gated was too permissive, never too strict. The union figure was unaffected -- it was measured on leg-diff's basis deliberately.",
+
+  "_banks": {
+    "_what": "The legs each floor was derived from, as DATA rather than prose, so scripts/ci/floor-reproduces.py can re-derive and check rather than take the provenance's word. Paths are relative to harness/profiles/ and omit the .json. WARM-UP LEGS ARE NOT LISTED because they were discarded before derivation; a bank is the legs that produced the number, not the legs that were run.",
+    "_scene_attribution": "The four stab-* banks predate the profiler recording meta.scene, so their artefacts do NOT self-describe their place and the scene attribution rests on the FILENAME. The gate therefore cannot verify their scene, only re-derive their numbers. The oceanfactoryfloor-*, shipfloor-* and walkfloor-* banks do carry meta.scene, and the gate asserts it matches.",
+    "scenes": {
+      "Desert-Town": ["stab-Desert-Town-p1", "stab-Desert-Town-p2", "stab-Desert-Town-p3"],
+      "00-Ocean-Lab": ["stab-00-Ocean-Lab-p1", "stab-00-Ocean-Lab-p2", "stab-00-Ocean-Lab-p3"],
+      "01-Lava-Refinery": ["stab-01-Lava-Refinery-p1", "stab-01-Lava-Refinery-p2", "stab-01-Lava-Refinery-p3"],
+      "03-Surface-Outpost": ["stab-03-Surface-Outpost-p1", "stab-03-Surface-Outpost-p2", "stab-03-Surface-Outpost-p3"],
+      "04-Ocean-Factory": ["oceanfactoryfloor-1", "oceanfactoryfloor-2", "oceanfactoryfloor-3"],
+      "ship": ["shipfloor-1", "shipfloor-2", "shipfloor-3"]
+    },
+    "fixtures": {
+      "walk": {
+        "04-Ocean-Factory": ["walkfloor-2", "walkfloor-3", "walkfloor-4"]
+      }
+    }
+  },
 
   "_absent_is_not_zero": "A key or scene NOT listed here has NO MEASURED FLOOR. leg-diff.py refuses to attribute rather than assuming zero, because an unmeasured floor and a floor of zero produce opposite verdicts from the same data."
 }

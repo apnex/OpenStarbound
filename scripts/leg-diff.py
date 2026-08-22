@@ -113,7 +113,12 @@ def leg(path):
             add_union(vals, _u, _mem, d.get("zeroed", ()))
         except Exception:
             pass  # a leg with no union is a leg leg-diff refuses to attribute on; never a wrong number
-    return meta.get("scene"), vals, meta.get("assetFingerprint"), meta.get("pair")
+    # FIXTURE, derived from meta.walk: a leg driven by the motion fixture ([#174]) and a leg that
+    # stood still are otherwise identical in the artifact -- same scene, same everything -- and their
+    # noise floors differ by 5x on cpu.frame.render.us. Absent/0 means STANDING, which is what every
+    # leg banked before 2026-08-22 was, so no historical leg changes meaning.
+    fixture = "walk" if meta.get("walk") else "still"
+    return meta.get("scene"), vals, meta.get("assetFingerprint"), meta.get("pair"), fixture
 
 
 def compare(a_paths, b_paths, keys=None, floors=None, paired=None, scene=None):
@@ -140,7 +145,7 @@ def compare(a_paths, b_paths, keys=None, floors=None, paired=None, scene=None):
         if len(scenes) == 1:
             scene = scenes.pop()
         elif len(scenes) > 1:
-            problems.append(f"legs span {len(scenes)} scenes {sorted(scenes)} -- different fixtures "
+            problems.append(f"legs span {len(scenes)} scenes {sorted(scenes)} -- different places "
                             f"have different noise and different content. Not attributable.")
         else:
             problems.append("no leg records its scene, so no floor can be selected. An unmeasured "
@@ -159,9 +164,27 @@ def compare(a_paths, b_paths, keys=None, floors=None, paired=None, scene=None):
     if problems:
         return [], problems
 
-    sfl = fl["scenes"].get(scene)
+    # MIXED FIXTURES ARE NOT COMPARABLE, for the same reason mixed scenes are not: walking costs 23%
+    # more render CPU than standing at the same place, so the difference would be between FIXTURES,
+    # not between arms.
+    fixtures = {x[4] for x in A + B}
+    if len(fixtures) > 1:
+        return [], [f"legs span {len(fixtures)} fixtures {sorted(fixtures)} -- walking costs ~23% "
+                    f"more render CPU than standing at the same scene, so the difference is between "
+                    f"fixtures, not between arms. Not attributable."]
+    fixture = fixtures.pop() if fixtures else "still"
+
+    # THE FLOOR IS KEYED ON SCENE **AND** FIXTURE. `scenes` holds the STILL floors and every
+    # historical entry, untouched; a non-default fixture must earn its own under `fixtures`. There is
+    # deliberately NO FALLBACK to the still floor: applying a standing bar to a moving leg is exactly
+    # [#285]'s basis mismatch, and a missing floor must refuse rather than borrow a wrong one.
+    if fixture == "still":
+        sfl = fl["scenes"].get(scene)
+    else:
+        sfl = fl.get("fixtures", {}).get(fixture, {}).get(scene)
     if sfl is None:
-        return [], [f"scene {scene!r} has no measured floor in scene-floor.json. Measure it "
+        where = f"scene {scene!r}" if fixture == "still" else f"scene {scene!r} on the {fixture!r} fixture"
+        return [], [f"{where} has no measured floor in scene-floor.json. Measure it "
                     f"(4 legs minimum) before differencing anything at it."]
     insensitive = fl.get("_insensitive", {})
 
@@ -185,7 +208,7 @@ def compare(a_paths, b_paths, keys=None, floors=None, paired=None, scene=None):
         cv = sfl.get(k)
         if cv is None:
             rows.append({"key": k, "delta_pct": pct, "verdict": "NO FLOOR",
-                         "note": f"no measured floor for this key at {scene}"})
+                         "note": f"no measured floor for this key at {scene} on the {fixture!r} fixture"})
             continue
         if paired:
             # Paired legs share their between-leg noise, so the floor does not apply. What bounds a
@@ -232,12 +255,13 @@ def selftest():
     FL = {"scenes": {"S": {"k": 10.0}}, "_insensitive": {"paced": "insensitive"}}
 
     with tempfile.TemporaryDirectory() as d:
-        def mk(name, k=100.0, scene="S", fp="CHAIN", pair=None, extra=None):
+        def mk(name, k=100.0, scene="S", fp="CHAIN", pair=None, extra=None, walk=None):
             m = {"cpu.frame.total.us": {"total": 1000, "count": 10},
                  "k": {"total": k * 10, "count": 10}}
             if extra: m.update({n: {"total": v * 10, "count": 10} for n, v in extra.items()})
             meta = {"scene": scene, "assetFingerprint": fp}
             if pair: meta["pair"] = pair
+            if walk: meta["walk"] = walk
             p = os.path.join(d, name + ".json")
             json.dump({"label": name, "meta": meta, "metrics": m}, open(p, "w"))
             return p
@@ -307,6 +331,44 @@ def selftest():
     if bad:
         print(f"leg_diff: SELFTEST FAIL -- {bad} of {len(arms)} arm(s)")
         return 1
+    # FIXTURE ARMS ([#286]). A walking leg and a standing leg record the SAME SCENE and differ by 23%
+    # on render CPU, so the fixture is a comparison-defining property exactly like the asset chain.
+    FLW = {"scenes": {"S": {"k": 10.0}},
+           "fixtures": {"walk": {"S": {"k": 2.0}}},
+           "_insensitive": {"paced": "insensitive"}}
+    with tempfile.TemporaryDirectory() as d2:
+        def mkw(name, k=100.0, walk=None):
+            m = {"cpu.frame.total.us": {"total": 1000, "count": 10},
+                 "k": {"total": k * 10, "count": 10}}
+            meta = {"scene": "S", "assetFingerprint": "CHAIN"}
+            if walk: meta["walk"] = walk
+            p = os.path.join(d2, name + ".json")
+            json.dump({"label": name, "meta": meta, "metrics": m}, open(p, "w"))
+            return p
+
+        arm("a leg with meta.walk reads fixture 'walk'", leg(mkw("w1", walk=45))[4] == "walk")
+        arm("a leg without it reads 'still' -- every historical leg keeps its meaning",
+            leg(mkw("s1"))[4] == "still")
+
+        # MIXED FIXTURES ABORT, for the same reason mixed scenes and mixed chains do.
+        _, probs = compare([mkw("s2")], [mkw("w2", walk=45)], ["k"], FLW, paired=False)
+        arm("walking vs standing is NOT attributable -- the difference is between fixtures",
+            any("fixtures" in p for p in probs))
+
+        # THE WALK FLOOR IS ITS OWN, AND THERE IS NO FALLBACK TO THE STILL ONE. cv 2% not 10%, so a
+        # 15% difference RESOLVES on the walk fixture while the same legs standing read BELOW FLOOR.
+        rw, _ = compare([mkw("w3", 100.0, walk=45)], [mkw("w4", 115.0, walk=45)], ["k"], FLW, paired=False)
+        rs, _ = compare([mkw("s3", 100.0)], [mkw("s4", 115.0)], ["k"], FLW, paired=False)
+        arm("the walk fixture uses ITS OWN floor, not the scene's still floor",
+            rw[0]["verdict"] == "RESOLVED" and rs[0]["verdict"] == "BELOW FLOOR")
+
+        # AND A FIXTURE WITH NO FLOOR REFUSES RATHER THAN BORROWING THE STILL ONE -- which is exactly
+        # [#285]'s basis mismatch, and the whole reason this lookup is keyed on both.
+        FLNO = {"scenes": {"S": {"k": 10.0}}, "_insensitive": {}}
+        _, pno = compare([mkw("w5", walk=45)], [mkw("w6", 115.0, walk=45)], ["k"], FLNO, paired=False)
+        arm("a fixture with no measured floor REFUSES, it does not borrow the still floor",
+            any("walk" in p and "no measured floor" in p for p in pno))
+
     # UNION ARMS ([#281]). The aggregate is DERIVED here, so what needs asserting is not the addition
     # -- it is that an incomplete leg produces NO KEY rather than a short sum, and that the membership
     # comes from the gate rather than from a list in this file.
