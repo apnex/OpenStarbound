@@ -40,9 +40,16 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 # Pure: takes a log path and reads nothing else, so --selftest can drive all three verdicts. A missing load-end
 # line is `ok` here rather than a failure -- a different check owns that, and an instrument that reports another
 # instrument's defect under its own name is how a red gets attributed to the wrong cause.
+# ONE PATTERN, FOUR READERS. Four separate greps used to spell "WARPING to bookmark" literally, and
+# when the client learned to warp to the OWN SHIP -- which logs "WARPING to OWN SHIP" -- every one of
+# them went blind at once: the warp SUCCEEDED, the arrival assertion PASSED, and the run was still
+# failed by a shell grep looking for the old words. Sixth instance of a gate's vocabulary outliving
+# the tree's in one day. A pattern that four readers share can only drift once, and it drifts here.
+WARP_LOG_RE="rendertest\] WARPING to (bookmark|OWN SHIP)"
+
 warp_order_verdict() {
   local log="$1" warp_at load_at
-  warp_at=$(grep -nE "rendertest\] WARPING to bookmark" "$log" 2>/dev/null | head -1 | cut -d: -f1)
+  warp_at=$(grep -nE "$WARP_LOG_RE" "$log" 2>/dev/null | head -1 | cut -d: -f1)
   load_at=$(grep -nE "rendertest\] world (QUIESCED|did NOT settle)" "$log" 2>/dev/null | head -1 | cut -d: -f1)
   [ -n "$warp_at" ] || { echo never; return; }
   [ -n "$load_at" ] || { echo ok; return; }
@@ -54,17 +61,27 @@ if [ "${1:-}" = "--selftest" ]; then
   printf 'x\n[rendertest] WARPING to bookmark a\ny\n[rendertest] world QUIESCED after 300 frames\n' > "$t/ok.log"
   printf 'x\n[rendertest] world did NOT settle: hit the cap\ny\n[rendertest] WARPING to bookmark a\n' > "$t/late.log"
   printf 'x\n[rendertest] world QUIESCED after 300 frames\n' > "$t/never.log"
-  rc=0
-  for arm in ok late never; do
+  # THE SHIP ARM. Without it the pattern could narrow back to bookmarks and nothing would notice
+  # until a ship run failed for the second time -- which is exactly how this defect got here.
+  printf 'x\n[rendertest] WARPING to OWN SHIP (world=ClientShipWorld:abc)\ny\n[rendertest] world QUIESCED after 300 frames\n' > "$t/ship.log"
+  # ARM:EXPECTED, because the arm NAME is not the verdict. The ship fixture's correct verdict is `ok`
+  # -- its warp precedes the load -- and reusing the name as the expectation made a passing arm read
+  # FAIL. A test whose expectation is implied by a filename breaks the moment a case is added whose
+  # name is not its answer.
+  rc=0; n=0
+  for spec in ok:ok late:late never:never ship:ok; do
+    arm=${spec%%:*}; want=${spec##*:}; n=$((n+1))
     got=$(warp_order_verdict "$t/$arm.log")
-    if [ "$got" = "$arm" ]; then
+    if [ "$got" = "$want" ]; then
       printf '  ok   %-5s -> %s\n' "$arm" "$got"
     else
-      printf '  FAIL %-5s -> %s\n' "$arm" "$got"; rc=1
+      printf '  FAIL %-5s -> %s (wanted %s)\n' "$arm" "$got" "$want"; rc=1
     fi
   done
   rm -rf "$t"
-  [ $rc -eq 0 ] && echo "  render-profile warp-order selftest: 3/3 arms ok -- ordered, reversed and absent are three distinct verdicts"
+  # DERIVED. This said "3/3" the moment a fourth arm was added -- the seventh time in one day that a
+  # summary kept a number the thing it summarises had outgrown.
+  [ $rc -eq 0 ] && echo "  render-profile warp-order selftest: $n/$n arms ok -- ordered, reversed, absent and ship are distinct verdicts"
   exit $rc
 fi
 
@@ -137,7 +154,14 @@ archive_log() {
 # 'exploring' does not match a bookmark named 'explore', which is exactly the typo that burned three full
 # 120s captures: the client loaded the world, failed the lookup, quit, and the script reported the generic
 # "client exited during load". Mirror the engine's rule here and fail in milliseconds with the real list.
-if [ -n "$WARP" ] && [ -s "$BOOKMARKS" ]; then
+#
+# THE SHIP IS AN ALIAS, NOT A BOOKMARK, and this pre-flight mirrors the engine so it has to know that
+# too. StarClientApplication.cpp accepts 'ship'/'ownship' via WarpAlias::OwnShip; a pre-flight that
+# only knew about bookmarks would reject the one location the harness originally measured, in
+# milliseconds, with a list that correctly does not contain it -- a refusal that looks authoritative
+# and is wrong.
+if [ -n "$WARP" ] && [ -s "$BOOKMARKS" ] \
+   && ! printf '%s' "$WARP" | grep -qiE '^(ship|ownship|own ship)$'; then
   want=$(printf '%s' "$WARP" | tr '[:upper:]' '[:lower:]')
   hits=$(tr '[:upper:]' '[:lower:]' < "$BOOKMARKS" | grep -cF -- "$want" || true)
   if [ "$hits" -eq 0 ]; then
@@ -328,7 +352,7 @@ grep -o "bookmark: '[^']*'" "$LOG" 2>/dev/null | sed "s/bookmark: '//;s/'$//" | 
 if [ -n "$WARP" ]; then
   case "$(warp_order_verdict "$LOG")" in
     never)
-      echo "FAIL: --warp '$WARP' was requested and no 'WARPING to bookmark' line was ever logged. The load"
+      echo "FAIL: --warp '$WARP' was requested and no warp line was ever logged (bookmark or OWN SHIP). The load"
       echo "      ended somewhere nobody chose, and the fingerprint would be perfectly self-consistent there."
       archive_log "$LABEL-NOWARP"; kill -TERM $PID 2>/dev/null; exit 1 ;;
     late)
@@ -336,7 +360,7 @@ if [ -n "$WARP" ]; then
       echo "      measurement window, so this leg would report asset streaming as render cost."
       archive_log "$LABEL-WARPLATE"; kill -TERM $PID 2>/dev/null; exit 1 ;;
   esac
-  grep -o "rendertest\] WARPING to bookmark.*" "$LOG" | sed 's/^/  /' | head -1
+  grep -oE "$WARP_LOG_RE.*" "$LOG" | sed 's/^/  /' | head -1
 else
   echo "  location: NOT PINNED (no --warp) -- wherever the harness player was left by the previous run."
 fi

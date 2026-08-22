@@ -1836,25 +1836,41 @@ void ClientApplication::updateRunning(float dt) {
   if (m_renderTestFrames && !m_renderTestWarp.empty() && !m_renderTestWarped && m_player
       && m_universeClient && m_universeClient->worldClient() && m_universeClient->worldClient()->inWorld()) {
     String want = m_renderTestWarp.toLower();
-    for (auto const& b : m_player->universeMap()->teleportBookmarks()) {
+    // ONE COMMIT POINT FOR EITHER DESTINATION. Restarting the load phase is five pieces of state that
+    // must move together: resetting the frame counter alone moves the CAP without re-entering the phase,
+    // and leaves the stability counter holding credit earned in the departure world. The bookmark path
+    // once claimed this in a comment while resetting four of the five, so it is a function now.
+    auto beginWarp = [this](String const& worldId) {
+      m_renderTestWarped = true;
+      m_renderTestWarpWorldId = worldId;   // asserted on arrival, below
+      m_renderTestLoading = true;
+      m_renderTestFrame = 0;
+      m_renderTestStable = 0;
+      m_renderTestLastEntities = 0;
+    };
+    // THE SHIP IS NOT A BOOKMARK, so narrowing this hook to teleportBookmarks() made the one scene where
+    // the parallax pass costs exactly ZERO -- see above for why that matters -- unreachable by name.
+    // WarpAlias::OwnShip was always there; only this hook could not say it, and an engine alias cannot be
+    // renamed out from under a run the way a bookmark can.
+    if (want == "ship" || want == "ownship" || want == "own ship") {
+      // Must equal what the server will pick, since the arrival assert compares playerWorld(): the same
+      // expression the `ownShipWorldId` player callback answers with.
+      String shipWorld = printWorldId(ClientShipWorldId(m_player->uuid()));
+      Logger::info("[rendertest] WARPING to OWN SHIP (world={})", shipWorld);
+      m_universeClient->warpPlayer(WarpAlias::OwnShip, false);
+      beginWarp(shipWorld);
+    } else for (auto const& b : m_player->universeMap()->teleportBookmarks()) {
       if (b.bookmarkName.toLower().contains(want)) {
         Logger::info("[rendertest] WARPING to bookmark '{}' (world={})", b.bookmarkName, printWorldId(b.target.first));
         m_universeClient->warpPlayer(WarpToWorld(b.target.first, b.target.second), false);
-        m_renderTestWarped = true;
-        m_renderTestWarpWorldId = printWorldId(b.target.first);   // asserted on arrival, below
-        // RESTART THE LOAD PHASE -- which this comment already claimed and the code did not do. Resetting
-        // the frame counter alone moves the CAP; it does not re-enter the phase, and it leaves the stability
-        // counter holding credit earned in the departure world. The destination streams in from scratch, so
-        // every part of the load state has to go back to its starting value together.
-        m_renderTestLoading = true;
-        m_renderTestFrame = 0;
-        m_renderTestStable = 0;
-        m_renderTestLastEntities = 0;
+        beginWarp(printWorldId(b.target.first));
         break;
       }
     }
     if (!m_renderTestWarped) {
-      Logger::error("[rendertest] FAIL: no teleport bookmark matching '{}'", m_renderTestWarp);
+      Logger::error("[rendertest] FAIL: '{}' matches no teleport bookmark, and is not the alias "
+                    "'ship'. The ship is reachable but is NOT a bookmark -- name it explicitly.",
+                    m_renderTestWarp);
       appController()->quit();
       return;
     }
