@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**221 tasks** across 2 store(s): 2 in_progress, 31 pending, 188 completed
+**221 tasks** across 2 store(s): 2 in_progress, 30 pending, 189 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 220 tasks, ids 64–284
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,19 +43,18 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#283` | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable i… | ready |
-| 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
-| 3 | 4 | `#284` | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites,… | ready |
-| 4 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
-| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 6 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
-| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 8 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
-| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
-| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 1 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
+| 2 | 4 | `#284` | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites,… | ready |
+| 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
+| 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 5 | 6 | `#252` | TEL-EXTRACT: steps 1-3 SHIPPED — the Reporter is read-only, the vocabulary has one definition, and it lives i… | blocked by #267 |
+| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 7 | 9 | `#250` | GM-3 STREAM: the sovereign API surface — and its line figure needs a STATED COMMAND, not a new number | ready |
+| 8 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
+| 9 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 10 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 11 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 12 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
 
 > **Ranking integrity:** rank 4 is claimed by 2 tasks: #268, #284
 
@@ -69,7 +68,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 232, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 233, of which **40 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -100,7 +99,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 88 of 188.
+**Completed tasks citing no commit and no doc:** 88 of 189.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -322,7 +321,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `bb9742f6` `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `bb9742f6` `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `e678eda5` `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `71d79761` `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
@@ -331,7 +330,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
 | [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `48a4f61e` | — |
 | [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
-| [#283](#c29c1332-283) | `c29c1332` | open | UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable in the ship… | — | — |
+| [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
 | [#284](#c29c1332-284) | `c29c1332` | open | RENDER-UPLOAD-BRACKETS: the renderer's own buffer and texture uploads have no CPU timer — 19 GL upload sites, every tim… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
@@ -7190,6 +7189,7 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 status: **completed**
 
+- `e678eda5` [#283] CORRECTION: the union's 7th member was never missing -- this consumer was not reading `zeroed`
 - `48a4f61e` [#281] the union is diffable -- and measuring it found the reason it still cannot be measured
 - `906aca3d` [#269] the lighting union is computed from its gated membership list, not summed by hand
 - `9b40339a` [#274] CLOSED: the border lever is CONFIRMED, and it is the OFF arm that moved
@@ -7803,72 +7803,71 @@ question.
 
 <a id="c29c1332-283"></a>
 
-#### #283 — UNION-UPLOAD-MEMBER: the union's 7th member is present in 3 of 664 legs, so the aggregate is not computable in the shipped default
+#### #283 — UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not reading `zeroed`
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **completed**
+
+- `e678eda5` [#283] CORRECTION: the union's 7th member was never missing -- this consumer was not reading `zeroed`
 
 ```
-Found by [#281] 2026-08-22, while building the positive control for the union's diff path. This is
-the reason the union has never produced a number, and it is a membership defect rather than a
-consumer one.
+CLOSED 2026-08-22. THIS TASK'S PREMISE WAS FALSE and the correction is the content.
 
-=== THE MEASUREMENT ===
+=== WHAT I FILED, AND WHY IT WAS WRONG ===
 
-Across 664 banked legs, counting how many of the union's 7 declared members are present:
+Filed: "lighting.upload.us is present in 3 of 664 legs ... its timer sits on the CPU-lightmap
+fallback path that the shipped default never takes, so the key never registers ... the union is not
+computable in the configuration the game ships."
 
-    0 members -> 16 legs      2 members -> 379 legs
-    6 members -> 269 legs     7 members -> ZERO LEGS
+Every operative clause is false:
 
-  lighting.cpu.total.us         648        lighting.produce.prep.us       269
-  lighting.gpu.cpu_cost.us      645        lighting.produce.adjust.us     269
-  lighting.produce.entities.us  269        lighting.gpu.spread_scan.us    269
-  lighting.upload.us              3
+  RAW SNAPSHOT   lighting.upload.us   count=0, total=0    registered, measured, ZERO
+  LEG SUMMARY    lighting.upload.us   not in `metrics`    but PRESENT in `zeroed`
 
-The three legs that hold it are cpu-false, cpu-true and crit3-gpuoff -- every one a GPU-lighting-OFF
-leg.
+It IS registered eagerly, at file scope in StarWorldPainter.cpp's anonymous namespace, alongside
+lighting.gpu.point.{mismatch,compared} -- the siblings whose 458-vs-3 presence gap I cited as proof
+they "demonstrably do not register together". They register together fine. The gap was in the
+artefact FIELD I read, not in the tree.
 
-=== WHY, IN THE TREE'S OWN WORDS ===
+Zero is also the honest value: with GPU lighting on, the `else if (!renderData.lightMap.empty())`
+branch is not taken, because the lightmap never returns to the CPU to be re-uploaded. Lighting's
+GPU-path uploads are timed separately and are NOT zero -- lighting.gpu.drive.upload.us, 26.3 us/frame.
 
-StarWorldPainter.cpp's registration comment: "Cadence::Call: doubly conditional -- inside
-`if (lightMapUpdated)` AND only on the CPU-lightMap fallback path." With GPU lighting ON -- the
-shipped default -- that path never executes, so the timer never registers and the key is ABSENT
-rather than zero.
+=== THE ACTUAL DEFECT, AND IT WAS IN THE CONSUMER ===
 
-NOT a co-registration story: its block-siblings lighting.gpu.point.{mismatch,compared} appear in 458
-legs against upload's 3, so they demonstrably do not register together and the "registered at
-static-init" note does not cover this one.
+telemetry-window drops zero-delta rows out of `metrics` and preserves them in a separate `zeroed`
+array, with the reason stated at the site: a count=0 row among the metrics would reach coverage_scale
+and the cadence over-count check, "both of which are sound only because zero-delta rows never get that
+far". So the leg artefact DOES distinguish REGISTERED-AT-ZERO from ABSENT.
 
-CONSEQUENCE: `lighting.cpu.union.us` -- the denominator [#171] created to replace a whole that was a
-third short, and the one [#274] pre-registered against -- cannot be computed for the configuration
-the game actually ships. Every lighting percentage is therefore still quoted against
-lighting.cpu.total.us, which the union's own printed decomposition shows is about 26.5% of it.
+leg-diff read only `metrics`, collapsed that distinction back into absence, and withheld the union
+from every leg. The engine pays to register keys at zero precisely so a consumer can tell the two
+apart; this consumer spent that, and then I read its output and blamed the engine.
 
-=== THE CHOICE, WHICH IS REAL AND NOT MECHANICAL ===
+=== THE FIX (e678eda5), FOUR LINES ===
 
-  A. REGISTER IT EAGERLY, per [#241]'s precedent ("a pass that never runs now reads ZERO, not
-     ABSENT"). Then a GPU-lighting-on leg reports 0 honestly, all seven members are present, and the
-     union computes. This ALSO fixes a second defect the same comment names: when the GPU pass fails
-     transiently the key currently appears MID-WINDOW, and telemetry-window differences it against an
-     absent entry -- reporting a whole process-lifetime total, world load included, as that window's
-     cost. "A fabricated number, not an absent one, and silent by construction." Eager registration
-     makes the key present from window start, so the difference is honest.
-     Verify by construction: is the upload cost genuinely zero when GPU lighting is on, or merely
-     unmeasured? If some upload work happens on another path, zero would be a NEW false claim, and
-     that must be checked before shipping this.
+add_union takes the leg's `zeroed` list; a member in it counts as PRESENT and contributes ZERO --
+added as 0.0 rather than skipped, so if it ever stops being zero the key moves into `metrics` and the
+sum picks it up with no edit.
 
-  B. DECLARE THE MEMBER CONFIGURATION-CONDITIONAL and define the union over the members that apply.
-     Honest, but it makes the union's value depend on configuration in a way no consumer currently
-     reads, and `union_membership` would need to gate a conditional set. Almost certainly worse.
+  border legs with all 7 members accounted:  0/10 before  ->  10/10 after
 
-LEAN IS A, gated on the verification named inside it. Source change; needs the GPU free and the
-mtime guard respected ([#178]).
+Selftest 16 -> 19 arms. Without them the default-empty argument left the path that matters on every
+real leg unexercised.
 
-=== WHAT IS ALREADY DONE AND MUST NOT BE REDONE ===
+=== WHAT IS ACTUALLY OWED NOW, AND IT IS SMALL ===
 
-[#281] shipped the consumer side (48a4f61e): leg-diff synthesises the union from the gated membership
-list and WITHHOLDS the key entirely from any leg missing a member, so a short sum can never be
-differenced. That refusal is what made this defect visible instead of letting a six-member sum be
-quoted as the whole. Do not "fix" it by relaxing the rule.
+The union computes on [#274]'s five pairs for the first time: +20.45%, reported NO FLOOR. That
+refusal is CORRECT -- scene-floor.json has no measured floor for lighting.cpu.union.us at
+04-Ocean-Factory, and a derived key gets no floor for free. Deriving one from the same legs the other
+floors came from is the remaining work, and it is a floor measurement, not a defect.
+
+=== WHY THIS IS RECORDED RATHER THAN DELETED ===
+
+A task filed on a false premise is worse than no task: this one would have sent the next person to add
+an eager registration that already exists, and to "fix" an engine that was correct. The method failure
+is the durable part -- I concluded from the absence of one FIELD without checking whether the
+information lived in another, in a file whose whole design is that ABSENT and ZERO are different
+things. [[absent-is-not-zero]] applies to the reader as well as the writer.
 ```
 
 <a id="c29c1332-284"></a>
