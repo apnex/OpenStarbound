@@ -49,7 +49,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 4 | 5 | `#275` | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | ready |
 | 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 8 | `#252` | TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component | blocked by #267 |
+| 7 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
 | 8 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
 | 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
 | 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
@@ -68,7 +68,7 @@ reports but does not surface is not a check.
 
 **Commit ids cited in task text:** 231, of which **43 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 39.** The task harness has, on these, appended its
+**Descriptions normalised on export: 40.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -297,7 +297,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
-| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component | — | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
@@ -312,7 +312,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#264](#c29c1332-264) | `c29c1332` | done | LEVER-CPU-WEIGHTED CLOSED: the fix is correct, was implemented and measured, and changes nothing — the real constraint… | — | — |
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
-| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
+| [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | — | — |
 | [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
@@ -5852,40 +5852,107 @@ valid, which is upstream of what they mean.
 
 <a id="c29c1332-252"></a>
 
-#### #252 — TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component
+#### #252 — TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows
 
 status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 8}`
 
 ```
-BLOCKED 2026-08-22 (Director): no code moves until the destination is ruled.
+DESTINATION RULED 2026-08-22, delegated by the Director. #252 STANDS. Unblocked.
 
-=== THE CONFLICT ===
+=== THE RULING ===
 
-This task orders everything that WRANGLES, PROJECTS or CONSUMES metrics into `metrics/`. #267's axiom
-derivation says the same row is FIVE duties and wants a separate `report` component for the
-projection/consumption half. Both are ratified-sounding; they cannot both be executed.
+Projection and consumption live in `metrics/`. #267's `report` component is REFUSED. No new register
+rows, no amended facets, no kind-table change.
 
-Moving ~390 lines to the wrong home is the expensive kind of mistake: it is a large diff that looks
-like progress, passes every gate, and has to be undone by a second large diff. Worse, whichever moves
-first silently decides the question for the other. So the ruling comes first and the code second.
+=== THE DECIDING FACT: #267's DISQUALIFICATION PREMISES ARE FALSE ===
 
-  DIRECTOR DECISION OWED: does projection/consumption live in `metrics/` alongside the store, or in
-  its own `report` component with `metrics/` keeping only capture and storage?
+#267 argued the projection is HOMELESS -- it cannot go to `metrics` (reading a registry names
+`telemetry`, `metrics`'s ratified falsifier) and cannot stay in `telemetry` (it names subject keys,
+which that row's excludes forbids) -- therefore a third component is forced. Both halves fail against
+the tree. Verified directly, not taken on the derivation's word:
 
-Blocked-by #267 records that ordering mechanically rather than in prose nobody re-reads.
+  (c) FALSE, and it fails in the direction that REVERSES the argument. The test that supposedly
+      disqualifies `metrics` from holding subject knowledge already convicts `metrics` TODAY, green
+      under every gate. source/metrics/StarThreadBusyReader.cpp maps kernel thread comms to owners by
+      hand: ":gdrv"/"starboun:" -> Gl, "starbound" -> Frame, "WorldServerThre" -> Sim,
+      "WorldClient::li" -> Lighting. Knowing that a thread called WorldClient::li IS THE LIGHTING PASS
+      is precisely "a measurement that knows what a pass is". And ownerKey's own comment says it:
+      "this is a second copy of one vocabulary." `metrics` is not a clean room the projection would
+      contaminate -- it is already the component holding a duplicate of the projection vocabulary.
 
-=== WHAT IS STILL TRUE ===
+  (b) FALSE AS CITED. The word `telemetry` appears nowhere in `metrics`'s row. Its constraint reads
+      "names nothing it measures ... a grant to `rendering` or `game` would make the instrument a
+      peer of its subject". The clause #267 quotes belongs to `telemetry`'s row. The real bar is an
+      #include edge, which grant-sweep reads via INCLUDE and which A BY-VALUE SIGNATURE REMOVES.
 
-The substance holds: ~390 lines qualify, of which 246 are projection hiding inside the core store.
-Both blockers the row originally named are COMPLETED, so the ruling is the only thing in the way --
-this is not waiting on engineering.
+Corroborating: `report`, `series` and `measure` appear ZERO times in the ratified TSSA, while four
+ratified facets already answer this question with `metrics` -- including `telemetry`'s owes cell,
+which cites #252 by number. Ruling for `report` means amending the cells that already decided it.
 
-=== STALE FIGURE ===
+=== THE AXIOMS DO NOT DECIDE THIS, AND SAYING SO MATTERS ===
 
-The consumer total is 3,798 lines, not 3,091. And `dev/storage/telemetry` does not exist in this tree,
-so the 54,364-files/250M figure is unverifiable from here -- note that the claim it was supporting
-(there is no retention policy anywhere) still holds independently, by grep over
-StarTelemetryReporter.cpp and StarClientApplication.cpp returning zero retention/prune/unlink sites.
+A3 forbids "and" in a duty string; neither duty has one. P2 is about process placement, not
+directories. D14 ratified that A1 binds and named its price; it ruled on no destination. §10's own
+boundary facet says placement is argued per component. This is a JUDGEMENT CALL, decided on
+engineering grounds with the ratified facets as tie-breaker -- not a derivation. Anyone re-opening it
+should attack the judgement, not hunt for the axiom.
+
+The engineering ground: one definition of the owner spelling is a COMPILE ERROR when it drifts. Two
+definitions in two components joined by a comment is a convention someone must remember -- and that
+convention is in the tree right now.
+
+=== BINDING CARRY-FORWARDS FROM THE LOSING CASE ===
+
+1. LAW_OF_ONE is the real constraint and it is GATED (check_law_of_one in scripts/prose-claims.py,
+   ceiling 1, every push). DO NOT TOUCH THE `metrics` DUTY STRING. The file already forecloses that
+   escape in its own comment about reverting a duty rewrite. If the honest duty acquires an "and",
+   SPLIT -- per the `celestial` precedent -- and #267 was right after all.
+2. THE BY-VALUE SIGNATURE IS MANDATORY, not an optimisation. TelemetryReporter::writeSnapshot today
+   calls Telemetry::snapshot() AND advances cpu.process.total_us off getrusage -- a read-modify-write
+   into the store, from a header claiming "Pure read-only consumer". Moving that unchanged would
+   carry the instrument-writes-into-its-subject defect into `metrics`. #267 found this; it is step 1.
+3. #250's answer is the `measure` ENTRYPOINT split, NOT a grant amendment. If a streaming reader
+   needs the registry, hoist the read into the composition. Granting `metrics -> telemetry` IS the
+   reversal of this ruling, not a fix for it.
+4. R07-R16 and the ABSENT-vs-ZERO value-type argument survive intact and are destination-neutral.
+5. The ~3,798 lines of consumer Python still have NO owner. This ruling does not give them one.
+
+=== COST ===
+
+0 new rows, 0 amended facets, 0 kind-table changes, 2 new grant cells (participant -> metrics,
+frontend -> metrics), 0 new gates. #267 costs +4 rows, a kind-table amendment governing all 54, and
+two gates that do not exist (vocabulary_pure, key_owner_sweep).
+
+FIGURES IN THIS ROW ARE WRONG AND MUST BE CORRECTED IN THE SAME PASS: it is ~406 lines gross, not
+390/246 -- #262's audit corrected those and the rewrite re-introduced the retired numbers. The
+`telemetry` owes cell's "256 references" states its own command, which returns 308 at HEAD.
+
+=== FIRST THREE STEPS (all touch source/ -- BLOCKED until the cartesian lands) ===
+
+1. De-write the projection IN PLACE in core: writeSnapshot takes the snapshot as a parameter; the
+   getrusage read-modify-write moves out to the point of measurement. Drops the StarTelemetry.hpp
+   include. No move, no register edit.
+2. One definition of the enum spellings: move the anon-namespace namers + c_ownerNames from
+   StarTelemetry.cpp into StarMetricDesc.hpp (header-only, no CMake change, already included by
+   StarThreadBusyReader.hpp). DELETE ownerKey's hand-copied table and its comment. This closes the
+   duplication defect -- a compile error where a comment used to be.
+3. Move StarTelemetryReporter.{hpp,cpp} to source/metrics/; add the two grant cells; close the
+   `extern` gap on the `metrics` grant row; confirm grant-sweep --check reports MISSING=0.
+
+The owner/budget tables and snapshot()'s node walk STAY IN CORE until snapshot() returns a declared
+value -- moving them first would force `core` to name `metrics`, an upward edge. Those ~185 lines are
+step 4, gated on MetricSnapshot, after #242/#249 bank. Any plan moving all ~406 lines in three steps
+is wrong.
+
+=== WHAT WOULD FALSIFY THIS RULING ===
+
+1. LAW_OF_ONE rises: if the honest `metrics` duty needs an "and" once projection is resident, split --
+   and #267 was right. THIS IS THE MOST LIKELY WAY THIS RULING IS WRONG.
+2. The shell-out pattern recurs: a non-entrypoint consumer names `metrics` merely to make an artifact.
+   Two instances and reverse.
+3. #250 cannot be built without granting `metrics -> telemetry`.
+4. MetricSnapshot cannot live in `core`, forcing a shared VOCABULARY row -- re-open rather than bolt
+   the row on.
 ```
 
 <a id="c29c1332-253"></a>
@@ -6742,59 +6809,73 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 
 <a id="c29c1332-267"></a>
 
-#### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one
+#### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands
 
 status: **pending** · blocks: #252
 
 ```
-RATIFIED BY THE DIRECTOR as D14 (commit 3eed5ab8): axioms A1 (Sovereign State Transparency) and A2 (Isomorphic Specification) bind. This task is the price of A1.
+RATIFIED AS D14 (3eed5ab8): axioms A1 and A2 bind, and this task is the price of A1. THAT PART IS
+UNTOUCHED. The A1 violation is real and this task stays open.
 
-THE VIOLATION. `Telemetry` is a process-global registry every component writes into by string key, reached for by NAME rather than handed over at composition. A1 forbids "a process-global that some component mutates on another's behalf"; TSSA §14 convicts `ServerGlobalTimestep` in exactly those words. The defence "each subject records only about ITSELF" is refuted by our own R07-R16: nine occasions in two days where one component's registration habit changed what a READER saw. A shared registry is a shared fact.
+WHAT WAS REFUSED, 2026-08-22: the derived FIVE-COMPONENT SHAPE (`metric`, `report`, `series`,
+`measure`) and with it the claim that #252 is subsumed. See #252 for the full ruling.
 
-MEASURED SCOPE: 256 references across six components (game 133, rendering 46, application 44, base 17, client 13, frontend 3).
+=== WHY: BOTH DISQUALIFICATION PREMISES FAILED AGAINST THE TREE ===
 
-=== THE DERIVED TARGET SHAPE (14-agent axiom derivation, wf_11f6ea68-b79) ===
-Four lenses derived independently (A3 Law of One / A1 state / A2+A4 declaration / A8+P1+P2 placement), four candidate shapes were proposed, each was attacked from two angles, and one synthesis survived. NOT YET DIRECTOR-APPROVED -- this is the design input, not a mandate.
+The derivation's load-bearing move was that the projection is HOMELESS -- barred from `metrics` and
+barred from `telemetry` -- so a third row is forced. Checked directly:
 
-THE HEADLINE: the register is right about the DIRECTION of every arrow and wrong about the NUMBER of rows. A3 counted honestly finds FIVE concerns inside the `telemetry` row: the write cell, the vocabulary's wire spelling, the owner/budget model, the JSON projection, and artifact emission. 54 -> 58 components, two rows amended, NONE retired.
+  "cannot go to `metrics`, reading a registry names telemetry, which is metrics's ratified falsifier"
+      -- FALSE AS CITED. `telemetry` is not in `metrics`'s row at all. That row reads "names nothing
+      it measures ... a grant to `rendering` or `game` would make the instrument a peer of its
+      subject". The quoted clause belongs to `telemetry`'s own row. The real bar is an #include edge,
+      and the by-value signature this derivation itself designed removes it.
 
-  `metric`  VOCABULARY/MACHINE -- "what one number is". MetricDesc + its eight enums AND their wire
-            spellings, MetricSample, BusyReading, MetricSnapshot, the histogram layout, the owner
-            tables. Named by telemetry, metrics, report, series and the nine subjects.
-  `report`  LIBRARY/MACHINE -- "turns a measurement value into a run artifact". Today's
-            TelemetryReporter, taking a snapshot BY VALUE. NAMES NEITHER `telemetry` NOR `metrics`.
-  `series`  LIBRARY/MACHINE -- "turns measurement values into a series". Where the campaign's five
-            hard-won rules land in C++ where grant_sweep can read them: re-differencing, the covered
-            span as denominator, the signed residual, boundedness-respecting refusal, no
-            interpolation across a hole.
-  `measure` ENTRYPOINT/COMPOSITION -- metrics_main.cpp. ADD_EXECUTABLE is a placement decision and P2
-            gives placement to compositions alone.
+  "cannot stay in `telemetry`, it names subject keys, which that row's excludes forbids"
+      -- FALSE IN THE DIRECTION THAT REVERSES THE ARGUMENT. Applied evenly, that test already
+      convicts `metrics` at HEAD, green: StarThreadBusyReader.cpp hardcodes ":gdrv" -> Gl,
+      "starbound" -> Frame, "WorldServerThre" -> Sim, "WorldClient::li" -> Lighting, and ownerKey's
+      comment concedes "this is a second copy of one vocabulary". `metrics` already holds subject
+      knowledge and already holds a duplicate of the projection vocabulary.
 
-WHY `report` IS THE KEY MOVE, and why the Director's #252 ruling was right in direction and unexecutable in destination: the projection CANNOT go to `metrics` (reading a registry means naming `telemetry`, which is `metrics`'s ratified falsifier, now grant_sweep-enforced) and CANNOT stay in `telemetry` (it names six subject keys as string literals, which that row's excludes facet forbids). The destination must be a component that names NOTHING in the subject -- it takes a declared value and hands back an artifact. #252 is therefore SUBSUMED, and the contradiction put to the Director dissolves without amending either falsifier.
+THIS IS THE INTERNAL-CONSISTENCY-IS-NOT-CORRESPONDENCE FAILURE, in its textbook form. Fourteen agents,
+four independent lenses, two adversarial attacks per candidate, one surviving synthesis -- and the
+synthesis rested on two facts about the register and the code that nobody re-read against the tree.
+A derivation can be flawless and still describe a repository that does not exist. Its own conclusion
+("#252 is unexecutable") was the thing most worth checking, and it was the thing not checked.
 
-THE ONE THING NEEDING DIRECTOR SIGHT: the derivation amends the KIND TABLE, which governs all 54 rows rather than these four. The VOCABULARY rule reads "no implementations and no ==> edge"; it would become "no BEHAVIOUR and no ==> edge", so a total function from a declared value to its spelling is allowed. Evidence: StarThreadBusyReader.cpp:15-26 HAND-COPIES the owner names with a comment saying so, because the spelling is TU-private elsewhere. Precedent: the document already records correcting "may name only FOUNDATION" as "not a tightening, it was false". If that amendment is refused, `metric` is not a VOCABULARY and the vocabulary stays in `core`.
+=== WHAT SURVIVES, AND IT IS A LOT ===
 
-WHAT IT HONESTLY DOES NOT DO: A1 IS NOT SATISFIED by this shape. `Telemetry::` stays a static accessor on a process global at ~155 sites. The shape NARROWS it -- the duty gains "its OWN", and setEnabled/setDeepEnabled/reset leave the public surface so `frontend` stops mutating nine components' recording state -- but the ambient global survives and this task stays open. Anything claiming otherwise is relocating the defect.
+  - A1 IS STILL VIOLATED. `Telemetry::` remains a static accessor on a process global at ~155 sites.
+    The refused shape did not satisfy A1 either -- the derivation says so itself. Nothing here is
+    fixed by the ruling; this task remains the open price of D14.
+  - THE BY-VALUE FIX IS ADOPTED and is step 1 of #252. Finding that writeSnapshot advances
+    cpu.process.total_us off getrusage while its header claims "Pure read-only consumer" is this
+    derivation's most valuable single result.
+  - `measure` AS AN ENTRYPOINT SPLIT IS ADOPTED, severable from `report`. It is the sanctioned answer
+    to #250: hoist the registry read into the composition rather than granting metrics -> telemetry.
+  - THE TWO LIVE CORRESPONDENCE DEFECTS stand: (a) closed at 574879f3; (b) `metrics` is KIND LIBRARY
+    while source/metrics/CMakeLists.txt is ADD_EXECUTABLE, and its grant row omits `extern`.
+  - THE `series` GAP IS REAL AND UNOWNED: ~3,798 lines of consumer Python whose five hard-won rules
+    no register row admits to. Refusing the component does not fill that hole.
 
-SEQUENCE (9 steps, each landable alone; full text in the workflow output):
-  1. Fix the two LIVE correspondence defects first -- (a) DONE at 574879f3, the Reporter was in the
-     file map and out of the contents cell, both green; (b) `metrics` is KIND LIBRARY while
-     source/metrics/CMakeLists.txt:32 is ADD_EXECUTABLE, and its row omits the `extern` it takes.
-  2. Split `measure` out as the eighth ENTRYPOINT.
-  3. Physically move StarTelemetry.{hpp,cpp} to source/telemetry/ -- 29 include lines. This is what
-     turns P1 from a convention into a compile error for this component.
-  4. Write `key_owner_sweep` REPORT-ONLY before anything structural depends on it. THIS IS THE A1
-     INSTRUMENT and it does not exist -- build it before the sweep.
-  5. Create `metric`; amend the VOCABULARY rule; land `vocabulary_pure`.
-  6. `Json snapshot()` -> `MetricSnapshot snapshot()`, making ABSENT-vs-ZERO a property of the VALUE
-     rather than a lint. SCHEMA BREAK: sequence after #242/#249 bank, not during.
-  7. Create `report`; thread the writer and the enable/deep control down from entrypoints. The
-     `/telemetry` verbs survive.
-  8. Create `series`; descend the five rules out of Python behind a DIFFERENTIAL harness. Retire a
-     Python script only when the harness agrees on real data.
-  9. Close #251 before any further GPU conclusion.
+=== THE KIND-TABLE AMENDMENT IS NOT DECIDED, BECAUSE IT WAS NOT ASKED ===
 
-STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 109, both slack zero) and A4 is strained on the 3,351-line Python tier, whose rules no register row admits to. Both are declared, not hidden.
+The VOCABULARY rule ("no implementations and no ==> edge" -> "no BEHAVIOUR and no ==> edge") governs
+all 54 rows. The #252 ruling creates no `metric` row, so the rule is untouched and the question is
+SEPARABLE. It was deliberately excluded rather than settled: it must come as its own Director question
+on its own merits, never as a side effect of a placement decision.
+
+Noted against it if it returns: c_ownerTotals is not a total function from a declared value to its
+spelling. Its own comment says "A row here is a CLAIM that the named metric is the owner's whole" --
+falsifiable policy about subjects, which the amended rule would still not admit to a VOCABULARY.
+
+=== HOW THIS TASK IS WRONG IF THE RULING IS WRONG ===
+
+The ruling's own primary falsifier is this task's best case: if the honest `metrics` duty cannot be
+written without "and" once projection is resident, then a kernel-busy reader and an artifact writer
+WERE two things, LAW_OF_ONE will say so mechanically, and the split was right. Watch
+prose-claims.py --check for a second offender.
 ```
 
 <a id="c29c1332-268"></a>
