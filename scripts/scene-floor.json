@@ -40,6 +40,14 @@
       "lighting.gpu.drive.point.us": 47.187,
       "cpu.frame.total.us": 0.098
     },
+    "04-Ocean-Factory": {
+      "lighting.produce.entities.us": 7.368,
+      "cpu.frame.render.us": 8.947,
+      "lighting.gpu.cpu_cost.us": 3.613,
+      "lighting.cpu.total.us": 13.952,
+      "lighting.gpu.drive.point.us": 3.814,
+      "cpu.frame.total.us": 0.016
+    },
     "ship": {
       "lighting.produce.entities.us": 12.104,
       "cpu.frame.render.us": 6.489,
@@ -53,6 +61,7 @@
     "03-Surface-Outpost": "cpu_cost ran 611 -> 560 -> 216 us/frame across three visits, ~3x monotonic. Its floors above INCLUDE that transient and are therefore pessimistic. Discard a warm-up leg at this scene.",
     "00-Ocean-Lab": "p1 high then settles; post-transient its cpu_cost spread falls to 0.90% and render to 5.25%, both better than Desert-Town. The candidate second scene ([#242]), once its warm-up is discarded and its own repeat count established.",
     "Desert-Town": "no transient observed across three passes.",
+    "04-Ocean-Factory": "MEASURED 2026-08-22, 1 warm-up discarded + 3 legs, as the prerequisite for [#274]. AND IT SETTLES THE METHOD BEFORE THE MEASUREMENT: lighting.cpu.total.us -- the exact key [#217] measured its -10.1% border lever on -- has an UNPAIRED CV of 13.95%. The effect being re-derived is SMALLER THAN THIS SCENE'S OWN UNPAIRED NOISE. So an unpaired A/B here cannot resolve it at any repeat count that matters: the bar is 1.96*cv*sqrt(1/na+1/nb), and at n=4 per arm that is still ~19%. ONLY A PAIRED DESIGN CAN ANSWER [#274], which is what scripts/render-ab.sh was built for ([#279]) -- pairing removes the between-leg component this floor is made of. Do not read the -10.1% as refuted by this; read it as unresolvable by the unpaired method. Also carries the same residual settling trend as the ship: cpu.frame.render.us falls 2423.5 -> 2140.6 -> 2044.3 across the three legs, so this floor is PESSIMISTIC by an unmeasured amount.",
     "ship": "ONE DISCARDED WARM-UP LEG WAS NOT ENOUGH HERE. The three legs behind the floor above still fall monotonically -- render 1951.8 -> 1778.9 -> 1726.2, cpu_cost 477.5 -> 433.9 -> 413.2 -- so a residual settling trend is being counted as noise and every ship floor above is PESSIMISTIC by an unmeasured amount. It is a usable refusal threshold, which is what a floor is for, but it is not the ship's true leg-to-leg spread and must not be quoted as one. Re-derive from the cartesian's ship baselines, which have more legs after a longer settle."
   },
   "_absent_is_not_zero": "A key or scene NOT listed here has NO MEASURED FLOOR. leg-diff.py refuses to attribute rather than assuming zero, because an unmeasured floor and a floor of zero produce opposite verdicts from the same data."
