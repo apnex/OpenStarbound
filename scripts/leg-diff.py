@@ -26,6 +26,7 @@ becomes a property of the artifact rather than a claim in a sentence.
 """
 import argparse
 import glob
+import importlib.util
 import json
 import os
 import statistics as st
@@ -34,6 +35,45 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FLOORS = os.path.join(REPO, "scripts", "scene-floor.json")
 Z95 = 1.959964
+
+
+def load_union_membership():
+    """-> (union_name, {members}) from scripts/metric-desc-lint.py, which OWNS the list and gates it.
+
+    Same import, same reason, as scripts/telemetry-window.py's copy of this function: the membership is
+    proven EXHAUSTIVE and NON-OVERLAPPING against the tree by `union_membership`, and a second hand-kept
+    list here would be a second writer whose drift the gate could not see. [#252] step 2 is the standing
+    example of what that costs -- two tables that each asserted completeness and never agreed.
+
+    THE ARITHMETIC IS NOT SHARED, DELIBERATELY, AND THAT IS NOT AN OVERSIGHT. telemetry-window
+    COVERAGE-SCALES each member against its own cadence; this file divides every key by frames and
+    nothing else, which is its convention for all ~500 of them. Sharing a sum across two different
+    denominators would produce a number belonging to neither. What is shared is the LIST and the
+    ABSENCE RULE; the division stays local to each consumer's basis.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metric-desc-lint.py")
+    spec = importlib.util.spec_from_file_location("metric_desc_lint", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.UNION, set(mod.UNION_MEMBERS)
+
+
+def add_union(vals, union_name, members):
+    """Synthesise the declared aggregate into a leg's per-frame values -- or leave it ABSENT.
+
+    ALL MEMBERS OR NOTHING. If even one member is missing from this leg, the key is NOT written, and
+    leg-diff's existing absent-key handling refuses to attribute rather than differencing a short sum.
+    That is stricter than telemetry-window's LOWER BOUND, and it has to be: a bound is a legitimate
+    thing to PRINT, and an illegitimate thing to SUBTRACT. The difference of two lower bounds is not a
+    bound on the difference -- it can point either way -- so a diff has no honest use for one. [#274]
+    is the case that earned this: it pre-registered reporting against the union and could not, because
+    `lighting.upload.us` was absent from every leg.
+    """
+    if union_name in vals:
+        return vals  # a real registered metric would outrank anything derived here
+    if all(m in vals for m in members):
+        vals[union_name] = sum(vals[m] for m in members)
+    return vals
 
 
 def load_floors(path=None):
@@ -49,6 +89,15 @@ def leg(path):
     meta = d.get("meta", {})
     vals = {k: v["total"] / fr for k, v in m.items()
             if isinstance(v, dict) and isinstance(v.get("total"), (int, float)) and fr}
+    # DERIVED, not registered: the lighting-CPU union exists only as a declared aggregate ([#269]), so
+    # without this every paired A/B is quoted against lighting.cpu.total.us -- which the union itself
+    # shows is about a quarter of lighting's real CPU cost. That is [#171]'s defect at the measurement
+    # site: a percentage denominated against a part rather than the whole.
+    if fr:
+        try:
+            add_union(vals, *load_union_membership())
+        except Exception:
+            pass  # a leg with no union is a leg leg-diff refuses to attribute on; never a wrong number
     return meta.get("scene"), vals, meta.get("assetFingerprint"), meta.get("pair")
 
 
@@ -243,8 +292,35 @@ def selftest():
     if bad:
         print(f"leg_diff: SELFTEST FAIL -- {bad} of {len(arms)} arm(s)")
         return 1
+    # UNION ARMS ([#281]). The aggregate is DERIVED here, so what needs asserting is not the addition
+    # -- it is that an incomplete leg produces NO KEY rather than a short sum, and that the membership
+    # comes from the gate rather than from a list in this file.
+    _u, _mem = load_union_membership()
+    _full = {m: 10.0 for m in _mem}
+    arm("a leg with every member gets the union, summed",
+        add_union(dict(_full), _u, _mem).get(_u) == 10.0 * len(_mem))
+
+    _short = dict(_full)
+    _dropped = sorted(_mem)[0]
+    del _short[_dropped]
+    # THE ARM THAT MATTERS. A LOWER BOUND IS FINE TO PRINT AND WRONG TO SUBTRACT: the difference of two
+    # bounds is not a bound on the difference, so an incomplete leg must yield nothing and let the
+    # existing ABSENT path refuse. This is exactly [#274]'s case -- lighting.upload.us missing from
+    # every leg -- and the reason it could not report against the union it pre-registered.
+    arm("a leg MISSING one member gets NO union key, not a short sum",
+        _u not in add_union(dict(_short), _u, _mem))
+    arm("the short leg is otherwise untouched",
+        len(add_union(dict(_short), _u, _mem)) == len(_mem) - 1)
+
+    _already = dict(_full); _already[_u] = 1.0
+    arm("a REGISTERED union would outrank the derived one",
+        add_union(dict(_already), _u, _mem)[_u] == 1.0)
+    arm("membership is imported from the gate, non-empty and named",
+        _u == "lighting.cpu.union.us" and "lighting.cpu.total.us" in _mem and len(_mem) >= 2)
+
     print(f"leg_diff selftest: {len(arms)}/{len(arms)} arms ok -- the floor refuses, repeats lower "
-          f"it, pairing is declared not inferred, and chain/scene/insensitivity all abort")
+          f"it, pairing is declared not inferred, chain/scene/insensitivity all abort, and the derived "
+          f"union is withheld entirely from any leg missing a member")
     return 0
 
 
