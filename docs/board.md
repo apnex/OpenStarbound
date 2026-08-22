@@ -46,7 +46,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 1 | 1 | `#274` | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, pai… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
-| 4 | 5 | `#275` | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must st… | ready |
+| 4 | 5 | `#275` | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | ready |
 | 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 8 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
@@ -66,9 +66,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 236, of which **45 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 237, of which **45 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 27.** The task harness has, on these, appended its
+**Descriptions normalised on export: 28.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -320,10 +320,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and fl… | `f4d311fd` | — |
-| [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
+| [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | `508707f2` `ae90fe7b` `f4d311fd` | — |
 | [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
-| [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `aa9e37c7` `29516d61` | — |
-| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `747b93ea` `aa9e37c7` `7102f21c` | — |
+| [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `163d03ea` `aa9e37c7` `29516d61` | — |
+| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `fa3f8bea` `747b93ea` `aa9e37c7` `7102f21c` | — |
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
@@ -7248,47 +7248,56 @@ Needs a live client at 04-Ocean Factory. No other blocker.
 
 <a id="c29c1332-275"></a>
 
-#### #275 — GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE the lock
+#### #275 — GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain
 
 status: **in_progress** · metadata: `{"rank": 5}`
 
+- `508707f2` [#275] LIVESTATE: give the detector a writer -- it has been inert since it shipped
 - `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 
 ```
-Items 1-4 of the original defect are shipped in ae90fe7b: scripts/harness-active.sh (4-arm selftest),
-the guarded lever_table step, the 68-step audit, and the warning in run-gates.sh's header.
+Items 1-4 shipped in ae90fe7b (scripts/harness-active.sh + 4-arm selftest, the guarded lever_table
+step, the 68-step audit, the run-gates.sh header warning).
 
-=== WHAT REMAINS, AND IT IS THE HALF THAT MAKES IT AUTOMATIC ===
+=== THE WRITER IS NOW WIRED (508707f2, 2026-08-22) ===
 
-scripts/lever-matrix.sh must WRITE the lock at run start and REMOVE it on clean exit. Until it does,
-the mechanism only works when a lock is placed by hand, which is not a mechanism.
+lever-matrix.sh acquires the lock after `mkdir "$OUT"` and BEFORE the first leg mutates the config,
+and releases it after the LAST LEG RETURNS -- not at `exit 0`, because everything below that only
+reads artefacts and a failing summariser must not leave the tree looking owned. Deliberately NOT in
+the EXIT trap: a crash must LEAVE the lock, which is the whole design.
 
-  write:  harness/matrix/.active  containing "<run_id> pid=$$"   -- immediately after OUT/run id exist
-  remove: on the EXIT trap's clean path ONLY. A crash must leave it, which is the whole design:
-          "died with the config mutated" is a real state and must not read as clean.
+--dry-run returns before the acquire, so it claims nothing. Verified: a dry run leaves the detector
+reading rc=1.
 
-NOT DONE TODAY BECAUSE THE RUN WAS EXECUTING. bash reads a script incrementally by byte offset, so
-editing lever-matrix.sh in place while it runs can send the shell into garbage -- and destroying a
-second matrix run in one day to save 90 minutes is not a trade worth making. See the harness-run
-memory; the same day's mtime incident is the cheaper version of the same lesson.
+WHAT THE WIRING EXPOSED. The detector had shipped, had a 4-arm selftest, and was read by the gate --
+and NOTHING HAD EVER WRITTEN THE FILE. So it could only ever answer "no run active", and lever_table
+went on reading a per-leg-mutated config as though it were the tree. That is the exact false green
+this task exists to prevent, live for six days behind a green ratchet. A reader with no writer is a
+claim with no instrument wearing the other hat. Two selftests could not see it between them: each was
+complete against its own fixtures and the missing edge was the one neither owned. Two new arms in
+lever-matrix.sh's selftest now drive the real writer and let the real detector answer.
 
-=== A HAZARD I CREATED, WHICH MUST BE CLEARED ===
+Also fixed in passing: that selftest's banner read "15/15" as a literal. Deriving the count exposed
+two arms that print their own ok/FAIL and never reach the helper -- they DO set fails, so no false
+green, but they were uncounted. Routed through arm(): 17/17, and 17 is what prints.
 
-harness/matrix/.active EXISTS RIGHT NOW, written by hand at ~16:20 to prove both gate arms against
-matrix-20260816-160346. It is truthful while that run is in flight. It is NOT self-clearing, because
-nothing in lever-matrix.sh knows about it yet.
+=== VERIFICATION: 1 OF 3 ARMS DONE ===
 
-  => WHEN matrix-20260816-160346 FINISHES, `rm harness/matrix/.active` BEFORE RUNNING THE GATE SET.
+[DONE 2026-08-22, in production] Lock appears with the right id and lever_table SKIPS. Proven against
+the live 5-scene cartesian: harness/matrix/.active reads "matrix-20260822-105405 pid=136437",
+harness-active.sh exits 0 with that id, and executing the gate's own guard takes the SKIP branch and
+names the run. End-to-end through the real gate text, not a fixture.
 
-A lock left behind makes lever_table skip for ever, which is the "check that cannot fail" this task
-exists to prevent -- reintroduced by the fix for it. The file is under harness/ and therefore
-gitignored, so it is invisible to git status and nothing but this note will surface it.
+[OPEN] Let a run FINISH: confirm the lock is gone and lever_table runs the real check. Satisfiable as
+soon as the cartesian (matrix-20260822-105405) completes -- do it before the next gate sweep, and note
+that a PASS here is only meaningful if the same sweep shows lever_table actually RAN rather than
+skipped. Do not accept a green that skipped.
 
-=== VERIFY AFTER WIRING ===
-Start a short run, confirm the lock appears with the right id and lever_table skips 77; let it finish,
-confirm the lock is gone and lever_table runs the real check; kill a run mid-leg, confirm the lock
-SURVIVES and the gate keeps skipping until cleared by hand.
+[OPEN] Kill a run mid-leg: confirm the lock SURVIVES and the gate keeps skipping until cleared by
+hand. Cannot be tested against the live cartesian without destroying it. Use a throwaway 1-leg run.
+
+The 2026-08-16 hand-written lock hazard is CLEARED.
 ```
 
 <a id="c29c1332-276"></a>
@@ -7384,6 +7393,7 @@ FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg chang
 
 status: **completed**
 
+- `163d03ea` [#277] SHIP-WARP: make the ship a nameable scene, and share one load-phase reset
 - `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 
@@ -7458,6 +7468,7 @@ SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST
 
 status: **completed**
 
+- `fa3f8bea` [#278] SCENES: one spelling for a fixture, and a floor that could not be found
 - `747b93ea` #279 items 1+4: pairing is now the default path, and the warm-up leg is discarded
 - `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
