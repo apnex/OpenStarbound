@@ -12,18 +12,16 @@ namespace Star {
 
 namespace {
 
-  // The owner key strings. They MUST match ownerName() in source/core/StarTelemetry.cpp, because a
-  // consumer joining this reader's output to the in-process snapshot joins on these exact words -- and
-  // that function is private to a translation unit in another component, so this is a second copy of
-  // one vocabulary. Task #252 moves the projection tables into metrics/ and deletes this copy; until
-  // then the duplication is named rather than hidden, and the static_assert below makes at least the
-  // COMPLETENESS of the mapping a compile error rather than a silent gap.
-  char const* ownerKey(MetricOwner o) {
-    static char const* const names[] = {"unknown", "frame", "gl", "sim", "lighting", "process"};
-    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricOwner::Count,
-                  "MetricOwner gained an enumerator and ThreadBusyReader's key table was not updated");
-    return names[(size_t)o];
-  }
+  // THE LOCAL ownerKey() IS GONE ([#252] step 2), and its deletion is the point of that step. It held a SECOND
+  // COPY of the owner spellings -- under a comment saying exactly that -- because the only definition
+  // was private to a translation unit in `core`. Both copies asserted COMPLETENESS, so neither could
+  // lose an enumerator; nothing checked that the two AGREED ON THE SPELLING. Renaming "gl" to "gpu" on
+  // one side would have compiled clean on both and silently broken every join, and this reader's entire
+  // purpose is emitting words a consumer joins to an in-process snapshot.
+  //
+  // The definition is now metricOwnerName() in StarMetricDesc.hpp, which StarThreadBusyReader.hpp
+  // already includes. One vocabulary, and a divergence is a compile error instead of a comment asking
+  // the next person to remember.
 
   // A thread's CPU busy time in clock ticks, or nothing if the line is not a stat line.
   //
@@ -132,7 +130,7 @@ BusyReading ThreadBusyReader::readTaskDir(String const& dir) {
     auto stat = parseStat(*text);
     if (!stat)
       continue;
-    reading.busyNs[ownerKey(ownerOfThread(stat->first))] += stat->second * perTick;
+    reading.busyNs[metricOwnerName(ownerOfThread(stat->first))] += stat->second * perTick;
     ++threads;
   }
 

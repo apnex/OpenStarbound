@@ -383,3 +383,28 @@ TEST(ThreadBusyReaderTest, ProcessTotalIsTheGroupAggregateNotTheLiveSum) {
 TEST(ThreadBusyReaderTest, AMissingProcessHasNoTotalRatherThanZero) {
   EXPECT_FALSE(ThreadBusyReader::processBusyNs(0x7FFFFFFF).isValid());
 }
+
+TEST(ThreadBusyReaderTest, TheJoinKeysAreTheSharedOwnerVocabulary) {
+  // THE WORDS ARE THE JOIN, and until [#252] step 2 they had two definitions. This reader emitted its
+  // owner keys from a private table in its own .cpp, because the only other copy was locked inside an
+  // anonymous namespace in `core`. Both tables asserted COMPLETENESS -- neither could lose an
+  // enumerator -- and NEITHER checked that the two agreed on the SPELLING. Renaming "gl" to "gpu" on one
+  // side would have compiled clean on both and silently broken every join of this reader's output to an
+  // in-process snapshot, because a join on a word that no longer matches does not error: it just finds
+  // nothing, and reports zero rows as though the work had not happened.
+  //
+  // ThreadBusyReaderTest.MapsMeasuredThreadNamesToOwners above already pins comm -> MetricOwner. This
+  // pins MetricOwner -> WORD, which is the half that was unasserted and the half a consumer actually
+  // reads. The two together are the whole path from a kernel thread name to a key in an artifact.
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Unknown), "unknown");
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Frame), "frame");
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Gl), "gl");
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Sim), "sim");
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Lighting), "lighting");
+  EXPECT_STREQ(metricOwnerName(MetricOwner::Process), "process");
+
+  // And the end-to-end composition, spelled out rather than left to be inferred from the two halves.
+  EXPECT_STREQ(metricOwnerName(ThreadBusyReader::ownerOfThread("WorldClient::li")), "lighting");
+  EXPECT_STREQ(metricOwnerName(ThreadBusyReader::ownerOfThread("starboun:gdrv0")), "gl");
+  EXPECT_STREQ(metricOwnerName(ThreadBusyReader::ownerOfThread("SDLAudioP15")), "unknown");
+}

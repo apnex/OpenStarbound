@@ -35,11 +35,11 @@ enum class MetricDomain : uint8_t { Unknown, Cpu, Gpu };
 // its own thread or inline on the main thread depending on WorldClient::m_asyncLighting (set by
 // setAsyncLighting); it belongs to the `Lighting` budget either way. "Which budget does this cost land in"
 // was always the question; "which thread ran it" never was.
-// Count is a SENTINEL, not an owner. It exists so ownerName() can be a table with a static_assert on its
+// Count is a SENTINEL, not an owner. It exists so metricOwnerName() can be a table with a static_assert on its
 // size, which makes "added an owner, forgot to name it" a COMPILE ERROR rather than a silent one. The
 // switch it replaced compiled clean with a case missing: -Wswitch warns, but this build has no -Werror and
 // the warning drowns in the output. That mattered more here than for the other three descriptor enums,
-// because ownerName's fallback was "unknown" -- which silently drops the metric out of its owner's budget
+// because metricOwnerName's fallback was "unknown" -- which silently drops the metric out of its owner's budget
 // and quietly under-reports the whole. (domain/cadence/role keep their switches on purpose: their
 // fallbacks are deliberately SAFE -- cadence falls back to "call", which is unscaled and cannot inflate,
 // and role to "detail", which is excluded from sums and so under-counts rather than over-counts.)
@@ -100,6 +100,112 @@ enum class MetricSource : uint8_t { Undeclared, InProcess, ProcFs, SysFs, PerfEv
 // `max` field records a third instance in the type system. This is the field that lets a consumer REFUSE
 // to difference a peak.
 enum class MetricBoundedness : uint8_t { Undeclared, Monotonic, Level, HighWaterMark };
+
+// ---------------------------------------------------------------------------------------------------
+// THE PROJECTION: enum -> the exact word that appears in a snapshot, and in every artifact joined to one.
+//
+// THESE LIVE IN THE HEADER BECAUSE THEY HAD TWO DEFINITIONS ([#252] step 2). They were private to
+// StarTelemetry.cpp's anonymous namespace, so `metrics` -- which must emit the SAME owner words for a
+// consumer to join its output to an in-process snapshot -- kept a hand-copied table in
+// StarThreadBusyReader.cpp's ownerKey(), under a comment admitting "this is a second copy of one
+// vocabulary". Both copies carried a static_assert on COMPLETENESS, so neither could silently lose an
+// enumerator; NOTHING checked that the two agreed on the SPELLING. Renaming "gl" to "gpu" in one would
+// have compiled clean in both and silently broken every join, and the only thing standing against that
+// was a comment asking the next person to remember. A comment is not a check; a shared definition is.
+//
+// PREFIXED `metric*` DELIBERATELY. In the anonymous namespace `typeName` and `sourceName` were free
+// names; in namespace Star they are not -- `typeName` has 242 other references in this tree and
+// `sourceName` 41. Hoisting them unprefixed would have been a collision hunt, and a header is exactly
+// where that hazard multiplies.
+//
+// THE SWITCHES DELIBERATELY HAVE NO `default:`. -Wswitch (part of -Wall, on for this project) then flags
+// any enumerator added later that is not also named here -- a compile-time catch instead of silently
+// serializing a new value as "unknown"/"call"/"detail". The trailing return after each switch exists
+// only to satisfy -Wreturn-type for the technically-reachable case of a value outside the declared set;
+// it is not a substitute for handling a real enumerator.
+//
+// NOT ALL OF THE PROJECTION IS HERE. `typeName(MetricType)` stayed in StarTelemetry.cpp because
+// MetricType is declared there, not in this header -- it describes the REGISTRY's storage kind, not a
+// descriptor facet, so it is core-private and nothing outside core can name it. Moving the rest without
+// it is the correct split, not an incomplete one.
+inline char const* metricDomainName(MetricDomain d) {
+  switch (d) {
+    case MetricDomain::Unknown: return "unknown";
+    case MetricDomain::Cpu: return "cpu";
+    case MetricDomain::Gpu: return "gpu";
+  }
+  return "unknown";
+}
+
+// A TABLE, not a switch -- deliberately the odd one out. The switch this replaced compiled clean with a
+// case missing (-Wswitch warns; this build has no -Werror and the warning drowns), and its trailing
+// fallback returned "unknown", which silently drops the metric out of its owner's budget and
+// under-reports the whole with no signal anywhere. The static_assert turns "added an owner, forgot to
+// name it" into a COMPILE ERROR. Order must match the enum.
+constexpr char const* c_metricOwnerNames[] = {"unknown", "frame", "gl", "sim", "lighting", "process"};
+static_assert(sizeof(c_metricOwnerNames) / sizeof(*c_metricOwnerNames) == (size_t)MetricOwner::Count,
+  "MetricOwner gained a value without a name in c_metricOwnerNames -- add it, in enum order.");
+
+inline char const* metricOwnerName(MetricOwner o) {
+  auto i = (size_t)o;
+  // Defensive, not expected: a descriptor built from a garbage cast. Still names it rather than indexing
+  // out of bounds, and "unknown" is the honest answer for a value the model does not define.
+  return i < (size_t)MetricOwner::Count ? c_metricOwnerNames[i] : "unknown";
+}
+
+inline char const* metricCadenceName(MetricCadence c) {
+  switch (c) {
+    case MetricCadence::Call: return "call";
+    case MetricCadence::Frame: return "frame";
+    case MetricCadence::Tick: return "tick";
+    case MetricCadence::Recompute: return "recompute";
+  }
+  return "call";
+}
+
+// TABLES WITH A static_assert, following metricOwnerName's precedent rather than metricDomainName's. The
+// switch form's fallback is silent: add an enumerator, forget the case, and the metric reports
+// "undeclared" forever while looking declared. For UNIT that is not a safe fallback the way cadence's
+// "call" is -- a nanosecond metric mis-reported as undeclared is read as microseconds by a consumer that
+// hardcodes them, which is the 1000x defect this field exists to end.
+inline char const* metricUnitName(MetricUnit u) {
+  static char const* const names[] = {"undeclared", "ns", "us", "bytes", "kib", "count", "ratio", "hz"};
+  static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricUnit::Hertz + 1,
+                "MetricUnit gained an enumerator and metricUnitName was not updated");
+  return names[(size_t)u];
+}
+
+inline char const* metricClockName(MetricClock c) {
+  static char const* const names[] = {"undeclared", "n/a", "wall", "thread_cpu", "process_cpu",
+                                      "gpu_engine", "gpu_timeline"};
+  static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricClock::GpuTimeline + 1,
+                "MetricClock gained an enumerator and metricClockName was not updated");
+  return names[(size_t)c];
+}
+
+inline char const* metricSourceName(MetricSource s) {
+  static char const* const names[] = {"undeclared", "in_process", "procfs", "sysfs", "perf_event",
+                                      "gl_query"};
+  static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricSource::GlQuery + 1,
+                "MetricSource gained an enumerator and metricSourceName was not updated");
+  return names[(size_t)s];
+}
+
+inline char const* metricBoundednessName(MetricBoundedness b) {
+  static char const* const names[] = {"undeclared", "monotonic", "level", "high_water_mark"};
+  static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricBoundedness::HighWaterMark + 1,
+                "MetricBoundedness gained an enumerator and metricBoundednessName was not updated");
+  return names[(size_t)b];
+}
+
+inline char const* metricRoleName(MetricRole r) {
+  switch (r) {
+    case MetricRole::Detail: return "detail";
+    case MetricRole::Budget: return "budget";
+    case MetricRole::Total: return "total";
+  }
+  return "detail";
+}
 
 struct MetricDesc {
   MetricDomain domain = MetricDomain::Unknown;

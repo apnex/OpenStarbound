@@ -367,85 +367,10 @@ void Telemetry::markTick(String const& threadTag) {
 }
 
 namespace {
-  // These five switches deliberately have NO `default:`. -Wswitch (part of -Wall, on for this project) then
-  // flags any enumerator added to MetricDomain/MetricOwner/MetricCadence/MetricRole/MetricType in the future
-  // that isn't also added here -- catching a forgotten JSON name at compile time instead of silently
-  // serializing the new value as e.g. "unknown"/"call"/"detail"/"counter". The trailing return after each
-  // switch exists only to satisfy -Wreturn-type for the technically-reachable (but never actually occurring in
-  // correct code) case of an enum value outside its declared set; it is not a substitute for handling a real
-  // enumerator.
-  char const* domainName(MetricDomain d) {
-    switch (d) {
-      case MetricDomain::Unknown: return "unknown";
-      case MetricDomain::Cpu: return "cpu";
-      case MetricDomain::Gpu: return "gpu";
-    }
-    return "unknown";
-  }
-  // A TABLE, not a switch -- deliberately the odd one out among the four descriptor namers. The switch this
-  // replaced compiled clean with a case missing (-Wswitch warns; this build has no -Werror and the warning
-  // drowns), and its trailing fallback returned "unknown", which silently drops the metric out of its
-  // owner's budget and under-reports the whole with no signal anywhere. The static_assert below turns
-  // "added an owner, forgot to name it" into a COMPILE ERROR. Order must match the enum.
-  constexpr char const* c_ownerNames[] = {"unknown", "frame", "gl", "sim", "lighting", "process"};
-  static_assert(sizeof(c_ownerNames) / sizeof(*c_ownerNames) == (size_t)MetricOwner::Count,
-    "MetricOwner gained a value without a name in c_ownerNames -- add it, in enum order.");
-
-  char const* ownerName(MetricOwner o) {
-    auto i = (size_t)o;
-    // Defensive, not expected: a descriptor built from a garbage cast. Still names it rather than indexing
-    // out of bounds, and "unknown" is the honest answer for a value the model does not define.
-    return i < (size_t)MetricOwner::Count ? c_ownerNames[i] : "unknown";
-  }
-  char const* cadenceName(MetricCadence c) {
-    switch (c) {
-      case MetricCadence::Call: return "call";
-      case MetricCadence::Frame: return "frame";
-      case MetricCadence::Tick: return "tick";
-      case MetricCadence::Recompute: return "recompute";
-    }
-    return "call";
-  }
-  // TABLES WITH A static_assert, following ownerName's precedent rather than domainName's. The switch
-  // form's fallback is silent: add an enumerator, forget the case, and the metric reports "undeclared"
-  // forever while looking declared. For UNIT that is not a safe fallback the way cadence's "call" is --
-  // a nanosecond metric mis-reported as undeclared is read as microseconds by a consumer that hardcodes
-  // them, which is the 1000x defect this field exists to end.
-  char const* unitName(MetricUnit u) {
-    static char const* const names[] = {"undeclared", "ns", "us", "bytes", "kib", "count", "ratio", "hz"};
-    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricUnit::Hertz + 1,
-                  "MetricUnit gained an enumerator and unitName was not updated");
-    return names[(size_t)u];
-  }
-  char const* clockName(MetricClock c) {
-    static char const* const names[] = {"undeclared", "n/a", "wall", "thread_cpu", "process_cpu",
-                                        "gpu_engine", "gpu_timeline"};
-    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricClock::GpuTimeline + 1,
-                  "MetricClock gained an enumerator and clockName was not updated");
-    return names[(size_t)c];
-  }
-  char const* sourceName(MetricSource s) {
-    static char const* const names[] = {"undeclared", "in_process", "procfs", "sysfs", "perf_event",
-                                        "gl_query"};
-    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricSource::GlQuery + 1,
-                  "MetricSource gained an enumerator and sourceName was not updated");
-    return names[(size_t)s];
-  }
-  char const* boundednessName(MetricBoundedness b) {
-    static char const* const names[] = {"undeclared", "monotonic", "level", "high_water_mark"};
-    static_assert(sizeof(names) / sizeof(names[0]) == (size_t)MetricBoundedness::HighWaterMark + 1,
-                  "MetricBoundedness gained an enumerator and boundednessName was not updated");
-    return names[(size_t)b];
-  }
-
-  char const* roleName(MetricRole r) {
-    switch (r) {
-      case MetricRole::Detail: return "detail";
-      case MetricRole::Budget: return "budget";
-      case MetricRole::Total: return "total";
-    }
-    return "detail";
-  }
+  // The descriptor namers moved to StarMetricDesc.hpp as metric*Name ([#252] step 2) -- `metrics` needs
+  // the same owner words and was keeping a hand-copied table of them. typeName STAYS: MetricType is
+  // declared in this file, describes the registry's storage kind rather than a descriptor facet, and is
+  // therefore core-private. Nothing outside core can name its parameter type.
   char const* typeName(MetricType t) {
     switch (t) {
       case MetricType::Counter: return "counter";
@@ -534,14 +459,14 @@ Json Telemetry::snapshot() {
     MetricNode* n = pair.second.get();
     JsonObject m{
       {"type", Json(String(typeName(n->type)))},
-      {"domain", Json(String(domainName(n->desc.domain)))},
-      {"owner", Json(String(ownerName(n->desc.owner)))},
-      {"cadence", Json(String(cadenceName(n->desc.cadence)))},
-      {"role", Json(String(roleName(n->desc.role)))},
-      {"unit", Json(String(unitName(n->desc.unit)))},
-      {"clock", Json(String(clockName(n->desc.clock)))},
-      {"source", Json(String(sourceName(n->desc.source)))},
-      {"boundedness", Json(String(boundednessName(n->desc.boundedness)))},
+      {"domain", Json(String(metricDomainName(n->desc.domain)))},
+      {"owner", Json(String(metricOwnerName(n->desc.owner)))},
+      {"cadence", Json(String(metricCadenceName(n->desc.cadence)))},
+      {"role", Json(String(metricRoleName(n->desc.role)))},
+      {"unit", Json(String(metricUnitName(n->desc.unit)))},
+      {"clock", Json(String(metricClockName(n->desc.clock)))},
+      {"source", Json(String(metricSourceName(n->desc.source)))},
+      {"boundedness", Json(String(metricBoundednessName(n->desc.boundedness)))},
       {"descConflict", Json(n->descConflict)},
       {"typeConflict", Json(n->typeConflict)}
     };
@@ -586,13 +511,13 @@ Json Telemetry::snapshot() {
     JsonObject totals;
     for (auto const& t : c_ownerTotals) {
       if (t.owner == spec.owner && t.total)
-        totals[String(domainName(t.domain))] = Json(String(t.total));
+        totals[String(metricDomainName(t.domain))] = Json(String(t.total));
     }
     // `totals` is emitted even when EMPTY. An owner with no declared whole in any domain is a real state
     // and the consumer must be able to see it; omitting the key would make "no whole declared" and "an
     // older schema" the same shape on the wire.
     o["totals"] = Json(std::move(totals));
-    owners[String(ownerName(spec.owner))] = std::move(o);
+    owners[String(metricOwnerName(spec.owner))] = std::move(o);
   }
 
   return JsonObject{

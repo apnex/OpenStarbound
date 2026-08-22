@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241021 lines
+      241050 lines
       6 tiers
     Content
       assets/
@@ -217,11 +217,11 @@ source/
 │   ├── curve25519/      vendored — excluded from every count here
 │   ├── fmt/             vendored — excluded from every count here
 │   └── lua/             vendored — excluded from every count here
-├── core/            T1   217 files    56,457 lines
+├── core/            T1   217 files    56,488 lines
 │   └── scripting/          2 files       258 lines
 ├── base/            T2    32 files     7,472 lines
 │   └── scripting/          2 files        55 lines
-├── metrics/         T2    11 files     1,423 lines
+├── metrics/         T2    11 files     1,421 lines
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,677 lines
 │   └── discord/         vendored — excluded from every count here
@@ -238,7 +238,7 @@ source/
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    14,357 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     73 files    14,383 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
@@ -276,12 +276,12 @@ flowchart TD
   end
   subgraph T1["T1 language"]
     direction LR
-    core["core<br/><small>217 files · 56,457 lines · Root×0</small>"]
+    core["core<br/><small>217 files · 56,488 lines · Root×0</small>"]
   end
   subgraph T2["T2 services"]
     direction LR
     base["base<br/><small>32 files · 7,472 lines · Root×0</small>"]
-    metrics["metrics<br/><small>11 files · 1,423 lines · Root×0</small>"]
+    metrics["metrics<br/><small>11 files · 1,421 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
     application["application<br/><small>25 files · 7,677 lines · Root×0</small>"]
   end
@@ -595,11 +595,11 @@ treemap-beta
     "T0 vendored"
         "extern": 17193
     "T1 language"
-        "core": 56457
+        "core": 56488
     "T2 services"
         "application": 7677
         "base": 7472
-        "metrics": 1423
+        "metrics": 1421
         "platform": 142
     "T3 simulation"
         "game": 115725
@@ -617,9 +617,9 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.1% |
-| T1 language | `core` | 217 | 56,457 | 23.4% |
+| T1 language | `core` | 217 | 56,488 | 23.4% |
 | T2 services | `base` | 32 | 7,472 | 3.1% |
-| T2 services | `metrics` | 11 | 1,423 | 0.6% |
+| T2 services | `metrics` | 11 | 1,421 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
 | T3 simulation | `game` | 500 | 115,725 | 48.0% |

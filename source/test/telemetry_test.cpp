@@ -335,8 +335,9 @@ TEST(Telemetry, DeclareThenTypedAccessorProducesTheDeclaredType) {
   EXPECT_EQ(Telemetry::describe("test.desc.seq"), d);
 }
 
-// Nothing else asserts the descriptor->JSON string mapping; transposing two returns in ownerName/roleName
-// would pass the rest of the suite silently. Exercises the GPU domain and a non-frame owner (gl) as well.
+// Nothing else asserts the descriptor->JSON string mapping; transposing two returns in
+// metricOwnerName/metricRoleName would pass the rest of the suite silently. Exercises the GPU domain and
+// a non-frame owner (gl) as well.
 TEST(Telemetry, SnapshotSerializesDescriptorFieldNames) {
   telemetrySetUp();
   MetricDesc gpu{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Frame, MetricRole::Budget};
