@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**216 tasks** across 2 store(s): 5 in_progress, 32 pending, 179 completed
+**216 tasks** across 2 store(s): 5 in_progress, 31 pending, 180 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -43,21 +43,20 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#279` | PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard)… | ready |
+| 1 | 1 | `#274` | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, pai… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
-| 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
-| 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
-| 5 | 5 | `#275` | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must st… | ready |
-| 6 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
-| 7 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 8 | 8 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
-| 9 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 10 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
-| 11 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
-| 12 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
-| 13 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
-| 14 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 15 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
+| 3 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
+| 4 | 5 | `#275` | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must st… | ready |
+| 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
+| 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
+| 7 | 8 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 8 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
+| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
+| 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
+| 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
+| 13 | 14 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
+| 14 | 15 | `#262` | BOARD-TAIL: apply the 2026-08-08 audit's pointer corrections to 21 dormant tasks | ready |
 
 ---
 
@@ -67,7 +66,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 235, of which **45 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 236, of which **45 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -98,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 179.
+**Completed tasks citing no commit and no doc:** 85 of 180.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -285,7 +284,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#236](#c29c1332-236) | `c29c1332` | done | GPU-CLOSE-1 CLOSED by [#235] e368f046: the re-declaration that would revive the inert oracle is now refused mechanically | `e8814a61` `49249551` `420f1759` `040a5033` `feb8886f` `9db54200` `0290f6ef` | — |
 | [#237](#c29c1332-237) | `c29c1332` | open | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | `20027817` | — |
 | [#238](#c29c1332-238) | `c29c1332` | done | LEDGER-SWEEP: clusters A+B+C — 13 open rows closed before the matrix run | `a8df237e` `b879c332` `92b8a3eb` `a66a7378` `246d75df` | — |
-| [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `297090b0` `f6cb3258` | — |
+| [#239](#c29c1332-239) | `c29c1332` | done | MATRIX-RUN: the 8-lever matrix, 28 legs, run id matrix-20260807-071440 | `747b93ea` `297090b0` `f6cb3258` | — |
 | [#240](#c29c1332-240) | `c29c1332` | done | R13-FIX: hoist the four lazy tick.server.lock.* registrations — closes the ledger's only BLOCK | `5605be17` `495682df` | — |
 | [#241](#c29c1332-241) | `c29c1332` | done | R14-FIX: register both compose keys eagerly — the never-RAN arm still reads ABSENT | `cd0b5175` `775176ff` | — |
 | [#242](#c29c1332-242) | `c29c1332` | done | MATRIX-RERUN: bank Desert Town quotable, then a second scene — with a PMU sample alongside | `24bd4a51` | — |
@@ -320,12 +319,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
-| [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | `f4d311fd` | — |
+| [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and fl… | `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
-| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `aa9e37c7` `7102f21c` `29516d61` | — |
+| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `747b93ea` `aa9e37c7` `7102f21c` `29516d61` | — |
 | [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `aa9e37c7` `29516d61` | — |
-| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `aa9e37c7` `7102f21c` | — |
-| [#279](#c29c1332-279) | `c29c1332` | open | PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard) remain | `7102f21c` | — |
+| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `747b93ea` `aa9e37c7` `7102f21c` | — |
+| [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -5062,6 +5061,7 @@ FOUND WHILE VERIFYING, still open and NOT in the approved scope:
 
 status: **completed**
 
+- `747b93ea` #279 items 1+4: pairing is now the default path, and the warm-up leg is discarded
 - `297090b0` R14: the matrix reproduced R07's own impact statement on a row I had closed
 - `f6cb3258` R13: the matrix produced 28 legs and not one quotable cost, for one lazy registration
 
@@ -7191,9 +7191,9 @@ for free; every key added afterwards costs another 1.7 hours to attribute.
 
 <a id="c29c1332-274"></a>
 
-#### #274 — BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever
+#### #274 — BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, paired and floor-checked
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **pending** · metadata: `{"rank": 1}`
 
 - `f4d311fd` #270 LIGHTING-REDERIVE: the denominator captures a quarter, not two thirds
 
@@ -7303,6 +7303,7 @@ GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets 
 
 status: **completed**
 
+- `747b93ea` #279 items 1+4: pairing is now the default path, and the warm-up leg is discarded
 - `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
@@ -7457,6 +7458,7 @@ SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST
 
 status: **completed**
 
+- `747b93ea` #279 items 1+4: pairing is now the default path, and the warm-up leg is discarded
 - `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 
@@ -7526,9 +7528,9 @@ the UNPAIRED cross-run ones.
 
 <a id="c29c1332-279"></a>
 
-#### #279 — PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard) remain
+#### #279 — PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 items done
 
-status: **pending** · metadata: `{"rank": 1}`
+status: **completed**
 
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 
