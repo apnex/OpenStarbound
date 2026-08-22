@@ -58,21 +58,35 @@ def load_union_membership():
     return mod.UNION, set(mod.UNION_MEMBERS)
 
 
-def add_union(vals, union_name, members):
-    """Synthesise the declared aggregate into a leg's per-frame values -- or leave it ABSENT.
+def add_union(vals, union_name, members, zeroed=()):
+    """`zeroed` is the leg's REGISTERED-BUT-RECORDED-NOTHING list, and consulting it is the point.
 
-    ALL MEMBERS OR NOTHING. If even one member is missing from this leg, the key is NOT written, and
+    telemetry-window drops zero-delta rows out of `metrics` for a sound reason it states at the site --
+    a count=0 row would reach coverage_scale and the cadence over-count check, both of which are only
+    sound because zero-delta rows never get that far -- and preserves them in a SEPARATE `zeroed`
+    array. So the leg artefact distinguishes REGISTERED-AT-ZERO from ABSENT exactly as the engine
+    intended when it registered these keys eagerly.
+
+    A consumer that reads only `metrics` collapses that distinction back into absence and spends what
+    the engine paid for. That is what this one did: it withheld the union from every leg because
+    `lighting.upload.us` was not in `metrics` -- while sitting in `zeroed`, meaning MEASURED, AND ZERO.
+
+    ALL MEMBERS OR NOTHING, where "present" now means IN EITHER. If a member is in neither, the key is
+    NOT written, and
     leg-diff's existing absent-key handling refuses to attribute rather than differencing a short sum.
     That is stricter than telemetry-window's LOWER BOUND, and it has to be: a bound is a legitimate
     thing to PRINT, and an illegitimate thing to SUBTRACT. The difference of two lower bounds is not a
     bound on the difference -- it can point either way -- so a diff has no honest use for one. [#274]
-    is the case that earned this: it pre-registered reporting against the union and could not, because
-    `lighting.upload.us` was absent from every leg.
+    is the case that earned this: it pre-registered reporting against the union and could not -- and
+    the reason turned out to be this consumer, not the engine.
     """
     if union_name in vals:
         return vals  # a real registered metric would outrank anything derived here
-    if all(m in vals for m in members):
-        vals[union_name] = sum(vals[m] for m in members)
+    z = set(zeroed)
+    if all(m in vals or m in z for m in members):
+        # A member in `zeroed` contributes 0 -- not skipped, ADDED AS ZERO. The difference matters if
+        # it ever stops being zero: the key moves into `metrics` and the sum picks it up with no edit.
+        vals[union_name] = sum(vals.get(m, 0.0) for m in members)
     return vals
 
 
@@ -95,7 +109,8 @@ def leg(path):
     # site: a percentage denominated against a part rather than the whole.
     if fr:
         try:
-            add_union(vals, *load_union_membership())
+            _u, _mem = load_union_membership()
+            add_union(vals, _u, _mem, d.get("zeroed", ()))
         except Exception:
             pass  # a leg with no union is a leg leg-diff refuses to attribute on; never a wrong number
     return meta.get("scene"), vals, meta.get("assetFingerprint"), meta.get("pair")
@@ -309,6 +324,18 @@ def selftest():
     # every leg -- and the reason it could not report against the union it pre-registered.
     arm("a leg MISSING one member gets NO union key, not a short sum",
         _u not in add_union(dict(_short), _u, _mem))
+
+    # THE `zeroed` ARMS. Without these the default-empty argument makes every arm above pass while the
+    # path that actually matters on real legs goes unexercised -- and that path is the whole fix: on
+    # all ten [#274] legs the seventh member sits in `zeroed`, so reading only `metrics` withheld the
+    # union from every one of them.
+    _zu = add_union(dict(_short), _u, _mem, [_dropped])
+    arm("a member in `zeroed` counts as PRESENT -- registered and measured, not missing",
+        _zu.get(_u) is not None)
+    arm("and it contributes exactly ZERO, so the sum is the other members",
+        _zu.get(_u) == 10.0 * (len(_mem) - 1))
+    arm("a member in NEITHER metrics nor zeroed still withholds the key",
+        _u not in add_union(dict(_short), _u, _mem, ["something.else.us"]))
     arm("the short leg is otherwise untouched",
         len(add_union(dict(_short), _u, _mem)) == len(_mem) - 1)
 
