@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#286` | TILEPAINTER-DECOMPOSE: 53% of frame CPU is one named part with no interior — TilePainter has zero timers | ready |
+| 1 | 3 | `#286` | TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one… | ready |
 | 2 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
 | 3 | 5 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
 | 4 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
@@ -332,7 +332,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
 | [#284](#c29c1332-284) | `c29c1332` | done | RENDER-UPLOAD-BRACKETS SUBSUMED by #286: the investigation found the gap is the whole subsystem, not its uploads | — | — |
 | [#285](#c29c1332-285) | `c29c1332` | open | FLOOR-BASIS: two call-cadence floors don't reproduce from their own legs — derived coverage-scaled, applied raw | — | — |
-| [#286](#c29c1332-286) | `c29c1332` | open | TILEPAINTER-DECOMPOSE: 53% of frame CPU is one named part with no interior — TilePainter has zero timers | — | — |
+| [#286](#c29c1332-286) | `c29c1332` | open | TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one line from… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -7974,15 +7974,14 @@ together, in one pass, from banked legs; do not do it one scene at a time.
 
 <a id="c29c1332-286"></a>
 
-#### #286 — TILEPAINTER-DECOMPOSE: 53% of frame CPU is one named part with no interior — TilePainter has zero timers
+#### #286 — TILEPAINTER-DECOMPOSE: 53% of frame CPU with no interior — and the moving fixture already exists (#174), one line from the profiler
 
 status: **pending** · metadata: `{"rank": 3}`
 
 ```
-Filed 2026-08-22. Subsumes [#284], whose investigation established the scope and is reproduced
-below. Originated in the Director's intuition that CPU cycles spent uploading buffers to the GPU are
-a cost that needs measuring -- correct, and the investigation found the gap is much wider than
-uploads.
+Filed 2026-08-22. Subsumes [#284], whose investigation established the scope. Originated in the
+Director's intuition that CPU cycles spent uploading buffers to the GPU need measuring -- correct,
+and the gap turned out to be the whole subsystem.
 
 === THE MEASUREMENT THAT MOTIVATES IT ===
 
@@ -7992,60 +7991,80 @@ uploads.
   cpu.frame.work.us     3686.4
 
 owner `frame` closes at 100.0% (unattributed 1.5 us/tick), so this is NOT missing cost -- it is
-[#171]'s shape: present, named, and indistinguishable inside its bucket. No lever can be aimed at it
-and no A/B can attribute to it.
+[#171]'s shape: present, named, indistinguishable inside its bucket. StarTilePainter.cpp has ZERO
+telemetry timers of any kind. It is the largest genuinely unlit area left in the frame.
 
-StarTilePainter.cpp has ZERO telemetry timers of any kind. Not "its uploads are untimed" -- the
-subsystem is dark. It is the largest genuinely unlit area left in the frame.
+=== THE FIXTURE RISK IS RETIRED -- CORRECTING THIS TASK'S OWN FILING ===
+
+I wrote: "EVERY EXISTING SCENE FIXTURE STANDS STILL ... this needs a MOVING fixture, and building one
+is part of the work, not a preliminary." THAT IS WRONG. The motion fixture shipped with [#174]:
+
+  STAR_RENDERTEST_WALK        parsed StarClientApplication.cpp:206, frames-per-leg
+  renderTestDriveMotion()     :1727 -- a 4-leg walk cycle, (t / walk) % 4
+  implies NOFREEZE            :1354, :1386 -- the sim stays live so the player can move
+  renderTestMotionVerdict()   reads render.cache.parallax.{refreshed,skipped,bypassed_moving}
+  scripts/render-motion.sh    sets it, default 45
+
+AND render-profile.sh ALREADY RUNS UNFROZEN -- STAR_RENDERTEST_NOFREEZE=1 at line 295 -- passing env
+in a block at :291-298. It simply does not pass WALK. So exposing motion to the PROFILER is a
+pass-through line beside the existing WARP one, not a build.
+
+WHY THEY ARE SEPARATE TODAY, and it is deliberate: render-motion.sh is a GATE. It asserts a COUNTER
+invariant (the moving-camera bypass engages) and banks ZERO legs -- no telemetry-window call, no
+profiles/ output. It also runs on sbinit-perf.config because the byte-identity gate's config pins
+parallaxOracle=true, which makes bypassed_moving=0 forever. That config choice carries over.
+
+=== WHAT IS ACTUALLY UNKNOWN, AND IT IS A MEASUREMENT QUESTION ===
+
+Not "can we move" but "is a moving leg DIFFERENCEABLE":
+
+  1. NO FLOOR EXISTS FOR A WALKING LEG. Every scene-floor.json figure is a standing-still CV. A
+     walking leg traverses different terrain as it goes, so its leg-to-leg spread is an open number.
+     Measure it the way [#278] measured the standing floors -- several legs, one scene, warm-up
+     discarded -- BEFORE differencing anything on it. A derived key got no floor for free ([#274]);
+     neither does a derived FIXTURE.
+  2. IS THE WALK REPEATABLE? [#174] shipped it as a gate on COUNTERS, not on values. Counter
+     invariance is a much weaker property than value repeatability, so its passing says nothing about
+     whether two walking legs produce comparable microseconds.
+  3. DOES THE WALK STAY ON LOADED TERRAIN at each bookmark? A leg that walks off the loaded region
+     measures chunk LOADING, not chunk rebuild.
+
+FIRST STEP, and it is cheap: pass WALK through render-profile.sh, bank 4 legs at one scene, and
+compute the CV. That answers (1) and (2) together and costs one unattended run. If the spread is
+wide, the decomposition still proceeds -- it just cannot be A/B'd on a moving fixture, and the
+brackets get read as a composition rather than a difference.
 
 === WHAT THE DECOMPOSITION IS ===
 
-CPU parts under cpu.frame.render.us, declared with `.whole = "cpu.frame.render.us"` and gated the
-way the GPU-lighting drive parts now are (bb9742f6, drive_membership). Candidates, to be settled by
-reading the code rather than by this list:
+CPU parts under cpu.frame.render.us, declared `.whole = "cpu.frame.render.us"` and gated the way the
+GPU-lighting drive parts now are (bb9742f6, drive_membership). Candidates, to be settled by reading
+the code:
 
-  chunk build / geometry generation      the bulk, and cache-miss driven
+  chunk build / geometry generation      the bulk, cache-miss driven
   buffer upload                          GlRenderBuffer::set -- 4 GL calls, [#125]'s orphaning path
   texture upload                         uploadLoneStorage, uploadTextureImage, copyAtlasPixels
   cache hit/miss counters                so a cost that VARIES with hit rate is readable as such
 
-The 19 GL upload calls live in FIVE functions, not scattered: GlRenderBuffer::set (4),
-uploadLoneStorage (2), uploadTextureImage (1), GlTextureAtlasSet::copyAtlasPixels (1), and
-GlRenderOracle::read (1, oracle path -- NOT production, exclude it).
-
-=== THE FIXTURE PROBLEM, WHICH IS THE FIRST REAL OBSTACLE ===
-
-The rb->set() calls sit inside chunk-cache lambdas, so they fire on cache MISS, not per frame --
-which is exactly what [#127]'s stable-grid lever and [#125]'s VBO orphaning worked on. The cost is
-chunk-rebuild-driven.
-
-EVERY EXISTING SCENE FIXTURE STANDS STILL. Measured on one, a cache-miss cost reads as noise and the
-decomposition will look trivially small; measured while moving, it dominates. So this needs a MOVING
-fixture, and building one is part of the work, not a preliminary. Reporting a standing-still number
-as the upload cost would be an artefact of the fixture, and it is the kind of artefact [#278] and
-[#274] have each cost a day to.
+The 19 GL upload calls live in FIVE functions: GlRenderBuffer::set (4), uploadLoneStorage (2),
+uploadTextureImage (1), GlTextureAtlasSet::copyAtlasPixels (1), GlRenderOracle::read (1 -- ORACLE
+path, exclude from production accounting).
 
 === BINDING CONSTRAINTS ===
 
-1. MEASURE THE INSTRUMENT'S OWN TAX. [#276]: GPU-timer brackets are BILLED 37% and CAUSE 10.2%;
-   drive.gputimer.us is 19.8% of lighting's CPU. New brackets on a hot path are a real cost and must
-   be measured, not assumed small. [#172]'s deep-gate arming measurement is the pattern.
-2. EXHAUSTIVE AND NON-OVERLAPPING, or the closure is a fiction. The drive decomposition's first hand
-   reading summed to 117% of its whole because two probes nested inside a third were listed as
-   siblings. Decide member-or-nested for every timer, and gate it.
+1. MEASURE THE INSTRUMENT'S OWN TAX. [#276]: GPU-timer brackets BILLED 37%, CAUSE 10.2%;
+   drive.gputimer.us is 19.8% of lighting's CPU. [#172]'s deep-gate arming measurement is the pattern.
+2. EXHAUSTIVE AND NON-OVERLAPPING or the closure is fiction. The drive decomposition's first hand
+   reading summed to 117% because two nested probes were listed as siblings. Decide member-or-nested
+   for every timer, and gate it.
 3. Needs the GPU free; respects [#178]'s mtime guard.
 
-=== NOT THIS TASK, AND MUST NOT BE CONFLATED ===
+=== NOT THIS TASK ===
 
-[#191] also concerns TilePainter, and it is a DIFFERENT CONCERN: `TilePainter : public TileDrawer` is
-inheritance across the rendering/game library boundary -- a layering defect, the only one of 12 render
-inheritance edges that leaves the subsystem. Measurement and layering both touch this file; doing
-them in one change would make neither reviewable. Sequence them, do not merge them.
-
-=== WHY IT IS FILED AS ITS OWN ROW ===
-
-It existed only as a paragraph inside [#284]'s description, which is how [#270] and [#260] were both
-lost. A mission that lives in another task's body is a mission nobody can rank.
+[#191] also concerns TilePainter and is a DIFFERENT CONCERN: `TilePainter : public TileDrawer`
+crossing the rendering/game boundary, a 5-of-35-member DTO extraction needing a world-body oracle
+that does NOT EXIST (the golden frame hash is non-deterministic across runs, and not from ASLR). This
+task needs no such oracle -- adding timers cannot change pixels -- which is exactly why it is
+startable and #191 is not. Sequence them; do not merge them.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
