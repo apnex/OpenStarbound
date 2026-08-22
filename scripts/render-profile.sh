@@ -89,6 +89,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --set)  SETS+=("$2"); shift 2 ;;
     --warp) WARP="$2";    shift 2 ;;
+    # Set by scripts/render-ab.sh, which is what should normally be driving a comparison. Passing it
+    # by hand is allowed and is how the tag stays inspectable, but a hand-driven A/B is the thing
+    # #279 exists to discourage.
+    --pair) PAIR="$2";    shift 2 ;;
     *) echo "unknown arg '$1'"; exit 2 ;;
   esac
 done
@@ -475,6 +479,7 @@ scripts/telemetry-window.py "$SNAPDIR" --intervals "$INTERVALS" --label "$LABEL"
   --json "harness/profiles/$LABEL.json" \
   --asset-fingerprint "$ASSET_FP" \
   --scene "${WARP:-<unpinned>}" \
+  ${PAIR:+--pair "$PAIR"} \
   --series "harness/profiles/$LABEL.series.json"
 
 # THE JOIN, HERE, WHILE BOTH HALVES ARE ON DISK AND STILL BELONG TO THIS LEG. Both series are stamped on

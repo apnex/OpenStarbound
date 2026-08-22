@@ -70,6 +70,24 @@ CLOSURE_TOLERANCE = 0.01
 NULL_CONTROL_PCTS = [-0.03, -0.00, -0.19, -0.27, -0.53, -1.51, -0.22, -0.77, -0.01, -0.09]
 
 
+def _pair(spec):
+    """GROUP:INDEX:ARM -> {"group","index","arm"}, or None.
+
+    MALFORMED IS None, NOT A PARTIAL RECORD. A half-parsed pair would let leg-diff see a pair tag it
+    cannot match and silently fall back to unpaired -- which is the safe direction, but silently. An
+    absent tag says "unpaired" honestly; a broken one says nothing at all.
+    """
+    if not spec:
+        return None
+    parts = spec.split(":")
+    if len(parts) != 3 or not parts[0] or parts[2] not in ("a", "b"):
+        return None
+    try:
+        return {"group": parts[0], "index": int(parts[1]), "arm": parts[2]}
+    except ValueError:
+        return None
+
+
 def closure_verdict(owner, dom, parts, whole):
     """None, or the violation string. Pure so it can be exercised without a capture."""
     if not whole:
@@ -601,6 +619,11 @@ def main():
     ap.add_argument("--first", type=int, default=None)
     ap.add_argument("--last", type=int, default=None)
     ap.add_argument("--json", default=None)
+    ap.add_argument("--pair", default=None, metavar="GROUP:INDEX:ARM",
+                    help="declare this leg one half of a designed pair, e.g. gputax:0:a. "
+                         "scripts/leg-diff.py DECLINES to infer pairing from equal arm sizes, so a "
+                         "leg that does not say this is treated as unpaired and held to the scene "
+                         "floor (#279).")
     ap.add_argument("--scene", default=None,
                     help="the --warp bookmark this leg measured. Recorded into meta so a consumer "
                          "can select the right noise floor: scene-floor.json shows Desert Town at "
@@ -963,7 +986,7 @@ def main():
                                     windowStartEpoch=window_start, windowEndEpoch=window_end,
                                     windowStampSource=[ws_src, we_src],
                                     assetFingerprint=args.asset_fingerprint,
-                                    scene=args.scene),
+                                    scene=args.scene, pair=_pair(args.pair)),
                        "owners": owners,
                        "metrics": w, "zeroed": sorted(zeroed), "violations": violations}, f, indent=2)
         print(f"\n  wrote {args.json}")

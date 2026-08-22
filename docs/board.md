@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 1 | `#279` | PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and… | ready |
+| 1 | 1 | `#279` | PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard)… | ready |
 | 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
 | 3 | 3 | `#274` | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the l… | ready |
 | 4 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
@@ -67,7 +67,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 234, of which **46 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 235, of which **45 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 27.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -83,7 +83,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **3** — dead, with no live equivalent that could be defended
 - **7** — NOT YET INVESTIGATED
 
-**Unexplained ids: 9.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 8.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
@@ -93,7 +93,6 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 | [#254](#c29c1332-254) | `14904c73` |
 | [#277](#c29c1332-277) | `6f763c36bbb38e08` `276059e356eb74ad` |
 | [#278](#c29c1332-278) | `82514b4583a94c9b` `6f763c36bbb38e08` |
-| [#279](#c29c1332-279) | `6f763c36bbb38e08` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
@@ -221,7 +220,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#170](#c29c1332-170) | `c29c1332` | done | L4 DONE: adaptive border shipped (03cec1c0). Its -23.6% is SUPERSEDED, not wrong — re-measured 2026-08-04 at -10/-11% | `f4d311fd` `03cec1c0` `a9854185` | — |
 | [#171](#c29c1332-171) | `c29c1332` | done | LIGHTING-PRODUCE CLOSED: the denominator under every lighting percentage was missing a third of itself — and it is 1.5%… | `29516d61` `f4d311fd` `4518341f` `1d367a57` `7bede779` `164163cc` `a1296a7d` `b1d8c3a0` | — |
 | [#172](#c29c1332-172) | `c29c1332` | done | Telemetry deep-off cost: MEASURED — arming costs +2.16%, within noise; the deep gate works | — | — |
-| [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `7bede779` `164163cc` | — |
+| [#173](#c29c1332-173) | `c29c1332` | done | RB-FLUSH: CLOSED — a CPU lever on a loop that sleeps 72-84% of every frame, at both measured scenes | `aa9e37c7` `7bede779` `164163cc` | — |
 | [#174](#c29c1332-174) | `c29c1332` | done | P-0b DONE: motion gate shipped (7ce03361) -- bypass PROVEN engaged; G9 SATISFIED, the split is authorised | `7ce03361` | — |
 | [#175](#c29c1332-175) | `c29c1332` | done | SIM-1 DONE: server-tick budget closed 99.76% across 27 phases; compute.entities is the real 65% | `4eb7b96c` | — |
 | [#177](#c29c1332-177) | `c29c1332` | done | ENV-CHOP DONE: env cache had no motion term; ship flight/warp CONFIRMED SMOOTH in game | `82711412` `00f575ad` | — |
@@ -323,10 +322,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | open | BORDER-REDERIVE: #217's -10.1% cannot be restated, only re-measured — and the missing members move WITH the lever | `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | **active** | GATE-LIVESTATE: detector + gate + audit SHIPPED (ae90fe7b); stale lock CLEARED 08-22; lever-matrix.sh must still WRITE… | `ae90fe7b` `f4d311fd` | — |
-| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `7102f21c` `29516d61` | — |
-| [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `29516d61` | — |
-| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `7102f21c` | — |
-| [#279](#c29c1332-279) | `c29c1332` | open | PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing s… | `7102f21c` | — |
+| [#276](#c29c1332-276) | `c29c1332` | done | GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets are BILLED 37% but CAUSE 10.2%; upload ab… | `aa9e37c7` `7102f21c` `29516d61` | — |
+| [#277](#c29c1332-277) | `c29c1332` | done | FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg change, gate ratcheted at 472; harness synce… | `aa9e37c7` `29516d61` | — |
+| [#278](#c29c1332-278) | `c29c1332` | done | SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST stable of four; the defect is unpaired c… | `aa9e37c7` `7102f21c` | — |
+| [#279](#c29c1332-279) | `c29c1332` | open | PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard) remain | `7102f21c` | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -2603,6 +2602,7 @@ CONFIRMED BEHAVIOUR worth keeping: a deep-off capture ALWAYS trips the closure o
 
 status: **completed** · blocked by: #242
 
+- `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 - `164163cc` [#271] the 152-159 us/frame lump gets seven parts, and one of them is the wait
 
@@ -7303,6 +7303,7 @@ GPUTIMER-TAX MEASURED: the tax is 10.2%, not the 37% I claimed — the brackets 
 
 status: **completed**
 
+- `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 
@@ -7382,6 +7383,7 @@ FP-COVERAGE CLOSED (4dbb2000): profiler records the chain, refuses mid-leg chang
 
 status: **completed**
 
+- `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 
 ```
@@ -7455,6 +7457,7 @@ SCENE-VARIANCE CLOSED: the NPC hypothesis is REFUTED — Desert Town is the MOST
 
 status: **completed**
 
+- `aa9e37c7` #279 PAIR-OR-REFUSE: an unpaired difference below the scene's noise now refuses instead of publishing
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 
 ```
@@ -7523,65 +7526,49 @@ the UNPAIRED cross-run ones.
 
 <a id="c29c1332-279"></a>
 
-#### #279 — PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing stops one being publi…
-
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-PAIR-OR-REFUSE: the best scene carries 6.6% leg-to-leg CV, so an unpaired cross-run comparison is noise — and nothing stops one being published
-```
+#### #279 — PAIR-OR-REFUSE: floors + refusing consumer SHIPPED (aa9e37c7) — items 1 (A/B runner) and 4 (warm-up discard) remain
 
 status: **pending** · metadata: `{"rank": 1}`
 
 - `7102f21c` #278 SCENE-VARIANCE CLOSED: the NPC hypothesis is refuted, and the fixture was never the problem
 
 ```
-Split from [#278], which set out to find a better fixture and found the fixture was never the problem.
+Items 2 and 3 are DONE in aa9e37c7. The core defect -- an unpaired difference below the scene's noise
+reaching a reader with nothing in the way -- is closed.
 
-=== THE MEASUREMENT (docs/evidence/scene-stability.md) ===
+  scripts/scene-floor.json   measured per-scene per-key CV from [#278]'s 12-leg probe, with its limits
+  scripts/leg-diff.py        the consumer that refuses; 11 arms, all injected
+  telemetry-window.py        meta.scene, so a leg carries which floor applies to it
+  render-profile.sh          passes --scene from $WARP
 
-12 legs, 4 scenes x 3 interleaved passes, chain 6f763c36bbb38e08. Leg-to-leg CV of
-lighting.produce.entities.us: Desert Town 6.58%, 00-Ocean-Lab 17.47%, 01-Lava Refinery 24.03%,
-03-Surface Outpost 26.78%. The BEST scene available carries ~6.6%.
+PROVEN AGAINST THE REAL MISTAKE, not a fixture: replaying the epoch-0 comparison I published this
+morning as "18.9% faster" returns NOT ATTRIBUTABLE -- the two sides span 2 asset chains and one
+records none at all. And three real double-digit differences between two legs of the SAME Desert Town
+chain (+13.97%, +11.57%, +13.88%) all read BELOW FLOOR against bars of 18.16/16.20/18.24%.
 
-Most lever effects this project has CONFIRMED are smaller than that.
+A pacing-bound key is never attributed: cpu.frame.total.us measures 0.004-0.098% CV, which is
+insensitivity not precision, and a floor that small would confirm anything.
 
-=== WHY THAT IS NOT A SCENE PROBLEM ===
+=== WHAT REMAINS ===
 
-Same afternoon, two comparisons on the same hardware:
-
-  [#276], PAIRED   (on1-off1, on2-off2)   paired differences 80,725 and 80,548 -- agree to 0.2%,
-                                          against within-arm drift of 4.4-4.8%
-  epoch-0, UNPAIRED (n=1 vs n=2, cross-run) "content addition made the frame 18.9% FASTER"
-
-The second is not a result, it is the noise floor wearing a percentage sign. Pairing is what makes
-measurement work here; scene choice is second-order. lever-matrix.sh already embodies this -- rotation,
-interleaving, a discarded warm-up, n repeats -- which is why its numbers survive. render-profile.sh
-does not, and a two-leg A/B through it looks exactly like a paired one in the artifact.
-
-=== WHAT THIS OWES ===
-
-1. A leg cannot know it is half of a pair, so the DESIGN must be expressible. Give render-profile.sh
-   (or a thin wrapper) an A/B mode that runs both arms interleaved and emits ONE artifact carrying
-   both, rather than two legs a human later decides to subtract. A subtraction nobody recorded is a
-   subtraction nobody can audit.
-2. Make the unpaired case REFUSE ITSELF. A consumer differencing two independent leg jsons should
-   have to state the pairing -- or be told the difference is uninterpretable below the scene floor.
-   The floor is now measured per scene, so the threshold is available rather than invented.
-3. Publish the per-scene floor where a reader will hit it: any lever claim below its scene's CV is
-   NOT QUOTABLE without pairing. Desert Town 6.6%; the bases 17-27%.
-4. DISCARD A WARM-UP LEG at any base scene. 03-Surface Outpost's cpu_cost ran 611 -> 560 -> 216 us/f
+1. AN A/B RUNNER. leg-diff READS meta.pair, but nothing WRITES it yet -- pairs must currently be
+   tagged by hand, which means the easy path is still the unpaired one. A wrapper that runs N
+   interleaved pairs and tags each leg (group, index, arm) would make pairing the default rather than
+   the disciplined choice. I have now hand-rolled this loop three times (the [#276] tax legs, the
+   [#278] stability probe, and epoch-0); the third time is the argument for writing it down.
+4. DISCARD A WARM-UP LEG at base scenes. 03 Surface Outpost's cpu_cost ran 611 -> 560 -> 216 us/frame
    across three visits, ~3x monotonic. lever-matrix.sh already discards one; render-profile.sh does
-   not, and every ad-hoc probe through it eats the transient.
+   not, so every ad-hoc probe through it eats the transient. This is why Surface Outpost's floors in
+   scene-floor.json are pessimistic and flagged as such.
 
-=== SECOND SCENE, SEPARATELY ===
+=== AND A SECOND SCENE, WHEN THE ABOVE EXISTS ===
 
-[#242] wanted a second scene banked and never got one. 00-Ocean-Lab is the candidate: post-transient
-its cpu_cost spread is 0.90% and render 5.25%, both better than Desert Town's -- it is only `entities`
-where it is worse (15.53% vs 7.80%). A second scene is worth having for cross-scene confirmation, and
-this is the one, but it needs its warm-up discarded and its own repeat count established first.
+[#242] wanted one banked and never got it. 00-Ocean-Lab is the candidate: post-transient its cpu_cost
+spread is 0.90% and render 5.25%, both better than Desert Town; only `entities` is worse (15.53% vs
+7.80%). It needs its warm-up discarded (item 4) and its own repeat count established before its
+floors can be trusted -- the ones in scene-floor.json today include its transient.
 
-No GPU required for items 2-3.
+No GPU required for item 1's scaffolding; item 4 needs legs to verify.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`

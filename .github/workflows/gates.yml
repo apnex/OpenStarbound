@@ -486,6 +486,9 @@ jobs:
       - name: union_membership_fires -- a dropped member, a double count and a blind pattern all fail
         run: python3 scripts/metric-desc-lint.py --selftest-union-membership
 
+      - name: render_ab_fires -- warm-up untagged, arms interleave, a bad spec aborts
+        run: scripts/render-ab.sh --selftest
+
       - name: leg_diff_fires -- the floor refuses, repeats lower it, pairing is declared not inferred
         run: python3 scripts/leg-diff.py --selftest
 
