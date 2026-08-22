@@ -28,7 +28,7 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**216 tasks** across 2 store(s): 5 in_progress, 31 pending, 180 completed
+**216 tasks** across 2 store(s): 4 in_progress, 29 pending, 183 completed
 
 - `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 215 tasks, ids 64–279
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
@@ -44,12 +44,12 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
 | 1 | 1 | `#274` | BORDER-REDERIVE: #217's -10.1% needs re-measuring at 04-Ocean Factory — now a one-liner via render-ab.sh, pai… | ready |
-| 2 | 2 | `#269` | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instr… | ready |
-| 3 | 4 | `#268` | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfia… | ready |
+| 2 | 2 | `#269` | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | ready |
+| 3 | 4 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
 | 4 | 5 | `#275` | GATE-LIVESTATE: writer SHIPPED (508707f2) and arm 1 PROVEN live; arms 2-3 of its own verification remain | ready |
 | 5 | 6 | `#237` | MEASURE-CLIENT: a fifth entrypoint — real client, real GPU, no window, owns its fixture and its storage | ready |
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
-| 7 | 8 | `#252` | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which… | ready |
+| 7 | 8 | `#252` | TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component | blocked by #267 |
 | 8 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
 | 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
 | 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
@@ -66,9 +66,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 237, of which **45 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 231, of which **43 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 28.** The task harness has, on these, appended its
+**Descriptions normalised on export: 39.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -76,8 +76,8 @@ laundered silently: a normalisation nobody can see is one nobody can notice is w
 
 That is expected and mostly harmless: TWO history rewrites destroyed these ids while preserving every byte of content — the 2026-07-19 whole-fork reorg, and an earlier one around 2026-07-18 that rebuilt the 2026-07-14 stretch of `dev/upstream-merge`. What matters is not that an id is dead but whether anyone can still say what it *was*. `docs/board-anchors.json` answers that, id by id:
 
-- **22** — re-anchored to a live commit
-- **9** — a deployed-binary MD5, never a commit
+- **21** — re-anchored to a live commit
+- **8** — a deployed-binary MD5, never a commit
 - **3** — an A/B render frame hash, never a commit
 - **3** — dead, with no live equivalent that could be defended
 - **7** — NOT YET INVESTIGATED
@@ -97,7 +97,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 
 Mappings resting on message-matching rather than a direct id link were sent to an adversarial auditor instructed to refute them: **7 audited, 3 overturned** to `unresolvable`. A wrong anchor is worse than an absent one — it is authoritative-looking and points at the wrong commit, which is the exact failure this file exists to remove.
 
-**Completed tasks citing no commit and no doc:** 85 of 180.
+**Completed tasks citing no commit and no doc:** 87 of 183.
 
 Not a defect count. Much of this campaign's completed work was *investigation* whose
 deliverable was a conclusion — "determinism-locked, DEFER" is a finished task that correctly
@@ -112,10 +112,10 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 |---:|:------|:-------|:--------|:--------|:---------|
 | [#64](#c29c1332-64) | `c29c1332` | done | forEach v1: template forEachEntity (#1) + const&amp; (#5) + EntityMap oracle | — | — |
 | [#65](#c29c1332-65) | `c29c1332` | done | forEach: deterministic micro-benchmark (clean A/B number) | — | — |
-| [#66](#c29c1332-66) | `c29c1332` | open | forEach v2 #2: zero-contributor collision/force broad-phase early-out | — | — |
+| [#66](#c29c1332-66) | `c29c1332` | done | forEach v2 #2 — CLOSED WONTFIX 2026-08-22 (Director): the contract costs more than the win | — | — |
 | [#67](#c29c1332-67) | `c29c1332` | done | forEach v2 #4: stamp-based dedup (delete per-query std::sort) | — | — |
 | [#68](#c29c1332-68) | `c29c1332` | done | forEach v2 #3: skip box-test for fully-contained interior cells | — | — |
-| [#69](#c29c1332-69) | `c29c1332` | open | forEach v2 #7: EntityMapSpatialHashSectorSize granularity sweep | — | — |
+| [#69](#c29c1332-69) | `c29c1332` | done | forEach v2 #7 sector-size sweep — CLOSED WONTFIX 2026-08-22 (Director): buys a number nobody will act on | — | — |
 | [#70](#c29c1332-70) | `c29c1332` | done | UniqueEffect Lua-context churn optimization (~21% of exploring WST) | — | `board-audit-2026-08-08.md` `board.md` |
 | [#71](#c29c1332-71) | `c29c1332` | done | L1: reserve() callback maps before registerCallback storm | — | — |
 | [#72](#c29c1332-72) | `c29c1332` | done | L3: move-not-copy in addCallbacks | — | — |
@@ -136,7 +136,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#87](#c29c1332-87) | `c29c1332` | done | L-LIQ-A: try_emplace in workingCell() — SHIPPED (ba67824, byte-identical) | — | — |
 | [#88](#c29c1332-88) | `c29c1332` | done | Animation-on-server (~4.1%) — INVESTIGATED: NOT skippable (load-bearing); shipped L-ANIM-ITER+WAKE byte-identical (ba67… | — | — |
 | [#89](#c29c1332-89) | `c29c1332` | done | Object::update cluster (~4.5%) — INVESTIGATED; shipped L-OBJ-1+L-OBJ-2 byte-identical copy-elision (067008f) | — | — |
-| [#90](#c29c1332-90) | `c29c1332` | open | SKIP-0 shipped; SIX sub-levers outstanding (SKIP-1/2/3 + L-OBJ-3/4/5) — all located, none started | — | — |
+| [#90](#c29c1332-90) | `c29c1332` | open | SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE (corrected… | — | — |
 | [#91](#c29c1332-91) | `c29c1332` | done | collisionSeparate sort (~2.3%) — INVESTIGATED: DETERMINISM-LOCKED, DEFER (no byte-identical win) | — | — |
 | [#92](#c29c1332-92) | `c29c1332` | done | CDL: explore GPU lighting substrate (brainstorm step 1 — context) | — | — |
 | [#93](#c29c1332-93) | `c29c1332` | done | CDL: clarifying questions + 2-3 approaches (brainstorm) | — | — |
@@ -150,7 +150,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#101](#c29c1332-101) | `c29c1332` | done | CDL-T5: integration — game_tests + byte-identity + adversarial review + deploy dev | — | — |
 | [#102](#c29c1332-102) | `c29c1332` | done | CDL-T6 (in-game): live A/B (promote × tonemap, 4 combos) + decide defaults + cherry-pick to feat/gpu-lighting-standalone | — | — |
 | [#103](#c29c1332-103) | `c29c1332` | done | Tier-0 M1 aggregate A/B: build baseline binary at fc3d55e (merge-base w/ main, | — | — |
-| [#104](#c29c1332-104) | `c29c1332` | open | FU-Lua native-offload decision = DEFER (not no-go), adversarially verified | — | — |
+| [#104](#c29c1332-104) | `c29c1332` | open | FU-Lua native-offload: BLOCKED BY DESIGN, not startable — the gate's precondition is structurally unreachable | — | — |
 | [#105](#c29c1332-105) | `c29c1332` | done | GPU timer telemetry + dirty-gated lighting SPIKE — authored on | — | — |
 | [#106](#c29c1332-106) | `c29c1332` | done | Point-pass GPU optimization — Part 1 BYTE-EQUIVALENT (authored on | — | — |
 | [#107](#c29c1332-107) | `c29c1332` | done | Dirty-REGION lighting — Stage 2 implemented+fixed, building; next: oracle-gated verify | — | — |
@@ -176,15 +176,15 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#127](#c29c1332-127) | `c29c1332` | done | Texture-upload churn (#127) — stable-grid lever SHIPPED (91e3fca, cluster 7.09%→2.37%) | — | — |
 | [#128](#c29c1332-128) | `c29c1332` | done | Lighting GPU-pass dispatch CPU lever (~13% render-thread frame CPU) | — | — |
 | [#129](#c29c1332-129) | `c29c1332` | done | L2 VAO-format bake (#129) — MEASURED NULL, cleanly REMOVED (revert 73c3ec4) | — | — |
-| [#130](#c29c1332-130) | `c29c1332` | **active** | Base In A Box — Reforged: sovereign mod fork (scan/print/dup) | — | `matrix-prereq-ledger.md` |
+| [#130](#c29c1332-130) | `c29c1332` | open | Base In A Box — Reforged: PAUSED 2026-08-22 (Director). Load-bearing for the harness: do not touch during a run | — | `matrix-prereq-ledger.md` |
 | [#131](#c29c1332-131) | `c29c1332` | done | GL_INVALID_VALUE ROOT-CAUSED AND FIXED: inactive vertex attribute location -1 fed to a GLuint index | `e02d4484` `ba0d22ef` `84203421` `32b8f849` `7b15c880` `1df96d68` | — |
 | [#132](#c29c1332-132) | `c29c1332` | done | Idle-GPU floor investigation: profile static-scene per-pass GPU cost (base/ship) → floor-reduction levers&lt;/subject&g… | — | `board.md` |
 | [#133](#c29c1332-133) | `c29c1332` | done | FBO-2 RE-AUDIT DONE: items 2+3 closed (3 fixed in a4106470); item 1 survives as a named hazard -&gt; #197 | `a4106470` | `board.md` `2026-07-14-render-surface-subsystem-design.md` |
 | [#134](#c29c1332-134) | `c29c1332` | done | Design the "perfect" env-cache / retained-surface implementation (brainstorm → spec → plan)&lt;/subject&gt; &lt;paramet… | — | — |
 | [#135](#c29c1332-135) | `c29c1332` | open | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | — | — |
-| [#136](#c29c1332-136) | `c29c1332` | open | P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12]) | `d8f36de7` `404781e0` `0c27d76b` `a8196e52` `6e1e691f` `4e95c50c` | `matrix-prereq-ledger.md` |
+| [#136](#c29c1332-136) | `c29c1332` | open | P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-22) | `d8f36de7` `404781e0` `0c27d76b` `a8196e52` `6e1e691f` `4e95c50c` | `matrix-prereq-ledger.md` |
 | [#137](#c29c1332-137) | `c29c1332` | done | P-2 DONE: Air-Gap seam closed for BackdropPass, half-closed for WorldPass; residual metered (see #191) | `a0f0089b` `b2cabd8d` `e6edbe11` `d4b47d7e` `37306207` `c2208b71` `da0125b2` `1e46f71c` `af9d54a9` `aba06048` | — |
-| [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised | — | — |
+| [#138](#c29c1332-138) | `c29c1332` | open | P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (corrected 08… | — | — |
 | [#139](#c29c1332-139) | `c29c1332` | done | P-4 PHASE 1 DONE: GL-state assertion pass shipped + gate-read (f02a69f5); phases 2-4 (depth) split to #198 | `f02a69f5` | — |
 | [#140](#c29c1332-140) | `c29c1332` | done | P-0 DONE: headless render harness — built, and exercised hard all through #166/#168 | — | — |
 | [#141](#c29c1332-141) | `c29c1332` | done | P-5: THE TRUNK — half the GPU frame is unattributed; instrument it before choosing any more levers | — | `matrix-prereq-ledger.md` `2026-07-25-unified-telemetry-model-design.md` |
@@ -248,7 +248,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#200](#c29c1332-200) | `c29c1332` | done | ARCH-1 DONE: boundary doc + arch-graph generator + arch_graph_fresh gate all in the tree and green | `7d22d2bb` | — |
 | [#201](#c29c1332-201) | `c29c1332` | done | CI-5 DONE: the native path separator is gone — as_posix() at boundary-inventory.py:116, with the warrant at :109 | `e7368000` | — |
 | [#202](#c29c1332-202) | `c29c1332` | done | RI-2 DONE: both L1 files claimed, the application partition exists, the fence holds six, gated residual 17 of 17 | `52360eee` | — |
-| [#203](#c29c1332-203) | `c29c1332` | open | ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
+| [#203](#c29c1332-203) | `c29c1332` | done | ARCH-2 CLOSED: it was already done — the detail block is a completion report whose row never flipped | `07d248f4` `cfa7603b` `38a147d9` `80084408` `c3ef055d` `7fdae50d` `98b6692a` `5e893499` | — |
 | [#204](#c29c1332-204) | `c29c1332` | **active** | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | `3eed5ab8` `d4d07d9a` `84fe2324` `c8bf863b` `c363e052` `fa6f4d8f` `a0bbb0c1` `1899aa71` `02de4584` `e386d983` `46894dae` `466c19cc` `82170188` `0481bb82` `566fce3d` `21ba119a` `5d276333` `42b60f5d` `298bdd16` `1b5f6f00` `c359fc30` `63248364` `1a1c89d8` `6a53b039` `5388cbd0` `b2db3904` `7dc30a06` `b0591b19` `299e8b47` `0acb3c7b` `a71484af` `706e970f` `5d6f5b97` `94a3eec4` `e0a6cdec` `ca7e0011` `a51b3659` `364519c3` `2ed13794` `a3eaa447` `6c30f710` `47e33692` `6539382d` `3751ccaa` `f88ff14d` `351e7696` `ad6426e7` `0fe309ee` `c1e89fdc` `d15a3816` `56b9a1ca` `6956aab7` `01694c2c` `bb04e8b5` `91d18ec6` `fbe4c41b` `1cf8987d` `50f09efe` `94c1af57` `24c79ca8` `dc4dc3e7` `4a333db7` `3ac919ed` `4b4982bd` `736030b7` `d8b8d550` `cb93b33f` `a588e8ab` `8f9e1ce3` `d7708b7a` `e0b827df` `beb51779` `8523181d` `a6c7dba1` `a513ef6f` `618f99e3` `3f07aeec` `b03248c5` `7155637b` `a1911e89` `88bc52f2` `7482dc5f` `41047638` `9882a77a` `1da322da` `77669e22` `1a0f118f` `d14f7f88` `c9c2770f` `739b4aba` `14b941a6` `2e01529d` `b3647d73` `6d181196` `151b8d56` `ebfe4547` `5538062c` `22c5e6d5` `02f2d8d6` `ac6cafd1` `e7f5ab49` `8ffffc5e` `cc9a5532` `2f42bca7` `f053671f` `55da339e` `a6342adb` `376eb9c9` `d1671a77` `e1107569` `9823f106` `c71a06f3` `cd43f4ba` `e635efbf` `f0cb85d9` `4534874d` `ab53f943` `998d52fe` `8fc507c0` | — |
 | [#205](#c29c1332-205) | `c29c1332` | done | TSSA-0 DONE: Part I written, 312 -&gt; 735 lines; six axioms verified and five became decisions | `9c8eb88f` `f7e61c8e` `947a34b1` | — |
 | [#206](#c29c1332-206) | `c29c1332` | done | TSSA-1 DONE: 18-section TOC derived, ratified, implemented, cross-refs renumbered | — | `2026-08-02-tssa-levelling-analysis.md` `tssa-frame.md` |
@@ -297,7 +297,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
 | [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
-| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are pr… | — | — |
+| [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
 | [#255](#c29c1332-255) | `c29c1332` | done | MATRIX-CPU DONE: 27 legs, all four cells, and the caches trade CPU for GPU at identical frame rate (a4fc43b3) | `35e049a1` `a4fc43b3` | — |
@@ -313,8 +313,8 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one | — | — |
-| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfiable at n=5… | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
-| [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax;… | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
+| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
+| [#269](#c29c1332-269) | `c29c1332` | **active** | LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed | `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `29516d61` `1d367a57` | — |
 | [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
 | [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29516d61` `7bede779` | — |
@@ -360,12 +360,38 @@ Standalone forEach micro-bench (fixed PRNG, ~965 entities, fixed query mix) → 
 
 <a id="c29c1332-66"></a>
 
-#### #66 — forEach v2 #2: zero-contributor collision/force broad-phase early-out
+#### #66 — forEach v2 #2 — CLOSED WONTFIX 2026-08-22 (Director): the contract costs more than the win
 
-status: **pending**
+status: **completed**
 
 ```
-DEPRIORITIZED by live measurement. forEach #2 (zero-contributor collision/force broad-phase early-out) targets forEachMovingCollision + query<PhysicsEntity> + updateForceRegions, which measured only ~0.2% of the WST in the 2026-06-20 live exploring profile (chunk-streaming workload). #2's win is workload-conditional (collision-dense settled activity), NOT the dominant exploring cost. Keep as a future lever for collision-heavy workloads; measure with a runtime toggle before building. The forEach per-query stack (#1/#5/#4/#3) already integrated at 373f9b3 collapsed the named symbol 22.5%→0.5%. Superseded in priority by task #70 (UniqueEffect context churn ~21%).
+CLOSED AS WONTFIX by the Director, 2026-08-22, on the correspondence audit's evidence. Not because
+the lever is wrong -- because it cannot be bought at a sane price.
+
+THE LEVER IS GENUINELY UNIMPLEMENTED, so this is a real close, not a stale-open. Verified:
+MovementController::forEachMovingCollision and MovementController::updateForceRegions both enter
+`for (auto& physicsEntity : world()->query<PhysicsEntity>(...))` with no zero-contributor early-out.
+git grep for broadPhaseEarlyOut|zeroContributor|forceRegionEarlyOut over source/ = 0 files. No toggle
+key exists in worldserver.config.patch. No commit carries a [#66] stamp.
+
+WHY IT IS NOT WORTH BUYING:
+
+  - The prize is ~0.2% of the WST, from a 2026-06-20 exploring profile, on a workload (chunk
+    streaming) that is not the one being optimised.
+  - Its own text already deprioritised it and ordered "measure with a runtime toggle before
+    building". That contract -- add a toggle, then A/B it on a collision-dense workload -- inherits
+    #84's UNSOLVED problem: there is still no way to A/B a server-side lever within one run. So the
+    measurement half costs more than 0.2%, and without it the guard ships unmeasured, which this
+    campaign does not do.
+  - BOTH ITS POINTERS HAVE ROTTED. 373f9b3 resolves as an object ("merge: forEach entity-query
+    optimization") but is NOT an ancestor of integration -- unreachable after the 2026-07-19 reorg
+    squash. And "superseded in priority by task #70" no longer orders anything: #70 is completed.
+
+The prerequisite levers it names DID ship and are in the tree (Entry::queryStamp + m_queryCounter
+dedup, and the interior-cell box-test skip, both in StarSpatialHash2D.hpp). Nothing is lost.
+
+IF THE SIM ARC IS EVER RESUMED: fold the one-line guard into #84's first consumer rather than
+reopening this row. The guard is small; it was never the expensive part.
 ```
 
 <a id="c29c1332-67"></a>
@@ -390,12 +416,32 @@ Precompute interior cell sub-rect; append all entries without r.intersects for f
 
 <a id="c29c1332-69"></a>
 
-#### #69 — forEach v2 #7: EntityMapSpatialHashSectorSize granularity sweep
+#### #69 — forEach v2 #7 sector-size sweep — CLOSED WONTFIX 2026-08-22 (Director): buys a number nobody will act on
 
-status: **pending**
+status: **completed**
 
 ```
-Sweep sector size 8/16/24/32 (measured, after #3/#4). Oracle is size-independent; the one lever whose sign needs live/bench data. Last.
+CLOSED AS WONTFIX by the Director, 2026-08-22.
+
+GENUINELY NOT DONE -- no sweep exists and none can run without new code. EntityMapSpatialHashSectorSize
+is still a compile-time `float const ... = 16.0f` in source/game/StarEntityMap.cpp with exactly one
+consumer (the m_spatialMap constructor). There is no config key for it anywhere in assets/ (git grep
+over assets = 0 files). The one benchmark that touches the hash, SpatialHashBench.ForEachDispatch,
+pins `float const SectorSize = 16.0f` with a comment saying it mirrors the engine constant -- so it
+is not parameterised and would have to be made so. No [#69] commit. No sweep artefact under docs/ or
+harness/.
+
+WHY NOT WORTH DOING:
+
+  - It is a sim-side micro-lever whose SIGN IS UNKNOWN -- the task says so itself: "the one lever
+    whose sign needs live/bench data".
+  - Parameterising the bench is small, but a bench number alone would not authorise changing a
+    hardcoded engine constant. Acting on it needs a live in-game check, which inherits the same
+    #84 server-lever measurement gap that closed #66.
+  - Nothing downstream is waiting on it. It is not in scripts/lever-table.json and never was.
+
+Its one named symbol still resolves, so if the sim arc resumes this can be re-filed cheaply from
+this text. Closing it now stops it reading as startable when it is not.
 ```
 
 <a id="c29c1332-70"></a>
@@ -645,42 +691,38 @@ DEFERRED (flagged, real obligations) → see #90: L-OBJ-3 damageSources touch-so
 
 <a id="c29c1332-90"></a>
 
-#### #90 — SKIP-0 shipped; SIX sub-levers outstanding (SKIP-1/2/3 + L-OBJ-3/4/5) — all located, none started
+#### #90 — SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE (corrected 08-22)
 
 status: **pending**
 
 ```
-RETITLED 2026-07-25 by content audit at c9b2b024. The parent shipped; every deferred sub-lever is still
-outstanding, and all six are now precisely located so none needs re-finding.
+TEXT CORRECTED 2026-08-22. The substance stands and the row stays open: all six sub-levers
+(SKIP-1/2/3 + L-OBJ-3/4/5) are unimplemented at HEAD, exactly as described. Two assertions around
+them had rotted.
 
-=== PARENT SKIP-0: CONFIRMED SHIPPED (content, not SHA) ===
-virtual base source/game/interfaces/StarEntity.hpp:190 + StarEntity.cpp:92; the braceless gate at
-source/game/StarDamageManager.cpp:84-91; flag DamageSourceSkip::enabled (StarDamageManager.cpp:11,
-StarWorldServer.cpp:1625, assets/opensb/worldserver.config.patch:48); all six overriders return true.
+=== THE FALSE SENTENCE ===
 
-=== THE SIX OUTSTANDING, with exact sites ===
- SKIP-1  Object per-instance precompute. source/game/StarObject.hpp:125 is still a bare `return true;`,
-         and Object::damageSources() (StarObject.cpp:1229-1242) still does the per-call jsonMerge of
-         touchDamageConfig with no ctor-time precompute. Re-verify the customOrientations counterexample
-         before designing — that is what made this non-trivial.
- SKIP-2  Monster exact predicate. StarMonster.hpp:88 literally reads
-         `return true; // L-DMG-SKIP-0 (exact predicate = deferred L-DMG-SKIP-2)`, and
-         Monster::damageSources (StarMonster.cpp:287-298) still evaluates all 3 terms live.
- SKIP-3  selfDamageNotifications. The loop at StarDamageManager.cpp:136 sits OUTSIDE the gate; the comment
-         at :88-89 confirms that is deliberate, so this is a scoped decision to revisit, not an oversight.
- L-OBJ-3 No memo of the touch source anywhere in StarObject.cpp.
- L-OBJ-4 The liquid timer ticks unconditionally at StarObject.cpp:427-429 with the config test still
-         inside checkLiquidBroken (:1524-1529) — no config gate.
- L-OBJ-5 StarObject.cpp:458-462 ticks m_lightFlickering and m_emissionTimers on BOTH master and slave,
-         with no PlantWind-style server skip (contrast StarPlant.cpp:15-16 + :735-740, which is the
-         pattern to copy).
+"#84 records that no server-thread profile has been taken since the render/lighting work began" is
+FALSE at HEAD, and #84's own revision retracts it. The server tick budget EXISTS: [#175] closed it
+across 27 phases at 99.76%, with tick.server.compute.entities.us and tick.server.compute.damage.us
+live. compute.entities is the real 65%.
 
-SUGGESTED ENTRY POINT: L-OBJ-5 is the closest analogue to an already-shipped, already-validated lever
-(L-WIND-A) and is a slave-side dead store, so it is the cheapest to make byte-identical. SKIP-1 is the
-highest-value but carries the customOrientations landmine.
+That sentence mattered because it was the stated reason these six could not be sized. They can be
+sized now -- what they still cannot be is A/B'd, which is #84's actual remaining problem (no
+mechanism to flip a server lever between two telemetry windows inside one run). Different blocker,
+different fix.
 
-All of these are SERVER-tick levers, so they need a WST capture to size — and note #84 records that no
-server-thread profile has been taken since the render/lighting work began.
+=== THE OTHER ROT ===
+
+The flag-store pointer "DamageSourceSkip::enabled (... StarWorldServer.cpp:1625 ...)" no longer
+matches; the store call has drifted well down the file (+122 lines as of the 2026-08-08 audit).
+
+THE WHOLE BLOCK IS LINE-ANCHORED, which this project's own rule bans (#218: a line number cannot stay
+true; cite the symbol). It predates the sweep that converted the rest of the tree. Re-point to
+symbols before working any of the six -- otherwise every one of them starts with a false pointer.
+
+DEPENDENCY, STATED PLAINLY: these six are gated on #84's in-run server A/B mechanism. Without it they
+can be built but not measured, and this campaign does not ship unmeasured levers.
 ```
 
 <a id="c29c1332-91"></a>
@@ -815,12 +857,48 @@ Tier-0 M1 aggregate A/B — CAPTURED + ADVERSARIALLY VERIFIED (panel wlkufhccd).
 
 <a id="c29c1332-104"></a>
 
-#### #104 — FU-Lua native-offload decision = DEFER (not no-go), adversarially verified
+#### #104 — FU-Lua native-offload: BLOCKED BY DESIGN, not startable — the gate's precondition is structurally unreachable
 
 status: **pending**
 
 ```
-FU-Lua native-offload decision = DEFER (not no-go), adversarially verified (panel w46s8gaeh REFUTED my "not justified" framing). Measured: FU-Lua ~8% of total CPU / ~5.5% of one core, flat across quiet/B1/B2 (0.64→0.66→0.69 cores), no named item-network hotspot. CORRECTED FRAMING: (1) capture is vsync-limited → sim thread only ~0.12 cores, 7-8x frame-budget headroom → GUARANTEED not to stress sim → "box not stressed" is CIRCULAR, can't bound at-scale cost. (2) "no hotspot" is an ARTIFACT — FU transport is generic Lua folded into luaV_execute/luaH_get (undifferentiated; it IS the documented #1 FU hotspot per mod-hypervisor.md), cost is inside the 8%, unnamed. (3) 8% is a self-time FLOOR (excludes FU-driven net-delta tail: queueUpdatePackets/netStorePump/writeNetDelta) AND an upper bound on the FU-ADDRESSABLE prize (folds in vanilla Lua-VM cost the offload can't touch) → true addressable <8%, unmeasured. (4) two bases = stability at ONE complexity tier, NOT the scaling curve. (5) RIGHT metric = single-thread WorldServerThread occupancy (~0.12 → watch toward 1.0), NOT process-fraction. (6) dirty-gate lighting is "AND not INSTEAD" — different thread/axis. GATE to reconsider: re-profile the target-scale factory with framerate UNCAPPED (vsync off) + track WST single-core occupancy + verified item throughput; reconsider only if WST nears saturation. Cheap add-ons from existing dwarf: --children inclusive rollup (running) + machinery ON/OFF A/B. Raw data /tmp/fulua/. Persist to kubebound FU-Lua decision note.
+RE-LABELLED 2026-08-22 (Director). Stays `pending` because this store has no blocked status, but it
+is NOT STARTABLE and must stop reading as though it were.
+
+=== THE DEFER DECISION IS DONE, AND THE BOARD NEVER CITED WHERE IT LIVES ===
+
+/root/kubebound/2026-06-26-fu-lua-offload-decision.md -- 48 lines, holds the DEFER verdict, panel
+w46s8gaeh, all six corrected-framing points and the gate paragraph verbatim. Its companion
+mod-hypervisor.md exists too. The row ordered this note written and then never pointed at it, so the
+one durable artefact of the decision was invisible from the board.
+
+=== WHY THE GATE CANNOT OPEN TODAY ===
+
+One of its two named preconditions is unreachable by construction, not merely unbuilt:
+
+  "uncap the loop with vsync off" DOES NOT UNCAP THE LOOP. StarMainApplication_sdl.cpp sleeps
+  UNCONDITIONALLY -- Thread::sleepPrecise(spareMilliseconds), computed from m_updateTicker.spareTime()
+  with m_updateTicker = TickRateApproacher(60.0f, 1.0f). Turning vsync off removes the display wait,
+  not the pacing sleep. The loop stays at 60. So the headroom this gate wants to observe cannot
+  appear, however the test is run.
+
+The second precondition is simply absent: no target-scale factory scene and no item-throughput metric
+exist anywhere under harness/ or scripts/.
+
+Opening this gate therefore requires ENGINE WORK FIRST (a way to run the loop unpaced) plus a fixture
+and a metric that do not exist. That is a project, not a measurement.
+
+=== WHAT HAS IMPROVED SINCE FILING ===
+
+tick.server.total.us is registered in StarWorldServerThread.cpp and the 27-phase server budget closed
+at 99.76% ([#175]), so the sim side is now instrumented even though this gate is not.
+
+Stale: "Raw data /tmp/fulua/" -- that directory does not exist; the decision note is the only
+surviving record. The "--children inclusive rollup (running)" sub-claim is false per the note's own
+point (3).
+
+TO UNBLOCK: file the unpaced-loop capability as its own task first. Do not reopen this row before
+that exists.
 ```
 
 <a id="c29c1332-105"></a>
@@ -1160,14 +1238,41 @@ Stage-0 default-OFF spike, then settled at user's base with two independent in-g
 
 <a id="c29c1332-130"></a>
 
-#### #130 — Base In A Box — Reforged: sovereign mod fork (scan/print/dup)
+#### #130 — Base In A Box — Reforged: PAUSED 2026-08-22 (Director). Load-bearing for the harness: do not touch during a run
 
-status: **in_progress**
+status: **pending**
 
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
-Sovereign apnex_ fork of the scan/print/dup capability (BiaB 729460427 + MiaB 729456260) for OSB+FU. Repo /home/apnex/base-in-a-box-reforged (moved from /root — /root unreadable by the apnex game process). STAGE 0 (extraction + scaffold + baseline) DONE + VERIFIED IN-GAME 2026-07-07: mod loads clean, scan→print loop works, ZERO LuaExceptions, and recipes are craftable normally at the Engineer's Table with NO /learnblueprint needed (defaultBlueprints applied fine for the existing char — earlier concern was wrong). build_fork.py reproducible; verify.sh green; deployed loose to dev+dev-feat sbinit (BiaB/MiaB unsubscribed + stale sbinit pak entries removed by me). NEXT = HARDENING BACKLOG: (2) usability/discoverability — no in-game instructions, confusing names (Receiver='Scanning Marker'); (3) author known issues (can't scan trees/unbreakable; leaves blocks in protected areas; print-on-self); (4) FU round-trip fidelity — scan/print FU custom blocks/materials/liquids/objects faithfully + large-area perf (the utility core). Each = own design→fix→verify cycle.
+PAUSED by the Director, 2026-08-22. Moved out of in_progress, where it had sat for 46 days.
+
+This store has no `paused` status, so `pending` is the honest representation: it is not being worked,
+and nothing should imply otherwise. It is NOT abandoned and NOT complete.
+
+=== WHY PAUSING IT IS A SAFETY DECISION, NOT JUST HYGIENE ===
+
+/home/apnex/base-in-a-box-reforged/mod is an assetSource in harness/sbinit-perf.config. It is
+therefore INSIDE the measured asset chain: every leg of every matrix run loads it, and it is covered
+by the asset fingerprint that scripts/render-profile.sh refuses a leg over ([#277]).
+
+So editing this mod does not just change the mod -- it changes the fixture. It moves the asset
+fingerprint, which makes every banked leg incomparable with every future one, and if edited DURING a
+run it trips the mid-leg refusal. A row sitting in `in_progress` invites exactly that.
+
+  RULE: no edits to this mod while a harness run holds harness/matrix/.active, and any edit that
+  does land must be treated as an epoch boundary for banked evidence, the same as an asset resync.
+
+=== WHAT IS ACTUALLY UNFINISHED (the row's subject does not say) ===
+
+Stage-0 extraction is DONE. The real remainder is an undocumented 9-task blueprint-library arc
+(tasks 8-9 of it), NOT the hardening backlog this row's title implies. Anyone resuming should re-file
+that arc as its own tasks with the actual scope written down, rather than reopening this row -- a
+46-day in_progress row whose title describes different work than its remainder is how a board stops
+being read.
+
+Resume condition: a deliberate Director decision to spend a fixture-epoch on it, taken when no run is
+scheduled.
 ```
 
 <a id="c29c1332-131"></a>
@@ -1322,7 +1427,7 @@ Related: #136 (the P-1 bugs in this same gate, code merged, awaiting the Directo
 
 <a id="c29c1332-136"></a>
 
-#### #136 — P-1: RE-SCOPED to perceptual items only — (b) and (f) are substrate-decided (audit delta[12])
+#### #136 — P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-22)
 
 status: **pending**
 
@@ -1335,53 +1440,36 @@ status: **pending**
 - cited in `docs/superpowers/drafts/matrix-prereq-ledger.md`
 
 ```
-STATUS CORRECTED 2026-07-25. This was marked in_progress as though code work remained. It does not: the code is in `integration` and shipping.
+TEXT CORRECTED 2026-08-22 by the correspondence audit. The shipped-code half of this row was true;
+its pointers were not. These were not line-number rot -- they named the WRONG FILES, which is the
+failure mode that survives a re-read because the symbol really does exist somewhere.
 
-RE-SCOPED 2026-07-26 by the M7 axiom audit (A13 Director Intent Amplification, delta[12]). Shipped work was
-parked on the Director's eyeballs for two items the substrate already decides -- and the Director is the
-one non-scalable resource in this campaign, so that is measurable throughput lost.
+=== THE THREE CORRECTIONS ===
 
-VERIFIED PRESENT IN integration (2026-07-25):
-  frameBufferGeneration        source/application/StarGlRenderSurface.hpp
-  bypassed_moving              source/rendering/StarBackdropPass.cpp
-  ParkFrames                   source/rendering/StarBackdropPass.cpp
-  render.cache.parallax.*      source/frontend/StarClientCommandProcessor.cpp
-It survived the 2026-07-19 branch reorg into the trunk. (The original branch fix/backdrop-cache-bugs
-still exists on origin, but its commit 8bf7777 and the binary sha ba54397f no longer resolve -- SHAs
-shifted in the history purge. Resolve by message, not by SHA.)
+1. frameBufferGeneration is NOT declared in source/application/StarGlRenderSurface.hpp. The only
+   occurrence there is a COMMENT. The real declaration is the virtual in
+   source/application/StarRenderer.hpp, implemented in StarRenderer_opengl.cpp, consumed in
+   source/rendering/StarBackdropPass.cpp.
 
-ALSO: the current integration build is DEPLOYED to /home/apnex/OpenStarbound/dev, which is the install the
-Director actually plays. So the fixes are live and checkable right now.
+2. render.cache.parallax.* is NOT in source/frontend/StarClientCommandProcessor.cpp -- git grep over
+   source/ returns ZERO hits in that file. The three counters are registered in
+   source/rendering/StarBackdropPass.cpp and read in source/client/StarClientApplication.cpp, with a
+   further reference in source/test/telemetry_test.cpp.
 
-=== WHAT ACTUALLY REMAINS ON THE DIRECTOR (perceptual, Claude cannot perform these) ===
-  (a) baseline: sky + parallax look normal
-  (c) toggle HDR and/or antiAliasing in options -> NO garbage flash in the backdrop (was: composited
-      undefined GPU memory for up to N frames after any FBO realloc)
-  (d) walk around -> parallax normal (now on the direct/vanilla path while moving)
-  (e) walk across a biome boundary -> parallax crossfades smoothly, does not freeze (was: the parallax
-      key omitted the tint/alpha content the crossfade animates)
+3. FALSE STATE CLAIM: "the current integration build is DEPLOYED to /home/apnex/OpenStarbound/dev".
+   That binary dates from 2026-08-05 and is 155 COMMITS BEHIND. Anyone acting on that sentence would
+   be testing against a build without the render-surface substrate, the scene standardisation, or
+   the lock writer. Do not trust it; redeploy before any in-game check.
 
-=== CLOSED WITHOUT THE DIRECTOR ===
-  (b) ZOOM -> sky updates immediately. CLOSED AS SUBSTRATE-DECIDED: the root cause was the env key omitting
-      pixelRatio, and source/test/retained_surface_test.cpp:22-28 now asserts that exact pixelRatio
-      invariant OFF-GPU, in core_tests, in CI. A passing unit test asserting the invariant outranks an
-      eyeball check of the same invariant.
-  (f) /telemetry snapshot x2 for the parked-vs-moving split. CONVERTED, not closed: it becomes the counters
-      oracle specified in #174 (refreshed+skipped+bypassed == frame count, bypassed_moving > 0). A
-      counter-reading is something the substrate can do; it should never have been on the Director.
+=== STATUS CORRECTIONS ===
 
-ORACLE GAP (still open, feeds P-2 #137): none of the four bugs were catchable by the existing oracles.
-Both are DIFFERENTIAL -- reference and cache-under-test share the same draw lambda at the same frame
-position under the same ambient GL state -- so they certify only "cache path == direct path GIVEN
-identical ambient state". Refresh-key omissions, FBO lifecycle and ambient-state changes all cancel
-exactly. An oracle that cannot catch the failure mode is not a gate. P-2 must add (a) a GL-state
-assertion pass at end-of-render and (b) a golden full-frame hash, before any code motion.
+(b) is genuinely CLOSED -- source/test/retained_surface_test.cpp exists and asserts the pixelRatio
+invariant. (f) is DISCHARGED, not "converted": there is nothing left of it to carry.
 
-FREE PERF NOT TAKEN: animated parallax layers always draw frame 0 (StarEnvironmentPainter.cpp:262-263),
-so the animation never advances and the parallaxAnimated -> clamp N<=4 guard protects nothing while
-costing cache efficiency. Left alone pending P-3 (#138).
+bypassed_moving and ParkFrames really are in StarBackdropPass.cpp, as the row says.
 
-DESIGNED TO BE DELETED: if P-3 (#138) lands, the bypass and the whole parallax cache go away.
+Line refs StarEnvironmentPainter.cpp:262-263 and retained_surface_test.cpp:22-28 have both rotted.
+Per #218 this block should cite symbols; it predates that rule and has not been swept.
 ```
 
 <a id="c29c1332-137"></a>
@@ -1440,43 +1528,42 @@ harness cannot execute.
 
 <a id="c29c1332-138"></a>
 
-#### #138 — P-3 NOT STARTED — and two feasibility spikes must run BEFORE any parallax shader work is authorised
+#### #138 — P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (corrected 08-22)
 
 status: **pending**
 
 ```
-CONFIRMED NOT_STARTED 2026-07-25 by content audit at c9b2b024, with a sequencing gate added.
+TEXT CORRECTED 2026-08-22. Every NOT-STARTED assertion reproduces at HEAD -- the row is genuinely
+open -- but its SEQUENCING paragraph was blocking it behind work that has already landed.
 
-NOTHING HAS LANDED. Parallax is still N separate per-layer immediate-mode draws:
-source/rendering/StarEnvironmentPainter.cpp:238-249 `renderParallaxLayers(...) { for (auto& layer : layers)
-{ ... } }` pushing into m_renderer->immediatePrimitives(); the only per-layer trim is the R-D
-fully-transparent skip at :248. No data-driven layer-walking shader exists — the complete effect set is
-assets/opensb/rendering/effects/{interface,world,lightingPassthrough,lightingPoint,lightingSpread,
-lightingUpscale,backdropCompose}.frag and none samples a layer array. No sampler-budget or atlas work
-(`TEXTURE_2D_ARRAY|compiled parallax|single-pass compiled` returns ZERO across source/ and docs/). No
-shadow/dual-run pass for it.
+=== THE STALE GATE ===
 
-CONVERSELY, THE SCAFFOLDING P-3 WAS MEANT TO DELETE IS ALIVE AND STILL BEING EXTENDED: backdropComposeMerge
-default true (StarRootLoader.cpp:113), adaptive-N (StarBackdropPass.cpp:279-320), the parallax retained
-cache and the cross-surface arbiter (StarBackdropPass.hpp:99-119). So "P-3 will delete this anyway" is not
-currently a reason to skip work elsewhere — it is why #135 has been un-parked.
+The paragraph names #137 and #139-Phase-1(b) as blockers. BOTH ARE DONE and verifiable by symbol
+(BackdropPass::Input, GlPass::auditGlState). So the two FEASIBILITY SPIKES are now the ONLY remaining
+gate on any parallax shader work -- which is a materially different position from what the row said,
+and it is the reason this correction matters more than the line-number ones.
 
-=== GATE: RUN TWO FEASIBILITY SPIKES FIRST ===
-Do NOT authorise parallax shader work until both are answered, because either can kill the design:
- 1. ATLAS BLEED UNDER NEAREST filtering. A single-pass layer-walking shader needs the layer textures
-    reachable from one draw — atlas or 2D array. Parallax tiles wrap and repeat; prove that atlasing does
-    not bleed neighbours at tile seams under the sampling this renderer actually uses.
- 2. TRUE EFFECTIVE OVERDRAW FACTOR, measured on the offscreen microbench — not assumed. The whole premise
-    is that one pass beats N passes; if the layers are mostly transparent and already early-out (the R-D
-    skip at :248 exists precisely because they are), the win may be far smaller than the layer count
-    suggests.
+=== WHAT REPRODUCES, UNCHANGED ===
 
-Note the campaign's precedent: #129 (L2 VAO-format bake) was built, MEASURED NULL, and cleanly reverted.
-A spike that says "do not build this" is a success, not a waste.
+EnvironmentPainter::renderParallaxLayers is still `for (auto& layer : layers)` pushing into
+m_renderer->immediatePrimitives(), with the R-D fully-transparent skip as the only per-layer trim.
+The effect set in assets/opensb/rendering/effects/ is exactly the seven .frag files the block names
+(backdropCompose, interface, world, lightingPassthrough, lightingPoint, lightingSpread,
+lightingUpscale) and NONE samples a layer array. The atlas/array grep returns zero code hits -- the
+only matches are docs/board.md and docs/board-audit-2026-08-08.md, i.e. this task's own text quoted
+back at itself.
 
-SEQUENCING: behind #137 (the Air-Gap contract — this changes BackdropPass substantially and should not
-land on top of an unfinished extraction seam) and behind #139's Phase 1(b) GL-state assertion pass, which
-is the only oracle that can catch the ambient-state class of bug this work will generate.
+The scaffolding is alive: "backdropComposeMerge": true in StarRootLoader.cpp, plus the adaptive-N
+derivation and all six parallax-cache members in StarBackdropPass.
+
+=== CROSS-ROW NOTE ===
+
+If P-3 ever proceeds it would DELETE the parallax cache that #135 proposes to extend -- which is one
+of the two reasons #135 is recommended WONTFIX. Do not work them in the other order.
+
+Four line refs have rotted (StarEnvironmentPainter.cpp:238-249 and :248; StarRootLoader.cpp:113;
+StarBackdropPass.cpp:279-320; StarBackdropPass.hpp:99-119). All four SYMBOLS still resolve -- only
+the numbers are wrong, per #218.
 ```
 
 <a id="c29c1332-139"></a>
@@ -3565,9 +3652,9 @@ VERIFIED BOTH NEW CHECKS FIRE: a probe file in source/application reported as un
 
 <a id="c29c1332-203"></a>
 
-#### #203 — ARCH-2: shape + cohesion tests, actions reordered by value, and a recursive-scan defect
+#### #203 — ARCH-2 CLOSED: it was already done — the detail block is a completion report whose row never flipped
 
-status: **pending**
+status: **completed**
 
 - `07d248f4` docs(arch): write the subsystem-leaving inheritance edge derived-first, so star_game renders outside
 - `cfa7603b` docs(arch): section 9 measured the wrong graph -- game's declarations are acyclic
@@ -3579,21 +3666,19 @@ status: **pending**
 - `5e893499` docs(arch): a shape test, a cohesion test, and the recommendation they falsified
 
 ```
-Director approved items 1-3 from the qualitative self-review of the boundary document.
+CLOSED 2026-08-22 by the correspondence audit. Every named deliverable is in the tree: Test 5 SHAPE,
+Test 6 COHESION, the files_in() recursive-scan fix, and VENDORED_SUBTREES. Nothing was left to do.
 
-ITEM 1 -- ACTIONS REORDERED BY VALUE. Was cheapest-first, which put "revoke 5 unused grants" at the top (it forbids things nobody does: no behaviour change, no coupling removed, no work enabled) and buried the only item that matters. Now value-ordered with cost stated separately, and the hygiene item is labelled as hygiene.
+THE ONLY TASK THE AUDIT FOUND MISLABELLED, out of 35 open rows and 11 claimed status changes -- the
+other ten did not survive adversarial refutation. That ratio is the finding: the board's STATUSES are
+largely honest and its TEXT is not.
 
-ITEM 2 -- THE `game` RECOMMENDATION WAS WRONG, NOT UNDERSTATED. It said "not a refactor -- a CMakeLists.txt per cluster and a grant list each... costs no behavioural change at all". Measured: source/game has 226 of 264 translation units in ONE strongly-connected component (86%). There is no partition. A sub-directory cannot take a grant list while it has mutual includes with its neighbours. Rewritten to say the work is breaking the cycle, that it cannot be done byte-identically, cannot be verified by existing oracles, and that the first deliverable is a feasibility study.
+This one was stale-open in the optimistic-looking direction (work done, row still pending), which is
+the cheap direction. The board's header warns about the other one.
 
-ITEM 3 -- TEST 5 (SHAPE) ADDED, and it is a SECOND-STAGE question, not a fifth rung: tests 1-4 ask whether a boundary exists, shape asks whether it is any good. Metric = for a data-dominant struct crossing a tier, how many members the consumer actually reads. First formulation was FALSIFIED in testing (WorldRenderData is 21/23 against source/rendering -- fine at directory granularity); the defect is per-consumer: WorldPass 6/23, TilePainter 3/23 while the orchestrator reads 20/23. Filters carry the meaning -- classes excluded (low fit there is encapsulation working; without the filter it reported 5 false findings on `Object`), same-tier excluded. The metric also finds WELL-shaped crossings (RenderTile 16/16), so it discriminates rather than only complaining.
-
-TEST 6 (COHESION) ADDED, unplanned, and it is the most valuable output: per-directory largest SCC as a share of the directory. game 86% and windowing 84% are single blobs -- unsplittable. core 3%, rendering 8%, frontend 12% are splittable. THE RENDER DECOMPOSITION SUCCEEDED BECAUSE `rendering` WAS ALREADY 92% ACYCLIC -- feasibility was a property of the ground, not the plan. This rehabilitates the hand-built instruments: for the blob directories they are not a workaround for a cheap mechanism nobody used, they are the ONLY enforcement available.
-
-DEFECT FOUND AND FIXED: arch-graph.py's files_in() walked only the top level, so every count in the published document excluded source/game/{interfaces,items,objects,scripting,terrain} -- 162 files, 19,230 lines, and 119 Root::singleton reads. game corrects from 338 files/96,002 lines/Root×521 to 500/115,233/Root×640. Found only because the cohesion prototype used os.walk and disagreed with the generator (264 units vs 172). Two implementations of one measurement disagreeing is the only reason anyone looked.
-
-ALSO: VENDORED_SUBTREES declared (extern/{curve25519,fmt,lua}, application/discord) -- recursing tripped the ambiguous-basename guard on core.h, correctly. And boundary-inventory.py's VOCAB said WorldRenderData was "the 35-member frame view model"; the tree says 23, and the wrong number had propagated into the generated boundary doc. Number removed -- it is measurable, so the shape block states it.
-
-VERIFIED: both new blocks proven to fire under tamper; all 7 script gates pass; 9/9 NoAssets ctests pass.
+Residue, harmless: the block quotes docs/render/system-boundaries.md as 500 files / 115,233 lines;
+the generated doc now reads 500 files / 115,725 in all three places (tree listing, mermaid node, mass
+table). Generated figure, regenerates itself, not a defect.
 ```
 
 <a id="c29c1332-204"></a>
@@ -5767,125 +5852,40 @@ valid, which is upstream of what they mean.
 
 <a id="c29c1332-252"></a>
 
-#### #252 — TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding insi…
+#### #252 — TEL-EXTRACT: BLOCKED on a destination ruling — #252 says metrics/, #267 says a new `report` component
 
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-TEL-EXTRACT: everything that WRANGLES, PROJECTS or CONSUMES metrics moves to metrics/ — ~390 lines, of which 246 are projection hiding inside the core store
-```
-
-status: **pending** · blocked by: #235, #255 · metadata: `{"rank": 8}`
+status: **pending** · blocked by: #235, #255, #267 · metadata: `{"rank": 8}`
 
 ```
-DIRECTOR, 2026-08-07, two rulings:
-  (a) "I agree that instrumental stays - we should aim to keep this as thin a 'shim' as possible,
-      but with greatest 'useful metric atomic coverage' in source."
-  (b) "All code that wrangles, projects or consumes metrics should probably move to the metrics
-      folder for now, and in future we can fold some of the python into the sovereign modules and
-      interfaces yet to be built."
+BLOCKED 2026-08-22 (Director): no code moves until the destination is ruled.
 
-Ruling (b) WIDENS THIS TASK from the ~60-line client ride-in it was filed as. RE-MEASURED at HEAD
-2026-08-08 by the board audit, and the original accounting had a real error in it:
+=== THE CONFLICT ===
 
-  StarTelemetry.cpp                       597 lines  (was 587 when filed)
-    lines 342-493   naming tables + spec tables       ~152   PROJECTION
-    lines 495-568   Telemetry::snapshot()              ~74   PROJECTION
-    lines 570-595   Telemetry::reset()                 ~26   STORE -- STAYS
-    remainder       lock-free registry, atomics,      ~345   STORE
-                    histogram bucketing, applyDesc
-  StarTelemetryReporter.{cpp,hpp}         120 lines          PROJECTION (writes the file)
-  StarClientApplication + CommandProcessor ~60 lines          MECHANISM (5 sites)
-                                          ------
-                                          ~406 lines to move, of which ~226 is projection
+This task orders everything that WRANGLES, PROJECTS or CONSUMES metrics into `metrics/`. #267's axiom
+derivation says the same row is FIVE duties and wants a separate `report` component for the
+projection/consumption half. Both are ratified-sounding; they cannot both be executed.
 
-THE ORIGINAL FIGURE COUNTED reset() AS PART OF snapshot() -- it said "485-587 Telemetry::snapshot()
-~103". snapshot() ends at 568; 570-595 is reset(), which is store code and does not move. Corrected
-above. ~38% of what is filed as "the core store" is projection: the naming tables rendering the
-descriptor vocabulary to strings, the owner denominator/total table, and the JSON serialiser. None of
-that is the store. All of it is interpretation.
+Moving ~390 lines to the wrong home is the expensive kind of mistake: it is a large diff that looks
+like progress, passes every gate, and has to be undone by a second large diff. Worse, whichever moves
+first silently decides the question for the other. So the ruling comes first and the code second.
 
-NOTHING HAS MOVED YET, verified 2026-08-08: all nine xName tables, both spec tables and
-Telemetry::snapshot() are still in source/core/StarTelemetry.cpp.
+  DIRECTOR DECISION OWED: does projection/consumption live in `metrics/` alongside the store, or in
+  its own `report` component with `metrics/` keeping only capture and storage?
 
-=== THE SEAM ===
+Blocked-by #267 records that ordering mechanically rather than in prose nobody re-reads.
 
-snapshot() reads registry().nodes directly with relaxed atomic loads. Moving it means Telemetry
-exposes a READ-ONLY VISITOR over its nodes and the projection owns the rendering. Narrow seam, and it
-keeps the rule that survives from StarMetricDesc.hpp: the in-process store is the subject reporting on
-itself; the outsider that must never be a peer of its subject owns everything that interprets.
+=== WHAT IS STILL TRUE ===
 
-=== WHY THIS IS NOT TIDYING: THE VOCABULARY IS ALREADY SPELLED TWICE ===
+The substance holds: ~390 lines qualify, of which 246 are projection hiding inside the core store.
+Both blockers the row originally named are COMPLETED, so the ruling is the only thing in the way --
+this is not waiting on engineering.
 
-  unitName()   in core emits "ns", "us", "ratio", "count", "hz"
-  MetricSample in metrics_main.cpp writes the LITERALS "ns" and "ratio"
-They agree today BY COINCIDENCE. Nothing enforces it, and there is no test that would notice.
+=== STALE FIGURE ===
 
-And `source` ALREADY DIVERGES:
-  sourceName()          emits "procfs", "perf_event", "in_process", "sysfs", "gl_query"
-  MetricSample.source   carries "fdinfo:drm-engine", "i915-pmu:rcs0-busy", "procfs:task-stat"
-StarMetricDesc.hpp records the mapping in a COMMENT -- "the existing free-text values map onto
-these -- 'fdinfo:*' to ProcFs, 'i915-pmu:*' to PerfEvent" -- and nothing executes it. That is a
-rule held up by prose, which is the exact shape of the defect the designated-initializer lint was
-written to end. One table in one place fixes it by construction.
-
-=== RULING (a): THE SHIM'S THICKNESS IS A COVERAGE LIMITER ===
-
-Today a call site is `static auto x = Telemetry::timer("key", MetricDesc{...})` plus a
-TelemetryScope. MetricDesc now has eleven fields, and #245 populates the remaining five across 165
-production sites. Left alone, the shim gets THICKER at exactly the moment the Director asked for it to
-be thinner -- and a wide brace-init per site is a disincentive to declare a metric at all, which caps
-"useful metric atomic coverage" by friction rather than by judgement.
-
-Resolution, and it belongs in #245 rather than here: NAMED DESCRIPTOR FACTORIES at the call site.
-The descriptor stays BOUND to the recording call (#167 -- separating them is the reachability bug
-class), it just stops being eighteen fields of text.
-
-=== WHAT STILL DOES NOT MOVE ===
-
-RE-MEASURED 2026-08-08, because the previous figure did not reproduce. There are 256 references to
-Telemetry::/TelemetryScope/TelemetryTimer/Counter/Gauge outside core/StarTelemetry* and test --
-game 133, rendering 46, application 44, base 17, client 13, frontend 3. This task and #256 both used
-to record "410 sites, game 183, rendering 105, application 69, base 29", and no grep reproduces it:
-the broadest possible count, case-insensitive "telemetry" anywhere including comments, is 352.
-Corrected rather than carried, since it is the number that says how much does NOT move.
-
-Nearly all of those 256 are instrumentation AT the point of measurement. A TelemetryScope in
-WorldClient::lightingCalc belongs in WorldClient. R07-R16, the nine registration defects closed
-2026-08-05..07, were every one of them about keeping declaration at the call site. These stay,
-and the goal for them is THINNER, not elsewhere.
-
-=== THE STORE'S DESTINATION IS NOW DECIDED, AND IT IS NOT `core` ===
-
-Director, 2026-08-08, settling #256 T9. The register gained a 54th component, `telemetry` -- LIBRARY,
-MACHINE, granted `core` alone -- owning **the handle a subject records through**. `MetricDesc` and its
-enums stay in `core`, because a vocabulary two components share belongs where both are granted.
-
-So this task's earlier line "Telemetry's lock-free registry and MetricDesc stay in core" is HALF
-SUPERSEDED: the vocabulary stays, the registry becomes its own component. That is a further move this
-task does not perform and nobody has yet scheduled -- recorded in the `telemetry` derivation's own
-`owes` facet rather than left implicit.
-
-AND THE PROJECTION CANNOT SIMPLY GO TO `metrics` EITHER, for the reason that decided T9: `metrics`
-names nothing it measures, and anything named BY the subjects would invert that. The projection moving
-to `metrics` is legal only because `metrics` would then name `telemetry` -- an instrument naming an
-instrument, never a subject. Stated here because it is the constraint that makes this seam the right
-one rather than a convenience.
-
-=== FUTURE, PER RULING (b) ===
-
-RE-MEASURED 2026-08-08: the Python in scripts/ is 2,260 lines across the five originally-named files,
-not 1,932 -- telemetry-window 813 (was 661), gputimer-brackets 401, pmu-join 372, metric-desc-lint 489
-(was 313), pmu-engine-sample 185. [#253] added two more consumers to the same unowned surface,
-obs-join 514 and metrics-sample 317; [#254] and [#255] added obs-plot and lever-cpu. These are
-consumers and fold into the sovereign modules "in future ... interfaces yet to be built". NOT this
-task. #250 builds the interface they would fold into.
-
-CARRIES THE RETENTION POLICY: dev/storage/telemetry still holds 54,364 files / 250MB with nothing that
-deletes them, re-verified 2026-08-08, and [#253] now writes a sovereign TSV per leg on top. Retention
-belongs to whoever owns cadence.
-
-CROSS-REF: #250 (GM-3 transport), #245 (the factories), #204/#208 (TSSA), #256 T7/T9.
+The consumer total is 3,798 lines, not 3,091. And `dev/storage/telemetry` does not exist in this tree,
+so the 54,364-files/250M figure is unverifiable from here -- note that the claim it was supporting
+(there is no retention policy anywhere) still holds independently, by grep over
+StarTelemetryReporter.cpp and StarClientApplication.cpp returning zero retention/prune/unlink sites.
 ```
 
 <a id="c29c1332-253"></a>
@@ -6744,7 +6744,7 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 
 #### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — and the axiom derivation says the row is FIVE duties, not one
 
-status: **pending**
+status: **pending** · blocks: #252
 
 ```
 RATIFIED BY THE DIRECTOR as D14 (commit 3eed5ab8): axioms A1 (Sovereign State Transparency) and A2 (Isomorphic Specification) bind. This task is the price of A1.
@@ -6799,7 +6799,7 @@ STRAINS THE DERIVATION ADMITS: A8 is strained (reg_ratchet 87 / clock_ratchet 10
 
 <a id="c29c1332-268"></a>
 
-#### #268 — LEVER-FLOOR: n=5 BANKED — matrix-20260816-160346 stopped at leg 52 with 5 COMPLETE passes; item 6 is satisfiable at n=5, analysis pending
+#### #268 — LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound
 
 status: **in_progress** · blocked by: #273 · metadata: `{"rank": 4}`
 
@@ -6811,76 +6811,67 @@ status: **in_progress** · blocked by: #273 · metadata: `{"rank": 4}`
 - `35e049a1` [#268] the correction argument was below the noise floor: the MDE decides, and a screen is not a finding
 
 ```
-Carries the residue of [#264] and [#265], both of which independently hit the per-lever floor
-methodology in scripts/lever-cpu.py — which governs EVERY future matrix run.
+Item 6 is DONE. scripts/lever-cpu.py over harness/matrix/matrix-20260816-160346 (52 legs, r1-r5
+complete + 2 legs of r6). Thresholds written to lever-cpu-thresholds.json, so the bar these verdicts
+were judged against travels with the run.
 
-=== DONE ===
+=== THE RESULT, AND IT REVERSES THE PLANNED NEXT STEP ===
 
-5. THE MDE RULE AND THE THIRD VERDICT (35e049a1). At n=3 the MDE at 80% power is 31% of baseline on
-   cpu.owner.sim and 16% on cpu.process, while the contested deltas were 0.0666 and 0.0534 — at or
-   below the MDE at every correction including none. So a delta under the MDE is never quotable as a
-   cost, and verdicts are CONFIRMED / CANDIDATE / NULL. Family, alpha and power DECLARED in
-   lever-table.json before the run; a missing block refuses rather than defaulting.
+Three of the four whole-CPU keys resolve NOTHING at n=5:
 
-1. NO CPU NULL CONTROL EXISTS, AND NONE CAN (45a09f6d). lever-cpu imported pmu-join's, which reads
-   `gpuNullControl` — null for the GPU, worth -0.0299 cores on cpu.process, 63% of that key's floor.
-   Every lever in this table IS a CPU code-path change, so no symmetric control is possible. Now
-   reads `cpuNullControl`; no lever sets it; the table states why none can. Deliberately NOT done:
-   picking the smallest measured delta, which is the circularity a control exists to prevent.
+  cpu.process.busy_cores      F(8,43)=2.12  p=0.0546   NO between-lever structure
+  cpu.owner.frame.busy_cores  F(8,43)=1.96  p=0.0756   NO between-lever structure
+  cpu.owner.sim.busy_cores    F(8,43)=1.55  p=0.1685   NO between-lever structure
+  cpu.owner.gl.busy_cores     F(8,43)=2.48  p=0.0264   NO between-lever structure
 
-2. THE FLOOR IS max(baseline spread, pooled-sd LSD) (45a09f6d). The 3-point range is KEPT — it is a
-   poor scale estimate but the only term that sees drift ACROSS legs. LSD added from the pooled
-   within-group sd. Strictly below the MDE, so significance bar and detectability bar, not the same
-   test twice.
+The narrow lighting keys DO resolve, and well:
 
-4. THE THRESHOLDS TRAVEL WITH THE RUN (45a09f6d). lever-cpu-thresholds.json, beside the run.
+  lighting.gpu.cpu_cost.wall_fraction  F=478  MDE 12.6% of baseline  1/8 CONFIRMED
+  lighting.cpu.total.wall_fraction     F=118  MDE 30.5% of baseline  2/8 CONFIRMED
 
-3. THE BASELINE BRACKETS EACH PASS AT BOTH ENDS (33d04e0e). CORRECTION TO THIS TASK'S OWN PREMISE:
-   the LEVERS already rotate (ORDER spreads them by (i + r - 1) % N_LEVERS, with a comment saying
-   why); only the BASELINE was pinned to slot 0. Within-pass drift therefore landed as a systematic
-   baseline-vs-levers offset — [#265]'s signature exactly. A SECOND baseline now runs at the end of
-   each pass rather than rotating the first into the ring, because the head baseline is load-bearing
-   before any lever runs (BASE_SCENE gates the pass, BASE_VIOLATED decides quotability,
-   assert_witnesses_exist reads it). Label `-r${r}b-baseline` was CHECKED against lever-cpu's parser:
-   it arrives as an extra baseline REPEAT, doubling the n of the term the floor binds on, with no
-   analyser change. Tail failure is recorded and the pass continues.
+=== WHY MORE REPEATS WOULD NOT HAVE HELPED ===
 
-NULL CONTROL FOR 1/2/4: 2 of 64 lever-by-key cells moved (cpu.process env and parallax, CANDIDATE ->
-unresolved; parallax a NEAR MISS at 0.0666 vs a 0.0675 floor). Both CONFIRMED effects UNCHANGED,
-which is the test that the floor improved rather than merely grew. Item 3 cannot be validated against
-banked data — it changes the harness.
+The analyser names the failure mode itself, on two keys: "all 8 levers move the same way (mean
++0.0331 cores), INCLUDING THE NULL CONTROL -- the signature of drift, not of levers."
 
-=== STILL OPEN: ITEM 6, AND IT IS NOW A DIRECTOR CHOICE ===
+That is a COMMON-MODE TREND, not random spread. Raising n attacks variance and shrinks the MDE as
+1/sqrt(n); it does nothing to a trend that displaces every arm in the same direction. The obvious
+plan -- "MDE too big at n=3, requeue at n=6" -- would have burned another 4-5 hours of GPU to move a
+bound that is not the binding one. n is not the constraint on these keys. THE DESIGN IS.
 
-6. RAISE n. THE COST FIGURE I ORIGINALLY WROTE HERE WAS WRONG BY ~20x. "n=10 gives 15.8% (~8 min of
-   legs)" counted LEGS-TIME ONLY (10 x 9 x 5s) and ignored that every leg boots a client, loads a
-   world and settles it. The banked 27-leg run spans 43.7 min of wall clock: **1.7 min/leg**. With the
-   tail baseline that is 10 legs per pass:
+lever-matrix.sh is a rotated BLOCK design: it rotates leg order per pass so no lever sits permanently
+in the same slot, which spreads drift evenly but does not CANCEL it. scripts/render-ab.sh, built by
+[#279] for exactly this, INTERLEAVES a,b,a,b so each pair straddles the same slice of time and the
+trend subtracts out. [#276] is the existence proof: 4.4-4.8% drift WITHIN each arm while its paired
+differences agreed to 0.2%.
 
-     n=3  (today)   30 legs   ~51 min    MDE ~31% of baseline on owner sim
-     n=6            60 legs   ~1.7 h     MDE ~20%
-     n=10          100 legs   ~2.8 h     MDE ~15.8%
-     n=15          150 legs   ~4.3 h     MDE ~12.8%
+=== CONSEQUENCE FOR THE RUNNING 5-SCENE CARTESIAN (matrix-20260822-105405) ===
 
-   The curve flattens because the baseline's own across-repeat spread is 28-32% — item 3 attacks that
-   directly, so the next run's MDE may beat these figures at the same n. THAT IS A REASON TO RUN AT
-   MODERATE n FIRST and re-measure the spread, rather than buying 4 hours against an estimate made
-   before the drift fix existed.
+DO NOT ABORT IT. Its scene axis is a different question from per-lever attribution, its legs bank
+regardless, and it is the first run under the standardised scene names.
 
-   RECOMMENDATION: n=6 (~1.7 h). It doubles today's precision, gives 12 baseline samples against 6
-   per lever, and measures whether item 3 shrank the baseline spread — which decides whether n=10 or
-   n=15 is worth buying at all.
+But its per-lever verdicts on the whole-CPU keys should be EXPECTED to read "nothing attributable",
+and that is the instrument being honest, not a failed run. At n=3 the MDE is ~29% larger than the n=5
+figures above (1/sqrt(n)). The lighting keys should still confirm the one large lever
+(off-lightingTemporalDecouple, +0.0154 cores against an MDE of 0.0013 -- an order of margin); the
+marginal ones will not.
+
+=== WHAT ACTUALLY UNBLOCKS THE WHOLE-CPU KEYS ===
+
+Pair the matrix, do not lengthen it. Either teach lever-matrix.sh to interleave baseline/lever legs
+per lever (the render-ab.sh shape, one pair per lever per pass), or drive the per-lever A/Bs through
+render-ab.sh directly and keep lever-matrix.sh for the scene sweep. Costs no more GPU than today --
+the same number of legs, ordered differently.
+
+BEFORE BUILDING IT: the drift's own null control already exists in this run and should be read first
+-- gpuNullControl moves cpu.process by 63% of that key's floor (recorded in scripts/lever-table.json).
+Quantify the drift per unit time from the banked legs, then predict what pairing should recover. A
+design change with a predicted magnitude is testable; one without is a preference.
 ```
 
 <a id="c29c1332-269"></a>
 
-#### #269 — LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax; hold the split unti…
-
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-LIGHTING-WHOLE: union SHIPPED (4518341f) + measured at n=5 — but cpu_cost's share is biased by the #276 instrument tax; hold the split until #276 lands
-```
+#### #269 — LIGHTING-WHOLE: premise CORRECTED — `.whole` is NOT inert, and #276 has landed; one script change owed
 
 status: **in_progress** · blocks: #270 · metadata: `{"rank": 2}`
 
@@ -6890,59 +6881,35 @@ status: **in_progress** · blocks: #270 · metadata: `{"rank": 2}`
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
 
 ```
-Orphaned out of [#171]'s closure notes, where it would never have been seen again — a live open question
-recorded inside a COMPLETED task's description does not appear in the ready queue. That is the durable
-index failing in the way it exists to prevent, and it was my error in closing #171.
+TEXT CORRECTED 2026-08-22. The description's central premise had become FALSE and its blocking
+condition had cleared, so the row was arguing against a tree that no longer exists.
 
-=== THE PROBLEM, MEASURED ===
+=== WHAT WAS WRONG ===
 
-Three keys hold parts of what anyone would call "lighting CPU", under TWO different owners, and no
-declared quantity is their union. Per-frame figures from the two 90s Desert Town legs of 2026-08-15
-(docs/evidence/lighting-produce-first-reading.md):
+  "the sole setter in the tree is the test.desc.full fixture in telemetry_test.cpp"  -- FALSE.
+      There are SEVEN production setters.
+  "NOTHING reads it"                                                                 -- FALSE.
+      scripts/metric-desc-lint.py --check-union-membership reads it, and is a registered gate.
+  "hold the split until #276 lands"                                                  -- CLEARED.
+      #276 is completed: the GPU-timer tax is measured at 10.2% (not the 37% I first claimed --
+      the brackets are BILLED 37% but CAUSE 10.2%; upload absorbs +53% when they go). The
+      de-biased split it was waiting for is already published.
 
-  lighting.cpu.total.us       69-75 us/frame   owner LIGHTING, role Total   the async calc thread
-  producer side (5 keys)      36-40 us/frame   owner FRAME,   role Detail   [#171], render thread
-  lighting.gpu.cpu_cost.us   152-159 us/frame  owner FRAME,   role Detail   driving the GPU pass
+Items 1 and 3 are SHIPPED. So the row read as blocked-and-inert when it was unblocked with one
+concrete thing left.
 
-`lighting.gpu.cpu_cost.us` is LARGER THAN THE OTHER TWO COMBINED. It is CPU time the process spends
-only because lighting exists, and no statement this project publishes says whether it counts.
+=== THE ONE THING ACTUALLY OWED (item 2, one half of it) ===
 
-=== WHY THIS IS NOT MERELY A DEFINITION ===
+Teach scripts/telemetry-window.py to group Budget parts by their declared `whole` and compute the
+union itself. Telemetry::snapshot already serialises it as m["whole"]; the seam is
+closure_verdict(owner, dom, parts, whole).
 
-`lighting.cpu.total.us` is declared MetricRole::Total — "IS the owner's whole". It is the whole of
-owner `lighting`, and that is correct and will stay correct: the other two are paid for by the render
-thread and billing them to owner `lighting` would move cost in the books without moving it in the
-machine (the reasoning [#171] settled). So the union is NOT any owner's total, and cannot be made one
-without lying about which thread pays.
+WHY IT IS WORTH DOING rather than dropping: today the lighting union is computed BY HAND into a
+markdown table. A hand-summed whole is a claim; an analyser-computed one is an instrument. This is
+squarely a make-a-number-believable change, it is verifiable against banked artefacts, and it needs
+no GPU -- so it is run-window work.
 
-That is exactly what MetricDesc's `whole` field is for, and `whole` is INERT end-to-end: it exists,
-it serialises via Telemetry::snapshot, and NOTHING reads it — scripts/telemetry-window.py's closure
-reads only `spec["totals"]` keyed by (owner, domain), and the sole setter in the tree is the
-test.desc.full fixture in source/test/telemetry_test.cpp. So the mechanism that would express "these
-three close against one named quantity" is shipped and unused.
-
-=== WHAT THIS TASK OWES ===
-
-1. A DIRECTOR DECISION, and it is genuinely a judgement rather than a measurement: is the CPU cost of
-   DRIVING the GPU lighting pass part of "lighting CPU"? Arguments both ways are real. For: it is
-   time spent solely because lighting exists, and excluding it lets a lever that moves work from the
-   lighting thread onto the render thread read as a win. Against: it is render-thread orchestration,
-   and folding it in makes "lighting CPU" a number no single subsystem owns or can be held to.
-2. IF INCLUDED: populate `.whole` at the production sites, teach telemetry-window.py to group Budget
-   parts by their declared whole rather than by (owner, domain) alone, and resolve the MetricRole
-   problem — a metric that is simultaneously a Budget part of the frame and a Total for its own
-   sub-parts. Today a second (Frame, Cpu) Total silently OVERWRITES cpu.frame.work.us in
-   Telemetry::snapshot's totals emitter, so this cannot be done by declaration alone.
-3. EITHER WAY: one sentence, in the telemetry architecture doc, saying what "lighting CPU" is the
-   total OF. Its absence is why three keys could each be partially quoted as it.
-
-=== CAVEAT ON THE NUMBERS ABOVE ===
-cpu_cost's own scope has history: [#171] found it excludes spreadIterationsFor's scan (now
-lighting.gpu.spread_scan.us, 5.5-5.9 us/frame), and its registration comment records a prior cadence
-defect that reported 458 us/frame against an actual 336. Treat its magnitude as approximately right
-and its boundary as not yet audited.
-
-Blocks nothing; blocked by nothing. Pure analysis + a decision — NO GPU required.
+Not blocked by anything. Not urgent.
 ```
 
 <a id="c29c1332-270"></a>
