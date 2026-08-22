@@ -288,7 +288,17 @@ fi
 
 echo "=== live profile '$LABEL' -- ${SECONDS_TO_RUN}s, sim RUNNING, warp='${WARP:-<ship>}' ==="
 
+# STAR_RENDERTEST_WALK PASSES THROUGH, unset by default ([#286]). The motion driver shipped with
+# [#174] and this profiler has always run with the sim LIVE (NOFREEZE below), so nothing about the
+# walk conflicts with it -- the knob simply was not forwarded, and scripts/render-motion.sh, which
+# does set it, is a COUNTER GATE that banks no legs. Forwarding it is what lets a MOVING leg be
+# banked and differenced like any other.
+#
+# UNSET MEANS STILL, and that is the default on purpose: every floor in scene-floor.json is a
+# standing-still CV, so a leg that started walking by default would be compared against a bar
+# measured on a different fixture. A moving leg needs a moving floor -- see [#286].
 env ${WARP:+STAR_RENDERTEST_WARP="$WARP"} \
+  ${STAR_RENDERTEST_WALK:+STAR_RENDERTEST_WALK="$STAR_RENDERTEST_WALK"} \
   SDL_VIDEO_DRIVER=offscreen \
   SDL_AUDIO_DRIVER=dummy \
   STAR_RENDERTEST_FRAMES=1 \
