@@ -200,7 +200,7 @@ the renderer's GPU timers beyond what GPUTIMER-1/2 already landed, no frame-paci
 
 **GM-4 carries a known unfixed hazard:** `GL_EXT_disjoint_timer_query` exposes `GL_GPU_DISJOINT_EXT`,
 which reports when a timer result was invalidated by frequency change or preemption. Our code has
-never checked it, and this GPU clocks between 933MHz and 2350MHz. Every historical `GL_TIME_ELAPSED`
+never checked it, and this GPU clocks between 100MHz and 2350MHz. Every historical `GL_TIME_ELAPSED`
 sample may have been silently disjoint.
 
 **GM-5 has a known limit:** ablation cannot attribute the world pass, because disabling it does not

@@ -51,7 +51,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 6 | 7 | `#266` | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and… | ready |
 | 7 | 8 | `#252` | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register ro… | blocked by #267 |
 | 8 | 9 | `#250` | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that… | ready |
-| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical… | ready |
+| 9 | 10 | `#251` | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08… | ready |
 | 10 | 11 | `#261` | HANDOVER-STALE: #204's resume document is 167 commits behind and every §2 figure reads wrong | ready |
 | 11 | 12 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 12 | 13 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
@@ -66,9 +66,9 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 231, of which **43 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 230, of which **43 resolve to nothing** in either repository.
 
-**Descriptions normalised on export: 40.** The task harness has, on these, appended its
+**Descriptions normalised on export: 41.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
 the stored description. It is stripped at render time rather than by rewriting the store —
 non-destructive, self-healing, and the store belongs to the harness. Counted here rather than
@@ -296,7 +296,7 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#248](#c29c1332-248) | `c29c1332` | done | PMU-ATTRIB: per-lever GPU cost needs continuous sampling, not spot samples against a moving baseline | `dd30bfa5` | — |
 | [#249](#c29c1332-249) | `c29c1332` | done | RE-MEASURE: every GPU busy number from 2026-08-07 was mis-aligned; re-run both scenes with the fixed stamps | `ad4e2f54` `caea59f5` | — |
 | [#250](#c29c1332-250) | `c29c1332` | open | GM-3 STREAM: the single sovereign API surface — one reader interface, one sample type, a LIVE transport that is not fil… | — | `board-audit-2026-08-08.md` `board.md` |
-| [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_E… | — | — |
+| [#251](#c29c1332-251) | `c29c1332` | open | GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08-22) | — | — |
 | [#252](#c29c1332-252) | `c29c1332` | open | TEL-EXTRACT: RULED 2026-08-22 — projection/consumption goes to metrics/. `report` refused, no new register rows | — | — |
 | [#253](#c29c1332-253) | `c29c1332` | done | OBS-JOIN DONE: all four cells of the busy model, on one epoch axis, per leg — verified live | `a4fc43b3` `5fcc401c` `57d00526` `be2ceeee` `f5029bf3` `ce6c88a1` `7fa1d2ed` `c1dfce7e` | — |
 | [#254](#c29c1332-254) | `c29c1332` | done | OBS-PLOT DONE: the busy model renders, artifact 14904c73, and the plot cannot draw across a hole (46a4c792) | `991b7940` `46a4c792` | — |
@@ -5801,53 +5801,45 @@ the interface before a consumer exists fits the diagram rather than the data.
 
 <a id="c29c1332-251"></a>
 
-#### #251 — GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may ha…
-
-_Stored subject exceeds the heading; reproduced verbatim:_
-
-```
-GM-4 DISJOINT: GL_GPU_DISJOINT_EXT has never been checked, and this GPU clocks 933-2350MHz — every historical GL_TIME_ELAPSED sample may have been silently invalid
-```
+#### #251 — GM-4 DISJOINT: GL_GPU_DISJOINT_EXT never checked — and the clock range was wrong in BOTH places (corrected 08-22)
 
 status: **pending** · metadata: `{"rank": 10}`
 
 ```
-NAMED BY THE ROADMAP, NEVER FILED. docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5 records it verbatim under GM-4:
+SUBSTANCE UNCHANGED AND STILL OPEN: GL_GPU_DISJOINT_EXT has never been queried, so every historical
+GL_TIME_ELAPSED sample may have been silently invalid. A disjoint event (clock change, context switch,
+power transition) invalidates the timer and the spec says so; we have never asked.
 
-  "GM-4 carries a known unfixed hazard: GL_EXT_disjoint_timer_query exposes GL_GPU_DISJOINT_EXT,
-   which reports when a timer result was invalidated by frequency change or preemption. Our code
-   has never checked it, and this GPU clocks between 933MHz and 2350MHz. Every historical
-   GL_TIME_ELAPSED sample may have been silently disjoint."
+That matters more here than on a fixed-clock part, because the range is wide.
 
-WHY THIS IS THE SAME CLASS AS THE DEFECTS ALREADY CLOSED, not a new kind of thing. The driver
-publishes a flag saying "the number I just gave you is not valid". Nothing in the tree reads it.
-That is exactly:
-  * C05 -- the engine emits descConflict/typeConflict on every metric and NOTHING reads them.
-  * R14/R15/R16 -- a handle registered on a path not always taken, so ABSENT and ZERO are the
-    same reading.
-  * "A claim with no instrument" -- "checked by X" is itself a claim.
-An instrument that discards the driver's own validity flag is reporting confidence it was
-explicitly told not to have.
+=== THE FIGURE WAS WRONG IN TWO PLACES, AND BOTH ARE NOW FIXED ===
 
-AND THE EXPOSURE IS MEASURED, not hypothetical. The env sidecar records gpuClockMhzStart /
-gpuClockMhzEnd on every leg precisely because clock drift was suspected; a real leg of
-matrix-20260807-160513 reads 883MHz at both ends. The clock MOVES during the runs we quote from.
+The claim "this GPU clocks 933-2350MHz" appeared BOTH in this task and in
+docs/superpowers/specs/2026-08-05-sovereign-metrics-design.md §5. 933 has no source. Read from sysfs
+on this machine:
 
-SCOPE:
- 1. Query GL_GPU_DISJOINT_EXT around the timer ring in OpenGlRenderer and DISCARD -- not
-    silently, but into a declared counter -- any sample taken across a disjoint interval.
-    render.gputimer.dropped already exists as the precedent for a rejection counter that is
-    registered EAGERLY so "none rejected" and "nothing watching" cannot be confused (#247).
- 2. Decide whether the extension is present at all on this driver, and say so honestly if not:
-    an UNAVAILABLE reading is visible, a silent zero is not (BusyReading::unavailable is the
-    established shape).
- 3. Re-read the retained GPU numbers in light of whatever the disjoint rate turns out to be.
-    If it is non-zero, the per-pass gpu_us table needs a stated uncertainty, the way #235's
-    findings forced the PMU numbers to be re-measured.
+  /sys/class/drm/card0/gt_min_freq_mhz  = 100
+  /sys/class/drm/card0/gt_RP1_freq_mhz  = 800     <- the sustained/efficient point
+  /sys/class/drm/card0/gt_max_freq_mhz  = 2350
 
-RELATED: #236 (the gl closure is inert), #235 (gpu_span_us is a timeline, not work). Both
-concern the same instrument family. This one is about whether the individual samples were ever
-valid, which is upstream of what they mean.
+So the true span is 100-2350MHz, and 800 is the RP1 sustained floor, not the minimum. Corrected in
+the spec (2026-08-22) and here, IN THE SAME PASS -- fixing one and not the other is how two documents
+come to disagree, which is the defect this campaign keeps finding rather than a tidiness point.
+
+THE CORRECTION STRENGTHENS THE TASK. A 23.5x span (100 -> 2350) is a wider invalidation window than
+the 2.5x the wrong figure implied. If anything the case for checking DISJOINT is now better than when
+this was filed.
+
+=== WHAT WOULD CLOSE IT ===
+
+Query GL_GPU_DISJOINT_EXT alongside each GL_TIME_ELAPSED read and record it as a metric, so a
+disjoint interval is spelled ABSENT rather than silently folded into an average. Note the standing
+rule this must obey: an unrun key and a zero key must not look the same. A disjoint sample is NOT a
+zero-cost sample.
+
+Until then, every per-pass GPU number in this campaign carries an unquantified risk that some
+intervals were invalid. That is worth saying plainly in any GPU conclusion drawn before this lands --
+which is why the #252 ruling's step list and #268's analysis both stayed on the CPU keys.
 ```
 
 <a id="c29c1332-252"></a>
@@ -6811,7 +6803,7 @@ RELATED: #245 is CLOSED and did not subsume this; it converged the descriptor, n
 
 #### #267 — A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands
 
-status: **pending** · blocks: #252
+status: **pending** · blocks: #252 · metadata: `{"kindTableAmendment": "declined-2026-08-22-reopen-on-MetricSnapshot"}`
 
 ```
 RATIFIED AS D14 (3eed5ab8): axioms A1 and A2 bind, and this task is the price of A1. THAT PART IS
@@ -6821,9 +6813,6 @@ WHAT WAS REFUSED, 2026-08-22: the derived FIVE-COMPONENT SHAPE (`metric`, `repor
 `measure`) and with it the claim that #252 is subsumed. See #252 for the full ruling.
 
 === WHY: BOTH DISQUALIFICATION PREMISES FAILED AGAINST THE TREE ===
-
-The derivation's load-bearing move was that the projection is HOMELESS -- barred from `metrics` and
-barred from `telemetry` -- so a third row is forced. Checked directly:
 
   "cannot go to `metrics`, reading a registry names telemetry, which is metrics's ratified falsifier"
       -- FALSE AS CITED. `telemetry` is not in `metrics`'s row at all. That row reads "names nothing
@@ -6835,47 +6824,60 @@ barred from `telemetry` -- so a third row is forced. Checked directly:
       -- FALSE IN THE DIRECTION THAT REVERSES THE ARGUMENT. Applied evenly, that test already
       convicts `metrics` at HEAD, green: StarThreadBusyReader.cpp hardcodes ":gdrv" -> Gl,
       "starbound" -> Frame, "WorldServerThre" -> Sim, "WorldClient::li" -> Lighting, and ownerKey's
-      comment concedes "this is a second copy of one vocabulary". `metrics` already holds subject
-      knowledge and already holds a duplicate of the projection vocabulary.
+      comment concedes "this is a second copy of one vocabulary".
 
-THIS IS THE INTERNAL-CONSISTENCY-IS-NOT-CORRESPONDENCE FAILURE, in its textbook form. Fourteen agents,
-four independent lenses, two adversarial attacks per candidate, one surviving synthesis -- and the
-synthesis rested on two facts about the register and the code that nobody re-read against the tree.
-A derivation can be flawless and still describe a repository that does not exist. Its own conclusion
-("#252 is unexecutable") was the thing most worth checking, and it was the thing not checked.
+INTERNAL CONSISTENCY IS NOT CORRESPONDENCE, in textbook form. Fourteen agents, four lenses, two
+adversarial attacks per candidate -- and the synthesis rested on two facts about the register and the
+code that nobody re-read against the tree. Its own conclusion was the thing most worth checking.
+
+=== THE KIND-TABLE AMENDMENT: DECLINED 2026-08-22 (Director-approved recommendation) ===
+
+The VOCABULARY rule stays "no implementations and no `==>` edge". NOT rejected on merit -- declined
+because nothing currently forces it:
+
+  1. ITS MOTIVATING DEFECT IS DISCHARGED WITHOUT IT. The evidence for amending was that
+     StarThreadBusyReader.cpp hand-copies the owner spellings because the real ones are TU-private.
+     #252 step 2 fixes exactly that by moving the namers into source/core/StarMetricDesc.hpp --
+     VERIFIED header-only (no .cpp, so no CMake change) and VERIFIED already included by
+     source/metrics/StarThreadBusyReader.hpp. The duplication becomes a compile error and the rule is
+     never touched. You do not amend a rule governing 54 rows to solve what a file move solves.
+  2. NOTHING WOULD ENFORCE THE AMENDED FORM. `vocabulary_pure` does not exist -- zero hits across
+     scripts/ and gates.yml. Amending would rewrite the governing text for every row while the
+     machine-read KIND_RULE in prose-claims.py and KINDS in spec-model.py, spec-consistency.py and
+     composition-graphs.py keep reading the old shape. A claim with no instrument, which is the
+     defect this project exists to stop shipping.
+  3. IT WOULD ADMIT A COMPONENT WE ARE NOT CREATING. The amendment exists to let `metric` be a
+     VOCABULARY; the #252 ruling creates no `metric` row. This derivation's own fallback -- "the
+     vocabulary stays in `core`" -- is precisely what step 2 does.
+  4. ITS HEADLINE JUSTIFICATION DOES NOT HOLD ANYWAY. The amended rule would still not admit
+     c_ownerTotals, whose own comment says "A row here is a CLAIM that the named metric is the
+     owner's whole" -- falsifiable policy about subjects, not a total function from a declared value
+     to its spelling.
+
+REOPEN CONDITION, mechanical rather than remembered: if MetricSnapshot (#252 step 4, gated behind
+#242/#249 banking) needs a home nameable by both the store and the projection that is not
+StarMetricDesc.hpp, a shared VOCABULARY row is genuinely forced. Then the amendment returns WITH AN
+OCCUPANT ATTACHED, and `vocabulary_pure` gets built first so the new text is enforced rather than
+merely written. Tracked as falsifier 4 on the #252 ruling.
 
 === WHAT SURVIVES, AND IT IS A LOT ===
 
-  - A1 IS STILL VIOLATED. `Telemetry::` remains a static accessor on a process global at ~155 sites.
-    The refused shape did not satisfy A1 either -- the derivation says so itself. Nothing here is
-    fixed by the ruling; this task remains the open price of D14.
-  - THE BY-VALUE FIX IS ADOPTED and is step 1 of #252. Finding that writeSnapshot advances
+  - A1 IS STILL VIOLATED. `Telemetry::` remains a static accessor on a process global. The refused
+    shape did not satisfy A1 either -- the derivation says so itself. This task is the open price.
+  - THE BY-VALUE FIX IS ADOPTED as #252 step 1. Finding that writeSnapshot advances
     cpu.process.total_us off getrusage while its header claims "Pure read-only consumer" is this
     derivation's most valuable single result.
-  - `measure` AS AN ENTRYPOINT SPLIT IS ADOPTED, severable from `report`. It is the sanctioned answer
-    to #250: hoist the registry read into the composition rather than granting metrics -> telemetry.
-  - THE TWO LIVE CORRESPONDENCE DEFECTS stand: (a) closed at 574879f3; (b) `metrics` is KIND LIBRARY
-    while source/metrics/CMakeLists.txt is ADD_EXECUTABLE, and its grant row omits `extern`.
-  - THE `series` GAP IS REAL AND UNOWNED: ~3,798 lines of consumer Python whose five hard-won rules
-    no register row admits to. Refusing the component does not fill that hole.
+  - `measure` AS AN ENTRYPOINT SPLIT IS ADOPTED, severable, and is the sanctioned answer to #250.
+  - The `metrics` KIND LIBRARY vs ADD_EXECUTABLE defect stands, and its grant row omits `extern`.
+  - THE `series` GAP IS REAL AND UNOWNED: ~3,798 lines of consumer Python no register row admits to.
 
-=== THE KIND-TABLE AMENDMENT IS NOT DECIDED, BECAUSE IT WAS NOT ASKED ===
+=== FIGURE CORRECTED ===
 
-The VOCABULARY rule ("no implementations and no ==> edge" -> "no BEHAVIOUR and no ==> edge") governs
-all 54 rows. The #252 ruling creates no `metric` row, so the rule is untouched and the question is
-SEPARABLE. It was deliberately excluded rather than settled: it must come as its own Director question
-on its own merits, never as a side effect of a placement decision.
-
-Noted against it if it returns: c_ownerTotals is not a total function from a declared value to its
-spelling. Its own comment says "A row here is a CLAIM that the named metric is the owner's whole" --
-falsifiable policy about subjects, which the amended rule would still not admit to a VOCABULARY.
-
-=== HOW THIS TASK IS WRONG IF THE RULING IS WRONG ===
-
-The ruling's own primary falsifier is this task's best case: if the honest `metrics` duty cannot be
-written without "and" once projection is resident, then a kernel-busy reader and an artifact writer
-WERE two things, LAW_OF_ONE will say so mechanically, and the split was right. Watch
-prose-claims.py --check for a second offender.
+"256 references across six components" -> 308, re-run with THE CELL'S OWN STATED COMMAND
+(Telemetry(Timer|Counter|Gauge|Rate|Scope)|Telemetry:: outside core/StarTelemetry* and test/):
+game 139, rendering 92, application 44, base 17, client 13, frontend 3. `rendering` has DOUBLED
+(46 -> 92) since the figure was written. The cell states its command precisely so the number can be
+reproduced -- so regenerate it there too, do not just correct it here.
 ```
 
 <a id="c29c1332-268"></a>
