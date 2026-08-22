@@ -57,10 +57,31 @@ lowest OFF leg is 94.3, which is not far off.
   and the interval straddles zero. The pre-registration says an unresolved key is reported unresolved
   and is not backfilled with the prior figure. It is not evidence the lever is free on the GPU-driver
   cost; it is evidence this run could not separate it.
-- **`lighting.cpu.union.us` is ABSENT from every leg.** I pre-registered reporting against both
-  denominators and can deliver only one. The union is still summed by hand into a markdown table
-  rather than computed by the analyser — which is precisely [#269]'s outstanding item. Recorded as a
+- **`lighting.cpu.union.us` was ABSENT from every leg.** I pre-registered reporting against both
+  denominators and could deliver only one. The union was still summed by hand into a markdown table
+  rather than computed by the analyser — precisely [#269]'s outstanding item. Recorded as a
   commitment not met, rather than dropped.
+
+  **DELIVERED LATER THE SAME DAY, and it changes the headline.** [#269] made the union
+  analyser-computed, [#281] made it diffable, and [#283] found the reason it still read absent — a
+  consumer not reading the leg's `zeroed` list, not a missing member. Its floor was then derived from
+  the same banked legs behind every other figure at this scene. On the identical five pairs:
+
+  | denominator | paired difference | spread |
+  |---|---:|---:|
+  | `lighting.cpu.total.us` — about a **quarter** of lighting CPU | +46.69% | 69.53pp |
+  | `lighting.cpu.union.us` — **all** of it | **+20.45%** | 26.31pp |
+
+  Same legs, same saving in microseconds, two denominators. **The border lever is worth ~20% of
+  lighting's real CPU cost**, and every larger figure quoted for it — this document's +48.19%
+  included — is denominated against a part. That is [#171]'s defect arriving at the measurement site,
+  which is exactly why the pre-registration demanded both. The union is also the steadier basis: its
+  spread is a third of the part's, because summing seven members averages away variance one member
+  carries alone.
+
+  The +46.69% here and the +48.19% above are the same comparison under two estimators — leg-diff
+  takes a ratio of means, the table above is a mean of per-pair ratios. Neither is wrong; they are
+  not interchangeable and are not quoted as one number.
 
 ## Pair 4 is an outlier, and chasing it cannot change the verdict
 
