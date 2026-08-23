@@ -474,7 +474,7 @@ def load_declared_wholes():
     return {name: set(members) for name, members in mod.WHOLES.items()}
 
 
-def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
+def aggregate_report(name, members, w, cadence_ticks, denom, denom_name, zeroed=()):
     """-> (lines, violations) for a declared cross-owner AGGREGATE.
 
     AN AGGREGATE IS NOT A BUDGET, and that difference decides what may be printed. A budget has an
@@ -519,8 +519,24 @@ def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
     #
     # Deciding by presence rather than by a second declaration is deliberate: the register already
     # answers the question, and a flag saying which mode to use would be a second place to get it wrong.
+    # REGISTERED-AT-ZERO IS PRESENT, NOT MISSING, and reading only `w` collapsed that distinction.
+    # window() moves a zero-COUNT row OUT of `metrics` and into `zeroed` -- deliberately, because a
+    # count=0 row would reach coverage_scale and the cadence over-count check, neither of which is
+    # sound for one. But this function then read `w` alone, so a member that MEASURED ZERO was
+    # indistinguishable from one whose registration never ran, and the closure printed "THE RESIDUAL
+    # IS NOT INTERPRETABLE" on a perfectly healthy capture.
+    #
+    # [#283] already made exactly this correction in leg-diff's add_union and it was never propagated
+    # here -- one consumer honouring the artefact's own distinction and one ignoring it. [#286] step 3
+    # is what forced it: render.painter.tiles.build.{terrain,liquid}.us legitimately record NOTHING on
+    # a warm-cache leg, so they are the first members that routinely land in `zeroed`.
+    #
+    # A zeroed member contributes 0 to the sum -- ADDED AS ZERO, not skipped -- and the moment it stops
+    # being zero it moves back into `w` and is picked up with no edit here.
+    z = set(zeroed)
     present = sorted(m for m in members if m in w)
-    missing = sorted(m for m in members if m not in w)
+    zero_present = sorted(m for m in members if m not in w and m in z)
+    missing = sorted(m for m in members if m not in w and m not in z)
 
     if not present:
         # AN EMPTY DECOMPOSITION IS REPORTED, NOT VIOLATED, and the reason is that this function
@@ -540,6 +556,10 @@ def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
         # the drive_membership/union_membership gates, which check the declarations against the tree
         # where the question is actually answerable.
         state = "the whole is measured" if name in w else "the whole is absent too"
+        if zero_present:
+            return ([f"  [aggregate: {name}]  ALL {len(zero_present)} DECLARED MEMBERS MEASURED ZERO "
+                     f"-- {state}. This is a reading, not an absence: every member is registered and "
+                     f"recorded nothing this window."], [])
         return ([f"  [aggregate: {name}]  NOT DECOMPOSED -- {state}, and none of its {len(members)} "
                  f"declared members are in this window."], [])
 
@@ -553,7 +573,9 @@ def aggregate_report(name, members, w, cadence_ticks, denom, denom_name):
     parts = {m: coverage_scale(w[m], cadence_ticks, w)[0] for m in present}
     total = sum(parts.values())
 
-    lines = [f"  [aggregate: {name}]  {len(present)}/{len(members)} members present, {denom} ticks "
+    zsuffix = f" ({len(zero_present)} measured zero)" if zero_present else ""
+    lines = [f"  [aggregate: {name}]  {len(present) + len(zero_present)}/{len(members)} members "
+             f"present{zsuffix}, {denom} ticks "
              f"({denom_name}), unit {basis}{' (assumed)' if assumed else ''}",
              f"       {'member':<40} {'us/tick':>9} {'share':>7}",
              f"       {'-'*40} {'-'*9} {'-'*7}"]
@@ -821,6 +843,35 @@ def selftest():
 
     # THE TWO EMPTY CASES ARE NOT THE SAME, and conflating them made 27 banked matrix legs unquotable
     # the moment a second whole was declared: they were captured before the instrument existed.
+    # ZEROED-MEMBER ARMS ([#286] step 5). A member that MEASURED ZERO lives in `zeroed`, not in
+    # `metrics` -- window() puts it there on purpose. Reading `w` alone made it indistinguishable from
+    # a member whose registration never ran, so a warm-cache capture printed the not-interpretable
+    # banner. These arms fail against the pre-fix code, which is the only reason to trust them.
+    _zc = {"a.us": {"total": 100.0, "count": 100, "unit": "us"},
+           "u.us": {"total": 150.0, "count": 100, "unit": "us"}}
+    _zl, _zv = aggregate_report("u.us", {"a.us", "b.us"}, _zc, _ct, 100, "frames", zeroed=["b.us"])
+    _zt = "\n".join(_zl)
+    arm("a member that measured ZERO counts as PRESENT, not missing", "2/2 members present" in _zt)
+    arm("and the reader is told how many measured zero", "(1 measured zero)" in _zt)
+    arm("a zeroed member does NOT trigger the lower-bound label", "LOWER BOUND" not in _zt)
+    arm("nor the not-interpretable banner -- the residual IS interpretable",
+        "NOT INTERPRETABLE" not in _zt)
+    # PER TICK, like every other figure in the block: the 50us gap over 100 frames is +0.5 us/tick.
+    # My first assertion here expected "+50.0" and FAILED -- the arm was wrong, not the code, and the
+    # denominator it forgot is the same one this whole function exists to state explicitly.
+    arm("it contributes 0, so the residual is the real gap (50us over 100 ticks)",
+        "residual +0.5 us/tick" in _zt)
+    # AND THE DISTINCTION IS STILL LIVE: a genuinely absent member must STILL degrade to a bound.
+    _al, _ = aggregate_report("u.us", {"a.us", "b.us"}, _zc, _ct, 100, "frames", zeroed=[])
+    arm("a member in NEITHER map is still MISSING and still a LOWER BOUND",
+        "LOWER BOUND" in "\n".join(_al))
+    # ALL members zeroed is a READING, not an absence -- the arm that keeps the early-out honest.
+    _ez = {"u.us": {"total": 10.0, "count": 100, "unit": "us"}}
+    _el, _ = aggregate_report("u.us", {"a.us", "b.us"}, _ez, _ct, 100, "frames",
+                              zeroed=["a.us", "b.us"])
+    arm("all members measured zero reads as a MEASUREMENT, not NOT DECOMPOSED",
+        "MEASURED ZERO" in "\n".join(_el) and "NOT DECOMPOSED" not in "\n".join(_el))
+
     lines_n, viol_n = aggregate_report("u.us", {"x.us"}, _full, _ct, 100, "frames")
     _wonly = {"a.us": _tm(1000, 100), "w.us": _tm(5000, 100)}
     lines_w, viol_w = aggregate_report("w.us", {"x.us"}, _wonly, _ct, 100, "frames")
@@ -1235,7 +1286,7 @@ def main():
         else:
             for whole_name in sorted(wholes):
                 lines, viol = aggregate_report(whole_name, wholes[whole_name], w, cadence_ticks,
-                                               frame_denom, frame_denom_name)
+                                               frame_denom, frame_denom_name, zeroed)
                 for line in lines:
                     print(line)
                 violations.extend(viol)

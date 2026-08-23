@@ -58,6 +58,26 @@ def load_union_membership():
     return mod.UNION, set(mod.UNION_MEMBERS)
 
 
+def load_wholes():
+    """-> {whole_name: {members}} for EVERY declared whole, not just the lighting union.
+
+    THE NARROW IMPORT WAS ITSELF THE DEFECT ([#286] step 5). This file read UNION and UNION_MEMBERS
+    and nothing else, so `WHOLES` could grow a second and third entry -- DRIVE since [#271], PAINTER
+    since [#286] -- and leg-diff would keep deriving exactly one of them. The gate proved each
+    partition exhaustive against the tree while the consumer silently declined to use two of the
+    three. A shared list that only one consumer reads is a shared list in name only.
+
+    Widening here rather than adding a second call site is deliberate: the all-members-or-nothing
+    withholding rule in add_union is the property worth inheriting, and it should apply to every
+    partition by construction rather than because someone remembered to wire each one up.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "metric-desc-lint.py")
+    spec = importlib.util.spec_from_file_location("metric_desc_lint", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return {w: set(m) for w, m in mod.WHOLES.items()}
+
+
 def add_union(vals, union_name, members, zeroed=()):
     """`zeroed` is the leg's REGISTERED-BUT-RECORDED-NOTHING list, and consulting it is the point.
 
@@ -109,8 +129,11 @@ def leg(path):
     # site: a percentage denominated against a part rather than the whole.
     if fr:
         try:
-            _u, _mem = load_union_membership()
-            add_union(vals, _u, _mem, d.get("zeroed", ()))
+            # EVERY declared whole, not just the lighting union -- see load_wholes. A whole that is
+            # already a real registered metric is left alone by add_union, so deriving the painter
+            # whole here is a no-op on any leg where the engine recorded it directly.
+            for _w, _mem in load_wholes().items():
+                add_union(vals, _w, _mem, d.get("zeroed", ()))
         except Exception:
             pass  # a leg with no union is a leg leg-diff refuses to attribute on; never a wrong number
     # FIXTURE, derived from meta.walk: a leg driven by the motion fixture ([#174]) and a leg that
