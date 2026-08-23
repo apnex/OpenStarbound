@@ -101,9 +101,13 @@ namespace {
   // both keys with no change in real work, and neither is readable as "the cost of env" or "the cost
   // of parallax" until that quantum is named separately.
   //
-  // IT IS ALSO THE CONFOUND CONTROL FOR THE WALKING DELTA. Walking makes the parallax cache inactive,
-  // which runs an EXTRA standalone env compose the parked path never runs -- so part of any walking
-  // rise in parallax.us is relocated env work until this key says otherwise.
+  // IT WAS BUILT AS THE CONFOUND CONTROL FOR THE WALKING DELTA, AND IT REFUTED THE CONFOUND. The
+  // hypothesis was that walking deactivates the parallax cache and runs an EXTRA standalone env
+  // compose the parked path never runs, so part of any walking rise in parallax.us would be relocated
+  // env work. MEASURED: the count is 1.00 per frame on BOTH fixtures -- mergedCompose fires once
+  // either way -- so no compose migrates, and the walking rise in parallax.us is parallax's own work.
+  // The key stays because it is what establishes that, and because the migration IS possible under a
+  // different merge/refresh configuration; it is no longer a correction anyone needs to apply.
   //
   // THREE SITES, ONE KEY: the mergedCompose body, the composeEnvStandalone body (covering both its
   // callers -- the deferred-recovery call and the moving-camera call), and the non-merge parallax arm.
