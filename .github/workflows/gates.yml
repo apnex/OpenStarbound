@@ -542,6 +542,18 @@ jobs:
           fi
           exit $rc
 
+      - name: kind_buildable_fires -- a KIND that disagrees with CMake is refused
+        run: python3 scripts/ci/kind-buildable.py --selftest
+
+      - name: kind_buildable -- the register's KIND matches what CMake actually builds
+        # SIXTEEN GATES CHECK THE REGISTER AGAINST ITSELF; this is the first that checks it against
+        # the BUILD. `metrics` said KIND LIBRARY while its CMakeLists had ADD_EXECUTABLE, and the
+        # register defines ENTRYPOINT as "an executable" -- two claims about one component, disagreeing,
+        # with nothing comparing them. Checked in one direction only: an executable REQUIRES ENTRYPOINT,
+        # but an ENTRYPOINT need not have shipped its executable yet, because the register describes
+        # the target state and is allowed to be ahead of the tree. It is not allowed to be behind it.
+        run: python3 scripts/ci/kind-buildable.py
+
       - name: painter_membership_fires -- each way of breaking the painter partition is refused
         run: python3 scripts/metric-desc-lint.py --selftest-painter-membership
 

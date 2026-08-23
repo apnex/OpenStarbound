@@ -1382,7 +1382,7 @@ flowchart TD
     transportp2p["<b>transport_p2p</b><br/>BACKEND<br/><i>the vendor's peer sockets</i>"]
     script["<b>script</b><br/>LIBRARY<br/><i>hosts Lua; owns no bindings</i>"]
     storage["<b>storage</b><br/>LIBRARY<br/><i>durable state, and migrating it forward</i>"]
-    metrics["<b>metrics</b><br/>LIBRARY<br/><i>what the hardware actually spent</i>"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT<br/><i>what the hardware actually spent</i>"]
     telemetry["<b>telemetry</b><br/>LIBRARY<br/><i>the handle a subject records through</i>"]
   end
 
@@ -1536,7 +1536,7 @@ flowchart TD
   csg --> transportp2p
   %% THE SAME OMISSION, FOUR MORE TIMES. Each of these is granted by the entrypoints that compose it
   %% and none of the edges was drawn, so each floated to rank 0 and widened the top row. After these,
-  %% the ONLY free roots in the diagram are the seven ENTRYPOINTs -- which is what a compile
+  %% the ONLY free roots in the diagram are the eight ENTRYPOINTs -- which is what a compile
   %% projection should look like, because an entrypoint is by definition the thing nothing composes.
   cgl --> audiosdl
   csg --> audiosdl
@@ -2033,7 +2033,7 @@ flowchart TD
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
       host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
-    metrics["<b>metrics</b><br/>LIBRARY"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -2284,8 +2284,8 @@ flowchart TD
   class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class audio_sdl,gpu_opengl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
-  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
-  class client_opengl kEntrypoint
+  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client_opengl,metrics kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
@@ -2305,7 +2305,7 @@ flowchart TD
       host_sdl_frameLoop(["<b>frameLoop</b> · LOOP<br/><i>DISPLAY · one per process</i>"])
       host_sdl_inputTick(["<b>inputTick</b> · TICK<br/><i>DERIVED · one per process</i>"])
     end
-    metrics["<b>metrics</b><br/>LIBRARY"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_pc["<b>platform_pc</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -2555,8 +2555,8 @@ flowchart TD
   class audio,content,gpu,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class audio_sdl,gpu_sdl,host_sdl,mixing,platform_pc,rendering,starmap_authority,starmap_participant,statistics_steam,transport_local,transport_p2p,transport_tcp kBackend
-  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
-  class client_sdl_gpu kEntrypoint
+  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client_sdl_gpu,metrics kEntrypoint
   class gpu_swapTick,host_sdl_frameLoop,host_sdl_inputTick,mixing_audioTick,participant_clientLoop,participant_clientTick,participant_fixedTick,rendering_presentTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
@@ -2872,6 +2872,36 @@ flowchart TD
 **server links 21 of 54 components.** Not linked: `audio`, `audio_sdl`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `frontend`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `metrics`, `mixing`, `participant`, `platform_pc`, `presentation`, `rendering`, `scene`, `sound`, `starmap_participant`, `statistics_steam`, `transcript`, `transport_local`, `transport_p2p`, `universe_view`, `windowing`, `world_gen`, `world_sim`, `world_view`
 <!-- END GENERATED: server -->
 
+#### `metrics` — the sampling process
+
+An ENTRYPOINT whose composition is one component deep. It names `core` and nothing else: the busy
+readers it wires read the kernel, not the game, and that is the whole reason `metrics` can measure a
+running client without being a peer of it. The diagram below is generated from the grant table, so
+"one component deep" is a fact about the tree rather than a claim about the intent.
+
+<!-- BEGIN GENERATED: scripts/composition-graphs.py#metrics -->
+```mermaid
+%% composition: metrics
+flowchart TD
+  subgraph Z_MACHINE ["MACHINE — the OS, the vendor, the asset store, the disk"]
+    core["<b>core</b><br/>FOUNDATION"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT"]
+  end
+  metrics --> core
+  classDef kFoundation fill:#23282f,stroke:#4a545e,color:#dfe4ea
+  classDef kContract fill:#4a3a12,stroke:#a8813a,color:#fdf0d5
+  classDef kVocabulary fill:#3a3418,stroke:#8a7a3a,color:#f5efd8,stroke-dasharray:5 3
+  classDef kBackend fill:#5c2020,stroke:#aa3333,color:#ffe5e5
+  classDef kLibrary fill:#1b3a4b,stroke:#2c6e8f,color:#e0f2f9
+  classDef kEntrypoint fill:#332a52,stroke:#6d5fa8,color:#e8e2f8
+  classDef kElement fill:#1c1f25,stroke:#6b7482,color:#c2c9d4,stroke-dasharray:4 3
+  class core kFoundation
+  class metrics kEntrypoint
+```
+
+**metrics links 2 of 54 components.** Not linked: `audio`, `audio_sdl`, `base`, `celestial`, `client_agent`, `client_headless`, `client_opengl`, `client_sdl_gpu`, `colocation`, `content`, `frontend`, `game`, `gpu`, `gpu_opengl`, `gpu_sdl`, `host`, `host_null`, `host_sdl`, `interaction`, `mixing`, `net`, `participant`, `platform`, `platform_null`, `platform_pc`, `presentation`, `rendering`, `scene`, `script`, `server`, `sound`, `starmap`, `starmap_authority`, `starmap_participant`, `statistics`, `statistics_null`, `statistics_steam`, `storage`, `telemetry`, `transcript`, `transport`, `transport_local`, `transport_p2p`, `transport_tcp`, `universe`, `universe_view`, `windowing`, `world`, `world_gen`, `world_sim`, `world_view`, `worldgen`
+<!-- END GENERATED: metrics -->
+
 <!-- BEGIN GENERATED: scripts/composition-graphs.py#client_agent -->
 ```mermaid
 %% composition: client_agent
@@ -2884,7 +2914,7 @@ flowchart TD
     subgraph host_null ["<b>host_null</b> · BACKEND"]
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
-    metrics["<b>metrics</b><br/>LIBRARY"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -3023,8 +3053,8 @@ flowchart TD
   class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class host_null,platform_null,starmap_participant,statistics_null,transport_tcp kBackend
-  class game,interaction,metrics,participant,script,storage,telemetry,universe_view,world_view kLibrary
-  class client_agent kEntrypoint
+  class game,interaction,participant,script,storage,telemetry,universe_view,world_view kLibrary
+  class client_agent,metrics kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick kElement
 ```
 
@@ -3043,7 +3073,7 @@ flowchart TD
     subgraph host_null ["<b>host_null</b> · BACKEND"]
       host_null_headlessLoop(["<b>headlessLoop</b> · LOOP<br/><i>FREE · one per process</i>"])
     end
-    metrics["<b>metrics</b><br/>LIBRARY"]
+    metrics["<b>metrics</b><br/>ENTRYPOINT"]
     platform["<b>platform</b><br/>INTERFACE"]
     platform_null["<b>platform_null</b><br/>BACKEND"]
     script["<b>script</b><br/>LIBRARY"]
@@ -3261,8 +3291,8 @@ flowchart TD
   class content,host,platform,presentation,starmap,statistics,transport kContract
   class celestial,net,scene,sound kVocabulary
   class host_null,platform_null,starmap_authority,starmap_participant,statistics_null,transcript,transport_local,transport_tcp kBackend
-  class colocation,frontend,game,interaction,metrics,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
-  class client_headless kEntrypoint
+  class colocation,frontend,game,interaction,participant,script,storage,telemetry,universe,universe_view,windowing,world,world_view,worldgen kLibrary
+  class client_headless,metrics kEntrypoint
   class host_null_headlessLoop,participant_clientLoop,participant_clientTick,participant_fixedTick,transcript_recordTick,universe_universeLoop,universe_universeTick,world_worldLoop,world_worldTick kElement
 ```
 
@@ -3297,7 +3327,7 @@ Every component in the diagram, in the same reading order.
 | **`content`** | INTERFACE | MACHINE | what a mod can change: data | **F4** — the engine names the store, never what a mod put in it | `RootBase` — `assets()`, `configuration()`, and target-state `toStoragePath()` / `registerReloadListener()`. **`game`'s `Root` implements it** |
 | **`storage`** | LIBRARY | MACHINE | durable state, and migrating it forward | **N1.b** — a placed authority carries its own store; persistence is never global | `BTreeDatabase` and `VersioningDatabase` — the store and the schema migration that keeps old saves loadable |
 | **`telemetry`** | LIBRARY | MACHINE | the handle a subject records through | **N3.b** — a subject records about itself at the point of measurement, so this is named by many components and names none of them; what makes that safe is not scarcity of callers but that every grant is ENUMERATED below and every handle is DECLARED | `Telemetry` — the lock-free registry, one writer per fact; `TelemetryTimer`, `TelemetryCounter` and `TelemetryGauge`, each a handle that cannot exist without the `MetricDesc` that says what it measures; `TelemetryRate`, the fourth handle kind; `TelemetryScope`, which binds the descriptor to the recording call so the two cannot drift apart. `TelemetryReporter` is NOT here -- it serialises a snapshot, which is INTERPRETation, and the boundary facet gives interpretation to `metrics`. `MetricDesc` and its enums are NOT here either — they stay in `core`, because a vocabulary two components share belongs where both are granted |
-| **`metrics`** | LIBRARY | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `BusyReading`, whose `available` flag is the difference between measuring nothing and being unable to measure, and which no caller may conflate; `ClientBusyReader`, `EngineBusyReader` and `ThreadBusyReader` — three kernel paths, two to the GPU's busy time and one to the CPU's, each keyed by what IT attributes to; `EngineOpenResult` and `EngineBusyWindow`, which exist because the PMU's first read after open is not a measurement and a type with no field to put it in is the only version of that rule a caller cannot skip; `TelemetryReporter`, which turns a snapshot into a run artifact -- INTERPRETation, which this component's boundary facet already claims, and which [#252] step 3 moved here from `core`; it takes the projection BY VALUE and names no registry, so it reads its subject without becoming a peer of it; the `metrics` CLI, which reads its subject without being linked into it |
+| **`metrics`** | ENTRYPOINT | MACHINE | what the hardware actually spent | **N3.b** — measurement arrives because a composition named it, so the thing measured never links the thing measuring | `MetricSample` — a value that cannot exist without the quantity it names and the condition under which it is that quantity; `BusyReading`, whose `available` flag is the difference between measuring nothing and being unable to measure, and which no caller may conflate; `ClientBusyReader`, `EngineBusyReader` and `ThreadBusyReader` — three kernel paths, two to the GPU's busy time and one to the CPU's, each keyed by what IT attributes to; `EngineOpenResult` and `EngineBusyWindow`, which exist because the PMU's first read after open is not a measurement and a type with no field to put it in is the only version of that rule a caller cannot skip; `TelemetryReporter`, which turns a snapshot into a run artifact -- INTERPRETation, which this component's boundary facet already claims, and which [#252] step 3 moved here from `core`; it takes the projection BY VALUE and names no registry, so it reads its subject without becoming a peer of it; the `metrics` CLI, which reads its subject without being linked into it |
 | **`presentation`** | INTERFACE | DEVICE | the presentation contract | **F1** — devices are optional, so the sink is an interface whose implementations need not own one | `SceneSink`, `AudioSink`, `InputSource`. **No drawing code.** |
 | **`game`** | LIBRARY | DOMAIN | the domain | **D10 + D11** — authority and view share one entity vocabulary; only ownership differs | entities, items, tiles, stats, damage — **state, not appearance** |
 | **`universe`** | LIBRARY | DOMAIN | the decisions no single world can make | **D10** — the universe has its own authority; worlds are its residents | `UniverseServer` — world lifecycle, connections, celestial, warping |
@@ -3352,7 +3382,7 @@ source/
     ├── host/            INTERFACE
     ├── host_null/       BACKEND
     ├── host_sdl/        BACKEND
-    ├── metrics/         LIBRARY
+    ├── metrics/         ENTRYPOINT
     ├── platform/        INTERFACE
     ├── platform_null/   BACKEND
     ├── platform_pc/     BACKEND
@@ -3414,8 +3444,8 @@ assets/            # content, which `content` abstracts and no C++ component own
 <!-- END GENERATED: tree-map -->
 
 
-Fifty-four components: nine INTERFACEs, four VOCABULARYs, seventeen BACKENDs, fifteen LIBRARYs,
-two FOUNDATIONs, seven ENTRYPOINTs. **Each entrypoint owns exactly one element, and it is a `WIRING`** — not zero, which is
+Fifty-four components: nine INTERFACEs, four VOCABULARYs, seventeen BACKENDs, fourteen LIBRARYs,
+two FOUNDATIONs, eight ENTRYPOINTs. **Each entrypoint owns exactly one element, and it is a `WIRING`** — not zero, which is
 the tempting rule and the wrong one. Composition is the single most important runtime fact in this
 design, because it is the *only* thing that differs between `client_opengl` and `client_headless`; a
 taxonomy in which entrypoints own nothing cannot say that, and would read as clean precisely because
@@ -3597,6 +3627,7 @@ claim. **Ratification requires every cell to read yes.**
 | `client_headless` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `client_opengl` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `client_sdl_gpu` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
+| `metrics` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `server` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `world_gen` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
 | `world_sim` | ENTRYPOINT | yes | yes | yes | yes | yes | yes |
@@ -3615,7 +3646,6 @@ claim. **Ratification requires every cell to read yes.**
 | `frontend` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `game` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `interaction` | LIBRARY | yes | yes | yes | yes | yes | yes |
-| `metrics` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `participant` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `script` | LIBRARY | yes | yes | yes | yes | yes | yes |
 | `storage` | LIBRARY | yes | yes | yes | yes | yes | yes |
@@ -5329,6 +5359,7 @@ Two container columns, one per projection — the graft, in a table.
 | **`serverWiring`** | WIRING | ONCE | **PROCESS** | `server` | `main` | composes the universe and its query and rcon threads |
 | **`sdlGpuWiring`** | WIRING | ONCE | **PROCESS** | `client_sdl_gpu` | `driver` | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
 | **`agentWiring`** | WIRING | ONCE | **PROCESS** | `client_agent` | `driver` | composes `host_null` + `participant` + `interaction`. **No UI, no recorder, no authority** |
+| **`metricsWiring`** | WIRING | ONCE | **PROCESS** | `metrics` | `main` | composes the busy readers over `core` into a standalone sampling process; owns no clock and no world |
 | **`simWiring`** | WIRING | ONCE | **PROCESS** | `world_sim` | `main` | composes `world` and a configured residency; starts `worldLoop` |
 | **`genWiring`** | WIRING | ONCE | **PROCESS** | `world_gen` | `main` | generates and exits. **The only composition that starts no clock at all** |
 | **`colocateWiring`** | WIRING | ONCE | **PROCESS** | `colocation` | `driver` | constructs the embedded universe and the local socket pair — the D8 seam |
@@ -5381,6 +5412,7 @@ split hides nothing the single column showed.
 | **`colocateWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | constructs the embedded universe and the local socket pair — the D8 seam |
 | **`genWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | generates and exits. **The only composition that starts no clock at all** |
 | **`headlessWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | composes `host_null` + `participant` + `transcript` |
+| **`metricsWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | composes the busy readers over `core` into a standalone sampling process; owns no clock and no world |
 | **`openglWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | composes `host_sdl` + `participant` + `rendering` + `gpu_opengl` |
 | **`sdlGpuWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | composes `host_sdl` + `participant` + `rendering` + `gpu_sdl` |
 | **`serverWiring`** | WIRING | ONCE | **nothing** | *the process entry point runs it — composition is where a process begins* | — | composes the universe and its query and rcon threads |
@@ -5454,6 +5486,12 @@ flowchart TD
   subgraph pworldgen ["<b>world_gen</b> — a separate process; <b>no clock of any kind</b>"]
     subgraph tgenmain ["main thread — cadence ONCE, then exit"]
       genwiring["<b>genWiring</b> · WIRING<br/><i>world_gen</i>"]
+    end
+  end
+
+  subgraph pmetrics ["<b>metrics</b> — a separate process"]
+    subgraph tmetricsmain ["main thread — cadence FREE, a sampling interval"]
+      metricswiring["<b>metricsWiring</b> · WIRING<br/><i>metrics</i>"]
     end
   end
 
@@ -5932,9 +5970,9 @@ than it is:
 <!-- BEGIN GENERATED: spec-measures coverage -->
 | | what it establishes | coverage |
 |---|---|---|
-| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 54 components and all 24 elements.** Gated as `spec_consistency`; says nothing about correctness |
+| **coherence** | the document does not contradict itself — each diagram against its register, drawn edges against the grant table, prose tallies against both, and **every runtime edge against the compile projection** | **all 54 components and all 25 elements.** Gated as `spec_consistency`; says nothing about correctness |
 | **anchoring** | where a target name covers files that exist today, the grant row matches a measured *transitive* include closure | **14 of 52 grant rows.** Gated as `grant_sweep` |
-| **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 7 ENTRYPOINTs** — the ones that exist. **Measured by `link_sweep`, and deliberately not gated**: it reads a build tree, and a gate that reads a build tree passes or fails on what someone last compiled rather than on what the repository says. This is the one row here whose coverage cannot ratchet in CI, and saying so is the difference between a limit and a hole |
+| **containment** | what each built ENTRYPOINT's binary actually contains, attributed symbol-by-symbol back to a component | **2 of 8 ENTRYPOINTs** — the ones that exist. **Measured by `link_sweep`, and deliberately not gated**: it reads a build tree, and a gate that reads a build tree passes or fails on what someone last compiled rather than on what the repository says. This is the one row here whose coverage cannot ratchet in CI, and saying so is the difference between a limit and a hole |
 | **correctness** | the designed system compiles, runs, and does what it claims | **zero.** Not obtainable before it is built |
 
 **38 of the 54 components have no files yet** and their grant rows are pure assertion; `grant-sweep` reports them UNVERIFIABLE rather than passing them, which is the only honest verdict available. Generated by `scripts/spec-measures.py`.
