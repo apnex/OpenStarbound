@@ -826,6 +826,70 @@ UNVERIFIABLE_PHRASES = (
 )
 
 
+# THE REACH OF THE A1 VIOLATION, and the cell states its own command precisely so the number can be
+# reproduced. It could not be: the spec said 256, [#267] said 308, and re-running the stated command
+# on 2026-08-23 returned 352 across SEVEN components -- the seventh being `metrics`, which [#252]
+# step 3 created, so the "six" went stale the moment that shipped and nothing noticed.
+#
+# GATED EXACTLY, NOT AS A RATCHET, and this is the deliberate difference from render-inventory.py --
+# which refuses to carry line counts because "gating on those would redden CI on every render
+# change". That reasoning is right for ITS figures, which are incidental to what it documents. It is
+# wrong here: this number IS the subject of the cell. It measures how far an adopted axiom is
+# violated, so growth is the signal, not noise. I grew it by 34 in one session and nothing objected;
+# that silence is the defect this closes.
+TELEMETRY_REACH_PHRASES = (
+    re.compile(r'the reach — (\d+) references across (\w+) components'),
+)
+TELEMETRY_REACH_WORDS = {4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine"}
+
+
+def telemetry_reach():
+    """-> (occurrences, {component: n}) by THE CELL'S OWN STATED COMMAND, re-run against the tree.
+
+    The command, verbatim from the cell: Telemetry(Timer|Counter|Gauge|Rate|Scope)|Telemetry::
+    outside `core/StarTelemetry*` and `test/`. Counted as OCCURRENCES, not matching lines -- two
+    calls on one line are two references, and the cell says "references".
+    """
+    pat = re.compile(r"Telemetry(?:Timer|Counter|Gauge|Rate|Scope)|Telemetry::")
+    per = {}
+    for f in sorted((REPO / "source").rglob("*")):
+        if f.suffix not in (".cpp", ".hpp"):
+            continue
+        rel = f.as_posix()
+        if "/test/" in rel or re.search(r"core/StarTelemetry", rel):
+            continue
+        n = len(pat.findall(f.read_text(errors="ignore")))
+        if n:
+            per[rel.split("/source/")[1].split("/")[0]] = per.get(
+                rel.split("/source/")[1].split("/")[0], 0) + n
+    return sum(per.values()), per
+
+
+def check_telemetry_reach(text):
+    """The A1 reach figure, checked against the command the cell itself states."""
+    total, per = telemetry_reach()
+    want_comp = TELEMETRY_REACH_WORDS.get(len(per), str(len(per)))
+    flat = " ".join(text.split())
+    out, seen = [], 0
+    for pat in TELEMETRY_REACH_PHRASES:
+        for n_, m_ in pat.findall(flat):
+            seen += 1
+            if int(n_) != total or m_ != want_comp:
+                out.append(("TELEMETRY_REACH",
+                            "prose says %s references across %s components; the cell's own stated "
+                            "command returns %d across %s (%s). Replace with: "
+                            "'the reach \u2014 %d references across %s components'"
+                            % (n_, m_, total, want_comp,
+                               ", ".join(f"{k} {v}" for k, v in sorted(per.items(), key=lambda x: -x[1])),
+                               total, want_comp)))
+    if not seen:
+        out.append(("TELEMETRY_REACH",
+                    "no sentence states the Telemetry reach, but that figure is how the `telemetry` "
+                    "owes cell sizes the A1 violation it declares FINE-provided-declared. Either the "
+                    "claim went and this check goes with it, or it was reworded out of reach"))
+    return out
+
+
 def check_unverifiable(text, comp):
     """How many components no instrument can check, measured by the instrument the prose names.
 
@@ -1053,6 +1117,7 @@ def scan(text):
     findings.extend(check_subtraction(text, comp, grants))
     findings.extend(check_backend_spread(text, comp))
     findings.extend(check_unverifiable(text, comp))
+    findings.extend(check_telemetry_reach(text))
     findings.extend(check_dead_kinds(text))
     findings.extend(check_no_dates(text))
     findings.extend(check_contract_grants(comp, grants))
@@ -1159,6 +1224,18 @@ def selftest(text):
          lambda: check_modal_zone(text.replace(MODAL_ZONE_PHRASE, "components sit oddly"), comp)),
         # Same discipline as MODAL_ZONE: mutate the digits IN FRONT of a stable phrase, never a
         # literal, so the drive keeps testing after the numbers move.
+        # DERIVED, NOT PASTED -- the MODAL_ZONE discipline applied to a figure that moves on every
+        # commit that adds a timer. Mutating the digits in front of a stable phrase keeps this drive
+        # testing after the number moves, which for THIS figure is constantly.
+        ("TELEMETRY_REACH", "a wrong reference count",
+         lambda: check_telemetry_reach(
+             re.sub(r'(the reach \u2014 )\d+', r'\g<1>999', text))),
+        ("TELEMETRY_REACH", "a wrong component count",
+         lambda: check_telemetry_reach(
+             re.sub(r'(the reach \u2014 \d+ references across )\w+', r'\g<1>three', text))),
+        ("TELEMETRY_REACH", "the claim reworded out of reach",
+         lambda: check_telemetry_reach(
+             text.replace("the reach \u2014", "the spread of it \u2014"))),
         ("ZONE_SPREAD", "a wrong BACKEND zone split",
          lambda: check_backend_spread(
              re.sub(r'(BACKEND is where KIND predicts ZONE least: \*\*)\d+', r'\g<1>999', text), comp)),
