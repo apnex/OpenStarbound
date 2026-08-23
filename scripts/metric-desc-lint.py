@@ -857,6 +857,16 @@ PAINTER_NESTED = {
     # painter whole would bill these microseconds to the closure twice and drive the residual negative
     # -- which reads as noise rather than as the double-count it is.
     "render.painter.submit.us",
+    # THE CACHE-STATE-INDEPENDENT HASH and THE MISS-ONLY REBUILD ([#286] step 3), both inside
+    # render.painter.tiles.us. tiles.build.us can legitimately record ZERO samples in a warm window,
+    # which is the structural reason it is a probe: a member that reads absent makes the closure
+    # print "the residual is not interpretable" rather than reporting a warm cache.
+    "render.painter.tiles.hash.us",
+    # SPLIT BY KIND so the LIQUID miss count is readable on its own -- [#287] claims terrain bytes
+    # contaminate the liquid hash and force rebuilds nothing asked for, and a merged key cannot test
+    # that. Both can read zero in a warm window, which is why both are probes.
+    "render.painter.tiles.build.terrain.us",
+    "render.painter.tiles.build.liquid.us",
 }
 
 # THE PREFIX IS DISJOINT FROM THE WHOLE, DELIBERATELY. painter_sites selects candidates by the

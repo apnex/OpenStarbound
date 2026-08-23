@@ -30,6 +30,48 @@ namespace {
     MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
                .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+
+  // THE ONE PROVABLY CACHE-STATE-INDEPENDENT COST IN THE PAINTER ([#286] step 3). Both chunk hashes
+  // are computed to BUILD the cache key, so they run BEFORE the hit/miss test and are paid on the HIT
+  // path too -- identical work whether the chunk is rebuilt or not. Each walks a 20x20 padded region
+  // (RenderChunkSize 16 + MaterialRenderProfileMaxNeighborDistance) and appends per tile, so the two
+  // together are ~28,000 tile visits per frame at the harness fixture. Nothing else in tiles.us has
+  // that property, which is why it is the term worth separating first.
+  //
+  // ONE KEY FOR BOTH HASHES, TWO SAMPLES PER CHUNK PER FRAME. count/frames/2 is THE FIRST
+  // CHUNKS-PER-FRAME DENOMINATOR IN THE TREE -- no existing key can express "per chunk", so any
+  // per-chunk claim until now has been per-frame arithmetic with an unstated divisor.
+  auto s_tileHash = Telemetry::timer("render.painter.tiles.hash.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+
+  // THE MISS-ONLY REBUILD. Fires only when the cache producer runs, so its count IS the chunk-miss
+  // count -- the instrument [#287] needs before its "fewer spurious liquid-cache misses" claim can be
+  // measured rather than asserted.
+  //
+  // IT CAN LEGITIMATELY RECORD ZERO SAMPLES in a fully warm window, which is exactly why it is a
+  // NESTED PROBE and not a painter member: window() moves a zero-count timer into `zeroed` and
+  // aggregate_report reads that as ABSENT, which would make the closure print "the residual is not
+  // interpretable". As a probe it is never summed, so a warm window simply reports no rebuilds.
+  //
+  // SPAN, AND A HEAVY ONE: the producer reaches GL vertex upload (createRenderBuffer + rb->set),
+  // texture-atlas allocation, and Assets::image -- which takes the assets mutex and can wait on its
+  // condvar. A large per-miss figure is not by itself evidence of per-tile CPU work.
+  // SPLIT BY KIND, AND THE FIRST MEASUREMENT IS WHY. A single merged build key gave an aggregate
+  // 3.07% miss rate standing and 0.63% walking, which cannot answer the question the next task asks:
+  // [#287] claims the liquid hash is contaminated by neighbouring TERRAIN bytes and therefore forces
+  // liquid rebuilds nothing asked for. Testing that needs the LIQUID miss count on its own. The two
+  // hashes stay merged -- they are one unconditional cost -- but the two REBUILDS do not, because
+  // their misses have different causes and only one of them is actionable.
+  auto s_tileBuildTerrain = Telemetry::timer("render.painter.tiles.build.terrain.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+  auto s_tileBuildLiquid = Telemetry::timer("render.painter.tiles.build.liquid.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
 TilePainter::TilePainter(RendererPtr renderer) : TileDrawer() {
@@ -191,8 +233,17 @@ void TilePainter::renderTerrainChunks(WorldCamera const& camera, TerrainLayer te
 }
 
 shared_ptr<TilePainter::TerrainChunk const> TilePainter::getTerrainChunk(WorldRenderData& renderData, Vec2I chunkIndex) {
-  pair<Vec2I, ChunkHash> chunkKey = {chunkIndex, terrainChunkHash(renderData, chunkIndex)};
+  // SPLIT OUT OF THE KEY INITIALIZER, DELIBERATELY. The hash was an argument expression inside the
+  // pair, so there was no seam to bracket; hoisting it gives the scope somewhere to close BEFORE the
+  // cache lookup on the next line, which is what makes hash and lookup separable at all.
+  ChunkHash hash;
+  {
+    TelemetryScope s(s_tileHash);
+    hash = terrainChunkHash(renderData, chunkIndex);
+  }
+  pair<Vec2I, ChunkHash> chunkKey = {chunkIndex, hash};
   return m_terrainChunkCache.get(chunkKey, [&](auto const&) {
+      TelemetryScope s(s_tileBuildTerrain);
       HashMap<TerrainLayer, HashMap<QuadZLevel, List<RenderPrimitive>>> terrainPrimitives;
 
       RectI tileRange = RectI::withSize(chunkIndex * RenderChunkSize, Vec2I::filled(RenderChunkSize));
@@ -220,8 +271,16 @@ shared_ptr<TilePainter::TerrainChunk const> TilePainter::getTerrainChunk(WorldRe
 }
 
 shared_ptr<TilePainter::LiquidChunk const> TilePainter::getLiquidChunk(WorldRenderData& renderData, Vec2I chunkIndex) {
-  pair<Vec2I, ChunkHash> chunkKey = {chunkIndex, liquidChunkHash(renderData, chunkIndex)};
+  // Same split as getTerrainChunk, and the same key: the two hashes are one cost, paid twice per
+  // chunk per frame, and separating them would buy a distinction nobody would act on differently.
+  ChunkHash hash;
+  {
+    TelemetryScope s(s_tileHash);
+    hash = liquidChunkHash(renderData, chunkIndex);
+  }
+  pair<Vec2I, ChunkHash> chunkKey = {chunkIndex, hash};
   return m_liquidChunkCache.get(chunkKey, [&](auto const&) {
+      TelemetryScope s(s_tileBuildLiquid);
       HashMap<LiquidId, List<RenderPrimitive>> liquidPrimitives;
 
       RectI tileRange = RectI::withSize(chunkIndex * RenderChunkSize, Vec2I::filled(RenderChunkSize));
