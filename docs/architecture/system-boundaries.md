@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241293 lines
+      241323 lines
       6 tiers
     Content
       assets/
@@ -231,7 +231,7 @@ source/
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     5,251 lines
+├── rendering/       T4    23 files     5,281 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
 ├── client/          T5     4 files     2,629 lines
@@ -291,7 +291,7 @@ flowchart TD
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 5,251 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 5,281 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,866 lines · Root×200</small>"]
   end
@@ -613,7 +613,7 @@ treemap-beta
     "T4 presentation"
         "frontend": 16866
         "windowing": 9646
-        "rendering": 5251
+        "rendering": 5281
     "T5 shells"
         "client": 2629
         "server": 783
@@ -630,7 +630,7 @@ treemap-beta
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
 | T3 simulation | `game` | 500 | 115,725 | 48.0% |
-| T4 presentation | `rendering` | 23 | 5,251 | 2.2% |
+| T4 presentation | `rendering` | 23 | 5,281 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
 | T5 shells | `client` | 4 | 2,629 | 1.1% |
@@ -857,7 +857,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 5,251 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 5,281 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,866 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

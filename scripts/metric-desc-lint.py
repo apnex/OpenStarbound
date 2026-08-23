@@ -867,6 +867,10 @@ PAINTER_NESTED = {
     # that. Both can read zero in a warm window, which is why both are probes.
     "render.painter.tiles.build.terrain.us",
     "render.painter.tiles.build.liquid.us",
+    # THE MIGRATING COMPOSE ([#286] step 4). A subset of env.us OR parallax.us depending on the merge
+    # flag and the moving-camera bypass -- which one is the thing being measured, so it can be a
+    # sibling of neither.
+    "render.painter.backdrop_compose.us",
 }
 
 # THE PREFIX IS DISJOINT FROM THE WHOLE, DELIBERATELY. painter_sites selects candidates by the

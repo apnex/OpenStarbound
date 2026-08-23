@@ -92,9 +92,37 @@ namespace {
     return {{"applyCap", false}, {"brightnessLimit", 1.4f}, {"brightnessScale", 1.0f},
             {"tonemap", false}, {"preserveAlpha", preserveAlpha}};
   }
+
+  // THE ENV/PARALLAX BOUNDARY IS A RUNTIME BOUNDARY, NOT A CODE ONE ([#286] step 4). Under the
+  // shipped and harness config -- backdropComposeMerge true, envRefreshInterval 4 -- renderEnvironment
+  // DEFERS its compose and the work actually executes inside renderParallax. So a fixed quantum of
+  // full-screen compose MIGRATES between render.painter.env.us and render.painter.parallax.us as the
+  // merge flag, the clause-2 recovery and the moving-camera bypass change. Two legs can differ on
+  // both keys with no change in real work, and neither is readable as "the cost of env" or "the cost
+  // of parallax" until that quantum is named separately.
+  //
+  // IT IS ALSO THE CONFOUND CONTROL FOR THE WALKING DELTA. Walking makes the parallax cache inactive,
+  // which runs an EXTRA standalone env compose the parked path never runs -- so part of any walking
+  // rise in parallax.us is relocated env work until this key says otherwise.
+  //
+  // THREE SITES, ONE KEY: the mergedCompose body, the composeEnvStandalone body (covering both its
+  // callers -- the deferred-recovery call and the moving-camera call), and the non-merge parallax arm.
+  // Bracketing the two FUNCTION BODIES rather than their call sites is what keeps this disjoint: the
+  // merged arm is inside mergedCompose, so wrapping the if/else as well would count it twice.
+  //
+  // NESTED, NEVER SUMMED: no .whole. Every sample is a subset of env.us or parallax.us, and which one
+  // is the very thing being measured -- so it cannot be a sibling of either.
+  //
+  // Cadence::Call: 1 sample per frame under the shipped config, 2 with merge off. Declared Frame, a
+  // key that fires once per frame on one arm and twice on another would be coverage-scaled wrongly.
+  auto s_backdropCompose = Telemetry::timer("render.painter.backdrop_compose.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
 void BackdropPass::mergedCompose(Vec2U const& size) {
+  TelemetryScope s(s_backdropCompose);
   // GUARD (adversarial review, Lens 2): switchEffectConfig returns false and mutates nothing if backdropCompose
   // is unregistered (asset missing / mod override / corrupt install). An UNCHECKED draw would then go through
   // the still-bound "world" shader into "main" -- a garbage full-screen backdrop. Fall back to the two
@@ -155,6 +183,7 @@ void BackdropPass::mergedCompose(Vec2U const& size) {
 // non-GPU-lighting path. It is part of the compose, not the caller's business -- which is exactly why this
 // belongs in one function rather than two.
 void BackdropPass::composeEnvStandalone(Vec2U const& size) {
+  TelemetryScope s(s_backdropCompose);
   m_renderer->gpuTimer().begin("render.pass.environment.compose.gpu_us",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Microseconds, MetricClock::GpuTimeline});
   m_renderer->composite("lightingPassthrough", "main", size, "inputTexture", m_envCache.name(),
@@ -708,6 +737,7 @@ void BackdropPass::renderParallax(WorldCamera const& camera, Input const& in,
       mergedCompose(parallaxScreenSize);
       m_envComposeDeferred = false;
     } else {
+      TelemetryScope s(s_backdropCompose);
       m_renderer->setBlendMode(BlendMode::PremultipliedOver);
       m_renderer->composite("lightingPassthrough", "main", parallaxScreenSize, "inputTexture", m_parallaxCache.name(),
         passthroughParams(true));
