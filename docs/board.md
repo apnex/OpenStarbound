@@ -28,9 +28,9 @@ still reading as though it resolves. Ids **#1–#63 are already absent from disk
   2026-07-25 found three statuses wrong in both directions. Verify against tree content before
   trusting a status to mean work did or did not ship.
 
-**223 tasks** across 2 store(s): 2 in_progress, 30 pending, 191 completed
+**224 tasks** across 2 store(s): 3 in_progress, 30 pending, 191 completed
 
-- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 222 tasks, ids 64–286
+- `c29c1332-648a-42c6-87f0-1a6f14884fb0` — 223 tasks, ids 64–287
 - `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776` — 1 tasks, ids 4–4
 
 ---
@@ -43,7 +43,7 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 
 | # | rank | id | task | startable |
 |---:|---:|---|---|---|
-| 1 | 3 | `#286` | TILEPAINTER-DECOMPOSE: fixture step SHIPPED (4d3dc462) -- legs record meta.walk, floors keyed on scene+fixtur… | ready |
+| 1 | 3 | `#286` | TILEPAINTER-DECOMPOSE: STEP 1 SHIPPED (29d62adb) -- closure 99.7%, and the premise is REFUTED: tiles are 11.6… | ready |
 | 2 | 4 | `#267` | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 def… | ready |
 | 3 | 5 | `#268` | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | ready |
 | 4 | 6 | `#282` | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations… | ready |
@@ -58,18 +58,19 @@ disagreeing. Set with `TaskUpdate(metadata={"rank": N})`; clear with `{"rank": n
 | 13 | 15 | `#208` | TSSA-3: register fields, aggregate review, re-home the anchoring gates | ready |
 | 14 | 16 | `#260` | TSSA-PLATFORM-DISSOLVE: a ratified five-stage thread, stages 3/4/5 not started, on no board task | blocked by #261 |
 | 15 | 17 | `#204` | TSSA (#204): target-state architecture spec — structure DONE, content is the remaining work | ready |
-| 16 | 20 | `#144` | UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22) | ready |
-| 17 | 21 | `#138` | P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (co… | ready |
-| 18 | 22 | `#135` | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | ready |
-| 19 | 23 | `#136` | P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-2… | ready |
-| 20 | 24 | `#90` | SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE… | ready |
-| 21 | 25 | `#161` | Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all | ready |
-| 22 | 26 | `#84` | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs… | ready |
-| 23 | 27 | `#191` | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the ga… | ready |
-| 24 | 28 | `#198` | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | ready |
-| 25 | 29 | `#124` | Brainstorm LuaEngine marshalling-efficiency lever (combat/exploring Lua tax) | ready |
-| 26 | 30 | `#75` | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | ready |
-| 27 | 31 | `#82` | L2 collision arena — optional live A/B confirmation + future terrain test-harness | ready |
+| 16 | 18 | `#287` | LIQUIDHASH-OOB: liquidChunkHash reads 7 bytes PAST every RenderTile -- OOB read, and it contaminates the liqu… | blocked by #286 |
+| 17 | 20 | `#144` | UM-1: upstream merge audit — the "27 confirmed" headline is not a truthful open count (corrected 08-22) | ready |
+| 18 | 21 | `#138` | P-3 NOT STARTED — its SEQUENCING was stale: BOTH named blockers shipped; the two spikes are the only gate (co… | ready |
+| 19 | 22 | `#135` | SP-2c: UN-HOLD — P-3 has not landed, so nothing is obsoleted; still NOT_STARTED | ready |
+| 20 | 23 | `#136` | P-1: perceptual items only — TWO FILE ATTRIBUTIONS WERE WRONG and the DEPLOYED claim is false (corrected 08-2… | ready |
+| 21 | 24 | `#90` | SKIP-0 shipped; SIX sub-levers outstanding — all six still unimplemented, but the closing sentence was FALSE… | ready |
+| 22 | 25 | `#161` | Jacobi improvements NOT STARTED — and #168 showed the lighting CPU budget contains no Jacobi at all | ready |
+| 23 | 26 | `#84` | L-WIND-A: server profile now EXISTS (#175); measurement attempted and REFUSED by the new fingerprint — needs… | ready |
+| 24 | 27 | `#191` | DTO-2 RE-SCOPED: blocker 2 DONE (b2ac6c27); blocker 1 is bigger than filed -- it reaches TileDrawer in the ga… | ready |
+| 25 | 28 | `#198` | P-4 phases 2-4: depth-buffer architecture -- ZERO TRACE, survey before designing | ready |
+| 26 | 29 | `#124` | Brainstorm LuaEngine marshalling-efficiency lever (combat/exploring Lua tax) | ready |
+| 27 | 30 | `#75` | L2 dense-workload magnitude + verify toggle fix live (opportunistic) | ready |
+| 28 | 31 | `#82` | L2 collision arena — optional live A/B confirmation + future terrain test-harness | ready |
 
 ---
 
@@ -79,7 +80,7 @@ A self-check, so the drift this file exists to prevent is *visible* rather than 
 someone has to go and discover. It is the same discipline as the render oracles: a check that
 reports but does not surface is not a check.
 
-**Commit ids cited in task text:** 233, of which **40 resolve to nothing** in either repository.
+**Commit ids cited in task text:** 234, of which **41 resolve to nothing** in either repository.
 
 **Descriptions normalised on export: 44.** The task harness has, on these, appended its
 own closing markup (`</description>`, `</parameter>`, `<parameter name="activeForm">…`) into
@@ -95,7 +96,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 - **3** — dead, with no live equivalent that could be defended
 - **7** — NOT YET INVESTIGATED
 
-**Unexplained ids: 8.**  ← investigate these; they are citations nobody can resolve.
+**Unexplained ids: 9.**  ← investigate these; they are citations nobody can resolve.
 
 | Task | Unexplained ids |
 |-----:|:----------------|
@@ -105,6 +106,7 @@ That is expected and mostly harmless: TWO history rewrites destroyed these ids w
 | [#254](#c29c1332-254) | `14904c73` |
 | [#277](#c29c1332-277) | `6f763c36bbb38e08` `276059e356eb74ad` |
 | [#278](#c29c1332-278) | `82514b4583a94c9b` `6f763c36bbb38e08` |
+| [#286](#c29c1332-286) | `6f763c36bbb38e08` |
 
 **A caveat the anchors carry, and the reason they are not just a lookup table:** 22 of the re-anchored commits are *not ancestors of* `integration`. They survive only on `dev/upstream-merge` / `reorg/tooling`. On `integration` the whole Layer-1 arc is one squashed commit, `083c6340`. So citing the fine-grained commit alone is misleading in a second way, and each anchor records the HEAD carrier as well.
 
@@ -326,11 +328,11 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#265](#c29c1332-265) | `c29c1332` | done | SIM-ON-RENDER CLOSED as a NULL RESULT: the three sim effects were noise, and the omnibus now refuses them mechanically | `1d367a57` `33d04e0e` `45a09f6d` `a686d95b` | — |
 | [#266](#c29c1332-266) | `c29c1332` | open | DESC-RATCHET-WIDTH: the ratchet counts MetricDesc SITES, so a descriptor-free handle is still uncounted — and a one-arg… | — | — |
 | [#267](#c29c1332-267) | `c29c1332` | open | A1-HANDLES: `Telemetry` is the ambient global A1 forbids — the FIVE-DUTY split is REFUSED (08-22); the A1 defect stands | `74db1a7a` `9f466723` | — |
-| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `4d3dc462` `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
+| [#268](#c29c1332-268) | `c29c1332` | **active** | LEVER-FLOOR: n=5 ANALYSED — raising n is the WRONG fix; the whole-CPU keys are drift-bound, not variance-bound | `29d62adb` `4d3dc462` `71d79761` `ae90fe7b` `1d796664` `1d367a57` `33d04e0e` `45a09f6d` `35e049a1` | — |
 | [#269](#c29c1332-269) | `c29c1332` | done | LIGHTING-WHOLE CLOSED (906aca3d): the union is analyser-computed from the gated list, and it corroborates #270 at 26.5% | `8e6cdec0` `906aca3d` `f4d311fd` `4518341f` `1d796664` `7bede779` | — |
 | [#270](#c29c1332-270) | `c29c1332` | done | LIGHTING-REDERIVE CLOSED: #168 needed only its denominator named; #217 needs hardware and split to #274. The union capt… | `906aca3d` `29516d61` `1d367a57` | — |
-| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `bb9742f6` `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
-| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `bb9742f6` `29516d61` `7bede779` | — |
+| [#271](#c29c1332-271) | `c29c1332` | done | GPU-DRIVE-DECOMPOSE CLOSED: the wait hypothesis is REFUTED at 0.03% — it is CPU work, and `point` is 38% of it | `29d62adb` `bb9742f6` `29516d61` `4518341f` `1d796664` `1d367a57` `7bede779` `164163cc` | — |
+| [#272](#c29c1332-272) | `c29c1332` | done | DRIVE-RESIDUAL CLOSED: residual 24% -&gt; 1.27% at n=5; the hole was our own GPU-timer instrument (37%), now split to #… | `29d62adb` `bb9742f6` `29516d61` `7bede779` | — |
 | [#273](#c29c1332-273) | `c29c1332` | done | AXIS-SUBSYSTEM CLOSED (1d367a57): the 14 keys reach the joined axis, and the n=6 run is printing them live | `1d367a57` | — |
 | [#274](#c29c1332-274) | `c29c1332` | done | BORDER-REDERIVE CLOSED: lever CONFIRMED paired at 04-Ocean-Factory — and it is the OFF arm that moved, not the lever | `4d3dc462` `4fcba71b` `e678eda5` `48a4f61e` `906aca3d` `9b40339a` `85741414` `841494c3` `f4d311fd` | — |
 | [#275](#c29c1332-275) | `c29c1332` | done | GATE-LIVESTATE CLOSED 2026-08-22: writer shipped (508707f2) and all THREE verification arms proven live | `5e22945d` `508707f2` `ae90fe7b` `f4d311fd` | — |
@@ -340,11 +342,12 @@ those should carry a `[#NNN]` stamp, and from the stamping convention onward the
 | [#279](#c29c1332-279) | `c29c1332` | done | PAIR-OR-REFUSE CLOSED: floors + refusing consumer (aa9e37c7) + paired runner with warm-up discard (747b93ea); all 4 ite… | `7102f21c` | — |
 | [#280](#c29c1332-280) | `c29c1332` | open | SCENE-STATE-OUTPOST: 03-Surface-Outpost's decoupler fires ONCE in half its legs — the fixture is broken, not the lever | — | — |
 | [#281](#c29c1332-281) | `c29c1332` | done | UNION-TO-DIFF CLOSED (48a4f61e): the union is diffable, the withholding rule refuses a short sum — and the positive con… | `4fcba71b` `48a4f61e` | — |
-| [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | — | — |
+| [#282](#c29c1332-282) | `c29c1332` | open | OFF-ARM-DRIFT: the no-border path got 36.8% more expensive since 2026-08-04, and the two obvious explanations both fail | `29d62adb` | — |
 | [#283](#c29c1332-283) | `c29c1332` | done | UNION-UPLOAD-MEMBER CLOSED as WRONGLY FILED (e678eda5): the member was registered at zero all along; leg-diff was not r… | `e678eda5` | — |
 | [#284](#c29c1332-284) | `c29c1332` | done | RENDER-UPLOAD-BRACKETS SUBSUMED by #286: the investigation found the gap is the whole subsystem, not its uploads | — | — |
 | [#285](#c29c1332-285) | `c29c1332` | done | FLOOR-BASIS CLOSED (4d3dc462): the cause was per-CALL vs per-FRAME, not coverage-scaling -- my filed hypothesis was wro… | `4d3dc462` `bdff5012` `465812fd` | — |
-| [#286](#c29c1332-286) | `c29c1332` | open | TILEPAINTER-DECOMPOSE: fixture step SHIPPED (4d3dc462) -- legs record meta.walk, floors keyed on scene+fixture, walk fl… | `4d3dc462` `bdff5012` `465812fd` | — |
+| [#286](#c29c1332-286) | `c29c1332` | **active** | TILEPAINTER-DECOMPOSE: STEP 1 SHIPPED (29d62adb) -- closure 99.7%, and the premise is REFUTED: tiles are 11.6%, `body`… | `29d62adb` `4d3dc462` `bdff5012` `465812fd` | — |
+| [#287](#c29c1332-287) | `c29c1332` | open | LIQUIDHASH-OOB: liquidChunkHash reads 7 bytes PAST every RenderTile -- OOB read, and it contaminates the liquid cache k… | — | — |
 | [#4](#6c8fc9cc-4) | `6c8fc9cc` | open | L1-FIX: the four false comments, the makeDoubled face leak, the GlPass field bag, and the per-draw glTexParameteri hoist | — | — |
 
 ---
@@ -6802,6 +6805,7 @@ reproduced -- so regenerate it there too, do not just correct it here.
 
 status: **in_progress** · blocked by: #273 · metadata: `{"rank": 5}`
 
+- `29d62adb` [#286] the painter has an interior: seven parts close WorldPainter::render at 99.7%
 - `4d3dc462` [#285][#286] floors and their consumers agree on a basis -- and the basis is now enforced
 - `71d79761` [#268] A counter ran backwards by 900 and the instrument said nothing
 - `ae90fe7b` #275 GATE-LIVESTATE: lever_table skips when a run owns the config, instead of guessing
@@ -7021,6 +7025,7 @@ Items 1 and 2 need no GPU. Item 3, if reached, needs a live client at the border
 
 status: **completed**
 
+- `29d62adb` [#286] the painter has an interior: seven parts close WorldPainter::render at 99.7%
 - `bb9742f6` [#271][#272] the GPU-lighting CPU decomposition becomes a declaration the harness checks
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `4518341f` #269 LIGHTING-WHOLE: declare the lighting-CPU union, and gate its membership
@@ -7081,6 +7086,7 @@ and the wait reading is off the table.
 
 status: **completed**
 
+- `29d62adb` [#286] the painter has an interior: seven parts close WorldPainter::render at 99.7%
 - `bb9742f6` [#271][#272] the GPU-lighting CPU decomposition becomes a declaration the harness checks
 - `29516d61` #276 GPUTIMER-TAX: measured at 10.2%, and my 37% was attribution mistaken for causation
 - `7bede779` [#271] the wait hypothesis is refuted at 0.03% -- it is CPU work, and the per-light section is 38% of it
@@ -7748,6 +7754,8 @@ whole. It must not be relaxed to make the union "work".
 
 status: **pending** · metadata: `{"rank": 6}`
 
+- `29d62adb` [#286] the painter has an interior: seven parts close WorldPainter::render at 99.7%
+
 ```
 Split out of [#274] on 2026-08-22, where it was explicitly scoped OUT and named the
 highest-value follow-up. [#274] closed on the lever; this is about the BASELINE it is measured
@@ -7966,39 +7974,125 @@ Registered as floor_reproduces + floor_reproduces_fires in .github/workflows/gat
 
 <a id="c29c1332-286"></a>
 
-#### #286 — TILEPAINTER-DECOMPOSE: fixture step SHIPPED (4d3dc462) -- legs record meta.walk, floors keyed on scene+fixture, walk floor banked. The deco…
+#### #286 — TILEPAINTER-DECOMPOSE: STEP 1 SHIPPED (29d62adb) -- closure 99.7%, and the premise is REFUTED: tiles are 11.6%, `body` is 43%, and 53% was…
 
 _Stored subject exceeds the heading; reproduced verbatim:_
 
 ```
-TILEPAINTER-DECOMPOSE: fixture step SHIPPED (4d3dc462) -- legs record meta.walk, floors keyed on scene+fixture, walk floor banked. The decomposition proper is what remains
+TILEPAINTER-DECOMPOSE: STEP 1 SHIPPED (29d62adb) -- closure 99.7%, and the premise is REFUTED: tiles are 11.6%, `body` is 43%, and 53% was a figure with no denominator
 ```
 
-status: **pending** · metadata: `{"rank": 3}`
+status: **in_progress** · blocks: #287 · metadata: `{"rank": 3}`
 
+- `29d62adb` [#286] the painter has an interior: seven parts close WorldPainter::render at 99.7%
 - `4d3dc462` [#285][#286] floors and their consumers agree on a basis -- and the basis is now enforced
 - `bdff5012` [#286] the walking fixture measures, and motion costs 23% of render CPU that no standing leg sees
 - `465812fd` [#286] the profiler can bank a MOVING leg -- the fixture existed, the knob was not forwarded
 
 ```
-THE MEASUREMENT PREREQUISITE IS DONE, shipped 4d3dc462 alongside [#285] as one coherent basis change.
+STEP 1 SHIPPED 2026-08-23 at 29d62adb. Seven members tile WorldPainter::render exhaustively; gated by painter_membership + painter_membership_fires (7 selftest arms, every injection proven to fire).
 
-WHAT LANDED. render-profile.sh passes --walk to the analyser; telemetry-window writes meta.walk; leg-diff derives `fixture` from it, REFUSES to compare a walking arm against a standing one, and looks floors up under fixtures.<name>.<scene> with NO FALLBACK to the still entry -- borrowing a standing bar for a moving leg is [#285]'s basis mismatch, manufactured rather than found. The walk floor for 04-Ocean-Factory is banked and re-derived by floor_reproduces every gate run.
+MEASURED CLOSURE, paired still/walk at 04-Ocean-Factory, 4500 frames each, chain 6f763c36bbb38e08:
+                    still            walk
+  body            302.1  43.2%     335.7  32.0%
+  lightmap        195.2  27.9%     367.8  35.1%
+  tiles            81.1  11.6%     136.3  13.0%
+  env              50.6   7.2%      61.8   5.9%
+  parallax         49.8   7.1%     109.5  10.4%
+  epilogue         14.9   2.1%      30.4   2.9%
+  prologue          3.5   0.5%       4.4   0.4%
+  RESIDUAL          1.9  0.28%       3.3  0.32%
+Counts exactly as designed: 2.00/frame prologue (Cadence::Call, records twice), 1.00/frame the rest.
 
-THE FOUR LEGS WERE RE-RUN, NOT RELABELLED. The earlier bank predated the wiring and self-reported `still`. Backfilling meta.walk by hand would have made my say-so the evidence rather than the artefact, so they were measured again. Each now asserts walk=45 itself.
+THE FILED PREMISE IS REFUTED, TWICE.
+  (1) "TilePainter is 53% of frame CPU" -- TilePainter's chunk pipeline is 11.6% of the painter. And
+      53% was never a figure with a named denominator: the painter is 39% of cpu.frame.render.us or
+      49% of render.frame.us, neither of which is 53%. The largest part is `body` -- the interleaved
+      entity/particle/drawable submission -- not tiles.
+  (2) The lightmap member is 93-94% lighting.gpu.cpu_cost.us, which [#271]/[#272] ALREADY decomposed
+      into 11 parts. The genuinely newly-named lightmap cost is 14-22 us/frame, not 195.
 
-TWO FINDINGS THAT CHANGE WHAT COMES NEXT:
+WHAT THE PARTITION COST TO GET RIGHT (three non-obvious constraints, all now in the tree):
+  - PREFIX DISJOINTNESS. Members are render.painter.*, not render.world.painter.*, because the whole
+    prefix-matches the latter and a membership gate would have selected the whole as its own part.
+    A selftest arm asserts this directly.
+  - EVERY MEMBER UNCONDITIONAL. A zero-count timer lands in `zeroed` and aggregate_report reads it as
+    ABSENT, printing "the residual is not interpretable". Conditional work (chunk rebuild, dim
+    overlay) must be a nested probe, never a member.
+  - THE ENV COMPOSE IS NOT IN env.us. backdropComposeMerge=true + envRefreshInterval=4 (verified in
+    harness config) defer it into renderParallax. env.us and parallax.us are NOT readable as their
+    named costs until the backdrop-compose probe (step 4) splits them.
 
-1. WALKING IS THE STEADIER FIXTURE AT THIS SCENE, which was not the expected direction.
-     lighting.cpu.total.us   still 13.952%  walk 6.372%
-     cpu.frame.render.us     still  8.947%  walk 5.736%
-     drive.point             still  3.912%  walk 2.881%
-     cpu_cost                still  3.735%  walk 3.530%
-   Only produce.entities (7.37 -> 10.16) and the union (2.75 -> 4.75) get noisier -- the two keys whose content genuinely moves. The moving fixture is a BETTER instrument here, not a worse one. Directly relevant to [#274]: the border lever is unresolvable standing because its effect is smaller than the still fixture's own 13.95% noise on the key it moves; at 6.37% it may be resolvable unpaired.
+THE WHOLE MOVED BETWEEN BINARIES AND IT IS NOT THIS CHANGE. 860.8 -> 699.1 us standing. But
+cpu.frame.update.us fell 12.1% and tick.server.total.us 4.5% in the same comparison, and this commit
+touches neither; an instrument tax would push render keys UP. Pre-existing drift, [#282]/[#268].
+SO: the SHARES are the quotable product. The absolute microseconds are NOT comparable across
+binaries. The closure is unaffected -- within-leg arithmetic.
 
-2. THREE LEGS DO NOT PIN A CV. The discarded pre-wiring bank was the same binary, scene, fixture and asset chain, and its CVs disagree with the recorded ones by up to 3.8x (produce.entities 19.60 vs 10.16, drive.point 11.03 vs 2.88, cpu_cost 10.72 vs 3.53). A three-leg floor is a usable refusal threshold -- all leg-diff asks -- and is NOT a precise figure, here or in the `scenes` table, which is derived the same way. [#268] from a second direction: a between-bank component exists that a within-bank spread cannot see.
+REMAINING STEPS, in the plan's order:
+  STEP 2 -- render.painter.submit.us across 6 flush sites (StarWorldPass x4, StarTilePainter x2),
+    count must be 22x frames. THE GATE ON READING ANY OF env/parallax/body/lightmap AS A COST rather
+    than a span: `body` alone has 22 reachable renderer flushes and three Assets mutex paths with a
+    condvar wait arm. Do this before acting on step 1's numbers.
+  STEP 3 -- tiles.hash.us + tiles.build.us. Splits the cache-state-INDEPENDENT hash (paid on the HIT
+    path, ~28,000 tile visits/frame) from the miss-only rebuild. Yields the tree's first
+    chunks-per-frame and chunk-misses-per-frame denominators. MUST PRECEDE the [#287] fix, or that
+    fix's before/after is uninterpretable.
+  STEP 4 -- backdrop_compose.us, 3 sites, one key. Makes env/parallax stable under the merge flag and
+    the moving-camera bypass.
+  STEP 5 -- consumer work: widen leg-diff's importer from UNION_MEMBERS to WHOLES; pass `zeroed` into
+    aggregate_report so a zeroed member reads as a present zero rather than absent.
 
-WHAT REMAINS: the decomposition itself. TilePainter is 53% of frame CPU with no interior attribution. The fixture that exercises it now exists, records itself, and has a measured floor -- so the parts can be instrumented and differenced against a bar that means something. Still no INTERACTION in the fixture (no placement, so StarMaterialItem's preview path -- [#191]'s real blocker -- is never exercised); that gap is unchanged and is not a blocker for the CPU decomposition.
+VERIFICATION: run-gates 79 green + 1 SKIPPED (metrics_mutual, no GPU client) -- NOT 80/80.
+```
+
+<a id="c29c1332-287"></a>
+
+#### #287 — LIQUIDHASH-OOB: liquidChunkHash reads 7 bytes PAST every RenderTile -- OOB read, and it contaminates the liquid cache key with neighbouring…
+
+_Stored subject exceeds the heading; reproduced verbatim:_
+
+```
+LIQUIDHASH-OOB: liquidChunkHash reads 7 bytes PAST every RenderTile -- OOB read, and it contaminates the liquid cache key with neighbouring TERRAIN
+```
+
+status: **pending** · blocked by: #286 · metadata: `{"rank": 18}`
+
+```
+FOUND 2026-08-22 while mapping the [#286] painter decomposition. VERIFIED BY CONSTRUCTION, not by reasoning about layout.
+
+THE DEFECT. source/rendering/StarTilePainter.cpp:144
+
+    buffer.append((char*)&renderTile.liquidId, sizeof(LiquidId) + sizeof(LiquidLevel));
+
+`LiquidLevel` is a TYPE -- `struct LiquidLevel { LiquidId liquid; float level; }` at source/game/StarLiquidTypes.hpp:10-18, sizeof 8. The FIELD it meant is `uint8_t liquidLevel` at source/game/StarWorldTiles.hpp:205, sizeof 1. The type name shadows the intent of the field name and the compiler cannot object: both are valid `sizeof` operands.
+
+So the append requests sizeof(LiquidId) + sizeof(LiquidLevel) = 1 + 8 = 9 bytes, starting at &renderTile.liquidId.
+
+MEASURED BY CONSTRUCTION (compiled a TU replicating the struct from the real typedefs: MaterialId/ModId uint16_t, MaterialHue/MaterialColorVariant uint8_t, TileDamageType is `enum class : uint8_t` at StarTileDamage.hpp:18, LiquidId uint8_t):
+    sizeof(RenderTile)                   = 20
+    offsetof(RenderTile, liquidId)       = 18
+    bytes remaining in struct            =  2   (liquidId + liquidLevel, the FINAL two data members)
+    bytes requested                      =  9
+    OVER-READ PAST THE STRUCT            =  7 bytes
+
+The conclusion does not depend on the earlier field offsets: liquidId and liquidLevel are the last two data members at 1 byte each, so at most 2 bytes + trailing padding (<=1, alignment is 2) are legitimately readable. 9 requested is over by 6-7 whatever precedes them.
+
+THE CORRECT IDIOM IS ALREADY IN THE SAME FILE, 20 lines up. terrainChunkHash at StarTilePainter.cpp:129 does it right:
+    buffer.append((char*)&renderTile, offsetof(RenderTile, liquidId));
+bounded by offsetof. Only the liquid twin is wrong.
+
+TWO CONSEQUENCES, and the second is why this belongs to the perf campaign and not only to correctness:
+
+1. OUT-OF-BOUNDS READ, hot. liquidChunkHash walks a 20x20 = 400-tile padded region (RenderChunkSize 16 + MaterialRenderProfileMaxNeighborDistance) per chunk, and StarTilePainter.cpp:201 calls it to BUILD THE CACHE KEY -- i.e. unconditionally, before the hit/miss test, for every chunk every frame. That is ~400 x chunks x 60/sec over-reads. For a tile at the end of its backing array the read leaves the allocation entirely: UB, and ASAN-detectable.
+
+2. THE LIQUID CACHE KEY IS CONTAMINATED BY TERRAIN. RenderTiles are array elements, so the 7 bytes past tile N are the first 7 bytes of tile N+1 -- foreground, foregroundMod, background, backgroundMod and a hue byte. HYPOTHESIS, NOT YET MEASURED: any terrain edit anywhere in the padded region therefore changes the LIQUID chunk hash and forces a liquid chunk regeneration that nothing asked for. If true this is a spurious-miss source in exactly the cache [#286] is trying to attribute, and it would inflate whatever number the liquid part of the decomposition reports.
+
+WHAT IS NOT YET ESTABLISHED. Whether forEachRenderTile hands out references into one contiguous array (making claim 2 exact) or into per-sector arrays (making the contaminating bytes sector-dependent, and the end-of-sector read the OOB one). Also unmeasured: the actual liquid-cache miss rate today, because no counter exists -- that is [#286]'s job and is the instrument that would let the fix be A/B'd.
+
+THE FIX is one line -- `offsetof`-bounded like its terrain twin, or `sizeof(renderTile.liquidId) + sizeof(renderTile.liquidLevel)` -- PLUS a static_assert pinning the two fields as last, so the next person who appends a field after liquidLevel gets a compile error rather than a silently wider hash. It is NOT byte-identical: the hash values change, so every liquid chunk misses once on the first frame after the change. That is a one-frame transient, not a behaviour change, but it means the fix must ship as its own labelled commit with its own before/after, never folded into a measurement change.
+
+SEQUENCING: do NOT fix before [#286]'s liquid-cache counters land. The fix's whole claim is "fewer spurious misses"; without the counter that is an assertion with no instrument. Land the decomposition, read the miss rate, then fix and re-read.
 ```
 
 ### Store `6c8fc9cc-f25d-49cb-9d3e-7a1bcae0c776`
