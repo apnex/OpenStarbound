@@ -22,6 +22,31 @@ namespace {
   // not Frame: a rejection is an event at a begin(), not a per-frame quantity, whatever the timer is.
   auto s_worldNested = Telemetry::counter("render.pass.world.gpu_us.nested",
     MetricDesc{MetricDomain::Gpu, MetricOwner::Gl, MetricCadence::Call, MetricRole::Detail, MetricUnit::Count, MetricClock::NotApplicable});
+
+  // THE SPAN CALIBRATOR ([#286] step 2). render.painter.body.us is the largest part of the painter --
+  // 43% standing -- and MetricClock::Wall bills blocking as work, so until this key reads, that number
+  // is of unknown KIND: cost, or wait on the driver. [#246] is what that costs when nobody checks --
+  // a bracket reported as a cost turned out to be 2.5x the device's entire busy time, because it was
+  // a span. This measures the submit calls directly so the doubt is a number instead of a caveat.
+  //
+  // NESTED, NEVER SUMMED: no .whole. It is a SUBSET of body.us (and of tiles.us's siblings), not a
+  // sibling of the painter members -- declaring the whole would count these microseconds twice.
+  // Modelled on lighting.gpu.drive.flush.us, the one flush bracket in the tree that is read WITH ITS
+  // COUNT at sites where primitives are provably pending.
+  //
+  // SIX SITES, ONE KEY, 22 SAMPLES PER FRAME: renderEntitiesUntil x11, renderParticles x3,
+  // renderBars x1, drawDrawableSet x3 here; TilePainter::renderLiquid x1 and renderTerrainChunks x3
+  // there. A count that is not 22x frames means renderWorld changed shape and this comment is stale.
+  //
+  // REGISTERED IN TWO TRANSLATION UNITS, AND THAT IS SAFE ONLY BECAUSE EVERY PROSE FIELD IS NULL.
+  // MetricDesc::operator== compares measures/validWhen/whole BY POINTER, so two identical string
+  // literals in two TUs would be UNEQUAL and set descConflict. With all three defaulted to nullptr
+  // and the enums identical, the two descriptors compare equal and static-init order cannot matter.
+  // Adding a .whole or a .measures here without removing the other registration would break that.
+  auto s_painterSubmit = Telemetry::timer("render.painter.submit.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
 }
 
 WorldPass::WorldPass(AssetsConstPtr assets) : m_assets(std::move(assets)) {
@@ -84,7 +109,7 @@ void WorldPass::renderWorld(WorldCamera const& camera, Input in) {
       ++entityDrawableIterator;
     }
 
-    m_renderer->flush();
+    { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
   };
 
   renderEntitiesUntil(RenderLayerBackgroundOverlay);
@@ -188,7 +213,7 @@ void WorldPass::renderParticles(WorldCamera const& camera, List<Particle> const*
     }
   }
 
-  m_renderer->flush();
+  { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
 }
 
 void WorldPass::renderBars(WorldCamera const& camera, List<OverheadBar> const& overheadBars) {
@@ -212,7 +237,7 @@ void WorldPass::renderBars(WorldCamera const& camera, List<OverheadBar> const& o
     }
   }
 
-  m_renderer->flush();
+  { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
 }
 
 void WorldPass::drawEntityLayer(WorldCamera const& camera, List<Drawable> drawables, EntityHighlightEffect highlightEffect) {
@@ -270,7 +295,7 @@ void WorldPass::drawDrawableSet(WorldCamera const& camera, List<Drawable>& drawa
   for (Drawable& drawable : drawables)
     drawDrawable(camera, std::move(drawable));
 
-  m_renderer->flush();
+  { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
 }
 
 }

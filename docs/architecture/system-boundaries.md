@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241187 lines
+      241234 lines
       6 tiers
     Content
       assets/
@@ -231,7 +231,7 @@ source/
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     5,145 lines
+├── rendering/       T4    23 files     5,192 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
 ├── client/          T5     4 files     2,629 lines
@@ -291,7 +291,7 @@ flowchart TD
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 5,145 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 5,192 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,866 lines · Root×200</small>"]
   end
@@ -416,7 +416,7 @@ flowchart LR
   game -->|3 in 3| platform
   rendering -->|9 in 9| application
   rendering -->|7 in 5| base
-  rendering ==>|45 in 18| core
+  rendering ==>|46 in 18| core
   rendering ==>|24 in 12| game
   rendering -.->|0| platform
   windowing -->|2 in 1| application
@@ -482,7 +482,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `rendering → game` | 24 | 12 | load-bearing |
 | `application → core` | 49 | 16 | load-bearing |
 | `windowing → base` | 19 | 17 | load-bearing |
-| `rendering → core` | 45 | 18 | load-bearing |
+| `rendering → core` | 46 | 18 | load-bearing |
 | `windowing → core` | 38 | 24 | load-bearing |
 | `windowing → game` | 41 | 25 | load-bearing |
 | `base → core` | 94 | 28 | load-bearing |
@@ -558,7 +558,7 @@ frontend,core,95
 base,core,94
 frontend,base,54
 application,core,49
-rendering,core,45
+rendering,core,46
 windowing,game,41
 windowing,core,38
 server,core,25
@@ -613,7 +613,7 @@ treemap-beta
     "T4 presentation"
         "frontend": 16866
         "windowing": 9646
-        "rendering": 5145
+        "rendering": 5192
     "T5 shells"
         "client": 2629
         "server": 783
@@ -630,7 +630,7 @@ treemap-beta
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
 | T3 simulation | `game` | 500 | 115,725 | 48.0% |
-| T4 presentation | `rendering` | 23 | 5,145 | 2.1% |
+| T4 presentation | `rendering` | 23 | 5,192 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
 | T5 shells | `client` | 4 | 2,629 | 1.1% |
@@ -820,7 +820,7 @@ flowchart TB
   X1 -.->|2| frontend
   X2{{"Telemetry"}}
   X2 -.->|5| game
-  X2 -.->|4| rendering
+  X2 -.->|5| rendering
   X2 -.->|3| base
   X2 -.->|2| application
   X3{{"Assets"}}
@@ -839,7 +839,7 @@ Edge labels are files naming the concern. Single-file touches are elided (5 of t
 |:--------|------:|------------:|------:|:-------------------|
 | **Scripting** | 128 | 6 | 5 of 6 | Lua VM is 4 files in core; the binding surface is spread across six directories |
 | **Protocol** | 187 | 6 | 5 of 6 | wire format and save format, versioned independently of the code that reads them |
-| **Telemetry** | 16 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
+| **Telemetry** | 17 | 6 | 5 of 6 | the measurement substrate the perf campaign runs on |
 | **Assets** | 66 | 7 | 5 of 6 | loader in base, consumed everywhere, content lives outside the tree entirely |
 <!-- END GENERATED: crosscut -->
 
@@ -857,7 +857,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 5,145 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 5,192 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,866 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

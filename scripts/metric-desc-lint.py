@@ -846,10 +846,18 @@ PAINTER_MEMBERS = {
     "render.painter.tiles.us",
 }
 
-# Probes that sit INSIDE a member and must never declare PAINTER. Empty today: [#286] step 1 shipped
-# the members alone. Named rather than merely absent so that adding the first one is a decision this
-# gate can see -- the same reason DRIVE_NESTED is a list and not a comment.
-PAINTER_NESTED = set()
+# Probes that sit INSIDE a member and must never declare PAINTER. Named rather than merely absent so
+# that adding one is a decision this gate can see -- the same reason DRIVE_NESTED is a list and not a
+# comment.
+PAINTER_NESTED = {
+    # THE SPAN CALIBRATOR ([#286] step 2). Six flush sites, one key, 22 samples per frame -- four in
+    # WorldPass (renderEntitiesUntil x11, renderParticles x3, renderBars x1, drawDrawableSet x3) and
+    # two in TilePainter (renderLiquid x1, renderTerrainChunks x3). All six are reached from
+    # WorldPass::renderWorld, so every sample is a SUBSET of render.painter.body.us. Declaring the
+    # painter whole would bill these microseconds to the closure twice and drive the residual negative
+    # -- which reads as noise rather than as the double-count it is.
+    "render.painter.submit.us",
+}
 
 # THE PREFIX IS DISJOINT FROM THE WHOLE, DELIBERATELY. painter_sites selects candidates by the
 # "render.painter." prefix, and "render.world.painter.us" does NOT start with it -- so the whole can

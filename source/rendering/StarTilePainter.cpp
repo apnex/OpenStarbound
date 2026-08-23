@@ -7,8 +7,30 @@
 #include "StarAssets.hpp"
 #include "StarRoot.hpp"
 #include "StarTileDrawer.hpp"
+#include "StarTelemetry.hpp"
 
 namespace Star {
+
+namespace {
+  // THE SAME KEY AS StarWorldPass.cpp's, DELIBERATELY, and the duplicate registration is safe only
+  // because every prose field here is null. MetricDesc::operator== compares measures/validWhen/whole
+  // BY POINTER, so two identical string literals in two translation units would be UNEQUAL and set
+  // descConflict; with all three defaulted and the enums identical, the descriptors compare equal and
+  // static-init order cannot matter. Registered in BOTH files rather than exported from one so that
+  // neither file has to include the other to be instrumented.
+  //
+  // Eager, not lazy: a handle created on first use makes "ran and cost nothing" and "never ran"
+  // the same reading, which is the defect the file-scope block in StarWorldPainter.cpp exists to fix.
+  //
+  // These two sites are the TILE half of the 22: renderLiquid once and renderTerrainChunks three
+  // times (background, midground, foreground) per frame. Both are reached from WorldPass::renderWorld,
+  // so they nest inside render.painter.body.us -- NOT inside render.painter.tiles.us, which brackets
+  // TilePainter::setup and the chunk cache instead.
+  auto s_painterSubmit = Telemetry::timer("render.painter.submit.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall});
+}
 
 TilePainter::TilePainter(RendererPtr renderer) : TileDrawer() {
   m_renderer = std::move(renderer);
@@ -96,7 +118,7 @@ void TilePainter::renderLiquid(WorldCamera const& camera) {
       m_renderer->renderBuffer(p.second, transformation);
   }
 
-  m_renderer->flush();
+  { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
 }
 
 void TilePainter::renderForeground(WorldCamera const& camera) {
@@ -165,7 +187,7 @@ void TilePainter::renderTerrainChunks(WorldCamera const& camera, TerrainLayer te
       m_renderer->renderBuffer(buffer, transformation);
   }
 
-  m_renderer->flush();
+  { TelemetryScope s(s_painterSubmit); m_renderer->flush(); }
 }
 
 shared_ptr<TilePainter::TerrainChunk const> TilePainter::getTerrainChunk(WorldRenderData& renderData, Vec2I chunkIndex) {
