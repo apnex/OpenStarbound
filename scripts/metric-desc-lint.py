@@ -826,9 +826,47 @@ DRIVE_NESTED = {
     "lighting.gpu.drive.point.switch.us",
 }
 
+PAINTER = "render.world.painter.us"
+# THE SEVEN TILE `WorldPainter::render` EXHAUSTIVELY, IN SOURCE ORDER ([#286]). Measured closure at
+# 04-Ocean-Factory: 99.72% standing, 99.68% walking -- the residual is the ~2 us of instrument tax and
+# the already-separately-measured lighting wait, both enumerated at the registrations.
+#
+# EVERY MEMBER IS UNCONDITIONAL, AND THAT IS A CONSTRAINT ON WHAT MAY JOIN THIS SET. window() moves a
+# zero-COUNT timer out of the metrics map into `zeroed`, and aggregate_report computes present/missing
+# from the map alone -- so a member that can legitimately not run reads as ABSENT and the closure
+# prints "the residual is not interpretable". A part that can record nothing belongs in
+# PAINTER_NESTED, never here.
+PAINTER_MEMBERS = {
+    "render.painter.body.us",
+    "render.painter.env.us",
+    "render.painter.epilogue.us",
+    "render.painter.lightmap.us",   # STRICT PARENT of the lighting.* family -- see PAINTER_FOREIGN
+    "render.painter.parallax.us",
+    "render.painter.prologue.us",   # records TWICE per frame; Cadence::Call, so it is not rescaled
+    "render.painter.tiles.us",
+}
+
+# Probes that sit INSIDE a member and must never declare PAINTER. Empty today: [#286] step 1 shipped
+# the members alone. Named rather than merely absent so that adding the first one is a decision this
+# gate can see -- the same reason DRIVE_NESTED is a list and not a comment.
+PAINTER_NESTED = set()
+
+# THE PREFIX IS DISJOINT FROM THE WHOLE, DELIBERATELY. painter_sites selects candidates by the
+# "render.painter." prefix, and "render.world.painter.us" does NOT start with it -- so the whole can
+# never be selected as one of its own parts. Naming the members "render.world.painter.*" would have
+# made the whole match its own candidate pattern and put it in `unclassified`, which is the defect
+# that made a lighting ratchet count its own total. Mirrors lighting.gpu.drive.* being disjoint from
+# lighting.gpu.cpu_cost.us.
+#
+# THE lighting.* KEYS NESTED INSIDE render.painter.lightmap.us ARE NOT PAINTER PARTS. They declare
+# lighting wholes (UNION / DRIVE) and are checked by those gates; adding one here would close the same
+# microseconds against two budgets. MetricDesc carries a single .whole, so this exclusion lives here
+# and in the registration comment rather than in the type system.
+PAINTER_FOREIGN_PREFIX = "lighting."
+
 # Every declared whole in the tree, for consumers that report them. One place, so a third whole is
 # added here and picked up everywhere rather than in each script that happens to know about it.
-WHOLES = {UNION: UNION_MEMBERS, DRIVE: DRIVE_MEMBERS}
+WHOLES = {UNION: UNION_MEMBERS, DRIVE: DRIVE_MEMBERS, PAINTER: PAINTER_MEMBERS}
 
 # Cpu-domain `lighting.*` microsecond timers that are NOT members. Every one is nested inside a
 # member, and this ratchet is what makes that a DECISION rather than an oversight: a new lighting CPU
@@ -980,6 +1018,117 @@ def check_drive_membership(files=None):
     return 0
 
 
+def painter_sites(files):
+    """-> (declared, candidates): keys declaring PAINTER, and every render.painter.* CPU timer.
+
+    Mirrors drive_sites. `candidates` is the half that makes the partition checkable rather than
+    merely asserted: a new render.painter.* timer that declares nothing sits in NO list, and the gate
+    forces the member-or-nested decision instead of letting it drift into the residual unnoticed.
+    """
+    declared, candidates = set(), set()
+    for path, text in sorted(files.items()):
+        if "/test/" in path.replace("\\", "/"):
+            continue
+        for fn, key, block in REGISTRATION.findall(strip_comments(text)):
+            if PAINTER in block and not key.startswith(PAINTER_FOREIGN_PREFIX):
+                declared.add(key)
+            if fn == "timer" and key.startswith("render.painter.") and key.endswith(".us"):
+                candidates.add(key)
+    return declared, candidates
+
+
+def check_painter_membership(files=None):
+    """The PAINTER closure: seven unconditional members tiling WorldPainter::render, no overlap.
+
+    The whole is independently bracketed at the call site, so telemetry-window reads this as a
+    CLOSURE and a sum that exceeds it prints PARTS EXCEED THE MEASURED WHOLE. The two ways to
+    manufacture that are both checked here: a nested probe declaring the whole it sits inside, and a
+    lighting.* key -- which is already a member of UNION or DRIVE -- being pulled into this set.
+    """
+    files = sources() if files is None else files
+    declared, candidates = painter_sites(files)
+    if not candidates:
+        print("painter_membership: FAIL -- no render.painter.* timer matched at all. The pattern has "
+              "drifted from the tree, so this gate is measuring nothing.")
+        return 1
+
+    missing = PAINTER_MEMBERS - declared
+    nested = declared & PAINTER_NESTED
+    extra = declared - PAINTER_MEMBERS - PAINTER_NESTED
+    unclassified = candidates - PAINTER_MEMBERS - PAINTER_NESTED
+
+    bad = 0
+    if missing:
+        print("painter_membership: FAIL -- %d declared member(s) do NOT carry .whole = %s: %s"
+              % (len(missing), PAINTER, ", ".join(sorted(missing))))
+        bad = 1
+    if nested:
+        print("painter_membership: FAIL -- %d NESTED probe(s) declare the whole they sit inside, "
+              "which counts them twice: %s" % (len(nested), ", ".join(sorted(nested))))
+        bad = 1
+    if extra:
+        print("painter_membership: FAIL -- %d key(s) declare %s but are in no list: %s. A lighting.* "
+              "key here would close the same microseconds against two budgets"
+              % (len(extra), PAINTER, ", ".join(sorted(extra))))
+        bad = 1
+    if unclassified:
+        print("painter_membership: FAIL -- %d render.painter.* timer(s) belong to neither list. "
+              "Decide: a DISJOINT member that runs every frame, or a probe NESTED inside one: %s"
+              % (len(unclassified), ", ".join(sorted(unclassified))))
+        bad = 1
+    if bad:
+        return 1
+    print("painter_membership: %d/%d members declare %s; %d nested probe(s) correctly withheld; "
+          "%d render.painter.* timer(s) all classified"
+          % (len(declared), len(PAINTER_MEMBERS), PAINTER, len(PAINTER_NESTED), len(candidates)))
+    return 0
+
+
+def selftest_painter_membership():
+    """Both ends: the shipped tree passes, and each way of breaking the partition fails."""
+    arms = []
+
+    def corpus(text):
+        return {"source/rendering/fake.cpp": text}
+
+    def site(key, whole=PAINTER):
+        w = ', .whole = "%s"' % whole if whole else ""
+        return ('  auto t = Telemetry::timer("%s",\n'
+                '    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame%s});\n'
+                % (key, w))
+
+    full = "".join(site(k) for k in sorted(PAINTER_MEMBERS))
+    arms.append(("a complete, disjoint declaration passes", check_painter_membership(corpus(full)) == 0))
+    arms.append(("a MISSING member fails",
+                 check_painter_membership(corpus("".join(site(k) for k in sorted(PAINTER_MEMBERS)[1:]))) == 1))
+    arms.append(("an unlisted render.painter.* key forces the member-or-nested decision",
+                 check_painter_membership(corpus(full + site("render.painter.newthing.us"))) == 1))
+    # A render.painter.* timer that declares NOTHING is still a candidate, so it must be caught too --
+    # this is the arm that would have failed had the check keyed only on declarations.
+    arms.append(("an UNDECLARED render.painter.* timer is caught, not silently ignored",
+                 check_painter_membership(corpus(full + site("render.painter.silent.us", whole=None))) == 1))
+    # THE PREFIX-DISJOINTNESS ARM. If the members were named render.world.painter.*, the whole would
+    # match its own candidate pattern and land in `unclassified`. Assert the property directly.
+    arms.append(("the whole is NOT selected by the member prefix",
+                 not PAINTER.startswith("render.painter.")))
+    # A lighting.* key declaring PAINTER must not be absorbed as a member: it already belongs to
+    # UNION or DRIVE, and taking it here closes the same microseconds twice.
+    arms.append(("a lighting.* key declaring the painter whole is NOT counted as a member",
+                 "lighting.produce.adjust.us" not in painter_sites(
+                     corpus(full + site("lighting.produce.adjust.us")))[0]))
+    arms.append(("the shipped tree passes", check_painter_membership() == 0))
+
+    bad = sum(1 for _, ok in arms if not ok)
+    for label, ok in arms:
+        print("  [%s] %s" % ("ok" if ok else "FAIL", label))
+    if bad:
+        print("painter_membership: SELFTEST FAIL -- %d of %d arm(s)" % (bad, len(arms)))
+        return 1
+    print("painter_membership selftest: %d/%d arms ok -- the partition is exhaustive, the prefix is "
+          "disjoint from its whole, and a lighting key cannot join it" % (len(arms), len(arms)))
+    return 0
+
+
 def selftest_drive_membership():
     """Both ends: the shipped tree passes, and each way of breaking the partition fails."""
     arms = []
@@ -1087,6 +1236,8 @@ if __name__ == "__main__":
               "--selftest-convergence-claims": selftest_convergence_claims,
               "--check-union-membership": check_union_membership,
               "--check-drive-membership": check_drive_membership,
+              "--check-painter-membership": check_painter_membership,
+              "--selftest-painter-membership": selftest_painter_membership,
               "--selftest-drive-membership": selftest_drive_membership,
               "--selftest-union-membership": selftest_union_membership,
               "--selftest-boundedness": selftest_boundedness,

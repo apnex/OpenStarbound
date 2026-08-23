@@ -66,6 +66,103 @@ namespace {
                .cadence = MetricCadence::Call, .role = MetricRole::Detail,
                .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
                .whole = "lighting.cpu.union.us"});
+
+  // ------------------------------------------------------------------------------------------------
+  // THE PAINTER PARTITION ([#286]). render.world.painter.us is ~39% of cpu.frame.render.us and had NO
+  // interior: one bracket around WorldPainter::render and nothing inside it. These seven members tile
+  // that function exhaustively and without overlap, so the analyser can report a CLOSURE -- parts
+  // against an independently measured whole -- rather than an aggregate that cannot be wrong.
+  //
+  // THE PREFIX IS `render.painter.`, NOT `render.world.painter.`, AND THAT IS LOAD-BEARING. A gate
+  // shaped like drive_sites selects members by prefix; "render.world.painter.us" starts with
+  // "render.world.painter." and would select the WHOLE as one of its own parts, which is the defect
+  // that made a lighting ratchet count its own total. The parts must be prefix-disjoint from the whole,
+  // exactly as lighting.gpu.drive.* is disjoint from lighting.gpu.cpu_cost.us.
+  //
+  // EVERY MEMBER IS UNCONDITIONAL, DELIBERATELY. telemetry-window's window() moves a zero-COUNT timer
+  // out of the metrics map into `zeroed`, and aggregate_report computes present/missing from the map
+  // alone -- so a member that can legitimately not run reads as ABSENT, and the closure prints "the
+  // residual is not interpretable". Every key below therefore fires on every frame (or twice, for the
+  // split prologue). Anything conditional -- the chunk REBUILD, the dim overlay -- is a nested probe or
+  // stays in the named residual; it is never a member.
+  //
+  // WALL, NOT ThreadCpu. Several of these regions block: Root and Configuration take process-global
+  // mutexes, Assets::image and Assets::json share a mutex with a condvar wait arm, and the renderer
+  // flushes. Wall is the honest clock for a region that can wait, and each span hazard is named at its
+  // member below rather than left for the reader to rediscover from a surprising number.
+  auto s_painterPrologue = Telemetry::timer("render.painter.prologue.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Call, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // Cadence::Call because it records TWICE per frame -- the camera/asset reads at the head, and the
+  // BackdropParams config block further down. Declared Frame, telemetry-window would coverage-scale a
+  // 2-samples-per-frame key by 2x and invent half of it. SPAN: twelve process-global mutex acquisitions
+  // per frame -- Root::loadMemberFunction locks unconditionally, and Configuration::get and
+  // getOrDefault each take Configuration's own mutex. Nothing in the tree had ever timed them.
+  auto s_painterTiles = Telemetry::timer("render.painter.tiles.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // WorldPass::setup -> TilePainter::setup: the WHOLE chunk pipeline -- both chunk hashes (paid on the
+  // HIT path, because the hash builds the cache key before the lookup), both TtlCache gets, and the
+  // regeneration producers on a miss. This is the only contiguous region that holds the tile work; the
+  // four TilePainter::render* calls interleave with entity layers inside renderWorld and only emit
+  // primitives already built here. SPAN on a miss: GL vertex upload, atlas allocation, and Assets::image
+  // -- and the per-frame resize of the pending-chunk lists runs ~GlRenderBuffer GL deletes in here too.
+  auto s_painterEnv = Telemetry::timer("render.painter.env.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // BackdropPass::renderEnvironment plus the flush that follows it. IT DOES NOT CONTAIN THE ENV COMPOSE
+  // under the shipped or harness config: backdropComposeMerge is true and envRefreshInterval is 4, so
+  // the compose is DEFERRED and actually executes inside renderParallax. Reading this key as "the cost
+  // of the environment" overstates parallax and understates env by a full-screen compose.
+  // The trailing flush is folded in rather than given its own key: with deep telemetry armed every
+  // upstream submit point has already drained the immediate list, so a bracket there would time an
+  // empty() check -- it is anti-correlated with the only regime that can read it.
+  auto s_painterLightmap = Telemetry::timer("render.painter.lightmap.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // Both lightmap arms: fullbright, and adjustLighting + runGpuLightmapPass + the binding + the five
+  // per-frame effect parameters. A STRICT PARENT of lighting.produce.adjust.us, lighting.upload.us and
+  // the whole lighting.gpu.* family -- those declare LIGHTING wholes and must never join this partition,
+  // or the same microseconds close two budgets. MetricDesc carries one whole, so that nesting lives in
+  // the lint's member lists and in this comment. SPAN: Assets::json shares the assets mutex and its
+  // condvar wait arm with Assets::image, and three more Root acquisitions sit in here.
+  auto s_painterParallax = Telemetry::timer("render.painter.parallax.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // BackdropPass::renderParallax in full -- INCLUDING the env compose renderEnvironment deferred into
+  // it. So a standing-to-walking rise here is partly relocated env work: the moving-camera bypass runs
+  // an extra standalone compose the parked path does not. Not readable as a parallax cost until the
+  // backdrop_compose probe splits it. SPAN: two explicit flushes and three gpuTimer pairs that flush.
+  auto s_painterBody = Telemetry::timer("render.painter.body.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // WorldPass::renderWorld in full: the interleaved tile / entity / particle / drawable / nametag / bar
+  // body. IT IS A MIXTURE BY CONSTRUCTION and cannot be split without splitting renderWorld -- entity
+  // layers and tile layers alternate by z-order, so no contiguous span holds either one alone. SPAN,
+  // HEAVY: twenty-two renderer flushes are reachable, and three paths reach Assets::getAsset's mutex
+  // and its condvar wait -- drawable texture load, the drawable preload arm, and the particle json reads.
+  auto s_painterEpilogue = Telemetry::timer("render.painter.epilogue.us",
+    MetricDesc{.domain = MetricDomain::Cpu, .owner = MetricOwner::Frame,
+               .cadence = MetricCadence::Frame, .role = MetricRole::Detail,
+               .unit = MetricUnit::Microseconds, .clock = MetricClock::Wall,
+               .whole = "render.world.painter.us"});
+  // The dim compose arm, the /debug HUD loop, and the two cleanup calls -- which run SIX full TtlCache
+  // sweeps per frame, each a removeWhere over the entire map, so the cost tracks cache SIZE rather than
+  // anything on screen. That shape is a candidate for the part of this bracket that does not move when
+  // the player does. SPAN: the HUD loop takes the global LogMap mutex, and the cleanup drops chunk
+  // buffers whose destructors call into GL.
 }
 
 // GPU-lighting FULL parity shadow-compare (diagnostics only, Slice 3). The GPU result (spread +
@@ -242,12 +339,18 @@ LightmapResult WorldPainter::runGpuLightmapPass(WorldRenderData& renderData) {
 }
 
 void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWaiter) {
-  m_camera.setScreenSize(m_renderer->screenSize());
-  m_camera.setTargetPixelRatio(Root::singleton().configuration()->get("zoomLevel").toFloat());
+  {
+    TelemetryScope s(s_painterPrologue);
+    m_camera.setScreenSize(m_renderer->screenSize());
+    m_camera.setTargetPixelRatio(Root::singleton().configuration()->get("zoomLevel").toFloat());
 
-  m_assets = Root::singleton().assets();
+    m_assets = Root::singleton().assets();
+  }
 
-  m_worldPass->setup(m_camera, renderData, m_assets);
+  {
+    TelemetryScope s(s_painterTiles);
+    m_worldPass->setup(m_camera, renderData, m_assets);
+  }
 
   // Stars, Debris Fields, Sky, and Orbiters
 
@@ -293,29 +396,42 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   // parallaxMaxDriftStepPx's 1.5f -- which never fires, because StarRootLoader ships 0.75. Keeping it
   // makes this move byte-identical rather than byte-identical-plus-one-quiet-change; correcting it is a
   // separate decision, not a refactor's business.
-  auto backdropConfig = Root::singleton().configuration();
-  // Every one of these carried TWO hand-typed fallbacks (the get() default and the opt().value()), and
-  // parallaxMaxDriftStepPx's said 1.5f against a shipped 0.75. See StarConfiguration::getOrDefault.
-  BackdropParams backdropParams{
-      (unsigned)backdropConfig->getOrDefault("envRefreshInterval").toUInt(),
-      backdropConfig->getOrDefault("envOracle").toBool(),
-      backdropConfig->getOrDefault("envMaxDriftStepPx").toFloat(),
-      backdropConfig->getOrDefault("backdropComposeMerge").toBool(),
-      backdropConfig->getOrDefault("antiAliasing").toBool(),
-      backdropConfig->getOrDefault("parallaxOracle").toBool(),
-      (unsigned)backdropConfig->getOrDefault("parallaxRefreshInterval").toUInt(),
-      backdropConfig->getOrDefault("parallaxMaxDriftStepPx").toFloat()};
+  // DECLARED OUT, ASSIGNED IN. backdropParams is consumed by both renderEnvironment and renderParallax
+  // further down, so the timing scope cannot enclose its lifetime -- it encloses only the nine locked
+  // reads that build it. Every BackdropParams member is defaulted, so the empty declaration is valid and
+  // the value is overwritten whole; nothing reads it between the two statements.
+  BackdropParams backdropParams;
+  {
+    TelemetryScope s(s_painterPrologue);
+    auto backdropConfig = Root::singleton().configuration();
+    // Every one of these carried TWO hand-typed fallbacks (the get() default and the opt().value()), and
+    // parallaxMaxDriftStepPx's said 1.5f against a shipped 0.75. See StarConfiguration::getOrDefault.
+    backdropParams = BackdropParams{
+        (unsigned)backdropConfig->getOrDefault("envRefreshInterval").toUInt(),
+        backdropConfig->getOrDefault("envOracle").toBool(),
+        backdropConfig->getOrDefault("envMaxDriftStepPx").toFloat(),
+        backdropConfig->getOrDefault("backdropComposeMerge").toBool(),
+        backdropConfig->getOrDefault("antiAliasing").toBool(),
+        backdropConfig->getOrDefault("parallaxOracle").toBool(),
+        (unsigned)backdropConfig->getOrDefault("parallaxRefreshInterval").toUInt(),
+        backdropConfig->getOrDefault("parallaxMaxDriftStepPx").toFloat()};
+  }
 
   // THE SLICE. The orchestrator holds the fat struct; the pass gets the two members it actually reads.
   // Built at both call sites rather than hoisted to a local, so the slice is visible where the hand-off
   // happens -- if a third member is ever needed, it has to be added HERE, in the open.
-  m_backdropPass->renderEnvironment(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
-      *m_environmentPainter, backdropParams, ablateEnv);
+  {
+    TelemetryScope s(s_painterEnv);
+    m_backdropPass->renderEnvironment(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
+        *m_environmentPainter, backdropParams, ablateEnv);
 
-  m_renderer->flush();
+    m_renderer->flush();
+  }
 
   bool lightMapUpdated = lightWaiter ? lightWaiter() : false;
 
+  {
+  TelemetryScope s(s_painterLightmap);
   m_renderer->setEffectParameter("lightMapEnabled", !renderData.isFullbright);
   if (renderData.isFullbright) {
     m_renderer->setEffectTexture("lightMap", Image::filled(Vec2U(1, 1), { 255, 255, 255, 255 }, PixelFormat::RGB24));
@@ -360,23 +476,32 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     m_renderer->setEffectParameter("lightmapUpscale",
         Root::singleton().configuration()->getOrDefault("lightingWorldUpscale").toFloat());
   }
+  }  // render.painter.lightmap.us
 
   // Parallax layers (env-cache-coupled backdrop: owns the parallax retained cache + the cross-surface arbiter).
-  m_backdropPass->renderParallax(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
-      *m_environmentPainter, backdropParams, ablateParallax);
+  {
+    TelemetryScope s(s_painterParallax);
+    m_backdropPass->renderParallax(m_camera, {renderData.skyRenderData, renderData.parallaxLayers},
+        *m_environmentPainter, backdropParams, ablateParallax);
+  }
 
   // Main world layers -- the interleaved tile / entity / particle / drawable / bar body, owned by WorldPass.
   // THE SLICE, and note the asymmetry with the backdrop's: four of these six are CONSUMED by the call --
   // hollowed, elements moved-from -- which is why WorldPass::Input holds non-const references and cannot
   // be the const view BackdropPass::Input is. Anything reading renderData's overlays, nametags or entity
   // drawables AFTER this line is reading a husk.
-  m_worldPass->renderWorld(m_camera, {renderData.entityDrawables, renderData.backgroundOverlays,
-      renderData.foregroundOverlays, renderData.nametags, renderData.particles, renderData.overheadBars});
+  {
+    TelemetryScope s(s_painterBody);
+    m_worldPass->renderWorld(m_camera, {renderData.entityDrawables, renderData.backgroundOverlays,
+        renderData.foregroundOverlays, renderData.nametags, renderData.particles, renderData.overheadBars});
+  }
 
   // Bracket INSIDE the gate, Cadence::Call. The dim overlay only draws when the world is dimmed; declared
   // Frame with the bracket outside, this timer recorded a ~0us sample on every undimmed frame -- 100% of its
   // records at Surface Outpost, so it read as a measured cost of zero rather than as "did not run". A pass
   // that did not happen has no cost to report, and saying 0 is a claim, not an absence.
+  {
+  TelemetryScope s(s_painterEpilogue);
   auto dimLevel = round(renderData.dimLevel * 255);
   if (dimLevel != 0) {
     m_renderer->gpuTimer().begin("render.pass.compose.gpu_us",
@@ -395,6 +520,7 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
   int64_t textureTimeout = m_assets->json("/rendering.config:textureTimeout").toInt();
   m_worldPass->cleanup(textureTimeout);
   m_environmentPainter->cleanup(textureTimeout);
+  }  // render.painter.epilogue.us
 }
 
 void WorldPainter::adjustLighting(WorldRenderData& renderData) {

@@ -542,6 +542,17 @@ jobs:
           fi
           exit $rc
 
+      - name: painter_membership_fires -- each way of breaking the painter partition is refused
+        run: python3 scripts/metric-desc-lint.py --selftest-painter-membership
+
+      - name: painter_membership -- the seven parts tile WorldPainter::render, exhaustive and disjoint
+        # THE CLOSURE THIS PROTECTS IS MEASURED, NOT ASSUMED: 99.72% standing / 99.68% walking at
+        # 04-Ocean-Factory. Because the whole is independently bracketed, a part added twice makes the
+        # sum EXCEED it, and a closure that reads negative gets dismissed as noise instead of read as
+        # the double-count it is. The two routes to that -- a nested probe declaring its parent, and a
+        # lighting.* key (already a UNION or DRIVE member) joining this set -- are both checked.
+        run: python3 scripts/metric-desc-lint.py --check-painter-membership
+
       - name: floor_reproduces_fires -- a wrong floor and an unbanked one are both refused
         run: python3 scripts/ci/floor-reproduces.py --selftest
 
