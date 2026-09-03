@@ -65,8 +65,15 @@ MARKERS = re.compile(r"renderTest|RenderTest|rendertest|walkoracle")
 # instead. The comment that would have explained the call at the site was moved to StarTelemetry.hpp,
 # where the API it explains actually lives -- so this cost one line rather than five, and the warrant
 # ended up nearer the thing it warrants.
+#
+# RAISED 186 -> 190 harness, 2271 -> 2285 total, for STAR_RENDERTEST_PLAYER: the harness creates a
+# FRESH player of a named species and plays it. The RustBound reference-frame oracle (the Rust client's
+# E10) needs the T0 ship the SERVER builds for a player with no ship chunks, and every saved character
+# carries its own ship, so no stored player can stand in. The hook creates state and draws nothing, runs
+# only under the harness's arming variable, and sits at the one point the player is chosen. Fourteen
+# lines, five of them the warrant; #237 deferred a third time, and this is the second scene it bought.
 BUDGET = {
-    "source/client/StarClientApplication.cpp": (186, 2271),
+    "source/client/StarClientApplication.cpp": (190, 2285),
     "source/client/StarClientApplication.hpp": (40, 310),
 }
 

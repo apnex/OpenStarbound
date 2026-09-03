@@ -13,6 +13,7 @@
 #include "StarWarping.hpp"           // [rendertest] warp to a bookmark
 #include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
+#include "StarPlayerFactory.hpp"  // [rendertest] STAR_RENDERTEST_PLAYER creates a fresh player
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
 #include "StarWorldClient.hpp"
@@ -929,8 +930,21 @@ void ClientApplication::changeState(MainAppState newState) {
     if (m_titleScreen->currentlySelectedPlayer()) {
       m_player = m_titleScreen->currentlySelectedPlayer();
     } else {
-      if (auto uuid = m_playerStorage->playerUuidAt(0))
+      // STAR_RENDERTEST_PLAYER=<species>: a FRESH player of that species, saved into this run's storage
+      // and played. The reference-frame oracle (RustBound E10) needs the T0 ship the SERVER builds for a
+      // player with no ship chunks, and no stored character has one -- every saved player carries its
+      // own ship. introComplete is set because the server otherwise places a fresh player in the
+      // species' intro instance (UniverseServer.cpp, introInstance), not on the ship.
+      if (char const* species = getenv("STAR_RENDERTEST_PLAYER"); species && *species && m_renderTestFrames) {
+        m_player = m_root->playerFactory()->create();
+        m_player->setSpecies(species);
+        m_player->setName("rendertest");
+        m_player->log()->setIntroComplete(true);
+        m_playerStorage->savePlayer(m_player);
+        Logger::info("[rendertest] fresh {} player '{}' created and saved", species, m_player->name());
+      } else if (auto uuid = m_playerStorage->playerUuidAt(0)) {
         m_player = m_playerStorage->loadPlayer(*uuid);
+      }
 
       if (!m_player) {
         setError("Error loading player!");

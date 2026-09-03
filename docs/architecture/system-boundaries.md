@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241327 lines
+      241341 lines
       6 tiers
     Content
       assets/
@@ -234,7 +234,7 @@ source/
 ├── rendering/       T4    23 files     5,285 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
-├── client/          T5     4 files     2,629 lines
+├── client/          T5     4 files     2,643 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
@@ -297,7 +297,7 @@ flowchart TD
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,629 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,643 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -437,7 +437,7 @@ flowchart LR
   client -->|2 in 1| base
   client -->|13 in 3| core
   client -->|11 in 2| frontend
-  client -->|18 in 2| game
+  client -->|19 in 2| game
   client -->|1 in 1| metrics
   client -.->|0| platform
   client -->|1 in 1| rendering
@@ -468,7 +468,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `platform → core` | 5 | 2 | thin |
 | `application → platform` | 8 | 2 | thin |
 | `client → frontend` | 11 | 2 | thin |
-| `client → game` | 18 | 2 | thin |
+| `client → game` | 19 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
 | `client → core` | 13 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
@@ -565,7 +565,7 @@ server,core,25
 metrics,core,24
 rendering,game,24
 windowing,base,19
-client,game,18
+client,game,19
 client,core,13
 client,frontend,11
 rendering,application,9
@@ -615,7 +615,7 @@ treemap-beta
         "windowing": 9646
         "rendering": 5285
     "T5 shells"
-        "client": 2629
+        "client": 2643
         "server": 783
 ```
 
@@ -633,7 +633,7 @@ treemap-beta
 | T4 presentation | `rendering` | 23 | 5,285 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
-| T5 shells | `client` | 4 | 2,629 | 1.1% |
+| T5 shells | `client` | 4 | 2,643 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
