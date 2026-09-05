@@ -95,9 +95,11 @@ MARKERS = re.compile(r"renderTest|RenderTest|rendertest|walkoracle")
 # the leg on which every lit number of the M51 ladder will be read. Then 212 -> 214, 2401 -> 2404 in the
 # same rung, for the pinned player uuid: the fresh player's ship world is named by its uuid, so two captures
 # of one fixture could never agree on `world=` until the harness chose it. Three lines, two of them the
-# warrant.
+# warrant. And 214 -> 215, 2404 -> 2410 (.cpp) with the .hpp at 38 of 40 and 305 of 310, for the pinned
+# freeze FRAME: quiescence alone fired a frame early or late run to run, and the ship pet's stride between
+# those frames was the last term standing between two captures of one fixture and byte equality.
 BUDGET = {
-    "source/client/StarClientApplication.cpp": (214, 2404),
+    "source/client/StarClientApplication.cpp": (215, 2410),
     "source/client/StarClientApplication.hpp": (40, 310),
 }
 

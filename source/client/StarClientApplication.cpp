@@ -217,6 +217,8 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
       m_renderTestLoad = (unsigned)strtoul(load, nullptr, 10);
     if (char const* quiesce = getenv("STAR_RENDERTEST_QUIESCE"))
       m_renderTestQuiesce = (unsigned)strtoul(quiesce, nullptr, 10);
+    if (char const* freezeFrame = getenv("STAR_RENDERTEST_FREEZE_FRAME"))
+      m_renderTestFreezeFrame = (unsigned)strtoul(freezeFrame, nullptr, 10);
     if (char const* warmup = getenv("STAR_RENDERTEST_WARMUP"))
       m_renderTestWarmup = (unsigned)strtoul(warmup, nullptr, 10);
     if (char const* out = getenv("STAR_RENDERTEST_OUT"))
@@ -1402,7 +1404,11 @@ void ClientApplication::renderTestCapture() {
     if (warpPending)
       m_renderTestStable = 0;
 
-    bool quiesced = !warpPending && m_renderTestStable >= m_renderTestQuiesce;
+    // RustBound M54: the freeze POINT pinned as well as the settle. Quiescence alone fires on the frame the
+    // entity count has held for long enough, and the last entity's arrival lands a frame earlier or later
+    // run to run - two pinned captures froze at frames 120 and 121 and differed by the ship pet's stride.
+    // With a frame named, the freeze waits for BOTH: settled, and at or past that frame.
+    bool quiesced = !warpPending && m_renderTestStable >= m_renderTestQuiesce && m_renderTestFrame >= m_renderTestFreezeFrame;
     bool timedOut = m_renderTestFrame >= m_renderTestLoad;
 
     if (quiesced || timedOut) {

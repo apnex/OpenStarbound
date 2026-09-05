@@ -159,6 +159,7 @@ private:
   //   STAR_RENDERTEST_LIGHTMAP         -- log every dispatched light and the solve's constants, log the frame's
   //                                       lightmap terms, and bank the GPU lightmap texture (RustBound M54)
   //   STAR_RENDERTEST_MONSTER_SEED     -- pin the seed of every monster minted without one: the ship pet (MonsterDatabase)
+  //   STAR_RENDERTEST_FREEZE_FRAME     -- freeze no earlier than this frame, so two settled runs freeze at one point
   unsigned m_renderTestFrames = 0;
   unsigned m_renderTestLoad = 240;
   unsigned m_renderTestWarmup = 60;
@@ -218,6 +219,7 @@ private:
   //                              anyway and say so LOUDLY, because a hash taken from an unsettled world is a
   //                              number that looks like a result and is not one.
   unsigned m_renderTestQuiesce = 90;
+  unsigned m_renderTestFreezeFrame = 0; // the freeze waits for this frame as well as for the settle
   unsigned m_renderTestStable = 0;      // consecutive frames the entity count has held
   size_t m_renderTestLastEntities = 0;
   bool m_renderTestLoading = true;
