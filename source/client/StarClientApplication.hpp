@@ -162,6 +162,7 @@ private:
   //   STAR_RENDERTEST_FREEZE_FRAME     -- freeze no earlier than this frame, so two settled runs freeze at one point
   //   STAR_RENDERTEST_FREEZE_MONSTERS  -- no monster moves, thinks or animates: the ship pet stands at its spawn (Monster)
   //   STAR_RENDERTEST_LOCKSTEP         -- one fixed-step update per render, so frame N is N updates (the SDL main loop)
+  //   STAR_RENDERTEST_FREEZE_ANIMATORS -- no object's animator advances, on either side of the wire (Object::update)
   unsigned m_renderTestFrames = 0;
   unsigned m_renderTestLoad = 240;
   unsigned m_renderTestWarmup = 60;

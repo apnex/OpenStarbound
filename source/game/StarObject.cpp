@@ -288,6 +288,18 @@ void Object::uninit() {
 // load order. The value is pinned at the one consumer instead. Parsed ONCE; garbage THROWS rather than
 // reading as zero, because atof("o.5") would pin the light to black and the run would report a settled
 // reference with a straight face. -1 means unpinned.
+// [rendertest] STAR_RENDERTEST_FREEZE_ANIMATORS=1 (RustBound M54): no object's animator advances, on either
+// side of the wire. The master advances it on the server thread's wall clock and networks the phase, so a
+// tech station's screen and a broken hatch's spark sat one frame apart in two otherwise pinned captures.
+// Held at animation time zero; state changes a script makes still land, only the clock stops.
+static bool renderTestFreezeAnimators() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_FREEZE_ANIMATORS");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 static float renderTestFlickerPin() {
   static float const pin = []() -> float {
     char const* e = getenv("STAR_RENDERTEST_FLICKER");
@@ -466,7 +478,7 @@ void Object::update(float dt, uint64_t currentStep) {
 
     // gap == 1 whenever the animator has active work (it keeps the object awake),
     // so this is identical to advancing by dt every step.
-    m_networkedAnimator->update(gapDt, nullptr);
+    m_networkedAnimator->update(renderTestFreezeAnimators() ? 0.0f : gapDt, nullptr);
     m_networkedAnimator->setFlipped(direction() == Direction::Left, m_animationCenterLine);
 
     // Account for the (gap - 1) skipped update() calls in the script cadence, then
@@ -475,7 +487,7 @@ void Object::update(float dt, uint64_t currentStep) {
     m_scriptComponent.update(m_scriptComponent.updateDt(dt));
 
   } else {
-    m_networkedAnimator->update(dt, &m_networkedAnimatorDynamicTarget);
+    m_networkedAnimator->update(renderTestFreezeAnimators() ? 0.0f : dt, &m_networkedAnimatorDynamicTarget);
     m_networkedAnimatorDynamicTarget.updatePosition(position() + m_animationPosition);
   }
 
