@@ -833,6 +833,16 @@ public:
           TelemetryScope s(tUpdate);
           int updatesBehind = max<int>(round(m_updateTicker.ticksBehind()), 1);
           updatesBehind = min<int>(updatesBehind, m_maxFrameSkip + 1);
+          // [rendertest] STAR_RENDERTEST_LOCKSTEP=1 (RustBound M54): exactly one update per render. The ticker
+          // runs 1..N fixed-step updates per frame by the wall clock, so an object's animation phase at
+          // frame N depended on how long the load took - two otherwise pinned captures differed by one
+          // frame of a tech station's screen. Frame N is now N updates, whatever the clock did.
+          static bool const lockstep = []() {
+            char const* e = getenv("STAR_RENDERTEST_LOCKSTEP");
+            return e && *e && *e != '0';
+          }();
+          if (lockstep)
+            updatesBehind = 1;
           // Frame-skip means update() runs 1..N times per frame. Without this count a CPU regression can hide
           // as MORE SKIPPING rather than more time per frame, and the budget would look unchanged.
           cUpdates.inc((uint64_t)updatesBehind);

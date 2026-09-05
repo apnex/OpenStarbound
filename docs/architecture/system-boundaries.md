@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241677 lines
+      241688 lines
       6 tiers
     Content
       assets/
@@ -223,7 +223,7 @@ source/
 │   └── scripting/          2 files        55 lines
 ├── metrics/         T2    13 files     1,519 lines
 ├── platform/        T2     4 files       142 lines
-├── application/     T2    25 files     7,677 lines
+├── application/     T2    25 files     7,687 lines
 │   └── discord/         vendored — excluded from every count here
 ├── game/            T3   500 files   115,911 lines
 │   ├── interfaces/        47 files     3,123 lines
@@ -234,7 +234,7 @@ source/
 ├── rendering/       T4    23 files     5,300 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
-├── client/          T5     4 files     2,778 lines
+├── client/          T5     4 files     2,779 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
@@ -283,7 +283,7 @@ flowchart TD
     base["base<br/><small>32 files · 7,472 lines · Root×0</small>"]
     metrics["metrics<br/><small>13 files · 1,519 lines · Root×0</small>"]
     platform["platform<br/><small>4 files · 142 lines · Root×0</small>"]
-    application["application<br/><small>25 files · 7,677 lines · Root×0</small>"]
+    application["application<br/><small>25 files · 7,687 lines · Root×0</small>"]
   end
   subgraph T3["T3 simulation"]
     direction LR
@@ -297,7 +297,7 @@ flowchart TD
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,778 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,779 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -604,7 +604,7 @@ treemap-beta
     "T1 language"
         "core": 56390
     "T2 services"
-        "application": 7677
+        "application": 7687
         "base": 7472
         "metrics": 1519
         "platform": 142
@@ -615,7 +615,7 @@ treemap-beta
         "windowing": 9646
         "rendering": 5300
     "T5 shells"
-        "client": 2778
+        "client": 2779
         "server": 783
 ```
 
@@ -628,12 +628,12 @@ treemap-beta
 | T2 services | `base` | 32 | 7,472 | 3.1% |
 | T2 services | `metrics` | 13 | 1,519 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
-| T2 services | `application` | 25 | 7,677 | 3.2% |
+| T2 services | `application` | 25 | 7,687 | 3.2% |
 | T3 simulation | `game` | 500 | 115,911 | 48.0% |
 | T4 presentation | `rendering` | 23 | 5,300 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
-| T5 shells | `client` | 4 | 2,778 | 1.1% |
+| T5 shells | `client` | 4 | 2,779 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
