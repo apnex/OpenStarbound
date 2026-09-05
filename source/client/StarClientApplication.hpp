@@ -158,6 +158,7 @@ private:
   //   STAR_RENDERTEST_PIN_HIGHLIGHTS   -- the interactive pulse and inspection flicker pinned (WorldClient::render)
   //   STAR_RENDERTEST_LIGHTMAP         -- log every dispatched light and the solve's constants, log the frame's
   //                                       lightmap terms, and bank the GPU lightmap texture (RustBound M54)
+  //   STAR_RENDERTEST_MONSTER_SEED     -- pin the seed of every monster minted without one: the ship pet (MonsterDatabase)
   unsigned m_renderTestFrames = 0;
   unsigned m_renderTestLoad = 240;
   unsigned m_renderTestWarmup = 60;

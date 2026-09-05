@@ -160,7 +160,22 @@ MonsterVariant MonsterDatabase::randomMonster(String const& typeName, Json const
       seed = seedConfig->toUInt();
     }
   } else {
-    seed = Random::randu64();
+    // [rendertest] STAR_RENDERTEST_MONSTER_SEED=<u64> pins the seed of every monster minted without one
+    // (RustBound M54). The ship pet is such a monster, and its seed picks its colour swap: two captures of
+    // one fixture froze with a calico and a grey cat, because the seed is drawn from the shared source on
+    // the server thread and seeding that source fixes the sequence, not which thread takes which element.
+    // Parsed once; garbage THROWS rather than reading as zero.
+    static Maybe<uint64_t> const pinnedSeed = []() -> Maybe<uint64_t> {
+      char const* e = getenv("STAR_RENDERTEST_MONSTER_SEED");
+      if (!e || !*e)
+        return {};
+      char* end = nullptr;
+      unsigned long long v = strtoull(e, &end, 0);
+      if (end == e || *end)
+        throw StarException(strf("STAR_RENDERTEST_MONSTER_SEED={} is not an unsigned integer", e));
+      return (uint64_t)v;
+    }();
+    seed = pinnedSeed ? *pinnedSeed : Random::randu64();
   }
 
   return monsterVariant(typeName, seed, uniqueParameters);
