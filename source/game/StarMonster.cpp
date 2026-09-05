@@ -449,8 +449,23 @@ void Monster::damagedOther(DamageNotification const& damage) {
     m_statusController->damagedOther(damage);
 }
 
+// [rendertest] STAR_RENDERTEST_FREEZE_MONSTERS=1 (RustBound M54): no monster moves, thinks or animates from
+// the moment it enters the world. The ship pet is the only monster on the reference fixture, and it wanders
+// on the server thread's wall clock - two pinned captures froze with it two tiles apart - so it is held at
+// its spawn in its spawn pose on both sides of the wire. Read once; unset costs one static read.
+static bool renderTestFreezeMonsters() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_FREEZE_MONSTERS");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void Monster::update(float dt, uint64_t) {
   if (!inWorld())
+    return;
+
+  if (renderTestFreezeMonsters())
     return;
 
   m_movementController->setTimestep(dt);
