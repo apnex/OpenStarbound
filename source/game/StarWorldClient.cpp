@@ -334,6 +334,16 @@ void WorldClient::pinSkyEpochTime(double epochTime) {
     m_sky->setEpochTime(epochTime);
 }
 
+void WorldClient::pinSkyStarRotation(double rotation) {
+  if (m_sky)
+    m_sky->setStarRotation(rotation);
+}
+
+void WorldClient::pinSkyStarOffset(Vec2F const& offset) {
+  if (m_sky)
+    m_sky->setStarOffset(offset);
+}
+
 void WorldClient::timer(float delay, WorldAction worldAction) {
   if (!inWorld())
     return;

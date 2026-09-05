@@ -116,7 +116,19 @@ SKIP_DIRS = {"extern", "test", "utility", "mod_uploader", "json_tool", "discord"
 # exempting the component instead of counting it. The set is foundations and contracts, `telemetry`
 # is a LIBRARY, and the register's own `owes` facet says the store still has to leave `core` -- a
 # component with an unpaid move should stay visible to the ratchet, not be excused by it.
-FILE_CEILING = 74
+# MEASURED 2026-09-05, AND THE IMMUNITY CLAIMED ABOVE WAS FALSE. RustBound's M50 added a harness log
+# line that calls SkyParameters::toJson(), and the file count rose 74 -> 77 with no new participant:
+# the three files that appeared - game/StarActorMovementController.cpp, game/StarBiome.cpp,
+# game/StarInput.cpp - held nothing in the intersection but template instantiations
+# (jsonFromMaybe<float>, std::pair<String, Json>'s constructors) that the new call pulled in, each
+# attributed to whichever object defining it sorted FIRST, because `defines` kept the first object
+# per symbol. Measured both ways on the same day: 74 with the harness edit stashed, 77 with it. So a
+# file now counts only through a symbol it is the STRONG home of (`nm` T/t); weak, COMDAT-emitted
+# copies name no file. Re-measured under that rule the same tree reads the number below - lower,
+# because the files that were only ever template hosts left the count - and the ceiling follows it
+# down, which is the direction a ratchet may move. game 28, rendering 5, windowing 4, frontend 3,
+# telemetry 1; gpu_opengl, participant, host_sdl and platform_pc held template hosts only.
+FILE_CEILING = 41
 
 # Kept as a REPORTED figure and no longer a gate: its value on 2026-08-01, carried so the report can
 # show the drift and name what the drift was made of.
@@ -159,15 +171,25 @@ def objects():
 
 
 def scan_object(job):
-    """-> (source, {defined symbols}, {caller: {callees}}, indirect call count).
+    """-> (source, {defined symbols}, {caller: {callees}}, indirect call count, {strong symbols}).
 
-    Runs in a worker process: objdump is the slow part and there are hundreds of objects."""
+    Runs in a worker process: objdump is the slow part and there are hundreds of objects. The
+    strong set is `nm`'s `T`/`t` definitions - the symbols this object is THE home of. A template
+    instantiation or an inline is emitted weak (`W`/`V`) into every object that uses it, and
+    naming a file for one of those names whichever object sorts first, not a participant."""
     obj, src = job
     try:
         text = subprocess.run(["objdump", "-dr", str(obj)], capture_output=True, text=True,
                               check=True).stdout
+        syms = subprocess.run(["nm", "--defined-only", str(obj)], capture_output=True, text=True,
+                              check=True).stdout
     except (subprocess.CalledProcessError, OSError):
-        return src, set(), {}, 0
+        return src, set(), {}, 0, set()
+    strong = set()
+    for line in syms.splitlines():
+        parts = line.split()
+        if len(parts) == 3 and parts[1] in ("T", "t"):
+            strong.add(parts[2])
     defined, edges, indirect, current = set(), {}, 0, None
     for line in text.splitlines():
         m = FUNC.match(line)
@@ -184,19 +206,24 @@ def scan_object(job):
         m = RELOC.search(line.strip())
         if m:
             edges[current].add(m.group(1))
-    return src, defined, edges, indirect
+    return src, defined, edges, indirect, strong
 
 
 def build_graph(jobs, workers):
-    defines, edges, indirect = {}, collections.defaultdict(set), 0
+    """-> (defines, edges, indirect, homes): `defines` names SOME object defining each symbol (the
+    closure walk needs any one); `homes` names the object holding a symbol's STRONG definition,
+    which a weak-only symbol - a template instantiation, an inline - does not have."""
+    defines, edges, indirect, homes = {}, collections.defaultdict(set), 0, {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as pool:
-        for src, defined, e, ind in pool.map(scan_object, jobs, chunksize=8):
+        for src, defined, e, ind, strong in pool.map(scan_object, jobs, chunksize=8):
             indirect += ind
             for sym in defined:
                 defines.setdefault(sym, src)
+            for sym in strong:
+                homes.setdefault(sym, src)
             for caller, callees in e.items():
                 edges[caller] |= callees
-    return defines, edges, indirect
+    return defines, edges, indirect, homes
 
 
 def closure(root, edges, defines):
@@ -250,7 +277,7 @@ def main(argv):
               "Rebuild, or pass --allow-stale to measure the tree as it was built.")
         return 1
 
-    defines, edges, indirect = build_graph(jobs, args.j)
+    defines, edges, indirect, homes = build_graph(jobs, args.j)
     if len(edges) < 1000:
         print("dedup-measure: VACUOUS -- only %d call sites parsed; the extraction has regressed"
               % len(edges))
@@ -270,7 +297,11 @@ def main(argv):
         src = defines[sym]
         comp = owner_of(src) or "unmapped"
         by_component[comp] += 1
-        files_by_component[comp].add(src)
+        # A FILE is a participant only through a symbol it is the strong home of. A weak-only
+        # symbol in the intersection is counted (above) and names no file (below).
+        home = homes.get(sym)
+        if home is not None:
+            files_by_component[owner_of(home) or "unmapped"].add(home)
     leak_symbols = sum(n for c, n in by_component.items() if c not in ALLOWED_SHARED)
     leak = sum(len(f) for c, f in files_by_component.items() if c not in ALLOWED_SHARED)
 

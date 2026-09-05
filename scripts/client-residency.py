@@ -72,8 +72,18 @@ MARKERS = re.compile(r"renderTest|RenderTest|rendertest|walkoracle")
 # carries its own ship, so no stored player can stand in. The hook creates state and draws nothing, runs
 # only under the harness's arming variable, and sits at the one point the player is chosen. Fourteen
 # lines, five of them the warrant; #237 deferred a third time, and this is the second scene it bought.
+#
+# RAISED 190 -> 195 harness, 2285 -> 2309 total, for the SKY LINE and STAR_RENDERTEST_INTRO (RustBound
+# M50). The frame line said nothing about the sky the frame was drawn under, and the sky is not a
+# function of the world state alone: the harness pins the epoch time, and since M50 the star rotation
+# and offset (a ship in warp drifts its star field at a thousand units a second of load), and logs
+# `[rendertest] sky frame=` - type, epoch time, day length, offsets, the parameters as JSON - so the
+# Rust oracle draws its sky under the reference's exact sky. STAR_RENDERTEST_INTRO leaves the fresh
+# player's intro incomplete, which is how the server places it in the intro instance, the parallax
+# fixture. Twenty-four lines, five of them harness vocabulary; #237 deferred a fourth time, and this
+# is the third scene it bought.
 BUDGET = {
-    "source/client/StarClientApplication.cpp": (190, 2285),
+    "source/client/StarClientApplication.cpp": (195, 2309),
     "source/client/StarClientApplication.hpp": (40, 310),
 }
 

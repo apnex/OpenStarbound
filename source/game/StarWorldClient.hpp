@@ -131,6 +131,8 @@ public:
   // across runs and epochTime was the SOLE remaining source of hash drift. Called every frame by the harness;
   // never called in normal play.
   void pinSkyEpochTime(double epochTime);
+  void pinSkyStarRotation(double rotation);
+  void pinSkyStarOffset(Vec2F const& offset);
 
   void dimWorld();
   bool interactiveHighlightMode() const;

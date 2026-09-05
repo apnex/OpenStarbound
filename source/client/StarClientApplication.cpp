@@ -1,4 +1,5 @@
 #include "StarClientApplication.hpp"
+#include "StarSkyTypes.hpp"
 #include "StarConfiguration.hpp"
 #include "StarJsonExtra.hpp"
 #include "StarFile.hpp"
@@ -175,6 +176,13 @@ Json const AdditionalDefaultConfiguration = Json::parseJson(R"JSON(
 // Two more per-run terms live in the sun rays, and the constants below pin them; see
 // EnvironmentPainter::pinRayAnimation for what they are and why neither is reachable from here.
 static double const RenderTestEpochTime = 36714000.0;
+// RustBound M50: the star field's rotation is a third per-run term - Sky::update integrates it from real
+// dt and nothing pins it - so it is pinned beside the epoch, to a value inside constrainAngle's range
+// and away from zero so the rotation term is exercised, not hidden.
+static double const RenderTestStarRotation = 0.25;
+// And the drift: a fresh ship sits in warp (Maintain) with no destination, so m_starOffset grows at
+// flyMaxVelocity * starVelocityFactor units per second of load. Pinned to a value away from zero.
+static Vec2F const RenderTestStarOffset = Vec2F(1200.0f, -300.0f);
 // Same rule as the epoch: arbitrary, but the SAME in every run. The seed replaces a Random::randu64()
 // draw and the timer replaces an accumulation of real load-phase frametimes.
 static uint64_t const RenderTestRaySeed = 0x5EED5A4Bull;
@@ -580,6 +588,8 @@ void ClientApplication::render() {
       // With the world paused this was the sole remaining source of cross-run hash drift.
       if (m_renderTestFrames) {
         worldClient->pinSkyEpochTime(RenderTestEpochTime);
+        worldClient->pinSkyStarRotation(RenderTestStarRotation);
+        worldClient->pinSkyStarOffset(RenderTestStarOffset);
         // The sky clock is not enough on its own -- the rays carry two terms epochTime does not reach.
         // Pinned every frame, like the epoch, so the value never depends on how long the load took.
         if (m_worldPainter)
@@ -939,9 +949,14 @@ void ClientApplication::changeState(MainAppState newState) {
         m_player = m_root->playerFactory()->create();
         m_player->setSpecies(species);
         m_player->setName("rendertest");
-        m_player->log()->setIntroComplete(true);
+        // STAR_RENDERTEST_INTRO=1 (RustBound M50): leave the intro INCOMPLETE, so the server places the
+        // fresh player in the species' intro instance - the parallax fixture - instead of on the ship.
+        char const* intro = getenv("STAR_RENDERTEST_INTRO");
+        bool introInstance = intro && *intro == '1';
+        m_player->log()->setIntroComplete(!introInstance);
         m_playerStorage->savePlayer(m_player);
-        Logger::info("[rendertest] fresh {} player '{}' created and saved", species, m_player->name());
+        Logger::info("[rendertest] fresh {} player '{}' created and saved{}", species, m_player->name(),
+            introInstance ? " with the intro incomplete" : "");
       } else if (auto uuid = m_playerStorage->playerUuidAt(0)) {
         m_player = m_playerStorage->loadPlayer(*uuid);
       }
@@ -1607,6 +1622,15 @@ void ClientApplication::renderTestCapture() {
     sky.epochTime, sky.dayLength, sky.dayLevel, sky.skyAlpha,
     m_worldPainter->camera().centerWorldPosition()[0], m_worldPainter->camera().centerWorldPosition()[1],
     m_renderData.parallaxLayers.size(), m_renderData.entityDrawables.size());
+  // RustBound M50: the sky the frame was drawn under, banked beside the frame so an offline port can draw
+  // the same sky at the same time. The parameters are the wire's Json verbatim (SkyParameters::toJson),
+  // the offsets and rotations are what SkyRenderData handed the painter this frame.
+  Logger::info("[rendertest] sky frame={} type={} epochTime={:.4f} dayLength={:.9g} timeOfDay={:.9g} dayLevel={:.9g}"
+               " skyAlpha={:.9g} starOffset=({:.9g},{:.9g}) starRotation={:.9g} worldOffset=({:.9g},{:.9g})"
+               " worldRotation={:.9g} orbitAngle={:.9g} starFrames={} starTypes={} parameters={}",
+    index, SkyTypeNames.getRight(sky.type), sky.epochTime, sky.dayLength, sky.timeOfDay, sky.dayLevel,
+    sky.skyAlpha, sky.starOffset[0], sky.starOffset[1], sky.starRotation, sky.worldOffset[0], sky.worldOffset[1],
+    sky.worldRotation, sky.orbitAngle, sky.starFrames, sky.starTypes().size(), sky.skyParameters.toJson().repr());
 
   if (!m_renderTestOut.empty())
     renderTestWritePng(frame, strf("{}/frame_{:04d}.png", m_renderTestOut, index));

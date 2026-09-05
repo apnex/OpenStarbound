@@ -54,6 +54,14 @@ public:
   // Total time since the 0th day for this world.
   double epochTime() const;
   void setEpochTime(double epochTime);
+  // RustBound M50 harness pin: the star field's rotation is a client-local integration
+  // (update: m_starRotation += dt / dayLength() * 2pi while not flying) that no net element
+  // carries, so two captures of one world differ by how long each ran. Sets it so that
+  // getStarRotation() reads exactly `rotation`, whatever m_pathRotation holds.
+  void setStarRotation(double rotation);
+  // Same pin, for the star field's drift: while a ship warps, Sky::update integrates m_starOffset from
+  // real dt (flyMaxVelocity * dt * starVelocityFactor per tick), so two captures differ by their load time.
+  void setStarOffset(Vec2F const& offset);
 
   // Altitude is used to determine, in Atmospheric skies, the percentage of the
   // atmosphere to draw and how much like space it should appear.

@@ -250,6 +250,14 @@ void Sky::setEpochTime(double epochTime) {
   m_time = epochTime;
 }
 
+void Sky::setStarRotation(double rotation) {
+  m_starRotation = rotation - m_pathRotation;
+}
+
+void Sky::setStarOffset(Vec2F const& offset) {
+  m_starOffset = offset - m_pathOffset;
+}
+
 float Sky::altitude() const {
   return m_altitude;
 }

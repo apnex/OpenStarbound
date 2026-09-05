@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241341 lines
+      241393 lines
       6 tiers
     Content
       assets/
@@ -225,7 +225,7 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,677 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,725 lines
+├── game/            T3   500 files   115,753 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
@@ -234,18 +234,18 @@ source/
 ├── rendering/       T4    23 files     5,285 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
-├── client/          T5     4 files     2,643 lines
+├── client/          T5     4 files     2,667 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
-├── test/            —     73 files    14,383 lines   ← outside the tier lattice; measured by nothing here
+├── test/            —     74 files    14,477 lines   ← outside the tier lattice; measured by nothing here
 │   └── gtest/           vendored — excluded from every count here
 └── utility/         —     17 files     1,849 lines   ← outside the tier lattice; measured by nothing here
 ```
 
 **Every directory that holds code of ours, at every depth — and no files.** Counts are recursive and exclude vendored subtrees, matching every other number in this document. Vendored trees are named but not descended into, since the whole subtree is out of scope and listing its internals would be noise about code that is not ours. Set those aside and the tree is only 2 levels deep: the engine's structure is flatter than its size suggests, which is itself the finding — `source/game` carries 500 files with exactly five subdirectories and no boundary between them.
 
-Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (100 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
+Two things this view exists to make impossible to miss. **Subdirectories hide real code** — `arch-graph.py` walked past every one of them until 2026-07-26, and `source/game` alone hid 162 files and 19,230 lines from every number this document published. And **4 top-level directories (101 files) sit outside the tier lattice entirely**: `json_tool`, `mod_uploader`, `test`, `utility`. They are real code that `TIERS` does not name, so no test in this document covers them. That is a scope boundary, and it should be visible rather than inferred from an absence.
 <!-- END GENERATED: tree -->
 
 Three things are worth noticing before the edges.
@@ -287,7 +287,7 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,725 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,753 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
@@ -297,7 +297,7 @@ flowchart TD
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,643 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,667 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -437,7 +437,7 @@ flowchart LR
   client -->|2 in 1| base
   client -->|13 in 3| core
   client -->|11 in 2| frontend
-  client -->|19 in 2| game
+  client -->|20 in 2| game
   client -->|1 in 1| metrics
   client -.->|0| platform
   client -->|1 in 1| rendering
@@ -468,7 +468,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `platform → core` | 5 | 2 | thin |
 | `application → platform` | 8 | 2 | thin |
 | `client → frontend` | 11 | 2 | thin |
-| `client → game` | 19 | 2 | thin |
+| `client → game` | 20 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
 | `client → core` | 13 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
@@ -564,8 +564,8 @@ windowing,core,38
 server,core,25
 metrics,core,24
 rendering,game,24
+client,game,20
 windowing,base,19
-client,game,19
 client,core,13
 client,frontend,11
 rendering,application,9
@@ -609,13 +609,13 @@ treemap-beta
         "metrics": 1519
         "platform": 142
     "T3 simulation"
-        "game": 115725
+        "game": 115753
     "T4 presentation"
         "frontend": 16866
         "windowing": 9646
         "rendering": 5285
     "T5 shells"
-        "client": 2643
+        "client": 2667
         "server": 783
 ```
 
@@ -629,11 +629,11 @@ treemap-beta
 | T2 services | `metrics` | 13 | 1,519 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
-| T3 simulation | `game` | 500 | 115,725 | 48.0% |
+| T3 simulation | `game` | 500 | 115,753 | 48.0% |
 | T4 presentation | `rendering` | 23 | 5,285 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
-| T5 shells | `client` | 4 | 2,643 | 1.1% |
+| T5 shells | `client` | 4 | 2,667 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
