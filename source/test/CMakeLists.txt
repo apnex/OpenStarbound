@@ -107,6 +107,7 @@ SET (star_game_tests_SOURCES
       assets_test.cpp
       animated_part_set_test.cpp
       drawable_cache_test.cpp
+      pet_drawable_dump_test.cpp
       # The five lighting test files moved to core_tests (#212) -- they need no assets and were
       # excluded from CI only by living here. Do not add lighting tests to this target.
       function_test.cpp
