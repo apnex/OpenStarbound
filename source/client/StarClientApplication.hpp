@@ -153,6 +153,11 @@ private:
   //                              alone in empty space, with the whole ship missing) -- setPause stops the world
   //                              from populating, not merely from ticking. Default 240.
   //   STAR_RENDERTEST_WARMUP  -- frames rendered AFTER the freeze, to let caches/atlases settle. Default 60.
+  //   STAR_RENDERTEST_FLICKER          -- pin every flickering light's value to this [0,1] (Object::lightSources)
+  //   STAR_RENDERTEST_FREEZE_PARTICLES -- no particle reaches a banked frame (WorldClient, update and render)
+  //   STAR_RENDERTEST_PIN_HIGHLIGHTS   -- the interactive pulse and inspection flicker pinned (WorldClient::render)
+  //   STAR_RENDERTEST_LIGHTMAP         -- log every dispatched light and the solve's constants, log the frame's
+  //                                       lightmap terms, and bank the GPU lightmap texture (RustBound M54)
   unsigned m_renderTestFrames = 0;
   unsigned m_renderTestLoad = 240;
   unsigned m_renderTestWarmup = 60;
@@ -262,6 +267,7 @@ private:
   // set, writes legA/legB/diff PNGs.
   void renderTestDiffMap(Image const& a, Image const& b) const;
   void renderTestWritePng(Image const& frame, String const& path) const;
+  void renderTestWriteRgbF(Image const& frame, String const& path) const;   // the lightmap, floats intact
   // -----------------------------------------------------------------------------------------------
 
   float m_cameraXOffset = 0.0f;

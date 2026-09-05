@@ -82,8 +82,22 @@ MARKERS = re.compile(r"renderTest|RenderTest|rendertest|walkoracle")
 # player's intro incomplete, which is how the server places it in the intro instance, the parallax
 # fixture. Twenty-four lines, five of them harness vocabulary; #237 deferred a fourth time, and this
 # is the third scene it bought.
+#
+# RAISED 195 -> 212 harness, 2309 -> 2401 total, for the NULL CONTROL and the LIGHTMAP RECORD (RustBound
+# M54). The reference frame was not reproducible: two captures of one fixture differed in 141 pixels,
+# because a flickering ship light, three particle sparkers, two highlight terms and the temporal lighting
+# gate all stayed live under the freeze, and the RNG was seeded from the wall clock. The harness now seeds
+# the source once, runs the lighting inline so the solve joins the frame it lit, re-anchors the texowner
+# probe on the harness rather than on fullbright (the lit leg drops fullbright and reads the same target),
+# logs `[rendertest] lightmap frame=` with every term the world shader applied the map under, and banks
+# the GPU lightmap as the floats the pass wrote. Ninety-two lines, seventeen of them harness vocabulary;
+# the pins themselves live at their consumers in game/, not here. #237 deferred a fifth time, and this is
+# the leg on which every lit number of the M51 ladder will be read. Then 212 -> 214, 2401 -> 2404 in the
+# same rung, for the pinned player uuid: the fresh player's ship world is named by its uuid, so two captures
+# of one fixture could never agree on `world=` until the harness chose it. Three lines, two of them the
+# warrant.
 BUDGET = {
-    "source/client/StarClientApplication.cpp": (195, 2309),
+    "source/client/StarClientApplication.cpp": (214, 2404),
     "source/client/StarClientApplication.hpp": (40, 310),
 }
 

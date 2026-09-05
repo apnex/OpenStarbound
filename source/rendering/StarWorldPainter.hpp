@@ -35,6 +35,12 @@ public:
   // drop the redundant CPU calculate(). False whenever GPU lighting is off, inputs are
   // invalid, the world is fullbright, or the GPU pass fell back to CPU.
   bool gpuLightingActive() const { return m_gpuLightingActive; }
+  // [rendertest] The last GPU-lightmap result and whether the pass RAN THIS FRAME (RustBound M54). The
+  // client's lightmap line and the banked lightmap texture key on the freshness bit: the target is
+  // `clear: false` and written only when the pass runs, so on a frame the pass skipped, the oracle would
+  // read the previous frame's texels and a bank would record them as this frame's.
+  LightmapResult lastLightmap() const { return m_lastLightmap; }
+  bool lastLightmapFresh() const { return m_lastLightmapFresh; }
 
 private:
   // GPU-lightmap dispatch: prepare the pass inputs from renderData + config/assets, run GpuLightmapPass, and
@@ -60,6 +66,9 @@ private:
   int m_lightMapBorder = 0;
   // Slice 4: latest GPU-lightmap-pass outcome, reported back to WorldClient each frame.
   bool m_gpuLightingActive = false;
+  // [rendertest] See lastLightmap(): the result the painter bound, and whether it was produced this frame.
+  LightmapResult m_lastLightmap;
+  bool m_lastLightmapFresh = false;
 
   // Updated every frame
   AssetsConstPtr m_assets;

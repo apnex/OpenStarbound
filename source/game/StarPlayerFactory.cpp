@@ -60,6 +60,10 @@ PlayerPtr PlayerFactory::create() const {
   return make_shared<Player>(m_config);
 }
 
+PlayerPtr PlayerFactory::create(Uuid uuid) const {
+  return make_shared<Player>(m_config, uuid);
+}
+
 PlayerPtr PlayerFactory::diskLoadPlayer(Json const& diskStore) const {
   PlayerPtr player;
   try {

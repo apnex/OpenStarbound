@@ -3,6 +3,7 @@
 #include "StarItemDescriptor.hpp"
 #include "StarHumanoid.hpp"
 #include "StarEntitySplash.hpp"
+#include "StarUuid.hpp"
 
 namespace Star {
 
@@ -60,6 +61,10 @@ public:
   PlayerFactory();
 
   PlayerPtr create() const;
+  // A player with a CHOSEN uuid rather than a minted one. The ship world is named by the player's uuid, so
+  // two runs that must be comparable record for record need to agree on it; the render harness is the
+  // caller (RustBound M54), and nothing in play should be.
+  PlayerPtr create(Uuid uuid) const;
   PlayerPtr diskLoadPlayer(Json const& diskStore) const;
   PlayerPtr netLoadPlayer(ByteArray const& netStore, NetCompatibilityRules rules = {}) const;
 

@@ -169,7 +169,7 @@ mindmap
     Engine
       source/
       1001 files
-      241393 lines
+      241637 lines
       6 tiers
     Content
       assets/
@@ -225,16 +225,16 @@ source/
 ├── platform/        T2     4 files       142 lines
 ├── application/     T2    25 files     7,677 lines
 │   └── discord/         vendored — excluded from every count here
-├── game/            T3   500 files   115,753 lines
+├── game/            T3   500 files   115,881 lines
 │   ├── interfaces/        47 files     3,123 lines
 │   ├── items/             30 files     4,070 lines
 │   ├── objects/           10 files     1,285 lines
 │   ├── scripting/         49 files     9,786 lines
 │   └── terrain/           26 files       980 lines
-├── rendering/       T4    23 files     5,285 lines
+├── rendering/       T4    23 files     5,300 lines
 ├── windowing/       T4    61 files     9,646 lines
 ├── frontend/        T4   102 files    16,866 lines
-├── client/          T5     4 files     2,667 lines
+├── client/          T5     4 files     2,768 lines
 ├── server/          T5     7 files       783 lines
 ├── json_tool/       —      4 files       877 lines   ← outside the tier lattice; measured by nothing here
 ├── mod_uploader/    —      6 files       544 lines   ← outside the tier lattice; measured by nothing here
@@ -287,17 +287,17 @@ flowchart TD
   end
   subgraph T3["T3 simulation"]
     direction LR
-    game["game<br/><small>500 files · 115,753 lines · Root×640</small>"]
+    game["game<br/><small>500 files · 115,881 lines · Root×640</small>"]
   end
   subgraph T4["T4 presentation"]
     direction LR
-    rendering["rendering<br/><small>23 files · 5,285 lines · Root×17</small>"]
+    rendering["rendering<br/><small>23 files · 5,300 lines · Root×17</small>"]
     windowing["windowing<br/><small>61 files · 9,646 lines · Root×41</small>"]
     frontend["frontend<br/><small>102 files · 16,866 lines · Root×200</small>"]
   end
   subgraph T5["T5 shells"]
     direction LR
-    client["client<br/><small>4 files · 2,667 lines · Root×2</small>"]
+    client["client<br/><small>4 files · 2,768 lines · Root×2</small>"]
     server["server<br/><small>7 files · 783 lines · Root×4</small>"]
   end
   core --> extern
@@ -412,7 +412,7 @@ flowchart LR
   application ==>|49 in 16| core
   application -->|8 in 2| platform
   game ==>|158 in 137| base
-  game ==>|841 in 383| core
+  game ==>|842 in 384| core
   game -->|3 in 3| platform
   rendering -->|9 in 9| application
   rendering -->|7 in 5| base
@@ -435,7 +435,7 @@ flowchart LR
   frontend ==>|217 in 67| windowing
   client -->|2 in 2| application
   client -->|2 in 1| base
-  client -->|13 in 3| core
+  client -->|14 in 3| core
   client -->|11 in 2| frontend
   client -->|20 in 2| game
   client -->|1 in 1| metrics
@@ -470,7 +470,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `client → frontend` | 11 | 2 | thin |
 | `client → game` | 20 | 2 | thin |
 | `game → platform` | 3 | 3 | thin |
-| `client → core` | 13 | 3 | thin |
+| `client → core` | 14 | 3 | thin |
 | `frontend → application` | 4 | 4 | thin |
 | `server → base` | 4 | 4 | thin |
 | `server → game` | 8 | 4 | thin |
@@ -491,7 +491,7 @@ Edge labels are `includes in files`. **Dotted** is a granted permission spent ze
 | `frontend → windowing` | 217 | 67 | load-bearing |
 | `frontend → game` | 271 | 79 | load-bearing |
 | `game → base` | 158 | 137 | load-bearing |
-| `game → core` | 841 | 383 | load-bearing |
+| `game → core` | 842 | 384 | load-bearing |
 <!-- END GENERATED: grantuse -->
 
 **Dotted edges are free money.** A granted permission spent zero times costs nothing to revoke and
@@ -550,7 +550,7 @@ The same edges, with magnitude instead of buckets.
 ```mermaid
 sankey-beta
 
-game,core,841
+game,core,842
 frontend,game,271
 frontend,windowing,217
 game,base,158
@@ -566,7 +566,7 @@ metrics,core,24
 rendering,game,24
 client,game,20
 windowing,base,19
-client,core,13
+client,core,14
 client,frontend,11
 rendering,application,9
 frontend,rendering,9
@@ -588,7 +588,7 @@ client,rendering,1
 client,windowing,1
 ```
 
-**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 841 and `base → core` at 94 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
+**Magnitude only -- this is not a flow.** Sankey implies conservation and include counts do not conserve: `game → core` at 842 and `base → core` at 94 do not "arrive at" core in any meaningful sense. It is here because it is the only form that shows the dynamic range the three-state diagram above deliberately flattens.
 <!-- END GENERATED: sankey -->
 
 ---
@@ -609,13 +609,13 @@ treemap-beta
         "metrics": 1519
         "platform": 142
     "T3 simulation"
-        "game": 115753
+        "game": 115881
     "T4 presentation"
         "frontend": 16866
         "windowing": 9646
-        "rendering": 5285
+        "rendering": 5300
     "T5 shells"
-        "client": 2667
+        "client": 2768
         "server": 783
 ```
 
@@ -624,16 +624,16 @@ treemap-beta
 | tier | directory | files | lines | share |
 |:-----|:----------|------:|------:|------:|
 | T0 vendored | `extern` | 15 | 17,193 | 7.1% |
-| T1 language | `core` | 215 | 56,390 | 23.4% |
+| T1 language | `core` | 215 | 56,390 | 23.3% |
 | T2 services | `base` | 32 | 7,472 | 3.1% |
 | T2 services | `metrics` | 13 | 1,519 | 0.6% |
 | T2 services | `platform` | 4 | 142 | 0.1% |
 | T2 services | `application` | 25 | 7,677 | 3.2% |
-| T3 simulation | `game` | 500 | 115,753 | 48.0% |
-| T4 presentation | `rendering` | 23 | 5,285 | 2.2% |
+| T3 simulation | `game` | 500 | 115,881 | 48.0% |
+| T4 presentation | `rendering` | 23 | 5,300 | 2.2% |
 | T4 presentation | `windowing` | 61 | 9,646 | 4.0% |
 | T4 presentation | `frontend` | 102 | 16,866 | 7.0% |
-| T5 shells | `client` | 4 | 2,667 | 1.1% |
+| T5 shells | `client` | 4 | 2,768 | 1.1% |
 | T5 shells | `server` | 7 | 783 | 0.3% |
 
 `game` is **48% of the engine in one directory** -- one grant list, no sub-`CMakeLists.txt`, and therefore no internal boundary the compiler can enforce.
@@ -857,7 +857,7 @@ difference is not written down anywhere else in this repository.
 <!-- BEGIN GENERATED: scripts/arch-graph.py#presentation -->
 | directory | files | lines | duty | names `game` |
 |:----------|------:|------:|:-----|-------------:|
-| `rendering` | 23 | 5,285 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
+| `rendering` | 23 | 5,300 | draws the WORLD — tiles, entities, lighting, parallax, sky | 24 includes in 12 files |
 | `windowing` | 61 | 9,646 | a WIDGET TOOLKIT — layout, hit-testing, focus, key bindings, widget trees from JSON | 41 includes in 25 files |
 | `frontend` | 102 | 16,866 | THIS GAME'S SCREENS — inventory, crafting, quests, chat, menus, built from widgets | 271 includes in 79 files |
 

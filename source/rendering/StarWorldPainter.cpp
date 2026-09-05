@@ -440,12 +440,18 @@ void WorldPainter::render(WorldRenderData& renderData, function<bool()> lightWai
     // texture is offset-invariant so this is defensive, but keeps the border consistent if the
     // binding persists into a later non-fullbright frame before a fresh lighting frame arrives.
     m_lightMapBorder = 0;
+    m_lastLightmapFresh = false;
   } else {
+    // Assigned at the pass, not beside the border below: the border assignment sits inside both `if`s, so
+    // on a frame the pass did not run it would leave the previous frame's result reading as fresh.
+    m_lastLightmapFresh = false;
     if (lightMapUpdated) {
       adjustLighting(renderData);
       // GPU-lightmap dispatch is pulled into runGpuLightmapPass(): it prepares the pass inputs and returns an
       // explicit LightmapResult (active + its matching border) instead of a bool plus a separately-read border.
       LightmapResult lm = runGpuLightmapPass(renderData);
+      m_lastLightmap = lm;
+      m_lastLightmapFresh = lm.active;
       if (lm.active) {
         // The bound lightMap is the calc-region (border-padded) result; the border travels WITH the active
         // flag in the result, so the world shader's lightMapOffset can never pair an active GPU lightMap with a

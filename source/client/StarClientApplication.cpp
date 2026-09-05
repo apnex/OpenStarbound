@@ -15,6 +15,7 @@
 #include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
 #include "StarPlayerFactory.hpp"  // [rendertest] STAR_RENDERTEST_PLAYER creates a fresh player
+#include "StarRandom.hpp"          // [rendertest] the shared source is seeded under the harness
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
 #include "StarWorldClient.hpp"
@@ -187,6 +188,15 @@ static Vec2F const RenderTestStarOffset = Vec2F(1200.0f, -300.0f);
 // draw and the timer replaces an accumulation of real load-phase frametimes.
 static uint64_t const RenderTestRaySeed = 0x5EED5A4Bull;
 static double const RenderTestRayTime = 1234.5;
+// RustBound M54: the shared random source, seeded once under the harness. HYGIENE, not determinism: the
+// source is mutex-guarded and shared by the main thread, the universe server thread and the lighting
+// thread, so seeding fixes the SEQUENCE it emits and not which thread consumes which element. What the
+// banked frame's determinism rests on is the pins at each consumer (the flicker value, the particles, the
+// highlight terms); this removes the wall-clock seed from the picture and nothing more.
+static uint64_t const RenderTestRandomSeed = 0x5EEDB0A7ull;
+// And the fresh player's uuid, which names its ship world (ClientShipWorld:<uuid>): minted per run, it made
+// `world=` incomparable between two captures of one fixture. Arbitrary, valid hex, the same every run.
+static char const* const RenderTestPlayerUuid = "5eedb0a75eedb0a75eedb0a75eedb0a7";
 
 void ClientApplication::startup(StringList const& cmdLineArgs) {
   RootLoader rootLoader({AdditionalAssetsSettings, AdditionalDefaultConfiguration, String("starbound.log"), LogLevel::Info, false, String("starbound.config")});
@@ -201,6 +211,8 @@ void ClientApplication::startup(StringList const& cmdLineArgs) {
   // costs exactly nothing when unset. See the block comment in StarClientApplication.hpp.
   if (char const* frames = getenv("STAR_RENDERTEST_FRAMES")) {
     m_renderTestFrames = (unsigned)strtoul(frames, nullptr, 10);
+    if (m_renderTestFrames)
+      Random::init(RenderTestRandomSeed);
     if (char const* load = getenv("STAR_RENDERTEST_LOAD"))
       m_renderTestLoad = (unsigned)strtoul(load, nullptr, 10);
     if (char const* quiesce = getenv("STAR_RENDERTEST_QUIESCE"))
@@ -946,7 +958,7 @@ void ClientApplication::changeState(MainAppState newState) {
       // own ship. introComplete is set because the server otherwise places a fresh player in the
       // species' intro instance (UniverseServer.cpp, introInstance), not on the ship.
       if (char const* species = getenv("STAR_RENDERTEST_PLAYER"); species && *species && m_renderTestFrames) {
-        m_player = m_root->playerFactory()->create();
+        m_player = m_root->playerFactory()->create(Uuid(String(RenderTestPlayerUuid)));
         m_player->setSpecies(species);
         m_player->setName("rendertest");
         // STAR_RENDERTEST_INTRO=1 (RustBound M50): leave the intro INCOMPLETE, so the server places the
@@ -1233,6 +1245,31 @@ void ClientApplication::renderTestWritePng(Image const& frame, String const& pat
   }
 }
 
+// RustBound M54: the lightmap's floats, intact. A sixteen-octet header - the magic, then width, height and
+// channels as little-endian u32 - and the pixel floats as the oracle returned them, rows bottom-up like
+// every other frame this harness writes. Not a PNG: see the caller for why 8 bits would lose the range.
+void ClientApplication::renderTestWriteRgbF(Image const& frame, String const& path) const {
+  try {
+    if (frame.pixelFormat() != PixelFormat::RGB_F)
+      throw StarException(strf("the lightmap is not RGB_F"));
+    uint32_t header[4] = {0x46424752u, frame.width(), frame.height(), 3u};   // "RGBF" as little-endian octets
+    auto file = File::open(path, IOMode::Write);
+    file->writeFull((char const*)header, sizeof(header));
+    file->writeFull((char const*)frame.data(), (size_t)frame.width() * frame.height() * 3 * sizeof(float));
+  } catch (std::exception const& e) {
+    Logger::warn("[rendertest] could not write '{}': {}", path, outputException(e, false));
+  }
+}
+
+// RustBound M54: STAR_RENDERTEST_LIGHTMAP=1 arms the lightmap line and the banked texture. Read once.
+static bool renderTestLightmapArmed() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_LIGHTMAP");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void ClientApplication::renderTestDiffMap(Image const& a, Image const& b) const {
   unsigned w = a.width(), h = a.height();
   if (!w || !h || b.width() != w || b.height() != h)
@@ -1411,6 +1448,13 @@ void ClientApplication::renderTestCapture() {
 
       m_renderTestLoading = false;
       m_renderTestFrozen = !noFreeze;
+      // RustBound M54: lighting INLINE under the harness. UniverseClient turns async lighting on at world
+      // join, so lightingCalc ran on its own thread and the lightmap a frame was drawn with was whichever
+      // publish the render thread last consumed - in one measured run 12 of 4,499 publishes were overwritten
+      // unread, because waitForLighting clears a flag, not a queue. Inline, the solve runs inside render and
+      // the lightmap line joins the frame it lit.
+      if (m_universeClient && m_universeClient->worldClient())
+        m_universeClient->worldClient()->setAsyncLighting(false);
       if (m_renderTestWalk && !noFreezeEnv)
         Logger::info("[walk] STAR_RENDERTEST_WALK implies NOFREEZE -- the sim stays live so the player can move");
 
@@ -1461,7 +1505,9 @@ void ClientApplication::renderTestCapture() {
   // big lightingGpuUpscaled is asks the target what it thinks it is, which is exactly the question.
   //
   // Report it every frozen frame while the probe is armed: RED is a target that has silently become 1x1.
-  if (getenv("STAR_RENDERTEST_FULLBRIGHT") && m_renderTestSeen % 30 == 0) {
+  // Armed by the harness itself, not by the fullbright variable (RustBound M54): the lit reference leg
+  // drops fullbright, and it reads THE SAME target through THE SAME oracle, so it needs this watcher most.
+  if (m_renderTestFrames && m_renderTestSeen % 30 == 0) {
     auto renderer = Application::renderer();
     if (renderer->hasFrameBuffer("lightingGpuUpscaled")) {
       auto size = renderer->oracle().read("lightingGpuUpscaled").size();
@@ -1632,8 +1678,57 @@ void ClientApplication::renderTestCapture() {
     sky.skyAlpha, sky.starOffset[0], sky.starOffset[1], sky.starRotation, sky.worldOffset[0], sky.worldOffset[1],
     sky.worldRotation, sky.orbitAngle, sky.starFrames, sky.starTypes().size(), sky.skyParameters.toJson().repr());
 
+  // RustBound M54: the lightmap this frame was drawn with, and the terms the world shader applied it
+  // under - every value read from the painter and the configuration the frame used, none typed. `fresh`
+  // says whether the GPU pass ran THIS frame; on a stale frame the values are the previous solve's and
+  // the texture below is refused.
+  if (renderTestLightmapArmed()) {
+    LightmapResult lm = m_worldPainter->lastLightmap();
+    auto configuration = m_root->configuration();
+    Logger::info("[rendertest] lightmap frame={} fresh={} active={} border={} spreadIterations={} lightMapMultiplier={:.9g}"
+                 " lightMapScale={:.9g} lightmapUpscale={:.9g} lightmapBilinear={} brightnessLimit={:.9g}"
+                 " lightingGpuSpreadIterations={} lightingGpuBrightness={:.9g} lightingTonemap={} lightingGpu={} fullbright={}"
+                 " frozenAt={} seen={}",
+      index, m_worldPainter->lastLightmapFresh(), lm.active, lm.border, lm.spreadIterations,
+      m_root->assets()->json("/rendering.config:lightMapMultiplier").toFloat(),
+      TilePixels * m_worldPainter->camera().pixelRatio(),
+      configuration->getOrDefault("lightingWorldUpscale").toFloat(),
+      configuration->getOrDefault("lightingWorldSampleBilinear").toBool(),
+      m_root->assets()->json("/lighting.config:lighting").getFloat("brightnessLimit", -1.0f),
+      configuration->getOrDefault("lightingGpuSpreadIterations").toInt(),
+      configuration->getOrDefault("lightingGpuBrightness").toFloat(),
+      configuration->getOrDefault("lightingTonemap").toBool(),
+      configuration->getOrDefault("lightingGpu").toBool(),
+      m_renderData.isFullbright, m_renderTestFrame, m_renderTestSeen);
+  }
+
   if (!m_renderTestOut.empty())
     renderTestWritePng(frame, strf("{}/frame_{:04d}.png", m_renderTestOut, index));
+
+  // RustBound M54: the GPU lightmap texture, banked as the floats the pass wrote and never as 8 bits alone -
+  // the compose caps at brightnessLimit and the world shader's knee runs above unity, so an 8-bit clamp
+  // discards exactly the range an offline kernel must reproduce. Refused on a frame the pass did not run:
+  // the target is `clear: false`, and its texels would be a previous frame's.
+  if (!m_renderTestOut.empty() && renderTestLightmapArmed()) {
+    if (!m_worldPainter->lastLightmapFresh()) {
+      Logger::error("[rendertest] lightmap texture frame={} NOT banked: the GPU pass did not run this frame", index);
+    } else {
+      auto renderer = Application::renderer();
+      if (renderer->hasFrameBuffer("lightingGpuUpscaled")) {
+        Image lightmap = renderer->oracle().read("lightingGpuUpscaled");
+        if (lightmap.width() <= 1 || lightmap.height() <= 1) {
+          Logger::error("[rendertest] lightmap texture frame={} NOT banked: the target reads {}x{}", index, lightmap.width(), lightmap.height());
+        } else {
+          renderTestWriteRgbF(lightmap, strf("{}/lightmap_{:04d}.rgbf", m_renderTestOut, index));
+          renderTestWritePng(lightmap, strf("{}/lightmap_{:04d}.png", m_renderTestOut, index));
+          Logger::info("[rendertest] lightmap texture frame={} size={}x{} format=RGB_F file=lightmap_{:04d}.rgbf",
+            index, lightmap.width(), lightmap.height(), index);
+        }
+      } else {
+        Logger::error("[rendertest] lightmap texture frame={} NOT banked: no lightingGpuUpscaled target", index);
+      }
+    }
+  }
 
   if (index + 1 >= m_renderTestFrames) {
     Logger::info("[rendertest] DONE captured={} frames", m_renderTestFrames);

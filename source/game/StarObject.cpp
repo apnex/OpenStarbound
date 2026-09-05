@@ -281,6 +281,27 @@ void Object::uninit() {
   Entity::uninit();
 }
 
+// [rendertest] STAR_RENDERTEST_FLICKER=<v in [0,1]> pins a flickering light's VALUE for the render harness
+// (RustBound M54). Seeding the RNG cannot pin this term: the generator is copied into each object from the
+// per-type config, whose PeriodicFunction drew at first config read, and update() draws twice per
+// half-period on every client slave - so which element of a seeded stream reaches which object depends on
+// load order. The value is pinned at the one consumer instead. Parsed ONCE; garbage THROWS rather than
+// reading as zero, because atof("o.5") would pin the light to black and the run would report a settled
+// reference with a straight face. -1 means unpinned.
+static float renderTestFlickerPin() {
+  static float const pin = []() -> float {
+    char const* e = getenv("STAR_RENDERTEST_FLICKER");
+    if (!e || !*e)
+      return -1.0f;
+    char* end = nullptr;
+    float v = strtof(e, &end);
+    if (end == e || *end || !(v >= 0.0f && v <= 1.0f))
+      throw StarException(strf("STAR_RENDERTEST_FLICKER={} is not a value in [0,1]", e));
+    return v;
+  }();
+  return pin;
+}
+
 List<LightSource> Object::lightSources() const {
   List<LightSource> lights;
   lights.appendAll(m_networkedAnimator->lightSources(position() + m_animationPosition));
@@ -288,8 +309,11 @@ List<LightSource> Object::lightSources() const {
   auto const& orientation = currentOrientation();
   if (!m_lightSourceColor.get().isClear() && orientation) {
     Color color = m_lightSourceColor.get();
-    if (m_lightFlickering)
-      color.setValue(clamp(color.value() * m_lightFlickering->value(SinWeightOperator<float>()), 0.0f, 1.0f));
+    if (m_lightFlickering) {
+      float pinned = renderTestFlickerPin();
+      float flicker = pinned >= 0.0f ? pinned : m_lightFlickering->value(SinWeightOperator<float>());
+      color.setValue(clamp(color.value() * flicker, 0.0f, 1.0f));
+    }
 
     LightSource lightSource;
     lightSource.position = position() + centerOfTile(orientation->lightPosition);

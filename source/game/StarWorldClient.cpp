@@ -37,6 +37,35 @@ Star::Vec2I unpackVec2I(int64_t p) {
 
 namespace Star {
 
+// [rendertest] The two M54 harness knobs this file reads, each parsed once. Both are pure hygiene for a
+// banked frame and cost one static read when unset.
+static bool renderTestFreezeParticles() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_FREEZE_PARTICLES");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
+static bool renderTestLightmapLog() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_LIGHTMAP");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
+// [rendertest] The pinned flicker value the objects are drawing with, for the solve line - read the same
+// way Object reads it, so the record states the pin the frame was lit under, or -1 for unpinned.
+static float renderTestFlickerPinValue() {
+  static float const pin = []() -> float {
+    char const* e = getenv("STAR_RENDERTEST_FLICKER");
+    return (e && *e) ? strtof(e, nullptr) : -1.0f;
+  }();
+  return pin;
+}
+
+
 namespace {
   // PRODUCER-SIDE LIGHTING, REGISTERED EAGERLY (#171). Everything this project quotes as "lighting
   // CPU" is denominated on lighting.cpu.total.us, which is WorldClient::lightingCalc() -- the
@@ -685,10 +714,23 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
 
   float pulseAmount = Root::singleton().assets()->json("/highlights.config:interactivePulseAmount").toFloat();
   float pulseRate = Root::singleton().assets()->json("/highlights.config:interactivePulseRate").toFloat();
-  float pulseLevel = 1 - pulseAmount * 0.5 * (sin(2 * Constants::pi * pulseRate * Time::monotonicMilliseconds() / 1000.0) + 1);
+  // [rendertest] STAR_RENDERTEST_PIN_HIGHLIGHTS=1 (RustBound M54) pins the two per-frame terms that sit
+  // OUTSIDE the fullbright gate and so reach every banked frame: the interactive pulse, a function of the
+  // wall clock, is held at the midpoint of its range; and the inspection flicker's Random::randf draw is
+  // SKIPPED, not drawn and discarded - the draw is unconditional while its consumer is not, so every frame
+  // it advanced the shared stream and desynchronised every later draw by however long the load took.
+  static bool const pinHighlights = []() {
+    char const* e = getenv("STAR_RENDERTEST_PIN_HIGHLIGHTS");
+    return e && *e && *e != '0';
+  }();
+  float pulseLevel = pinHighlights
+      ? 1.0f - pulseAmount * 0.5f
+      : (float)(1 - pulseAmount * 0.5 * (sin(2 * Constants::pi * pulseRate * Time::monotonicMilliseconds() / 1000.0) + 1));
 
   bool inspecting = m_mainPlayer->inspecting();
-  float inspectionFlickerMultiplier = Random::randf(1 - Root::singleton().assets()->json("/highlights.config:inspectionFlickerAmount").toFloat(), 1);
+  float inspectionFlickerMultiplier = pinHighlights
+      ? 1.0f
+      : Random::randf(1 - Root::singleton().assets()->json("/highlights.config:inspectionFlickerAmount").toFloat(), 1);
 
   EntityId playerAimInteractive = NullEntityId;
   if (Root::singleton().configuration()->get("interactiveHighlight").toBool()) {
@@ -770,7 +812,14 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
           p.directives.append(directives->get(directiveIndex));
       }
       
-      m_particles->addParticles(std::move(renderCallback.particles));
+      // [rendertest] STAR_RENDERTEST_FREEZE_PARTICLES=1: the render callbacks' particles - a sparker's
+      // embers - are dropped here, because the clear in update() runs a frame earlier than this append
+      // and a frozen world never runs update() at all. Dropped, not cleared after the fact: a clear on
+      // this side would put ParticleManager's own translation unit into the closure both machines
+      // share (dedup-measure), and the update-side clear has already emptied the list on every tick
+      // before the freeze. See renderTestFreezeParticles.
+      if (!renderTestFreezeParticles())
+        m_particles->addParticles(std::move(renderCallback.particles));
       m_samples.appendAll(std::move(renderCallback.audios));
       m_previewTiles.appendAll(std::move(renderCallback.previewTiles));
       renderData.overheadBars.appendAll(std::move(renderCallback.overheadBars));
@@ -1488,8 +1537,18 @@ void WorldClient::update(float dt) {
 
   sparkDamagedBlocks();
 
-  m_particles->addParticles(m_weather.pullNewParticles());
-  m_particles->update(dt, RectF(particleRegion), m_weather.wind());
+  // [rendertest] STAR_RENDERTEST_FREEZE_PARTICLES=1 (RustBound M54): no particle survives to a banked
+  // frame. CLEARED, not merely left un-updated: skipping the update would freeze whatever the load phase
+  // had emitted at a run-dependent place and let emitters accumulate without ageing. The render path
+  // appends its own particles after this and is gated there, so nothing lands between this clear and
+  // the freeze; and the particle LIGHTS are read off this list before that append lands, so unpinned
+  // they are stale by one frame in every run.
+  if (renderTestFreezeParticles()) {
+    m_particles->clear();
+  } else {
+    m_particles->addParticles(m_weather.pullNewParticles());
+    m_particles->update(dt, RectF(particleRegion), m_weather.wind());
+  }
 
   if (auto audioSample = m_ambientSounds.updateAmbient(currentAmbientNoises(), m_sky->isDayTime()))
     m_samples.append(audioSample);
@@ -2661,10 +2720,30 @@ void WorldClient::lightingCalc() {
     }
     promoteFraction = promoteFraction < 0.0f ? 0.0f : (promoteFraction > 1.0f ? 1.0f : promoteFraction);
 
+    // [rendertest] STAR_RENDERTEST_LIGHTMAP=1 (RustBound M54): every light as it reaches the calculator,
+    // in dispatch order, with the arm it takes - the spread half is consumed into the cells and is
+    // unrecoverable downstream, so this loop is the only place the list can be read. Then one line per
+    // solve with the constants the kernels resolved against, joined to the frame by the client's own
+    // lightmap line through the solve counter. Measurement legs run with the variable unset: eight log
+    // calls inside a timed phase perturb lighting.produce.
+    bool const lightmapLog = renderTestLightmapLog();
+    static unsigned s_lightmapSolves = 0;
+    if (lightmapLog)
+      ++s_lightmapSolves;
+    unsigned lightIndex = 0;
     for (auto const& light : lights) {
       Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), light.position);
       // Promote only "feature" Spread lights: skip the floor (item-drop-class fill) -> pure spread.
       bool promote = promoteFraction > 0.0f && light.color.max() >= promoteMinIntensity;
+      if (lightmapLog) {
+        char const* arm = light.type == LightType::Spread
+            ? (promote ? (promoteFraction < 1.0f ? "spread*(1-p)+point*p" : "point*p") : "spread")
+            : light.type == LightType::PointAsSpread ? (newLighting ? "spread*0.85+point(promoted)" : "spread")
+            : "point";
+        Logger::info("[rendertest] light solve={} i={} arm={} pos=({:.9g},{:.9g}) color=({:.9g},{:.9g},{:.9g}) type={} beam={:.9g} angle={:.9g} ambience={:.9g}",
+          s_lightmapSolves, lightIndex++, arm, position[0], position[1], light.color[0], light.color[1], light.color[2],
+          LightTypeNames.getRight(light.type), light.pointBeam, light.beamAngle, light.beamAmbience);
+      }
       if (light.type == LightType::Spread && promote) {
         if (promoteFraction < 1.0f)
           m_lightingCalculator.addSpreadLight(position, light.color * (1.0f - promoteFraction));
@@ -2687,7 +2766,23 @@ void WorldClient::lightingCalc() {
 
     for (auto const& lightPair : particleLights) {
       Vec2F position = m_geometry.nearestTo(Vec2F(m_lightingCalculator.calculationRegion().min()), lightPair.first);
+      if (lightmapLog)
+        Logger::info("[rendertest] light solve={} i={} arm=spread(particle) pos=({:.9g},{:.9g}) color=({:.9g},{:.9g},{:.9g})",
+          s_lightmapSolves, lightIndex++, position[0], position[1], lightPair.second[0], lightPair.second[1], lightPair.second[2]);
       m_lightingCalculator.addSpreadLight(position, lightPair.second);
+    }
+    if (lightmapLog) {
+      Json lightingConfig = root.assets()->json("/lighting.config:lighting");
+      Vec3F ambient = m_sky->environmentLight().toRgbF();
+      RectI calc = m_lightingCalculator.calculationRegion();
+      Logger::info("[rendertest] lightmap solve={} lights={} particleLights={} lightMin=({},{}) lightSize=({},{}) calcMin=({},{}) calcSize=({},{})"
+                   " newLighting={} monochrome={} lightingGpu={} shadowCompare={} promoteFraction={:.9g} promoteMinIntensity={:.9g}"
+                   " brightnessLimit={:.9g} pointMaxAir={:.9g} spreadMaxAir={:.9g} ambient=({:.9g},{:.9g},{:.9g}) flicker={:.9g}",
+        s_lightmapSolves, lights.size(), particleLights.size(), lightRange.xMin(), lightRange.yMin(), lightRange.width(), lightRange.height(),
+        calc.xMin(), calc.yMin(), calc.width(), calc.height(),
+        newLighting, configuration->getOrDefault("monochromeLighting").toBool(), lightingGpu, shadowCompare, promoteFraction, promoteMinIntensity,
+        lightingConfig.getFloat("brightnessLimit", -1.0f), lightingConfig.getFloat("pointMaxAir", -1.0f), lightingConfig.getFloat("spreadMaxAir", -1.0f),
+        ambient[0], ambient[1], ambient[2], renderTestFlickerPinValue());
     }
   }
 
