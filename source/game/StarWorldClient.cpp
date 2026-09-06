@@ -732,8 +732,13 @@ void WorldClient::render(WorldRenderData& renderData, unsigned bufferTiles) {
       ? 1.0f
       : Random::randf(1 - Root::singleton().assets()->json("/highlights.config:inspectionFlickerAmount").toFloat(), 1);
 
+  // [rendertest] Under STAR_RENDERTEST_PIN_HIGHLIGHTS the aim's interactive candidate is pinned to none
+  // (RustBound M55): bestInteractionEntity reads the player's aim, which in the offscreen harness is
+  // wherever SDL left a mouse nobody moves, and one lit capture in five put the pulse on the S.A.I.L.
+  // station - 138 pixels of its screen up to 12 steps brighter, the lightmap byte-identical. A fixture
+  // with no user at the mouse has no interactive candidate.
   EntityId playerAimInteractive = NullEntityId;
-  if (Root::singleton().configuration()->get("interactiveHighlight").toBool()) {
+  if (!pinHighlights && Root::singleton().configuration()->get("interactiveHighlight").toBool()) {
     if (auto entity = m_mainPlayer->bestInteractionEntity(false))
       playerAimInteractive = entity->entityId();
   }
