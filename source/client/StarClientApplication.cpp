@@ -1677,12 +1677,39 @@ void ClientApplication::renderTestCapture() {
   // RustBound M50: the sky the frame was drawn under, banked beside the frame so an offline port can draw
   // the same sky at the same time. The parameters are the wire's Json verbatim (SkyParameters::toJson),
   // the offsets and rotations are what SkyRenderData handed the painter this frame.
+  //
+  // RustBound M61 leg 4: the five COLOURS SkyRenderData carries, as the floats it stores them in. Four of
+  // them -- environmentLight, mainSkyColor, topRectColor, bottomRectColor -- are DERIVED by an offline port
+  // from the parameters and the time, so they are logged as a CROSS-CHECK and must never be read as pins:
+  // pinning them would test the transcription instead of the derivation.
+  //
+  // flashColor is different in kind and is the reason this line grew. Its alpha is m_flashTimer / the
+  // settings' flashTimer (Sky::skyFlashColor, StarSky.cpp:461-466), and m_flashTimer is LOCAL: it is set at
+  // both Sky::enterHyperspace (:571) and Sky::exitHyperspace (:578), is not networked, and appears in no
+  // other logged field. Without it a frame captured while the flash runs cannot be reproduced from the bank
+  // at all, and reads as a whole-frame difference that belongs to neither renderer. The offset is not a
+  // proxy for it: the two flashes fire in different offset regimes, so a rule on worldOffset would be blind
+  // to the entering one.
+  Color const& flash = sky.flashColor;
+  Color const& envLight = sky.environmentLight;
+  Color const& mainSky = sky.mainSkyColor;
+  Color const& topRect = sky.topRectColor;
+  Color const& bottomRect = sky.bottomRectColor;
   Logger::info("[rendertest] sky frame={} type={} epochTime={:.4f} dayLength={:.9g} timeOfDay={:.9g} dayLevel={:.9g}"
                " skyAlpha={:.9g} starOffset=({:.9g},{:.9g}) starRotation={:.9g} worldOffset=({:.9g},{:.9g})"
-               " worldRotation={:.9g} orbitAngle={:.9g} starFrames={} starTypes={} parameters={}",
+               " worldRotation={:.9g} orbitAngle={:.9g} starFrames={} starTypes={}"
+               " flashColor=({:.9g},{:.9g},{:.9g},{:.9g}) environmentLight=({:.9g},{:.9g},{:.9g},{:.9g})"
+               " mainSkyColor=({:.9g},{:.9g},{:.9g},{:.9g}) topRectColor=({:.9g},{:.9g},{:.9g},{:.9g})"
+               " bottomRectColor=({:.9g},{:.9g},{:.9g},{:.9g}) parameters={}",
     index, SkyTypeNames.getRight(sky.type), sky.epochTime, sky.dayLength, sky.timeOfDay, sky.dayLevel,
     sky.skyAlpha, sky.starOffset[0], sky.starOffset[1], sky.starRotation, sky.worldOffset[0], sky.worldOffset[1],
-    sky.worldRotation, sky.orbitAngle, sky.starFrames, sky.starTypes().size(), sky.skyParameters.toJson().repr());
+    sky.worldRotation, sky.orbitAngle, sky.starFrames, sky.starTypes().size(),
+    flash.redF(), flash.greenF(), flash.blueF(), flash.alphaF(),
+    envLight.redF(), envLight.greenF(), envLight.blueF(), envLight.alphaF(),
+    mainSky.redF(), mainSky.greenF(), mainSky.blueF(), mainSky.alphaF(),
+    topRect.redF(), topRect.greenF(), topRect.blueF(), topRect.alphaF(),
+    bottomRect.redF(), bottomRect.greenF(), bottomRect.blueF(), bottomRect.alphaF(),
+    sky.skyParameters.toJson().repr());
 
   // RustBound M54: the lightmap this frame was drawn with, and the terms the world shader applied it
   // under - every value read from the painter and the configuration the frame used, none typed. `fresh`
