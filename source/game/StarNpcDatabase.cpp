@@ -44,6 +44,22 @@ NpcVariant NpcDatabase::generateNpcVariant(String const& species, String const& 
 
 NpcVariant NpcDatabase::generateNpcVariant(
     String const& species, String const& typeName, float level, uint64_t seed, Json const& overrides) const {
+  // [rendertest] The NPC's look is drawn from its seed below, and a dungeon-placed NPC is minted with a seed the
+  // generator drew at world creation: two captures of the protectorate at the same pins stood a purple-haired
+  // and a blonde NPC in one spot (RustBound M81). Under the entity seed pin - STAR_RENDERTEST_MONSTER_SEED, the
+  // one pin the harness records, NPC or not - every NPC's seed is the pin. Parsed once; garbage THROWS.
+  static Maybe<uint64_t> const pinnedSeed = []() -> Maybe<uint64_t> {
+    char const* e = getenv("STAR_RENDERTEST_MONSTER_SEED");
+    if (!e || !*e)
+      return {};
+    char* end = nullptr;
+    unsigned long long v = strtoull(e, &end, 0);
+    if (end == e || *end)
+      throw StarException(strf("STAR_RENDERTEST_MONSTER_SEED={} is not an unsigned integer", e));
+    return (uint64_t)v;
+  }();
+  if (pinnedSeed)
+    seed = *pinnedSeed;
   NpcVariant variant;
   variant.species = species;
   variant.typeName = typeName;

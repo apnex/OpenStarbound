@@ -15,6 +15,7 @@
 #include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
 #include "StarPlayerFactory.hpp"  // [rendertest] STAR_RENDERTEST_PLAYER creates a fresh player
+#include "StarSpeciesDatabase.hpp"  // [rendertest] the fresh player's look pinned (M81)
 #include "StarRandom.hpp"          // [rendertest] the shared source is seeded under the harness
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
@@ -962,6 +963,13 @@ void ClientApplication::changeState(MainAppState newState) {
       if (char const* species = getenv("STAR_RENDERTEST_PLAYER"); species && *species && m_renderTestFrames) {
         m_player = m_root->playerFactory()->create(Uuid(String(RenderTestPlayerUuid)));
         m_player->setSpecies(species);
+        // [rendertest] The fresh player's LOOK is pinned (RustBound M81): a created player draws its hair, its
+        // colours and its gender from a random seed. The camera centres on the player, so any fixture that
+        // frames the player's own sprite would draw it differently per capture; the identity is regenerated from
+        // one constant seed per species, so the look is a function of the species and nothing else. (The
+        // humanoids that DID differ on the intro fixture were NPCs, pinned in NpcDatabase; the uuid above was
+        // pinned earlier for the server side.)
+        m_player->setIdentity(m_root->speciesDatabase()->generateHumanoid(species, (int64_t)0x5eedb0a75eedb0a7).identity);
         m_player->setName("rendertest");
         // STAR_RENDERTEST_INTRO=1 (RustBound M50): leave the intro INCOMPLETE, so the server places the
         // fresh player in the species' intro instance - the parallax fixture - instead of on the ship.

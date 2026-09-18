@@ -151,6 +151,26 @@ StringList MonsterDatabase::monsterTypes() const {
   return m_monsterTypes.keys();
 }
 
+// [rendertest] STAR_RENDERTEST_MONSTER_SEED=<u64> (RustBound M54, moved here by M81). It first sat in
+// randomMonster(), for "every monster minted without a seed" - the ship pet, whose seed picks its colour swap. A
+// monster the dungeon or the world generator places is minted with a seed drawn at world creation
+// (StarWorldGeneration.cpp, `parameters.getUInt("seed", Random::randu64())`) straight into THIS function, and the
+// protectorate's pinfriend came up cream in one capture and brown-and-white in the next at the same pins. Every
+// monster path converges here, so under the pin every monster's seed is the pin. Parsed once; garbage THROWS.
+static Maybe<uint64_t> renderTestPinnedSeed() {
+  static Maybe<uint64_t> const pinned = []() -> Maybe<uint64_t> {
+    char const* e = getenv("STAR_RENDERTEST_MONSTER_SEED");
+    if (!e || !*e)
+      return {};
+    char* end = nullptr;
+    unsigned long long v = strtoull(e, &end, 0);
+    if (end == e || *end)
+      throw StarException(strf("STAR_RENDERTEST_MONSTER_SEED={} is not an unsigned integer", e));
+    return (uint64_t)v;
+  }();
+  return pinned;
+}
+
 MonsterVariant MonsterDatabase::randomMonster(String const& typeName, Json const& uniqueParameters) const {
   size_t seed;
   if (auto seedConfig = uniqueParameters.opt("seed")) {
@@ -165,23 +185,15 @@ MonsterVariant MonsterDatabase::randomMonster(String const& typeName, Json const
     // one fixture froze with a calico and a grey cat, because the seed is drawn from the shared source on
     // the server thread and seeding that source fixes the sequence, not which thread takes which element.
     // Parsed once; garbage THROWS rather than reading as zero.
-    static Maybe<uint64_t> const pinnedSeed = []() -> Maybe<uint64_t> {
-      char const* e = getenv("STAR_RENDERTEST_MONSTER_SEED");
-      if (!e || !*e)
-        return {};
-      char* end = nullptr;
-      unsigned long long v = strtoull(e, &end, 0);
-      if (end == e || *end)
-        throw StarException(strf("STAR_RENDERTEST_MONSTER_SEED={} is not an unsigned integer", e));
-      return (uint64_t)v;
-    }();
-    seed = pinnedSeed ? *pinnedSeed : Random::randu64();
+    seed = renderTestPinnedSeed().value(Random::randu64());  // the pin itself is applied in monsterVariant(), where every path meets
   }
 
   return monsterVariant(typeName, seed, uniqueParameters);
 }
 
 MonsterVariant MonsterDatabase::monsterVariant(String const& typeName, uint64_t seed, Json const& uniqueParameters) const {
+  if (auto pinned = renderTestPinnedSeed())
+    seed = *pinned;
   MutexLocker locker(m_cacheMutex);
   return m_monsterCache.get(make_tuple(typeName, seed, uniqueParameters), [this](tuple<String, uint64_t, Json> const& key) {
       return produceMonster(get<0>(key), get<1>(key), get<2>(key));

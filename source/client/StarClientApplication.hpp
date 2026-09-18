@@ -164,6 +164,9 @@ private:
   //   STAR_RENDERTEST_LOCKSTEP         -- one fixed-step update per render, so frame N is N updates (the SDL main loop)
   //   STAR_RENDERTEST_FREEZE_ANIMATORS -- no object's animator advances, on either side of the wire (Object::update)
   //   STAR_RENDERTEST_FREEZE_NPCS      -- no NPC moves, thinks, emotes or animates (Npc::update); RustBound M81
+  //   (STAR_RENDERTEST_PLAYER also pins the fresh player's look to one seed per species; and
+  //    STAR_RENDERTEST_MONSTER_SEED is the ENTITY seed pin - every monster at MonsterDatabase::monsterVariant
+  //    and every NPC at NpcDatabase's variant builder, carried seed or not; RustBound M81)
   unsigned m_renderTestFrames = 0;
   unsigned m_renderTestLoad = 240;
   unsigned m_renderTestWarmup = 60;
