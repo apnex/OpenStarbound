@@ -292,6 +292,8 @@ void Object::uninit() {
 // side of the wire. The master advances it on the server thread's wall clock and networks the phase, so a
 // tech station's screen and a broken hatch's spark sat one frame apart in two otherwise pinned captures.
 // Held at animation time zero; state changes a script makes still land, only the clock stops.
+// TWO clocks stop (M81): the animator's, here, and the orientation-frame timer at the <frame> pick below;
+// the second was left running for the first three months of this pin and made every reference a draw.
 static bool renderTestFreezeAnimators() {
   static bool const on = []() {
     char const* e = getenv("STAR_RENDERTEST_FREEZE_ANIMATORS");
@@ -473,7 +475,11 @@ void Object::update(float dt, uint64_t currentStep) {
 
       // gap == 1 whenever the orientation is actually animated (frames > 1 keeps
       // the object awake), so this is identical to advancing by dt every step.
-      m_animationTimer = std::fmod(m_animationTimer + gapDt, orientation->animationCycle);
+      // [rendertest] Held under the same freeze as the networked animator below (RustBound M81): this
+      // timer picks the orientation's <frame>, and it ran on while the animator's clock stopped, so a
+      // fuel hatch, a locker or a tech station drew whichever of its 8, 12 or 32 frames the world's
+      // clock had reached at the capture - a different frame per capture, at the same pins.
+      m_animationTimer = std::fmod(m_animationTimer + (renderTestFreezeAnimators() ? 0.0f : gapDt), orientation->animationCycle);
     }
 
     // gap == 1 whenever the animator has active work (it keeps the object awake),
