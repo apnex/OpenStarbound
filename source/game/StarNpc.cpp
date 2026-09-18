@@ -418,8 +418,24 @@ void Npc::damagedOther(DamageNotification const& damage) {
     m_statusController->damagedOther(damage);
 }
 
+// [rendertest] STAR_RENDERTEST_FREEZE_NPCS=1 (RustBound M81): no NPC moves, thinks, emotes or animates from the
+// moment it enters the world, on either side of the wire - the protectorate's population under the intro fixture.
+// With every object animator, every orientation-frame timer and every monster held, two captures of the intro
+// still hashed apart by 803 pixels in one patch where our records place no object; an NPC's behaviour script
+// was the only clock left running there. Read once; unset costs one static read.
+static bool renderTestFreezeNpcs() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_FREEZE_NPCS");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void Npc::update(float dt, uint64_t) {
   if (!inWorld())
+    return;
+
+  if (renderTestFreezeNpcs())
     return;
 
   m_movementController->setTimestep(dt);
