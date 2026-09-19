@@ -168,6 +168,8 @@ private:
   //                                       enter the atlas in paint order (WorldPass::drawDrawable); RustBound M81
   //   STAR_RENDERTEST_SNAP_IMAGES      -- an image drawable's screen-space corner is moved to the nearest pixel, so
   //                                       no texel boundary sits on a pixel centre (WorldPass::drawDrawable); RustBound M81
+  //   STAR_RENDERTEST_STARTER_SEED     -- the starter-world search is seeded, so the fresh ship's destination (the
+  //                                       orbit fixture's world) is the same run to run (UniverseServer); RustBound M81 leg 3
   //   (STAR_RENDERTEST_PLAYER also pins the fresh player's look to one seed per species; and
   //    STAR_RENDERTEST_MONSTER_SEED is the ENTITY seed pin - every monster at MonsterDatabase::monsterVariant
   //    and every NPC at NpcDatabase's variant builder, carried seed or not; RustBound M81)

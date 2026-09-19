@@ -1423,6 +1423,23 @@ Maybe<CelestialCoordinate> UniverseServer::nextStarterWorld() {
       };
 
       auto findParameters = assets->json("/universe_server.config:findStarterWorldParameters");
+      // [rendertest] STAR_RENDERTEST_STARTER_SEED=<u64> (RustBound M81 leg 3): the starter world - the fresh
+      // ship's first destination, and so the world the ORBIT fixture sits over - is found by a search that
+      // draws from an unseeded RandomSource. Two captures of the ship at orbit at the same pins hashed apart
+      // by 447,148 sky pixels: one run's sky line carried a gas giant (seed 3006905303408521287), the other
+      // an atmospheric world with no planet at all; the entity census agreed on everything. Under the pin
+      // the search is seeded, so the same celestial map yields the same coordinate run to run. Parsed once;
+      // garbage THROWS, as the entity seed pin does.
+      static Maybe<uint64_t> const renderTestStarterSeed = []() -> Maybe<uint64_t> {
+        char const* e = getenv("STAR_RENDERTEST_STARTER_SEED");
+        if (!e || !*e)
+          return {};
+        char* end = nullptr;
+        unsigned long long v = strtoull(e, &end, 0);
+        if (end == e || *end)
+          throw StarException(strf("STAR_RENDERTEST_STARTER_SEED={} is not an unsigned integer", e));
+        return (uint64_t)v;
+      }();
       auto randomWorld = celestialDatabase->findRandomWorld(findParameters.getUInt("tries"), findParameters.getUInt("range"), [&](CelestialCoordinate const& coordinate) {
         if (!filterWorld(coordinate, findParameters.get("starterWorld")))
           return false;
@@ -1448,7 +1465,7 @@ Maybe<CelestialCoordinate> UniverseServer::nextStarterWorld() {
         }
 
         return true;
-      });
+      }, renderTestStarterSeed);
 
       if (randomWorld)
         Logger::info("UniverseServer: Found randomized starter world at {}", *randomWorld);
