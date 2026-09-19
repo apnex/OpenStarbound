@@ -275,6 +275,39 @@ void WorldPass::drawEntityLayer(WorldCamera const& camera, List<Drawable> drawab
   }
 }
 
+// [rendertest] STAR_RENDERTEST_PIN_PRELOAD=1 (RustBound M81): the off-screen texture preload below rolls the
+// GLOBAL random source once per off-screen image drawable per frame, and the roll decides the ORDER images
+// enter the atlas. Two captures of one fixture at the same pins, every entity field and image string agreeing,
+// hashed apart by 4 pixels in one column of a humanoid whose 43-pixel image is centred on a whole pixel: there
+// every texel boundary sits on a pixel centre, the sampled texel follows the texture coordinate's rounding,
+// and the coordinate is the atlas offset plus the texel index - the census read the same image at (161,81) in
+// one run and (369,65) in the other. Under the pin nothing preloads and an image enters the atlas when first
+// painted, in paint order, which the frozen fixture makes the same run to run. Read once; unset costs one
+// static read.
+static bool renderTestPinPreload() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_PIN_PRELOAD");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
+// [rendertest] STAR_RENDERTEST_SNAP_IMAGES=1 (RustBound M81): holding the preload roll was not enough - the atlas
+// order still differed run to run (entities reach the client over the local wire in a thread's order, and the
+// group's timeouts are wall-clock), and the pair still hashed apart at the same column. The pin that does not
+// depend on the atlas order at all: an image drawable whose screen-space corner is off the pixel grid is moved
+// to the nearest pixel, floor(corner + 0.5), so a pixel centre samples a texel CENTRE, half a texel from any
+// boundary, and no rounding of the texture coordinate can reach it. A 43-pixel image centred on a whole pixel
+// moves half a pixel; an image whose corner is already on the grid does not move. Harness only: the shipped
+// path draws the corner where the entity put it, rounding and all.
+static bool renderTestSnapImages() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_SNAP_IMAGES");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void WorldPass::drawDrawable(WorldCamera const& camera, Drawable drawable) {
   drawable.position = camera.worldToScreen(drawable.position);
   drawable.scale(camera.pixelRatio() * TilePixels, drawable.position);
@@ -282,12 +315,19 @@ void WorldPass::drawDrawable(WorldCamera const& camera, Drawable drawable) {
   if (drawable.isLine())
     drawable.linePart().width *= camera.pixelRatio();
 
+  if (drawable.isImage() && renderTestSnapImages()) {
+    Vec2F corner = drawable.boundBox(false).min();
+    Vec2F snapped(std::floor(corner[0] + 0.5f), std::floor(corner[1] + 0.5f));
+    if (snapped != corner)
+      drawable.translate(snapped - corner);
+  }
+
   // draw the drawable if it's on screen
   // if it's not on screen, there's a random chance to pre-load
   // pre-load is not done on every tick because it's expensive to look up images with long paths
   if (RectF::withSize(Vec2F(), Vec2F(camera.screenSize())).intersects(drawable.boundBox(false)))
     m_drawablePainter->drawDrawable(drawable);
-  else if (drawable.isImage() && Random::randf() < m_preloadTextureChance)
+  else if (drawable.isImage() && !renderTestPinPreload() && Random::randf() < m_preloadTextureChance)
     m_assets->tryImage(drawable.imagePart().image);
 }
 
