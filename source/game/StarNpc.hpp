@@ -183,6 +183,8 @@ public:
   using Entity::setUniqueId;
 
   HumanoidIdentity const& identity() const;
+  // [rendertest] read by the client census at the captured frame, for the seed the look derives from.
+  NpcVariant const& npcVariant() const;
   void updateIdentity();
   void setIdentity(HumanoidIdentity identity);
 

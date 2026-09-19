@@ -31,6 +31,9 @@ public:
   // nothing moved up into the orchestrator to pay for it.
   explicit WorldPass(AssetsConstPtr assets);
 
+  // The painter entity drawables go through, for the harness census (see DrawablePainter::textureGroup).
+  DrawablePainterPtr const& drawablePainter() const { return m_drawablePainter; }
+
   // (Re)create the tile / drawable / text painters on the given renderer. Called from WorldPainter::renderInit,
   // which runs on every world entry -- so, like the pre-extraction code, the painters are fresh each world.
   // Takes the RendererPtr because the painters' constructors do (they keep the renderer alive); WorldPass keeps

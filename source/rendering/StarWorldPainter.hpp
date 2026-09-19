@@ -35,6 +35,8 @@ public:
   // drop the redundant CPU calculate(). False whenever GPU lighting is off, inputs are
   // invalid, the world is fullbright, or the GPU pass fell back to CPU.
   bool gpuLightingActive() const { return m_gpuLightingActive; }
+  // The pass entity drawables are painted by, for the harness census (see WorldPass::drawablePainter).
+  WorldPassPtr const& worldPass() const { return m_worldPass; }
   // [rendertest] The last GPU-lightmap result and whether the pass RAN THIS FRAME (RustBound M54). The
   // client's lightmap line and the banked lightmap texture key on the freshness bit: the target is
   // `clear: false` and written only when the pass runs, so on a frame the pass skipped, the oracle would

@@ -20,6 +20,11 @@
 #include "StarAssets.hpp"
 #include "StarWorldTemplate.hpp"
 #include "StarWorldClient.hpp"
+#include "StarNpc.hpp"
+#include "StarMonster.hpp"
+#include "StarDrawable.hpp"
+#include "StarWorldPass.hpp"
+#include "StarGlTexturePrimitives.hpp"
 #include "StarRootLoader.hpp"
 #include "StarInput.hpp"
 #include "StarVoice.hpp"
@@ -1369,6 +1374,72 @@ void ClientApplication::renderTestDiffMap(Image const& a, Image const& b) const 
   }
 }
 
+// RustBound M81: the ENTITY CENSUS at the captured frame. Two captures of the intro at the same pins hashed
+// apart by 4 pixels in one column of an NPC's uniform after every object animator, orientation-frame timer,
+// monster, NPC behaviour and entity seed was held. Pixels say WHERE and never WHICH INPUT, so this lists, per
+// NPC, every input Humanoid::render reads for a standing figure - the seed and the identity it derives, the
+// state machine, the emote, the dance, the facing, both hands - and the image strings the humanoid resolves
+// to, which are the pixels' whole provenance. A pair that still disagrees now names the field. The humanoid
+// is rendered a second time to list its images; the frame above is read before this runs, so the second
+// render cannot reach it. Monsters carry their seed and position, which is where the pin lands for them.
+// `textures` is the group entity drawables are painted from: each image's entry ends with the GL texture the
+// group holds it in and the image's offset inside that atlas page (~<id>+(<x>,<y>)), or ~none if the group does
+// not hold it. A 43-pixel-wide humanoid image centred on a whole pixel puts every texel boundary on a pixel
+// centre, so which texel a pixel samples is decided by the texture coordinate's rounding, and the coordinate is
+// the atlas offset plus the texel index: two runs that pack the atlas in a different order disagree there.
+static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, AssetTextureGroupPtr const& textures) {
+  if (!world)
+    return;
+  world->forAllEntities([&](EntityPtr const& entity) {
+    if (auto npc = as<Npc>(entity)) {
+      auto humanoid = npc->humanoid();
+      auto const& identity = npc->identity();
+      auto const& personality = identity.personality;
+      // Each drawable with its position and the image's 3x3 transform: build 5's census agreed on every image
+      // string across a pair that still hashed apart by 4 pixels in one column, so the moving input is below the
+      // string - where a drawable sits, or how its image is mapped - or it is not a drawable input at all.
+      StringList images;
+      for (auto& drawable : humanoid->render(true, true)) {
+        if (!drawable.isImage())
+          continue;
+        auto const& t = drawable.imagePart().transformation;
+        String atlas = "~none";
+        if (textures) {
+          if (auto texture = textures->tryTexture(drawable.imagePart().image)) {
+            if (auto gl = as<GlTexture>(texture.get())) {
+              auto offset = gl->glTextureCoordinateOffset();
+              atlas = strf("~{}+({},{})", gl->glTextureId(), offset[0], offset[1]);
+            }
+          }
+        }
+        images.append(strf("{}@({:.6g},{:.6g})[{:.6g},{:.6g},{:.6g};{:.6g},{:.6g},{:.6g}]{}{}{}",
+          AssetPath::join(drawable.imagePart().image), drawable.position[0], drawable.position[1],
+          t[0][0], t[0][1], t[0][2], t[1][0], t[1][1], t[1][2],
+          drawable.fullbright ? "F" : "", drawable.color == Color::White ? "" : "#" + drawable.color.toHex(), atlas));
+      }
+      auto itemName = [](ItemPtr const& item) { return item ? item->name() : String("-"); };
+      Logger::info("[rendertest] npc frame={} id={} type={} species={} seed={:016x} gender={} name='{}'"
+                   " personality={}/{} headOffset=({:.4g},{:.4g}) armOffset=({:.4g},{:.4g})"
+                   " state={} emote={} dance={} dir={} humanoidDir={} backwards={} pos=({:.4f},{:.4f})"
+                   " primary={} primaryHeld={} alt={} altHeld={} images=[{}]",
+        index, npc->entityId(), npc->npcType(), npc->species(), npc->npcVariant().seed,
+        GenderNames.getRight(identity.gender), identity.name,
+        personality.idle, personality.armIdle, personality.headOffset[0], personality.headOffset[1],
+        personality.armOffset[0], personality.armOffset[1],
+        Humanoid::StateNames.getRight(humanoid->state()), HumanoidEmoteNames.getRight(humanoid->emoteState()),
+        humanoid->dance().value("-"), DirectionNames.getRight(npc->facingDirection()),
+        DirectionNames.getRight(humanoid->facingDirection()), humanoid->movingBackwards() ? 1 : 0,
+        npc->position()[0], npc->position()[1],
+        itemName(npc->handItem(ToolHand::Primary)), humanoid->handHoldingItem(ToolHand::Primary) ? 1 : 0,
+        itemName(npc->handItem(ToolHand::Alt)), humanoid->handHoldingItem(ToolHand::Alt) ? 1 : 0, images.join(","));
+    } else if (auto monster = as<Monster>(entity)) {
+      auto variant = monster->monsterVariant();
+      Logger::info("[rendertest] monster frame={} id={} type={} seed={:016x} pos=({:.4f},{:.4f})",
+        index, monster->entityId(), monster->typeName(), variant.seed, monster->position()[0], monster->position()[1]);
+    }
+  });
+}
+
 void ClientApplication::renderTestCapture() {
   auto& renderer = Application::renderer();
 
@@ -1718,6 +1789,9 @@ void ClientApplication::renderTestCapture() {
     topRect.redF(), topRect.greenF(), topRect.blueF(), topRect.alphaF(),
     bottomRect.redF(), bottomRect.greenF(), bottomRect.blueF(), bottomRect.alphaF(),
     sky.skyParameters.toJson().repr());
+  renderTestEntityCensus(m_universeClient->worldClient(), index,
+    m_worldPainter && m_worldPainter->worldPass() && m_worldPainter->worldPass()->drawablePainter()
+      ? m_worldPainter->worldPass()->drawablePainter()->textureGroup() : AssetTextureGroupPtr());
 
   // RustBound M54: the lightmap this frame was drawn with, and the terms the world shader applied it
   // under - every value read from the painter and the configuration the frame used, none typed. `fresh`

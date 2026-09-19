@@ -1338,6 +1338,10 @@ List<PhysicsForceRegion> Npc::forceRegions() const {
 }
 
 
+NpcVariant const& Npc::npcVariant() const {
+  return m_npcVariant;
+}
+
 HumanoidIdentity const& Npc::identity() const {
   return m_npcVariant.humanoidIdentity;
 }
