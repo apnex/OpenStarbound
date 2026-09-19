@@ -1390,34 +1390,40 @@ void ClientApplication::renderTestDiffMap(Image const& a, Image const& b) const 
 static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, AssetTextureGroupPtr const& textures) {
   if (!world)
     return;
+  // Each drawable with its position and the image's 3x3 transform: build 5's census agreed on every image
+  // string across a pair that still hashed apart by 4 pixels in one column, so the moving input is below the
+  // string - where a drawable sits, or how its image is mapped - or it is not a drawable input at all. The atlas
+  // suffix is the NPC line's cross-check on that finding; the player line (RustBound M52) leaves it out, because
+  // its consumer is an offline compare of the drawable list against a list built with no texture group at all.
+  auto censusImages = [&](HumanoidPtr const& humanoid, bool withAtlas) {
+    StringList images;
+    for (auto& drawable : humanoid->render(true, true)) {
+      if (!drawable.isImage())
+        continue;
+      auto const& t = drawable.imagePart().transformation;
+      String atlas = withAtlas ? "~none" : "";
+      if (withAtlas && textures) {
+        if (auto texture = textures->tryTexture(drawable.imagePart().image)) {
+          if (auto gl = as<GlTexture>(texture.get())) {
+            auto offset = gl->glTextureCoordinateOffset();
+            atlas = strf("~{}+({},{})", gl->glTextureId(), offset[0], offset[1]);
+          }
+        }
+      }
+      images.append(strf("{}@({:.6g},{:.6g})[{:.6g},{:.6g},{:.6g};{:.6g},{:.6g},{:.6g}]{}{}{}",
+        AssetPath::join(drawable.imagePart().image), drawable.position[0], drawable.position[1],
+        t[0][0], t[0][1], t[0][2], t[1][0], t[1][1], t[1][2],
+        drawable.fullbright ? "F" : "", drawable.color == Color::White ? "" : "#" + drawable.color.toHex(), atlas));
+    }
+    return images;
+  };
+  auto itemName = [](ItemPtr const& item) { return item ? item->name() : String("-"); };
   world->forAllEntities([&](EntityPtr const& entity) {
     if (auto npc = as<Npc>(entity)) {
       auto humanoid = npc->humanoid();
       auto const& identity = npc->identity();
       auto const& personality = identity.personality;
-      // Each drawable with its position and the image's 3x3 transform: build 5's census agreed on every image
-      // string across a pair that still hashed apart by 4 pixels in one column, so the moving input is below the
-      // string - where a drawable sits, or how its image is mapped - or it is not a drawable input at all.
-      StringList images;
-      for (auto& drawable : humanoid->render(true, true)) {
-        if (!drawable.isImage())
-          continue;
-        auto const& t = drawable.imagePart().transformation;
-        String atlas = "~none";
-        if (textures) {
-          if (auto texture = textures->tryTexture(drawable.imagePart().image)) {
-            if (auto gl = as<GlTexture>(texture.get())) {
-              auto offset = gl->glTextureCoordinateOffset();
-              atlas = strf("~{}+({},{})", gl->glTextureId(), offset[0], offset[1]);
-            }
-          }
-        }
-        images.append(strf("{}@({:.6g},{:.6g})[{:.6g},{:.6g},{:.6g};{:.6g},{:.6g},{:.6g}]{}{}{}",
-          AssetPath::join(drawable.imagePart().image), drawable.position[0], drawable.position[1],
-          t[0][0], t[0][1], t[0][2], t[1][0], t[1][1], t[1][2],
-          drawable.fullbright ? "F" : "", drawable.color == Color::White ? "" : "#" + drawable.color.toHex(), atlas));
-      }
-      auto itemName = [](ItemPtr const& item) { return item ? item->name() : String("-"); };
+      StringList images = censusImages(humanoid, true);
       Logger::info("[rendertest] npc frame={} id={} type={} species={} seed={:016x} gender={} name='{}'"
                    " personality={}/{} headOffset=({:.4g},{:.4g}) armOffset=({:.4g},{:.4g})"
                    " state={} emote={} dance={} dir={} humanoidDir={} backwards={} pos=({:.4f},{:.4f})"
@@ -1432,6 +1438,33 @@ static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, 
         npc->position()[0], npc->position()[1],
         itemName(npc->handItem(ToolHand::Primary)), humanoid->handHoldingItem(ToolHand::Primary) ? 1 : 0,
         itemName(npc->handItem(ToolHand::Alt)), humanoid->handHoldingItem(ToolHand::Alt) ? 1 : 0, images.join(","));
+    } else if (auto player = as<Player>(entity)) {
+      // RustBound M52: the player's in-world drawables, as the same render call gives them - the saved
+      // .player's six images are a portrait (Humanoid::renderPortrait, with Nude modes) and a fresh player wears
+      // the species shirt and pants from birth, so nothing but this line says what the player draws as. Its
+      // look is pinned by the identity seed at the fresh-player create (see STAR_RENDERTEST_MONSTER_SEED), so
+      // there is no seed= field; state is the humanoid's pose (Humanoid::State), rotation and anchor are the
+      // movement controller's, which the anchored branch of tickMaster reads from the loungeable.
+      auto humanoid = player->humanoid();
+      auto const& identity = player->identity();
+      auto const& personality = identity.personality;
+      StringList images = censusImages(humanoid, false);
+      auto anchor = player->loungingIn();
+      float rotation = player->movementController() ? player->movementController()->rotation() : 0.0f;
+      Logger::info("[rendertest] player frame={} id={} species={} gender={} name='{}'"
+                   " personality={}/{} headOffset=({:.4g},{:.4g}) armOffset=({:.4g},{:.4g})"
+                   " state={} emote={} dance={} dir={} humanoidDir={} backwards={} pos=({:.4f},{:.4f})"
+                   " rotation={:.6g} anchor={} primary={} primaryHeld={} alt={} altHeld={} images=[{}]",
+        index, player->entityId(), player->species(), GenderNames.getRight(identity.gender), identity.name,
+        personality.idle, personality.armIdle, personality.headOffset[0], personality.headOffset[1],
+        personality.armOffset[0], personality.armOffset[1],
+        Humanoid::StateNames.getRight(humanoid->state()), HumanoidEmoteNames.getRight(humanoid->emoteState()),
+        humanoid->dance().value("-"), DirectionNames.getRight(player->facingDirection()),
+        DirectionNames.getRight(humanoid->facingDirection()), humanoid->movingBackwards() ? 1 : 0,
+        player->position()[0], player->position()[1], rotation,
+        anchor ? strf("{}/{}", anchor->entityId, anchor->positionIndex) : String("-"),
+        itemName(player->handItem(ToolHand::Primary)), humanoid->handHoldingItem(ToolHand::Primary) ? 1 : 0,
+        itemName(player->handItem(ToolHand::Alt)), humanoid->handHoldingItem(ToolHand::Alt) ? 1 : 0, images.join(","));
     } else if (auto monster = as<Monster>(entity)) {
       auto variant = monster->monsterVariant();
       Logger::info("[rendertest] monster frame={} id={} type={} seed={:016x} pos=({:.4f},{:.4f})",
