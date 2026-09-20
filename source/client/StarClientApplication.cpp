@@ -1387,7 +1387,8 @@ void ClientApplication::renderTestDiffMap(Image const& a, Image const& b) const 
 // not hold it. A 43-pixel-wide humanoid image centred on a whole pixel puts every texel boundary on a pixel
 // centre, so which texel a pixel samples is decided by the texture coordinate's rounding, and the coordinate is
 // the atlas offset plus the texel index: two runs that pack the atlas in a different order disagree there.
-static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, AssetTextureGroupPtr const& textures) {
+static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, AssetTextureGroupPtr const& textures,
+    WorldCamera const* camera) {
   if (!world)
     return;
   // Each drawable with its position and the image's 3x3 transform: build 5's census agreed on every image
@@ -1395,6 +1396,45 @@ static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, 
   // string - where a drawable sits, or how its image is mapped - or it is not a drawable input at all. The atlas
   // suffix is the NPC line's cross-check on that finding; the player line (RustBound M52) leaves it out, because
   // its consumer is an offline compare of the drawable list against a list built with no texture group at all.
+  // [rendertest] RustBound M52 leg 3c. WHERE EACH LAYER LANDS ON SCREEN, in frame pixels: the low corner
+  // before the harness's image snap and after it, per drawable, in the census's own order. Its own field and
+  // NOT a suffix inside `images=[...]`, because that token is reproduced character for character by an offline
+  // consumer and a widened token would be a silent break.
+  //
+  // The reason it exists: `images=[...]` is written BEFORE worldToScreen, so a renderer graded against it can
+  // agree on every image, every offset and every matrix and still put the sprite on the wrong ROW. That is not
+  // hypothetical - it is the defect this was built to find.
+  //
+  // IT RE-TRANSLATES humanoid->render(), and that is a LIST OF OFFSETS TO KEEP IN STEP with Player::drawables()
+  // (StarPlayer.cpp:456-472). Reading Entity::drawables() instead would carry every translation the entity
+  // applies and need no such list - it is the better instrument and it is not available here: Player::drawables()
+  // is private, and Entity declares no drawables() at all (entities render through RenderCallback::addDrawables).
+  //
+  // `[CORRECTION]` an earlier draft of this comment claimed it DID read Entity::drawables(), and that the
+  // re-translated form had FAILED its check by a pixel. Both were false. The comment was written for a form that
+  // did not compile, and was left standing over the form that replaced it. The one-pixel gap it blamed on the
+  // missing offset was OURS, in the frame-space snap, and parentOffset is measured at (0,0) on this fixture.
+  //
+  // WHAT THIS STILL OMITS, and why the corners are usable anyway: Player::drawables() also early-outs on
+  // isTeleporting() and m_techController->parentHidden(), calls m_tools->setupHumanoidHandItemDrawables, and
+  // applies ?scalenearest from the tech and status parent directives via setScale. None of those fire on the
+  // banked rendertest fixture - no tech, no held item, no status scale - so the corners agree there. They are
+  // NOT general, and a fixture that lounges under a tech or holds an item must re-derive this before trusting it.
+  auto censusScreen = [&](HumanoidPtr const& humanoid, Vec2F worldOffset) {
+    StringList corners;
+    if (!camera)
+      return corners;
+    for (auto& drawable : humanoid->render(true, true)) {
+      if (!drawable.isImage())
+        continue;
+      Drawable placed = drawable;
+      placed.translate(worldOffset);
+      Vec2F pre = WorldPass::renderTestScreenCorner(*camera, placed, false);
+      Vec2F snapped = WorldPass::renderTestScreenCorner(*camera, placed, true);
+      corners.append(strf("({:.6g},{:.6g})>({:.6g},{:.6g})", pre[0], pre[1], snapped[0], snapped[1]));
+    }
+    return corners;
+  };
   auto censusImages = [&](HumanoidPtr const& humanoid, bool withAtlas) {
     StringList images;
     for (auto& drawable : humanoid->render(true, true)) {
@@ -1454,7 +1494,7 @@ static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, 
       Logger::info("[rendertest] player frame={} id={} species={} gender={} name='{}'"
                    " personality={}/{} headOffset=({:.4g},{:.4g}) armOffset=({:.4g},{:.4g})"
                    " state={} emote={} dance={} dir={} humanoidDir={} backwards={} pos=({:.4f},{:.4f})"
-                   " rotation={:.6g} anchor={} primary={} primaryHeld={} alt={} altHeld={} images=[{}]",
+                   " rotation={:.6g} anchor={} primary={} primaryHeld={} alt={} altHeld={} images=[{}] screen=[{}]",
         index, player->entityId(), player->species(), GenderNames.getRight(identity.gender), identity.name,
         personality.idle, personality.armIdle, personality.headOffset[0], personality.headOffset[1],
         personality.armOffset[0], personality.armOffset[1],
@@ -1464,7 +1504,8 @@ static void renderTestEntityCensus(WorldClientPtr const& world, unsigned index, 
         player->position()[0], player->position()[1], rotation,
         anchor ? strf("{}/{}", anchor->entityId, anchor->positionIndex) : String("-"),
         itemName(player->handItem(ToolHand::Primary)), humanoid->handHoldingItem(ToolHand::Primary) ? 1 : 0,
-        itemName(player->handItem(ToolHand::Alt)), humanoid->handHoldingItem(ToolHand::Alt) ? 1 : 0, images.join(","));
+        itemName(player->handItem(ToolHand::Alt)), humanoid->handHoldingItem(ToolHand::Alt) ? 1 : 0, images.join(","),
+        censusScreen(humanoid, player->position() + player->renderTestParentOffset()).join(","));
     } else if (auto monster = as<Monster>(entity)) {
       auto variant = monster->monsterVariant();
       Logger::info("[rendertest] monster frame={} id={} type={} seed={:016x} pos=({:.4f},{:.4f})",
@@ -1824,7 +1865,10 @@ void ClientApplication::renderTestCapture() {
     sky.skyParameters.toJson().repr());
   renderTestEntityCensus(m_universeClient->worldClient(), index,
     m_worldPainter && m_worldPainter->worldPass() && m_worldPainter->worldPass()->drawablePainter()
-      ? m_worldPainter->worldPass()->drawablePainter()->textureGroup() : AssetTextureGroupPtr());
+      ? m_worldPainter->worldPass()->drawablePainter()->textureGroup() : AssetTextureGroupPtr(),
+    // [rendertest] RustBound M52 leg 3c. The camera the frame above was drawn with, so the census can say where
+    // each layer LANDED. Absent, the screen column is empty rather than guessed.
+    m_worldPainter ? &m_worldPainter->camera() : nullptr);
 
   // RustBound M54: the lightmap this frame was drawn with, and the terms the world shader applied it
   // under - every value read from the painter and the configuration the frame used, none typed. `fresh`

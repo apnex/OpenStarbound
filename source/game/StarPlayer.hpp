@@ -520,6 +520,11 @@ public:
   void setSecretProperty(String const& name, Json const& value);
 
   void setAnimationParameter(String name, Json value);
+  // [rendertest] RustBound M52 leg 3c. The offset drawables() adds to every humanoid drawable on top of
+  // position() (StarPlayer.cpp:462). Exposed read-only so the entity census can report the corner the DRAW
+  // lands on: without it the census reported a corner one pixel from the drawn one, and the check it was
+  // built to serve - that its corners predict the reference's own painted rows - failed.
+  Vec2F renderTestParentOffset() const;
 
 private:
   typedef LuaMessageHandlingComponent<LuaStorableComponent<LuaActorMovementComponent<LuaUpdatableComponent<LuaWorldComponent<LuaBaseComponent>>>>> GenericScriptComponent;
@@ -540,6 +545,7 @@ private:
   void setNetArmorSecrets(bool includeEmpty = false);
 
   List<Drawable> drawables() const;
+
   List<OverheadBar> bars() const;
   List<Particle> particles();
   String getFootstepSound(Vec2I const& sensor) const;

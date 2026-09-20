@@ -308,16 +308,39 @@ static bool renderTestSnapImages() {
   return on;
 }
 
-void WorldPass::drawDrawable(WorldCamera const& camera, Drawable drawable) {
+// [rendertest] RustBound M52 leg 3c. The two steps that put a drawable into SCREEN pixels, and the snap rule
+// that decides which pixel its corner lands on. Lifted out of drawDrawable unchanged - same calls, same order -
+// so that renderTestScreenCorner below can report the corner the DRAW uses rather than a second opinion about
+// it. A census that re-derives the transform is a second implementation, and the defect this exists to find is
+// exactly a disagreement of half a pixel.
+static void renderTestToScreen(WorldCamera const& camera, Drawable& drawable) {
   drawable.position = camera.worldToScreen(drawable.position);
   drawable.scale(camera.pixelRatio() * TilePixels, drawable.position);
+}
+
+static Vec2F renderTestSnapCorner(Vec2F corner) {
+  return Vec2F(std::floor(corner[0] + 0.5f), std::floor(corner[1] + 0.5f));
+}
+
+// [rendertest] RustBound M52 leg 3c. Where an image drawable's low corner LANDS ON SCREEN. `snap` applies the
+// harness's image snap on top, which is the corner a pinned capture actually draws; without it, the corner the
+// shipped path draws. The caller hands a drawable in the same state drawDrawable receives one - world position,
+// entity translation already applied - because everything after that is what this reproduces.
+Vec2F WorldPass::renderTestScreenCorner(WorldCamera const& camera, Drawable drawable, bool snap) {
+  renderTestToScreen(camera, drawable);
+  Vec2F corner = drawable.boundBox(false).min();
+  return snap ? renderTestSnapCorner(corner) : corner;
+}
+
+void WorldPass::drawDrawable(WorldCamera const& camera, Drawable drawable) {
+  renderTestToScreen(camera, drawable);
 
   if (drawable.isLine())
     drawable.linePart().width *= camera.pixelRatio();
 
   if (drawable.isImage() && renderTestSnapImages()) {
     Vec2F corner = drawable.boundBox(false).min();
-    Vec2F snapped(std::floor(corner[0] + 0.5f), std::floor(corner[1] + 0.5f));
+    Vec2F snapped = renderTestSnapCorner(corner);
     if (snapped != corner)
       drawable.translate(snapped - corner);
   }

@@ -75,6 +75,13 @@ public:
 
   void cleanup(int64_t textureTimeout);
 
+  // [rendertest] RustBound M52 leg 3c. Where an image drawable's low corner LANDS ON SCREEN, by the same two
+  // transforms and the same snap rule drawDrawable uses - one definition, two callers - so the entity census
+  // can state a SCREEN-space corner without becoming a second implementation of the draw. The census the
+  // harness already writes stops at world space (the drawable's position and its 3x3), and a renderer being
+  // graded against it can therefore agree on every field and still land the sprite on the wrong row.
+  static Vec2F renderTestScreenCorner(WorldCamera const& camera, Drawable drawable, bool snap);
+
 private:
   // Sliced to what they use, for the same reason renderWorld is: each took the whole frame snapshot to
   // read one member of it.

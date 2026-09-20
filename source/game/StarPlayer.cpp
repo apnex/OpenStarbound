@@ -432,6 +432,10 @@ void Player::uninit() {
   Entity::uninit();
 }
 
+Vec2F Player::renderTestParentOffset() const {
+  return m_techController->parentOffset();
+}
+
 List<Drawable> Player::drawables() const {
   List<Drawable> drawables;
 
