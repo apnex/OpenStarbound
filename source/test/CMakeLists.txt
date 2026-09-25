@@ -104,6 +104,7 @@ SET (star_game_tests_SOURCES
       game_tests_main.cpp
 
       StarTestUniverse.cpp
+      armor_wearer_cost_test.cpp
       assets_test.cpp
       animated_part_set_test.cpp
       drawable_cache_test.cpp
