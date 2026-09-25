@@ -1,23 +1,25 @@
-// RustBound M52 L8c-mech: what the fork's per-tick armour check COSTS, as the oracle side of a
+// RustBound M52 L8c-mech: what the fork spends keeping an NPC's wardrobe current, as the oracle side of a
 // like-for-like comparison with RustBound's `Wardrobe::dress` (its own probe is
 // crates/appearance/tests/dress_cost.rs in the RustBound tree).
 //
-//   STAR_ARMOR_COST=1 taskset -c 6-15 ./game_tests --gtest_filter='ArmorWearerCost.*'
+//   STAR_ARMOR_COST=1 taskset -c 6-13 ./game_tests --gtest_filter='ArmorWearerCost.*'
 //
-// Skipped unless STAR_ARMOR_COST is set: a timing, run deliberately and pinned to the E-cores.
+// Skipped unless STAR_ARMOR_COST is set: a timing, run deliberately and pinned to the 4.5 GHz E-cores
+// (6-13; 14-15 are the slower LP E-cores, where both arms read about twice as long).
 //
-// Npc::tickShared calls ArmorWearer::setupHumanoid on EVERY tick, and Npc::update reaches
-// tickShared on both its master and its slave branch. setupHumanoid is itself change-gated: every
-// call scans all twenty ArmorWearer::m_armors, and only a slot flagged Armor::needsSync is rebuilt
-// through Humanoid::setWearableFrom*. So two arms, both on the intro's NPC 279 as its npctype
-// generates it:
-//   - scan: setupHumanoid with nothing changed - the per-tick cost;
-//   - sync: the same items alternated with a different colourIndex before each call, so both the
-//     chest and the legs slots rebuild - the per-change cost.
+// Npc::tickShared calls ArmorWearer::setupHumanoid on EVERY tick, and Npc::update reaches tickShared on
+// both its master and its slave branch. setupHumanoid looks change-gated - it rebuilds only when some
+// slot is flagged Armor::needsSync - but a flag is cleared only for a slot holding an allowed item. An
+// EMPTY slot keeps its flag forever, so a wearer with any empty slot (NPC 279 fills 2 of 20) runs the
+// whole sync block on every tick: removeWearable for each empty slot, the humanoidConfig merge,
+// Humanoid::loadConfig, setBodyHidden. Two arms, both on the intro's NPC 279 as its npctype generates it:
+//   - tick: setupHumanoid with nothing changed - what every tick costs;
+//   - rebuild: the same items alternated with a different colourIndex before each call, so the chest
+//     and legs wearables are rebuilt too - what a change costs.
 //
 // NOT CLAIMED: the call site's Npc::forceNude() (a StatusController::statPositive lookup) is not in
-// either arm, so the per-tick number is a FLOOR of what a tick spends here. The return value is never
-// read: on the no-sync path setupHumanoid returns its local movementParametersChanged uninitialised.
+// either arm, so both numbers are FLOORS of what a tick spends here. The return value is never read;
+// setupHumanoid leaves it uninitialised when no slot is flagged, which this wearer never reaches.
 
 #include "StarRoot.hpp"
 #include "StarNpcDatabase.hpp"
@@ -75,33 +77,44 @@ TEST(ArmorWearerCost, ScanAndSyncOnTheIntroNpc) {
   armor.setLegsItem(legs);
   armor.setupHumanoid(humanoid, false);
 
-  size_t const scanCalls = 200000;
-  size_t const syncCalls = 20000;
+  size_t const tickCalls = 200000;
+  size_t const rebuildCalls = 20000;
   int const passes = 7;
-  double scan = std::numeric_limits<double>::max();
-  double sync = std::numeric_limits<double>::max();
+  double tick = std::numeric_limits<double>::max();
+  double rebuild = std::numeric_limits<double>::max();
   for (int pass = 0; pass != passes; ++pass) {
     auto start = std::chrono::steady_clock::now();
-    for (size_t i = 0; i != scanCalls; ++i)
+    for (size_t i = 0; i != tickCalls; ++i)
       armor.setupHumanoid(humanoid, false);
-    scan = std::min(scan, nsPerCall(start, scanCalls));
+    tick = std::min(tick, nsPerCall(start, tickCalls));
 
     start = std::chrono::steady_clock::now();
-    for (size_t i = 0; i != syncCalls; ++i) {
+    for (size_t i = 0; i != rebuildCalls; ++i) {
       bool odd = (i & 1) != 0;
       armor.setChestItem(odd ? chestOther : chest);
       armor.setLegsItem(odd ? legsOther : legs);
       armor.setupHumanoid(humanoid, false);
     }
-    sync = std::min(sync, nsPerCall(start, syncCalls));
-    // Leave the wearer as the scan arm expects it: the npctype's own items, synced.
+    rebuild = std::min(rebuild, nsPerCall(start, rebuildCalls));
+    // Leave the wearer as the tick arm expects it: the npctype's own items, synced.
     armor.setChestItem(chest);
     armor.setLegsItem(legs);
     armor.setupHumanoid(humanoid, false);
   }
 
   std::printf("armor_wearer_cost: %s\n", cpusAllowed().c_str());
-  std::printf("armor_wearer_cost: scan %.1f ns/call, sync (chest+legs) %.1f ns/call\n", scan, sync);
-  // The negative control: a rebuild that is not dearer than a scan rebuilt nothing.
-  EXPECT_GT(sync, scan) << "the sync arm cost no more than the scan: it did not rebuild";
+  std::printf("armor_wearer_cost: tick %.1f ns/call, rebuild (chest+legs) %.1f ns/call\n", tick, rebuild);
+
+  // The rebuild arm really rebuilds: the chest wearable's directives follow the alternated item. A
+  // cost comparison could not show this - the rebuild loop also times two setItem calls.
+  auto chestDirectives = [&]() {
+    auto worn = humanoid.getLastWearableOfType<Humanoid::WornChest>();
+    return worn ? worn->directives.string() : String("<no chest>");
+  };
+  String asGenerated = chestDirectives();
+  armor.setChestItem(chestOther);
+  armor.setupHumanoid(humanoid, false);
+  String alternated = chestDirectives();
+  EXPECT_NE(asGenerated, alternated) << "the alternate colourIndex did not reach the chest wearable";
+  EXPECT_NE(alternated, String("<no chest>"));
 }
