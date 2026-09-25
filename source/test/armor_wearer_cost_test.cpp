@@ -56,7 +56,7 @@ double nsPerCall(std::chrono::steady_clock::time_point start, size_t calls) {
 
 }
 
-TEST(ArmorWearerCost, ScanAndSyncOnTheIntroNpc) {
+TEST(ArmorWearerCost, TickAndRebuildOnTheIntroNpc) {
   if (!std::getenv("STAR_ARMOR_COST"))
     GTEST_SKIP() << "a timing measurement; run with STAR_ARMOR_COST=1, pinned to the E-cores";
 
