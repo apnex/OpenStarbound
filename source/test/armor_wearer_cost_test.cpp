@@ -10,9 +10,12 @@
 // Npc::tickShared calls ArmorWearer::setupHumanoid on EVERY tick, and Npc::update reaches tickShared on
 // both its master and its slave branch. setupHumanoid looks change-gated - it rebuilds only when some
 // slot is flagged Armor::needsSync - but a flag is cleared only for a slot holding an allowed item. An
-// EMPTY slot keeps its flag forever, so a wearer with any empty slot (NPC 279 fills 2 of 20) runs the
-// whole sync block on every tick: removeWearable for each empty slot, the humanoidConfig merge,
-// Humanoid::loadConfig, setBodyHidden. Two arms, both on the intro's NPC 279 as its npctype generates it:
+// EMPTY slot keeps its flag forever, so a wearer with any empty slot (NPC 279 fills 2 of 20) walks the
+// whole sync block on every tick: removeWearable for each empty slot, an instanceValue("humanoidConfig")
+// lookup per worn item, Humanoid::loadConfig, setBodyHidden. For this wearer each of them changes
+// nothing - the slots are already empty, neither item carries humanoidConfig, and loadConfig returns on
+// its unchanged merge config - so a tick costs this much to do nothing. Two arms, both on the intro's
+// NPC 279 as its npctype generates it:
 //   - tick: setupHumanoid with nothing changed - what every tick costs;
 //   - rebuild: the same items alternated with a different colourIndex before each call, so the chest
 //     and legs wearables are rebuilt too - what a change costs.
