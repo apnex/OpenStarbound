@@ -2049,6 +2049,15 @@ void ClientApplication::updateTitle(float dt) {
 // cache's scroll-shift path, adaptive-N (which derives from drift), and the whole of #177's env motion term.
 // The audit priced that blindness from evidence rather than assertion: one wrong measurement (owner `gl` at
 // 118.4%, parts exceeding the whole by 1279 us/tick) and one defect that reached the Director in play.
+// RustBound M83 L2(c): STAR_RENDERTEST_WALK_TRACE=1 arms the [walktrace] line, one per driven update. Read once.
+static bool renderTestWalkTraceArmed() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_WALK_TRACE");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void ClientApplication::renderTestDriveMotion() {
   if (!m_player)
     return;
@@ -2095,6 +2104,46 @@ void ClientApplication::renderTestDriveMotion() {
     float lv = m_renderTestZoomLevels[(t / m_renderTestZoomPeriod) % m_renderTestZoomLevels.size()];
     cfg->set("zoomLevel", lv);
     Logger::info("[walk] frame={} zoomLevel -> {:.2f}", t, lv);
+  }
+
+  // THE WALK TRACE (RustBound M83 L2(c)): the state update t ENTERS with - the player after the last tick, and the
+  // camera after the last updateCamera, since both run after this function. It is an instrument that only observes:
+  // every source is bound const and nothing is written, so an armed run must draw what an unarmed one draws. `move`
+  // is the move issued above, not the player's pending set, which Player keeps private. Floats print at nine
+  // significant digits, which recovers any float exactly.
+  if (renderTestWalkTraceArmed()) {
+    auto worldClient = m_universeClient->worldClient();
+    auto controller = m_player->movementController();
+    if (worldClient && controller) {
+      Player const& p = *m_player;
+      ActorMovementController const& mc = *controller;
+      Humanoid const& h = *p.humanoid();
+      WorldCamera const& cam = m_worldPainter->camera();
+      WorldClient const& wc = *worldClient;
+      unsigned leg = m_renderTestWalk ? (t / m_renderTestWalk) % 4 : 0;
+      auto anchor = p.loungingIn();
+      Vec2F pos = p.position(), v = p.velocity(), centre = cam.centerWorldPosition();
+      Vec2U screen = cam.screenSize();
+      RectI tiles = cam.worldTileRect(), window = wc.clientWindow();
+      Logger::info("[walktrace] t={} leg={} move={} seen={} step={} dt={:.9g} pos={:.9g},{:.9g} v={:.9g},{:.9g}"
+                   " ground={} groundmove={} state={} pose={} emote={} emotesim={} facing={} mdir={} walking={}"
+                   " running={} falling={} zerog={} liquid={:.9g} gravity={:.9g} anchor={} smoother={:.9g},{:.9g}"
+                   " delta={:.9g},{:.9g} offset={:.9g},{:.9g} centre={:.9g},{:.9g} pr={:.9g} screen={},{}"
+                   " tiles={},{},{},{} window={},{},{},{}",
+        t, m_renderTestWalk ? strf("{}", leg) : String("-"),
+        !m_renderTestWalk ? "-" : (leg == 0 ? "R" : (leg == 2 ? "L" : "-")),
+        m_renderTestSeen, wc.currentStep(), GlobalTimestep * GlobalTimescale, pos[0], pos[1], v[0], v[1],
+        mc.onGround() ? 1 : 0, mc.groundMovement() ? 1 : 0, Player::StateNames.getRight(p.currentState()),
+        Humanoid::StateNames.getRight(h.state()), HumanoidEmoteNames.getRight(h.emoteState()),
+        HumanoidEmoteNames.getRight(p.currentEmote().first), DirectionNames.getRight(p.facingDirection()),
+        DirectionNames.getRight(mc.movingDirection()), mc.walking() ? 1 : 0, mc.running() ? 1 : 0,
+        mc.falling() ? 1 : 0, mc.zeroG() ? 1 : 0, mc.liquidPercentage(), wc.gravity(pos),
+        anchor ? strf("{}/{}", anchor->entityId, anchor->positionIndex) : String("-"),
+        m_cameraPositionSmoother[0], m_cameraPositionSmoother[1], m_cameraSmoothDelta[0], m_cameraSmoothDelta[1],
+        m_cameraXOffset, m_cameraYOffset, centre[0], centre[1], cam.pixelRatio(), screen[0], screen[1],
+        tiles.xMin(), tiles.yMin(), tiles.width(), tiles.height(),
+        window.xMin(), window.yMin(), window.width(), window.height());
+    }
   }
 }
 
