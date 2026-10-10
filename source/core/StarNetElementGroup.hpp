@@ -44,7 +44,15 @@ public:
   bool netInterpolationEnabled() const;
   float netExtrapolationHint() const;
 
+  // RustBound M83 L6 L1, the Player golden dump (ruling 0100 item 5). While `group` is recorded on this thread, its
+  // netStore also appends each child's own bytes to `out`, in the order written; nullptr stops it. The stream receives
+  // the same bytes either way, and no element is stored twice.
+  static void recordChildStores(NetElementGroup const* group, List<ByteArray>* out);
+
 private:
+  static thread_local NetElementGroup const* s_recordedGroup;
+  static thread_local List<ByteArray>* s_recordedStores;
+
   List<pair<NetElement*, bool>> m_elements;
   // Subset of m_elements whose netStoreNeedsPump() is true (the deferred-store
   // composites). netStorePump() iterates only these, not the leaf-heavy

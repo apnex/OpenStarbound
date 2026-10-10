@@ -122,6 +122,9 @@ public:
   RectF collisionArea() const override;
 
   pair<ByteArray, uint64_t> writeNetState(uint64_t fromVersion = 0, NetCompatibilityRules rules = {}) override;
+  // RustBound M83 L6 L1, the Player golden dump: the group whose children writeNetState(0) writes, so the dump can
+  // record each child's bytes from the one real call (NetElementGroup::recordChildStores).
+  NetElementGroup const* netGroupForGolden() const { return &m_netGroup; }
   void netStorePump() override;
   void readNetState(ByteArray data, float interpolationStep = 0.0f, NetCompatibilityRules rules = {}) override;
 

@@ -12,6 +12,7 @@ Star::Vec2I unpackVec2I(int64_t p) {
 }
 }
 #include "StarIterator.hpp"
+#include "StarEncode.hpp"
 #include "StarLogging.hpp"
 #include "StarTelemetry.hpp"
 #include "StarBiome.hpp"
@@ -1858,6 +1859,16 @@ void WorldClient::setTileProtection(DungeonId dungeonId, bool isProtected) {
   }
 }
 
+// RustBound M83 L6 L1: STAR_RENDERTEST_PLAYER_GOLDEN=1 arms the [golden] lines, the main player's create and its
+// deltas as this client sends them (ruling 0100 item 5, the Player golden dump). Read once.
+static bool renderTestPlayerGoldenArmed() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_PLAYER_GOLDEN");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
 void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
   auto& root = Root::singleton();
   auto assets = root.assets();
@@ -1882,6 +1893,13 @@ void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
           if (NetElementEarlyOut::active())
             entity->netStorePump();
           auto updateAndVersion = entity->writeNetState(*version, netRules);
+          // THE PLAYER GOLDEN (RustBound M83 L6 L1): each non-empty delta the main player sends, as sent, up to a cap.
+          static unsigned goldenDeltas = 0;
+          if (renderTestPlayerGoldenArmed() && !updateAndVersion.first.empty() && m_mainPlayer
+              && entity.get() == m_mainPlayer.get() && goldenDeltas < 600) {
+            ++goldenDeltas;
+            Logger::info("[golden] delta step={} {}", m_currentStep, hexEncode(updateAndVersion.first));
+          }
           if (!updateAndVersion.first.empty())
             entityUpdateSet->deltas[entity->entityId()] = std::move(updateAndVersion.first);
           *version = updateAndVersion.second;
@@ -3057,10 +3075,27 @@ void WorldClient::notifyEntityCreate(EntityPtr const& entity) {
   if (entity->isMaster() && !m_masterEntitiesNetVersion.contains(entity->entityId())) {
     // Server was unaware of this entity until now
     auto netRules = m_clientState.netCompatibilityRules();
+    // THE PLAYER GOLDEN (RustBound M83 L6 L1): the bytes this create sends, recorded from the one real call, never a
+    // second writeNetState(0) (which would advance the net version). Each element is its child's own bytes from that
+    // call; the packet carries the same store and state either way.
+    bool golden = renderTestPlayerGoldenArmed() && m_mainPlayer && entity.get() == m_mainPlayer.get();
+    List<ByteArray> elements;
+    if (golden)
+      NetElementGroup::recordChildStores(m_mainPlayer->netGroupForGolden(), &elements);
     auto firstNetState = entity->writeNetState(0, netRules);
+    if (golden)
+      NetElementGroup::recordChildStores(nullptr, nullptr);
     m_masterEntitiesNetVersion[entity->entityId()] = firstNetState.second;
+    auto store = Root::singleton().entityFactory()->netStoreEntity(entity, netRules);
+    if (golden) {
+      Logger::info("[golden] create step={} rules={} id={}", m_currentStep, netRules.version(), entity->entityId());
+      Logger::info("[golden] store {}", hexEncode(store));
+      for (size_t i = 0; i < elements.size(); ++i)
+        Logger::info("[golden] element {} {}", i + 1, hexEncode(elements[i]));
+      Logger::info("[golden] whole {}", hexEncode(firstNetState.first));
+    }
     m_outgoingPackets.append(make_shared<EntityCreatePacket>(entity->entityType(),
-      Root::singleton().entityFactory()->netStoreEntity(entity, netRules), std::move(firstNetState.first), entity->entityId()));
+      std::move(store), std::move(firstNetState.first), entity->entityId()));
   }
 }
 

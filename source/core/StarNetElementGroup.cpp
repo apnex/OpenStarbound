@@ -31,11 +31,31 @@ void NetElementGroup::initNetVersion(NetElementVersion const* version) {
     p.first->initNetVersion(m_version);
 }
 
+thread_local NetElementGroup const* NetElementGroup::s_recordedGroup = nullptr;
+thread_local List<ByteArray>* NetElementGroup::s_recordedStores = nullptr;
+
+void NetElementGroup::recordChildStores(NetElementGroup const* group, List<ByteArray>* out) {
+  s_recordedGroup = out ? group : nullptr;
+  s_recordedStores = out;
+}
+
 void NetElementGroup::netStore(DataStream& ds, NetCompatibilityRules rules) const {
   if (!checkWithRules(rules)) return;
-  for (auto& p : m_elements)
-    if (p.first->checkWithRules(rules))
+  bool record = s_recordedGroup == this;
+  for (auto& p : m_elements) {
+    if (!p.first->checkWithRules(rules))
+      continue;
+    if (!record) {
       p.first->netStore(ds, rules);
+      continue;
+    }
+    // Recorded: the child writes into its own buffer, whose bytes then go to the stream unchanged.
+    DataStreamBuffer child;
+    child.setStreamCompatibilityVersion(ds.streamCompatibilityVersion());
+    p.first->netStore(child, rules);
+    ds.writeData(child.data().ptr(), child.data().size());
+    s_recordedStores->append(child.takeData());
+  }
 }
 
 void NetElementGroup::netLoad(DataStream& ds, NetCompatibilityRules rules) {
