@@ -530,10 +530,30 @@ void MainInterface::handleInteractAction(InteractAction interactAction) {
   }
 }
 
+// RustBound M83 W10c1: STAR_RENDERTEST_AIM=<dx>,<dy> aims the main player that far from its position on every update
+// instead of at the cursor, which an offscreen run never moves. Read once; unset or unparsable, the cursor aims.
+static Maybe<Vec2F> renderTestAimOffset() {
+  static Maybe<Vec2F> const offset = []() -> Maybe<Vec2F> {
+    char const* e = getenv("STAR_RENDERTEST_AIM");
+    if (!e || !*e)
+      return {};
+    float dx, dy;
+    if (sscanf(e, "%f,%f", &dx, &dy) != 2)
+      return {};
+    Logger::info("[rendertest] the main player aims at its position plus ({:.9g},{:.9g})", dx, dy);
+    return Vec2F(dx, dy);
+  }();
+  return offset;
+}
+
 void MainInterface::preUpdate(float) {
   auto player = m_client->mainPlayer();
-  if (!m_client->paused())
-    player->aim(cursorWorldPosition());
+  if (!m_client->paused()) {
+    if (auto offset = renderTestAimOffset())
+      player->aim(player->position() + *offset);
+    else
+      player->aim(cursorWorldPosition());
+  }
 
   if (m_paneManager.topPane({PaneLayer::Window, PaneLayer::ModalWindow}))
     player->setBusyState(PlayerBusyState::Menu);

@@ -15,6 +15,7 @@
 #include "StarPlayerUniverseMap.hpp"  // [rendertest] teleport bookmarks
 #include "StarPlayerLog.hpp"
 #include "StarPlayerFactory.hpp"  // [rendertest] STAR_RENDERTEST_PLAYER creates a fresh player
+#include "StarPlayerInventory.hpp"  // [rendertest] STAR_RENDERTEST_ESSENTIAL selects an essential (M83 W10c1)
 #include "StarSpeciesDatabase.hpp"  // [rendertest] the fresh player's look pinned (M81)
 #include "StarRandom.hpp"          // [rendertest] the shared source is seeded under the harness
 #include "StarAssets.hpp"
@@ -981,6 +982,14 @@ void ClientApplication::changeState(MainAppState newState) {
         char const* intro = getenv("STAR_RENDERTEST_INTRO");
         bool introInstance = intro && *intro == '1';
         m_player->log()->setIntroComplete(!introInstance);
+        // STAR_RENDERTEST_ESSENTIAL=<beamaxe|wiretool|painttool|inspectiontool> (RustBound M83 W10c1): the fresh player
+        // holds that essential, selected as the action bar selects it, before it is saved and played, so its first
+        // create already holds it. An unknown name stops the run here rather than holding nothing.
+        if (char const* essential = getenv("STAR_RENDERTEST_ESSENTIAL"); essential && *essential) {
+          m_player->inventory()->selectActionBarLocation(SelectedActionBarLocation(EssentialItemNames.getLeft(essential)));
+          Logger::info("[rendertest] the fresh player holds its {} essential; humanoidHeadRotation={}", essential,
+              m_root->configuration()->get("humanoidHeadRotation").optBool().value(true));
+        }
         m_playerStorage->savePlayer(m_player);
         Logger::info("[rendertest] fresh {} player '{}' created and saved{}", species, m_player->name(),
             introInstance ? " with the intro incomplete" : "");

@@ -24,6 +24,8 @@ Star::Vec2I unpackVec2I(int64_t p) {
 #include "StarWorldImpl.hpp"
 #include "StarPlayer.hpp"
 #include "StarPlayerLog.hpp"
+#include "StarFireableItem.hpp"
+#include "StarHumanoid.hpp"
 #include "StarAggressiveEntity.hpp"
 #include "StarPhysicsEntity.hpp"
 #include "StarItemDrop.hpp"
@@ -1869,6 +1871,33 @@ static bool renderTestPlayerGoldenArmed() {
   return on;
 }
 
+// RustBound M83 W10c1: STAR_RENDERTEST_HELD_TRACE=1 arms the [held] line: the main player's held-item state as each
+// create and delta is written, from the first. It only reads: the aim and position after the update, the movement
+// controller's facing and the humanoid's (which a held item turns a tick earlier), whether the primary hand holds,
+// whether it lounges, and the primary hand's fire timer. Floats print at nine significant digits. Read once.
+static bool renderTestHeldTraceArmed() {
+  static bool const on = []() {
+    char const* e = getenv("STAR_RENDERTEST_HELD_TRACE");
+    return e && *e && *e != '0';
+  }();
+  return on;
+}
+
+static void renderTestHeldLine(char const* what, uint64_t step, Player const& p) {
+  static unsigned lines = 0;
+  if (!renderTestHeldTraceArmed() || lines >= 600)
+    return;
+  ++lines;
+  auto primary = p.primaryHandItem();
+  auto fire = as<FireableItem>(primary.get());
+  Vec2F aim = p.aimPosition(), pos = p.position();
+  Logger::info("[held] {} step={} aim={:.9g},{:.9g} pos={:.9g},{:.9g} facing={} hfacing={} holding={} lounging={} item={} timer={:.9g} cooling={}",
+      what, step, aim[0], aim[1], pos[0], pos[1], DirectionNames.getRight(p.facingDirection()),
+      DirectionNames.getRight(p.humanoid()->facingDirection()), p.humanoid()->handHoldingItem(ToolHand::Primary) ? 1 : 0,
+      p.loungingIn() ? 1 : 0, primary ? primary->name() : String("-"), fire ? fire->fireTimer() : 0.0f,
+      fire && fire->coolingDown() ? 1 : 0);
+}
+
 void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
   auto& root = Root::singleton();
   auto assets = root.assets();
@@ -1900,6 +1929,8 @@ void WorldClient::queueUpdatePackets(bool sendEntityUpdates) {
             ++goldenDeltas;
             Logger::info("[golden] delta step={} {}", m_currentStep, hexEncode(updateAndVersion.first));
           }
+          if (m_mainPlayer && entity.get() == m_mainPlayer.get())
+            renderTestHeldLine("delta", m_currentStep, *m_mainPlayer);
           if (!updateAndVersion.first.empty())
             entityUpdateSet->deltas[entity->entityId()] = std::move(updateAndVersion.first);
           *version = updateAndVersion.second;
@@ -3094,6 +3125,8 @@ void WorldClient::notifyEntityCreate(EntityPtr const& entity) {
         Logger::info("[golden] element {} {}", i + 1, hexEncode(elements[i]));
       Logger::info("[golden] whole {}", hexEncode(firstNetState.first));
     }
+    if (m_mainPlayer && entity.get() == m_mainPlayer.get())
+      renderTestHeldLine("create", m_currentStep, *m_mainPlayer);
     m_outgoingPackets.append(make_shared<EntityCreatePacket>(entity->entityType(),
       std::move(store), std::move(firstNetState.first), entity->entityId()));
   }
